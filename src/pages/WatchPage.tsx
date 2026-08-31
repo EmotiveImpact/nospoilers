@@ -146,17 +146,17 @@ export function WatchPage() {
           customers actually download — not the git tree. Source maps and <code className="text-snow">.env</code> files
           do not belong in the cut you ship.
         </p>
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
           {githubApp ? (
-            <Button asChild size="lg">
-              <a href="/api/auth/github">Sign in with GitHub</a>
+            <Button as="a" href="/api/auth/github" size="lg">
+              Sign in with GitHub
             </Button>
           ) : (
             <Button type="button" size="lg" disabled>
               Sign in with GitHub
             </Button>
           )}
-          <Button type="button" size="lg" variant="ghost" onClick={() => navigate("/scan")}>
+          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/scan")}>
             Scan a pack instead
           </Button>
         </div>
@@ -203,8 +203,8 @@ export function WatchPage() {
           </p>
         </div>
         {installUrl && githubApp && (
-          <Button asChild>
-            <a href={installUrl}>Install on GitHub</a>
+          <Button as="a" href={installUrl}>
+            Install on GitHub
           </Button>
         )}
       </div>
@@ -240,9 +240,11 @@ export function WatchPage() {
                     Last check{" "}
                     {repo.last_checked_at ? new Date(repo.last_checked_at).toLocaleString() : "not yet"}
                   </p>
-                  <button
+                  <Button
                     type="button"
-                    className="mt-3 text-xs text-mute underline-offset-4 hover:text-snow hover:underline disabled:opacity-40"
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
                     disabled={scanningId === repo.id}
                     onClick={() => {
                       setScanError(null);
@@ -265,7 +267,7 @@ export function WatchPage() {
                     }}
                   >
                     {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
