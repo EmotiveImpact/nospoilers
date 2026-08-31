@@ -1,0 +1,39 @@
+name: NoSpoilers
+description: Fail the job if a packed artifact contains source maps, secrets, or a .git directory.
+author: NoSpoilers
+branding:
+  icon: eye-closed
+  color: red
+inputs:
+  path:
+    description: Directory, npm tarball, zip, or Electron asar to scan
+    required: true
+  strict:
+    description: Also fail on warnings (TypeScript source packed, etc.)
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+    - name: Install NoSpoilers
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci
+    - name: Scan packed artifact
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        EXTRA=""
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          EXTRA="--strict"
+        fi
+        TARGET="${{ inputs.path }}"
+        case "$TARGET" in
+          /*) ;;
+          *) TARGET="${GITHUB_WORKSPACE}/${TARGET}" ;;
+        esac
+        npx tsx src/cli.ts scan "$TARGET" $EXTRA

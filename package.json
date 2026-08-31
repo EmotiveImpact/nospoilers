@@ -1,0 +1,56 @@
+{
+  "name": "nospoilers",
+  "version": "0.1.0",
+  "description": "No spoilers in production. Fail CI if source maps or secrets ship in the packed artifact.",
+  "type": "module",
+  "bin": {
+    "nospoilers": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "vite --port 4347 --host",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4347 --host --strictPort",
+    "nospoilers": "tsx src/cli.ts",
+    "scan": "tsx src/cli.ts scan",
+    "fixtures": "tsx scripts/build-fixtures.ts",
+    "test": "vitest run",
+    "lint": "oxlint src tests scripts"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EmotiveImpact/nospoilers"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@electron/asar": "^4.3.0",
+    "commander": "^15.0.0",
+    "jszip": "^3.10.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tar": "^7.5.22"
+  },
+  "devDependencies": {
+    "@radix-ui/react-slot": "^1.3.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/tar": "^6.1.13",
+    "@vitejs/plugin-react": "^6.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.37.0",
+    "oxlint": "^1.79.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.13",
+    "tw-animate-css": "^1.4.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}

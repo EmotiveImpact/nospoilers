@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run fixtures
+      - name: Clean pack must pass
+        run: npx tsx src/cli.ts scan fixtures/clean.tgz
+      - name: Source map pack must fail
+        run: |
+          if npx tsx src/cli.ts scan fixtures/sourcemap.tgz; then
+            echo "expected a failing scan" >&2
+            exit 1
+          fi
