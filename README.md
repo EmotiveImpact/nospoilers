@@ -48,7 +48,7 @@ The action writes a SARIF 2.1 file you can upload with `github/codeql-action/upl
 | SIZE-001 | warn | A packed file is 10 MB or larger |
 | SIZE-002 | warn | Unpacked payload is 50 MB or larger |
 
-It does **not** watch whether a GitHub repository flipped from private to public. Use GitGlow or GitHub org settings for that.
+It does **not** yet watch whether a GitHub repository flipped from private to public. That hosted GitHub App is the next slice. Product, pricing, and architecture (so a later build does not depend on chat memory) live in **[docs/PRODUCT.md](docs/PRODUCT.md)**.
 
 ## Local UI
 
