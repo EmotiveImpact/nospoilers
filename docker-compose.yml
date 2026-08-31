@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nospoilers
+      POSTGRES_PASSWORD: nospoilers
+      POSTGRES_DB: nospoilers
+    ports:
+      - "5433:5432"
+    volumes:
+      - nospoilers-pg:/var/lib/postgresql/data
+
+volumes:
+  nospoilers-pg:

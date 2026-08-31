@@ -20,6 +20,7 @@
     "src/plugin.ts",
     "src/cli.ts",
     "src/scanner/**/*.ts",
+    "src/server/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts"
   ]

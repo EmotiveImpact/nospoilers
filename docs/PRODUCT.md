@@ -38,9 +38,9 @@ Single package, **local only**. Not a hosted platform.
 
 **Exit codes:** 0 clean, 1 critical, 2 error.
 
-**Not built:** GitHub App, OAuth, webhooks, Postgres, queue, email/Slack, hosted deploy, billing, auto-scan on push, visibility monitoring.
+**Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
-The CLI does **not** open the website. The website is a human drop zone. Nothing watches GitHub until a GitHub App is hosted.
+**Not built / Phase B:** Stripe, custom domain, Resend, Fly/Railway production deploy, Slack, make-private, Marketplace.
 
 ---
 

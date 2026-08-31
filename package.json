@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --port 4347 --host",
+    "host": "tsx src/server/index.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4347 --host --strictPort",
     "nospoilers": "tsx src/cli.ts",
@@ -26,16 +27,21 @@
   "license": "MIT",
   "dependencies": {
     "@electron/asar": "^4.3.0",
+    "@hono/node-server": "^2.1.1",
     "commander": "^15.0.0",
+    "hono": "^4.13.5",
     "jszip": "^3.10.1",
+    "pg": "^8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tar": "^7.5.22"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@radix-ui/react-slot": "^1.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/tar": "^6.1.13",
