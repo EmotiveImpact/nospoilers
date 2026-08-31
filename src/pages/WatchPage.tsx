@@ -120,8 +120,8 @@ export function WatchPage() {
     return (
       <main className="mx-auto flex min-h-[50svh] max-w-5xl items-center justify-center px-5">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-[#e8dfc8]" aria-hidden />
-          <p className="text-sm text-[#c4b79a]">Checking GitHub session…</p>
+          <Loader2 className="h-6 w-6 animate-spin text-snow" aria-hidden />
+          <p className="text-sm text-mute">Checking GitHub session…</p>
         </div>
       </main>
     );
@@ -130,7 +130,7 @@ export function WatchPage() {
   if (me.status === "error") {
     return (
       <main className="mx-auto max-w-5xl px-5 py-10">
-        <Card className="border-[#c23b22]/40">
+        <Card className="border-line-strong">
           <CardHeader>
             <CardTitle>Could not load the watch desk</CardTitle>
             <CardDescription>{me.message}</CardDescription>
@@ -145,11 +145,11 @@ export function WatchPage() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-10 md:py-14">
       <section className="max-w-2xl">
-        <p className="text-xs uppercase tracking-[0.22em] text-[#c23b22]">GitHub watch</p>
-        <h1 className="mt-3 font-[Fraunces] text-4xl leading-[1.1] tracking-tight text-[#f4ecda] md:text-5xl">
+        <p className="text-xs uppercase tracking-[0.22em] text-dim">GitHub watch</p>
+        <h1 className="mt-3 font-display text-4xl leading-[1.1] tracking-tight text-snow md:text-5xl">
           Catch the public flip. Catch the pack.
         </h1>
-        <p className="mt-4 max-w-xl text-base text-[#c4b79a] md:text-lg">
+        <p className="mt-4 max-w-xl text-base text-mute md:text-lg">
           Install the GitHub App on a throwaway private repo, then make that repo public. An alert
           should appear here within a minute. Releases with a tarball, zip, or asar get the same
           scanner as the drop zone — we do not keep the bytes.
@@ -157,7 +157,7 @@ export function WatchPage() {
       </section>
 
       {!githubApp && (
-        <Card className="border-[#c9a227]/30">
+        <Card className="border-line">
           <CardHeader>
             <CardTitle>GitHub App env vars are empty</CardTitle>
             <CardDescription>
@@ -189,8 +189,8 @@ export function WatchPage() {
       {user && (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-[#a39882]">
-              Signed in as <span className="text-[#f4ecda]">{user.login}</span>
+            <p className="text-sm text-mute">
+              Signed in as <span className="text-snow">{user.login}</span>
               {installations.length > 0
                 ? ` · watching ${installations.map((row) => row.account_login).join(", ")}`
                 : " · no installs linked yet"}
@@ -210,16 +210,16 @@ export function WatchPage() {
               </CardHeader>
               <CardContent>
                 {repos.status === "loading" && (
-                  <div className="flex items-center gap-2 text-sm text-[#c4b79a]">
+                  <div className="flex items-center gap-2 text-sm text-mute">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                     Loading repositories…
                   </div>
                 )}
                 {repos.status === "error" && (
-                  <p className="text-sm text-[#f0b4a8]">{repos.message}</p>
+                  <p className="text-sm text-danger">{repos.message}</p>
                 )}
                 {repos.status === "ready" && repos.data.repos.length === 0 && (
-                  <p className="text-sm text-[#a39882]">
+                  <p className="text-sm text-mute">
                     No repositories on this install yet. On GitHub, install NoSpoilers on a private
                     throwaway repo.
                   </p>
@@ -229,12 +229,12 @@ export function WatchPage() {
                     {repos.data.repos.map((repo) => (
                       <li
                         key={repo.id}
-                        className="rounded-lg border border-[#2c281f] bg-[#100e0b] p-3"
+                        className="rounded-lg border border-line bg-inset p-3"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <a
                             href={repo.html_url}
-                            className="font-mono text-sm text-[#f4ecda] underline-offset-2 hover:underline"
+                            className="font-mono text-sm text-snow underline-offset-2 hover:underline"
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -244,7 +244,7 @@ export function WatchPage() {
                             {repo.private ? "private" : "public"}
                           </Badge>
                         </div>
-                        <p className="mt-1 text-xs text-[#8a7f6c]">
+                        <p className="mt-1 text-xs text-dim">
                           Last check{" "}
                           {repo.last_checked_at
                             ? new Date(repo.last_checked_at).toLocaleString()
@@ -286,7 +286,7 @@ export function WatchPage() {
                     ))}
                   </ul>
                 )}
-                {scanError && <p className="mt-3 text-sm text-[#f0b4a8]">{scanError}</p>}
+                {scanError && <p className="mt-3 text-sm text-danger">{scanError}</p>}
               </CardContent>
             </Card>
 
@@ -297,16 +297,16 @@ export function WatchPage() {
               </CardHeader>
               <CardContent>
                 {alerts.status === "loading" && (
-                  <div className="flex items-center gap-2 text-sm text-[#c4b79a]">
+                  <div className="flex items-center gap-2 text-sm text-mute">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                     Loading alerts…
                   </div>
                 )}
                 {alerts.status === "error" && (
-                  <p className="text-sm text-[#f0b4a8]">{alerts.message}</p>
+                  <p className="text-sm text-danger">{alerts.message}</p>
                 )}
                 {alerts.status === "ready" && alerts.data.alerts.length === 0 && (
-                  <p className="text-sm text-[#a39882]">
+                  <p className="text-sm text-mute">
                     Quiet so far. That is the good state — until a repo goes public or a release
                     ships a map.
                   </p>
@@ -314,22 +314,22 @@ export function WatchPage() {
                 {alerts.status === "ready" && alerts.data.alerts.length > 0 && (
                   <ul className="flex max-h-[28rem] flex-col gap-3 overflow-auto pr-1">
                     {alerts.data.alerts.map((alert) => (
-                      <li key={alert.id} className="rounded-lg border border-[#2c281f] bg-[#100e0b] p-3">
+                      <li key={alert.id} className="rounded-lg border border-line bg-inset p-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <ShieldAlert className="h-4 w-4 text-[#c23b22]" aria-hidden />
+                          <ShieldAlert className="h-4 w-4 text-danger" aria-hidden />
                           <Badge>{kindLabel(alert.kind)}</Badge>
-                          <span className="text-xs text-[#8a7f6c]">
+                          <span className="text-xs text-dim">
                             {new Date(alert.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className="mt-2 text-sm text-[#f4ecda]">{alert.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#8a7f6c]">{alert.body}</p>
+                        <p className="mt-2 text-sm text-snow">{alert.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-dim">{alert.body}</p>
                         {Array.isArray(alert.findings) && alert.findings.length > 0 && (
                           <ul className="mt-2 flex flex-col gap-1">
                             {alert.findings.map((finding) => (
                               <li
                                 key={`${alert.id}-${finding.rule}-${finding.path}`}
-                                className="font-mono text-[11px] text-[#c4b79a]"
+                                className="font-mono text-[11px] text-mute"
                               >
                                 {finding.rule} · {finding.path}
                               </li>

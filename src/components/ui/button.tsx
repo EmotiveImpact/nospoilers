@@ -1,18 +1,18 @@
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import * as React from "react"
+import type * as React from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e4d6b3]/40 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-snow/30 disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default: "bg-[#e8dfc8] text-[#14120e] hover:bg-[#f4ecda]",
+        default: "bg-snow text-ink hover:bg-white",
         outline:
-          "border border-[#3a3428] bg-transparent text-[#e8dfc8] hover:bg-[#1c1914]",
-        ghost: "text-[#e8dfc8] hover:bg-[#1c1914]",
-        danger: "bg-[#c23b22] text-[#faf6ee] hover:bg-[#d24a30]",
+          "border border-line bg-transparent text-snow hover:border-line-strong hover:bg-white/5",
+        ghost: "text-mute hover:bg-white/5 hover:text-snow",
+        danger: "border border-line bg-inset text-danger hover:border-line-strong",
       },
       size: {
         default: "h-10 px-4 py-2",

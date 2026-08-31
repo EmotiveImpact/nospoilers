@@ -20,16 +20,16 @@ export default function App() {
   const onScan = path === "/scan";
 
   return (
-    <div className="min-h-svh">
-      <header className="border-b border-[#2c281f]">
+    <div className="min-h-svh bg-ink">
+      <header className="sticky top-0 z-10 border-b border-line bg-ink/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-4">
           <button
             type="button"
             className="flex items-baseline gap-3"
             onClick={() => navigate("/")}
           >
-            <Clapperboard className="h-4 w-4 text-[#c23b22]" aria-hidden />
-            <p className="font-[Fraunces] text-xl tracking-tight text-[#f4ecda]">NoSpoilers</p>
+            <Clapperboard className="h-4 w-4 text-dim" aria-hidden />
+            <p className="font-display text-xl tracking-tight text-snow">NoSpoilers</p>
           </button>
           <nav className="flex items-center gap-2">
             <Button type="button" size="sm" variant={onScan ? "ghost" : "default"} onClick={() => navigate("/")}>
@@ -43,7 +43,7 @@ export default function App() {
             >
               Scan pack
             </Button>
-            <p className="hidden text-xs uppercase tracking-[0.22em] text-[#8a7f6c] sm:block">
+            <p className="hidden text-xs uppercase tracking-[0.22em] text-dim sm:block">
               no spoilers in production
             </p>
           </nav>
