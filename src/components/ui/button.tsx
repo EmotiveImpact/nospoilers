@@ -9,10 +9,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-snow text-ink hover:bg-white",
-        outline:
-          "border border-line bg-transparent text-snow hover:border-line-strong hover:bg-white/5",
-        ghost: "text-mute hover:bg-white/5 hover:text-snow",
-        danger: "border border-line bg-inset text-danger hover:border-line-strong",
+        outline: "text-snow hover:bg-white/5",
+        ghost: "text-mute hover:text-snow",
+        danger: "text-danger hover:text-snow",
       },
       size: {
         default: "h-10 px-4 py-2",

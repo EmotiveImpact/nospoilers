@@ -1,8 +1,6 @@
 import { useCallback, useId, useState, type ReactNode } from "react";
-import { FileArchive, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Finding, ScanReport } from "@/report-types";
 
 type ViewState =
@@ -97,96 +95,76 @@ export function ScanPage() {
   );
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-10 md:py-14">
-      <section className="max-w-2xl">
-        <p className="text-xs uppercase tracking-[0.22em] text-dim">CI pack gate</p>
-        <h1 className="mt-3 font-display text-4xl leading-[1.1] tracking-tight text-snow md:text-5xl">
-          Don’t ship the ending.
-        </h1>
-        <p className="mt-4 max-w-xl text-base text-mute md:text-lg">
-          Secret scanners read git. This reads the bytes customers download. Drop an npm tarball,
-          zip, or Electron asar. If a source map, private key, or{" "}
-          <code className="rounded bg-inset px-1.5 py-0.5 text-sm text-snow">.env</code> is
-          inside, the release fails.
-        </p>
-      </section>
+    <main className="mx-auto max-w-5xl px-5 py-12 md:py-20">
+      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">CI pack gate</p>
+      <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
+        Don’t ship the ending.
+      </h1>
+      <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
+        Drop the tarball, zip, or Electron asar customers download. Secret scanners read git. This
+        reads the packed bytes.
+      </p>
 
-      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Scan an artifact</CardTitle>
-            <CardDescription>
-              The real pack: <code>npm pack</code> output, <code>app.asar</code>, or a zip. Not the
-              src folder.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <label
-              htmlFor={inputId}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setDragOver(false);
-                onFiles(event.dataTransfer.files);
-              }}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-6 py-12 text-center transition-colors ${
-                dragOver
-                  ? "border-snow/40 bg-inset"
-                  : "border-line bg-inset hover:border-line-strong"
-              }`}
-            >
-              <FileArchive className="h-8 w-8 text-dim" aria-hidden />
-              <div>
-                <p className="text-sm text-snow">Drop a tarball, zip, or asar</p>
-                <p className="mt-1 text-xs text-dim">or click to choose a file</p>
-              </div>
-              <input
-                id={inputId}
-                type="file"
-                className="sr-only"
-                accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz"
-                onChange={(event) => onFiles(event.target.files)}
-              />
-            </label>
+      <div className="mt-14 grid gap-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
+        <div>
+          <label
+            htmlFor={inputId}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOver(false);
+              onFiles(event.dataTransfer.files);
+            }}
+            className={`flex min-h-48 cursor-pointer flex-col justify-center gap-2 py-10 transition-colors ${
+              dragOver ? "bg-white/[0.04]" : "bg-transparent hover:bg-white/[0.02]"
+            }`}
+          >
+            <p className="font-display text-lg text-snow">Drop a pack here</p>
+            <p className="text-sm text-dim">tarball, zip, or asar — or click to choose</p>
+            <input
+              id={inputId}
+              type="file"
+              className="sr-only"
+              accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz"
+              onChange={(event) => onFiles(event.target.files)}
+            />
+          </label>
 
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.18em] text-dim">
-                Or try a packed fixture
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {EXAMPLES.map((example) => (
-                  <Button
-                    key={example.path}
-                    type="button"
-                    variant="outline"
-                    className="h-auto flex-col items-start py-3 text-left"
-                    onClick={() => void run(example.label, () => scanPath(example.path))}
-                  >
-                    <span>{example.label}</span>
-                    <span className="text-[11px] font-normal text-dim">{example.hint}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <p className="mt-10 text-[11px] uppercase tracking-[0.22em] text-dim">Fixtures</p>
+          <ul className="mt-2 divide-y divide-white/5">
+            {EXAMPLES.map((example) => (
+              <li key={example.path}>
+                <button
+                  type="button"
+                  className="flex w-full flex-col items-start py-4 text-left transition-colors hover:text-snow"
+                  onClick={() => void run(example.label, () => scanPath(example.path))}
+                >
+                  <span className="text-sm text-snow">{example.label}</span>
+                  <span className="mt-0.5 text-xs text-dim">{example.hint}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <ResultsPanel state={state} />
       </div>
 
-      <section className="grid gap-4 border-t border-line pt-8 md:grid-cols-3">
+      <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
         <Step n="01" title="Pack as usual">
-          Run <code>npm pack</code> or build the Electron asar. Scan that file, not the git tree.
+          Run <code className="text-mute">npm pack</code> or build the Electron asar. Scan that
+          file, not the git tree.
         </Step>
         <Step n="02" title="Fail the job">
-          <code>npx nospoilers scan ./package.tgz</code> exits 1 if it finds spoilers.
+          <code className="text-mute">npx nospoilers scan ./package.tgz</code> exits 1 if it finds
+          spoilers.
         </Step>
-        <Step n="03" title="Ship the blur, keep the map">
-          Upload hidden source maps to Sentry privately. Do not put them in the installer.
+        <Step n="03" title="Keep the map private">
+          Upload hidden source maps to Sentry. Do not put them in the installer.
         </Step>
       </section>
     </main>
@@ -196,9 +174,9 @@ export function ScanPage() {
 function Step({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-[0.2em] text-dim">{n}</p>
-      <h2 className="mt-2 font-display text-xl text-snow">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-mute">{children}</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-dim">{n}</p>
+      <h2 className="mt-3 font-display text-lg text-snow">{title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-dim">{children}</p>
     </div>
   );
 }
@@ -206,36 +184,28 @@ function Step({ n, title, children }: { n: string; title: string; children: Reac
 function ResultsPanel({ state }: { state: ViewState }) {
   if (state.status === "idle") {
     return (
-      <Card className="flex min-h-[280px] items-center justify-center">
-        <CardContent className="py-10 text-center">
-          <p className="text-sm text-dim">No scan yet.</p>
-          <p className="mt-2 text-sm text-mute">
-            Drop a pack or run a fixture. Empty is a good state.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex min-h-48 flex-col justify-center py-10">
+        <p className="text-sm text-dim">No scan yet.</p>
+        <p className="mt-2 text-sm text-mute">Empty is a good state.</p>
+      </div>
     );
   }
 
   if (state.status === "loading") {
     return (
-      <Card className="flex min-h-[280px] items-center justify-center">
-        <CardContent className="flex flex-col items-center gap-3 py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-snow" aria-hidden />
-          <p className="text-sm text-mute">Reading {state.label}…</p>
-        </CardContent>
-      </Card>
+      <div className="flex min-h-48 items-center gap-3 py-10">
+        <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+        <p className="text-sm text-mute">Reading {state.label}…</p>
+      </div>
     );
   }
 
   if (state.status === "error") {
     return (
-      <Card className="min-h-[280px] border-line-strong">
-        <CardHeader>
-          <CardTitle>Could not scan</CardTitle>
-          <CardDescription>{state.message}</CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="py-10">
+        <p className="font-display text-lg text-snow">Could not scan</p>
+        <p className="mt-2 text-sm text-mute">{state.message}</p>
+      </div>
     );
   }
 
@@ -243,49 +213,34 @@ function ResultsPanel({ state }: { state: ViewState }) {
   const critical = report.findings.filter((f) => f.severity === "critical").length;
 
   return (
-    <Card className="min-h-[280px]">
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            {report.ok ? (
-              <ShieldCheck className="h-5 w-5 text-snow" aria-hidden />
-            ) : (
-              <ShieldAlert className="h-5 w-5 text-danger" aria-hidden />
-            )}
-            {report.ok ? "Allowed to ship" : "Spoilers in the pack"}
-          </CardTitle>
-          <CardDescription>
-            {state.label} · {report.fileCount} files · {report.kind}
-          </CardDescription>
-        </div>
-        <Badge variant={report.ok ? "clean" : "critical"}>
-          {report.ok ? "pass" : `${critical} critical`}
-        </Badge>
-      </CardHeader>
-      <CardContent>
-        {report.findings.length === 0 ? (
-          <p className="text-sm text-mute">
-            No source maps, no embedded original source, no env files, no keys, no .git. This is the
-            cut you can release.
-          </p>
-        ) : (
-          <ul className="flex max-h-80 flex-col gap-3 overflow-auto pr-1">
-            {report.findings.map((finding) => (
-              <li
-                key={`${finding.rule}-${finding.path}-${finding.title}`}
-                className="rounded-lg border border-line bg-inset p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <Badge variant={severityVariant(finding.severity)}>{finding.rule}</Badge>
-                  <span className="truncate font-mono text-xs text-mute">{finding.path}</span>
-                </div>
-                <p className="mt-2 text-sm text-snow">{finding.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-dim">{finding.detail}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <div className="py-2">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-dim">
+        {report.ok ? "Allowed to ship" : `${critical} critical`} · {report.fileCount} files
+      </p>
+      <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">
+        {report.ok ? "Clean pack" : "Spoilers in the pack"}
+      </h2>
+      <p className="mt-1 text-sm text-dim">
+        {state.label} · {report.kind}
+      </p>
+      {report.findings.length === 0 ? (
+        <p className="mt-6 text-sm leading-relaxed text-mute">
+          No source maps, no embedded original source, no env files, no keys, no .git.
+        </p>
+      ) : (
+        <ul className="mt-6 divide-y divide-white/5">
+          {report.findings.map((finding) => (
+            <li key={`${finding.rule}-${finding.path}-${finding.title}`} className="py-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={severityVariant(finding.severity)}>{finding.rule}</Badge>
+                <span className="truncate font-mono text-xs text-dim">{finding.path}</span>
+              </div>
+              <p className="mt-2 text-sm text-snow">{finding.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-dim">{finding.detail}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -3,14 +3,14 @@ import type * as React from "react"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-wide uppercase",
+  "inline-flex items-center text-[11px] font-medium uppercase tracking-[0.16em]",
   {
     variants: {
       variant: {
-        critical: "border-line-strong bg-inset text-danger",
-        warn: "border-line bg-inset text-mute",
-        clean: "border-line bg-inset text-snow",
-        muted: "border-line bg-inset text-dim",
+        critical: "text-danger",
+        warn: "text-mute",
+        clean: "text-snow",
+        muted: "text-dim",
       },
     },
     defaultVariants: {
