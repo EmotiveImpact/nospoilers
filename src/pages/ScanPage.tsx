@@ -134,7 +134,7 @@ export function ScanPage({ search }: { search: string }) {
   )
 
   return (
-    <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-20">
+    <main className="mx-auto max-w-5xl px-5 py-12 md:py-20">
       {previewing ? <LoggedInLook current={locked ? "ended" : "trial"} /> : null}
 
       <p className="text-[11px] uppercase tracking-[0.28em] text-dim">
@@ -179,9 +179,13 @@ export function ScanPage({ search }: { search: string }) {
                   if (!locked) onFiles(event.dataTransfer.files)
                 }}
                 className={cn(
-                  "flex min-h-52 flex-col items-start justify-center gap-3 rounded-2xl px-7 py-10 transition-colors",
-                  locked ? "cursor-default border-2 border-dotted border-white/15 opacity-40" : "cursor-pointer marching-dots",
-                  !locked && dragOver ? "bg-white/[0.06]" : !locked ? "hover:bg-white/[0.03]" : "",
+                  "flex min-h-52 flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-7 py-10 transition-colors",
+                  locked ? "cursor-default border-white/15 opacity-40" : "cursor-pointer",
+                  !locked && dragOver
+                    ? "border-snow bg-white/[0.06]"
+                    : !locked
+                      ? "border-white/25 hover:border-white/45 hover:bg-white/[0.03]"
+                      : "",
                 )}
               >
                 <Upload className="h-5 w-5 text-mute" aria-hidden />

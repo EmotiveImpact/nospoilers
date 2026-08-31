@@ -13,7 +13,7 @@ export function CoverageLock({
 }) {
   return (
     <div className="absolute inset-0 z-10 flex flex-col justify-center gap-3 bg-ink/90 p-6 backdrop-blur-[1px]">
-      <p className="lock-pulse text-[11px] uppercase tracking-[0.2em] text-danger">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-danger">
         {variant === "scan" ? "Hosted scan is off" : "Hosted coverage is off"}
       </p>
       <h2 className="font-display text-2xl tracking-tight text-snow">{title}</h2>

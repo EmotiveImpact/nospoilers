@@ -58,26 +58,6 @@ code {
   }
 }
 
-@keyframes ants {
-  to {
-    background-position:
-      18px 0,
-      100% 18px,
-      -18px 100%,
-      0 -18px;
-  }
-}
-
-@keyframes lock-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
 .fade-up {
   animation: fade-up 0.55s ease both;
 }
@@ -86,35 +66,9 @@ code {
   animation: fade-up 0.6s ease 0.12s both;
 }
 
-.marching-dots {
-  background-image:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.32) 50%, transparent 50%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.32) 50%, transparent 50%),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.32) 50%, transparent 50%),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.32) 50%, transparent 50%);
-  background-position:
-    0 0,
-    0 100%,
-    0 0,
-    100% 0;
-  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-  background-size:
-    18px 2px,
-    18px 2px,
-    2px 18px,
-    2px 18px;
-  animation: ants 14s linear infinite;
-}
-
-.lock-pulse {
-  animation: lock-pulse 2.8s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
-  .fade-up-delay,
-  .marching-dots,
-  .lock-pulse {
+  .fade-up-delay {
     animation: none;
   }
 }
