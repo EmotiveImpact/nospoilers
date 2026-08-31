@@ -60,12 +60,14 @@ export function createStore(sql: SqlClient) {
       accessToken?: string;
     }): Promise<void> {
       await sql.query(
-        `INSERT INTO users (id, login, avatar_url, access_token)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO users (id, login, avatar_url, access_token, trial_ends_at, plan)
+         VALUES ($1, $2, $3, $4, now() + interval '14 days', 'trial')
          ON CONFLICT (id) DO UPDATE SET
            login = excluded.login,
            avatar_url = excluded.avatar_url,
-           access_token = COALESCE(excluded.access_token, users.access_token)`,
+           access_token = COALESCE(excluded.access_token, users.access_token),
+           trial_ends_at = COALESCE(users.trial_ends_at, now() + interval '14 days'),
+           plan = COALESCE(users.plan, 'trial')`,
         [input.id, input.login, input.avatarUrl ?? null, input.accessToken ?? null],
       );
     },
@@ -80,21 +82,37 @@ export function createStore(sql: SqlClient) {
       return id;
     },
 
-    async getSession(id: string): Promise<{ userId: string; login: string; avatarUrl: string | null } | null> {
+    async getSession(id: string): Promise<{
+      userId: string
+      login: string
+      avatarUrl: string | null
+      trialEndsAt: string | null
+      plan: string | null
+    } | null> {
       const { rows } = await sql.query<{
-        user_id: string;
-        login: string;
-        avatar_url: string | null;
+        user_id: string
+        login: string
+        avatar_url: string | null
+        trial_ends_at: string | Date | null
+        plan: string | null
       }>(
-        `SELECT s.user_id, u.login, u.avatar_url
+        `SELECT s.user_id, u.login, u.avatar_url, u.trial_ends_at, u.plan
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.id = $1 AND s.expires_at > now()`,
         [id],
-      );
-      const row = rows[0];
-      if (!row) return null;
-      return { userId: row.user_id, login: row.login, avatarUrl: row.avatar_url };
+      )
+      const row = rows[0]
+      if (!row) return null
+      const trialEndsAt =
+        row.trial_ends_at instanceof Date ? row.trial_ends_at.toISOString() : row.trial_ends_at
+      return {
+        userId: row.user_id,
+        login: row.login,
+        avatarUrl: row.avatar_url,
+        trialEndsAt,
+        plan: row.plan,
+      }
     },
 
     async upsertInstallation(input: {

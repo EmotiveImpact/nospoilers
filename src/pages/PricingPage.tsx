@@ -26,7 +26,7 @@ export function PricingPage() {
             <li>CLI included</li>
             <li>Email</li>
           </ul>
-          <Button type="button" className="mt-8" onClick={() => navigate("/watch")}>
+          <Button type="button" className="mt-8" onClick={() => navigate("/watch?as=trial")}>
             Start trial
           </Button>
         </article>
@@ -43,7 +43,7 @@ export function PricingPage() {
             <li>CLI included</li>
             <li>Slack + 90-day timeline</li>
           </ul>
-          <Button type="button" className="mt-8" onClick={() => navigate("/watch")}>
+          <Button type="button" className="mt-8" onClick={() => navigate("/watch?as=trial")}>
             Start trial
           </Button>
         </article>

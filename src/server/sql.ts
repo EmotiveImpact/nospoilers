@@ -110,8 +110,15 @@ export async function migrate(sql: SqlClient): Promise<void> {
   const schemaPath = path.join(here, "schema.sql");
   const schema = await readFile(schemaPath, "utf8");
   await sql.exec(schema);
+  await sql.exec(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT;
+  `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "001_init",
+  ]);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "002_coverage",
   ]);
 }
 

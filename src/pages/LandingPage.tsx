@@ -51,7 +51,7 @@ export function LandingPage() {
             Start 14-day trial
           </Button>
         ) : (
-          <Button type="button" size="lg" onClick={() => navigate("/watch")}>
+          <Button type="button" size="lg" onClick={() => navigate("/watch?as=trial")}>
             Start 14-day trial
           </Button>
         )}

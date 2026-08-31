@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { coverageFrom } from "../coverage.ts";
 import { scan } from "../scanner/index.ts";
 import type { AppConfig } from "./config.ts";
 import { githubAppConfigured } from "./config.ts";
@@ -48,6 +49,13 @@ export function createApp(deps: AppDeps): Hono {
   );
 
   app.post("/api/scan", async (c) => {
+    const user = await currentUser(c);
+    if (user) {
+      const coverage = coverageFrom(user.trialEndsAt, user.plan);
+      if (coverage.status === "ended") {
+        return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
+      }
+    }
     try {
       const contentType = c.req.header("content-type") ?? "";
       if (contentType.includes("application/json")) {
@@ -184,6 +192,7 @@ export function createApp(deps: AppDeps): Hono {
     const installations = await deps.store.listInstallationsForUser(user.userId);
     return c.json({
       user: { id: user.userId, login: user.login, avatarUrl: user.avatarUrl },
+      coverage: coverageFrom(user.trialEndsAt, user.plan),
       installations,
       githubApp: githubAppConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
@@ -207,6 +216,9 @@ export function createApp(deps: AppDeps): Hono {
   app.post("/api/repos/:id/scan-latest-release", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    if (coverageFrom(user.trialEndsAt, user.plan).status === "ended") {
+      return c.json({ error: "Coverage ended. Subscribe to keep scanning releases." }, 402);
+    }
     const repoId = Number(c.req.param("id"));
     const repo = await deps.store.getRepo(repoId);
     if (!repo) return c.json({ error: "Unknown repository." }, 404);

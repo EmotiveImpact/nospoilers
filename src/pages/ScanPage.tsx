@@ -1,9 +1,13 @@
 import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
+import { CoverageLock } from "@/components/CoverageLock.tsx"
+import { LoggedInLook } from "@/components/LoggedInLook.tsx"
 import { Badge } from "@/components/ui/badge"
+import { coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
+import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { ChevronRight, Loader2, Upload } from "lucide-react"
-import { useCallback, useId, useState, type DragEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useState, type DragEvent, type ReactNode } from "react"
 
 type ViewState =
   | { status: "idle" }
@@ -47,7 +51,13 @@ async function scanPath(path: string): Promise<ScanReport> {
   })
   const body = (await response.json()) as ScanReport | { error?: string }
   if (!response.ok) {
-    throw new Error("error" in body && body.error ? body.error : "Scan failed.")
+    throw new Error(
+      response.status === 402
+        ? "Coverage ended. Subscribe to unpack on our servers."
+        : "error" in body && body.error
+          ? body.error
+          : "Scan failed.",
+    )
   }
   return body as ScanReport
 }
@@ -60,7 +70,13 @@ async function scanFile(file: File): Promise<ScanReport> {
   })
   const body = (await response.json()) as ScanReport | { error?: string }
   if (!response.ok) {
-    throw new Error("error" in body && body.error ? body.error : "Scan failed.")
+    throw new Error(
+      response.status === 402
+        ? "Coverage ended. Subscribe to unpack on our servers."
+        : "error" in body && body.error
+          ? body.error
+          : "Scan failed.",
+    )
   }
   return body as ScanReport
 }
@@ -69,10 +85,31 @@ function severityVariant(severity: Finding["severity"]): "critical" | "warn" {
   return severity === "critical" ? "critical" : "warn"
 }
 
-export function ScanPage() {
+export function ScanPage({ search }: { search: string }) {
   const inputId = useId()
   const [dragOver, setDragOver] = useState(false)
   const [state, setState] = useState<ViewState>({ status: "idle" })
+  const [session, setSession] = useState<{ login: string; coverage: Coverage } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch("/api/me", { credentials: "include" })
+      .then(async (response) => {
+        const body = (await response.json()) as { user?: { login: string } | null; coverage?: Coverage }
+        if (cancelled) return
+        if (body.user && body.coverage) setSession({ login: body.user.login, coverage: body.coverage })
+        else setSession(null)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [search])
+
+  const queryCoverage = coverageFromQuery(search)
+  const coverage = session?.coverage ?? queryCoverage
+  const locked = coverage?.status === "ended"
+  const previewing = !session && Boolean(queryCoverage)
 
   const run = useCallback(async (label: string, job: () => Promise<ScanReport>) => {
     setState({ status: "loading", label })
@@ -90,74 +127,105 @@ export function ScanPage() {
   const onFiles = useCallback(
     (list: FileList | null) => {
       const file = list?.[0]
-      if (!file) return
+      if (!file || locked) return
       void run(file.name, () => scanFile(file))
     },
-    [run],
+    [locked, run],
   )
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-12 md:py-20">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">CI pack gate</p>
+      {previewing ? <LoggedInLook current={locked ? "ended" : "trial"} /> : null}
+
+      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">
+        CI pack gate{session || previewing ? " · hosted" : ""}
+      </p>
       <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
         Don’t ship the ending.
       </h1>
       <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-        Drop the tarball, zip, or Electron asar customers download. Secret scanners read git. This
-        reads the packed bytes.
+        {locked
+          ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active. Run the CLI at home if you want; that was never the bill."
+          : "Drop the tarball, zip, or Electron asar customers download. Secret scanners read git. This reads the packed bytes."}
+        {(session || previewing) && coverage?.status === "trial" ? " Hosted scan is on for this trial." : null}
       </p>
+      {!session && !queryCoverage && (
+        <p className="mt-4 text-sm text-dim">
+          Signed-out scan still runs here. The unpaid logged-in look is{" "}
+          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/scan?as=ended")}>
+            coverage ended
+          </button>
+          .
+        </p>
+      )}
 
       <div className="mt-14 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
         <div>
-          <Field>
-            <Label
-              htmlFor={inputId}
-              onDragOver={(event: DragEvent<HTMLLabelElement>) => {
-                event.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(event: DragEvent<HTMLLabelElement>) => {
-                event.preventDefault()
-                setDragOver(false)
-                onFiles(event.dataTransfer.files)
-              }}
-              className={cn(
-                "flex min-h-52 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-7 py-10 transition-colors",
-                dragOver
-                  ? "border-snow bg-white/[0.06]"
-                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
-              )}
-            >
-              <Upload className="h-5 w-5 text-mute" aria-hidden />
-              <p className="font-display text-lg text-snow">Drop a pack here</p>
-              <Description className="text-sm text-dim">
-                tarball, zip, or asar — or click to choose
-              </Description>
-              <input
-                id={inputId}
-                type="file"
-                className="sr-only"
-                accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz"
-                onChange={(event) => onFiles(event.target.files)}
-              />
-            </Label>
-          </Field>
+          <div className="relative min-h-52">
+            {locked && (
+              <CoverageLock variant="scan" title="Subscribe to unpack here." />
+            )}
+            <Field>
+              <Label
+                htmlFor={locked ? undefined : inputId}
+                onDragOver={(event: DragEvent<HTMLLabelElement>) => {
+                  event.preventDefault()
+                  if (!locked) setDragOver(true)
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(event: DragEvent<HTMLLabelElement>) => {
+                  event.preventDefault()
+                  setDragOver(false)
+                  if (!locked) onFiles(event.dataTransfer.files)
+                }}
+                className={cn(
+                  "flex min-h-52 flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-7 py-10 transition-colors",
+                  locked ? "cursor-default border-white/15 opacity-40" : "cursor-pointer",
+                  !locked && dragOver
+                    ? "border-snow bg-white/[0.06]"
+                    : !locked
+                      ? "border-white/25 hover:border-white/45 hover:bg-white/[0.03]"
+                      : "",
+                )}
+              >
+                <Upload className="h-5 w-5 text-mute" aria-hidden />
+                <p className="font-display text-lg text-snow">Drop a pack here</p>
+                <Description className="text-sm text-dim">
+                  tarball, zip, or asar — or click to choose
+                </Description>
+                {!locked && (
+                  <input
+                    id={inputId}
+                    type="file"
+                    className="sr-only"
+                    accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz"
+                    onChange={(event) => onFiles(event.target.files)}
+                  />
+                )}
+              </Label>
+            </Field>
+          </div>
 
-          <p className="mt-10 text-[11px] uppercase tracking-[0.22em] text-dim">Try a fixture</p>
-          <ul className="mt-3 flex flex-col gap-2">
+          <p className="mt-10 text-[11px] uppercase tracking-[0.22em] text-dim">
+            {locked ? "Fixtures" : "Try a fixture"}
+          </p>
+          <ul className={cn("mt-3 flex flex-col gap-2", locked && "pointer-events-none opacity-40")}>
             {EXAMPLES.map((example) => (
               <li key={example.path}>
                 <HeadlessButton
                   type="button"
-                  className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3.5 text-left transition-colors data-hover:border-white/28 data-hover:bg-white/[0.07] data-active:bg-white/[0.1] data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40"
-                  onClick={() => void run(example.label, () => scanPath(example.path))}
+                  disabled={locked}
+                  className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3.5 text-left transition-colors data-hover:border-white/28 data-hover:bg-white/[0.07] data-active:bg-white/[0.1] data-disabled:cursor-default data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40"
+                  onClick={() => {
+                    if (locked) return
+                    void run(example.label, () => scanPath(example.path))
+                  }}
                 >
                   <span className="min-w-0">
                     <span className="block text-sm text-snow">{example.label}</span>
                     <span className="mt-0.5 block text-xs text-dim">{example.hint}</span>
                   </span>
-                  <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-mute data-hover:text-snow group-data-hover:text-snow">
+                  <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-mute group-data-hover:text-snow">
                     Run
                     <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                   </span>
@@ -167,22 +235,24 @@ export function ScanPage() {
           </ul>
         </div>
 
-        <ResultsPanel state={state} />
+        <ResultsPanel state={state} locked={locked} />
       </div>
 
-      <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
-        <Step n="01" title="Pack as usual">
-          Run <code className="text-mute">npm pack</code> or build the Electron asar. Scan that
-          file, not the git tree.
-        </Step>
-        <Step n="02" title="Fail the job">
-          <code className="text-mute">npx nospoilers scan ./package.tgz</code> exits 1 if it finds
-          spoilers.
-        </Step>
-        <Step n="03" title="Keep the map private">
-          Upload hidden source maps to Sentry. Do not put them in the installer.
-        </Step>
-      </section>
+      {!locked && (
+        <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
+          <Step n="01" title="Pack as usual">
+            Run <code className="text-mute">npm pack</code> or build the Electron asar. Scan that
+            file, not the git tree.
+          </Step>
+          <Step n="02" title="Fail the job">
+            <code className="text-mute">npx nospoilers scan ./package.tgz</code> exits 1 if it finds
+            spoilers.
+          </Step>
+          <Step n="03" title="Keep the map private">
+            Upload hidden source maps to Sentry. Do not put them in the installer.
+          </Step>
+        </section>
+      )}
     </main>
   )
 }
@@ -197,7 +267,20 @@ function Step({ n, title, children }: { n: string; title: string; children: Reac
   )
 }
 
-function ResultsPanel({ state }: { state: ViewState }) {
+function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) {
+  if (locked && state.status === "idle") {
+    return (
+      <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Report</p>
+        <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">No hosted scan yet.</h2>
+        <p className="mt-2 text-sm leading-relaxed text-mute">
+          Local still works: <code className="text-snow">npx nospoilers scan ./package.tgz</code>{" "}
+          exits 1 if it finds spoilers. We cannot kill a file on your laptop. We can kill this page.
+        </p>
+      </div>
+    )
+  }
+
   if (state.status === "idle") {
     return (
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">

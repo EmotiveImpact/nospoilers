@@ -54,7 +54,7 @@ function appFor(store: Store, github: GithubPort = mockGithub()) {
     config,
     store,
     github,
-    scan: async (target) => {
+    scan: async (target: string) => {
       scans.push(target);
       return scan(target);
     },

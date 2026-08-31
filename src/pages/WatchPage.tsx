@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { CoverageLock } from "@/components/CoverageLock.tsx";
+import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
+import { coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { navigate } from "@/nav.ts";
+import { PREVIEW_INSTALLATIONS, PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
 import type { Finding } from "@/report-types";
+import { useCallback, useEffect, useState } from "react";
 
 type Me = {
   user: { id: string; login: string; avatarUrl: string | null } | null;
+  coverage?: Coverage;
   installations: { id: number; account_login: string; account_type: string }[];
   githubApp: boolean;
   installUrl?: string;
@@ -64,7 +69,7 @@ function kindLabel(kind: string): string {
   }
 }
 
-export function WatchPage() {
+export function WatchPage({ search }: { search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
@@ -130,9 +135,14 @@ export function WatchPage() {
     );
   }
 
-  const { user, githubApp, installUrl, installations } = me.data;
+  const { user, githubApp, installUrl, installations, coverage: sessionCoverage } = me.data;
+  const queryCoverage = coverageFromQuery(search);
+  const previewing = !user;
+  const coverage: Coverage | undefined = user
+    ? sessionCoverage
+    : (queryCoverage ?? coverageFromQuery("?as=trial") ?? undefined);
 
-  if (!user) {
+  if (!user && githubApp && !queryCoverage) {
     return (
       <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
         <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Watch desk</p>
@@ -144,61 +154,92 @@ export function WatchPage() {
           fork and we unpack release packs. Coverage is Solo $29 or Team $99 after a 14-day trial.
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-          {githubApp ? (
-            <Button as="a" href="/api/auth/github" size="lg">
-              Sign in with GitHub
-            </Button>
-          ) : (
-            <Button type="button" size="lg" disabled>
-              Sign in with GitHub
-            </Button>
-          )}
-          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/pricing")}>
-            See pricing
+          <Button as="a" href="/api/auth/github" size="lg">
+            Sign in with GitHub
+          </Button>
+          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/watch?as=trial")}>
+            Preview the desk
           </Button>
         </div>
-        {!githubApp && (
-          <p className="mt-6 max-w-lg text-sm leading-relaxed text-dim">
-            Sign-in stays off until you create the GitHub App and put the keys in{" "}
-            <code className="text-mute">.env</code>. The pack drop zone on Scan does not need that.
-          </p>
-        )}
+        <p className="mt-10 text-sm text-dim">
+          Two logged-in looks:{" "}
+          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/watch?as=trial")}>
+            trial desk
+          </button>
+          {" · "}
+          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/scan?as=ended")}>
+            unpaid locked scan
+          </button>
+        </p>
       </main>
     );
   }
 
+  const ended = coverage?.status === "ended";
+  const login = user?.login ?? PREVIEW_LOGIN;
+  const watching = user
+    ? installations.map((row) => row.account_login)
+    : PREVIEW_INSTALLATIONS.map((row) => row.account_login);
+  const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
+  const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
+
   return (
     <main className="mx-auto max-w-5xl px-5 py-12 md:py-16">
+      {previewing ? <LoggedInLook current={ended ? "ended" : "trial"} /> : null}
+
       <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-dim">{user.login}</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-dim">{login}</p>
           <h1 className="mt-2 font-display text-3xl tracking-tight text-snow md:text-4xl">Watch desk</h1>
-          <p className="mt-2 text-sm text-mute">
-            {installations.length > 0
-              ? `Watching ${installations.map((row) => row.account_login).join(", ")}`
-              : "No installs linked yet"}
+          <p className="mt-2 max-w-xl text-sm text-mute">
+            {ended
+              ? "Coverage ended. The bot is quiet until you subscribe."
+              : watching.length > 0
+                ? `Watching ${watching.join(", ")}. Hosted pack scans are on${coverage?.status === "trial" ? " for this trial" : ""}.`
+                : "No installs linked yet"}
           </p>
         </div>
-        {installUrl && githubApp && (
-          <Button as="a" href={installUrl}>
-            Install on GitHub
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {coverage && (
+            <span
+              className={
+                ended
+                  ? "text-[11px] uppercase tracking-[0.16em] text-danger"
+                  : "text-[11px] uppercase tracking-[0.16em] text-dim"
+              }
+            >
+              {coverage.label}
+            </span>
+          )}
+          {installUrl && githubApp && user && (
+            <Button as="a" href={installUrl}>
+              Install on GitHub
+            </Button>
+          )}
+          {ended && (
+            <Button type="button" onClick={() => navigate("/pricing")}>
+              Subscribe
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-14 grid gap-16 lg:grid-cols-[0.95fr_1.05fr]">
-        <section>
+      <div className="relative mt-14 grid min-h-72 gap-16 lg:grid-cols-[0.95fr_1.05fr]">
+        {ended ? (
+          <CoverageLock variant="watch" title="Subscribe to keep watching." />
+        ) : null}
+        <section className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</h2>
-          {repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
-          {repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
-          {repos.status === "ready" && repos.data.repos.length === 0 && (
+          {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+          {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
+          {deskRepos.length === 0 && (previewing || repos.status === "ready") && (
             <p className="mt-6 text-sm leading-relaxed text-mute">
               Nothing on this install yet. Install NoSpoilers on a private throwaway repo.
             </p>
           )}
-          {repos.status === "ready" && repos.data.repos.length > 0 && (
+          {deskRepos.length > 0 && (
             <ul className="mt-4 divide-y divide-white/5">
-              {repos.data.repos.map((repo) => (
+              {deskRepos.map((repo) => (
                 <li key={repo.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <a
@@ -222,8 +263,9 @@ export function WatchPage() {
                     size="sm"
                     variant="outline"
                     className="mt-3"
-                    disabled={scanningId === repo.id}
+                    disabled={previewing || scanningId === repo.id || ended}
                     onClick={() => {
+                      if (previewing) return;
                       setScanError(null);
                       setScanningId(repo.id);
                       void (async () => {
@@ -252,18 +294,18 @@ export function WatchPage() {
           {scanError && <p className="mt-4 text-sm text-danger">{scanError}</p>}
         </section>
 
-        <section>
+        <section className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Alerts</h2>
-          {alerts.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
-          {alerts.status === "error" && <p className="mt-6 text-sm text-danger">{alerts.message}</p>}
-          {alerts.status === "ready" && alerts.data.alerts.length === 0 && (
+          {!previewing && alerts.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+          {!previewing && alerts.status === "error" && <p className="mt-6 text-sm text-danger">{alerts.message}</p>}
+          {deskAlerts.length === 0 && (previewing || alerts.status === "ready") && (
             <p className="mt-6 text-sm leading-relaxed text-mute">
               Quiet so far. That is the good state — until a repo goes public or a release ships a map.
             </p>
           )}
-          {alerts.status === "ready" && alerts.data.alerts.length > 0 && (
+          {deskAlerts.length > 0 && (
             <ul className="mt-4 max-h-[32rem] divide-y divide-white/5 overflow-auto">
-              {alerts.data.alerts.map((alert) => (
+              {deskAlerts.map((alert) => (
                 <li key={alert.id} className="py-5">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
                     {kindLabel(alert.kind)} · {new Date(alert.created_at).toLocaleString()}

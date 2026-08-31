@@ -20,10 +20,11 @@ npm run dev
 Open **http://127.0.0.1:4347** (port **4347**).
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
-- **Watch** (`/watch`) — sign in, install the app, repos and alerts.
-- **Scan** (`/scan`) — drop a tarball, zip, or asar. Fixtures: `clean.tgz` should pass; `sourcemap.*` and `dotenv.tgz` should fail.
+- **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops.
+- **Scan** (`/scan`) — drop a tarball, zip, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
-- **Mockups** (`/mockups`) — static screens for trial desk and locked hosted scan.
+
+Two logged-in states: **trial desk** (bot is thinking) and **unpaid locked scan** (drop zone stays, we do not unpack).
 
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 

@@ -1,16 +1,16 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { Button } from "@/components/ui/button"
+import { coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import { Menu as MenuIcon } from "lucide-react"
-import type { MouseEvent, ReactNode } from "react"
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 
 const LINKS = [
   { href: "/", label: "Product" },
   { href: "/watch", label: "Watch" },
   { href: "/scan", label: "Scan" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/mockups", label: "Mockups" },
 ] as const
 
 function isActive(path: string, href: string): boolean {
@@ -24,7 +24,54 @@ function go(event: MouseEvent<HTMLAnchorElement>, href: string) {
   navigate(href)
 }
 
-export function SiteChrome({ path, children }: { path: string; children: ReactNode }) {
+function productHref(href: string, search: string, signedIn: boolean): string {
+  if (signedIn) return href
+  const as = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("as")
+  if (href === "/watch") return as === "ended" ? "/watch?as=ended" : "/watch?as=trial"
+  if (href === "/scan") {
+    if (as === "ended") return "/scan?as=ended"
+    if (as === "trial") return "/scan?as=trial"
+  }
+  return href
+}
+
+export function SiteChrome({
+  path,
+  search,
+  children,
+}: {
+  path: string
+  search: string
+  children: ReactNode
+}) {
+  const [sessionCoverage, setSessionCoverage] = useState<Coverage | null>(null)
+  const [login, setLogin] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetch("/api/me", { credentials: "include" })
+      .then(async (response) => {
+        const body = (await response.json()) as { coverage?: Coverage; user?: { login: string } | null }
+        if (cancelled) return
+        if (body.user && body.coverage) {
+          setSessionCoverage(body.coverage)
+          setLogin(body.user.login)
+        } else {
+          setSessionCoverage(null)
+          setLogin(null)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [path, search])
+
+  const preview = coverageFromQuery(search)
+  const coverage = sessionCoverage ?? preview
+  const ended = coverage?.status === "ended"
+  const inProduct = path === "/watch" || path === "/scan"
+
   return (
     <div className="flex min-h-svh flex-col bg-ink">
       <header className="sticky top-0 z-20 border-b border-white/5 bg-ink/80 backdrop-blur-md">
@@ -36,8 +83,8 @@ export function SiteChrome({ path, children }: { path: string; children: ReactNo
             {LINKS.map((link) => (
               <a
                 key={link.href}
-                href={link.href}
-                onClick={(event) => go(event, link.href)}
+                href={productHref(link.href, search, Boolean(login))}
+                onClick={(event) => go(event, productHref(link.href, search, Boolean(login)))}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive(path, link.href) ? "text-snow" : "text-dim hover:text-snow",
@@ -47,15 +94,32 @@ export function SiteChrome({ path, children }: { path: string; children: ReactNo
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              className="hidden sm:inline-flex"
-              onClick={() => navigate("/watch")}
-            >
-              Start trial
-            </Button>
+          <div className="flex items-center gap-3">
+            {coverage && (
+              <span
+                className={cn(
+                  "hidden text-[11px] uppercase tracking-[0.16em] sm:inline",
+                  ended ? "text-danger" : "text-dim",
+                )}
+              >
+                {coverage.label}
+              </span>
+            )}
+            {login && <span className="hidden text-sm text-mute sm:inline">{login}</span>}
+            {ended ? (
+              <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => navigate("/pricing")}>
+                Subscribe
+              </Button>
+            ) : inProduct && coverage ? null : (
+              <Button
+                type="button"
+                size="sm"
+                className="hidden sm:inline-flex"
+                onClick={() => navigate("/watch?as=trial")}
+              >
+                Start trial
+              </Button>
+            )}
             <Menu>
               <MenuButton className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-snow data-hover:bg-white/5 data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40 md:hidden">
                 <MenuIcon className="h-4 w-4" aria-hidden />
@@ -68,8 +132,8 @@ export function SiteChrome({ path, children }: { path: string; children: ReactNo
                 {LINKS.map((link) => (
                   <MenuItem key={link.href}>
                     <a
-                      href={link.href}
-                      onClick={(event) => go(event, link.href)}
+                      href={productHref(link.href, search, Boolean(login))}
+                      onClick={(event) => go(event, productHref(link.href, search, Boolean(login)))}
                       className="block rounded px-3 py-2 text-sm text-mute data-focus:bg-white/5 data-focus:text-snow"
                     >
                       {link.label}
@@ -78,11 +142,11 @@ export function SiteChrome({ path, children }: { path: string; children: ReactNo
                 ))}
                 <MenuItem>
                   <a
-                    href="/watch"
-                    onClick={(event) => go(event, "/watch")}
+                    href={ended ? "/pricing" : "/watch?as=trial"}
+                    onClick={(event) => go(event, ended ? "/pricing" : "/watch?as=trial")}
                     className="block rounded px-3 py-2 text-sm text-snow data-focus:bg-white/5"
                   >
-                    Start trial
+                    {ended ? "Subscribe" : "Start trial"}
                   </a>
                 </MenuItem>
               </MenuItems>

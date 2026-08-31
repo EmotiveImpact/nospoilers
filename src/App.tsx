@@ -6,14 +6,18 @@ import { ScanPage } from "@/pages/ScanPage.tsx"
 import { WatchPage } from "@/pages/WatchPage.tsx"
 import { useEffect, useState } from "react"
 
-function usePath(): string {
-  const [path, setPath] = useState(() => window.location.pathname)
+function readLoc() {
+  return { path: window.location.pathname, search: window.location.search }
+}
+
+function useLoc(): { path: string; search: string } {
+  const [loc, setLoc] = useState(readLoc)
   useEffect(() => {
-    const onPop = () => setPath(window.location.pathname)
+    const onPop = () => setLoc(readLoc())
     window.addEventListener("popstate", onPop)
     return () => window.removeEventListener("popstate", onPop)
   }, [])
-  return path
+  return loc
 }
 
 function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups" {
@@ -25,7 +29,7 @@ function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups
 }
 
 export default function App() {
-  const path = usePath()
+  const { path, search } = useLoc()
   const page = pageFor(path)
   const chromePath =
     page === "home"
@@ -39,10 +43,10 @@ export default function App() {
             : "/mockups"
 
   return (
-    <SiteChrome path={chromePath}>
+    <SiteChrome path={chromePath} search={search}>
       {page === "home" && <LandingPage />}
-      {page === "watch" && <WatchPage />}
-      {page === "scan" && <ScanPage />}
+      {page === "watch" && <WatchPage search={search} />}
+      {page === "scan" && <ScanPage search={search} />}
       {page === "pricing" && <PricingPage />}
       {page === "mockups" && <MockupsPage />}
     </SiteChrome>

@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   login TEXT NOT NULL,
   avatar_url TEXT,
   access_token TEXT,
+  trial_ends_at TIMESTAMPTZ,
+  plan TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
