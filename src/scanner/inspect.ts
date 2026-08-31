@@ -3,6 +3,8 @@ import type { Finding } from "./types.ts";
 
 const TEXT_LIMIT = 2_000_000;
 const MAP_PEEK = 256_000;
+export const FILE_WARN_BYTES = 10_000_000;
+export const TOTAL_WARN_BYTES = 50_000_000;
 
 function asText(buf: Buffer, limit = TEXT_LIMIT): string {
   const slice = buf.subarray(0, Math.min(buf.length, limit));
@@ -133,6 +135,16 @@ export function inspectEntry(relPath: string, buf: Buffer): Finding[] {
       path: rel,
       title: "TypeScript/JSX source packed",
       detail: "Original source files in a release usually mean the pack included too much.",
+    });
+  }
+
+  if (buf.length >= FILE_WARN_BYTES) {
+    findings.push({
+      rule: "SIZE-001",
+      severity: "warn",
+      path: rel,
+      title: "Packed file is far over a normal baseline",
+      detail: `${base} is ${buf.length} bytes. A surprise 10+ MB file in a release is often a source map.`,
     });
   }
 

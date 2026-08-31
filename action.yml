@@ -9,9 +9,13 @@ inputs:
     description: Directory, npm tarball, zip, or Electron asar to scan
     required: true
   strict:
-    description: Also fail on warnings (TypeScript source packed, etc.)
+    description: Also fail on warnings (TypeScript source packed, size spikes, etc.)
     required: false
     default: "false"
+  sarif:
+    description: Workspace-relative path to write a SARIF 2.1 report. Empty skips the file.
+    required: false
+    default: "nospoilers.sarif"
 runs:
   using: composite
   steps:
@@ -36,4 +40,13 @@ runs:
           /*) ;;
           *) TARGET="${GITHUB_WORKSPACE}/${TARGET}" ;;
         esac
-        npx tsx src/cli.ts scan "$TARGET" $EXTRA
+        SARIF_ARGS=""
+        if [ -n "${{ inputs.sarif }}" ]; then
+          SARIF_PATH="${{ inputs.sarif }}"
+          case "$SARIF_PATH" in
+            /*) ;;
+            *) SARIF_PATH="${GITHUB_WORKSPACE}/${SARIF_PATH}" ;;
+          esac
+          SARIF_ARGS="--sarif $SARIF_PATH"
+        fi
+        npx tsx src/cli.ts scan "$TARGET" $EXTRA $SARIF_ARGS

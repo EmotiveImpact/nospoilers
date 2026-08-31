@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { FILE_WARN_BYTES } from "../src/scanner/inspect.ts";
 import { scan } from "../src/scanner/index.ts";
 
 async function withDir(files: Record<string, string>, run: (dir: string) => Promise<void>): Promise<void> {
@@ -84,6 +85,14 @@ describe("scan", () => {
       expect(report.findings[0]?.rule).toBe("SRC-001");
       const strict = await scan(dir, { strict: true });
       expect(strict.ok).toBe(false);
+    });
+  });
+
+  it("warns when a packed file blows past the size baseline", async () => {
+    await withDir({ "blob.bin": "x".repeat(FILE_WARN_BYTES) }, async (dir) => {
+      const report = await scan(dir);
+      expect(report.ok).toBe(true);
+      expect(report.findings.some((f) => f.rule === "SIZE-001")).toBe(true);
     });
   });
 });

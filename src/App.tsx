@@ -28,6 +28,11 @@ const EXAMPLES = [
     hint: "What installers actually ship",
   },
   {
+    path: "fixtures/sourcemap.zip",
+    label: "Zip with a source map",
+    hint: "Same leak, zip wrapper",
+  },
+  {
     path: "fixtures/dotenv.tgz",
     label: "Pack with a .env",
     hint: "Should fail",

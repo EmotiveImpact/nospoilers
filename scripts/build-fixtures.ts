@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as asar from "@electron/asar";
+import JSZip from "jszip";
 import { c as tarCreate } from "tar";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,6 +66,15 @@ async function main(): Promise<void> {
     await packTar(dirtyDir, path.join(fixtures, "sourcemap.tgz"));
     await packTar(envDir, path.join(fixtures, "dotenv.tgz"));
     await asar.createPackage(asarSrc, path.join(fixtures, "sourcemap.asar"));
+
+    const zip = new JSZip();
+    zip.file("index.js", `${minified}//# sourceMappingURL=index.js.map\n`);
+    zip.file("index.js.map", sourceMap);
+    zip.file("package.json", '{"name":"spoiler-zip"}');
+    await writeFile(
+      path.join(fixtures, "sourcemap.zip"),
+      await zip.generateAsync({ type: "nodebuffer" }),
+    );
   } finally {
     await rm(cleanDir, { recursive: true, force: true });
     await rm(dirtyDir, { recursive: true, force: true });

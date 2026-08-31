@@ -20,6 +20,7 @@ Exit codes: `0` clean (warnings only unless `--strict`), `1` critical spoilers, 
 ```bash
 npx tsx src/cli.ts scan ./package.tgz --json
 npx tsx src/cli.ts scan ./dist --strict
+npx tsx src/cli.ts scan ./package.tgz --sarif nospoilers.sarif
 ```
 
 ## GitHub Action
@@ -28,9 +29,10 @@ npx tsx src/cli.ts scan ./dist --strict
 - uses: EmotiveImpact/nospoilers@main
   with:
     path: ./package.tgz
+    sarif: nospoilers.sarif
 ```
 
-`path` is a directory, `.tgz` / `.tar.gz`, `.zip`, or `.asar`. Set `strict: true` to fail on packed TypeScript/JSX source as well.
+The action writes a SARIF 2.1 file you can upload with `github/codeql-action/upload-sarif` if code scanning is on. `path` is a directory, `.tgz` / `.tar.gz`, `.zip`, or `.asar`. Set `strict: true` to fail on packed TypeScript/JSX source and size spikes as well.
 
 ## What it flags
 
@@ -43,6 +45,8 @@ npx tsx src/cli.ts scan ./dist --strict
 | SEC-002 | critical | Private key / PEM |
 | GIT-001 | critical | `.git` packed into the artifact |
 | SRC-001 | warn | `.ts` / `.tsx` / `.jsx` source (not `.d.ts`) |
+| SIZE-001 | warn | A packed file is 10 MB or larger |
+| SIZE-002 | warn | Unpacked payload is 50 MB or larger |
 
 It does **not** watch whether a GitHub repository flipped from private to public. Use GitGlow or GitHub org settings for that.
 
@@ -54,7 +58,7 @@ npm run fixtures
 npm run dev
 ```
 
-Open the printed URL (port **4347**). Drop a real pack, or scan the fixtures (`clean.tgz` should pass; `sourcemap.tgz` / `sourcemap.asar` / `dotenv.tgz` should fail).
+Open the printed URL (port **4347**). Drop a real pack, or scan the fixtures (`clean.tgz` should pass; `sourcemap.tgz` / `sourcemap.asar` / `sourcemap.zip` / `dotenv.tgz` should fail).
 
 ## Hidden maps for crash reporting
 
