@@ -23,6 +23,7 @@ Open **http://127.0.0.1:4347** (port **4347**).
 - **Watch** (`/watch`) — sign in, install the app, repos and alerts.
 - **Scan** (`/scan`) — drop a tarball, zip, or asar. Fixtures: `clean.tgz` should pass; `sourcemap.*` and `dotenv.tgz` should fail.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
+- **Mockups** (`/mockups`) — static screens for trial desk and locked hosted scan.
 
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 
