@@ -184,7 +184,7 @@ export function WatchPage({ search }: { search: string }) {
   const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-12 md:py-16">
+    <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
       {previewing ? <LoggedInLook current={ended ? "ended" : "trial"} /> : null}
 
       <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">

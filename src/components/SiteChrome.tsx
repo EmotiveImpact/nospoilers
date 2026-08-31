@@ -1,4 +1,6 @@
+import { signOut } from "@/auth.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
+import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
 import { coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
@@ -46,13 +48,19 @@ export function SiteChrome({
 }) {
   const [sessionCoverage, setSessionCoverage] = useState<Coverage | null>(null)
   const [login, setLogin] = useState<string | null>(null)
+  const [githubApp, setGithubApp] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void fetch("/api/me", { credentials: "include" })
       .then(async (response) => {
-        const body = (await response.json()) as { coverage?: Coverage; user?: { login: string } | null }
+        const body = (await response.json()) as {
+          coverage?: Coverage
+          user?: { login: string } | null
+          githubApp?: boolean
+        }
         if (cancelled) return
+        setGithubApp(Boolean(body.githubApp))
         if (body.user && body.coverage) {
           setSessionCoverage(body.coverage)
           setLogin(body.user.login)
@@ -70,7 +78,8 @@ export function SiteChrome({
   const preview = coverageFromQuery(search)
   const coverage = sessionCoverage ?? preview
   const ended = coverage?.status === "ended"
-  const inProduct = path === "/watch" || path === "/scan"
+  const signedIn = Boolean(login)
+  const previewing = Boolean(coverage) && !signedIn
 
   return (
     <div className="flex min-h-svh flex-col bg-ink">
@@ -83,8 +92,8 @@ export function SiteChrome({
             {LINKS.map((link) => (
               <a
                 key={link.href}
-                href={productHref(link.href, search, Boolean(login))}
-                onClick={(event) => go(event, productHref(link.href, search, Boolean(login)))}
+                href={productHref(link.href, search, signedIn)}
+                onClick={(event) => go(event, productHref(link.href, search, signedIn))}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive(path, link.href) ? "text-snow" : "text-dim hover:text-snow",
@@ -94,7 +103,7 @@ export function SiteChrome({
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {coverage && (
               <span
                 className={cn(
@@ -110,15 +119,32 @@ export function SiteChrome({
               <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => navigate("/pricing")}>
                 Subscribe
               </Button>
-            ) : inProduct && coverage ? null : (
-              <Button
-                type="button"
-                size="sm"
-                className="hidden sm:inline-flex"
-                onClick={() => navigate("/watch?as=trial")}
-              >
-                Start trial
+            ) : null}
+            {signedIn ? (
+              <Button type="button" size="sm" variant="ghost" className="hidden sm:inline-flex" onClick={() => void signOut()}>
+                Sign out
               </Button>
+            ) : (
+              <>
+                <span className="hidden sm:inline-flex">
+                  <LogInButton githubApp={githubApp} />
+                </span>
+                {!previewing &&
+                  (githubApp ? (
+                    <Button as="a" href="/api/auth/github" size="sm" className="hidden sm:inline-flex">
+                      Start trial
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="hidden sm:inline-flex"
+                      onClick={() => navigate("/watch?as=trial")}
+                    >
+                      Start trial
+                    </Button>
+                  ))}
+              </>
             )}
             <Menu>
               <MenuButton className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-snow data-hover:bg-white/5 data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40 md:hidden">
@@ -132,23 +158,46 @@ export function SiteChrome({
                 {LINKS.map((link) => (
                   <MenuItem key={link.href}>
                     <a
-                      href={productHref(link.href, search, Boolean(login))}
-                      onClick={(event) => go(event, productHref(link.href, search, Boolean(login)))}
+                      href={productHref(link.href, search, signedIn)}
+                      onClick={(event) => go(event, productHref(link.href, search, signedIn))}
                       className="block rounded px-3 py-2 text-sm text-mute data-focus:bg-white/5 data-focus:text-snow"
                     >
                       {link.label}
                     </a>
                   </MenuItem>
                 ))}
-                <MenuItem>
-                  <a
-                    href={ended ? "/pricing" : "/watch?as=trial"}
-                    onClick={(event) => go(event, ended ? "/pricing" : "/watch?as=trial")}
-                    className="block rounded px-3 py-2 text-sm text-snow data-focus:bg-white/5"
-                  >
-                    {ended ? "Subscribe" : "Start trial"}
-                  </a>
-                </MenuItem>
+                {signedIn ? (
+                  <MenuItem>
+                    <button
+                      type="button"
+                      className="block w-full rounded px-3 py-2 text-left text-sm text-snow data-focus:bg-white/5"
+                      onClick={() => void signOut()}
+                    >
+                      Sign out
+                    </button>
+                  </MenuItem>
+                ) : (
+                  <>
+                    <MenuItem>
+                      {githubApp ? (
+                        <a href="/api/auth/github" className="block rounded px-3 py-2 text-sm text-snow data-focus:bg-white/5">
+                          Log in
+                        </a>
+                      ) : (
+                        <span className="block rounded px-3 py-2 text-sm text-dim">Log in (GitHub App not set)</span>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      <a
+                        href="/watch?as=trial"
+                        onClick={(event) => go(event, "/watch?as=trial")}
+                        className="block rounded px-3 py-2 text-sm text-snow data-focus:bg-white/5"
+                      >
+                        Start trial
+                      </a>
+                    </MenuItem>
+                  </>
+                )}
               </MenuItems>
             </Menu>
           </div>

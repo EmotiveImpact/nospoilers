@@ -1,3 +1,5 @@
+import { LogInButton } from "@/components/AuthControls.tsx"
+import { ProductFrame } from "@/components/ProductFrame.tsx"
 import { Button } from "@/components/ui/button"
 import { navigate } from "@/nav.ts"
 import { useEffect, useState } from "react"
@@ -30,39 +32,48 @@ export function LandingPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">No spoilers in production</p>
-      <h1 className="mt-5 max-w-4xl font-display text-[2.5rem] leading-[1.05] tracking-tight text-snow sm:text-6xl md:text-7xl">
-        We watch GitHub.
-        <br />
-        We read the pack they download.
-      </h1>
-      <p className="mt-6 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-        Secret scanners read git. That missed Claude Code’s <code className="text-snow">cli.js.map</code> on
-        npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then
-        the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.
-      </p>
-      <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-        {signedIn ? (
-          <Button type="button" size="lg" onClick={() => navigate("/watch")}>
-            Open watch desk
+      <div className="fade-up">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-dim">No spoilers in production</p>
+        <h1 className="mt-5 max-w-4xl font-display text-[2.5rem] leading-[1.05] tracking-tight text-snow sm:text-6xl md:text-7xl">
+          We watch GitHub.
+          <br />
+          We read the pack they download.
+        </h1>
+        <p className="mt-6 max-w-lg text-base leading-relaxed text-mute md:text-lg">
+          Secret scanners read git. That missed Claude Code’s <code className="text-snow">cli.js.map</code> on
+          npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then
+          the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.
+        </p>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {signedIn ? (
+            <Button type="button" size="lg" onClick={() => navigate("/watch")}>
+              Open watch desk
+            </Button>
+          ) : githubApp ? (
+            <Button as="a" href="/api/auth/github" size="lg">
+              Start 14-day trial
+            </Button>
+          ) : (
+            <Button type="button" size="lg" onClick={() => navigate("/watch?as=trial")}>
+              Start 14-day trial
+            </Button>
+          )}
+          {!signedIn ? <LogInButton githubApp={githubApp} size="lg" /> : null}
+          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/pricing")}>
+            Solo $29 · Team $99
           </Button>
-        ) : githubApp ? (
-          <Button as="a" href="/api/auth/github" size="lg">
-            Start 14-day trial
-          </Button>
-        ) : (
-          <Button type="button" size="lg" onClick={() => navigate("/watch?as=trial")}>
-            Start 14-day trial
-          </Button>
-        )}
-        <Button type="button" size="lg" variant="outline" onClick={() => navigate("/pricing")}>
-          Solo $29 · Team $99
-        </Button>
+        </div>
+        <p className="mt-6 max-w-lg text-sm leading-relaxed text-dim">
+          Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop
+          is a bonus. We do not pretend we can DRM it.
+        </p>
       </div>
-      <p className="mt-6 max-w-lg text-sm leading-relaxed text-dim">
-        Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop
-        is a bonus. We do not pretend we can DRM it.
-      </p>
+
+      <div className="fade-up-delay mt-16">
+        <ProductFrame />
+        <p className="mt-3 text-xs text-dim">The logged-in desk during trial. Click through.</p>
+      </div>
+
       <ul className="mt-20 grid gap-10 border-t border-white/5 pt-12 sm:grid-cols-3">
         <li>
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">01</p>

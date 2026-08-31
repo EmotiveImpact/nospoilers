@@ -3,7 +3,7 @@ import { navigate } from "@/nav.ts"
 
 export function PricingPage() {
   return (
-    <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
+    <main className="fade-up mx-auto max-w-5xl px-5 py-16 md:py-24">
       <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Coverage subscription</p>
       <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
         Pay to keep the bot thinking.
