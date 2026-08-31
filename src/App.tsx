@@ -33,10 +33,10 @@ export default function App() {
             <Button
               type="button"
               variant="ghost"
-              className="h-auto px-0 font-display text-[17px] tracking-tight text-snow data-hover:bg-transparent data-hover:text-white"
+              className="h-auto px-0 data-hover:bg-transparent"
               onClick={() => navigate("/")}
             >
-              NoSpoilers
+              <img src="/logo.png" alt="NoSpoilers" className="h-7 w-auto sm:h-8" />
             </Button>
             <TabList className="flex rounded-full bg-white/[0.06] p-1">
               <Tab className={tabClass}>Watch</Tab>
