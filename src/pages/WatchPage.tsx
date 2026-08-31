@@ -134,17 +134,14 @@ export function WatchPage() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center px-5 py-16 md:py-24">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-dim">No spoilers in production</p>
-        <h1 className="mt-5 max-w-3xl font-display text-[2.6rem] leading-[1.05] tracking-tight text-snow sm:text-6xl md:text-7xl">
-          Catch the public flip.
-          <br />
-          Catch the pack.
+      <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Watch desk</p>
+        <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
+          Sign in to keep the bot thinking.
         </h1>
-        <p className="mt-6 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-          NoSpoilers watches GitHub when a private repo goes public, then reads the installer
-          customers actually download — not the git tree. Source maps and <code className="text-snow">.env</code> files
-          do not belong in the cut you ship.
+        <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
+          This is the hosted GitHub App. Install, then we watch publicize / transfer / collaborator /
+          fork and we unpack release packs. Coverage is Solo $29 or Team $99 after a 14-day trial.
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
           {githubApp ? (
@@ -156,36 +153,16 @@ export function WatchPage() {
               Sign in with GitHub
             </Button>
           )}
-          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/scan")}>
-            Scan a pack instead
+          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/pricing")}>
+            See pricing
           </Button>
         </div>
         {!githubApp && (
           <p className="mt-6 max-w-lg text-sm leading-relaxed text-dim">
             Sign-in stays off until you create the GitHub App and put the keys in{" "}
-            <code className="text-mute">.env</code>. The pack scanner on Scan does not need that.
+            <code className="text-mute">.env</code>. The pack drop zone on Scan does not need that.
           </p>
         )}
-        <ul className="mt-20 grid gap-10 border-t border-white/5 pt-10 sm:grid-cols-3">
-          <li>
-            <p className="font-display text-sm text-snow">Watch GitHub</p>
-            <p className="mt-2 text-sm leading-relaxed text-dim">
-              Publicize, transfer, collaborator, fork. The doorbell answers in under a second.
-            </p>
-          </li>
-          <li>
-            <p className="font-display text-sm text-snow">Read the pack</p>
-            <p className="mt-2 text-sm leading-relaxed text-dim">
-              npm tarball, zip, Electron asar. Same scanner as CI. We do not keep the bytes.
-            </p>
-          </li>
-          <li>
-            <p className="font-display text-sm text-snow">Fail closed</p>
-            <p className="mt-2 text-sm leading-relaxed text-dim">
-              A CLI and GitHub Action for the build. The hosted bot is for everything you forget to wire.
-            </p>
-          </li>
-        </ul>
       </main>
     );
   }

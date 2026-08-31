@@ -19,8 +19,10 @@ npm run dev
 
 Open **http://127.0.0.1:4347** (port **4347**).
 
-- **Watch** (`/`) — sign in with GitHub, install the app, see repos and alerts.
-- **Scan pack** (`/scan`) — drop a tarball, zip, or asar. Fixtures: `clean.tgz` should pass; `sourcemap.*` and `dotenv.tgz` should fail.
+- **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
+- **Watch** (`/watch`) — sign in, install the app, repos and alerts.
+- **Scan** (`/scan`) — drop a tarball, zip, or asar. Fixtures: `clean.tgz` should pass; `sourcemap.*` and `dotenv.tgz` should fail.
+- **Pricing** (`/pricing`) — Solo $29 / Team $99.
 
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 
