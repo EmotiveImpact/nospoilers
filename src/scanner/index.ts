@@ -164,16 +164,38 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
     const chunks: Buffer[] = [];
     let fileBytes = 0;
     let retainedBytes = 0;
-    for await (const raw of stream as NodeJS.ReadableStream & AsyncIterable<Buffer | Uint8Array>) {
-      const chunk = Buffer.from(raw);
-      fileBytes += chunk.length;
-      budget.addBytes(name, chunk.length, fileBytes);
-      if (retainedBytes < INSPECT_BYTES) {
-        const kept = chunk.subarray(0, INSPECT_BYTES - retainedBytes);
-        chunks.push(kept);
-        retainedBytes += kept.length;
-      }
-    }
+    await new Promise<void>((resolve, reject) => {
+      let stopped = false;
+      stream.on("data", (raw: Buffer | Uint8Array) => {
+        if (stopped) return;
+        try {
+          const chunk = Buffer.from(raw);
+          fileBytes += chunk.length;
+          budget.addBytes(name, chunk.length, fileBytes);
+          if (retainedBytes < INSPECT_BYTES) {
+            const kept = chunk.subarray(0, INSPECT_BYTES - retainedBytes);
+            chunks.push(kept);
+            retainedBytes += kept.length;
+          }
+        } catch (error) {
+          stopped = true;
+          const destroy = (stream as NodeJS.ReadableStream & { destroy?: () => void }).destroy;
+          if (typeof destroy === "function") destroy.call(stream);
+          else stream.pause();
+          reject(error);
+        }
+      });
+      stream.on("error", (error) => {
+        if (stopped) return;
+        stopped = true;
+        reject(error);
+      });
+      stream.on("end", () => {
+        if (stopped) return;
+        stopped = true;
+        resolve();
+      });
+    });
     findings.push(...inspectEntry(name, Buffer.concat(chunks, retainedBytes), fileBytes));
   }
   return { findings, fileCount: budget.files, totalBytes: budget.bytes };
