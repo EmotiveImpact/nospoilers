@@ -36,7 +36,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Directory, tgz/tar.gz, ZIP, asar scanning | Built | NoSpoilers |
+| Directory, `.tar`, tgz/tar.gz, ZIP, asar and single-file scanning | Built | NoSpoilers |
 | Source maps, embedded source and map URL rules | Built | NoSpoilers |
 | Environment, private key and high-confidence token rules | Built | NoSpoilers |
 | Credential config, AI context, internal location, debug rules | Built | NoSpoilers |
@@ -45,6 +45,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | JSON and SARIF reports | Built | NoSpoilers |
 | Automatic npm package watching | Planned | NoSpoilers |
 | New npm version detection | Planned | NoSpoilers |
+| npm dist-tag and prerelease-channel changes | Planned | NoSpoilers |
+| Changed tarball bytes under the same package coordinate | Planned | NoSpoilers |
 | Private npm registry support | Planned | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Planned | NoSpoilers |
 | Pre-publish CI gate | Partial: Action exists | NoSpoilers |
@@ -68,6 +70,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Internal documentation and roadmaps | Planned | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Planned | NoSpoilers |
+| Explicit inconclusive status for limits, malformed/encrypted/partial scans | Planned | NoSpoilers |
 | External scanning API | Planned | NoSpoilers |
 
 ## Distribution surfaces and formats
@@ -80,14 +83,14 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Sentry source-map custody | Planned | NoSpoilers |
 | Bugsnag source-map custody | Planned | NoSpoilers |
 | VS Code `.vsix` | Planned | NoSpoilers |
-| Chrome/Firefox extensions | Planned | NoSpoilers |
-| Python wheel/sdist | Planned | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Planned | NoSpoilers |
+| Python wheel and source distribution | Planned | NoSpoilers |
 | Java JAR/WAR | Planned | NoSpoilers |
-| NuGet packages | Planned | NoSpoilers |
+| NuGet `.nupkg` and `.snupkg` | Planned | NoSpoilers |
 | Ruby gems | Planned | NoSpoilers |
 | Docker/OCI image layers | Planned, later | NoSpoilers |
 | Serverless deployment bundles | Planned | NoSpoilers |
-| Android APK | Planned, later | NoSpoilers |
+| Android APK/AAB | Planned, later | NoSpoilers |
 | iOS IPA | Planned, later | NoSpoilers |
 | Electron DMG | Deferred isolated worker | NoSpoilers |
 | Electron EXE/NSIS | Deferred isolated worker | NoSpoilers |
@@ -103,6 +106,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Repository transfer | Built/needs real proof | NoSpoilers |
 | Collaborator added | Built/needs real proof | NoSpoilers |
 | Fork event | Built/needs real proof | NoSpoilers |
+| Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
+| App permission, suspension, repository-add/remove and uninstall health | Planned | NoSpoilers |
 | Hourly missed-webhook visibility check | Built | NoSpoilers |
 | Event acknowledgement and assignment | Planned | NoSpoilers |
 | Resolution notes/evidence | Planned | NoSpoilers |

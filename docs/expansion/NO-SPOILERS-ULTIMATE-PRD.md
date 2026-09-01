@@ -64,7 +64,21 @@ surface. It is not another generic SAST, dependency, antivirus, or code-review p
 9. High-permission remediation is opt-in and confirmed.
 10. A format is not advertised before hostile fixtures and resource limits exist.
 
-## 6. Product surfaces
+## 6. Cross-cutting result contract
+
+Every scan records tenant/source, artifact coordinate and SHA-256, engine/ruleset version, effective
+policy hash, applied limits, timestamps, manifest, finding fingerprints and temporary-byte deletion
+outcome.
+
+States are explicit: queued, running, passed, failed-policy, inconclusive, error, cancelled. A hard
+limit, timeout, unsupported encryption, malformed archive, partial download or extraction failure
+is **inconclusive**, never clean and never eligible for a passing receipt.
+
+Nested formats are identified by magic bytes, not extension alone. Aggregate input, expansion,
+file, depth, CPU/memory and time limits apply across the complete logical path. No customer code,
+package lifecycle script, image, mobile app or installer is executed.
+
+## 7. Product surfaces
 
 ### Public
 
@@ -93,7 +107,7 @@ surface. It is not another generic SAST, dependency, antivirus, or code-review p
 - Acquisition attribution
 - System health and failed jobs
 
-## 7. Commercial model
+## 8. Commercial model
 
 ### Solo — $29/month
 
@@ -123,7 +137,7 @@ surface. It is not another generic SAST, dependency, antivirus, or code-review p
 - Marketplace is optional after 100 installations; Stripe on our site is primary
 - No public Enterprise tier until requested
 
-## 8. Phased delivery plan
+## 9. Phased delivery plan
 
 Each phase has an exit condition. Do not describe later phases as available before the exit passes.
 
@@ -152,6 +166,7 @@ Scope:
 - Register real GitHub App and configure OAuth/install/webhook secrets.
 - Verify installation ownership; prevent arbitrary installation-ID linking.
 - Prove throwaway private → public and release-asset scan.
+- Verify app suspension, permission changes, repository add/remove and uninstall health.
 - Introduce billing accounts attached to GitHub installations.
 - Enforce coverage in webhook enqueue, claim/handle, poller, upload, and release routes.
 - Add Stripe monthly/yearly products, Checkout, trial, lifecycle webhooks, and Billing Portal.
@@ -174,7 +189,8 @@ Acceptance:
 
 Scope:
 
-- Watched npm packages and automatic new-version detection.
+- Watched npm packages with automatic version, dist-tag and prerelease-channel detection.
+- Detect changed tarball bytes under an existing immutable package/version coordinate.
 - Optional private npm registry credentials, encrypted and least-privileged.
 - npm/pnpm/Yarn/Bun workspace discovery.
 - App-generated PR installing the existing pre-publish Action.
@@ -195,6 +211,10 @@ Acceptance:
 - Release Diff reports only introduced/removed/changed risk.
 - Baseline exceptions are attributable, expiring, and never suppress unrelated rules.
 - Receipt verifies the artifact SHA-256 that was scanned.
+- Limited, malformed, encrypted, timed-out or partial work is inconclusive and cannot receive a
+  passing receipt.
+- Generated setup PR is reviewable, never auto-merges, and explains that only configured publish
+  paths are gated.
 
 ### Phase 3 — integrations, team and incident response
 
@@ -226,13 +246,13 @@ Scope:
 
 - Web deployment crawler for JS/CSS, maps, exposed files, credentials, internal endpoints and paths.
 - Sentry/Bugsnag map custody: matching release/debug ID, successful private upload, absent public map.
-- VSIX and Chrome/Firefox extensions.
-- Python wheel/sdist.
+- VSIX, Chrome CRX/ZIP and Firefox XPI extensions.
+- Python wheel and source distributions.
 - Java JAR/WAR.
-- NuGet and Ruby gems.
+- NuGet NUPKG/SNUPKG and Ruby gems.
 - Serverless deployment bundles.
 - Docker/OCI layers later in this phase.
-- APK/IPA only after archive safety and signing semantics are defined.
+- APK/AAB and IPA only after archive safety and signing semantics are defined.
 
 Acceptance per format:
 
@@ -304,7 +324,7 @@ Scope only when needed:
 - Marketplace paid listing after eligibility.
 - Enterprise plan only after a buyer requests requirements.
 
-## 9. Data model direction
+## 10. Data model direction
 
 Core entities:
 
@@ -334,7 +354,7 @@ Core entities:
 
 Do not store extracted source or credential values.
 
-## 10. Service architecture
+## 11. Service architecture
 
 ```text
 Browser
@@ -359,7 +379,7 @@ Installer job service
 Production artifacts use temporary worker disk and are deleted in `finally`. Database and object
 storage never become an archive of customer source.
 
-## 11. Security and privacy requirements
+## 12. Security and privacy requirements
 
 - Verify GitHub, Stripe, and integration webhook signatures.
 - Encrypt OAuth tokens, registry credentials, Slack/webhook secrets.
@@ -375,7 +395,7 @@ storage never become an archive of customer source.
 - Audit administrative and destructive actions.
 - Internal prospecting is public-artifact-only and human-reviewed.
 
-## 12. Success metrics
+## 13. Success metrics
 
 ### Activation
 
@@ -409,7 +429,7 @@ storage never become an archive of customer source.
 - Responsible disclosures acknowledged/fixed.
 - Trial and paid conversion from verified findings.
 
-## 13. Explicit non-goals
+## 14. Explicit non-goals
 
 - General SAST or AI code review.
 - General dependency CVE platform.
@@ -420,7 +440,7 @@ storage never become an archive of customer source.
 - Scan-credit pricing.
 - DRM as the commercial moat.
 
-## 14. Agent execution rules
+## 15. Agent execution rules
 
 - Read `docs/PRODUCT.md`, this PRD, and the feature inventory before implementation.
 - Build phases in order and satisfy acceptance criteria.
@@ -429,3 +449,8 @@ storage never become an archive of customer source.
 - Keep one runnable product on port 4347 during local work.
 - Preserve empty/loading/error/ended states and mobile layouts.
 - Commit and push each logical change; no PR unless explicitly requested.
+
+No phase is complete until real integration paths pass without fake findings; hostile-input and
+authorization tests pass; queued, error, inconclusive, trial, active and ended states are visible;
+documentation matches actual permissions/formats; failures remain observable; and temporary source
+retention remains zero.
