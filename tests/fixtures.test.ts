@@ -22,6 +22,7 @@ describe("packed fixtures", () => {
     expect(report.artifactSha512).toMatch(/^[a-f0-9]{128}$/);
     expect(report.manifest.length).toBeGreaterThan(0);
     expect(report.findings).toEqual([]);
+    expect(report.workspaces).toEqual([]);
   });
 
   it("fails a tarball that contains a source map", async () => {
@@ -73,6 +74,26 @@ describe("packed fixtures", () => {
     const ids = sarif.runs[0]?.results.map((r) => r.ruleId) ?? [];
     expect(ids).toContain("MAP-001");
     expect(sarif.runs[0]?.results.every((r) => r.level === "error")).toBe(true);
+  });
+
+  it("lists npm workspace members in a packed workspace without executing them", async () => {
+    const report = await scan(path.join(fixtures, "workspace.tgz"));
+    expect(report.ok).toBe(true);
+    expect(report.status).toBe("passed");
+    expect(report.workspaces).toHaveLength(1);
+    expect(report.workspaces?.[0]?.kind).toBe("npm");
+    expect(report.workspaces?.[0]?.members.map((row) => row.name).sort()).toEqual([
+      "@demo/api",
+      "@demo/ui",
+    ]);
+    expect(report.workspaces?.[0]?.members.find((row) => row.name === "@demo/api")?.private).toBe(
+      true,
+    );
+    const sarif = toSarif(report) as {
+      runs: { properties?: { workspaceSummary?: string }; results: { ruleId: string }[] }[];
+    };
+    expect(sarif.runs[0]?.properties?.workspaceSummary).toMatch(/@demo\/ui/);
+    expect(sarif.runs[0]?.results).toEqual([]);
   });
 });
 

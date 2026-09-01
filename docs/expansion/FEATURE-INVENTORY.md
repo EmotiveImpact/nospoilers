@@ -48,7 +48,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | npm dist-tag and prerelease-channel changes | Built: tag-only light alert, no extra download | NoSpoilers |
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
-| npm/pnpm/Yarn/Bun monorepo discovery | Planned | NoSpoilers |
+| npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
 | Pre-publish CI gate | Partial: Action exists; optional `policy` input; generated workflow gates packed artifacts only | NoSpoilers |
 | App-generated setup PR | Partial: reviewable PR, never merged; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |

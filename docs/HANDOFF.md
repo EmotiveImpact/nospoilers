@@ -62,6 +62,10 @@ Read in this order:
   artifacts only). The App never merges it. If GitHub returns 403/404, the API returns 409 plus
   copy-paste YAML. Hosted `release_scan` jobs post a **NoSpoilers** Check with rule/path
   annotations when Checks write is granted; otherwise the job still completes.
+- Packed scans discover npm/pnpm/Yarn/Bun workspaces (package.json `workspaces`,
+  `pnpm-workspace.yaml`, yarn/bun lockfile presence). Members are listed on the report, receipt,
+  SARIF properties, alerts, and Checks. They are never executed and never auto-connected as
+  watched packages.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -97,6 +101,7 @@ Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
+Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

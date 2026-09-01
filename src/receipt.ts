@@ -1,9 +1,22 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import type { Finding, ManifestEntry, ScanReport, ScanStatus } from "./scanner/types.ts";
+import type { Finding, ManifestEntry, ScanReport, ScanStatus, WorkspaceDiscovery } from "./scanner/types.ts";
 
 export const RECEIPT_VERSION = 1;
 export const RECEIPT_ALG = "HMAC-SHA256";
 export const RECEIPT_DOMAIN = "nospoilers-receipt-v1";
+
+export type ReceiptWorkspaceMember = {
+  name: string;
+  path: string;
+  private: boolean;
+};
+
+export type ReceiptWorkspace = {
+  kind: WorkspaceDiscovery["kind"];
+  root: string;
+  configPath: string;
+  members: ReceiptWorkspaceMember[];
+};
 
 export type UnsignedReceipt = {
   v: typeof RECEIPT_VERSION;
@@ -27,6 +40,8 @@ export type UnsignedReceipt = {
   policyHash: string | null;
   suppressedCount: number;
   suppressedFingerprints: string[];
+  /** Present on receipts minted after workspace discovery; omitted on older receipts. */
+  workspaces?: ReceiptWorkspace[];
 };
 
 export type SignedReceipt = UnsignedReceipt & {
@@ -79,6 +94,19 @@ export function maxSeverityOf(findings: Finding[]): Finding["severity"] | null {
   return null;
 }
 
+function compactWorkspaces(workspaces: WorkspaceDiscovery[] | undefined): ReceiptWorkspace[] {
+  return (workspaces ?? []).map((workspace) => ({
+    kind: workspace.kind,
+    root: workspace.root,
+    configPath: workspace.configPath,
+    members: workspace.members.map((member) => ({
+      name: member.name,
+      path: member.path,
+      private: member.private,
+    })),
+  }));
+}
+
 function sortedManifest(manifest: ManifestEntry[]): ManifestEntry[] {
   return [...manifest].sort((left, right) => left.path.localeCompare(right.path));
 }
@@ -122,6 +150,7 @@ export function buildUnsignedReceipt(report: ScanReport, coordinate: string): Un
     suppressedFingerprints: (report.suppressed ?? [])
       .map((row) => findingFingerprint(row.finding))
       .sort(),
+    workspaces: compactWorkspaces(report.workspaces),
   };
 }
 

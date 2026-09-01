@@ -41,6 +41,11 @@ const EXAMPLES = [
     label: "Pack with a .env",
     hint: "Should fail",
   },
+  {
+    path: "fixtures/workspace.tgz",
+    label: "npm workspace pack",
+    hint: "Lists members. Does not execute them.",
+  },
 ] as const
 
 async function scanPath(path: string): Promise<ScanReport> {
@@ -373,6 +378,37 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
                 <p className="mt-1 text-xs text-mute">
                   {row.reason} · {row.actor} · expires {row.expiresAt.slice(0, 10)}
                 </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {report.workspaces && report.workspaces.length > 0 ? (
+        <div className="mt-8 border-t border-white/5 pt-6">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">
+            Workspaces · {report.workspaces.length}
+          </p>
+          <ul className="mt-4 divide-y divide-white/5">
+            {report.workspaces.map((workspace) => (
+              <li key={`${workspace.kind}-${workspace.root}-${workspace.configPath}`} className="py-3 first:pt-0">
+                <p className="text-sm text-snow">
+                  {workspace.kind} workspace
+                  <span className="ml-2 font-mono text-xs text-dim">{workspace.root}</span>
+                </p>
+                {workspace.members.length === 0 ? (
+                  <p className="mt-1 text-xs text-mute">No packed members matched the workspace globs.</p>
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {workspace.members.map((member) => (
+                      <li key={`${member.path}-${member.name}`} className="flex items-baseline justify-between gap-3">
+                        <span className="truncate font-mono text-xs text-mute">{member.name}</span>
+                        <span className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-dim">
+                          {member.private ? "private" : "publishable"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

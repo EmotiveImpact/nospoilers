@@ -16,6 +16,12 @@ import {
   type ScanStatus,
   type ScanTargetKind,
 } from "./types.ts";
+import {
+  discoverWorkspaces,
+  summarizeWorkspaces,
+  workspaceFileFrom,
+  type WorkspaceFile,
+} from "./workspaces.ts";
 
 export type {
   Finding,
@@ -24,9 +30,13 @@ export type {
   ScanReport,
   ScanStatus,
   ScanTargetKind,
+  WorkspaceDiscovery,
+  WorkspaceKind,
+  WorkspaceMember,
 } from "./types.ts";
 export { ScanInconclusiveError } from "./types.ts";
 export { toSarif } from "./sarif.ts";
+export { discoverWorkspaces, summarizeWorkspaces } from "./workspaces.ts";
 
 export const ENGINE_VERSION = "0.1.0";
 export const DEFAULT_MAX_INPUT_BYTES = 80 * 1024 * 1024;
@@ -143,6 +153,7 @@ type ScanChunk = {
   fileCount: number;
   totalBytes: number;
   manifest: ManifestEntry[];
+  workspaceFiles: WorkspaceFile[];
 };
 
 export const MAX_NEST_DEPTH = 3;
@@ -154,7 +165,18 @@ type ScanCtx = {
 };
 
 function emptyChunk(budget: ScanBudget): ScanChunk {
-  return { findings: [], fileCount: budget.files, totalBytes: budget.bytes, manifest: [] };
+  return {
+    findings: [],
+    fileCount: budget.files,
+    totalBytes: budget.bytes,
+    manifest: [],
+    workspaceFiles: [],
+  };
+}
+
+function pushWorkspace(rel: string, buf: Buffer, into: WorkspaceFile[]): void {
+  const file = workspaceFileFrom(rel, buf);
+  if (file) into.push(file);
 }
 
 function nestPrefix(outer: string, inner: string): string {
@@ -218,11 +240,13 @@ async function mergeNested(
   ctx: ScanCtx,
   findings: Finding[],
   manifest: ManifestEntry[],
+  workspaceFiles: WorkspaceFile[],
 ): Promise<void> {
   if (!isNestedPack(rel)) return;
   const nested = await maybeScanNested(rel, bytes, ctx);
   findings.push(...nested.findings);
   manifest.push(...nested.manifest);
+  workspaceFiles.push(...nested.workspaceFiles);
 }
 
 async function scanDirectory(
@@ -234,6 +258,7 @@ async function scanDirectory(
   const { files, links } = await walkTree(root);
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
+  const workspaceFiles: WorkspaceFile[] = [];
   const relOf = (abs: string) => {
     const inner = path.relative(root, abs).split(path.sep).join("/");
     return label ? nestPrefix(label, inner) : inner;
@@ -253,9 +278,10 @@ async function scanDirectory(
     const buf = await readFile(abs);
     findings.push(...inspectEntry(rel, buf.subarray(0, INSPECT_BYTES), info.size));
     manifest.push({ path: rel, size: info.size, sha256: sha256Buffer(buf) });
-    await mergeNested(rel, buf, ctx, findings, manifest);
+    pushWorkspace(rel, buf, workspaceFiles);
+    await mergeNested(rel, buf, ctx, findings, manifest, workspaceFiles);
   }
-  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest, workspaceFiles };
 }
 
 async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
@@ -320,6 +346,7 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
   }
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
+  const workspaceFiles: WorkspaceFile[] = [];
   const names = Object.keys(zip.files);
   for (const name of names) {
     const entry = zip.files[name];
@@ -368,9 +395,10 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
     const retained = Buffer.concat(chunks, retainedBytes);
     findings.push(...inspectEntry(display, retained.subarray(0, INSPECT_BYTES), fileBytes));
     manifest.push({ path: display, size: fileBytes, sha256: hash.digest("hex") });
-    if (keepAll) await mergeNested(display, retained, ctx, findings, manifest);
+    pushWorkspace(display, retained, workspaceFiles);
+    if (keepAll) await mergeNested(display, retained, ctx, findings, manifest, workspaceFiles);
   }
-  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest, workspaceFiles };
 }
 
 async function scanZip(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
@@ -390,6 +418,7 @@ async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<Scan
   const listed = asar.listPackage(archive, { isPack: false });
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
+  const workspaceFiles: WorkspaceFile[] = [];
   for (const raw of listed) {
     const rel = raw.replace(/^\/+/, "");
     const posix = rel.split(path.sep).join("/");
@@ -407,9 +436,10 @@ async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<Scan
     const content = asar.extractFile(archive, posix);
     findings.push(...inspectEntry(display, content.subarray(0, INSPECT_BYTES), record.size));
     manifest.push({ path: display, size: record.size, sha256: sha256Buffer(content) });
-    await mergeNested(display, content, ctx, findings, manifest);
+    pushWorkspace(display, content, workspaceFiles);
+    await mergeNested(display, content, ctx, findings, manifest, workspaceFiles);
   }
-  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest, workspaceFiles };
 }
 
 export async function scan(target: string, options: ScanOptions = {}): Promise<ScanReport> {
@@ -437,6 +467,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     scannedAt: new Date().toISOString(),
     suppressed: [],
     policyHash: null,
+    workspaces: [],
   });
 
   const withPolicy = (report: ScanReport): ScanReport => {
@@ -465,17 +496,18 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     let fileCount = 0;
     let totalBytes = 0;
     let manifest: ManifestEntry[] = [];
+    let workspaceFiles: WorkspaceFile[] = [];
 
     const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0 };
 
     if (kind === "directory") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanDirectory(resolved, ctx));
+      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanDirectory(resolved, ctx));
     } else if (kind === "tarball") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanTarball(resolved, ctx));
+      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanTarball(resolved, ctx));
     } else if (kind === "zip") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanZip(resolved, ctx));
+      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanZip(resolved, ctx));
     } else if (kind === "asar") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanAsar(resolved, ctx));
+      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanAsar(resolved, ctx));
     } else {
       const budget = new ScanBudget(limits);
       const name = path.basename(resolved);
@@ -486,6 +518,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       fileCount = 1;
       totalBytes = buf.length;
       manifest = [{ path: name, size: buf.length, sha256: sha256Buffer(buf) }];
+      pushWorkspace(name, buf, workspaceFiles);
     }
 
     if (totalBytes >= TOTAL_WARN_BYTES) {
@@ -518,6 +551,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       scannedAt: new Date().toISOString(),
       suppressed: [],
       policyHash: null,
+      workspaces: discoverWorkspaces(workspaceFiles),
     });
   } catch (error) {
     if (error instanceof ScanInconclusiveError) {
@@ -531,6 +565,8 @@ export function formatReport(report: ScanReport): string {
   const lines: string[] = [];
   lines.push(`NoSpoilers  ·  ${report.target}`);
   lines.push(`kind ${report.kind}  files ${report.fileCount}  status ${report.status}`);
+  const workspaceLine = summarizeWorkspaces(report.workspaces);
+  if (workspaceLine) lines.push(workspaceLine);
   if (report.artifactSha256) {
     lines.push(`sha256 ${report.artifactSha256}`);
   }

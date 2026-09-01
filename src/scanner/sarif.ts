@@ -1,4 +1,5 @@
 import type { Finding, ScanReport } from "./types.ts";
+import { summarizeWorkspaces } from "./workspaces.ts";
 
 type SarifLevel = "error" | "warning" | "note";
 
@@ -49,6 +50,10 @@ export function toSarif(report: ScanReport): object {
               shortDescription: { text: RULES[id]?.shortDescription ?? id },
             })),
           },
+        },
+        properties: {
+          workspaces: report.workspaces ?? [],
+          workspaceSummary: summarizeWorkspaces(report.workspaces),
         },
         results: report.findings.map((finding) => ({
           ruleId: finding.rule,

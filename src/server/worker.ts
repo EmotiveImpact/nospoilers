@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { ENGINE_VERSION, scan, type ScanReport } from "../scanner/index.ts";
+import { summarizeWorkspaces } from "../scanner/workspaces.ts";
 import type { ScanStatus } from "../scanner/types.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
@@ -71,18 +72,22 @@ function inconclusiveReport(reason: string, extra: Partial<ScanReport> = {}): Sc
     scannedAt: extra.scannedAt ?? new Date().toISOString(),
     suppressed: extra.suppressed ?? [],
     policyHash: extra.policyHash ?? null,
+    workspaces: extra.workspaces ?? [],
   };
 }
 
 function noteForAsset(name: string, report: ScanReport): string {
+  let note: string;
   if (report.status === "inconclusive") {
-    return `${name}: inconclusive (${report.inconclusiveReason ?? "scan could not finish"}).`;
-  }
-  if (report.status === "failed-policy") {
+    note = `${name}: inconclusive (${report.inconclusiveReason ?? "scan could not finish"}).`;
+  } else if (report.status === "failed-policy") {
     const critical = report.findings.filter((finding) => finding.severity === "critical").length;
-    return `${name}: ${critical} critical finding(s).`;
+    note = `${name}: ${critical} critical finding(s).`;
+  } else {
+    note = `${name}: ${report.findings.length === 0 ? "clean" : "warnings only"} (${report.fileCount} files).`;
   }
-  return `${name}: ${report.findings.length === 0 ? "clean" : "warnings only"} (${report.fileCount} files).`;
+  const workspaces = summarizeWorkspaces(report.workspaces);
+  return workspaces ? `${note} ${workspaces}` : note;
 }
 
 export async function handleJob(
@@ -376,6 +381,8 @@ export async function handleJob(
       if (report.suppressed.length > 0) {
         notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
       }
+      const workspaceNote = summarizeWorkspaces(report.workspaces);
+      if (workspaceNote) notes.push(workspaceNote);
       if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
         const persisted = await persistHostedReceipt({
           store: deps.store,

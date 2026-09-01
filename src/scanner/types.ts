@@ -12,6 +12,22 @@ export type ScanTargetKind = "directory" | "tarball" | "zip" | "asar" | "file";
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive";
 
+export type WorkspaceKind = "npm" | "pnpm" | "yarn" | "bun";
+
+export type WorkspaceMember = {
+  name: string;
+  path: string;
+  private: boolean;
+};
+
+export type WorkspaceDiscovery = {
+  kind: WorkspaceKind;
+  root: string;
+  configPath: string;
+  globs: string[];
+  members: WorkspaceMember[];
+};
+
 export type ManifestEntry = {
   path: string;
   size: number;
@@ -57,6 +73,8 @@ export type ScanReport = {
   scannedAt: string;
   suppressed: SuppressedFinding[];
   policyHash: string | null;
+  /** Present on every current scan; omitted on older in-memory helpers. */
+  workspaces?: WorkspaceDiscovery[];
 };
 
 export type ScanOptions = {

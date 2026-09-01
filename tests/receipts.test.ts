@@ -83,6 +83,7 @@ describe("signed receipts", () => {
     expect(verified.ok).toBe(true);
     expect(verified.receipt?.status).toBe("passed");
     expect(verified.receipt?.artifactSha256).toBe(report.artifactSha256);
+    expect(verified.receipt?.workspaces).toEqual([]);
   });
 
   it("refuses to mint a passing receipt for an inconclusive scan", async () => {

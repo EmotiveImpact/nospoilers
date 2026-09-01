@@ -16,6 +16,20 @@ export type ManifestEntry = {
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive"
 
+export type WorkspaceMember = {
+  name: string
+  path: string
+  private: boolean
+}
+
+export type WorkspaceDiscovery = {
+  kind: "npm" | "pnpm" | "yarn" | "bun"
+  root: string
+  configPath: string
+  globs?: string[]
+  members: WorkspaceMember[]
+}
+
 export type ScanReport = {
   target: string
   kind: string
@@ -32,4 +46,5 @@ export type ScanReport = {
   scannedAt: string
   suppressed?: { finding: Finding; reason: string; expiresAt: string; actor: string }[]
   policyHash?: string | null
+  workspaces?: WorkspaceDiscovery[]
 }

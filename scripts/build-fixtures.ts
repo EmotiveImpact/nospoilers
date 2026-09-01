@@ -75,6 +75,29 @@ async function main(): Promise<void> {
       path.join(fixtures, "sourcemap.zip"),
       await zip.generateAsync({ type: "nodebuffer" }),
     );
+
+    const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "ns-workspace-"));
+    try {
+      await writeTree(workspaceDir, {
+        "package.json": JSON.stringify({
+          name: "workspace-root",
+          private: true,
+          workspaces: ["packages/*"],
+        }),
+        "index.js": minified,
+        "packages/ui/package.json": JSON.stringify({ name: "@demo/ui", version: "1.0.0" }),
+        "packages/api/package.json": JSON.stringify({
+          name: "@demo/api",
+          version: "1.0.0",
+          private: true,
+        }),
+        "packages/ui/index.js": "export const ui = 1\n",
+        "packages/api/index.js": "export const api = 1\n",
+      });
+      await packTar(workspaceDir, path.join(fixtures, "workspace.tgz"));
+    } finally {
+      await rm(workspaceDir, { recursive: true, force: true });
+    }
   } finally {
     await rm(cleanDir, { recursive: true, force: true });
     await rm(dirtyDir, { recursive: true, force: true });

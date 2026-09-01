@@ -326,6 +326,7 @@ export function createApp(deps: AppDeps): Hono {
           scannedAt: new Date().toISOString(),
           suppressed: [],
           policyHash: null,
+          workspaces: [],
         });
       }
       const dir = path.join(os.tmpdir(), "nospoilers-upload");

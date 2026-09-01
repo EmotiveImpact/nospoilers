@@ -33,6 +33,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - App-generated setup PR (reviewable, never merged) and hosted GitHub Checks on release scans.
   Live GitHub writes skip with copy-paste YAML / no Check until the App is granted Contents write,
   Pull requests write, and Checks write. Do not grant Administration.
+- Packed npm/pnpm/Yarn/Bun workspace discovery: list roots and members from package.json /
+  pnpm-workspace.yaml / lockfile presence. Never execute. Never auto-watch discovered names.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
