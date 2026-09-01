@@ -24,6 +24,11 @@ const RULES: Record<
   "SRC-001": { name: "original-source", shortDescription: "TypeScript or JSX source packed into the artifact" },
   "SIZE-001": { name: "oversized-file", shortDescription: "Packed file is far over a normal baseline" },
   "SIZE-002": { name: "oversized-artifact", shortDescription: "Packed artifact is far over a normal baseline" },
+  "ARC-001": { name: "nested-archive", shortDescription: "Nested tgz, zip, or asar packed inside the artifact" },
+  "BAK-001": { name: "backup-copy", shortDescription: "Backup copy packed into the artifact" },
+  "DB-001": { name: "database-dump", shortDescription: "Database dump packed into the artifact" },
+  "DOC-001": { name: "internal-doc", shortDescription: "Internal roadmap, handoff, or PRD packed into the artifact" },
+  "LNK-001": { name: "escaping-symlink", shortDescription: "Symlink that points outside the pack" },
 };
 
 export function toSarif(report: ScanReport): object {

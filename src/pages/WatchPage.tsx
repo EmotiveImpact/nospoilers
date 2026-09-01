@@ -45,6 +45,14 @@ type WatchedPackage = {
 };
 
 type ReleaseDiffView = {
+  versus?: "baseline" | "previous" | null;
+  baseline?: {
+    id: number;
+    receiptId: number;
+    reason: string;
+    actorLogin: string;
+    createdAt: string;
+  } | null;
   current: { id: number; coordinate: string; status: string; artifactSha256: string } | null;
   previous: { id: number; coordinate: string; status: string; artifactSha256: string } | null;
   diff: {
@@ -56,6 +64,27 @@ type ReleaseDiffView = {
     newFindings: string[];
     resolvedFindings: string[];
   } | null;
+};
+
+type PolicyExceptionView = {
+  id: number;
+  installationId: number;
+  packageId: number | null;
+  rule: string;
+  pathPattern: string | null;
+  reason: string;
+  actorLogin: string;
+  expiresAt: string;
+  createdAt: string;
+  active: boolean;
+};
+
+type BaselineView = {
+  id: number;
+  receiptId: number;
+  reason: string;
+  actorLogin: string;
+  createdAt: string;
 };
 
 type LoadState<T> =
@@ -98,6 +127,12 @@ function kindLabel(kind: string): string {
   }
 }
 
+function defaultExpiryDate(): string {
+  const when = new Date();
+  when.setUTCDate(when.getUTCDate() + 90);
+  return when.toISOString().slice(0, 10);
+}
+
 export function WatchPage({ search }: { search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
@@ -115,20 +150,41 @@ export function WatchPage({ search }: { search: string }) {
   const [diffByPackage, setDiffByPackage] = useState<Record<number, ReleaseDiffView | { error: string }>>(
     {},
   );
+  const [exceptions, setExceptions] = useState<PolicyExceptionView[]>([]);
+  const [baselineByPackage, setBaselineByPackage] = useState<Record<number, BaselineView | null>>({});
+  const [allowRule, setAllowRule] = useState("");
+  const [allowPath, setAllowPath] = useState("");
+  const [allowReason, setAllowReason] = useState("");
+  const [allowExpires, setAllowExpires] = useState(defaultExpiryDate);
+  const [savingAllow, setSavingAllow] = useState(false);
+  const [revokingId, setRevokingId] = useState<number | null>(null);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [baselineReason, setBaselineReason] = useState("Approved current packed artifact as the shipping baseline.");
 
   const refreshSignedIn = useCallback(async () => {
     setRepos({ status: "loading" });
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody] = await Promise.all([
+      const [repoBody, alertBody, packageBody, exceptionBody] = await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
         loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
+        loadJson<{ exceptions: PolicyExceptionView[] }>("/api/exceptions"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
       setPackages({ status: "ready", data: packageBody });
+      setExceptions(exceptionBody.exceptions);
+      const baselines = await Promise.all(
+        packageBody.packages.map(async (pkg) => {
+          const body = await loadJson<{ baseline: BaselineView | null }>(
+            `/api/packages/${pkg.id}/baseline`,
+          );
+          return [pkg.id, body.baseline] as const;
+        }),
+      );
+      setBaselineByPackage(Object.fromEntries(baselines));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not load.";
       setRepos({ status: "error", message });
@@ -149,6 +205,8 @@ export function WatchPage({ search }: { search: string }) {
           setRepos({ status: "ready", data: { repos: [] } });
           setAlerts({ status: "ready", data: { alerts: [] } });
           setPackages({ status: "ready", data: { packages: [] } });
+          setExceptions([]);
+          setBaselineByPackage({});
         }
       } catch (error) {
         if (cancelled) return;
@@ -463,6 +521,9 @@ export function WatchPage({ search }: { search: string }) {
                         {pkg.last_checked_at
                           ? ` · checked ${new Date(pkg.last_checked_at).toLocaleString()}`
                           : ""}
+                        {baselineByPackage[pkg.id]
+                          ? ` · baseline ${baselineByPackage[pkg.id]?.actorLogin} ${new Date(baselineByPackage[pkg.id]?.createdAt ?? "").toLocaleDateString()}`
+                          : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -528,6 +589,39 @@ export function WatchPage({ search }: { search: string }) {
                       <Button
                         type="button"
                         size="sm"
+                        variant="outline"
+                        disabled={previewing || ended || approvingId === pkg.id}
+                        onClick={() => {
+                          setPackageError(null);
+                          setApprovingId(pkg.id);
+                          void (async () => {
+                            try {
+                              const response = await fetch(`/api/packages/${pkg.id}/baseline`, {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "content-type": "application/json" },
+                                body: JSON.stringify({ reason: baselineReason }),
+                              });
+                              const body = (await response.json()) as { error?: string };
+                              if (!response.ok) {
+                                throw new Error(body.error ?? "Could not approve baseline.");
+                              }
+                              await refreshSignedIn();
+                            } catch (error) {
+                              setPackageError(
+                                error instanceof Error ? error.message : "Could not approve baseline.",
+                              );
+                            } finally {
+                              setApprovingId(null);
+                            }
+                          })();
+                        }}
+                      >
+                        {approvingId === pkg.id ? "Approving…" : "Approve baseline"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
                         variant="ghost"
                         disabled={previewing || ended}
                         onClick={() => {
@@ -562,11 +656,14 @@ export function WatchPage({ search }: { search: string }) {
                     <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
                       {!diffState.previous || !diffState.current || !diffState.diff ? (
                         <p className="text-sm text-mute">
-                          Need two receipts on this package before a release diff exists.
+                          {diffState.baseline
+                            ? "Current receipt is the approved baseline."
+                            : "Need two receipts, or an approved baseline, before a release diff exists."}
                         </p>
                       ) : (
                         <>
                           <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                            {diffState.versus === "baseline" ? "vs baseline · " : ""}
                             {diffState.previous.coordinate} → {diffState.current.coordinate}
                             {diffState.diff.unexpectedSizeJump ? " · unexpected size jump" : ""}
                           </p>
@@ -593,6 +690,162 @@ export function WatchPage({ search }: { search: string }) {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
+          Exceptions are exact-rule, attributable, and they expire. They never suppress a different
+          rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
+          instead of whichever scan happened last.
+        </p>
+        {!previewing && (
+          <label className="mt-6 block max-w-xl">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Baseline reason</span>
+            <input
+              value={baselineReason}
+              onChange={(event) => setBaselineReason(event.target.value)}
+              disabled={ended}
+              className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+            />
+          </label>
+        )}
+        {!previewing && (
+          <form
+            className="mt-6 grid gap-4 md:grid-cols-[7rem_1fr_1fr_8rem_auto] md:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (ended || savingAllow) return;
+              setPackageError(null);
+              setSavingAllow(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/exceptions", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      installationId: installations[0]?.id,
+                      rule: allowRule,
+                      path: allowPath,
+                      reason: allowReason,
+                      expires: allowExpires,
+                    }),
+                  });
+                  const body = (await response.json()) as { error?: string };
+                  if (!response.ok) throw new Error(body.error ?? "Could not save allowlist entry.");
+                  setAllowRule("");
+                  setAllowPath("");
+                  setAllowReason("");
+                  await refreshSignedIn();
+                } catch (error) {
+                  setPackageError(
+                    error instanceof Error ? error.message : "Could not save allowlist entry.",
+                  );
+                } finally {
+                  setSavingAllow(false);
+                }
+              })();
+            }}
+          >
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Rule</span>
+              <input
+                value={allowRule}
+                onChange={(event) => setAllowRule(event.target.value)}
+                placeholder="SRC-001"
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Path glob</span>
+              <input
+                value={allowPath}
+                onChange={(event) => setAllowPath(event.target.value)}
+                placeholder="**/*.d.ts"
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Reason</span>
+              <input
+                value={allowReason}
+                onChange={(event) => setAllowReason(event.target.value)}
+                placeholder="Published TypeScript types"
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Expires</span>
+              <input
+                type="date"
+                value={allowExpires}
+                onChange={(event) => setAllowExpires(event.target.value)}
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none focus:border-white/40"
+              />
+            </label>
+            <Button type="submit" disabled={ended || savingAllow || !allowRule.trim() || !allowReason.trim()}>
+              {savingAllow ? "Saving…" : "Allow"}
+            </Button>
+          </form>
+        )}
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Sign in to manage allowlist entries on your installations. Preview does not invent
+            packages or exceptions.
+          </p>
+        ) : exceptions.length === 0 ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No active allowlist entries.</p>
+        ) : (
+          <ul className="mt-6 divide-y divide-white/5">
+            {exceptions.map((entry) => (
+              <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
+                <div>
+                  <p className="font-mono text-sm text-snow">
+                    {entry.rule}
+                    {entry.pathPattern ? `  ${entry.pathPattern}` : "  *"}
+                  </p>
+                  <p className="mt-1 text-xs text-dim">
+                    {entry.reason} · {entry.actorLogin} · expires{" "}
+                    {entry.expiresAt.slice(0, 10)}
+                    {entry.active ? "" : " · expired"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={ended || revokingId === entry.id}
+                  onClick={() => {
+                    setPackageError(null);
+                    setRevokingId(entry.id);
+                    void (async () => {
+                      try {
+                        const response = await fetch(`/api/exceptions/${entry.id}/revoke`, {
+                          method: "POST",
+                          credentials: "include",
+                        });
+                        const body = (await response.json()) as { error?: string };
+                        if (!response.ok) throw new Error(body.error ?? "Could not revoke.");
+                        await refreshSignedIn();
+                      } catch (error) {
+                        setPackageError(error instanceof Error ? error.message : "Could not revoke.");
+                      } finally {
+                        setRevokingId(null);
+                      }
+                    })();
+                  }}
+                >
+                  {revokingId === entry.id ? "Revoking…" : "Revoke"}
+                </Button>
+              </li>
+            ))}
           </ul>
         )}
       </section>

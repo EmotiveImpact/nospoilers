@@ -74,6 +74,34 @@ export type ScanReceiptRow = {
   created_at: string;
 };
 
+export type PolicyExceptionRow = {
+  id: number;
+  installation_id: number;
+  package_id: number | null;
+  rule: string;
+  path_pattern: string | null;
+  reason: string;
+  actor_user_id: string;
+  actor_login: string;
+  expires_at: string;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  created_at: string;
+};
+
+export type ScanBaselineRow = {
+  id: number;
+  installation_id: number;
+  package_id: number | null;
+  repo_id: number | null;
+  receipt_id: number;
+  reason: string;
+  actor_user_id: string;
+  actor_login: string;
+  created_at: string;
+  superseded_at: string | null;
+};
+
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
 export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
 
@@ -222,6 +250,62 @@ function watchedPackageRow(row: {
     last_checked_at: iso(row.last_checked_at),
     last_scanned_at: iso(row.last_scanned_at),
     last_scan_status: row.last_scan_status,
+  };
+}
+
+function policyExceptionRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  rule: string;
+  path_pattern: string | null;
+  reason: string;
+  actor_user_id: string;
+  actor_login: string;
+  expires_at: string | Date;
+  revoked_at: string | Date | null;
+  revoked_by: string | null;
+  created_at: string | Date;
+}): PolicyExceptionRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: row.package_id == null ? null : num(row.package_id),
+    rule: row.rule,
+    path_pattern: row.path_pattern,
+    reason: row.reason,
+    actor_user_id: row.actor_user_id,
+    actor_login: row.actor_login,
+    expires_at: iso(row.expires_at) ?? new Date().toISOString(),
+    revoked_at: iso(row.revoked_at),
+    revoked_by: row.revoked_by,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function scanBaselineRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  repo_id: unknown;
+  receipt_id: unknown;
+  reason: string;
+  actor_user_id: string;
+  actor_login: string;
+  created_at: string | Date;
+  superseded_at: string | Date | null;
+}): ScanBaselineRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: row.package_id == null ? null : num(row.package_id),
+    repo_id: row.repo_id == null ? null : num(row.repo_id),
+    receipt_id: num(row.receipt_id),
+    reason: row.reason,
+    actor_user_id: row.actor_user_id,
+    actor_login: row.actor_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    superseded_at: iso(row.superseded_at),
   };
 }
 
@@ -1161,6 +1245,248 @@ export function createStore(
         ],
       );
       return rows.map(scanReceiptRow);
+    },
+
+    async getScanReceipt(id: number): Promise<ScanReceiptRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        artifact_bytes: unknown;
+        status: string;
+        engine_version: string;
+        manifest: unknown;
+        finding_fingerprints: unknown;
+        signature: string;
+        receipt: unknown;
+        created_at: string | Date;
+      }>(`SELECT * FROM scan_receipts WHERE id = $1`, [id]);
+      return rows[0] ? scanReceiptRow(rows[0]) : null;
+    },
+
+    async listActiveExceptions(
+      installationId: number,
+      packageId?: number | null,
+    ): Promise<PolicyExceptionRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        rule: string;
+        path_pattern: string | null;
+        reason: string;
+        actor_user_id: string;
+        actor_login: string;
+        expires_at: string | Date;
+        revoked_at: string | Date | null;
+        revoked_by: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT *
+         FROM policy_exceptions
+         WHERE installation_id = $1
+           AND revoked_at IS NULL
+           AND expires_at > now()
+           AND (package_id IS NULL OR ($2::bigint IS NOT NULL AND package_id = $2))
+         ORDER BY id ASC`,
+        [installationId, packageId ?? null],
+      );
+      return rows.map(policyExceptionRow);
+    },
+
+    async listExceptionsForUser(
+      userId: string,
+      opts: { installationId?: number; packageId?: number | null } = {},
+    ): Promise<PolicyExceptionRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        rule: string;
+        path_pattern: string | null;
+        reason: string;
+        actor_user_id: string;
+        actor_login: string;
+        expires_at: string | Date;
+        revoked_at: string | Date | null;
+        revoked_by: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT pe.*
+         FROM policy_exceptions pe
+         JOIN installation_users iu ON iu.installation_id = pe.installation_id
+         WHERE iu.user_id = $1
+           AND pe.revoked_at IS NULL
+           AND ($2::bigint IS NULL OR pe.installation_id = $2)
+           AND (
+             $3::bigint IS NULL
+             OR pe.package_id IS NULL
+             OR pe.package_id = $3
+           )
+         ORDER BY pe.created_at DESC, pe.id DESC`,
+        [userId, opts.installationId ?? null, opts.packageId ?? null],
+      );
+      return rows.map(policyExceptionRow);
+    },
+
+    async insertPolicyException(input: {
+      installationId: number;
+      packageId?: number | null;
+      rule: string;
+      pathPattern: string | null;
+      reason: string;
+      actorUserId: string;
+      actorLogin: string;
+      expiresAt: Date | string;
+    }): Promise<PolicyExceptionRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        rule: string;
+        path_pattern: string | null;
+        reason: string;
+        actor_user_id: string;
+        actor_login: string;
+        expires_at: string | Date;
+        revoked_at: string | Date | null;
+        revoked_by: string | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO policy_exceptions (
+           installation_id, package_id, rule, path_pattern, reason,
+           actor_user_id, actor_login, expires_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.packageId ?? null,
+          input.rule,
+          input.pathPattern,
+          input.reason,
+          input.actorUserId,
+          input.actorLogin,
+          input.expiresAt instanceof Date ? input.expiresAt.toISOString() : input.expiresAt,
+        ],
+      );
+      if (!rows[0]) throw new Error("policy exception insert returned no row");
+      return policyExceptionRow(rows[0]);
+    },
+
+    async revokePolicyExceptionForUser(
+      id: number,
+      userId: string,
+      revokedBy: string,
+    ): Promise<PolicyExceptionRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        rule: string;
+        path_pattern: string | null;
+        reason: string;
+        actor_user_id: string;
+        actor_login: string;
+        expires_at: string | Date;
+        revoked_at: string | Date | null;
+        revoked_by: string | null;
+        created_at: string | Date;
+      }>(
+        `UPDATE policy_exceptions pe
+         SET revoked_at = now(), revoked_by = $3
+         FROM installation_users iu
+         WHERE pe.id = $1
+           AND pe.revoked_at IS NULL
+           AND pe.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING pe.*`,
+        [id, userId, revokedBy],
+      );
+      return rows[0] ? policyExceptionRow(rows[0]) : null;
+    },
+
+    async getActiveBaseline(
+      installationId: number,
+      packageId: number,
+    ): Promise<ScanBaselineRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        receipt_id: unknown;
+        reason: string;
+        actor_user_id: string;
+        actor_login: string;
+        created_at: string | Date;
+        superseded_at: string | Date | null;
+      }>(
+        `SELECT *
+         FROM scan_baselines
+         WHERE installation_id = $1
+           AND package_id = $2
+           AND superseded_at IS NULL
+         ORDER BY id DESC
+         LIMIT 1`,
+        [installationId, packageId],
+      );
+      return rows[0] ? scanBaselineRow(rows[0]) : null;
+    },
+
+    async insertScanBaseline(input: {
+      installationId: number;
+      packageId: number;
+      repoId?: number | null;
+      receiptId: number;
+      reason: string;
+      actorUserId: string;
+      actorLogin: string;
+    }): Promise<ScanBaselineRow> {
+      return await sql.transaction(async (tx) => {
+        await tx.query(
+          `UPDATE scan_baselines
+           SET superseded_at = now()
+           WHERE installation_id = $1
+             AND package_id = $2
+             AND superseded_at IS NULL`,
+          [input.installationId, input.packageId],
+        );
+        const { rows } = await tx.query<{
+          id: unknown;
+          installation_id: unknown;
+          package_id: unknown;
+          repo_id: unknown;
+          receipt_id: unknown;
+          reason: string;
+          actor_user_id: string;
+          actor_login: string;
+          created_at: string | Date;
+          superseded_at: string | Date | null;
+        }>(
+          `INSERT INTO scan_baselines (
+             installation_id, package_id, repo_id, receipt_id, reason,
+             actor_user_id, actor_login
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [
+            input.installationId,
+            input.packageId,
+            input.repoId ?? null,
+            input.receiptId,
+            input.reason,
+            input.actorUserId,
+            input.actorLogin,
+          ],
+        );
+        if (!rows[0]) throw new Error("scan baseline insert returned no row");
+        return scanBaselineRow(rows[0]);
+      });
     },
   };
 }

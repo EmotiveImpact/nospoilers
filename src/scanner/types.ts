@@ -18,6 +18,29 @@ export type ManifestEntry = {
   sha256: string;
 };
 
+export type PolicyException = {
+  rule: string;
+  pathPattern: string | null;
+  reason: string;
+  expiresAt: string;
+  actor: string;
+};
+
+export type ScanPolicyShape = {
+  version: number;
+  strict: boolean;
+  exceptions: PolicyException[];
+};
+
+export type SuppressedFinding = {
+  finding: Finding;
+  rule: string;
+  pathPattern: string | null;
+  reason: string;
+  expiresAt: string;
+  actor: string;
+};
+
 export type ScanReport = {
   target: string;
   kind: ScanTargetKind;
@@ -32,10 +55,13 @@ export type ScanReport = {
   artifactSha512: string | null;
   artifactBytes: number | null;
   scannedAt: string;
+  suppressed: SuppressedFinding[];
+  policyHash: string | null;
 };
 
 export type ScanOptions = {
   strict?: boolean;
+  policy?: ScanPolicyShape | null;
   maxInputBytes?: number;
   maxUnpackedBytes?: number;
   maxFiles?: number;

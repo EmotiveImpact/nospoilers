@@ -49,15 +49,15 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Planned | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Planned | NoSpoilers |
-| Pre-publish CI gate | Partial: Action exists | NoSpoilers |
+| Pre-publish CI gate | Partial: Action exists; optional `policy` input | NoSpoilers |
 | App-generated setup PR | Planned | NoSpoilers |
 | GitHub Checks and annotations | Planned | NoSpoilers |
 | Required-check setup guidance | Planned | NoSpoilers |
 | Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
-| Release Diff between approved versions | Built: last two receipts on a watched package | NoSpoilers |
-| Baseline approval | Planned | NoSpoilers |
-| Path/rule allowlist with expiry and reason | Planned | NoSpoilers |
-| `.nospoilers.yml` policy file | Planned | NoSpoilers |
+| Release Diff between approved versions | Built: approved baseline receipt if present, else last two | NoSpoilers |
+| Baseline approval | Built: attributable `scan_baselines`, supersedes the previous | NoSpoilers |
+| Path/rule allowlist with expiry and reason | Built: exact-rule, expiring, never silent DELETE | NoSpoilers |
+| `.nospoilers.yml` policy file | Built: CLI/Action + hosted DB exceptions | NoSpoilers |
 | Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
 | Nested archive scanning | Partial: nested tgz/zip/asar flagged (ARC-001), not unpacked | NoSpoilers |

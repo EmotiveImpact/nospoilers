@@ -9,6 +9,7 @@ import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
 import type { NpmPort } from "./npm.ts";
 import { isPackAssetName } from "./paths.ts";
+import { applyHostedPolicy } from "./hosted-policy.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
@@ -66,6 +67,8 @@ function inconclusiveReport(reason: string, extra: Partial<ScanReport> = {}): Sc
     artifactSha512: extra.artifactSha512 ?? null,
     artifactBytes: extra.artifactBytes ?? null,
     scannedAt: extra.scannedAt ?? new Date().toISOString(),
+    suppressed: extra.suppressed ?? [],
+    policyHash: extra.policyHash ?? null,
   };
 }
 
@@ -241,7 +244,11 @@ export async function handleJob(
         try {
           const bytes = await deps.github.downloadAsset(installationId, asset.url, deps.maxAssetBytes);
           await writeFile(dest, bytes);
-          report = await deps.scan(dest);
+          report = await applyHostedPolicy(
+            deps.store,
+            await deps.scan(dest),
+            installationId,
+          );
         } finally {
           await rm(dir, { recursive: true, force: true });
         }
@@ -249,6 +256,9 @@ export async function handleJob(
       statuses.push(report.status);
       allFindings.push(...report.findings);
       notes.push(noteForAsset(asset.name, report));
+      if (report.suppressed.length > 0) {
+        notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
+      }
       if (deps.receiptSecret) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -258,7 +268,7 @@ export async function handleJob(
           coordinate,
           report,
         });
-        const diffNote = summarizeDiff(persisted.diff);
+        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
         if (report.artifactSha256) notes.push(`sha256 ${report.artifactSha256}`);
       }
@@ -303,7 +313,12 @@ export async function handleJob(
       const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
-      const report = await deps.scan(dest);
+      const report = await applyHostedPolicy(
+        deps.store,
+        await deps.scan(dest),
+        installationId,
+        Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+      );
       const status = report.status;
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
       if (Number.isFinite(packageId) && packageId > 0) {
@@ -320,6 +335,9 @@ export async function handleJob(
             : "No critical findings.",
         `sha256 ${report.artifactSha256 ?? sha256}`,
       ];
+      if (report.suppressed.length > 0) {
+        notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
+      }
       if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -329,7 +347,7 @@ export async function handleJob(
           coordinate: `npm:${packageName}@${version}`,
           report,
         });
-        const diffNote = summarizeDiff(persisted.diff);
+        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
       }
       await deps.notifier.send({

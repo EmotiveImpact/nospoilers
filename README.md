@@ -151,11 +151,25 @@ Where to install: **Install App** on your user or org, only the throwaway repo u
 
 ```bash
 npx tsx src/cli.ts scan ./package.tgz
-npx tsx src/cli.ts scan ./release/app.asar
-npx tsx src/cli.ts scan ./dist
+npx tsx src/cli.ts scan ./release/app.asar --policy .nospoilers.yml
+npx tsx src/cli.ts scan ./dist --no-policy
 ```
 
 Exit codes: `0` clean (warnings only unless `--strict`), `1` critical spoilers, `2` could not read the path.
+
+If `.nospoilers.yml` exists in the current directory, `scan` loads it unless `--no-policy` is set.
+Allow entries must name one rule, a reason (≥8 characters), and a future expiry (≤730 days).
+They never suppress a different rule.
+
+```yaml
+version: 1
+strict: false
+allow:
+  - rule: SRC-001
+    path: "**/*.d.ts"
+    reason: Published TypeScript types
+    expires: 2027-12-01
+```
 
 ## GitHub Action
 
@@ -164,6 +178,7 @@ Exit codes: `0` clean (warnings only unless `--strict`), `1` critical spoilers, 
   with:
     path: ./package.tgz
     sarif: nospoilers.sarif
+    policy: .nospoilers.yml
 ```
 
 On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It does **not** unpack the git tree. Full unpack is for **release assets** (and the dashboard **Scan latest release** button).
@@ -186,6 +201,11 @@ On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It 
 | SRC-001 | warn | `.ts` / `.tsx` / `.jsx` source (not `.d.ts`) |
 | SIZE-001 | warn | A packed file is 10 MB or larger |
 | SIZE-002 | warn | Unpacked payload is 50 MB or larger |
+| ARC-001 | warn | Nested `.tgz` / `.zip` / `.asar` inside the pack (not unpacked) |
+| BAK-001 | warn | Backup copy (`*.bak`, `*~`, `.backup`) |
+| DB-001 | critical | Database dump packed into the artifact |
+| DOC-001 | warn | Internal ROADMAP/HANDOFF/TODO/PRD filename |
+| LNK-001 | critical | Absolute or `..` symlink; the link is not followed |
 
 Credential values are never included in reports. Default safety limits are 80 MiB input, 500 MiB
 unpacked, 25,000 files, 25 MiB per file, and 90 seconds. Exceeding a hard limit stops the scan

@@ -6,7 +6,9 @@ import {
   type ReleaseDiff,
 } from "../release-diff.ts";
 import type { ScanReport } from "../scanner/types.ts";
-import type { ScanReceiptRow, Store } from "./store.ts";
+import type { ScanBaselineRow, ScanReceiptRow, Store } from "./store.ts";
+
+export type ReceiptCompareKind = "baseline" | "previous";
 
 export async function persistHostedReceipt(opts: {
   store: Store;
@@ -16,18 +18,37 @@ export async function persistHostedReceipt(opts: {
   repoId?: number | null;
   coordinate: string;
   report: ScanReport;
-}): Promise<{ row: ScanReceiptRow; receipt: SignedReceipt; diff: ReleaseDiff | null }> {
+}): Promise<{
+  row: ScanReceiptRow;
+  receipt: SignedReceipt;
+  diff: ReleaseDiff | null;
+  comparedTo: ReceiptCompareKind | null;
+  baseline: ScanBaselineRow | null;
+}> {
   const unsigned = buildUnsignedReceipt(opts.report, opts.coordinate);
   const receipt = signReceipt(unsigned, opts.secret);
-  const previous = (
-    await opts.store.latestScanReceipts({
-      installationId: opts.installationId,
-      packageId: opts.packageId ?? null,
-      repoId: opts.packageId ? null : (opts.repoId ?? null),
-      coordinate: opts.packageId ? null : opts.coordinate,
-      limit: 1,
-    })
-  )[0];
+  const baseline =
+    opts.packageId != null
+      ? await opts.store.getActiveBaseline(opts.installationId, opts.packageId)
+      : null;
+  const baselineReceipt = baseline ? await opts.store.getScanReceipt(baseline.receipt_id) : null;
+  const previous =
+    baselineReceipt ??
+    (
+      await opts.store.latestScanReceipts({
+        installationId: opts.installationId,
+        packageId: opts.packageId ?? null,
+        repoId: opts.packageId ? null : (opts.repoId ?? null),
+        coordinate: opts.packageId ? null : opts.coordinate,
+        limit: 1,
+      })
+    )[0] ??
+    null;
+  const comparedTo: ReceiptCompareKind | null = baselineReceipt
+    ? "baseline"
+    : previous
+      ? "previous"
+      : null;
   const row = await opts.store.insertScanReceipt({
     installationId: opts.installationId,
     packageId: opts.packageId ?? null,
@@ -40,13 +61,17 @@ export async function persistHostedReceipt(opts: {
         diffFingerprints(previous.finding_fingerprints, receipt.findingFingerprints),
       )
     : null;
-  return { row, receipt, diff };
+  return { row, receipt, diff, comparedTo, baseline };
 }
 
-export function summarizeDiff(diff: ReleaseDiff | null): string {
+export function summarizeDiff(
+  diff: ReleaseDiff | null,
+  comparedTo: ReceiptCompareKind | null = "previous",
+): string {
   if (!diff) return "";
+  const label = comparedTo === "baseline" ? "approved baseline" : "previous";
   const parts = [
-    `Diff vs previous: +${diff.added.length} -${diff.removed.length} ~${diff.changed.length} (${diff.sizeDelta >= 0 ? "+" : ""}${diff.sizeDelta} bytes).`,
+    `Diff vs ${label}: +${diff.added.length} -${diff.removed.length} ~${diff.changed.length} (${diff.sizeDelta >= 0 ? "+" : ""}${diff.sizeDelta} bytes).`,
   ];
   if (diff.unexpectedSizeJump) parts.push("Unexpected size jump.");
   if (diff.newFindings.length > 0) {

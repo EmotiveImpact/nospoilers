@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Command } from "commander";
+import { loadPolicyFile } from "./policy.ts";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
 import { receiptSecretFromEnv, verifyReceipt } from "./receipt.ts";
 
@@ -18,10 +21,25 @@ program
   .option("--strict", "Fail on warnings as well as critical findings", false)
   .option("--json", "Print the report as JSON", false)
   .option("--sarif <file>", "Write a SARIF 2.1 report to this path")
+  .option("--policy <file>", "Load a .nospoilers.yml or JSON policy file")
+  .option("--no-policy", "Do not load .nospoilers.yml from the current directory")
   .action(
-    async (target: string, opts: { strict?: boolean; json?: boolean; sarif?: string }) => {
+    async (
+      target: string,
+      opts: { strict?: boolean; json?: boolean; sarif?: string; policy?: string | boolean },
+    ) => {
       try {
-        const report = await scan(target, { strict: Boolean(opts.strict) });
+        let policyPath: string | null = null;
+        if (opts.policy === false) {
+          policyPath = null;
+        } else if (typeof opts.policy === "string" && opts.policy.length > 0) {
+          policyPath = opts.policy;
+        } else {
+          const auto = path.join(process.cwd(), ".nospoilers.yml");
+          if (existsSync(auto)) policyPath = auto;
+        }
+        const policy = policyPath ? await loadPolicyFile(policyPath) : null;
+        const report = await scan(target, { strict: Boolean(opts.strict), policy });
         if (opts.sarif) {
           await writeFile(opts.sarif, `${JSON.stringify(toSarif(report), null, 2)}\n`);
         }

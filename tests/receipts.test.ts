@@ -67,6 +67,8 @@ function passedReport(overrides: Partial<ScanReport> = {}): ScanReport {
     artifactSha512: "cc".repeat(64),
     artifactBytes: 12,
     scannedAt: "2026-09-01T00:00:00.000Z",
+    suppressed: [],
+    policyHash: null,
     ...overrides,
   };
 }

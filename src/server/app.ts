@@ -6,6 +6,7 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { bestCoverage, coverageFrom } from "../coverage.ts";
 import { ENGINE_VERSION, scan } from "../scanner/index.ts";
+import { validateExceptionInput } from "../policy.ts";
 import { verifyReceipt } from "../receipt.ts";
 import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
 import type { AppConfig } from "./config.ts";
@@ -21,7 +22,7 @@ import {
   inspectAndQueueRepository,
 } from "./prospects.ts";
 import type { Store } from "./store.ts";
-import type { ProspectStatus } from "./store.ts";
+import type { PolicyExceptionRow, ProspectStatus } from "./store.ts";
 import { readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
 
@@ -61,6 +62,23 @@ function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 409 {
     }
   }
   return 400;
+}
+
+function publicException(row: PolicyExceptionRow) {
+  const expires = Date.parse(row.expires_at);
+  return {
+    id: row.id,
+    installationId: row.installation_id,
+    packageId: row.package_id,
+    rule: row.rule,
+    pathPattern: row.path_pattern,
+    reason: row.reason,
+    actorLogin: row.actor_login,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at,
+    createdAt: row.created_at,
+    active: !row.revoked_at && Number.isFinite(expires) && expires > Date.now(),
+  };
 }
 
 export function createApp(deps: AppDeps): Hono {
@@ -296,6 +314,8 @@ export function createApp(deps: AppDeps): Hono {
           artifactSha512: createHash("sha512").update(buf).digest("hex"),
           artifactBytes: buf.length,
           scannedAt: new Date().toISOString(),
+          suppressed: [],
+          policyHash: null,
         });
       }
       const dir = path.join(os.tmpdir(), "nospoilers-upload");
@@ -561,15 +581,18 @@ export function createApp(deps: AppDeps): Hono {
     if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
       return c.json({ error: "Unknown package." }, 404);
     }
-    const rows = await deps.store.latestScanReceipts({
+    const baseline = await deps.store.getActiveBaseline(pkg.installation_id, pkg.id);
+    const latest = await deps.store.latestScanReceipts({
       installationId: pkg.installation_id,
       packageId: pkg.id,
       limit: 2,
     });
-    const current = rows[0] ?? null;
-    const previous = rows[1] ?? null;
+    const current = latest[0] ?? null;
+    const baselineReceipt = baseline ? await deps.store.getScanReceipt(baseline.receipt_id) : null;
+    const previous = baselineReceipt ?? latest[1] ?? null;
+    const comparedTo = baselineReceipt ? "baseline" : previous ? "previous" : null;
     const diff =
-      current && previous
+      current && previous && current.id !== previous.id
         ? mergeReleaseDiff(
             diffManifests(previous.manifest, current.manifest),
             diffFingerprints(previous.finding_fingerprints, current.finding_fingerprints),
@@ -577,6 +600,16 @@ export function createApp(deps: AppDeps): Hono {
         : null;
     return c.json({
       package: { id: pkg.id, package_name: pkg.package_name },
+      versus: comparedTo,
+      baseline: baseline
+        ? {
+            id: baseline.id,
+            receiptId: baseline.receipt_id,
+            reason: baseline.reason,
+            actorLogin: baseline.actor_login,
+            createdAt: baseline.created_at,
+          }
+        : null,
       current: current
         ? {
             id: current.id,
@@ -597,6 +630,171 @@ export function createApp(deps: AppDeps): Hono {
         : null,
       diff,
     });
+  });
+
+  app.get("/api/packages/:id/baseline", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const baseline = await deps.store.getActiveBaseline(pkg.installation_id, pkg.id);
+    return c.json({
+      baseline: baseline
+        ? {
+            id: baseline.id,
+            receiptId: baseline.receipt_id,
+            reason: baseline.reason,
+            actorLogin: baseline.actor_login,
+            createdAt: baseline.created_at,
+          }
+        : null,
+    });
+  });
+
+  app.post("/api/packages/:id/baseline", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    if (!(await deps.store.installationWorkAllowed(pkg.installation_id))) {
+      return c.json({ error: "Coverage ended. Subscribe to approve baselines." }, 402);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    if (reason.length < 8) {
+      return c.json({ error: "Baseline reason must be at least 8 characters." }, 400);
+    }
+    const requested = Number(body.receiptId);
+    const latest = await deps.store.latestScanReceipts({
+      installationId: pkg.installation_id,
+      packageId: pkg.id,
+      limit: 1,
+    });
+    const receiptId = Number.isFinite(requested) && requested > 0 ? requested : (latest[0]?.id ?? NaN);
+    if (!Number.isFinite(receiptId) || receiptId <= 0) {
+      return c.json({ error: "Scan this package once before approving a baseline." }, 400);
+    }
+    const receipt = await deps.store.getScanReceipt(receiptId);
+    if (
+      !receipt ||
+      receipt.installation_id !== pkg.installation_id ||
+      receipt.package_id !== pkg.id
+    ) {
+      return c.json({ error: "Unknown receipt for this package." }, 404);
+    }
+    const baseline = await deps.store.insertScanBaseline({
+      installationId: pkg.installation_id,
+      packageId: pkg.id,
+      repoId: receipt.repo_id,
+      receiptId: receipt.id,
+      reason,
+      actorUserId: user.userId,
+      actorLogin: user.login,
+    });
+    return c.json(
+      {
+        ok: true,
+        baseline: {
+          id: baseline.id,
+          receiptId: baseline.receipt_id,
+          reason: baseline.reason,
+          actorLogin: baseline.actor_login,
+          createdAt: baseline.created_at,
+        },
+      },
+      201,
+    );
+  });
+
+  app.get("/api/exceptions", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.query("installationId"));
+    const packageId = Number(c.req.query("packageId"));
+    const exceptions = await deps.store.listExceptionsForUser(user.userId, {
+      installationId: Number.isFinite(installationId) && installationId > 0 ? installationId : undefined,
+      packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : undefined,
+    });
+    return c.json({ exceptions: exceptions.map(publicException) });
+  });
+
+  app.post("/api/exceptions", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for this allowlist entry." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    if (!(await deps.store.installationWorkAllowed(installationId))) {
+      return c.json({ error: "Coverage ended. Subscribe to manage allowlists." }, 402);
+    }
+    const packageIdRaw = Number(body.packageId);
+    const packageId = Number.isFinite(packageIdRaw) && packageIdRaw > 0 ? packageIdRaw : null;
+    if (packageId) {
+      const pkg = await deps.store.getWatchedPackage(packageId);
+      if (!pkg || pkg.installation_id !== installationId) {
+        return c.json({ error: "Unknown package for this installation." }, 404);
+      }
+    }
+    try {
+      const parsed = validateExceptionInput({
+        rule: String(body.rule ?? ""),
+        pathPattern: typeof body.path === "string" ? body.path : typeof body.pathPattern === "string" ? body.pathPattern : null,
+        reason: String(body.reason ?? ""),
+        expiresAt: String(body.expires ?? body.expiresAt ?? ""),
+        actor: user.login,
+      });
+      const row = await deps.store.insertPolicyException({
+        installationId,
+        packageId,
+        rule: parsed.rule,
+        pathPattern: parsed.pathPattern,
+        reason: parsed.reason,
+        actorUserId: user.userId,
+        actorLogin: user.login,
+        expiresAt: parsed.expiresAt,
+      });
+      return c.json({ ok: true, exception: publicException(row) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that allowlist entry." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.post("/api/exceptions/:id/revoke", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown allowlist entry." }, 404);
+    const existing = (
+      await deps.store.listExceptionsForUser(user.userId)
+    ).find((row) => row.id === id);
+    if (!existing) return c.json({ error: "Unknown allowlist entry." }, 404);
+    if (!(await deps.store.installationWorkAllowed(existing.installation_id))) {
+      return c.json({ error: "Coverage ended. Subscribe to manage allowlists." }, 402);
+    }
+    const row = await deps.store.revokePolicyExceptionForUser(id, user.userId, user.login);
+    if (!row) return c.json({ error: "Unknown allowlist entry." }, 404);
+    return c.json({ ok: true, exception: publicException(row) });
   });
 
   app.get("/api/receipts", async (c) => {

@@ -36,7 +36,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - See Watch data for installations linked to their account.
 - Connect and watch public npm packages on those installations while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
-- Read signed scan receipts for those installations and diff the last two receipts on a watched package.
+- Read signed scan receipts for those installations and diff against an approved baseline
+  (or the last two receipts if none is approved).
+- Manage expiring allowlist exceptions and approve scan baselines on those installations.
+  Until Team roles ship, every signed-in customer is treated as a Member who can do this
+  on installations they belong to.
 - View their own coverage status.
 - Use Scan under the same coverage rules as the rest of the hosted product.
 
@@ -58,7 +62,7 @@ A member who can manage the customer’s GitHub installation membership and prod
 
 - Invite/remove members on their billing account.
 - Configure routing destinations they pay for (email now; Slack/Jira/SIEM on Team).
-- Manage `.nospoilers.yml`, baselines, and allowlists for their artifacts.
+- Restrict who may manage `.nospoilers.yml`, baselines, and allowlists (Members do this today).
 
 **Must not**
 
@@ -142,5 +146,7 @@ These are never customer features:
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads. `tests/receipts.test.ts` proves customers cannot read another
-tenant’s receipts and that receipts cannot be patched. Keep those tests green when adding
-internal routes.
+tenant’s receipts and that receipts cannot be patched. `tests/policy.test.ts` proves
+allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
+the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
+Keep those tests green when adding internal routes.

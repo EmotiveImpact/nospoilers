@@ -356,6 +356,28 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
           ))}
         </ul>
       )}
+      {report.suppressed && report.suppressed.length > 0 ? (
+        <div className="mt-8 border-t border-white/5 pt-6">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">
+            Suppressed by policy · {report.suppressed.length}
+          </p>
+          <ul className="mt-4 divide-y divide-white/5">
+            {report.suppressed.map((row) => (
+              <li
+                key={`${row.finding.rule}-${row.finding.path}-${row.reason}`}
+                className="py-3 first:pt-0"
+              >
+                <p className="font-mono text-xs text-dim">
+                  {row.finding.rule} · {row.finding.path}
+                </p>
+                <p className="mt-1 text-xs text-mute">
+                  {row.reason} · {row.actor} · expires {row.expiresAt.slice(0, 10)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
+import { applyPolicy } from "../policy.ts";
 import { INSPECT_BYTES, inspectEntry, linkFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
 import {
   ScanInconclusiveError,
@@ -350,10 +351,21 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     artifactSha512,
     artifactBytes,
     scannedAt: new Date().toISOString(),
+    suppressed: [],
+    policyHash: null,
   });
 
+  const withPolicy = (report: ScanReport): ScanReport => {
+    const policy = options.policy
+      ? { ...options.policy, strict: Boolean(options.strict || options.policy.strict) }
+      : options.strict
+        ? { version: 1, strict: true, exceptions: [] }
+        : null;
+    return applyPolicy(report, policy);
+  };
+
   if (!info.isDirectory() && info.size > limits.maxInputBytes) {
-    return inconclusive(`Input is larger than the ${limits.maxInputBytes} byte scan limit.`);
+    return withPolicy(inconclusive(`Input is larger than the ${limits.maxInputBytes} byte scan limit.`));
   }
 
   try {
@@ -404,7 +416,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     const ok = options.strict ? findings.length === 0 : critical.length === 0;
     const status: ScanStatus = ok ? "passed" : "failed-policy";
 
-    return {
+    return withPolicy({
       target: resolved,
       kind,
       fileCount,
@@ -418,10 +430,12 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       artifactSha512,
       artifactBytes,
       scannedAt: new Date().toISOString(),
-    };
+      suppressed: [],
+      policyHash: null,
+    });
   } catch (error) {
     if (error instanceof ScanInconclusiveError) {
-      return inconclusive(error.message);
+      return withPolicy(inconclusive(error.message));
     }
     throw error;
   }
@@ -439,17 +453,29 @@ export function formatReport(report: ScanReport): string {
     lines.push("This is not a clean bill of health. No passing receipt.");
     return lines.join("\n");
   }
+  if (report.policyHash) {
+    lines.push(`policy ${report.policyHash.slice(0, 12)}`);
+  }
   if (report.findings.length === 0) {
     lines.push("Clean. This artifact is allowed to ship.");
-    return lines.join("\n");
-  }
-  for (const finding of report.findings) {
+  } else {
+    for (const finding of report.findings) {
+      lines.push("");
+      lines.push(`[${finding.severity.toUpperCase()}] ${finding.rule}  ${finding.path}`);
+      lines.push(`  ${finding.title}`);
+      lines.push(`  ${finding.detail}`);
+    }
     lines.push("");
-    lines.push(`[${finding.severity.toUpperCase()}] ${finding.rule}  ${finding.path}`);
-    lines.push(`  ${finding.title}`);
-    lines.push(`  ${finding.detail}`);
+    lines.push(report.ok ? "Warnings only (pass unless --strict)." : "Failed. Spoilers in the pack.");
   }
-  lines.push("");
-  lines.push(report.ok ? "Warnings only (pass unless --strict)." : "Failed. Spoilers in the pack.");
+  if (report.suppressed.length > 0) {
+    lines.push("");
+    lines.push(`Suppressed by policy (${report.suppressed.length}):`);
+    for (const row of report.suppressed) {
+      lines.push(
+        `  ${row.finding.rule}  ${row.finding.path}  ${row.reason} (expires ${row.expiresAt.slice(0, 10)}, ${row.actor})`,
+      );
+    }
+  }
   return lines.join("\n");
 }

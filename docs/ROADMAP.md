@@ -27,6 +27,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Public npm package watching: connect a pack, scan `latest`, detect the next version.
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.
+- `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

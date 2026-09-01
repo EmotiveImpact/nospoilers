@@ -24,6 +24,9 @@ export type UnsignedReceipt = {
   manifest: ManifestEntry[];
   sizeBytes: number;
   maxSeverity: Finding["severity"] | null;
+  policyHash: string | null;
+  suppressedCount: number;
+  suppressedFingerprints: string[];
 };
 
 export type SignedReceipt = UnsignedReceipt & {
@@ -114,6 +117,11 @@ export function buildUnsignedReceipt(report: ScanReport, coordinate: string): Un
     manifest: sortedManifest(report.manifest),
     sizeBytes: sizeBytesOf(report),
     maxSeverity: maxSeverityOf(report.findings),
+    policyHash: report.policyHash ?? null,
+    suppressedCount: report.suppressed?.length ?? 0,
+    suppressedFingerprints: (report.suppressed ?? [])
+      .map((row) => findingFingerprint(row.finding))
+      .sort(),
   };
 }
 

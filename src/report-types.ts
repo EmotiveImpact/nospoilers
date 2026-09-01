@@ -30,4 +30,6 @@ export type ScanReport = {
   artifactSha512?: string | null
   artifactBytes?: number | null
   scannedAt: string
+  suppressed?: { finding: Finding; reason: string; expiresAt: string; actor: string }[]
+  policyHash?: string | null
 }

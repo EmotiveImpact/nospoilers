@@ -12,6 +12,10 @@ inputs:
     description: Also fail on warnings (TypeScript source packed, size spikes, etc.)
     required: false
     default: "false"
+  policy:
+    description: Path to .nospoilers.yml or JSON policy. Empty uses workspace .nospoilers.yml if present.
+    required: false
+    default: ""
   sarif:
     description: Workspace-relative path to write a SARIF 2.1 report. Empty skips the file.
     required: false
@@ -49,4 +53,15 @@ runs:
           esac
           SARIF_ARGS="--sarif $SARIF_PATH"
         fi
-        npx tsx src/cli.ts scan "$TARGET" $EXTRA $SARIF_ARGS
+        POLICY_ARGS=""
+        if [ -n "${{ inputs.policy }}" ]; then
+          POLICY_PATH="${{ inputs.policy }}"
+          case "$POLICY_PATH" in
+            /*) ;;
+            *) POLICY_PATH="${GITHUB_WORKSPACE}/${POLICY_PATH}" ;;
+          esac
+          POLICY_ARGS="--policy $POLICY_PATH"
+        elif [ -f "${GITHUB_WORKSPACE}/.nospoilers.yml" ]; then
+          POLICY_ARGS="--policy ${GITHUB_WORKSPACE}/.nospoilers.yml"
+        fi
+        npx tsx src/cli.ts scan "$TARGET" $EXTRA $SARIF_ARGS $POLICY_ARGS

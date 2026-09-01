@@ -176,3 +176,39 @@ CREATE INDEX IF NOT EXISTS scan_receipts_repo_idx
 CREATE INDEX IF NOT EXISTS scan_receipts_coordinate_idx
   ON scan_receipts (installation_id, coordinate, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS policy_exceptions (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT REFERENCES watched_packages (id) ON DELETE CASCADE,
+  rule TEXT NOT NULL,
+  path_pattern TEXT,
+  reason TEXT NOT NULL,
+  actor_user_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  actor_login TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  revoked_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS policy_exceptions_active_idx
+  ON policy_exceptions (installation_id, package_id, expires_at)
+  WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS scan_baselines (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT REFERENCES watched_packages (id) ON DELETE CASCADE,
+  repo_id BIGINT REFERENCES repos (id) ON DELETE SET NULL,
+  receipt_id BIGINT NOT NULL REFERENCES scan_receipts (id) ON DELETE RESTRICT,
+  reason TEXT NOT NULL,
+  actor_user_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  actor_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  superseded_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS scan_baselines_package_idx
+  ON scan_baselines (package_id, created_at DESC)
+  WHERE package_id IS NOT NULL AND superseded_at IS NULL;
+
