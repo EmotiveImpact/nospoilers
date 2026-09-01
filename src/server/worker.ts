@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { ENGINE_VERSION, scan, type ScanReport } from "../scanner/index.ts";
@@ -17,6 +17,8 @@ import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { inferReleaseChannel } from "./release-ledger.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
+import type { WebhookHostLookup } from "./siem.ts";
+import { crawlOrigin, WebCrawlError, type WebCrawlOpts } from "./web-origin.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
 
@@ -101,6 +103,8 @@ export async function handleJob(
     maxAssetBytes: number;
     npm?: NpmPort;
     receiptSecret?: string;
+    webFetch?: typeof fetch;
+    webLookup?: WebhookHostLookup;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
@@ -452,6 +456,122 @@ export async function handleJob(
       await rm(dir, { recursive: true, force: true });
     }
   }
+
+  if (job.kind === "web_origin_scan") {
+    const originId = Number(payload.originId);
+    const url = String(payload.url ?? "");
+    const origin = Number.isFinite(originId) && originId > 0
+      ? await deps.store.getWatchedOrigin(originId)
+      : null;
+    if (!origin) return;
+    const crawlOpts: WebCrawlOpts = {
+      fetch: deps.webFetch,
+      lookup: deps.webLookup,
+    };
+    const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-web-"));
+    try {
+      const crawled = await crawlOrigin(url || origin.origin_url, crawlOpts);
+      if (origin.last_sha256 && origin.last_sha256 === crawled.sha256 && !crawled.truncated) {
+        await deps.store.touchWatchedOrigin(origin.id);
+        return;
+      }
+      for (const file of crawled.files) {
+        const dest = path.join(dir, file.rel);
+        await mkdir(path.dirname(dest), { recursive: true });
+        await writeFile(dest, file.bytes);
+      }
+      let report = await applyHostedPolicy(
+        deps.store,
+        await deps.scan(dir),
+        installationId,
+        null,
+      );
+      if (crawled.truncated) {
+        report = {
+          ...report,
+          ok: false,
+          status: "inconclusive",
+          inconclusiveReason:
+            "Crawl stopped at the asset or size limit. This is not a clean bill of health.",
+        };
+      }
+      report = {
+        ...report,
+        artifactSha256: crawled.sha256,
+        artifactBytes: crawled.files.reduce((sum, file) => sum + file.bytes.length, 0),
+      };
+      await deps.store.recordWatchedOriginScan(origin.id, {
+        sha256: crawled.sha256,
+        status: report.status,
+      });
+      const critical = report.findings.filter((finding) => finding.severity === "critical").length;
+      const notes = [
+        report.status === "inconclusive"
+          ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
+          : critical > 0
+            ? `${critical} critical finding(s).`
+            : "No critical findings.",
+        `sha256 ${crawled.sha256}`,
+        `${crawled.files.length} file(s) from ${origin.host}. Source was deleted after the scan.`,
+      ];
+      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.receiptSecret,
+          installationId,
+          coordinate: `web:${origin.origin_url}`,
+          report,
+          channel: "stable",
+          sourceRevision: crawled.sha256.slice(0, 12),
+        });
+        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
+        if (diffNote) notes.push(diffNote);
+      }
+      await deps.notifier.send({
+        ...alertBase,
+        kind: job.kind,
+        title: titleForScan(
+          report.status,
+          `${origin.host} is allowed to ship`,
+          `Spoilers on ${origin.host}`,
+          `Inconclusive crawl of ${origin.host}`,
+        ),
+        body: notes.join(" "),
+        findings: report.findings,
+      });
+    } catch (error) {
+      const message =
+        error instanceof WebCrawlError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      const report = inconclusiveReport(message);
+      await deps.store.recordWatchedOriginScan(origin.id, {
+        sha256: null,
+        status: "inconclusive",
+      });
+      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
+        await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.receiptSecret,
+          installationId,
+          coordinate: `web:${origin.origin_url}`,
+          report,
+          channel: "stable",
+        });
+      }
+      await deps.notifier.send({
+        ...alertBase,
+        kind: job.kind,
+        title: `Inconclusive crawl of ${origin.host}`,
+        body: `${message} This is not a clean bill of health.`,
+      });
+      if (!(error instanceof WebCrawlError)) throw error;
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
 }
 
 export function createWorker(opts: {
@@ -466,6 +586,8 @@ export function createWorker(opts: {
   staleAfterMs?: number;
   npm?: NpmPort;
   receiptSecret?: string;
+  webFetch?: typeof fetch;
+  webLookup?: WebhookHostLookup;
   onJob?: (job: JobRow) => Promise<void>;
 }) {
   const scanFn = opts.scan ?? scan;
@@ -504,6 +626,8 @@ export function createWorker(opts: {
           maxAssetBytes: opts.maxAssetBytes,
           npm: opts.npm,
           receiptSecret: opts.receiptSecret,
+          webFetch: opts.webFetch,
+          webLookup: opts.webLookup,
         });
       }
       await opts.store.finishJob(job.id);

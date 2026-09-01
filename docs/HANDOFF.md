@@ -26,13 +26,14 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-four product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-five product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
-  `019_audit_events`, `020_identity_signals`, and `021_retention_policies` are applied. Hosted
+  `019_audit_events`, `020_identity_signals`, `021_retention_policies`, and
+  `022_watched_origins` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -48,7 +49,9 @@ Read in this order:
   Lists use `row_within_retention`; append-only evidence is never deleted by that window.
   Live permission tests store JSON on the installation,
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
-  liveness from `/api/health`. Development receipts use `RECEIPT_SECRET`
+  liveness from `/api/health`. Watched production websites are HTTPS origins; the crawler fetches
+  HTML plus same-origin JS/CSS/maps, never executes JavaScript, and deletes bytes after the scan.
+  Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
   move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
@@ -207,6 +210,8 @@ Extra packed formats are in (VSIX/CRX/XPI/wheel/JAR/nupkg/gem; ZIP/tar magic; CR
 stripped; encrypted zip and CRX-without-ZIP inconclusive; zip-slip ARC-002 not unpacked for
 content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not advertised as a
 Pricing change.
+Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps, SSRF-blocked, never
+executed, event-driven enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

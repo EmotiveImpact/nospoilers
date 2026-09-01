@@ -113,7 +113,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | --- | --- | --- |
 | GitHub Release assets | Built/partial real proof | NoSpoilers |
 | npm registry packages | Partial: customer watch of public `latest` tarball | NoSpoilers |
-| Production website JS/CSS/assets | Planned | NoSpoilers |
+| Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps, SSRF blocked, never executed | NoSpoilers |
 | Sentry source-map custody | Planned | NoSpoilers |
 | Bugsnag source-map custody | Planned | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, hostile fixture, GitHub Release asset, Scan example | NoSpoilers |

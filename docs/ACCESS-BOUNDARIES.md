@@ -42,6 +42,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user belongs to more than one. Coverage and GitHub suspend are enforced on that
   install, not on a sibling org.
 - Connect and watch public npm packages on those installations while coverage is active.
+- Connect and watch public HTTPS production websites on those installations while coverage is
+  active. The crawler fetches the named page, then same-origin JavaScript, CSS, and maps.
+  Local, private, and metadata hosts are blocked. JavaScript is not executed. Unwatch requires
+  typing the origin URL. Unpaid returns 402. Another tenant’s origin is 404 or empty.
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
   repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
@@ -107,7 +111,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
-- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.

@@ -26,6 +26,7 @@ import {
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
 import { checkWatchedPackage, connectWatchedPackage, protectWatchedPackage } from "./npm-watch.ts";
+import { checkWatchedOrigin, connectWatchedOrigin } from "./web-watch.ts";
 import {
   isPublicNpmOrigin,
   MAX_NPM_REGISTRIES,
@@ -1762,6 +1763,100 @@ export function createApp(deps: AppDeps): Hono {
     const result = await checkWatchedPackage(deps.store, npm, pkg, notifier);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
+  });
+
+  app.get("/api/origins", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const origins = await deps.store.listWatchedOriginsForUser(user.userId, queryInstallationId(c));
+    return c.json({
+      origins: origins.map((row) => ({
+        id: row.id,
+        installation_id: row.installation_id,
+        origin_url: row.origin_url,
+        host: row.host,
+        last_sha256: row.last_sha256,
+        last_checked_at: row.last_checked_at,
+        last_scanned_at: row.last_scanned_at,
+        last_scan_status: row.last_scan_status,
+      })),
+    });
+  });
+
+  app.post("/api/origins", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId = Number.isFinite(requested) && requested > 0
+      ? requested
+      : installations.length === 1
+        ? installations[0].id
+        : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach this website to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    try {
+      const result = await connectWatchedOrigin(deps.store, {
+        installationId,
+        url: String(body.url ?? ""),
+      });
+      if (result.queued) deps.wakeWorker?.();
+      return c.json({ ok: true, queued: result.queued, origin: result.origin }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not watch that website." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/origins/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown website." }, 404);
+    const origin = await deps.store.getWatchedOrigin(id);
+    if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
+      return c.json({ error: "Unknown website." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, origin.origin_url);
+    if (confirmError) return c.json(confirmError, 400);
+    const removed = await deps.store.deleteWatchedOriginForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown website." }, 404);
+    await recordAudit({
+      installationId: origin.installation_id,
+      actorLogin: user.login,
+      action: "origin.unwatch",
+      summary: `Stopped watching ${origin.host}`,
+      targetKind: "origin",
+      targetId: origin.host,
+    });
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/origins/:id/check", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const origin = await deps.store.getWatchedOrigin(id);
+    if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
+      return c.json({ error: "Unknown website." }, 404);
+    }
+    const checkDenied = await hostedWorkDenied(
+      deps.store,
+      origin.installation_id,
+      "Coverage ended. Subscribe to keep watching production websites.",
+    );
+    if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const result = await checkWatchedOrigin(deps.store, origin, notifier);
+    if (result.queued) deps.wakeWorker?.();
+    return c.json({ ok: true, queued: result.queued });
   });
 
   app.get("/api/packages/:id/identity", async (c) => {

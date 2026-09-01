@@ -190,6 +190,22 @@ CREATE TABLE IF NOT EXISTS watched_packages (
 CREATE INDEX IF NOT EXISTS watched_packages_install_idx
   ON watched_packages (installation_id, package_name);
 
+CREATE TABLE IF NOT EXISTS watched_origins (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  origin_url TEXT NOT NULL,
+  host TEXT NOT NULL,
+  last_sha256 TEXT,
+  last_checked_at TIMESTAMPTZ,
+  last_scanned_at TIMESTAMPTZ,
+  last_scan_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (installation_id, origin_url)
+);
+
+CREATE INDEX IF NOT EXISTS watched_origins_install_idx
+  ON watched_origins (installation_id, origin_url);
+
 CREATE TABLE IF NOT EXISTS npm_registries (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -502,6 +518,7 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'setup_pr.create',
     'remediation_pr.create',
     'package.unwatch',
+    'origin.unwatch',
     'identity.allowlist',
     'identity.revoke_allowlist',
     'retention.save'

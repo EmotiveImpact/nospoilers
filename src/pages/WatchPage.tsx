@@ -86,6 +86,17 @@ type WatchedPackage = {
   last_scan_status: string | null;
 };
 
+type WatchedOrigin = {
+  id: number;
+  installation_id: number;
+  origin_url: string;
+  host: string;
+  last_sha256: string | null;
+  last_checked_at: string | null;
+  last_scanned_at: string | null;
+  last_scan_status: string | null;
+};
+
 type NpmRegistry = {
   id: number;
   installation_id: number;
@@ -235,6 +246,7 @@ type Confirming =
   | { kind: "route"; id: number; expected: string }
   | { kind: "registry"; id: number; expected: string }
   | { kind: "package"; id: number; expected: string }
+  | { kind: "origin"; id: number; expected: string }
   | { kind: "token"; id: number; expected: string }
   | { kind: "exception"; id: number; expected: string }
   | { kind: "identity-allowlist"; packageId: number; id: number; expected: string; reason: string }
@@ -253,6 +265,8 @@ function confirmActionLabel(row: Confirming): string {
       return "remove this registry";
     case "package":
       return "stop watching this package";
+    case "origin":
+      return "stop watching this website";
     case "token":
       return "revoke this scan token";
     case "exception":
@@ -465,6 +479,8 @@ function kindLabel(kind: string): string {
       return "npm pack";
     case "npm_dist_tag":
       return "npm dist-tag";
+    case "web_origin_scan":
+      return "Website";
     case "app_suspended":
       return "App suspended";
     case "app_unsuspended":
@@ -733,6 +749,9 @@ export function WatchPage({ search }: { search: string }) {
   const [packages, setPackages] = useState<LoadState<{ packages: WatchedPackage[] }>>({
     status: "loading",
   });
+  const [origins, setOrigins] = useState<LoadState<{ origins: WatchedOrigin[] }>>({
+    status: "loading",
+  });
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
   const [destinations, setDestinations] = useState<NotificationDestination[]>([]);
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
@@ -787,6 +806,10 @@ export function WatchPage({ search }: { search: string }) {
   const [remediateByRepo, setRemediateByRepo] = useState<Record<number, RemediationPrView>>({});
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
+  const [originUrl, setOriginUrl] = useState("");
+  const [watchingOrigin, setWatchingOrigin] = useState(false);
+  const [originError, setOriginError] = useState<string | null>(null);
+  const [checkingOriginId, setCheckingOriginId] = useState<number | null>(null);
   const [checkingId, setCheckingId] = useState<number | null>(null);
   const [diffingId, setDiffingId] = useState<number | null>(null);
   const [diffByPackage, setDiffByPackage] = useState<Record<number, ReleaseDiffView | { error: string }>>(
@@ -831,17 +854,19 @@ export function WatchPage({ search }: { search: string }) {
     setRepos({ status: "loading" });
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
+    setOrigins({ status: "loading" });
     setTimeline({ status: "loading" });
     setAudit({ status: "loading" });
     setRetention({ status: "loading" });
     setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
+      const [repoBody, alertBody, packageBody, originBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>(q("/api/repos")),
         loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
         loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
+        loadJson<{ origins: WatchedOrigin[] }>(q("/api/origins")),
         loadJson<{ exceptions: PolicyExceptionView[] }>(q("/api/exceptions")),
         loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
         loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
@@ -855,6 +880,7 @@ export function WatchPage({ search }: { search: string }) {
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
       setPackages({ status: "ready", data: packageBody });
+      setOrigins({ status: "ready", data: originBody });
       setExceptions(exceptionBody.exceptions);
       setRegistries(registryBody.registries);
       setDestinations(destinationBody.destinations);
@@ -975,6 +1001,7 @@ export function WatchPage({ search }: { search: string }) {
       setRepos({ status: "error", message });
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
+      setOrigins({ status: "error", message });
       setTimeline({ status: "error", message });
       setAudit({ status: "error", message });
       setRetention({ status: "error", message });
@@ -1023,6 +1050,13 @@ export function WatchPage({ search }: { search: string }) {
           });
         } else if (confirming.kind === "package") {
           response = await fetch(`/api/packages/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "origin") {
+          response = await fetch(`/api/origins/${confirming.id}`, {
             method: "DELETE",
             credentials: "include",
             headers,
@@ -2724,6 +2758,143 @@ export function WatchPage({ search }: { search: string }) {
             ) : null}
             {slackError ? <p className="mt-4 text-sm text-danger">{slackError}</p> : null}
           </>
+        )}
+      </section>
+
+      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Production websites</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          We fetch the HTTPS page you name, then same-origin JavaScript, CSS, and maps. Local,
+          private, and metadata hosts are blocked. JavaScript is not executed. Bytes are deleted
+          after the scan. This is not advertised as a Pricing extra.
+        </p>
+        {previewing ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Preview cannot watch a website. No invented incident.
+          </p>
+        ) : ended ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Subscribe to unpack production websites on our servers.
+          </p>
+        ) : null}
+        {!previewing && origins.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+        {!previewing && origins.status === "error" && (
+          <p className="mt-6 text-sm text-danger">{origins.message}</p>
+        )}
+        {!previewing && user && installations.length > 0 && (
+          <form
+            className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (locked || watchingOrigin) return;
+              setOriginError(null);
+              setWatchingOrigin(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/origins", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      url: originUrl,
+                      installationId: activeInstallId,
+                    }),
+                  });
+                  const body = (await response.json()) as { error?: string };
+                  if (!response.ok) throw new Error(body.error ?? "Could not watch website.");
+                  setOriginUrl("");
+                  await refreshSignedIn(selectedInstallId);
+                } catch (error) {
+                  setOriginError(error instanceof Error ? error.message : "Could not watch website.");
+                } finally {
+                  setWatchingOrigin(false);
+                }
+              })();
+            }}
+          >
+            <label className="min-w-0 flex-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">HTTPS origin</span>
+              <input
+                value={originUrl}
+                onChange={(event) => setOriginUrl(event.target.value)}
+                placeholder="https://app.example.com/"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={locked}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <Button type="submit" disabled={locked || watchingOrigin || !originUrl.trim()}>
+              {watchingOrigin ? "Connecting…" : "Watch website"}
+            </Button>
+          </form>
+        )}
+        {originError && <p className="mt-4 text-sm text-danger">{originError}</p>}
+        {!previewing && origins.status === "ready" && origins.data.origins.length > 0 && (
+          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+            {origins.data.origins.map((row) => (
+              <li key={row.id} className="py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-xs text-snow">{row.origin_url}</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                      {row.last_scan_status ?? "queued"}
+                      {row.last_checked_at
+                        ? ` · ${new Date(row.last_checked_at).toLocaleString()}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={locked || checkingOriginId === row.id}
+                      onClick={() => {
+                        setCheckingOriginId(row.id);
+                        setOriginError(null);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/origins/${row.id}/check`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as { error?: string };
+                            if (!response.ok) throw new Error(body.error ?? "Could not check website.");
+                            await refreshSignedIn(selectedInstallId);
+                          } catch (error) {
+                            setOriginError(
+                              error instanceof Error ? error.message : "Could not check website.",
+                            );
+                          } finally {
+                            setCheckingOriginId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {checkingOriginId === row.id ? "Checking…" : "Check now"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={previewing || locked || confirmBusy}
+                      onClick={() =>
+                        beginConfirm({
+                          kind: "origin",
+                          id: row.id,
+                          expected: row.origin_url,
+                        })
+                      }
+                    >
+                      Stop
+                    </Button>
+                  </div>
+                </div>
+                {confirmForm(confirming?.kind === "origin" && confirming.id === row.id)}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

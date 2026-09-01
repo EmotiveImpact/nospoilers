@@ -14,10 +14,11 @@ Owner: Creative Director (Emotive Impact). GitHub login: `EmotiveImpact`.
 
 ## What this product is
 
-NoSpoilers watches two doors so source maps, secrets, and “this was private” surprises do not ship:
+NoSpoilers watches three doors so source maps, secrets, and “this was private” surprises do not ship:
 
 1. **Packed bytes** — the npm tarball, zip, VSIX, wheel, JAR, gem, or Electron `app.asar` about to go to customers. Same class of leak as Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer.
 2. **GitHub visibility** — private → public, created public, transfer, collaborator added, fork.
+3. **Deployed web assets** — the HTTPS page customers load, plus same-origin JavaScript, CSS, and maps. Scripts are not executed.
 
 Same brand, same scanner kernel, same alerts. Not a GitGlow clone (visibility email only). GitGlow is free (~138 installs). Visibility-only is a weak v1.
 

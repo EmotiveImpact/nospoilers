@@ -109,6 +109,17 @@ export type WatchedPackageRow = {
   last_scan_status: string | null;
 };
 
+export type WatchedOriginRow = {
+  id: number;
+  installation_id: number;
+  origin_url: string;
+  host: string;
+  last_sha256: string | null;
+  last_checked_at: string | null;
+  last_scanned_at: string | null;
+  last_scan_status: string | null;
+};
+
 export type NpmRegistryRow = {
   id: number;
   installation_id: number;
@@ -675,6 +686,28 @@ function watchedPackageRow(row: {
     last_dist_tags: parseDistTags(row.last_dist_tags),
     last_tarball_url: row.last_tarball_url,
     last_shasum: row.last_shasum,
+    last_sha256: row.last_sha256,
+    last_checked_at: iso(row.last_checked_at),
+    last_scanned_at: iso(row.last_scanned_at),
+    last_scan_status: row.last_scan_status,
+  };
+}
+
+function watchedOriginRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  origin_url: string;
+  host: string;
+  last_sha256: string | null;
+  last_checked_at: string | Date | null;
+  last_scanned_at: string | Date | null;
+  last_scan_status: string | null;
+}): WatchedOriginRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    origin_url: row.origin_url,
+    host: row.host,
     last_sha256: row.last_sha256,
     last_checked_at: iso(row.last_checked_at),
     last_scanned_at: iso(row.last_scanned_at),
@@ -2351,6 +2384,124 @@ export function createStore(
         [id, userId],
       );
       return Boolean(rows[0]);
+    },
+
+    async countWatchedOrigins(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM watched_origins WHERE installation_id = $1`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async listWatchedOriginsForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<WatchedOriginRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin_url: string;
+        host: string;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(
+        `SELECT wo.*
+         FROM watched_origins wo
+         JOIN installation_users iu ON iu.installation_id = wo.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR wo.installation_id = $2)
+         ORDER BY wo.origin_url`,
+        [userId, scoped],
+      );
+      return rows.map(watchedOriginRow);
+    },
+
+    async listAllWatchedOrigins(): Promise<WatchedOriginRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin_url: string;
+        host: string;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(`SELECT * FROM watched_origins ORDER BY id`);
+      return rows.map(watchedOriginRow);
+    },
+
+    async getWatchedOrigin(id: number): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin_url: string;
+        host: string;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(`SELECT * FROM watched_origins WHERE id = $1`, [id]);
+      return rows[0] ? watchedOriginRow(rows[0]) : null;
+    },
+
+    async insertWatchedOrigin(
+      installationId: number,
+      originUrl: string,
+      host: string,
+    ): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin_url: string;
+        host: string;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(
+        `INSERT INTO watched_origins (installation_id, origin_url, host)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (installation_id, origin_url) DO NOTHING
+         RETURNING *`,
+        [installationId, originUrl, host],
+      );
+      return rows[0] ? watchedOriginRow(rows[0]) : null;
+    },
+
+    async deleteWatchedOriginForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM watched_origins wo
+         USING installation_users iu
+         WHERE wo.id = $1
+           AND wo.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING wo.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async touchWatchedOrigin(id: number): Promise<void> {
+      await sql.query(`UPDATE watched_origins SET last_checked_at = now() WHERE id = $1`, [id]);
+    },
+
+    async recordWatchedOriginScan(
+      id: number,
+      input: { sha256: string | null; status: string },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE watched_origins SET
+           last_checked_at = now(),
+           last_scanned_at = now(),
+           last_scan_status = $2,
+           last_sha256 = COALESCE($3, last_sha256)
+         WHERE id = $1`,
+        [id, input.status, input.sha256],
+      );
     },
 
     async countNpmRegistries(installationId: number): Promise<number> {

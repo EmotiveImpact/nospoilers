@@ -613,6 +613,52 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "021_retention_policies",
   ]);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS watched_origins (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      origin_url TEXT NOT NULL,
+      host TEXT NOT NULL,
+      last_sha256 TEXT,
+      last_checked_at TIMESTAMPTZ,
+      last_scanned_at TIMESTAMPTZ,
+      last_scan_status TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (installation_id, origin_url)
+    );
+  `);
+  await sql.exec(`
+    CREATE INDEX IF NOT EXISTS watched_origins_install_idx
+      ON watched_origins (installation_id, origin_url);
+  `);
+  await sql.exec(`
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'origin.unwatch',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "022_watched_origins",
+  ]);
 }
 
 export function num(value: unknown): number {

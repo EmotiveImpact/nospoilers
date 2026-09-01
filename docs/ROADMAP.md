@@ -83,6 +83,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Extra packed formats: VSIX, CRX, XPI, wheels, JAR/WAR, NuGet, Ruby gems. ZIP/tar magic.
   Encrypted zip and CRX without ZIP are inconclusive. Zip-slip is ARC-002 and is not unpacked
   for content. Scan accepts those extensions and includes a VSIX fixture example. Not a Pricing change.
+- Production website crawls: HTTPS origin, same-origin JS/CSS/maps, private/local/metadata
+  hosts blocked, never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists,
