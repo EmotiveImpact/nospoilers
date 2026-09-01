@@ -81,6 +81,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
   are not included.
+- Read and export this install’s Team audit log (admin writes, notification deliveries,
+  and alert titles) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
+  Another tenant’s installation is empty. Webhook URLs, emails, tokens, ciphertext, and
+  alert bodies are not included. Members may read/export; only admins create entries.
 - List people on this install (GitHub login and admin/member role). Other tenants are empty.
 
 **Must not**
@@ -107,19 +111,23 @@ suspend does not block role changes. Email invite is not built.
 **May**
 
 - Promote, demote, and remove people on that install. The last admin cannot be demoted
-  or removed (409).
+  or removed (409). Role changes and member removal require typing that GitHub login.
 - Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, and Jira Cloud
   destinations on a trial or Team install. URLs, emails, and API tokens are never returned
-  after save. Jira is `*.atlassian.net` only (site name, host, or https URL). Private, local,
+  after save. Deletes require typing the destination host. Jira is `*.atlassian.net` only (site name, host, or https URL). Private, local,
   metadata, and Slack hosts are rejected for SIEM, and DNS must resolve to a public address
   before POST. Jira tests GET `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never
   POST `/issue`.
 - Save and delete alert routes (min severity, repository, package, teammate assign, destination)
   on a trial or Team install. Destinations without a route still receive every Watch alert.
-  A routed test never inserts an alert and never auto-assigns.
-- Save encrypted private npm registry tokens (never returned after save).
-- Mint and revoke hashed scan API tokens. The secret is shown once and never stored.
-- Manage expiring allowlist exceptions and approve scan baselines.
+  A routed test never inserts an alert and never auto-assigns. Route deletes require typing
+  the destination host.
+- Save encrypted private npm registry tokens (never returned after save). Registry deletes
+  require typing the origin.
+- Mint and revoke hashed scan API tokens. The secret is shown once and never stored. Revoke
+  requires typing the token name.
+- Manage expiring allowlist exceptions and approve scan baselines. Revoke requires typing
+  the rule. Unwatch requires typing the package name.
 - Open a reviewable setup PR or remediation PR while coverage is active. The App never
   merges those PRs. Required Contents write and Pull requests write are shown before the
   button. Existing customer ignore/policy/workflow files are not overwritten. This is not
@@ -259,6 +267,9 @@ every alert, critical-only routes skip info scans, and a matching teammate is as
 real alert.
 `tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
 90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
+`tests/audit.test.ts` proves the Team audit log is tenant-scoped, Solo 403, unpaid 402,
+typed confirmation is required for destructive deletes, export never includes webhook URLs
+or alert bodies, members can read/export, and `audit_events` cannot be updated or deleted.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
 members can watch and test but cannot save Slack/SIEM/Jira, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),

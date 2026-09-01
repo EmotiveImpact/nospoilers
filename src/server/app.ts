@@ -102,6 +102,11 @@ import {
   parseRouteTeamLogin,
   routingPlanDeniedFromBilling,
 } from "./routing.ts";
+import {
+  auditPlanDeniedFromBilling,
+  typedConfirm,
+  type AuditAction,
+} from "./audit.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -335,6 +340,17 @@ export function createApp(deps: AppDeps): Hono {
       error: posted.error,
     });
     return posted;
+  }
+
+  async function recordAudit(input: {
+    installationId: number;
+    actorLogin: string;
+    action: AuditAction;
+    summary: string;
+    targetKind?: string | null;
+    targetId?: string | null;
+  }): Promise<void> {
+    await deps.store.insertAuditEvent(input);
   }
 
   async function hostedCoverageForUser(user: {
@@ -777,6 +793,71 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
 
+  app.get("/api/audit", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the audit log." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ rows: [] });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = auditPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const rows = await deps.store.listAuditEventsForUser(user.userId, installationId);
+    return c.json({
+      rows: rows.map((row) => ({
+        id: row.id,
+        at: row.createdAt,
+        actorLogin: row.actorLogin,
+        action: row.action,
+        summary: row.summary,
+        targetKind: row.targetKind,
+        targetId: row.targetId,
+      })),
+    });
+  });
+
+  app.get("/api/audit/export", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the audit log." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({
+        exportedAt: new Date().toISOString(),
+        installationId,
+        audit: [],
+        notificationDeliveries: [],
+        alerts: [],
+        alertEvents: [],
+      });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = auditPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const payload = await deps.store.exportAuditLogForUser(user.userId, installationId);
+    return c.json(payload);
+  });
+
   app.get("/api/alerts/:id/events", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -935,12 +1016,25 @@ export function createApp(deps: AppDeps): Hono {
     const billing = await deps.store.installationBilling(installationId);
     const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const members = await deps.store.listInstallationMembersForUser(user.userId, installationId);
+    const target = members.find((row) => row.userId === targetUserId);
+    if (!target) return c.json({ error: "Unknown member." }, 404);
+    const confirmError = typedConfirm(body, target.login);
+    if (confirmError) return c.json(confirmError, 400);
     try {
       const member = await deps.store.setInstallationRoleForUser({
         actorUserId: user.userId,
         installationId,
         targetUserId,
         role,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "member.role_change",
+        summary: `Changed ${member.login} to ${member.role}`,
+        targetKind: "member",
+        targetId: member.login,
       });
       return c.json({ ok: true, member });
     } catch (error) {
@@ -965,6 +1059,12 @@ export function createApp(deps: AppDeps): Hono {
     const billing = await deps.store.installationBilling(installationId);
     const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const members = await deps.store.listInstallationMembersForUser(user.userId, installationId);
+    const target = members.find((row) => row.userId === targetUserId);
+    if (!target) return c.json({ error: "Unknown member." }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, target.login);
+    if (confirmError) return c.json(confirmError, 400);
     try {
       const removed = await deps.store.removeInstallationMemberForUser({
         actorUserId: user.userId,
@@ -972,6 +1072,14 @@ export function createApp(deps: AppDeps): Hono {
         targetUserId,
       });
       if (!removed) return c.json({ error: "Unknown member." }, 404);
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "member.remove",
+        summary: `Removed ${target.login}`,
+        targetKind: "member",
+        targetId: target.login,
+      });
       return c.json({ ok: true });
     } catch (error) {
       return c.json(
@@ -1075,6 +1183,14 @@ export function createApp(deps: AppDeps): Hono {
         409,
       );
     }
+    await recordAudit({
+      installationId: repo.installation_id,
+      actorLogin: user.login,
+      action: "setup_pr.create",
+      summary: `Opened setup PR for ${repo.full_name}`,
+      targetKind: "repo",
+      targetId: repo.full_name,
+    });
     return c.json(
       {
         ok: true,
@@ -1143,6 +1259,14 @@ export function createApp(deps: AppDeps): Hono {
         409,
       );
     }
+    await recordAudit({
+      installationId: repo.installation_id,
+      actorLogin: user.login,
+      action: "remediation_pr.create",
+      summary: `Opened remediation PR for ${repo.full_name}`,
+      targetKind: "repo",
+      targetId: repo.full_name,
+    });
     return c.json(
       {
         ok: true,
@@ -1219,6 +1343,14 @@ export function createApp(deps: AppDeps): Hono {
         host: parsed.host,
         token,
       });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "registry.save",
+        summary: `Saved registry ${registry.host}`,
+        targetKind: "registry",
+        targetId: registry.origin,
+      });
       return c.json({ ok: true, registry }, existing ? 200 : 201);
     } catch (error) {
       return c.json(
@@ -1237,8 +1369,19 @@ export function createApp(deps: AppDeps): Hono {
     if (!registry) return c.json({ error: "Unknown registry." }, 404);
     const adminDenied = await requireInstallAdmin(user.userId, registry.installation_id);
     if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, registry.origin);
+    if (confirmError) return c.json(confirmError, 400);
     const removed = await deps.store.deleteNpmRegistryForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown registry." }, 404);
+    await recordAudit({
+      installationId: registry.installation_id,
+      actorLogin: user.login,
+      action: "registry.delete",
+      summary: `Removed registry ${registry.host}`,
+      targetKind: "registry",
+      targetId: registry.origin,
+    });
     return c.json({ ok: true });
   });
 
@@ -1289,6 +1432,14 @@ export function createApp(deps: AppDeps): Hono {
       createdByLogin: user.login,
     });
     const { token, ...publicToken } = created;
+    await recordAudit({
+      installationId,
+      actorLogin: user.login,
+      action: "scan_token.mint",
+      summary: `Minted scan token ${name}`,
+      targetKind: "scan_token",
+      targetId: name,
+    });
     return c.json({ ok: true, token, scanToken: publicToken }, 201);
   });
 
@@ -1301,8 +1452,19 @@ export function createApp(deps: AppDeps): Hono {
     if (!token) return c.json({ error: "Unknown scan token." }, 404);
     const adminDenied = await requireInstallAdmin(user.userId, token.installation_id);
     if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, token.name);
+    if (confirmError) return c.json(confirmError, 400);
     const revoked = await deps.store.revokeScanApiTokenForUser(id, user.userId);
     if (!revoked) return c.json({ error: "Unknown scan token." }, 404);
+    await recordAudit({
+      installationId: token.installation_id,
+      actorLogin: user.login,
+      action: "scan_token.revoke",
+      summary: `Revoked scan token ${token.name}`,
+      targetKind: "scan_token",
+      targetId: token.name,
+    });
     return c.json({ ok: true });
   });
 
@@ -1472,8 +1634,23 @@ export function createApp(deps: AppDeps): Hono {
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown package." }, 404);
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, pkg.package_name);
+    if (confirmError) return c.json(confirmError, 400);
     const removed = await deps.store.deleteWatchedPackageForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown package." }, 404);
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: "package.unwatch",
+      summary: `Stopped watching ${pkg.package_name}`,
+      targetKind: "package",
+      targetId: pkg.package_name,
+    });
     return c.json({ ok: true });
   });
 
@@ -1688,6 +1865,14 @@ export function createApp(deps: AppDeps): Hono {
       actorUserId: user.userId,
       actorLogin: user.login,
     });
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: "baseline.save",
+      summary: `Approved baseline for ${pkg.package_name}`,
+      targetKind: "package",
+      targetId: pkg.package_name,
+    });
     return c.json(
       {
         ok: true,
@@ -1767,6 +1952,14 @@ export function createApp(deps: AppDeps): Hono {
         actorLogin: user.login,
         expiresAt: parsed.expiresAt,
       });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "exception.save",
+        summary: `Saved allowlist ${parsed.rule}`,
+        targetKind: "exception",
+        targetId: parsed.rule,
+      });
       return c.json({ ok: true, exception: publicException(row) }, 201);
     } catch (error) {
       return c.json(
@@ -1793,8 +1986,19 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to manage allowlists.",
     );
     if (revokeDenied) return c.json({ error: revokeDenied.error }, revokeDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, existing.rule);
+    if (confirmError) return c.json(confirmError, 400);
     const row = await deps.store.revokePolicyExceptionForUser(id, user.userId, user.login);
     if (!row) return c.json({ error: "Unknown allowlist entry." }, 404);
+    await recordAudit({
+      installationId: existing.installation_id,
+      actorLogin: user.login,
+      action: "exception.revoke",
+      summary: `Revoked allowlist ${existing.rule}`,
+      targetKind: "exception",
+      targetId: existing.rule,
+    });
     return c.json({ ok: true, exception: publicException(row) });
   });
 
@@ -2006,6 +2210,14 @@ export function createApp(deps: AppDeps): Hono {
         packageName,
         teamLogin,
       });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "route.save",
+        summary: `Saved ${minSeverity} route for ${destination.host}`,
+        targetKind: "route",
+        targetId: destination.host,
+      });
       return c.json(
         {
           ok: true,
@@ -2125,8 +2337,24 @@ export function createApp(deps: AppDeps): Hono {
     if (!route) return c.json({ error: "Unknown route." }, 404);
     const adminDenied = await requireInstallAdmin(user.userId, route.installationId);
     if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const destination = await deps.store.getNotificationDestinationForUser(
+      route.destinationId,
+      user.userId,
+    );
+    const confirmValue = destination?.host ?? "";
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, confirmValue);
+    if (confirmError) return c.json(confirmError, 400);
     const removed = await deps.store.deleteNotificationRouteForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown route." }, 404);
+    await recordAudit({
+      installationId: route.installationId,
+      actorLogin: user.login,
+      action: "route.delete",
+      summary: `Removed route for ${confirmValue}`,
+      targetKind: "route",
+      targetId: confirmValue,
+    });
     return c.json({ ok: true });
   });
 
@@ -2167,6 +2395,14 @@ export function createApp(deps: AppDeps): Hono {
         installationId,
         webhookUrl: parsed.url,
         host: parsed.host,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "destination.save",
+        summary: `Saved Slack destination ${parsed.host}`,
+        targetKind: "destination",
+        targetId: parsed.host,
       });
       return c.json({ ok: true, destination: publicDestination(destination) }, 201);
     } catch (error) {
@@ -2215,6 +2451,14 @@ export function createApp(deps: AppDeps): Hono {
         installationId,
         webhookUrl: parsed.url,
         host: parsed.host,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "destination.save",
+        summary: `Saved SIEM destination ${parsed.host}`,
+        targetKind: "destination",
+        targetId: parsed.host,
       });
       return c.json({ ok: true, destination: publicDestination(destination) }, 201);
     } catch (error) {
@@ -2286,6 +2530,14 @@ export function createApp(deps: AppDeps): Hono {
           issueType: parseJiraIssueType(String(body.issueType ?? "Task")),
         }),
       });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "destination.save",
+        summary: `Saved Jira destination ${site.host}`,
+        targetKind: "destination",
+        targetId: site.host,
+      });
       return c.json({ ok: true, destination: publicDestination(destination) }, 201);
     } catch (error) {
       return c.json(
@@ -2304,8 +2556,19 @@ export function createApp(deps: AppDeps): Hono {
     if (!destination) return c.json({ error: "Unknown destination." }, 404);
     const adminDenied = await requireInstallAdmin(user.userId, destination.installationId);
     if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, destination.host);
+    if (confirmError) return c.json(confirmError, 400);
     const removed = await deps.store.deleteNotificationDestinationForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown destination." }, 404);
+    await recordAudit({
+      installationId: destination.installationId,
+      actorLogin: user.login,
+      action: "destination.delete",
+      summary: `Removed ${destinationKindLabel(destination.kind)} destination ${destination.host}`,
+      targetKind: "destination",
+      targetId: destination.host,
+    });
     return c.json({ ok: true });
   });
 

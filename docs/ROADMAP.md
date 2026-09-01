@@ -66,6 +66,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   ticket or Watch alert.
 - Team alert routing: min severity, repository, package, teammate assign, and destination.
   Destinations without a route still receive every alert. Routed tests never invent an incident.
+- Team audit log: append-only admin writes, typed confirmation on destructive actions, and a
+  titles-only export of alerts and notification deliveries. Trial/Team. Solo 403. Unpaid 402.
+  Members may read/export. Never stores URLs, emails, tokens, or secret values.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for 90 days. Solo 403. Unpaid 402. No invented rows.
 - Team members and roles: first GitHub user on an install is admin; later users are members.

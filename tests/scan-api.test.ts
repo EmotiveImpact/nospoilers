@@ -182,7 +182,8 @@ describe("hosted scan API", () => {
       );
       const revoked = await app.request(`/api/scan-tokens/${mintedBody.scanToken.id}`, {
         method: "DELETE",
-        headers: { cookie },
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "Jenkins" }),
       });
       expect(revoked.status).toBe(200);
       const afterRevoke = await app.request("/api/v1/scan", {

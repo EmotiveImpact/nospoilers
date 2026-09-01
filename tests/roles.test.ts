@@ -444,7 +444,7 @@ describe("installation roles", () => {
       const promoted = await app.request("/api/installations/7/members", {
         method: "POST",
         headers: { cookie: adminCookie, ...json },
-        body: JSON.stringify({ userId: "u2", role: "admin" }),
+        body: JSON.stringify({ userId: "u2", role: "admin", confirm: "teammate" }),
       });
       expect(promoted.status).toBe(200);
       expect(((await promoted.json()) as { member: { role: string } }).member.role).toBe("admin");
@@ -453,7 +453,7 @@ describe("installation roles", () => {
       const demoted = await app.request("/api/installations/7/members", {
         method: "POST",
         headers: { cookie: adminCookie, ...json },
-        body: JSON.stringify({ userId: "u2", role: "member" }),
+        body: JSON.stringify({ userId: "u2", role: "member", confirm: "teammate" }),
       });
       expect(demoted.status).toBe(200);
       expect(((await demoted.json()) as { member: { role: string } }).member.role).toBe("member");
@@ -461,20 +461,22 @@ describe("installation roles", () => {
       const lastAdmin = await app.request("/api/installations/7/members", {
         method: "POST",
         headers: { cookie: adminCookie, ...json },
-        body: JSON.stringify({ userId: "u1", role: "member" }),
+        body: JSON.stringify({ userId: "u1", role: "member", confirm: "octo" }),
       });
       expect(lastAdmin.status).toBe(409);
       expect(((await lastAdmin.json()) as { error: string }).error).toBe(LAST_ADMIN_ERROR);
 
       const removeLast = await app.request("/api/installations/7/members/u1", {
         method: "DELETE",
-        headers: { cookie: adminCookie },
+        headers: { cookie: adminCookie, ...json },
+        body: JSON.stringify({ confirm: "octo" }),
       });
       expect(removeLast.status).toBe(409);
 
       const removed = await app.request("/api/installations/7/members/u2", {
         method: "DELETE",
-        headers: { cookie: adminCookie },
+        headers: { cookie: adminCookie, ...json },
+        body: JSON.stringify({ confirm: "teammate" }),
       });
       expect(removed.status).toBe(200);
       expect(await store.getInstallationRole("u2", 7)).toBeNull();

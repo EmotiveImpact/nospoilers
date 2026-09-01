@@ -156,6 +156,41 @@ export type TimelineEntry = {
   inventedIncident: false | null;
 };
 
+export type AuditEventRow = {
+  id: number;
+  installationId: number;
+  actorLogin: string;
+  action: string;
+  summary: string;
+  targetKind: string | null;
+  targetId: string | null;
+  createdAt: string;
+};
+
+export type AuditExportAlert = {
+  id: number;
+  kind: string;
+  title: string;
+  createdAt: string;
+};
+
+export type AuditExportAlertEvent = {
+  id: number;
+  alertId: number;
+  actorLogin: string;
+  action: string;
+  createdAt: string;
+};
+
+export type AuditExportBundle = {
+  exportedAt: string;
+  installationId: number;
+  audit: AuditEventRow[];
+  notificationDeliveries: NotificationDeliveryRow[];
+  alerts: AuditExportAlert[];
+  alertEvents: AuditExportAlertEvent[];
+};
+
 export type ScanApiTokenRow = {
   id: number;
   installation_id: number;
@@ -3446,6 +3481,189 @@ export function createStore(
         return scanBaselineRow(rows[0]);
       });
     },
+
+    async insertAuditEvent(input: {
+      installationId: number;
+      actorLogin: string;
+      action: string;
+      summary: string;
+      targetKind?: string | null;
+      targetId?: string | null;
+    }): Promise<AuditEventRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        actor_login: string;
+        action: string;
+        summary: string;
+        target_kind: string | null;
+        target_id: string | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO audit_events (
+           installation_id, actor_login, action, summary, target_kind, target_id
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.actorLogin,
+          input.action,
+          input.summary,
+          input.targetKind ?? null,
+          input.targetId ?? null,
+        ],
+      );
+      if (!rows[0]) throw new Error("audit event insert returned no row");
+      return auditEventRow(rows[0]);
+    },
+
+    async listAuditEventsForUser(
+      userId: string,
+      installationId: number,
+    ): Promise<AuditEventRow[]> {
+      if (!optionalInstallId(installationId)) return [];
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        actor_login: string;
+        action: string;
+        summary: string;
+        target_kind: string | null;
+        target_id: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT e.*
+         FROM audit_events e
+         JOIN installation_users iu ON iu.installation_id = e.installation_id
+         WHERE iu.user_id = $1
+           AND e.installation_id = $2
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT 500`,
+        [userId, installationId],
+      );
+      return rows.map(auditEventRow);
+    },
+
+    async exportAuditLogForUser(
+      userId: string,
+      installationId: number,
+    ): Promise<AuditExportBundle> {
+      const empty: AuditExportBundle = {
+        exportedAt: new Date().toISOString(),
+        installationId,
+        audit: [],
+        notificationDeliveries: [],
+        alerts: [],
+        alertEvents: [],
+      };
+      if (!optionalInstallId(installationId)) return empty;
+      if (!(await this.userOwnsInstallation(userId, installationId))) return empty;
+      const audit = await this.listAuditEventsForUser(userId, installationId);
+      const { rows: deliveryRows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        destination_id: unknown;
+        alert_id: unknown;
+        kind: string;
+        status: "sent" | "failed";
+        error: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT d.id, d.installation_id, d.destination_id, d.alert_id, d.kind, d.status,
+                d.error, d.created_at
+         FROM notification_deliveries d
+         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         WHERE iu.user_id = $1
+           AND d.installation_id = $2
+         ORDER BY d.created_at DESC, d.id DESC
+         LIMIT 500`,
+        [userId, installationId],
+      );
+      const { rows: alertRows } = await sql.query<{
+        id: unknown;
+        kind: string;
+        title: string;
+        created_at: string | Date;
+      }>(
+        `SELECT a.id, a.kind, a.title, a.created_at
+         FROM alerts a
+         JOIN installation_users iu ON iu.installation_id = a.installation_id
+         WHERE iu.user_id = $1
+           AND a.installation_id = $2
+         ORDER BY a.created_at DESC, a.id DESC
+         LIMIT 500`,
+        [userId, installationId],
+      );
+      const { rows: eventRows } = await sql.query<{
+        id: unknown;
+        alert_id: unknown;
+        actor_login: string;
+        action: string;
+        created_at: string | Date;
+      }>(
+        `SELECT e.id, e.alert_id, e.actor_login, e.action, e.created_at
+         FROM alert_events e
+         JOIN alerts a ON a.id = e.alert_id
+         JOIN installation_users iu ON iu.installation_id = a.installation_id
+         WHERE iu.user_id = $1
+           AND a.installation_id = $2
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT 1000`,
+        [userId, installationId],
+      );
+      return {
+        exportedAt: new Date().toISOString(),
+        installationId,
+        audit,
+        notificationDeliveries: deliveryRows.map((row) => ({
+          id: num(row.id),
+          installationId: num(row.installation_id),
+          destinationId: num(row.destination_id),
+          alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
+          kind: asNotificationKind(row.kind),
+          status: row.status,
+          inventedIncident: false as const,
+          error: row.error,
+          createdAt: iso(row.created_at) ?? new Date().toISOString(),
+        })),
+        alerts: alertRows.map((row) => ({
+          id: num(row.id),
+          kind: row.kind,
+          title: row.title,
+          createdAt: iso(row.created_at) ?? new Date().toISOString(),
+        })),
+        alertEvents: eventRows.map((row) => ({
+          id: num(row.id),
+          alertId: num(row.alert_id),
+          actorLogin: row.actor_login,
+          action: row.action,
+          createdAt: iso(row.created_at) ?? new Date().toISOString(),
+        })),
+      };
+    },
+  };
+}
+
+function auditEventRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  actor_login: string;
+  action: string;
+  summary: string;
+  target_kind: string | null;
+  target_id: string | null;
+  created_at: string | Date;
+}): AuditEventRow {
+  return {
+    id: num(row.id),
+    installationId: num(row.installation_id),
+    actorLogin: row.actor_login,
+    action: row.action,
+    summary: row.summary,
+    targetKind: row.target_kind,
+    targetId: row.target_id,
+    createdAt: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
 

@@ -168,7 +168,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Configurable data retention | Planned | NoSpoilers |
 | Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
-| Audit-log export | Partial: tenant JSON of alerts and append-only events; Team audit log still planned | NoSpoilers |
+| Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |

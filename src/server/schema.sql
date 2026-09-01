@@ -446,3 +446,50 @@ CREATE TRIGGER package_identity_snapshots_no_delete
   BEFORE DELETE ON package_identity_snapshots
   FOR EACH ROW EXECUTE PROCEDURE reject_package_identity_snapshot_mutation();
 
+CREATE TABLE IF NOT EXISTS audit_events (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  actor_login TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN (
+    'destination.save',
+    'destination.delete',
+    'route.save',
+    'route.delete',
+    'registry.save',
+    'registry.delete',
+    'scan_token.mint',
+    'scan_token.revoke',
+    'exception.save',
+    'exception.revoke',
+    'baseline.save',
+    'member.role_change',
+    'member.remove',
+    'setup_pr.create',
+    'remediation_pr.create',
+    'package.unwatch'
+  )),
+  summary TEXT NOT NULL,
+  target_kind TEXT,
+  target_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS audit_events_install_idx
+  ON audit_events (installation_id, created_at DESC, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_audit_event_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_events are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS audit_events_no_update ON audit_events;
+CREATE TRIGGER audit_events_no_update
+  BEFORE UPDATE ON audit_events
+  FOR EACH ROW EXECUTE PROCEDURE reject_audit_event_mutation();
+DROP TRIGGER IF EXISTS audit_events_no_delete ON audit_events;
+CREATE TRIGGER audit_events_no_delete
+  BEFORE DELETE ON audit_events
+  FOR EACH ROW EXECUTE PROCEDURE reject_audit_event_mutation();
+

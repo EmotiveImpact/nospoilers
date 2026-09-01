@@ -261,7 +261,8 @@ describe("hosted allowlist and baseline", () => {
 
       const revoked = await app.request(`/api/exceptions/${createdBody.exception.id}/revoke`, {
         method: "POST",
-        headers: { cookie },
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "SRC-001" }),
       });
       expect(revoked.status).toBe(200);
       const { rows } = await sql.query<{ n: string; revoked: string | null }>(

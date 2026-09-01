@@ -165,6 +165,54 @@ type TimelineView =
   | { status: "ended" }
   | { status: "error"; message: string };
 
+type AuditRow = {
+  id: number;
+  at: string;
+  actorLogin: string;
+  action: string;
+  summary: string;
+  targetKind: string | null;
+  targetId: string | null;
+};
+
+type AuditView =
+  | { status: "loading" }
+  | { status: "ready"; rows: AuditRow[] }
+  | { status: "solo" }
+  | { status: "ended" }
+  | { status: "error"; message: string };
+
+type Confirming =
+  | { kind: "destination"; id: number; expected: string }
+  | { kind: "route"; id: number; expected: string }
+  | { kind: "registry"; id: number; expected: string }
+  | { kind: "package"; id: number; expected: string }
+  | { kind: "token"; id: number; expected: string }
+  | { kind: "exception"; id: number; expected: string }
+  | { kind: "member"; userId: string; expected: string }
+  | { kind: "role"; userId: string; expected: string; role: "admin" | "member" };
+
+function confirmActionLabel(row: Confirming): string {
+  switch (row.kind) {
+    case "destination":
+      return "remove this destination";
+    case "route":
+      return "remove this route";
+    case "registry":
+      return "remove this registry";
+    case "package":
+      return "stop watching this package";
+    case "token":
+      return "revoke this scan token";
+    case "exception":
+      return "revoke this allowlist entry";
+    case "member":
+      return "remove this member";
+    case "role":
+      return row.role === "admin" ? "make this person an admin" : "make this person a member";
+  }
+}
+
 type ScanApiToken = {
   id: number;
   installation_id: number;
@@ -274,6 +322,47 @@ function scopedApi(path: string, installationId: number | null): string {
   if (!installationId) return path;
   const join = path.includes("?") ? "&" : "?";
   return `${path}${join}installationId=${installationId}`;
+}
+
+function TypeToConfirm(props: {
+  expected: string;
+  action: string;
+  busy: boolean;
+  value: string;
+  error: string | null;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <form
+      className="mt-3 w-full max-w-xl"
+      onSubmit={(event) => {
+        event.preventDefault();
+        props.onSubmit();
+      }}
+    >
+      <p className="text-xs leading-relaxed text-mute">
+        Type <span className="font-mono text-snow">{props.expected}</span> to {props.action}.
+      </p>
+      <input
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+        autoComplete="off"
+        spellCheck={false}
+        className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+      />
+      {props.error ? <p className="mt-2 text-sm text-danger">{props.error}</p> : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={props.busy || !props.value.trim()}>
+          {props.busy ? "Working…" : "Confirm"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" disabled={props.busy} onClick={props.onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 function installIdFromSearch(search: string): number | null {
@@ -606,13 +695,11 @@ export function WatchPage({ search }: { search: string }) {
   const [routePackage, setRoutePackage] = useState("");
   const [routeTeam, setRouteTeam] = useState("");
   const [savingRoute, setSavingRoute] = useState(false);
-  const [removingRouteId, setRemovingRouteId] = useState<number | null>(null);
   const [routeTestSeverity, setRouteTestSeverity] = useState<"info" | "warn" | "critical">("critical");
   const [routeTestRepo, setRouteTestRepo] = useState("");
   const [routeTestPackage, setRouteTestPackage] = useState("");
   const [testingRoute, setTestingRoute] = useState(false);
   const [testingSlackId, setTestingSlackId] = useState<number | null>(null);
-  const [removingSlackId, setRemovingSlackId] = useState<number | null>(null);
   const [slackError, setSlackError] = useState<string | null>(null);
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
@@ -629,12 +716,10 @@ export function WatchPage({ search }: { search: string }) {
   const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
   const [mintingScanToken, setMintingScanToken] = useState(false);
   const [scanTokenError, setScanTokenError] = useState<string | null>(null);
-  const [revokingScanTokenId, setRevokingScanTokenId] = useState<number | null>(null);
   const [registryOriginInput, setRegistryOriginInput] = useState("");
   const [registryToken, setRegistryToken] = useState("");
   const [savingRegistry, setSavingRegistry] = useState(false);
   const [registryError, setRegistryError] = useState<string | null>(null);
-  const [removingRegistryId, setRemovingRegistryId] = useState<number | null>(null);
   const [watchRegistryOrigin, setWatchRegistryOrigin] = useState("https://registry.npmjs.org");
   const [scanError, setScanError] = useState<string | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
@@ -657,7 +742,6 @@ export function WatchPage({ search }: { search: string }) {
   const [allowReason, setAllowReason] = useState("");
   const [allowExpires, setAllowExpires] = useState(defaultExpiryDate);
   const [savingAllow, setSavingAllow] = useState(false);
-  const [revokingId, setRevokingId] = useState<number | null>(null);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [baselineReason, setBaselineReason] = useState("Approved current packed artifact as the shipping baseline.");
   const [alertNotes, setAlertNotes] = useState<Record<number, string>>({});
@@ -669,9 +753,14 @@ export function WatchPage({ search }: { search: string }) {
   const [testError, setTestError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
+  const [audit, setAudit] = useState<AuditView>({ status: "loading" });
+  const [auditExportError, setAuditExportError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
-  const [memberBusyId, setMemberBusyId] = useState<string | null>(null);
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
 
   const refreshSignedIn = useCallback(async (installationId: number | null) => {
@@ -679,6 +768,7 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     setTimeline({ status: "loading" });
+    setAudit({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
       const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
@@ -747,6 +837,20 @@ export function WatchPage({ search }: { search: string }) {
           entries: timelineBody.entries ?? [],
         });
       }
+      const auditResponse = await fetch(q("/api/audit"), { credentials: "include" });
+      const auditBody = (await auditResponse.json()) as {
+        error?: string;
+        rows?: AuditRow[];
+      };
+      if (auditResponse.status === 402) {
+        setAudit({ status: "ended" });
+      } else if (auditResponse.status === 403) {
+        setAudit({ status: "solo" });
+      } else if (!auditResponse.ok) {
+        setAudit({ status: "error", message: auditBody.error ?? "Could not load the audit log." });
+      } else {
+        setAudit({ status: "ready", rows: auditBody.rows ?? [] });
+      }
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -762,10 +866,102 @@ export function WatchPage({ search }: { search: string }) {
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
       setTimeline({ status: "error", message });
+      setAudit({ status: "error", message });
       setMembers([]);
       setMembersError(message);
     }
   }, []);
+
+  const beginConfirm = useCallback((next: Confirming) => {
+    setConfirming(next);
+    setConfirmText("");
+    setConfirmError(null);
+  }, []);
+
+  const submitConfirm = useCallback(() => {
+    if (!confirming) return;
+    const installId = selectedInstallId;
+    const confirm = confirmText.trim();
+    setConfirmBusy(true);
+    setConfirmError(null);
+    void (async () => {
+      try {
+        const headers = { "content-type": "application/json" };
+        let response: Response;
+        if (confirming.kind === "destination") {
+          response = await fetch(`/api/destinations/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "route") {
+          response = await fetch(`/api/destinations/routes/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "registry") {
+          response = await fetch(`/api/registries/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "package") {
+          response = await fetch(`/api/packages/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "token") {
+          response = await fetch(`/api/scan-tokens/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "exception") {
+          response = await fetch(`/api/exceptions/${confirming.id}/revoke`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "member") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch(`/api/installations/${installId}/members/${confirming.userId}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch(`/api/installations/${installId}/members`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ userId: confirming.userId, role: confirming.role, confirm }),
+          });
+        }
+        const body = (await response.json()) as { error?: string };
+        if (!response.ok) throw new Error(body.error ?? "Could not confirm that action.");
+        if (confirming.kind === "token") {
+          setRevealedScanToken(null);
+        }
+        setConfirming(null);
+        setConfirmText("");
+        await refreshSignedIn(installId);
+      } catch (error) {
+        setConfirmError(error instanceof Error ? error.message : "Could not confirm that action.");
+      } finally {
+        setConfirmBusy(false);
+      }
+    })();
+  }, [confirmText, confirming, refreshSignedIn, selectedInstallId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -800,6 +996,9 @@ export function WatchPage({ search }: { search: string }) {
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setMembers([]);
           setMembersError(null);
+          setAudit({ status: "ready", rows: [] });
+          setAuditExportError(null);
+          setConfirming(null);
           setRevealedScanToken(null);
           setAlertNotes({});
           setAlertAssignees({});
@@ -907,6 +1106,23 @@ export function WatchPage({ search }: { search: string }) {
     : packages.status === "ready"
       ? packages.data.packages
       : [];
+  const confirmForm = (match: boolean) =>
+    confirming && match ? (
+      <TypeToConfirm
+        expected={confirming.expected}
+        action={confirmActionLabel(confirming)}
+        busy={confirmBusy}
+        value={confirmText}
+        error={confirmError}
+        onChange={setConfirmText}
+        onCancel={() => {
+          setConfirming(null);
+          setConfirmText("");
+          setConfirmError(null);
+        }}
+        onSubmit={submitConfirm}
+      />
+    ) : null;
 
   return (
     <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
@@ -1376,6 +1592,87 @@ export function WatchPage({ search }: { search: string }) {
       </section>
 
       <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Audit log</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Team and trial installs can export this install’s admin writes, notification deliveries,
+          and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
+          emails, tokens, and other secret values are never stored here.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot export a live audit log. No invented incident.
+          </p>
+        ) : audit.status === "solo" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">The audit log is on Team.</p>
+        ) : audit.status === "ended" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to Team to keep the audit log.
+          </p>
+        ) : audit.status === "error" ? (
+          <p className="mt-6 text-sm text-danger">{audit.message}</p>
+        ) : audit.status === "loading" ? (
+          <p className="mt-6 text-sm text-dim">Loading…</p>
+        ) : (
+          <>
+            <div className="mt-4">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setAuditExportError(null);
+                  void (async () => {
+                    try {
+                      const body = await loadJson<{ exportedAt: string }>(
+                        scopedApi("/api/audit/export", activeInstallId),
+                      );
+                      const blob = new Blob([JSON.stringify(body, null, 2)], {
+                        type: "application/json",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = `nospoilers-audit-${body.exportedAt.slice(0, 10)}.json`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                    } catch (error) {
+                      setAuditExportError(
+                        error instanceof Error ? error.message : "Could not export the audit log.",
+                      );
+                    }
+                  })();
+                }}
+              >
+                Export audit log
+              </Button>
+              {auditExportError ? <p className="mt-2 text-sm text-danger">{auditExportError}</p> : null}
+            </div>
+            {audit.rows.length === 0 ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">
+                No admin writes recorded on this install yet.
+              </p>
+            ) : (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {audit.rows.map((row) => (
+                  <li key={row.id} className="py-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm text-snow">{row.summary}</p>
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        {new Date(row.at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-mono text-xs text-dim">
+                      {row.actorLogin} · {row.action}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
@@ -1404,7 +1701,8 @@ export function WatchPage({ search }: { search: string }) {
         ) : (
           <ul className="mt-6 max-w-xl divide-y divide-white/5">
             {members.map((member) => (
-              <li key={member.userId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <li key={member.userId} className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-snow">{member.login}</p>
                   <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
@@ -1416,106 +1714,58 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={memberBusyId === member.userId}
-                        onClick={() => {
-                          setMembersError(null);
-                          setMemberBusyId(member.userId);
-                          void (async () => {
-                            try {
-                              const response = await fetch(
-                                `/api/installations/${activeInstallId}/members`,
-                                {
-                                  method: "POST",
-                                  credentials: "include",
-                                  headers: { "content-type": "application/json" },
-                                  body: JSON.stringify({ userId: member.userId, role: "admin" }),
-                                },
-                              );
-                              const body = (await response.json()) as { error?: string };
-                              if (!response.ok) throw new Error(body.error ?? "Could not change that role.");
-                              await refreshSignedIn(selectedInstallId);
-                            } catch (error) {
-                              setMembersError(
-                                error instanceof Error ? error.message : "Could not change that role.",
-                              );
-                            } finally {
-                              setMemberBusyId(null);
-                            }
-                          })();
-                        }}
+                        disabled={confirmBusy}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "role",
+                            userId: member.userId,
+                            expected: member.login,
+                            role: "admin",
+                          })
+                        }
                       >
-                        {memberBusyId === member.userId ? "Saving…" : "Make admin"}
+                        Make admin
                       </Button>
                     ) : (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={memberBusyId === member.userId || adminCount <= 1}
-                        onClick={() => {
-                          setMembersError(null);
-                          setMemberBusyId(member.userId);
-                          void (async () => {
-                            try {
-                              const response = await fetch(
-                                `/api/installations/${activeInstallId}/members`,
-                                {
-                                  method: "POST",
-                                  credentials: "include",
-                                  headers: { "content-type": "application/json" },
-                                  body: JSON.stringify({ userId: member.userId, role: "member" }),
-                                },
-                              );
-                              const body = (await response.json()) as { error?: string };
-                              if (!response.ok) throw new Error(body.error ?? "Could not change that role.");
-                              await refreshSignedIn(selectedInstallId);
-                            } catch (error) {
-                              setMembersError(
-                                error instanceof Error ? error.message : "Could not change that role.",
-                              );
-                            } finally {
-                              setMemberBusyId(null);
-                            }
-                          })();
-                        }}
+                        disabled={confirmBusy || adminCount <= 1}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "role",
+                            userId: member.userId,
+                            expected: member.login,
+                            role: "member",
+                          })
+                        }
                       >
-                        {memberBusyId === member.userId ? "Saving…" : "Make member"}
+                        Make member
                       </Button>
                     )}
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
-                      disabled={memberBusyId === member.userId || (member.role === "admin" && adminCount <= 1)}
-                      onClick={() => {
-                        setMembersError(null);
-                        setMemberBusyId(member.userId);
-                        void (async () => {
-                          try {
-                            const response = await fetch(
-                              `/api/installations/${activeInstallId}/members/${member.userId}`,
-                              {
-                                method: "DELETE",
-                                credentials: "include",
-                              },
-                            );
-                            const body = (await response.json()) as { error?: string };
-                            if (!response.ok) throw new Error(body.error ?? "Could not remove that member.");
-                            await refreshSignedIn(selectedInstallId);
-                          } catch (error) {
-                            setMembersError(
-                              error instanceof Error ? error.message : "Could not remove that member.",
-                            );
-                          } finally {
-                            setMemberBusyId(null);
-                          }
-                        })();
-                      }}
+                      disabled={confirmBusy || (member.role === "admin" && adminCount <= 1)}
+                      onClick={() =>
+                        beginConfirm({
+                          kind: "member",
+                          userId: member.userId,
+                          expected: member.login,
+                        })
+                      }
                     >
-                      {memberBusyId === member.userId ? "Removing…" : "Remove"}
+                      Remove
                     </Button>
                   </div>
                 ) : null}
+                </div>
+                {confirmForm(
+                  (confirming?.kind === "member" && confirming.userId === member.userId) ||
+                    (confirming?.kind === "role" && confirming.userId === member.userId),
+                )}
               </li>
             ))}
           </ul>
@@ -1735,34 +1985,21 @@ export function WatchPage({ search }: { search: string }) {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={removingSlackId === destination.id}
-                          onClick={() => {
-                            setSlackError(null);
-                            setRemovingSlackId(destination.id);
-                            void (async () => {
-                              try {
-                                const response = await fetch(`/api/destinations/${destination.id}`, {
-                                  method: "DELETE",
-                                  credentials: "include",
-                                });
-                                const body = (await response.json()) as { error?: string };
-                                if (!response.ok) throw new Error(body.error ?? "Could not remove that destination.");
-                                await refreshSignedIn(selectedInstallId);
-                              } catch (error) {
-                                setSlackError(
-                                  error instanceof Error ? error.message : "Could not remove Slack.",
-                                );
-                              } finally {
-                                setRemovingSlackId(null);
-                              }
-                            })();
-                          }}
+                          disabled={confirmBusy}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "destination",
+                              id: destination.id,
+                              expected: destination.host,
+                            })
+                          }
                         >
-                          {removingSlackId === destination.id ? "Removing…" : "Remove"}
+                          Remove
                         </Button>
                         ) : null}
                       </div>
                     </div>
+                    {confirmForm(confirming?.kind === "destination" && confirming.id === destination.id)}
                     <p className="mt-2 text-xs text-dim">
                       {destination.lastDeliveryStatus
                         ? `${destination.lastDeliveryStatus}${
@@ -2013,33 +2250,20 @@ export function WatchPage({ search }: { search: string }) {
                             type="button"
                             size="sm"
                             variant="ghost"
-                            disabled={removingRouteId === route.id}
-                            onClick={() => {
-                              setSlackError(null);
-                              setRemovingRouteId(route.id);
-                              void (async () => {
-                                try {
-                                  const response = await fetch(`/api/destinations/routes/${route.id}`, {
-                                    method: "DELETE",
-                                    credentials: "include",
-                                  });
-                                  const body = (await response.json()) as { error?: string };
-                                  if (!response.ok) throw new Error(body.error ?? "Could not remove that route.");
-                                  await refreshSignedIn(selectedInstallId);
-                                } catch (error) {
-                                  setSlackError(
-                                    error instanceof Error ? error.message : "Could not remove that route.",
-                                  );
-                                } finally {
-                                  setRemovingRouteId(null);
-                                }
-                              })();
-                            }}
+                            disabled={confirmBusy}
+                            onClick={() =>
+                              beginConfirm({
+                                kind: "route",
+                                id: route.id,
+                                expected: destination?.host ?? "",
+                              })
+                            }
                           >
-                            {removingRouteId === route.id ? "Removing…" : "Remove"}
+                            Remove
                           </Button>
                         ) : null}
                       </div>
+                      {confirmForm(confirming?.kind === "route" && confirming.id === route.id)}
                     </li>
                   );
                 })}
@@ -2361,38 +2585,28 @@ export function WatchPage({ search }: { search: string }) {
         {!previewing && registries.length > 0 && (
           <ul className="mt-4 max-w-xl divide-y divide-white/5">
             {registries.map((registry) => (
-              <li key={registry.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <li key={registry.id} className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-xs text-mute">{registry.origin}</p>
                 {installAdmin ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  disabled={locked || removingRegistryId === registry.id}
-                  onClick={() => {
-                    setRemovingRegistryId(registry.id);
-                    void (async () => {
-                      try {
-                        const response = await fetch(`/api/registries/${registry.id}`, {
-                          method: "DELETE",
-                          credentials: "include",
-                        });
-                        const body = (await response.json()) as { error?: string };
-                        if (!response.ok) throw new Error(body.error ?? "Could not remove registry.");
-                        await refreshSignedIn(selectedInstallId);
-                      } catch (error) {
-                        setRegistryError(
-                          error instanceof Error ? error.message : "Could not remove registry.",
-                        );
-                      } finally {
-                        setRemovingRegistryId(null);
-                      }
-                    })();
-                  }}
+                  disabled={locked || confirmBusy}
+                  onClick={() =>
+                    beginConfirm({
+                      kind: "registry",
+                      id: registry.id,
+                      expected: registry.origin,
+                    })
+                  }
                 >
-                  {removingRegistryId === registry.id ? "Removing…" : "Remove"}
+                  Remove
                 </Button>
                 ) : null}
+                </div>
+                {confirmForm(confirming?.kind === "registry" && confirming.id === registry.id)}
               </li>
             ))}
           </ul>
@@ -2629,32 +2843,20 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        disabled={previewing || locked}
-                        onClick={() => {
-                          setPackageError(null);
-                          void (async () => {
-                            try {
-                              const response = await fetch(`/api/packages/${pkg.id}`, {
-                                method: "DELETE",
-                                credentials: "include",
-                              });
-                              const body = (await response.json()) as { error?: string };
-                              if (!response.ok) {
-                                throw new Error(body.error ?? "Could not remove package.");
-                              }
-                              await refreshSignedIn(selectedInstallId);
-                            } catch (error) {
-                              setPackageError(
-                                error instanceof Error ? error.message : "Could not remove package.",
-                              );
-                            }
-                          })();
-                        }}
+                        disabled={previewing || locked || confirmBusy}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "package",
+                            id: pkg.id,
+                            expected: pkg.package_name,
+                          })
+                        }
                       >
                         Stop
                       </Button>
                     </div>
                   </div>
+                  {confirmForm(confirming?.kind === "package" && confirming.id === pkg.id)}
                   {diffState && "error" in diffState ? (
                     <p className="mt-3 text-sm text-danger">{diffState.error}</p>
                   ) : null}
@@ -2778,7 +2980,8 @@ export function WatchPage({ search }: { search: string }) {
             ) : (
               <ul className="mt-4 max-w-xl divide-y divide-white/5">
                 {scanTokens.map((token) => (
-                  <li key={token.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                  <li key={token.id} className="py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm text-snow">{token.name}</p>
                       <p className="mt-0.5 font-mono text-xs text-dim">{token.token_prefix}…</p>
@@ -2788,34 +2991,20 @@ export function WatchPage({ search }: { search: string }) {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      disabled={locked || revokingScanTokenId === token.id}
-                      onClick={() => {
-                        setRevokingScanTokenId(token.id);
-                        void (async () => {
-                          try {
-                            const response = await fetch(`/api/scan-tokens/${token.id}`, {
-                              method: "DELETE",
-                              credentials: "include",
-                            });
-                            const body = (await response.json()) as { error?: string };
-                            if (!response.ok) throw new Error(body.error ?? "Could not revoke token.");
-                            if (revealedScanToken?.startsWith(token.token_prefix)) {
-                              setRevealedScanToken(null);
-                            }
-                            await refreshSignedIn(selectedInstallId);
-                          } catch (error) {
-                            setScanTokenError(
-                              error instanceof Error ? error.message : "Could not revoke token.",
-                            );
-                          } finally {
-                            setRevokingScanTokenId(null);
-                          }
-                        })();
-                      }}
+                      disabled={locked || confirmBusy}
+                      onClick={() =>
+                        beginConfirm({
+                          kind: "token",
+                          id: token.id,
+                          expected: token.name,
+                        })
+                      }
                     >
-                      {revokingScanTokenId === token.id ? "Revoking…" : "Revoke"}
+                      Revoke
                     </Button>
                     ) : null}
+                    </div>
+                    {confirmForm(confirming?.kind === "token" && confirming.id === token.id)}
                   </li>
                 ))}
               </ul>
@@ -2972,7 +3161,8 @@ export function WatchPage({ search }: { search: string }) {
         ) : (
           <ul className="mt-6 divide-y divide-white/5">
             {exceptions.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
+              <li key={entry.id} className="py-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
                   <p className="font-mono text-sm text-snow">
                     {entry.rule}
@@ -2989,30 +3179,20 @@ export function WatchPage({ search }: { search: string }) {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  disabled={locked || revokingId === entry.id}
-                  onClick={() => {
-                    setPackageError(null);
-                    setRevokingId(entry.id);
-                    void (async () => {
-                      try {
-                        const response = await fetch(`/api/exceptions/${entry.id}/revoke`, {
-                          method: "POST",
-                          credentials: "include",
-                        });
-                        const body = (await response.json()) as { error?: string };
-                        if (!response.ok) throw new Error(body.error ?? "Could not revoke.");
-                        await refreshSignedIn(selectedInstallId);
-                      } catch (error) {
-                        setPackageError(error instanceof Error ? error.message : "Could not revoke.");
-                      } finally {
-                        setRevokingId(null);
-                      }
-                    })();
-                  }}
+                  disabled={locked || confirmBusy}
+                  onClick={() =>
+                    beginConfirm({
+                      kind: "exception",
+                      id: entry.id,
+                      expected: entry.rule,
+                    })
+                  }
                 >
-                  {revokingId === entry.id ? "Revoking…" : "Revoke"}
+                  Revoke
                 </Button>
                 ) : null}
+                </div>
+                {confirmForm(confirming?.kind === "exception" && confirming.id === entry.id)}
               </li>
             ))}
           </ul>

@@ -1110,7 +1110,8 @@ describe("Notification routes", () => {
 
       const removed = await app.request(`/api/destinations/routes/${createdBody.route.id}`, {
         method: "DELETE",
-        headers: { cookie },
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "hooks.slack.com" }),
       });
       expect(removed.status).toBe(200);
     } finally {
