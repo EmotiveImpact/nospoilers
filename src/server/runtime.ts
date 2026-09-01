@@ -1,6 +1,7 @@
 import { githubAppConfigured, loadConfig, databaseMode, type AppConfig } from "./config.ts";
 import { createGithubPort } from "./github.ts";
 import { logJson } from "./log.ts";
+import { createNpmPort } from "./npm.ts";
 import { createLogNotifier } from "./notifier.ts";
 import { createApp } from "./app.ts";
 import { startPoller } from "./poller.ts";
@@ -20,10 +21,12 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     tokenSecret: config.sessionSecret,
   });
   const github = githubAppConfigured(config) ? createGithubPort(config) : stubGithub();
+  const npm = createNpmPort();
   const notifier = createLogNotifier(store);
   const worker = createWorker({
     store,
     github,
+    npm,
     notifier,
     heavyConcurrency: config.heavyConcurrency,
     lightConcurrency: config.lightConcurrency,
@@ -35,11 +38,23 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     config,
     store,
     github,
+    npm,
     wakeWorker: () => {
       void worker.tick();
     },
   });
-  const poller = startPoller({ store, github, notifier }, config.pollIntervalMs);
+  const poller = startPoller(
+    {
+      store,
+      github,
+      notifier,
+      npm,
+      wakeWorker: () => {
+        void worker.tick();
+      },
+    },
+    config.pollIntervalMs,
+  );
   return {
     app,
     store,

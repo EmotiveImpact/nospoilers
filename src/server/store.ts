@@ -40,6 +40,20 @@ export type AlertRow = {
   full_name?: string | null;
 };
 
+export type WatchedPackageRow = {
+  id: number;
+  installation_id: number;
+  package_name: string;
+  last_version: string | null;
+  last_dist_tags: Record<string, string> | null;
+  last_tarball_url: string | null;
+  last_shasum: string | null;
+  last_sha256: string | null;
+  last_checked_at: string | null;
+  last_scanned_at: string | null;
+  last_scan_status: string | null;
+};
+
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
 export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
 
@@ -92,6 +106,44 @@ function prospectRow(row: ProspectRow): ProspectRow {
     critical_count: row.critical_count === null ? null : num(row.critical_count),
     warning_count: row.warning_count === null ? null : num(row.warning_count),
     findings: parsePayload(row.findings),
+  };
+}
+
+function parseDistTags(value: unknown): Record<string, string> | null {
+  const raw = parsePayload(value);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof entry === "string") out[key] = entry;
+  }
+  return out;
+}
+
+function watchedPackageRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_name: string;
+  last_version: string | null;
+  last_dist_tags: unknown;
+  last_tarball_url: string | null;
+  last_shasum: string | null;
+  last_sha256: string | null;
+  last_checked_at: string | Date | null;
+  last_scanned_at: string | Date | null;
+  last_scan_status: string | null;
+}): WatchedPackageRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_name: row.package_name,
+    last_version: row.last_version,
+    last_dist_tags: parseDistTags(row.last_dist_tags),
+    last_tarball_url: row.last_tarball_url,
+    last_shasum: row.last_shasum,
+    last_sha256: row.last_sha256,
+    last_checked_at: iso(row.last_checked_at),
+    last_scanned_at: iso(row.last_scanned_at),
+    last_scan_status: row.last_scan_status,
   };
 }
 
@@ -708,6 +760,161 @@ export function createStore(
         trialEndsAt: iso(row.trial_ends_at),
         plan: row.plan,
       }));
+    },
+
+    async userOwnsInstallation(userId: string, installationId: number): Promise<boolean> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM installation_users
+         WHERE user_id = $1 AND installation_id = $2`,
+        [userId, installationId],
+      );
+      return num(rows[0]?.n ?? 0) > 0;
+    },
+
+    async listWatchedPackagesForUser(userId: string): Promise<WatchedPackageRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_name: string;
+        last_version: string | null;
+        last_dist_tags: unknown;
+        last_tarball_url: string | null;
+        last_shasum: string | null;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(
+        `SELECT wp.*
+         FROM watched_packages wp
+         JOIN installation_users iu ON iu.installation_id = wp.installation_id
+         WHERE iu.user_id = $1
+         ORDER BY wp.package_name`,
+        [userId],
+      );
+      return rows.map(watchedPackageRow);
+    },
+
+    async listAllWatchedPackages(): Promise<WatchedPackageRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_name: string;
+        last_version: string | null;
+        last_dist_tags: unknown;
+        last_tarball_url: string | null;
+        last_shasum: string | null;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(`SELECT * FROM watched_packages ORDER BY id`);
+      return rows.map(watchedPackageRow);
+    },
+
+    async getWatchedPackage(id: number): Promise<WatchedPackageRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_name: string;
+        last_version: string | null;
+        last_dist_tags: unknown;
+        last_tarball_url: string | null;
+        last_shasum: string | null;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(`SELECT * FROM watched_packages WHERE id = $1`, [id]);
+      return rows[0] ? watchedPackageRow(rows[0]) : null;
+    },
+
+    async countWatchedPackages(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM watched_packages WHERE installation_id = $1`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async insertWatchedPackage(
+      installationId: number,
+      packageName: string,
+    ): Promise<WatchedPackageRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_name: string;
+        last_version: string | null;
+        last_dist_tags: unknown;
+        last_tarball_url: string | null;
+        last_shasum: string | null;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(
+        `INSERT INTO watched_packages (installation_id, package_name)
+         VALUES ($1, $2)
+         ON CONFLICT (installation_id, package_name) DO NOTHING
+         RETURNING *`,
+        [installationId, packageName],
+      );
+      return rows[0] ? watchedPackageRow(rows[0]) : null;
+    },
+
+    async deleteWatchedPackageForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM watched_packages wp
+         USING installation_users iu
+         WHERE wp.id = $1
+           AND wp.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING wp.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async touchWatchedPackage(
+      id: number,
+      input: {
+        version?: string | null;
+        distTags?: Record<string, string> | null;
+        tarballUrl?: string | null;
+        shasum?: string | null;
+      },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE watched_packages SET
+           last_checked_at = now(),
+           last_version = COALESCE($2, last_version),
+           last_dist_tags = COALESCE($3::jsonb, last_dist_tags),
+           last_tarball_url = COALESCE($4, last_tarball_url),
+           last_shasum = COALESCE($5, last_shasum)
+         WHERE id = $1`,
+        [
+          id,
+          input.version ?? null,
+          input.distTags ? JSON.stringify(input.distTags) : null,
+          input.tarballUrl ?? null,
+          input.shasum ?? null,
+        ],
+      );
+    },
+
+    async recordWatchedPackageScan(
+      id: number,
+      input: { sha256: string | null; status: string },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE watched_packages SET
+           last_scanned_at = now(),
+           last_scan_status = $2,
+           last_sha256 = COALESCE($3, last_sha256)
+         WHERE id = $1`,
+        [id, input.status, input.sha256],
+      );
     },
   };
 }

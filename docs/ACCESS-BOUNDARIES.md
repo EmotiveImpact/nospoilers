@@ -33,6 +33,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 **May**
 
 - See Watch data for installations linked to their account.
+- Connect and watch public npm packages on those installations while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
 - View their own coverage status.
 - Use Scan under the same coverage rules as the rest of the hosted product.

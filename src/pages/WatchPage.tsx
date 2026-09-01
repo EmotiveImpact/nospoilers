@@ -33,6 +33,16 @@ type Alert = {
   full_name?: string | null;
 };
 
+type WatchedPackage = {
+  id: number;
+  installation_id: number;
+  package_name: string;
+  last_version: string | null;
+  last_checked_at: string | null;
+  last_scanned_at: string | null;
+  last_scan_status: string | null;
+};
+
 type LoadState<T> =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -64,6 +74,10 @@ function kindLabel(kind: string): string {
       return "Release pack";
     case "push_sensitive_path":
       return "Path watch";
+    case "npm_scan":
+      return "npm pack";
+    case "npm_dist_tag":
+      return "npm dist-tag";
     default:
       return kind;
   }
@@ -73,23 +87,34 @@ export function WatchPage({ search }: { search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
+  const [packages, setPackages] = useState<LoadState<{ packages: WatchedPackage[] }>>({
+    status: "loading",
+  });
   const [scanError, setScanError] = useState<string | null>(null);
+  const [packageError, setPackageError] = useState<string | null>(null);
   const [scanningId, setScanningId] = useState<number | null>(null);
+  const [packageName, setPackageName] = useState("");
+  const [watchingPackage, setWatchingPackage] = useState(false);
+  const [checkingId, setCheckingId] = useState<number | null>(null);
 
   const refreshSignedIn = useCallback(async () => {
     setRepos({ status: "loading" });
     setAlerts({ status: "loading" });
+    setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody] = await Promise.all([
+      const [repoBody, alertBody, packageBody] = await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
+        loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
+      setPackages({ status: "ready", data: packageBody });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not load.";
       setRepos({ status: "error", message });
       setAlerts({ status: "error", message });
+      setPackages({ status: "error", message });
     }
   }, []);
 
@@ -104,6 +129,7 @@ export function WatchPage({ search }: { search: string }) {
         else {
           setRepos({ status: "ready", data: { repos: [] } });
           setAlerts({ status: "ready", data: { alerts: [] } });
+          setPackages({ status: "ready", data: { packages: [] } });
         }
       } catch (error) {
         if (cancelled) return;
@@ -182,6 +208,11 @@ export function WatchPage({ search }: { search: string }) {
     : PREVIEW_INSTALLATIONS.map((row) => row.account_login);
   const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
   const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
+  const deskPackages = previewing
+    ? []
+    : packages.status === "ready"
+      ? packages.data.packages
+      : [];
 
   return (
     <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
@@ -330,6 +361,149 @@ export function WatchPage({ search }: { search: string }) {
           )}
         </section>
       </div>
+
+      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          We fetch the tarball registry.npmjs.org serves for <code className="text-snow">latest</code>
+          . New versions, mutated bytes under the same version, and dist-tag moves enqueue a job.
+          Source is not kept.
+        </p>
+        {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+        {!previewing && packages.status === "error" && (
+          <p className="mt-6 text-sm text-danger">{packages.message}</p>
+        )}
+        {!previewing && user && installations.length > 0 && (
+          <form
+            className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (ended || watchingPackage) return;
+              setPackageError(null);
+              setWatchingPackage(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/packages", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      packageName,
+                      installationId: installations[0]?.id,
+                    }),
+                  });
+                  const body = (await response.json()) as { error?: string };
+                  if (!response.ok) throw new Error(body.error ?? "Could not watch package.");
+                  setPackageName("");
+                  await refreshSignedIn();
+                } catch (error) {
+                  setPackageError(error instanceof Error ? error.message : "Could not watch package.");
+                } finally {
+                  setWatchingPackage(false);
+                }
+              })();
+            }}
+          >
+            <label className="min-w-0 flex-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package name</span>
+              <input
+                value={packageName}
+                onChange={(event) => setPackageName(event.target.value)}
+                placeholder="@scope/name"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <Button type="submit" disabled={ended || watchingPackage || !packageName.trim()}>
+              {watchingPackage ? "Connecting…" : "Watch package"}
+            </Button>
+          </form>
+        )}
+        {packageError && <p className="mt-4 text-sm text-danger">{packageError}</p>}
+        {deskPackages.length === 0 && (previewing || packages.status === "ready") && (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            No packages yet. Connect a public package you ship. Private registries are not in this
+            slice.
+          </p>
+        )}
+        {deskPackages.length > 0 && (
+          <ul className="mt-4 divide-y divide-white/5">
+            {deskPackages.map((pkg) => (
+              <li key={pkg.id} className="flex flex-wrap items-baseline justify-between gap-3 py-5">
+                <div>
+                  <p className="font-mono text-sm text-snow">{pkg.package_name}</p>
+                  <p className="mt-1 text-xs text-dim">
+                    {pkg.last_version ? `@${pkg.last_version}` : "not scanned yet"}
+                    {pkg.last_scan_status ? ` · ${pkg.last_scan_status}` : ""}
+                    {pkg.last_checked_at
+                      ? ` · checked ${new Date(pkg.last_checked_at).toLocaleString()}`
+                      : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={previewing || ended || checkingId === pkg.id}
+                    onClick={() => {
+                      setPackageError(null);
+                      setCheckingId(pkg.id);
+                      void (async () => {
+                        try {
+                          const response = await fetch(`/api/packages/${pkg.id}/check`, {
+                            method: "POST",
+                            credentials: "include",
+                          });
+                          const body = (await response.json()) as { error?: string };
+                          if (!response.ok) throw new Error(body.error ?? "Could not check package.");
+                          await refreshSignedIn();
+                        } catch (error) {
+                          setPackageError(
+                            error instanceof Error ? error.message : "Could not check package.",
+                          );
+                        } finally {
+                          setCheckingId(null);
+                        }
+                      })();
+                    }}
+                  >
+                    {checkingId === pkg.id ? "Checking…" : "Check now"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={previewing || ended}
+                    onClick={() => {
+                      setPackageError(null);
+                      void (async () => {
+                        try {
+                          const response = await fetch(`/api/packages/${pkg.id}`, {
+                            method: "DELETE",
+                            credentials: "include",
+                          });
+                          const body = (await response.json()) as { error?: string };
+                          if (!response.ok) throw new Error(body.error ?? "Could not remove package.");
+                          await refreshSignedIn();
+                        } catch (error) {
+                          setPackageError(
+                            error instanceof Error ? error.message : "Could not remove package.",
+                          );
+                        }
+                      })();
+                    }}
+                  >
+                    Stop
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

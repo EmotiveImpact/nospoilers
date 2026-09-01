@@ -11,6 +11,7 @@
 - Encrypt GitHub OAuth tokens at rest, set Secure cookies on https, and cap hosted scans per address.
 - Publish Privacy, Terms, retention, disclosure, support, and refund pages.
 - Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
+- Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, and dist-tags.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

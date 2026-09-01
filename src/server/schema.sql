@@ -124,3 +124,23 @@ CREATE INDEX IF NOT EXISTS prospects_queue_idx
 
 CREATE INDEX IF NOT EXISTS prospects_action_idx
   ON prospects (status, critical_count DESC, discovered_at DESC);
+
+CREATE TABLE IF NOT EXISTS watched_packages (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_name TEXT NOT NULL,
+  last_version TEXT,
+  last_dist_tags JSONB,
+  last_tarball_url TEXT,
+  last_shasum TEXT,
+  last_sha256 TEXT,
+  last_checked_at TIMESTAMPTZ,
+  last_scanned_at TIMESTAMPTZ,
+  last_scan_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (installation_id, package_name)
+);
+
+CREATE INDEX IF NOT EXISTS watched_packages_install_idx
+  ON watched_packages (installation_id, package_name);
+

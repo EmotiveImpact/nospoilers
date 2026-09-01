@@ -11,6 +11,8 @@ import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
 import type { GithubPort } from "./github.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
+import { createNpmPort, type NpmPort } from "./npm.ts";
+import { checkWatchedPackage, connectWatchedPackage } from "./npm-watch.ts";
 import { clientKey, createRateLimiter } from "./rate-limit.ts";
 import {
   discoverAndQueueProspects,
@@ -27,6 +29,7 @@ export type AppDeps = {
   config: AppConfig;
   store: Store;
   github: GithubPort;
+  npm?: NpmPort;
   scan?: typeof scan;
   wakeWorker?: () => void;
 };
@@ -43,9 +46,25 @@ function sameSecret(left: string, right: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 409 {
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof (error as { status: unknown }).status === "number"
+  ) {
+    const status = (error as { status: number }).status;
+    if (status === 400 || status === 402 || status === 403 || status === 404 || status === 409) {
+      return status;
+    }
+  }
+  return 400;
+}
+
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const scanFn = deps.scan ?? scan;
+  const npm = deps.npm ?? createNpmPort();
   const cookieName = "ns_session";
   const scanLimiter = createRateLimiter({
     limit: deps.config.scanRateLimit,
@@ -451,6 +470,71 @@ export function createApp(deps: AppDeps): Hono {
     });
     if (result.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.inserted, jobId: result.id });
+  });
+
+  app.get("/api/packages", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const packages = await deps.store.listWatchedPackagesForUser(user.userId);
+    return c.json({ packages });
+  });
+
+  app.post("/api/packages", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId = Number.isFinite(requested) && requested > 0
+      ? requested
+      : installations.length === 1
+        ? installations[0].id
+        : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach this package to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    try {
+      const result = await connectWatchedPackage(deps.store, npm, {
+        installationId,
+        packageName: String(body.packageName ?? ""),
+      });
+      if (result.queued) deps.wakeWorker?.();
+      return c.json({ ok: true, queued: result.queued, package: result.package }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not watch that package." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/packages/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown package." }, 404);
+    const removed = await deps.store.deleteWatchedPackageForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown package." }, 404);
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/packages/:id/check", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    if (!(await deps.store.installationWorkAllowed(pkg.installation_id))) {
+      return c.json({ error: "Coverage ended. Subscribe to keep watching npm packages." }, 402);
+    }
+    const result = await checkWatchedPackage(deps.store, npm, pkg);
+    if (result.queued) deps.wakeWorker?.();
+    return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
   });
 
   return app;

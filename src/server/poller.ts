@@ -1,5 +1,7 @@
 import { logJson } from "./log.ts";
 import type { GithubPort } from "./github.ts";
+import type { NpmPort } from "./npm.ts";
+import { runNpmWatchPoll } from "./npm-watch.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
@@ -38,11 +40,17 @@ export function startPoller(
     store: Store;
     github: GithubPort;
     notifier: AlertNotifier;
+    npm: NpmPort;
+    wakeWorker?: () => void;
   },
   intervalMs: number,
 ): { stop: () => void } {
   const timer = setInterval(() => {
-    void runVisibilityPoll(deps).catch((error: unknown) => {
+    void (async () => {
+      await runVisibilityPoll(deps);
+      const npm = await runNpmWatchPoll(deps);
+      if (npm.queued > 0) deps.wakeWorker?.();
+    })().catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "poller.failed", { message });
     });

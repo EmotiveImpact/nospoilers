@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -5,6 +6,7 @@ import { scan, type ScanReport } from "../scanner/index.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
+import type { NpmPort } from "./npm.ts";
 import { isPackAssetName } from "./paths.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
@@ -38,6 +40,7 @@ export async function handleJob(
     notifier: AlertNotifier;
     scan: ScanFn;
     maxAssetBytes: number;
+    npm?: NpmPort;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
@@ -208,6 +211,71 @@ export async function handleJob(
       findings: allFindings,
     });
   }
+
+  if (job.kind === "npm_dist_tag") {
+    const packageName = String(payload.packageName ?? "");
+    const tags = asRecord(payload.distTags);
+    await deps.notifier.send({
+      ...alertBase,
+      kind: job.kind,
+      title: `npm dist-tags changed on ${packageName || "a package"}`,
+      body: `latest is ${String(tags.latest ?? "unset")}. Tag-only changes do not download a tarball.`,
+    });
+    return;
+  }
+
+  if (job.kind === "npm_scan") {
+    if (!deps.npm) throw new Error("npm_scan job is missing the npm port.");
+    const packageName = String(payload.packageName ?? "");
+    const version = String(payload.version ?? "");
+    const tarballUrl = String(payload.tarballUrl ?? "");
+    const packageId = Number(payload.packageId);
+    const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-npm-"));
+    const dest = path.join(dir, `${packageName.replace(/[^\w.-]+/g, "_") || "package"}-${version}.tgz`);
+    try {
+      const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes);
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      await writeFile(dest, bytes);
+      const report = await deps.scan(dest);
+      const critical = report.findings.filter((finding) => finding.severity === "critical").length;
+      if (Number.isFinite(packageId) && packageId > 0) {
+        await deps.store.recordWatchedPackageScan(packageId, {
+          sha256,
+          status: critical > 0 ? "failed-policy" : "passed",
+        });
+      }
+      await deps.notifier.send({
+        ...alertBase,
+        kind: job.kind,
+        title:
+          critical > 0
+            ? `Spoilers in npm ${packageName}@${version}`
+            : `npm ${packageName}@${version} is allowed to ship`,
+        body: `${critical > 0 ? `${critical} critical finding(s).` : "No critical findings."} sha256 ${sha256}`,
+        findings: report.findings,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("larger than")) {
+        if (Number.isFinite(packageId) && packageId > 0) {
+          await deps.store.recordWatchedPackageScan(packageId, {
+            sha256: null,
+            status: "inconclusive",
+          });
+        }
+        await deps.notifier.send({
+          ...alertBase,
+          kind: job.kind,
+          title: `Inconclusive scan of npm ${packageName}@${version}`,
+          body: `${message} This is not a clean bill of health.`,
+        });
+        return;
+      }
+      throw error;
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
 }
 
 export function createWorker(opts: {
@@ -220,6 +288,7 @@ export function createWorker(opts: {
   maxAssetBytes: number;
   intervalMs: number;
   staleAfterMs?: number;
+  npm?: NpmPort;
   onJob?: (job: JobRow) => Promise<void>;
 }) {
   const scanFn = opts.scan ?? scan;
@@ -256,6 +325,7 @@ export function createWorker(opts: {
           notifier: opts.notifier,
           scan: scanFn,
           maxAssetBytes: opts.maxAssetBytes,
+          npm: opts.npm,
         });
       }
       await opts.store.finishJob(job.id);

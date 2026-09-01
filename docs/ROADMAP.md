@@ -23,6 +23,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Installation billing accounts and unpaid hosted-work enforcement.
 - Privacy, Terms, retention, responsible disclosure, support, and refund pages.
 - Strong secret-length checks on Neon/https boot; `/api/ready` database ping; JSON logs.
+- Public npm package watching: connect a pack, scan `latest`, detect the next version.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
