@@ -4,7 +4,6 @@ import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
-import type { ReadEntry } from "tar";
 import { INSPECT_BYTES, inspectEntry, TOTAL_WARN_BYTES } from "./inspect.ts";
 import type { Finding, ScanOptions, ScanReport, ScanTargetKind } from "./types.ts";
 
@@ -131,15 +130,17 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
     await tarExtract({
       file: archive,
       cwd: dir,
-      filter(_entryPath: string, entry: ReadEntry) {
+      filter(entryPath, entry) {
+        const type = "type" in entry ? entry.type : "File";
+        const storedPath = "path" in entry ? entry.path : entryPath;
         const file =
-          entry.type === "File" ||
-          entry.type === "OldFile" ||
-          entry.type === "ContiguousFile";
-        if (!file) return entry.type !== "SymbolicLink" && entry.type !== "Link";
+          type === "File" ||
+          type === "OldFile" ||
+          type === "ContiguousFile";
+        if (!file) return type !== "SymbolicLink" && type !== "Link";
         const size = entry.size ?? 0;
-        extractionBudget.beginFile(entry.path);
-        extractionBudget.addBytes(entry.path, size, size);
+        extractionBudget.beginFile(storedPath);
+        extractionBudget.addBytes(storedPath, size, size);
         return true;
       },
     });
