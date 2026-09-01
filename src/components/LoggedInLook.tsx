@@ -2,14 +2,14 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 
-/** Two logged-in looks: trial desk vs unpaid locked scan. */
+/** Two logged-in looks from the old mockups: trial desk vs unpaid locked scan. */
 export function LoggedInLook({ current }: { current: "trial" | "ended" }) {
   return (
-    <div className="mb-8 flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-10 flex flex-col gap-4 border-b border-white/5 pb-8 sm:flex-row sm:items-end sm:justify-between">
       <p className="max-w-lg text-sm leading-relaxed text-mute">
         {current === "trial"
-          ? "Preview of the desk while coverage is on. Watch is live. Hosted unpacks run."
-          : "Preview after coverage ends. The drop zone stays. We do not unpack until you subscribe."}
+          ? "This is logged in while the trial (or a paid plan) is on. Watch is live. Hosted unpacks run."
+          : "This is logged in after coverage ends unpaid. The drop zone stays so you remember the door. We do not unpack until you subscribe."}
       </p>
       <div className="flex flex-wrap gap-2">
         <Button

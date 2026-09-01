@@ -1,10 +1,10 @@
 import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
 import { CoverageLock } from "@/components/CoverageLock.tsx"
 import { LoggedInLook } from "@/components/LoggedInLook.tsx"
-import { PageHeader } from "@/components/PageHeader.tsx"
 import { Badge } from "@/components/ui/badge"
 import { coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
+import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { ChevronRight, Loader2, Upload } from "lucide-react"
 import { useCallback, useEffect, useId, useState, type DragEvent, type ReactNode } from "react"
@@ -24,7 +24,7 @@ const EXAMPLES = [
   {
     path: "fixtures/sourcemap.tgz",
     label: "Pack with a source map",
-    hint: "The Claude Code class of leak",
+    hint: "The Grok / Claude class of leak",
   },
   {
     path: "fixtures/sourcemap.asar",
@@ -134,26 +134,37 @@ export function ScanPage({ search }: { search: string }) {
   )
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
+    <main className="mx-auto max-w-5xl px-5 py-12 md:py-20">
       {previewing ? <LoggedInLook current={locked ? "ended" : "trial"} /> : null}
 
-      <PageHeader
-        kicker={session || previewing ? "Hosted pack gate" : "Pack gate"}
-        title="Don’t ship the ending."
-        description={
-          locked
-            ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active."
-            : "Drop the tarball, zip, or Electron asar customers download. This is the same scanner the Release webhook uses — here you can try it by hand."
-        }
-      />
-      {(session || previewing) && coverage?.status === "trial" ? (
-        <p className="mt-3 text-sm text-dim">Hosted scan is on for this trial.</p>
-      ) : null}
+      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">
+        CI pack gate{session || previewing ? " · hosted" : ""}
+      </p>
+      <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
+        Don’t ship the ending.
+      </h1>
+      <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
+        {locked
+          ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active. Run the CLI at home if you want; that was never the bill."
+          : "Drop the tarball, zip, or Electron asar customers download. Secret scanners read git. This reads the packed bytes."}
+        {(session || previewing) && coverage?.status === "trial" ? " Hosted scan is on for this trial." : null}
+      </p>
+      {!session && !queryCoverage && (
+        <p className="mt-4 text-sm text-dim">
+          Signed-out scan still runs here. The unpaid logged-in look is{" "}
+          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/scan?as=ended")}>
+            coverage ended
+          </button>
+          .
+        </p>
+      )}
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-10">
+      <div className="mt-14 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
         <div>
-          <div className="relative min-h-56">
-            {locked && <CoverageLock variant="scan" title="Subscribe to unpack here." />}
+          <div className="relative min-h-52">
+            {locked && (
+              <CoverageLock variant="scan" title="Subscribe to unpack here." />
+            )}
             <Field>
               <Label
                 htmlFor={locked ? undefined : inputId}
@@ -168,21 +179,19 @@ export function ScanPage({ search }: { search: string }) {
                   if (!locked) onFiles(event.dataTransfer.files)
                 }}
                 className={cn(
-                  "flex min-h-56 flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dashed px-7 py-10 transition-colors",
+                  "flex min-h-52 flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-7 py-10 transition-colors",
                   locked ? "cursor-default border-white/15 opacity-40" : "cursor-pointer",
                   !locked && dragOver
                     ? "border-snow bg-white/[0.06]"
                     : !locked
-                      ? "border-white/20 bg-white/[0.02] hover:border-white/40 hover:bg-white/[0.04]"
+                      ? "border-white/25 hover:border-white/45 hover:bg-white/[0.03]"
                       : "",
                 )}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-inset">
-                  <Upload className="h-4 w-4 text-mute" aria-hidden />
-                </span>
-                <p className="font-display text-xl text-snow">Drop a pack here</p>
+                <Upload className="h-5 w-5 text-mute" aria-hidden />
+                <p className="font-display text-lg text-snow">Drop a pack here</p>
                 <Description className="text-sm text-dim">
-                  .tgz, .zip, or .asar — or click to choose
+                  tarball, zip, or asar — or click to choose
                 </Description>
                 {!locked && (
                   <input
@@ -198,7 +207,7 @@ export function ScanPage({ search }: { search: string }) {
           </div>
 
           <p className="mt-10 text-[11px] uppercase tracking-[0.22em] text-dim">
-            {locked ? "Fixtures" : "Try a known leak"}
+            {locked ? "Fixtures" : "Try a fixture"}
           </p>
           <ul className={cn("mt-3 flex flex-col gap-2", locked && "pointer-events-none opacity-40")}>
             {EXAMPLES.map((example) => (
@@ -206,7 +215,7 @@ export function ScanPage({ search }: { search: string }) {
                 <HeadlessButton
                   type="button"
                   disabled={locked}
-                  className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition-colors data-hover:border-white/25 data-hover:bg-white/[0.07] data-active:bg-white/[0.1] data-disabled:cursor-default data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40"
+                  className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3.5 text-left transition-colors data-hover:border-white/28 data-hover:bg-white/[0.07] data-active:bg-white/[0.1] data-disabled:cursor-default data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40"
                   onClick={() => {
                     if (locked) return
                     void run(example.label, () => scanPath(example.path))
@@ -226,20 +235,18 @@ export function ScanPage({ search }: { search: string }) {
           </ul>
         </div>
 
-        <div className="lg:sticky lg:top-24">
-          <ResultsPanel state={state} locked={locked} />
-        </div>
+        <ResultsPanel state={state} locked={locked} />
       </div>
 
       {!locked && (
-        <section className="mt-16 grid gap-4 border-t border-white/6 pt-12 md:grid-cols-3">
+        <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
           <Step n="01" title="Pack as usual">
             Run <code className="text-mute">npm pack</code> or build the Electron asar. Scan that
             file, not the git tree.
           </Step>
-          <Step n="02" title="Or fail the job">
+          <Step n="02" title="Fail the job">
             <code className="text-mute">npx nospoilers scan ./package.tgz</code> exits 1 if it finds
-            spoilers. Use this when you publish to npm without a GitHub Release.
+            spoilers.
           </Step>
           <Step n="03" title="Keep the map private">
             Upload hidden source maps to Sentry. Do not put them in the installer.
@@ -252,7 +259,7 @@ export function ScanPage({ search }: { search: string }) {
 
 function Step({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+    <div>
       <p className="text-[11px] uppercase tracking-[0.22em] text-dim">{n}</p>
       <h2 className="mt-3 font-display text-lg text-snow">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-dim">{children}</p>
@@ -263,12 +270,12 @@ function Step({ n, title, children }: { n: string; title: string; children: Reac
 function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) {
   if (locked && state.status === "idle") {
     return (
-      <div className="flex min-h-56 flex-col justify-center rounded-2xl border border-white/8 bg-panel/70 px-6 py-10">
+      <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Report</p>
         <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">No hosted scan yet.</h2>
         <p className="mt-2 text-sm leading-relaxed text-mute">
           Local still works: <code className="text-snow">npx nospoilers scan ./package.tgz</code>{" "}
-          exits 1 if it finds spoilers.
+          exits 1 if it finds spoilers. We cannot kill a file on your laptop. We can kill this page.
         </p>
       </div>
     )
@@ -276,18 +283,16 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
 
   if (state.status === "idle") {
     return (
-      <div className="flex min-h-56 flex-col justify-center rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-6 py-10">
-        <p className="font-display text-xl text-snow">Waiting for a pack</p>
-        <p className="mt-2 text-sm leading-relaxed text-mute">
-          Drop a file or run a fixture. Empty is a good state.
-        </p>
+      <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
+        <p className="text-sm text-dim">No scan yet.</p>
+        <p className="mt-2 text-sm text-mute">Drop a pack or run a fixture. Empty is a good state.</p>
       </div>
     )
   }
 
   if (state.status === "loading") {
     return (
-      <div className="flex min-h-56 items-center gap-3 rounded-2xl border border-white/8 bg-panel/70 px-6 py-10">
+      <div className="flex min-h-52 items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
         <p className="text-sm text-mute">Reading {state.label}…</p>
       </div>
@@ -296,7 +301,7 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
 
   if (state.status === "error") {
     return (
-      <div className="rounded-2xl border border-danger/20 bg-danger/5 px-6 py-10">
+      <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="font-display text-lg text-snow">Could not scan</p>
         <p className="mt-2 text-sm text-mute">{state.message}</p>
       </div>
@@ -307,19 +312,11 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
   const critical = report.findings.filter((f) => f.severity === "critical").length
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border px-6 py-8",
-        report.ok ? "border-ok/25 bg-ok/5" : "border-danger/25 bg-danger/5",
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={report.ok ? "clean" : "critical"}>
-          {report.ok ? "Allowed to ship" : `${critical} critical`}
-        </Badge>
-        <span className="text-xs text-dim">{report.fileCount} files</span>
-      </div>
-      <h2 className="mt-4 font-display text-2xl tracking-tight text-snow">
+    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-dim">
+        {report.ok ? "Allowed to ship" : `${critical} critical`} · {report.fileCount} files
+      </p>
+      <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">
         {report.ok ? "Clean pack" : "Spoilers in the pack"}
       </h2>
       <p className="mt-1 text-sm text-dim">
@@ -330,7 +327,7 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
           No source maps, no embedded original source, no env files, no keys, no .git.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-white/8">
+        <ul className="mt-6 divide-y divide-white/5">
           {report.findings.map((finding) => (
             <li key={`${finding.rule}-${finding.path}-${finding.title}`} className="py-4 first:pt-0">
               <div className="flex items-center gap-2">
