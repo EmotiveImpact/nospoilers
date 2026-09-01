@@ -361,7 +361,7 @@ export function ProspectsPage() {
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={prospect.critical_count ? "critical" : "default"}>
+                        <Badge variant={prospect.critical_count ? "critical" : "clean"}>
                           {prospect.scan_status === "complete"
                             ? `${prospect.critical_count ?? 0} critical`
                             : prospect.scan_status}

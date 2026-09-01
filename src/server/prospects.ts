@@ -42,7 +42,7 @@ type GithubContent = {
   encoding?: string;
 };
 
-function githubHeaders(token: string): HeadersInit {
+function githubHeaders(token: string): Record<string, string> {
   return {
     Accept: "application/vnd.github+json",
     "User-Agent": "NoSpoilers-Artifact-Leads",
