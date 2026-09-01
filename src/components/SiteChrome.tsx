@@ -2,7 +2,7 @@ import { signOut } from "@/auth.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
-import { coverageFromQuery, type Coverage } from "@/coverage.ts"
+import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { LEGAL_NAV } from "@/legal.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
@@ -61,12 +61,24 @@ export function SiteChrome({
           coverage?: Coverage
           user?: { login: string } | null
           githubApp?: boolean
+          installations?: { id: number; trialEndsAt?: string | null; plan?: string | null }[]
         }
         if (cancelled) return
         setGithubApp(Boolean(body.githubApp))
-        if (body.user && body.coverage) {
-          setSessionCoverage(body.coverage)
+        if (body.user) {
           setLogin(body.user.login)
+          const wanted = Number(
+            new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("install"),
+          )
+          const selected =
+            Number.isFinite(wanted) && wanted > 0
+              ? body.installations?.find((row) => row.id === wanted)
+              : undefined
+          setSessionCoverage(
+            selected
+              ? coverageFrom(selected.trialEndsAt, selected.plan)
+              : (body.coverage ?? null),
+          )
         } else {
           setSessionCoverage(null)
           setLogin(null)

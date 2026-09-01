@@ -579,9 +579,12 @@ export function WatchPage({ search }: { search: string }) {
         setMe({ status: "ready", data: body });
         if (body.user) {
           const wanted = installIdFromSearch(search);
-          const ids = body.installations.map((row) => row.id);
+          const ids = (body.installations ?? []).map((row) => row.id);
           const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
           setSelectedInstallId(pick);
+          if (pick && wanted !== pick) {
+            navigate(`/watch?install=${pick}`);
+          }
           await refreshSignedIn(pick);
         } else {
           setRepos({ status: "ready", data: { repos: [] } });
