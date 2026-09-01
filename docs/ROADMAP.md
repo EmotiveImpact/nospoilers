@@ -92,8 +92,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   libraries, and Mach-O are never executed. APK/Apple signatures are not verified. Encrypted zip
   is inconclusive. FairPlay-encrypted Mach-O is not decrypted. Scan includes an APK fixture example.
   Not a Pricing change.
-- Production website crawls: HTTPS origin, same-origin JS/CSS/maps, private/local/metadata
-  hosts blocked, never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.
+- Production website crawls: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
+  exposed files, credentials, and linked internal paths, private/local/metadata hosts blocked,
+  never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.
 - Sentry/Bugsnag map custody: matching debug ID (Sentry) or release version (Bugsnag), private
   lookup, public map absent. Encrypted tokens. Event-driven. Not a Pricing change. Bugsnag cannot
   look up a debug ID.

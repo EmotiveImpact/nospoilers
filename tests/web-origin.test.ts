@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
@@ -11,6 +11,7 @@ import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
 import {
   collectHtmlAssetUrls,
+  collectSensitiveUrls,
   crawlOrigin,
   parseWatchOrigin,
   WebCrawlError,
@@ -20,6 +21,11 @@ import { runWebOriginPoll } from "../src/server/web-watch.ts";
 const DIRTY = path.resolve("fixtures/web/dirty");
 const CLEAN = path.resolve("fixtures/web/clean");
 const ORIGIN = "https://app.example.com/";
+
+const FIXTURE_PUBLIC_PATH: Record<string, string> = {
+  "exposed.env": ".env",
+  "exposed.git-HEAD": ".git/HEAD",
+};
 
 function unusedGithub(): GithubPort {
   const fail = async (): Promise<never> => {
@@ -38,31 +44,51 @@ function unusedGithub(): GithubPort {
   };
 }
 
-async function siteFetch(root: string): Promise<typeof fetch> {
-  const index = await readFile(path.join(root, "index.html"));
-  const appJs = await readFile(path.join(root, "app.js"));
-  const mapPath = path.join(root, "app.js.map");
-  let map: Buffer | null = null;
-  try {
-    map = await readFile(mapPath);
-  } catch {
-    map = null;
+function mimeFor(rel: string): string {
+  if (rel.endsWith(".map")) return "application/json";
+  if (/\.(?:js|mjs|cjs)$/i.test(rel)) return "application/javascript";
+  if (rel.endsWith(".css")) return "text/css";
+  if (/\.(?:html|htm|php)$/i.test(rel) || rel === "internal/debug") return "text/html";
+  return "text/plain";
+}
+
+async function loadSiteFiles(root: string): Promise<Record<string, Buffer>> {
+  const out: Record<string, Buffer> = {};
+  async function walk(dir: string, rel: string) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const nextRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await walk(path.join(dir, entry.name), nextRel);
+      } else if (entry.isFile()) {
+        out[nextRel] = await readFile(path.join(dir, entry.name));
+      }
+    }
   }
-  const files: Record<string, Buffer> = {
-    [ORIGIN]: index,
-    "https://app.example.com/app.js": appJs,
-  };
-  if (map) files["https://app.example.com/app.js.map"] = map;
+  await walk(root, "");
+  for (const [from, to] of Object.entries(FIXTURE_PUBLIC_PATH)) {
+    if (out[from]) {
+      out[to] = out[from];
+      delete out[from];
+    }
+  }
+  return out;
+}
+
+async function siteFetch(root: string): Promise<typeof fetch> {
+  const disk = await loadSiteFiles(root);
+  const files: Record<string, { body: Buffer; type: string }> = {};
+  for (const [rel, body] of Object.entries(disk)) {
+    files[`https://app.example.com/${rel}`] = { body, type: mimeFor(rel) };
+  }
+  if (disk["index.html"]) {
+    files[ORIGIN] = { body: disk["index.html"], type: "text/html" };
+  }
   return (async (input) => {
     const url = String(input);
-    const body = files[url];
-    if (!body) return new Response("missing", { status: 404 });
-    const type = url.endsWith(".map")
-      ? "application/json"
-      : url.endsWith(".js")
-        ? "application/javascript"
-        : "text/html";
-    return new Response(body, { status: 200, headers: { "content-type": type } });
+    const hit = files[url];
+    if (!hit) return new Response("missing", { status: 404 });
+    return new Response(hit.body, { status: 200, headers: { "content-type": hit.type } });
   }) as typeof fetch;
 }
 
@@ -88,16 +114,27 @@ describe("website origin parsing", () => {
     expect(urls).toContain("https://app.example.com/app.css");
     expect(urls.some((url) => url.includes("cdn.example.net"))).toBe(false);
   });
+
+  it("collects same-origin exposed paths and ignores off-origin credential hrefs", () => {
+    const html =
+      '<a href="/.env">env</a><a href="/internal/debug">debug</a><a href="https://evil.com/.env">nope</a><a href="javascript:alert(1)">js</a> fetch("/.git/HEAD")';
+    const urls = collectSensitiveUrls(html, new URL(ORIGIN));
+    expect(urls).toContain("https://app.example.com/.env");
+    expect(urls).toContain("https://app.example.com/internal/debug");
+    expect(urls).toContain("https://app.example.com/.git/HEAD");
+    expect(urls.some((url) => url.includes("evil.com"))).toBe(false);
+    expect(urls.some((url) => url.startsWith("javascript:"))).toBe(false);
+  });
 });
 
 describe("website crawl", () => {
-  it("fetches HTML, JS, and an exposed sibling map without executing scripts", async () => {
+  it("fetches HTML, JS, maps, exposed files, and linked internal paths without executing scripts", async () => {
     const crawled = await crawlOrigin(ORIGIN, {
       fetch: await siteFetch(DIRTY),
       lookup: publicLookup,
     });
     expect(crawled.files.map((row) => row.rel).sort()).toEqual(
-      ["app.js", "app.js.map", "index.html"].sort(),
+      [".env", ".git/HEAD", "app.js", "app.js.map", "index.html", "internal/debug"].sort(),
     );
     expect(crawled.truncated).toBe(false);
   });
@@ -132,6 +169,61 @@ describe("website crawl", () => {
     });
     expect(crawled.truncated).toBe(true);
     expect(crawled.files.length).toBe(1);
+  });
+
+  it("skips missing exposed probes instead of failing the crawl", async () => {
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: await siteFetch(CLEAN),
+      lookup: publicLookup,
+    });
+    expect(crawled.files.map((row) => row.rel).sort()).toEqual(["app.js", "index.html"].sort());
+    expect(crawled.truncated).toBe(false);
+  });
+
+  it("does not treat SPA catch-all HTML on /.env as an environment file", async () => {
+    const home = Buffer.from("<!doctype html><html><body>spa</body></html>");
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: (async () =>
+        new Response(home, { status: 200, headers: { "content-type": "text/html" } })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(crawled.files.map((row) => row.rel)).toEqual(["index.html"]);
+  });
+
+  it("does not treat a distinct HTML 404 page on a secret path as an environment file", async () => {
+    const home = Buffer.from("<!doctype html><html><body>home</body></html>");
+    const missing = Buffer.from("<!doctype html><html><body>not found</body></html>");
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: (async (input) => {
+        const url = String(input);
+        if (url === ORIGIN) {
+          return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
+        }
+        return new Response(missing, { status: 200, headers: { "content-type": "text/html" } });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(crawled.files.map((row) => row.rel)).toEqual(["index.html"]);
+  });
+
+  it("never fetches an off-origin credential href", async () => {
+    const html = Buffer.from(
+      '<!doctype html><html><body><a href="https://evil.com/.env">x</a></body></html>',
+    );
+    const fetched: string[] = [];
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: (async (input) => {
+        const url = String(input);
+        fetched.push(url);
+        if (url === ORIGIN) {
+          return new Response(html, { status: 200, headers: { "content-type": "text/html" } });
+        }
+        return new Response("missing", { status: 404 });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(fetched.some((url) => url.includes("evil.com"))).toBe(false);
+    expect(crawled.files.map((row) => row.rel)).toEqual(["index.html"]);
   });
 });
 
@@ -193,8 +285,13 @@ describe("hosted website watch", () => {
         "SELECT title, body, findings FROM alerts",
       );
       expect(alerts[0]?.title).toMatch(/Spoilers on app.example.com/);
-      expect(JSON.stringify(alerts[0]?.findings)).toMatch(/MAP-001/);
+      const findings = JSON.stringify(alerts[0]?.findings);
+      expect(findings).toMatch(/MAP-001/);
+      expect(findings).toMatch(/SEC-001/);
+      expect(findings).toMatch(/GIT-001/);
       expect(JSON.stringify(alerts)).not.toMatch(/this-is-the-plot-twist/);
+      expect(JSON.stringify(alerts)).not.toMatch(/sk_live_example/);
+      expect(JSON.stringify(alerts)).not.toMatch(/ghp_exampletoken/);
       const { rows: origins } = await sql.query<{ last_scan_status: string | null }>(
         "SELECT last_scan_status FROM watched_origins",
       );

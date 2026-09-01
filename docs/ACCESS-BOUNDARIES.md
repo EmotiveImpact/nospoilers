@@ -43,7 +43,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   install, not on a sibling org.
 - Connect and watch public npm packages on those installations while coverage is active.
 - Connect and watch public HTTPS production websites on those installations while coverage is
-  active. The crawler fetches the named page, then same-origin JavaScript, CSS, and maps.
+  active. The crawler fetches the named page, then same-origin JavaScript, CSS, maps, and a
+  bounded probe of exposed files, credentials, and internal paths linked from the page.
   Local, private, and metadata hosts are blocked. JavaScript is not executed. Unwatch requires
   typing the origin URL. Unpaid returns 402. Another tenant’s origin is 404 or empty.
 - List Sentry/Bugsnag map custody hosts on a covered install (tokens are never returned). Check
@@ -313,7 +314,9 @@ members can watch and test but cannot save Slack/SIEM/Jira, map custody, routes,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 `tests/web-origin.test.ts` proves website watches are tenant-scoped, unpaid POST returns 402,
-SSRF skips fetch, and unwatch audit stores the host only.
+SSRF skips fetch, unwatch audit stores the host only, exposed `.env` and `.git` files alert
+without storing secret values, SPA catch-all HTML is not treated as a secret file, and
+off-origin credential hrefs are not fetched.
 `tests/map-custody.test.ts` proves Sentry/Bugsnag tokens are encrypted, never returned, never
 written onto jobs, tenant-scoped, unpaid saves return 402, members cannot save, Solo paid may
 save, private DNS skips fetch, missing private artifacts flag MAP-011, public maps flag MAP-012,

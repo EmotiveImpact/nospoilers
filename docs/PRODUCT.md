@@ -18,7 +18,7 @@ NoSpoilers watches three doors so source maps, secrets, and “this was private�
 
 1. **Packed bytes** — the npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, or Electron `app.asar` about to go to customers. Same class of leak as Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer.
 2. **GitHub visibility** — private → public, created public, transfer, collaborator added, fork.
-3. **Deployed web assets** — the HTTPS page customers load, plus same-origin JavaScript, CSS, and maps. Scripts are not executed.
+3. **Deployed web assets** — the HTTPS page customers load, plus same-origin JavaScript, CSS, maps, and a bounded probe of exposed files, credentials, and internal paths. Scripts are not executed.
 
 Same brand, same scanner kernel, same alerts. Not a GitGlow clone (visibility email only). GitGlow is free (~138 installs). Visibility-only is a weak v1.
 

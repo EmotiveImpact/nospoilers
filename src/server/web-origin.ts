@@ -13,6 +13,33 @@ export const MAX_WEB_FILE_BYTES = 2_000_000;
 export const MAX_WEB_TOTAL_BYTES = 20_000_000;
 export const WEB_FETCH_TIMEOUT_MS = 15_000;
 
+/** Bounded same-origin probes. Not a full-site crawl. No `..`. JavaScript is not executed. */
+export const EXPOSED_PATH_PROBES = [
+  ".env",
+  ".env.local",
+  ".env.production",
+  ".env.development",
+  ".git/HEAD",
+  ".git/config",
+  ".npmrc",
+  ".pypirc",
+  ".netrc",
+  "credentials.json",
+  "service-account.json",
+  ".aws/credentials",
+  ".docker/config.json",
+  "id_rsa",
+  "id_ed25519",
+  "backup.sql",
+  "dump.sql",
+  "wp-config.php",
+  "phpinfo.php",
+  "actuator/env",
+] as const;
+
+const SENSITIVE_PATH_RE =
+  /(?:^|\/)(?:\.env(?:\.[^/]+)?|\.git(?:\/|$)|\.npmrc|\.pypirc|\.netrc|credentials\.json|service-account\.json|id_rsa|id_ed25519|wp-config\.php|phpinfo\.php|dump\.sql|backup\.sql|actuator(?:\/|$)|server-status|debug(?:\/|$)|internal(?:\/|$)|admin(?:\/|$))/i;
+
 const HOST_RE =
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 
@@ -181,6 +208,80 @@ export function siblingMapUrl(assetUrl: string): string | null {
   return url.href;
 }
 
+export function isHtmlDocument(bytes: Buffer, contentType = ""): boolean {
+  const type = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (type === "text/html" || type === "application/xhtml+xml") return true;
+  const start = bytes
+    .subarray(0, 512)
+    .toString("utf8")
+    .replace(/^\uFEFF/, "")
+    .trimStart()
+    .toLowerCase();
+  return start.startsWith("<!doctype html") || start.startsWith("<html");
+}
+
+export function collectSensitiveUrls(text: string, base: URL): string[] {
+  const found: string[] = [];
+  for (const match of text.matchAll(/(?:href|src|action)\s*=\s*["']([^"']+)["']/gi)) {
+    if (match[1]) found.push(match[1]);
+  }
+  for (const match of text.matchAll(/\bfetch\(\s*["']([^"']+)["']/gi)) {
+    if (match[1]) found.push(match[1]);
+  }
+  return uniqueResolved(found, base).filter((href) => {
+    try {
+      return SENSITIVE_PATH_RE.test(new URL(href).pathname);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function exposedProbeUrls(pageUrl: URL): string[] {
+  const bases = [new URL("/", pageUrl), new URL("./", pageUrl)];
+  const hrefs: string[] = [];
+  for (const base of bases) {
+    for (const probe of EXPOSED_PATH_PROBES) {
+      hrefs.push(new URL(probe, base).href);
+    }
+  }
+  return uniqueResolved(hrefs, pageUrl);
+}
+
+function isSecretFilePath(rel: string): boolean {
+  const p = rel.toLowerCase();
+  return (
+    p.startsWith(".") ||
+    /\.(env|sql|key|pem|npmrc)(\.|$)/.test(p) ||
+    p.includes("id_rsa") ||
+    p.includes("id_ed25519") ||
+    p.includes("credentials.json") ||
+    p.includes("service-account.json") ||
+    p.includes("wp-config.php")
+  );
+}
+
+function looksLikePhpInfo(bytes: Buffer): boolean {
+  return /phpinfo\s*\(|PHP Version/i.test(bytes.subarray(0, 8000).toString("utf8"));
+}
+
+function keepExposedAsset(
+  rel: string,
+  bytes: Buffer,
+  contentType: string,
+  homepageSha256: string,
+  fromProbe: boolean,
+): boolean {
+  if (!isHtmlDocument(bytes, contentType)) return true;
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  if (hash === homepageSha256) return false;
+  if (fromProbe) {
+    return /phpinfo\.php$/i.test(rel) && looksLikePhpInfo(bytes);
+  }
+  if (isSecretFilePath(rel) && !/phpinfo\.php$/i.test(rel)) return false;
+  return /(?:^|\/)(?:internal|admin|debug|actuator|server-status|phpinfo)/i.test(rel);
+}
+
 async function readCapped(response: Response, maxBytes: number): Promise<Buffer> {
   const declared = Number(response.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > maxBytes) {
@@ -226,6 +327,25 @@ export async function fetchPublicHttps(
   return { bytes, contentType, url };
 }
 
+async function tryOptionalHttps(
+  rawUrl: string,
+  opts: WebCrawlOpts,
+  maxBytes: number,
+): Promise<{ bytes: Buffer; contentType: string; url: URL } | null> {
+  try {
+    return await fetchPublicHttps(rawUrl, opts, maxBytes);
+  } catch (error) {
+    if (
+      error instanceof WebCrawlError &&
+      /private or reserved/.test(error.message)
+    ) {
+      throw error;
+    }
+    if (error instanceof WebCrawlError) return null;
+    throw error;
+  }
+}
+
 export async function crawlOrigin(startUrl: string, opts: WebCrawlOpts = {}): Promise<CrawlResult> {
   const origin = parseWatchOrigin(startUrl);
   if (!origin) throw new WebCrawlError("That website URL is not allowed.");
@@ -257,8 +377,27 @@ export async function crawlOrigin(startUrl: string, opts: WebCrawlOpts = {}): Pr
   const page = await fetchPublicHttps(origin.url, opts, maxFileBytes);
   const pageRel = safeRelPath(page.url, base) ?? "index.html";
   addFile(pageRel, page.bytes);
+  const homepageSha256 = createHash("sha256").update(page.bytes).digest("hex");
 
   const html = page.bytes.toString("utf8");
+  const probeHrefs = exposedProbeUrls(page.url);
+  const probeSet = new Set(probeHrefs);
+  const exposedQueue = [...probeHrefs, ...collectSensitiveUrls(html, page.url)];
+  for (const href of exposedQueue) {
+    if (files.length >= maxAssets || truncated) {
+      truncated = true;
+      break;
+    }
+    const rel = safeRelPath(new URL(href), base);
+    if (!rel || seen.has(rel)) continue;
+    const asset = await tryOptionalHttps(href, opts, maxFileBytes);
+    if (!asset) continue;
+    if (!keepExposedAsset(rel, asset.bytes, asset.contentType, homepageSha256, probeSet.has(href))) {
+      continue;
+    }
+    if (!addFile(rel, asset.bytes)) break;
+  }
+
   const queue = collectHtmlAssetUrls(html, page.url);
   for (const [index, inline] of collectInlineScripts(html).entries()) {
     addFile(`inline-${index + 1}.js`, Buffer.from(inline));

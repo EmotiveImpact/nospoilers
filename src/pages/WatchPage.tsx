@@ -2803,7 +2803,8 @@ export function WatchPage({ search }: { search: string }) {
       <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Production websites</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          We fetch the HTTPS page you name, then same-origin JavaScript, CSS, and maps. Local,
+          We fetch the HTTPS page you name, then same-origin JavaScript, CSS, maps, and a bounded
+          probe of exposed files, credentials, and internal paths linked from the page. Local,
           private, and metadata hosts are blocked. JavaScript is not executed. Bytes are deleted
           after the scan. This is not advertised as a Pricing extra.
         </p>

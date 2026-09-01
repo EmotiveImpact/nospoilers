@@ -50,7 +50,8 @@ Read in this order:
   Live permission tests store JSON on the installation,
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
   liveness from `/api/health`. Watched production websites are HTTPS origins; the crawler fetches
-  HTML plus same-origin JS/CSS/maps, never executes JavaScript, and deletes bytes after the scan.
+  HTML plus same-origin JS/CSS/maps and a bounded probe of exposed files, credentials, and
+  linked internal paths, never executes JavaScript, and deletes bytes after the scan.
   Map custody stores encrypted Sentry/Bugsnag tokens (never returned) and looks up debug IDs or
   release names after a website or npm scan. The worker does not download map source. Bugsnag
   matches a release version; it cannot look up a debug ID.
@@ -132,8 +133,9 @@ Read in this order:
   is inconclusive. APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not
   verified. FairPlay-encrypted Mach-O is not decrypted. DEX, native libraries, and Mach-O are never
   executed. Scan lists an APK fixture example. Not a Pricing extras change.
-- Covered installs can watch HTTPS production websites (same-origin JS/CSS/maps, SSRF-blocked,
-  never executed). Admins can connect Sentry or Bugsnag map custody. Tokens are encrypted and
+- Covered installs can watch HTTPS production websites (same-origin JS/CSS/maps plus bounded
+  probes for exposed files, credentials, and linked internal paths, SSRF-blocked, never
+  executed). Admins can connect Sentry or Bugsnag map custody. Tokens are encrypted and
   never returned. After a website or npm scan the worker looks up debug IDs (Sentry) or release
   versions (Bugsnag) and alerts if the private upload is missing or a public map is still
   served. Bugsnag cannot look up a debug ID. Not a Pricing extras change.
@@ -234,8 +236,9 @@ docker-save example). Not advertised as a Pricing change.
 APK/AAB/IPA are in (ZIP magic; AndroidManifest/BundleConfig/Payload layout; DEX/Mach-O never
 executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK
 example). Not advertised as a Pricing change.
-Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps, SSRF-blocked, never
-executed, event-driven enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
+Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
+exposed files, credentials, and linked internal paths, SSRF-blocked, never executed, event-driven
+enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
 encrypted tokens never returned or written onto jobs, event-driven). Not advertised as a Pricing
 change. Bugsnag matches a release version; it cannot look up a debug ID.
