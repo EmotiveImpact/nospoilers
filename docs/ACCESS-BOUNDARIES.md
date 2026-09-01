@@ -95,7 +95,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, or open
   setup or remediation PRs. Those writes need an install admin.
 - See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
-- Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
+- Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
 - Access `/internal/*` or `/api/internal/*`.
