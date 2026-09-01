@@ -12,7 +12,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
 | GitHub OAuth login | Partial: code exists, real credentials unproven | NoSpoilers |
 | GitHub App installation | Partial | NoSpoilers |
-| Installation ownership verification | Planned | NoSpoilers |
+| Installation ownership verification | Built | NoSpoilers |
 | Real throwaway-repository proof | Planned | NoSpoilers |
 | Installation-scoped billing account | Planned | NoSpoilers |
 | Complete unpaid webhook/worker/poller/scan enforcement | Planned | NoSpoilers |

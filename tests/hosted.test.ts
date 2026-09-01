@@ -6,7 +6,7 @@ import { githubSignature } from "../src/server/hmac.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { runVisibilityPoll } from "../src/server/poller.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
-import { createStore, type Store } from "../src/server/store.ts";
+import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
 
@@ -20,6 +20,7 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
     exchangeCode: fail,
     getUser: fail,
     listUserInstallations: fail,
+    getInstallation: fail,
     getRepo: fail,
     listReleaseAssets: fail,
     getLatestRelease: fail,
@@ -190,6 +191,59 @@ describe("GitHub webhooks", () => {
       expect(second.status).toBe(200);
       const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
       expect(Number(rows[0]?.n)).toBe(1);
+    });
+  });
+});
+
+describe("installation ownership", () => {
+  it("refuses to link a GitHub install the signed-in user does not own", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "u-customer", login: "acme-founder", accessToken: "ghu_customer" });
+      const sessionId = await store.createSession("u-customer");
+      const github = mockGithub({
+        listUserInstallations: async () => [7],
+        getInstallation: async (id) => ({
+          id,
+          account: { login: "octo", type: "User", id: 1 },
+          suspended_at: null,
+        }),
+      });
+      const { app } = appFor(store, github);
+      const cookie = `ns_session=${signSession("sess", sessionId)}`;
+      const denied = await app.request("/api/github/setup?installation_id=99", {
+        headers: { cookie },
+      });
+      expect(denied.status).toBe(403);
+      const { rows } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM installation_users",
+      );
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("links only an install GitHub says the user has, for this App", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "u-owner", login: "octo", accessToken: "ghu_owner" });
+      const sessionId = await store.createSession("u-owner");
+      const github = mockGithub({
+        listUserInstallations: async () => [7],
+        getInstallation: async (id) => ({
+          id,
+          account: { login: "octo", type: "User", id: 22 },
+          suspended_at: null,
+        }),
+      });
+      const { app } = appFor(store, github);
+      const cookie = `ns_session=${signSession("sess", sessionId)}`;
+      const allowed = await app.request("/api/github/setup?installation_id=7", {
+        headers: { cookie },
+      });
+      expect(allowed.status).toBe(302);
+      expect(allowed.headers.get("location")).toBe("/watch");
+      const { rows } = await store.sql.query<{ installation_id: string; user_id: string }>(
+        "SELECT installation_id::text, user_id FROM installation_users",
+      );
+      expect(rows).toEqual([{ installation_id: "7", user_id: "u-owner" }]);
     });
   });
 });

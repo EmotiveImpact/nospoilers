@@ -64,6 +64,9 @@ describe("hosted coverage", () => {
             throw new Error("unused");
           },
           listUserInstallations: async () => [],
+          getInstallation: async () => {
+            throw new Error("unused");
+          },
           getRepo: async () => {
             throw new Error("unused");
           },
@@ -109,6 +112,9 @@ describe("hosted coverage", () => {
             throw new Error("unused");
           },
           listUserInstallations: async () => [],
+          getInstallation: async () => {
+            throw new Error("unused");
+          },
           getRepo: async () => {
             throw new Error("unused");
           },

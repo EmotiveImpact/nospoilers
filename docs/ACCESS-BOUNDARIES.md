@@ -122,8 +122,7 @@ These are never customer features:
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
 
-A customer session cookie, even a valid one, must receive **401 or 403** on those APIs and
-must not receive prospect rows.
+- Arbitrary installation-ID linking is rejected unless GitHub says that user owns this App install.
 
 ## How access is checked today
 

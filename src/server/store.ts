@@ -154,6 +154,15 @@ export function createStore(sql: SqlClient) {
       }
     },
 
+    async getUserAccessToken(userId: string): Promise<string | null> {
+      const { rows } = await sql.query<{ access_token: string | null }>(
+        `SELECT access_token FROM users WHERE id = $1`,
+        [userId],
+      );
+      const token = rows[0]?.access_token?.trim();
+      return token ? token : null;
+    },
+
     async upsertInstallation(input: {
       id: number;
       accountLogin: string;

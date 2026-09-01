@@ -328,8 +328,33 @@ export function createApp(deps: AppDeps): Hono {
     if (!Number.isFinite(installationId) || installationId <= 0) {
       return c.redirect("/");
     }
+    const accessToken = await deps.store.getUserAccessToken(user.userId);
+    if (!accessToken) {
+      return c.json({ error: "Sign in with GitHub again to link this install." }, 401);
+    }
+    let ownedIds: number[] = [];
+    try {
+      ownedIds = await deps.github.listUserInstallations(accessToken);
+    } catch {
+      return c.json({ error: "GitHub would not list your App installs." }, 403);
+    }
+    if (!ownedIds.includes(installationId)) {
+      return c.json({ error: "That GitHub App install is not yours." }, 403);
+    }
+    try {
+      const installation = await deps.github.getInstallation(installationId);
+      await deps.store.upsertInstallation({
+        id: installation.id,
+        accountLogin: installation.account.login,
+        accountType: installation.account.type || "User",
+        accountId: installation.account.id,
+        suspended: Boolean(installation.suspended_at),
+      });
+    } catch {
+      return c.json({ error: "That install is not this NoSpoilers GitHub App." }, 403);
+    }
     await deps.store.linkUserInstallation(installationId, user.userId);
-    return c.redirect("/");
+    return c.redirect("/watch");
   });
 
   app.get("/api/me", async (c) => {

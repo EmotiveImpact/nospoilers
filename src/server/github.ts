@@ -21,6 +21,11 @@ export type GithubPort = {
   exchangeCode: (code: string) => Promise<string>;
   getUser: (accessToken: string) => Promise<{ id: number; login: string; avatar_url: string }>;
   listUserInstallations: (accessToken: string) => Promise<number[]>;
+  getInstallation: (installationId: number) => Promise<{
+    id: number;
+    account: { login: string; type?: string; id: number };
+    suspended_at: string | null;
+  }>;
   getRepo: (installationId: number, owner: string, repo: string) => Promise<GithubRepo>;
   listReleaseAssets: (
     installationId: number,
@@ -128,6 +133,15 @@ export function createGithubPort(config: AppConfig): GithubPort {
         accessToken,
       );
       return body.installations.map((row) => row.id);
+    },
+
+    async getInstallation(installationId: number) {
+      const jwt = createAppJwt(config.githubAppId, config.githubPrivateKey);
+      return await githubJson<{
+        id: number;
+        account: { login: string; type?: string; id: number };
+        suspended_at: string | null;
+      }>(`https://api.github.com/app/installations/${installationId}`, jwt);
     },
 
     async getRepo(installationId, owner, repo) {

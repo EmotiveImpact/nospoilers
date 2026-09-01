@@ -46,6 +46,10 @@ empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARI
 
 ## Milestone 1 — prove the GitHub loop
 
+In progress. OAuth user, App install, HMAC webhook 200s (ping, installation, pushes) are real.
+Missing: a disposable private → public Watch alert and a fixture release-asset scan. Do not
+publicize a product repository. Setup no longer links an arbitrary `installation_id`.
+
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.
 3. Sign in, install, verify ownership, and change private → public.

@@ -14,6 +14,7 @@ function unusedGithub(): GithubPort {
     exchangeCode: unused,
     getUser: unused,
     listUserInstallations: unused,
+    getInstallation: unused,
     getRepo: unused,
     listReleaseAssets: unused,
     getLatestRelease: unused,
