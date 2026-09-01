@@ -63,6 +63,8 @@ export type GithubPort = {
     id: number;
     account: { login: string; type?: string; id: number };
     suspended_at: string | null;
+    permissions?: Record<string, string>;
+    repository_selection?: string | null;
   }>;
   getRepo: (installationId: number, owner: string, repo: string) => Promise<GithubRepo>;
   listReleaseAssets: (
@@ -216,11 +218,20 @@ export function createGithubPort(config: AppConfig): GithubPort {
 
     async getInstallation(installationId: number) {
       const jwt = createAppJwt(config.githubAppId, config.githubPrivateKey);
-      return await githubJson<{
+      const body = await githubJson<{
         id: number;
         account: { login: string; type?: string; id: number };
         suspended_at: string | null;
+        permissions?: Record<string, string>;
+        repository_selection?: string | null;
       }>(`https://api.github.com/app/installations/${installationId}`, jwt);
+      return {
+        id: body.id,
+        account: body.account,
+        suspended_at: body.suspended_at,
+        permissions: body.permissions ?? {},
+        repository_selection: body.repository_selection ?? null,
+      };
     },
 
     async getRepo(installationId, owner, repo) {

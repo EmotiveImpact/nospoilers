@@ -7,10 +7,30 @@ import { PREVIEW_INSTALLATIONS, PREVIEW_LOGIN, previewAlerts, previewRepos } fro
 import type { Finding } from "@/report-types";
 import { useCallback, useEffect, useState } from "react";
 
+type PermissionTest = {
+  ok: boolean;
+  inventedIncident: false;
+  accountLogin: string;
+  suspended: boolean;
+  missingReads: string[];
+  optionalWrites: { name: string; granted: boolean }[];
+  administrationGranted: boolean;
+  repoProbe: { fullName: string; ok: boolean } | null;
+  testedAt: string;
+  detail: string;
+};
+
 type Me = {
   user: { id: string; login: string; avatarUrl: string | null } | null;
   coverage?: Coverage;
-  installations: { id: number; account_login: string; account_type: string; suspended?: boolean }[];
+  installations: {
+    id: number;
+    account_login: string;
+    account_type: string;
+    suspended?: boolean;
+    lastPermissionTestAt?: string | null;
+    lastPermissionTest?: PermissionTest | null;
+  }[];
   githubApp: boolean;
   installUrl?: string;
 };
@@ -31,6 +51,22 @@ type Alert = {
   findings: Finding[] | null;
   created_at: string;
   full_name?: string | null;
+  acknowledged_at?: string | null;
+  acknowledged_by_login?: string | null;
+  assigned_to_login?: string | null;
+  resolved_at?: string | null;
+  resolved_by_login?: string | null;
+  resolution_note?: string | null;
+  exposure_ms?: number;
+  rotation_checklist?: string[];
+};
+
+type AlertEvent = {
+  id: number;
+  actor_login: string;
+  action: string;
+  detail: string | null;
+  created_at: string;
 };
 
 type WatchedPackage = {
@@ -158,6 +194,22 @@ async function loadJson<T>(url: string): Promise<T> {
   return body;
 }
 
+function formatExposure(ms: number | undefined, createdAt: string, resolvedAt: string | null | undefined): string {
+  const start = Date.parse(createdAt);
+  const value =
+    typeof ms === "number" && Number.isFinite(ms)
+      ? ms
+      : Number.isFinite(start)
+        ? Math.max(0, (resolvedAt ? Date.parse(resolvedAt) : Date.now()) - start)
+        : 0;
+  if (value < 60_000) return "under a minute";
+  const minutes = Math.floor(value / 60_000);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
 function kindLabel(kind: string): string {
   switch (kind) {
     case "repo_publicized":
@@ -238,6 +290,163 @@ function SetupPrResult({ view }: { view: SetupPrView }) {
   return <p className="mt-3 text-sm text-danger">{view.message}</p>;
 }
 
+function AlertDeskItem({
+  alert,
+  previewing,
+  events,
+  busy,
+  note,
+  assignee,
+  error,
+  onNote,
+  onAssignee,
+  onAction,
+}: {
+  alert: Alert;
+  previewing: boolean;
+  events: AlertEvent[];
+  busy: boolean;
+  note: string;
+  assignee: string;
+  error: string | null;
+  onNote: (value: string) => void;
+  onAssignee: (value: string) => void;
+  onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void;
+}) {
+  const resolved = Boolean(alert.resolved_at);
+  const checklist = alert.rotation_checklist ?? [];
+  return (
+    <li className="py-5">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+        {kindLabel(alert.kind)} · {new Date(alert.created_at).toLocaleString()}
+        {resolved ? " · resolved" : alert.acknowledged_at ? " · acknowledged" : " · open"}
+      </p>
+      <p className="mt-2 text-sm text-snow">{alert.title}</p>
+      <p className="mt-1 text-sm leading-relaxed text-dim">{alert.body}</p>
+      <p className="mt-2 text-xs text-mute">
+        Exposed {formatExposure(alert.exposure_ms, alert.created_at, alert.resolved_at)}
+        {alert.assigned_to_login ? ` · assigned to ${alert.assigned_to_login}` : ""}
+        {alert.acknowledged_by_login ? ` · ack ${alert.acknowledged_by_login}` : ""}
+      </p>
+      {Array.isArray(alert.findings) && alert.findings.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1">
+          {alert.findings.map((finding) => (
+            <li
+              key={`${alert.id}-${finding.rule}-${finding.path}`}
+              className="font-mono text-[11px] text-mute"
+            >
+              {finding.rule} · {finding.path}
+            </li>
+          ))}
+        </ul>
+      )}
+      {checklist.length > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Rotation checklist</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {checklist.map((item) => (
+              <li key={item} className="text-xs leading-relaxed text-mute">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {alert.resolution_note ? (
+        <p className="mt-3 text-xs leading-relaxed text-mute">Note: {alert.resolution_note}</p>
+      ) : null}
+      {events.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1">
+          {events.map((event) => (
+            <li key={event.id} className="text-[11px] text-dim">
+              {event.action} · {event.actor_login}
+              {event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          {!alert.acknowledged_at && !resolved && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={previewing || busy}
+              onClick={() => onAction("acknowledge")}
+            >
+              Acknowledge
+            </Button>
+          )}
+          {resolved ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={previewing || busy}
+              onClick={() => onAction("reopen")}
+            >
+              Reopen
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={previewing || busy || note.trim().length < 8}
+              onClick={() => onAction("resolve")}
+            >
+              Resolve
+            </Button>
+          )}
+        </div>
+        {!resolved && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="min-w-0 flex-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Assign GitHub login</span>
+              <input
+                value={assignee}
+                onChange={(event) => onAssignee(event.target.value)}
+                placeholder="install member login"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={previewing || busy}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={previewing || busy || !assignee.trim()}
+              onClick={() => onAction("assign")}
+            >
+              Assign
+            </Button>
+          </div>
+        )}
+        {!resolved && (
+          <label>
+            <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Resolution note</span>
+            <textarea
+              value={note}
+              onChange={(event) => onNote(event.target.value)}
+              placeholder="What changed. Do not paste secret values."
+              disabled={previewing || busy}
+              rows={3}
+              className="mt-2 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+            />
+          </label>
+        )}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {previewing ? (
+          <p className="text-xs text-dim">Preview does not save acknowledgements.</p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 export function WatchPage({ search }: { search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
@@ -290,6 +499,13 @@ export function WatchPage({ search }: { search: string }) {
   const [revokingId, setRevokingId] = useState<number | null>(null);
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [baselineReason, setBaselineReason] = useState("Approved current packed artifact as the shipping baseline.");
+  const [alertNotes, setAlertNotes] = useState<Record<number, string>>({});
+  const [alertAssignees, setAlertAssignees] = useState<Record<number, string>>({});
+  const [alertEvents, setAlertEvents] = useState<Record<number, AlertEvent[]>>({});
+  const [alertBusyId, setAlertBusyId] = useState<number | null>(null);
+  const [alertErrorById, setAlertErrorById] = useState<Record<number, string>>({});
+  const [testingInstallId, setTestingInstallId] = useState<number | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   const refreshSignedIn = useCallback(async () => {
     setRepos({ status: "loading" });
@@ -356,6 +572,11 @@ export function WatchPage({ search }: { search: string }) {
           setJobs([]);
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setRevealedScanToken(null);
+          setAlertNotes({});
+          setAlertAssignees({});
+          setAlertEvents({});
+          setAlertErrorById({});
+          setTestError(null);
         }
       } catch (error) {
         if (cancelled) return;
@@ -487,11 +708,12 @@ export function WatchPage({ search }: { search: string }) {
         </div>
       </div>
 
-      <div className="relative mt-14 grid min-h-72 gap-16 lg:grid-cols-[0.95fr_1.05fr]">
-        {ended ? (
-          <CoverageLock variant="watch" title="Subscribe to keep watching." />
-        ) : null}
-        <section className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
+      <div className="mt-14 grid min-h-72 gap-16 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="relative min-h-72">
+          {ended ? (
+            <CoverageLock variant="watch" title="Subscribe to keep watching." />
+          ) : null}
+          <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</h2>
           {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
           {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
@@ -622,10 +844,15 @@ export function WatchPage({ search }: { search: string }) {
             </ul>
           )}
           {scanError && <p className="mt-4 text-sm text-danger">{scanError}</p>}
+          </div>
         </section>
 
-        <section className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
+        <section>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Alerts</h2>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+            Acknowledge, assign, and resolve stay available when coverage has ended or GitHub has
+            suspended the App. New scans still wait for coverage and an unsuspended install.
+          </p>
           {!previewing && alerts.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
           {!previewing && alerts.status === "error" && <p className="mt-6 text-sm text-danger">{alerts.message}</p>}
           {deskAlerts.length === 0 && (previewing || alerts.status === "ready") && (
@@ -634,27 +861,72 @@ export function WatchPage({ search }: { search: string }) {
             </p>
           )}
           {deskAlerts.length > 0 && (
-            <ul className="mt-4 max-h-[32rem] divide-y divide-white/5 overflow-auto">
+            <ul className="mt-4 max-h-[40rem] divide-y divide-white/5 overflow-auto">
               {deskAlerts.map((alert) => (
-                <li key={alert.id} className="py-5">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
-                    {kindLabel(alert.kind)} · {new Date(alert.created_at).toLocaleString()}
-                  </p>
-                  <p className="mt-2 text-sm text-snow">{alert.title}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-dim">{alert.body}</p>
-                  {Array.isArray(alert.findings) && alert.findings.length > 0 && (
-                    <ul className="mt-3 flex flex-col gap-1">
-                      {alert.findings.map((finding) => (
-                        <li
-                          key={`${alert.id}-${finding.rule}-${finding.path}`}
-                          className="font-mono text-[11px] text-mute"
-                        >
-                          {finding.rule} · {finding.path}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
+                <AlertDeskItem
+                  key={alert.id}
+                  alert={alert}
+                  previewing={previewing}
+                  events={alertEvents[alert.id] ?? []}
+                  busy={alertBusyId === alert.id}
+                  note={alertNotes[alert.id] ?? ""}
+                  assignee={alertAssignees[alert.id] ?? ""}
+                  error={alertErrorById[alert.id] ?? null}
+                  onNote={(value) => setAlertNotes((current) => ({ ...current, [alert.id]: value }))}
+                  onAssignee={(value) => setAlertAssignees((current) => ({ ...current, [alert.id]: value }))}
+                  onAction={(action) => {
+                    if (previewing) return;
+                    setAlertErrorById((current) => {
+                      const next = { ...current };
+                      delete next[alert.id];
+                      return next;
+                    });
+                    setAlertBusyId(alert.id);
+                    void (async () => {
+                      try {
+                        const payload =
+                          action === "assign"
+                            ? { login: (alertAssignees[alert.id] ?? "").trim() }
+                            : action === "resolve"
+                              ? { note: (alertNotes[alert.id] ?? "").trim() }
+                              : undefined;
+                        const response = await fetch(`/api/alerts/${alert.id}/${action}`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: payload ? { "content-type": "application/json" } : undefined,
+                          body: payload ? JSON.stringify(payload) : undefined,
+                        });
+                        const body = (await response.json()) as { error?: string; alert?: Alert };
+                        if (!response.ok || !body.alert) {
+                          throw new Error(body.error ?? "Could not update that alert.");
+                        }
+                        setAlerts((current) => {
+                          if (current.status !== "ready") return current;
+                          return {
+                            status: "ready",
+                            data: {
+                              alerts: current.data.alerts.map((row) =>
+                                row.id === body.alert!.id ? { ...row, ...body.alert } : row,
+                              ),
+                            },
+                          };
+                        });
+                        const eventBody = await loadJson<{ events: AlertEvent[] }>(
+                          `/api/alerts/${alert.id}/events`,
+                        );
+                        setAlertEvents((current) => ({ ...current, [alert.id]: eventBody.events }));
+                      } catch (error) {
+                        setAlertErrorById((current) => ({
+                          ...current,
+                          [alert.id]:
+                            error instanceof Error ? error.message : "Could not update that alert.",
+                        }));
+                      } finally {
+                        setAlertBusyId(null);
+                      }
+                    })();
+                  }}
+                />
               ))}
             </ul>
           )}
@@ -664,8 +936,9 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          This install’s recent jobs. Failed rows stay listed until they succeed or hit the retry
-          cap. Global queues stay owner-only.
+          Live permission tests talk to GitHub. They never create a Watch alert. This install’s
+          recent jobs stay listed until they succeed or hit the retry cap. Global queues stay
+          owner-only.
         </p>
         {githubPaused ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">
@@ -677,6 +950,86 @@ export function WatchPage({ search }: { search: string }) {
             . This is not a billing change.
           </p>
         ) : null}
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot reach GitHub. No invented incident.
+          </p>
+        ) : (
+          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+            {installations.map((install) => {
+              const test = install.lastPermissionTest;
+              return (
+                <li key={install.id} className="py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-mono text-sm text-snow">{install.account_login}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={testingInstallId === install.id}
+                      onClick={() => {
+                        setTestError(null);
+                        setTestingInstallId(install.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/installations/${install.id}/test`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as {
+                              error?: string;
+                              inventedIncident?: boolean;
+                              test?: PermissionTest;
+                            };
+                            if (!response.ok || !body.test || body.inventedIncident) {
+                              throw new Error(body.error ?? "Could not test this install.");
+                            }
+                            const result = body.test;
+                            setMe((current) => {
+                              if (current.status !== "ready") return current;
+                              return {
+                                status: "ready",
+                                data: {
+                                  ...current.data,
+                                  installations: current.data.installations.map((row) =>
+                                    row.id === install.id
+                                      ? {
+                                          ...row,
+                                          lastPermissionTest: result,
+                                          lastPermissionTestAt: result.testedAt,
+                                        }
+                                      : row,
+                                  ),
+                                },
+                              };
+                            });
+                          } catch (error) {
+                            setTestError(
+                              error instanceof Error ? error.message : "Could not test this install.",
+                            );
+                          } finally {
+                            setTestingInstallId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {testingInstallId === install.id ? "Testing…" : "Test install"}
+                    </Button>
+                  </div>
+                  {test ? (
+                    <p className="mt-2 text-sm leading-relaxed text-mute">
+                      {test.ok ? "Reads reachable. " : ""}
+                      {test.detail} Last test {new Date(test.testedAt).toLocaleString()}.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-dim">No live permission test yet.</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {testError ? <p className="mt-4 text-sm text-danger">{testError}</p> : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No recent jobs.</p>
         ) : jobs.length === 0 ? (

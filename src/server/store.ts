@@ -7,6 +7,7 @@ import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
+import type { PermissionTestResult } from "./install-test.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -60,9 +61,27 @@ export type AlertRow = {
   body: string;
   findings: unknown;
   github_delivery_id: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by_login: string | null;
+  assigned_to_login: string | null;
+  resolved_at: string | null;
+  resolved_by_login: string | null;
+  resolution_note: string | null;
   created_at: string;
   full_name?: string | null;
 };
+
+export type AlertEventRow = {
+  id: number;
+  alert_id: number;
+  installation_id: number;
+  actor_login: string;
+  action: string;
+  detail: string | null;
+  created_at: string;
+};
+
+export type AlertEventAction = "acknowledged" | "assigned" | "resolved" | "reopened" | "note";
 
 export type WatchedPackageRow = {
   id: number;
@@ -262,6 +281,52 @@ function parsePayload(value: unknown): unknown {
     }
   }
   return value;
+}
+
+function permissionTestFromDb(value: unknown): PermissionTestResult | null {
+  const parsed = parsePayload(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const rec = parsed as Record<string, unknown>;
+  if (rec.inventedIncident === true) return null;
+  return parsed as PermissionTestResult;
+}
+
+function alertRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  repo_id: unknown;
+  kind: string;
+  title: string;
+  body: string;
+  findings: unknown;
+  github_delivery_id: string | null;
+  acknowledged_at?: string | Date | null;
+  acknowledged_by_login?: string | null;
+  assigned_to_login?: string | null;
+  resolved_at?: string | Date | null;
+  resolved_by_login?: string | null;
+  resolution_note?: string | null;
+  created_at: string | Date;
+  full_name?: string | null;
+}): AlertRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    repo_id: row.repo_id === null || row.repo_id === undefined ? null : num(row.repo_id),
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    findings: parsePayload(row.findings),
+    github_delivery_id: row.github_delivery_id,
+    acknowledged_at: iso(row.acknowledged_at ?? null),
+    acknowledged_by_login: row.acknowledged_by_login ?? null,
+    assigned_to_login: row.assigned_to_login ?? null,
+    resolved_at: iso(row.resolved_at ?? null),
+    resolved_by_login: row.resolved_by_login ?? null,
+    resolution_note: row.resolution_note ?? null,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    full_name: row.full_name ?? null,
+  };
 }
 
 function installationIdFromPayload(payload: unknown): number | null {
@@ -968,13 +1033,7 @@ export function createStore(
          LIMIT 100`,
         [userId],
       );
-      return rows.map((row) => ({
-        ...row,
-        id: num(row.id),
-        installation_id: num(row.installation_id),
-        repo_id: row.repo_id === null ? null : num(row.repo_id),
-        findings: parsePayload(row.findings),
-      }));
+      return rows.map((row) => alertRow(row));
     },
 
     async listJobsForUser(
@@ -1037,6 +1096,183 @@ export function createStore(
         [repoId, kind, sinceIso],
       );
       return num(rows[0]?.n ?? 0) > 0;
+    },
+
+    async getAlertForUser(id: number, userId: string): Promise<AlertRow | null> {
+      const { rows } = await sql.query<Parameters<typeof alertRow>[0]>(
+        `SELECT a.*, r.full_name
+         FROM alerts a
+         LEFT JOIN repos r ON r.id = a.repo_id
+         WHERE a.id = $1 AND a.installation_id IN (
+           SELECT installation_id FROM installation_users WHERE user_id = $2
+         )`,
+        [id, userId],
+      );
+      return rows[0] ? alertRow(rows[0]) : null;
+    },
+
+    async listInstallationMemberLogins(installationId: number): Promise<string[]> {
+      const { rows } = await sql.query<{ login: string }>(
+        `SELECT u.login
+         FROM installation_users iu
+         JOIN users u ON u.id = iu.user_id
+         WHERE iu.installation_id = $1
+         ORDER BY u.login`,
+        [installationId],
+      );
+      return rows.map((row) => row.login);
+    },
+
+    async listAlertEventsForUser(alertId: number, userId: string): Promise<AlertEventRow[]> {
+      const alert = await this.getAlertForUser(alertId, userId);
+      if (!alert) return [];
+      const { rows } = await sql.query<{
+        id: unknown;
+        alert_id: unknown;
+        installation_id: unknown;
+        actor_login: string;
+        action: string;
+        detail: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT id, alert_id, installation_id, actor_login, action, detail, created_at
+         FROM alert_events
+         WHERE alert_id = $1
+         ORDER BY id`,
+        [alertId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        alert_id: num(row.alert_id),
+        installation_id: num(row.installation_id),
+        actor_login: row.actor_login,
+        action: row.action,
+        detail: row.detail,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async acknowledgeAlertForUser(
+      id: number,
+      userId: string,
+      login: string,
+    ): Promise<AlertRow | null> {
+      const current = await this.getAlertForUser(id, userId);
+      if (!current) return null;
+      if (current.acknowledged_at) return current;
+      await sql.transaction(async (tx) => {
+        await tx.query(
+          `UPDATE alerts
+           SET acknowledged_at = now(), acknowledged_by_login = $2
+           WHERE id = $1 AND acknowledged_at IS NULL`,
+          [id, login],
+        );
+        await tx.query(
+          `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
+           VALUES ($1, $2, $3, 'acknowledged', NULL)`,
+          [id, current.installation_id, login],
+        );
+      });
+      return await this.getAlertForUser(id, userId);
+    },
+
+    async assignAlertForUser(
+      id: number,
+      userId: string,
+      actorLogin: string,
+      assigneeLogin: string,
+    ): Promise<AlertRow | null> {
+      const current = await this.getAlertForUser(id, userId);
+      if (!current) return null;
+      const members = await this.listInstallationMemberLogins(current.installation_id);
+      const match = members.find((row) => row.toLowerCase() === assigneeLogin.toLowerCase());
+      if (!match) {
+        throw Object.assign(new Error("Assign only to someone on this GitHub install."), {
+          status: 400,
+        });
+      }
+      if (current.assigned_to_login === match) return current;
+      await sql.transaction(async (tx) => {
+        await tx.query(`UPDATE alerts SET assigned_to_login = $2 WHERE id = $1`, [id, match]);
+        await tx.query(
+          `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
+           VALUES ($1, $2, $3, 'assigned', $4)`,
+          [id, current.installation_id, actorLogin, match],
+        );
+      });
+      return await this.getAlertForUser(id, userId);
+    },
+
+    async resolveAlertForUser(
+      id: number,
+      userId: string,
+      login: string,
+      note: string,
+    ): Promise<AlertRow | null> {
+      const trimmed = note.trim();
+      if (trimmed.length < 8) {
+        throw Object.assign(new Error("Resolution note must be at least 8 characters."), {
+          status: 400,
+        });
+      }
+      const current = await this.getAlertForUser(id, userId);
+      if (!current) return null;
+      if (current.resolved_at) {
+        throw Object.assign(new Error("That alert is already resolved."), { status: 409 });
+      }
+      await sql.transaction(async (tx) => {
+        await tx.query(
+          `UPDATE alerts
+           SET resolved_at = now(),
+               resolved_by_login = $2,
+               resolution_note = $3,
+               acknowledged_at = COALESCE(acknowledged_at, now()),
+               acknowledged_by_login = COALESCE(acknowledged_by_login, $2)
+           WHERE id = $1 AND resolved_at IS NULL`,
+          [id, login, trimmed],
+        );
+        await tx.query(
+          `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
+           VALUES ($1, $2, $3, 'resolved', $4)`,
+          [id, current.installation_id, login, trimmed],
+        );
+      });
+      return await this.getAlertForUser(id, userId);
+    },
+
+    async reopenAlertForUser(id: number, userId: string, login: string): Promise<AlertRow | null> {
+      const current = await this.getAlertForUser(id, userId);
+      if (!current) return null;
+      if (!current.resolved_at) {
+        throw Object.assign(new Error("That alert is not resolved."), { status: 400 });
+      }
+      await sql.transaction(async (tx) => {
+        await tx.query(
+          `UPDATE alerts
+           SET resolved_at = NULL, resolved_by_login = NULL, resolution_note = NULL
+           WHERE id = $1`,
+          [id],
+        );
+        await tx.query(
+          `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
+           VALUES ($1, $2, $3, 'reopened', NULL)`,
+          [id, current.installation_id, login],
+        );
+      });
+      return await this.getAlertForUser(id, userId);
+    },
+
+    async savePermissionTest(
+      installationId: number,
+      result: PermissionTestResult,
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE installations
+         SET last_permission_test_at = $2::timestamptz,
+             last_permission_test = $3::jsonb
+         WHERE id = $1`,
+        [installationId, result.testedAt, JSON.stringify(result)],
+      );
     },
 
     async upsertProspect(input: {
@@ -1204,6 +1440,8 @@ export function createStore(
         suspended: boolean;
         trialEndsAt: string | null;
         plan: string | null;
+        lastPermissionTestAt: string | null;
+        lastPermissionTest: PermissionTestResult | null;
       }[]
     > {
       const { rows } = await sql.query<{
@@ -1213,8 +1451,11 @@ export function createStore(
         suspended: boolean;
         trial_ends_at: string | Date | null;
         plan: string | null;
+        last_permission_test_at: string | Date | null;
+        last_permission_test: unknown;
       }>(
         `SELECT i.id, i.account_login, i.account_type, i.suspended,
+                i.last_permission_test_at, i.last_permission_test,
                 b.trial_ends_at, b.plan
          FROM installations i
          JOIN installation_users iu ON iu.installation_id = i.id
@@ -1230,6 +1471,8 @@ export function createStore(
         suspended: Boolean(row.suspended),
         trialEndsAt: iso(row.trial_ends_at),
         plan: row.plan,
+        lastPermissionTestAt: iso(row.last_permission_test_at),
+        lastPermissionTest: permissionTestFromDb(row.last_permission_test),
       }));
     },
 

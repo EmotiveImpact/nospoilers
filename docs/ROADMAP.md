@@ -51,6 +51,11 @@ the immediate operational sequence. The exhaustive expansion plan is
   treated as unpaid coverage.
 - Extra inspect: Azure/GCP service-account documents, PKCS12, terraform state, build caches
   (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
+- Incident response: live GitHub permission test without inventing an incident; Watch
+  acknowledgement, assignment to install members, resolution notes, reopen, exposure
+  duration, and a credential/source-map rotation checklist. `alert_events` are append-only.
+- Internal docs (DOC-001): architecture/design/rfc/spec/product/month1/feature-inventory/
+  electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

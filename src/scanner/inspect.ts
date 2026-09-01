@@ -210,12 +210,35 @@ function dumpFile(base: string): boolean {
   return /\.(?:sql|sqlite|sqlite3|dump|pgdump|rdb)$/i.test(base);
 }
 
-function internalDoc(base: string): boolean {
+function internalDoc(rel: string, base: string): boolean {
   const name = base.toLowerCase();
-  return (
-    ["roadmap.md", "handoff.md", "todo.md", "todos.md", "internal.md"].includes(name) ||
-    name.endsWith(".prd.md")
-  );
+  const lower = posixPath(rel).toLowerCase();
+  if (
+    [
+      "roadmap.md",
+      "handoff.md",
+      "todo.md",
+      "todos.md",
+      "internal.md",
+      "architecture.md",
+      "design.md",
+      "rfc.md",
+      "spec.md",
+      "product.md",
+      "month1.md",
+      "feature-inventory.md",
+      "electron.md",
+    ].includes(name) ||
+    name.endsWith(".prd.md") ||
+    name === "prd.md"
+  ) {
+    return true;
+  }
+  if (lower.includes("/docs/internal/") || lower.startsWith("docs/internal/")) return true;
+  if ((lower.includes("/adr/") || lower.startsWith("adr/")) && /^\d{4}-.+\.md$/.test(name)) {
+    return true;
+  }
+  return false;
 }
 
 export function suspiciousLink(target: string): boolean {
@@ -362,7 +385,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (internalDoc(base)) {
+  if (internalDoc(rel, base)) {
     findings.push({
       rule: "DOC-001",
       severity: "warn",

@@ -26,16 +26,19 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Eighteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Nineteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
-  `010_release_revisions`, `011_package_identities`, and `012_install_health` are applied. Hosted
+  `010_release_revisions`, `011_package_identities`, `012_install_health`, and
+  `013_incident_response` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Scan API tokens are SHA-256
-  hashes (`nsp_` secrets shown once). Development receipts use `RECEIPT_SECRET`
+  hashes (`nsp_` secrets shown once). Alert acknowledgement, assignment, resolution notes, and
+  reopen append `alert_events` (append-only). Live permission tests store JSON on the installation
+  and never insert an alert. Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
   move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
@@ -86,7 +89,12 @@ Read in this order:
   suspend is not treated as unpaid coverage; GitHub-backed writes return 409.
 - Packed scans flag Azure/GCP service-account documents, PKCS12, terraform state, build
   caches (CACHE-001), and additional AI/MCP agent files. Credential values are not copied
-  into reports.
+  into reports. DOC-001 also flags architecture/design/rfc/spec/product/month1/
+  feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
+- Watch **Test install** runs a live GitHub permission/read probe. It never creates an
+  alert. Watch alerts can be acknowledged, assigned to an install member, resolved with a
+  note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
+  Incident actions stay available when unpaid or GitHub-suspended.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -127,6 +135,9 @@ Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when 
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
+Incident response is in (live permission test with no invented incident; alert ack/assign/resolve;
+exposure duration; rotation checklist; append-only alert_events).
+DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.

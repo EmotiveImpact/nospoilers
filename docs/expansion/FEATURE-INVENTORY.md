@@ -67,7 +67,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | SSH/cloud/service-account configuration | Built: `.ssh/`, kube, AWS, Azure, GCP, Docker, tfstate, PKCS12, service-account JSON | NoSpoilers |
 | Crash dumps and additional debug symbols | Built: CRASH-001 for cores/minidumps (never executed); DBG-001 for extra symbols/crash logs | NoSpoilers |
 | Build caches/compiler metadata | Built: CACHE-001 for turbo/parcel/nyc/eslint/next/node_modules caches; DBG-001 for symbols | NoSpoilers |
-| Internal documentation and roadmaps | Partial: ROADMAP/HANDOFF/TODO/PRD filenames | NoSpoilers |
+| Internal documentation and roadmaps | Built: ROADMAP/HANDOFF/TODO/PRD plus architecture/design/rfc/spec/product/month1/feature-inventory/electron, `docs/internal/`, `adr/NNNN-*.md` | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Built: AI-001 for agent dirs, MCP configs, prompts, memory, transcripts | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
 | Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |
@@ -142,16 +142,16 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | Hourly missed-webhook visibility check | Built | NoSpoilers |
-| Event acknowledgement and assignment | Planned | NoSpoilers |
-| Resolution notes/evidence | Planned | NoSpoilers |
-| Exposure-duration timer | Planned | NoSpoilers |
-| Credential-rotation checklist | Planned | NoSpoilers |
+| Event acknowledgement and assignment | Built: ack/assign to install members; append-only `alert_events` | NoSpoilers |
+| Resolution notes/evidence | Built: resolve requires a note; files are not stored | NoSpoilers |
+| Exposure-duration timer | Built: open until resolved, shown on Watch | NoSpoilers |
+| Credential-rotation checklist | Built: SEC/MAP rules; secret values are not copied | NoSpoilers |
 | One-click make repository private | Planned, high permission | NoSpoilers |
 | Remove/suspend bad GitHub Release asset | Planned, high permission | NoSpoilers |
 | Disable unsafe release workflow | Planned, high permission | NoSpoilers |
 | Automatic remediation PR | Planned | NoSpoilers |
 | Multiple GitHub organizations | Planned | NoSpoilers |
-| Live installation/permission test | Planned | NoSpoilers |
+| Live installation/permission test | Built: GitHub install + optional repo probe; never invents an incident | NoSpoilers |
 
 ## Alerts, team and trust
 

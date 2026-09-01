@@ -308,6 +308,44 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "012_install_health",
   ]);
+  await sql.exec(`
+    ALTER TABLE installations ADD COLUMN IF NOT EXISTS last_permission_test_at TIMESTAMPTZ;
+    ALTER TABLE installations ADD COLUMN IF NOT EXISTS last_permission_test JSONB;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS acknowledged_by_login TEXT;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS assigned_to_login TEXT;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS resolved_by_login TEXT;
+    ALTER TABLE alerts ADD COLUMN IF NOT EXISTS resolution_note TEXT;
+    CREATE TABLE IF NOT EXISTS alert_events (
+      id BIGSERIAL PRIMARY KEY,
+      alert_id BIGINT NOT NULL REFERENCES alerts (id) ON DELETE CASCADE,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      actor_login TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('acknowledged', 'assigned', 'resolved', 'reopened', 'note')),
+      detail TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS alert_events_alert_idx
+      ON alert_events (alert_id, id);
+    CREATE OR REPLACE FUNCTION reject_alert_event_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'alert_events are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS alert_events_no_update ON alert_events;
+    CREATE TRIGGER alert_events_no_update
+      BEFORE UPDATE ON alert_events
+      FOR EACH ROW EXECUTE PROCEDURE reject_alert_event_mutation();
+    DROP TRIGGER IF EXISTS alert_events_no_delete ON alert_events;
+    CREATE TRIGGER alert_events_no_delete
+      BEFORE DELETE ON alert_events
+      FOR EACH ROW EXECUTE PROCEDURE reject_alert_event_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "013_incident_response",
+  ]);
 }
 
 export function num(value: unknown): number {

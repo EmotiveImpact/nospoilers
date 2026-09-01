@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS installations (
   account_type TEXT NOT NULL,
   account_id BIGINT NOT NULL,
   suspended BOOLEAN NOT NULL DEFAULT false,
+  last_permission_test_at TIMESTAMPTZ,
+  last_permission_test JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -88,6 +90,12 @@ CREATE TABLE IF NOT EXISTS alerts (
   body TEXT NOT NULL,
   findings JSONB,
   github_delivery_id TEXT,
+  acknowledged_at TIMESTAMPTZ,
+  acknowledged_by_login TEXT,
+  assigned_to_login TEXT,
+  resolved_at TIMESTAMPTZ,
+  resolved_by_login TEXT,
+  resolution_note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -97,6 +105,35 @@ CREATE INDEX IF NOT EXISTS alerts_feed_idx
 CREATE UNIQUE INDEX IF NOT EXISTS alerts_delivery_uidx
   ON alerts (github_delivery_id)
   WHERE github_delivery_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS alert_events (
+  id BIGSERIAL PRIMARY KEY,
+  alert_id BIGINT NOT NULL REFERENCES alerts (id) ON DELETE CASCADE,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  actor_login TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('acknowledged', 'assigned', 'resolved', 'reopened', 'note')),
+  detail TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS alert_events_alert_idx
+  ON alert_events (alert_id, id);
+
+CREATE OR REPLACE FUNCTION reject_alert_event_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'alert_events are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS alert_events_no_update ON alert_events;
+CREATE TRIGGER alert_events_no_update
+  BEFORE UPDATE ON alert_events
+  FOR EACH ROW EXECUTE PROCEDURE reject_alert_event_mutation();
+DROP TRIGGER IF EXISTS alert_events_no_delete ON alert_events;
+CREATE TRIGGER alert_events_no_delete
+  BEFORE DELETE ON alert_events
+  FOR EACH ROW EXECUTE PROCEDURE reject_alert_event_mutation();
 
 CREATE TABLE IF NOT EXISTS prospects (
   id BIGSERIAL PRIMARY KEY,

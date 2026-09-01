@@ -20,7 +20,7 @@ export function CoverageLock({
       <p className="max-w-md text-sm leading-relaxed text-mute">
         {variant === "scan"
           ? "Solo $29/mo or Team $99/mo. Same GitHub install. Jobs and alerts start again. The CLI on your machine still runs."
-          : "Trial ended. We stop jobs and alerts until Solo $29 or Team $99 is active. Repos stay listed. We do not scan."}
+          : "Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos stay listed. Existing alerts can still be acknowledged and resolved."}
       </p>
       {children}
       <div className="mt-1 flex flex-wrap gap-2">

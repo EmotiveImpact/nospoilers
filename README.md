@@ -213,7 +213,7 @@ On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It 
 | ARC-001 | warn | Nested `.tgz` / `.zip` / `.asar` inside the pack (unpacked for inspection, not executed) |
 | BAK-001 | warn | Backup copy (`*.bak`, `*~`, `.backup`) |
 | DB-001 | critical | Database dump packed into the artifact |
-| DOC-001 | warn | Internal ROADMAP/HANDOFF/TODO/PRD filename |
+| DOC-001 | warn | Internal docs: ROADMAP/HANDOFF/TODO/PRD, architecture/design/rfc/spec/product, `docs/internal/`, numbered ADRs |
 | LNK-001 | critical | Absolute or `..` symlink; the link is not followed |
 
 Credential values are never included in reports. Default safety limits are 80 MiB input, 500 MiB

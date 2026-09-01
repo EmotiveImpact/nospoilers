@@ -12,7 +12,7 @@ import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-di
 import type { AppConfig } from "./config.ts";
 import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
-import type { GithubPort } from "./github.ts";
+import { GithubApiError, type GithubPort } from "./github.ts";
 import {
   SETUP_PERMISSIONS,
   setupWorkflowYaml,
@@ -32,7 +32,13 @@ import {
   inspectAndQueueRepository,
 } from "./prospects.ts";
 import type { Store } from "./store.ts";
-import type { PolicyExceptionRow, ProspectStatus } from "./store.ts";
+import type { AlertEventRow, AlertRow, PolicyExceptionRow, ProspectStatus } from "./store.ts";
+import {
+  exposureMs,
+  findingRules,
+  rotationChecklist,
+  summarizePermissionTest,
+} from "./install-test.ts";
 import { readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
@@ -101,6 +107,41 @@ function publicException(row: PolicyExceptionRow) {
     revokedAt: row.revoked_at,
     createdAt: row.created_at,
     active: !row.revoked_at && Number.isFinite(expires) && expires > Date.now(),
+  };
+}
+
+function publicAlert(row: AlertRow) {
+  return {
+    id: row.id,
+    installation_id: row.installation_id,
+    repo_id: row.repo_id,
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    findings: row.findings,
+    github_delivery_id: row.github_delivery_id,
+    acknowledged_at: row.acknowledged_at,
+    acknowledged_by_login: row.acknowledged_by_login,
+    assigned_to_login: row.assigned_to_login,
+    resolved_at: row.resolved_at,
+    resolved_by_login: row.resolved_by_login,
+    resolution_note: row.resolution_note,
+    created_at: row.created_at,
+    full_name: row.full_name ?? null,
+    exposure_ms: exposureMs(row.created_at, row.resolved_at),
+    rotation_checklist: rotationChecklist(findingRules(row.findings)),
+  };
+}
+
+function publicAlertEvent(row: AlertEventRow) {
+  return {
+    id: row.id,
+    alert_id: row.alert_id,
+    installation_id: row.installation_id,
+    actor_login: row.actor_login,
+    action: row.action,
+    detail: row.detail,
+    created_at: row.created_at,
   };
 }
 
@@ -525,7 +566,132 @@ export function createApp(deps: AppDeps): Hono {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const alerts = await deps.store.listAlertsForUser(user.userId);
-    return c.json({ alerts });
+    return c.json({ alerts: alerts.map(publicAlert) });
+  });
+
+  app.get("/api/alerts/:id/events", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
+    const alert = await deps.store.getAlertForUser(id, user.userId);
+    if (!alert) return c.json({ error: "Unknown alert." }, 404);
+    const events = await deps.store.listAlertEventsForUser(id, user.userId);
+    return c.json({ events: events.map(publicAlertEvent) });
+  });
+
+  app.post("/api/alerts/:id/acknowledge", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
+    const row = await deps.store.acknowledgeAlertForUser(id, user.userId, user.login);
+    if (!row) return c.json({ error: "Unknown alert." }, 404);
+    return c.json({ ok: true, alert: publicAlert(row) });
+  });
+
+  app.post("/api/alerts/:id/assign", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const login = typeof body.login === "string" ? body.login.trim() : "";
+    if (!login) return c.json({ error: "Assign only to someone on this GitHub install." }, 400);
+    try {
+      const row = await deps.store.assignAlertForUser(id, user.userId, user.login, login);
+      if (!row) return c.json({ error: "Unknown alert." }, 404);
+      return c.json({ ok: true, alert: publicAlert(row) });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not assign that alert." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.post("/api/alerts/:id/resolve", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const note = typeof body.note === "string" ? body.note : "";
+    try {
+      const row = await deps.store.resolveAlertForUser(id, user.userId, user.login, note);
+      if (!row) return c.json({ error: "Unknown alert." }, 404);
+      return c.json({ ok: true, alert: publicAlert(row) });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not resolve that alert." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.post("/api/alerts/:id/reopen", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
+    try {
+      const row = await deps.store.reopenAlertForUser(id, user.userId, user.login);
+      if (!row) return c.json({ error: "Unknown alert." }, 404);
+      return c.json({ ok: true, alert: publicAlert(row) });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not reopen that alert." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.post("/api/installations/:id/test", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    const local = await deps.store.getInstallation(installationId);
+    if (!local) return c.json({ error: "Unknown GitHub installation." }, 404);
+    let githubInstall: Awaited<ReturnType<GithubPort["getInstallation"]>>;
+    try {
+      githubInstall = await deps.github.getInstallation(installationId);
+    } catch (error) {
+      const status = error instanceof GithubApiError && error.status === 404 ? 404 : 502;
+      return c.json(
+        {
+          error:
+            error instanceof Error ? error.message : "GitHub could not describe this install.",
+          inventedIncident: false,
+        },
+        status,
+      );
+    }
+    const repos = await deps.store.listReposForInstallation(installationId);
+    const first = repos[0];
+    let repoProbe: { fullName: string; ok: boolean } | null = null;
+    if (first) {
+      try {
+        await deps.github.getRepo(installationId, first.owner, first.name);
+        repoProbe = { fullName: first.full_name, ok: true };
+      } catch {
+        repoProbe = { fullName: first.full_name, ok: false };
+      }
+    }
+    const test = summarizePermissionTest({
+      accountLogin: githubInstall.account.login,
+      suspended: Boolean(githubInstall.suspended_at) || local.suspended,
+      repositorySelection: githubInstall.repository_selection,
+      permissions: githubInstall.permissions,
+      repoProbe,
+    });
+    await deps.store.savePermissionTest(installationId, test);
+    return c.json({ ok: true, inventedIncident: false, test });
   });
 
   app.get("/api/jobs", async (c) => {

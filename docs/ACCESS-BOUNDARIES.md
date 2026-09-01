@@ -58,6 +58,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - List recent jobs for those installations (kind, status, attempts, error, timestamps).
   Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
   or deleted by customers.
+- Run a live GitHub permission test on installations they belong to. The test never
+  inserts an alert and never claims a security incident. It stays available when coverage
+  has ended or GitHub has suspended the App.
+- Acknowledge, assign (to a GitHub login on that install), resolve with a note, and
+  reopen alerts on installations they belong to. Incident state stays available when
+  coverage has ended or GitHub has suspended the App. Alert events are append-only.
 - Mint and revoke hashed scan API tokens for those installations while coverage is active.
   The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
   unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
@@ -70,7 +76,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
 - See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
-- Edit or delete scan receipts, release revisions, or jobs. Receipts and revisions are append-only; the customer job list is read-only.
+- Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
+- Patch alert titles or bodies. Resolve with a note instead.
+- Assign an alert to a GitHub login that is not a member of that installation.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
 
@@ -156,8 +164,9 @@ These are never customer features:
   `POST /api/v1/scan` run only while that installation’s billing account is on trial or a
   paid plan **and** GitHub has not suspended the App. Unpaid installs still get webhook
   HTTP 200. GitHub suspend is not a billing change: coverage stays on the trial/plan,
-  Watch shows the suspend, and GitHub-backed work returns 409 until unsuspend.
-  Anonymous `POST /api/scan` stays a size-limited acquisition surface.
+  Watch shows the suspend, and GitHub-backed unpack work returns 409 until unsuspend.
+  Live permission tests and alert acknowledgement/assignment/resolution are not unpack
+  work and stay available. Anonymous `POST /api/scan` stays a size-limited acquisition surface.
 
 ## How access is checked today
 
@@ -186,5 +195,9 @@ maintainer/repository/shape alerts never store emails or issue a malware verdict
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, and other tenants cannot read those jobs.
+`tests/incident-response.test.ts` proves live permission tests never insert an alert,
+alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
+are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,
+and `alert_events` cannot be updated or deleted.
 Keep those
 tests green when adding internal routes.

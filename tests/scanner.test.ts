@@ -240,6 +240,34 @@ describe("scan", () => {
     }
   });
 
+  it("flags architecture, PRD, internal docs, and ADR files without README", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-docs-"));
+    try {
+      await mkdir(path.join(dir, "docs/internal"), { recursive: true });
+      await mkdir(path.join(dir, "adr"), { recursive: true });
+      await writeFile(path.join(dir, "README.md"), "public readme");
+      await writeFile(path.join(dir, "architecture.md"), "system design");
+      await writeFile(path.join(dir, "product.md"), "product plan");
+      await writeFile(path.join(dir, "pack.prd.md"), "module prd");
+      await writeFile(path.join(dir, "docs/internal/notes.md"), "internal");
+      await writeFile(path.join(dir, "adr/0001-pack.md"), "decision");
+      const report = await scan(dir);
+      const docs = report.findings.filter((row) => row.rule === "DOC-001").map((row) => row.path);
+      expect(docs).toEqual(
+        expect.arrayContaining([
+          "architecture.md",
+          "product.md",
+          "pack.prd.md",
+          "docs/internal/notes.md",
+          "adr/0001-pack.md",
+        ]),
+      );
+      expect(docs.some((path) => path.endsWith("README.md") || path === "README.md")).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("unpacks nested tarballs and flags spoilers inside them without executing", async () => {
     const inner = await mkdtemp(path.join(os.tmpdir(), "ns-nest-in-"));
     const outer = await mkdtemp(path.join(os.tmpdir(), "ns-nest-out-"));
