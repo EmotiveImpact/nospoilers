@@ -39,6 +39,7 @@
 - Team audit log: append-only admin writes, typed confirmation on destructive actions, and a titles-only export of alerts and notification deliveries. Trial/Team. Solo 403. Unpaid 402. Members may read/export. Never stores URLs, emails, tokens, or secret values.
 - Package Identity Team signals: bounded lookalike names, dormant resurrection, and release burst/version jump on trial/Team installs. Metadata-only candidate checks. Typed allowlist. Not a malware verdict. No auto advisory/takedown.
 - Configurable data retention: 90/180/365 days or keep while this install exists. Lists hide older rows at query time. Append-only evidence is not deleted. Typed confirmation. Solo allowed. Unpaid 402.
+- Extra packed formats: VSIX, CRX, XPI, Python wheels, JAR/WAR, NuGet nupkg/snupkg, and Ruby gems. ZIP/tar magic, not extension alone. Encrypted zip and CRX without a ZIP payload are inconclusive. Zip-slip names flag ARC-002 and are not unpacked for content. Not advertised as a Pricing change.
 - Automatic remediation PRs: Watch opens a reviewable PR with ignore rules, empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files` snippet, and packed-artifact CI if missing. Never merged. 409 copy-paste when Contents+PR write is missing. Customer ignore/policy/workflow files are not overwritten.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.

@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       path:
-        description: Packed artifact (.tgz, .zip, or .asar) relative to the repo root
+        description: Packed artifact (.tgz, .zip, .vsix, .whl, .jar, …) relative to the repo root
         required: true
         default: package.tgz
   push:
@@ -25,12 +25,26 @@ on:
       - dist/*.tgz
       - dist/*.zip
       - dist/*.asar
+      - dist/*.vsix
+      - dist/*.whl
+      - dist/*.jar
+      - dist/*.nupkg
+      - dist/*.crx
+      - dist/*.xpi
+      - dist/*.gem
   pull_request:
     paths:
       - package.tgz
       - dist/*.tgz
       - dist/*.zip
       - dist/*.asar
+      - dist/*.vsix
+      - dist/*.whl
+      - dist/*.jar
+      - dist/*.nupkg
+      - dist/*.crx
+      - dist/*.xpi
+      - dist/*.gem
 
 jobs:
   nospoilers:
@@ -52,7 +66,7 @@ export function setupPullRequestBody(): string {
   return [
     "This pull request is from NoSpoilers. It is **not** merged automatically.",
     "",
-    "It adds a GitHub Action that scans a **packed** artifact (npm tarball, zip, or Electron asar).",
+    "It adds a GitHub Action that scans a **packed** artifact (npm tarball, zip, VSIX, wheel, JAR, gem, or Electron asar).",
     "It does not unpack the git tree on ordinary source pushes.",
     "",
     "After you merge:",

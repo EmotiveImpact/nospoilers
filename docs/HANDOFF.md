@@ -110,6 +110,12 @@ Read in this order:
   caches (CACHE-001), and additional AI/MCP agent files. Credential values are not copied
   into reports. DOC-001 also flags architecture/design/rfc/spec/product/month1/
   feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
+- Packed scans also cover VSIX, CRX, XPI, Python wheels, JAR/WAR, NuGet nupkg/snupkg, and
+  Ruby gems. Classification uses ZIP/tar/CRX magic, not the extension alone. Encrypted zip
+  and CRX wrappers without a ZIP payload are inconclusive, never a passing receipt. Zip-slip
+  entry names flag ARC-002 and are not unpacked for content. GitHub Release asset matching
+  includes those extensions. Scan lists a VSIX fixture example. These formats are not a
+  Pricing extras change.
 - Watch **Test install** runs a live GitHub permission/read probe. It never creates an
   alert. Watch alerts can be acknowledged, assigned to an install member, resolved with a
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
@@ -197,6 +203,10 @@ Package Identity Team signals are in (bounded lookalikes, dormant resurrection, 
 trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
 allowed; unpaid 402; append-only evidence never deleted).
+Extra packed formats are in (VSIX/CRX/XPI/wheel/JAR/nupkg/gem; ZIP/tar magic; CRX header
+stripped; encrypted zip and CRX-without-ZIP inconclusive; zip-slip ARC-002 not unpacked for
+content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not advertised as a
+Pricing change.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

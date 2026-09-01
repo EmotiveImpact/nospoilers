@@ -76,6 +76,19 @@ async function main(): Promise<void> {
       await zip.generateAsync({ type: "nodebuffer" }),
     );
 
+    const vsix = new JSZip();
+    vsix.file("[Content_Types].xml", '<?xml version="1.0"?><Types></Types>');
+    vsix.file(
+      "extension.vsixmanifest",
+      '<?xml version="1.0"?><PackageManifest Version="2.0.0"></PackageManifest>',
+    );
+    vsix.file("extension/index.js", `${minified}//# sourceMappingURL=index.js.map\n`);
+    vsix.file("extension/index.js.map", sourceMap);
+    await writeFile(
+      path.join(fixtures, "sourcemap.vsix"),
+      await vsix.generateAsync({ type: "nodebuffer" }),
+    );
+
     const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "ns-workspace-"));
     try {
       await writeTree(workspaceDir, {

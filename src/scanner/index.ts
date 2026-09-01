@@ -6,7 +6,21 @@ import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
 import { applyPolicy } from "../policy.ts";
-import { INSPECT_BYTES, inspectEntry, isNestedPack, linkFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
+import { INSPECT_BYTES, inspectEntry, isNestedPack, linkFinding, escapingArchivePathFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
+import {
+  CRX_INCONCLUSIVE,
+  ENCRYPTION_INCONCLUSIVE,
+  archivePathEscapes,
+  isTarFamilyKind,
+  isZipFamilyKind,
+  listZipEntryNames,
+  packFormatFromName,
+  sniffPackFormat,
+  unwrapCrx,
+  zipPayloadForKind,
+  zipResolvedName,
+  zipUsesEncryption,
+} from "./formats.ts";
 import {
   ScanInconclusiveError,
   type Finding,
@@ -117,13 +131,7 @@ function limitsFor(options: ScanOptions): ScanLimits {
 
 function kindOf(target: string, isDir: boolean): ScanTargetKind {
   if (isDir) return "directory";
-  const lower = target.toLowerCase();
-  if (lower.endsWith(".asar")) return "asar";
-  if (lower.endsWith(".zip")) return "zip";
-  if (lower.endsWith(".tgz") || lower.endsWith(".tar.gz") || lower.endsWith(".tar")) {
-    return "tarball";
-  }
-  return "file";
+  return packFormatFromName(target) ?? "file";
 }
 
 async function walkTree(
@@ -186,11 +194,7 @@ function nestPrefix(outer: string, inner: string): string {
 }
 
 function packKindFromName(name: string): ScanTargetKind | null {
-  const lower = name.toLowerCase();
-  if (lower.endsWith(".asar")) return "asar";
-  if (lower.endsWith(".zip")) return "zip";
-  if (lower.endsWith(".tgz") || lower.endsWith(".tar.gz") || lower.endsWith(".tar")) return "tarball";
-  return null;
+  return packFormatFromName(name);
 }
 
 function sha256Buffer(buf: Buffer): string {
@@ -216,14 +220,23 @@ async function withTempFile(bytes: Buffer, ext: string, run: (filePath: string) 
 }
 
 async function maybeScanNested(rel: string, bytes: Buffer, ctx: ScanCtx): Promise<ScanChunk> {
-  const kind = packKindFromName(rel);
-  if (!kind || ctx.depth >= MAX_NEST_DEPTH || bytes.length < 20) {
+  const kind = sniffPackFormat(bytes, rel) ?? packKindFromName(rel);
+  if (!kind || kind === "file" || kind === "directory" || ctx.depth >= MAX_NEST_DEPTH || bytes.length < 20) {
     return emptyChunk(ctx.budget);
   }
   const nested: ScanCtx = { ...ctx, depth: ctx.depth + 1 };
   try {
-    if (kind === "zip") return await scanZipBytes(bytes, nested, rel);
-    if (kind === "tarball") {
+    if (isZipFamilyKind(kind)) {
+      const payload = zipPayloadForKind(bytes, kind);
+      if (kind === "crx" && !unwrapCrx(bytes)) {
+        throw new ScanInconclusiveError("malformed", CRX_INCONCLUSIVE);
+      }
+      if (zipUsesEncryption(payload)) {
+        throw new ScanInconclusiveError("malformed", ENCRYPTION_INCONCLUSIVE);
+      }
+      return await scanZipBytes(payload, nested, rel);
+    }
+    if (isTarFamilyKind(kind)) {
       const ext = rel.toLowerCase().endsWith(".tar") ? ".tar" : ".tgz";
       return await withTempFile(bytes, ext, (filePath) => scanTarball(filePath, nested, rel));
     }
@@ -298,6 +311,10 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
           const type = "type" in entry ? entry.type : "File";
           const storedPath = "path" in entry ? entry.path : entryPath;
           const display = label ? nestPrefix(label, String(storedPath)) : String(storedPath);
+          if (archivePathEscapes(String(storedPath))) {
+            linkFindings.push(escapingArchivePathFinding(display));
+            return false;
+          }
           if (type === "SymbolicLink" || type === "Link") {
             const target =
               "linkpath" in entry && typeof entry.linkpath === "string" ? entry.linkpath : "";
@@ -334,6 +351,14 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
   }
 }
 
+function zipObjectOriginalName(
+  entry: { unsafeOriginalName?: string },
+  fallback: string,
+): string {
+  const original = entry.unsafeOriginalName;
+  return typeof original === "string" && original.length > 0 ? original : fallback;
+}
+
 async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   let zip: JSZip;
   try {
@@ -347,11 +372,34 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
   const workspaceFiles: WorkspaceFile[] = [];
+  const escapingRaw = new Set<string>();
+  const skipResolved = new Set<string>();
+  for (const raw of listZipEntryNames(buf)) {
+    if (!archivePathEscapes(raw) || escapingRaw.has(raw)) continue;
+    escapingRaw.add(raw);
+    const display = label ? nestPrefix(label, raw) : raw;
+    findings.push(escapingArchivePathFinding(display));
+    skipResolved.add(zipResolvedName(raw));
+  }
   const names = Object.keys(zip.files);
   for (const name of names) {
     const entry = zip.files[name];
     if (!entry || entry.dir) continue;
-    const display = label ? nestPrefix(label, name) : name;
+    const original = zipObjectOriginalName(entry, name);
+    const stored = archivePathEscapes(original) ? original : name;
+    const display = label ? nestPrefix(label, stored) : stored;
+    if (
+      escapingRaw.has(original) ||
+      skipResolved.has(name) ||
+      archivePathEscapes(name) ||
+      archivePathEscapes(original)
+    ) {
+      if (!escapingRaw.has(original) && !escapingRaw.has(name)) {
+        findings.push(escapingArchivePathFinding(display));
+      }
+      ctx.budget.beginFile(display);
+      continue;
+    }
     ctx.budget.beginFile(display);
     const stream = entry.nodeStream("nodebuffer");
     const chunks: Buffer[] = [];
@@ -401,19 +449,6 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
   return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest, workspaceFiles };
 }
 
-async function scanZip(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
-  let buf: Buffer;
-  try {
-    buf = await readFile(archive);
-  } catch (error) {
-    throw new ScanInconclusiveError(
-      "malformed",
-      error instanceof Error ? error.message : "Could not read zip.",
-    );
-  }
-  return await scanZipBytes(buf, ctx, label);
-}
-
 async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   const listed = asar.listPackage(archive, { isPack: false });
   const findings: Finding[] = [];
@@ -445,11 +480,12 @@ async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<Scan
 export async function scan(target: string, options: ScanOptions = {}): Promise<ScanReport> {
   const resolved = path.resolve(target);
   const info = await stat(resolved);
-  const kind = kindOf(resolved, info.isDirectory());
+  let kind = kindOf(resolved, info.isDirectory());
   const limits = limitsFor(options);
   let artifactSha256: string | null = null;
   let artifactSha512: string | null = null;
   let artifactBytes: number | null = info.isDirectory() ? null : info.size;
+  let packed: Buffer | null = null;
 
   const inconclusive = (reason: string): ScanReport => ({
     target: resolved,
@@ -485,11 +521,12 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
 
   try {
     if (!info.isDirectory()) {
-      const packed = await readFile(resolved);
+      packed = await readFile(resolved);
       const hashed = hashFileBytes(packed);
       artifactSha256 = hashed.sha256;
       artifactSha512 = hashed.sha512;
       artifactBytes = packed.length;
+      kind = sniffPackFormat(packed, path.basename(resolved)) ?? "file";
     }
 
     let findings: Finding[] = [];
@@ -502,10 +539,21 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
 
     if (kind === "directory") {
       ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanDirectory(resolved, ctx));
-    } else if (kind === "tarball") {
+    } else if (isTarFamilyKind(kind)) {
       ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanTarball(resolved, ctx));
-    } else if (kind === "zip") {
-      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanZip(resolved, ctx));
+    } else if (isZipFamilyKind(kind)) {
+      if (!packed) throw new ScanInconclusiveError("malformed", "Could not read zip.");
+      if (kind === "crx" && !unwrapCrx(packed)) {
+        throw new ScanInconclusiveError("malformed", CRX_INCONCLUSIVE);
+      }
+      const payload = zipPayloadForKind(packed, kind);
+      if (zipUsesEncryption(payload)) {
+        throw new ScanInconclusiveError("malformed", ENCRYPTION_INCONCLUSIVE);
+      }
+      ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanZipBytes(
+        payload,
+        ctx,
+      ));
     } else if (kind === "asar") {
       ({ findings, fileCount, totalBytes, manifest, workspaceFiles } = await scanAsar(resolved, ctx));
     } else {
@@ -513,7 +561,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       const name = path.basename(resolved);
       budget.beginFile(name);
       budget.addBytes(name, info.size, info.size);
-      const buf = await readFile(resolved);
+      const buf = packed ?? (await readFile(resolved));
       findings = inspectEntry(name, buf.subarray(0, INSPECT_BYTES), info.size);
       fileCount = 1;
       totalBytes = buf.length;

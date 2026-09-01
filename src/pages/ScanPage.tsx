@@ -37,6 +37,11 @@ const EXAMPLES = [
     hint: "Same leak, zip wrapper",
   },
   {
+    path: "fixtures/sourcemap.vsix",
+    label: "VS Code VSIX with a map",
+    hint: "ZIP magic, not the extension",
+  },
+  {
     path: "fixtures/dotenv.tgz",
     label: "Pack with a .env",
     hint: "Should fail",
@@ -196,14 +201,14 @@ export function ScanPage({ search }: { search: string }) {
                 <Upload className="h-5 w-5 text-mute" aria-hidden />
                 <p className="font-display text-lg text-snow">Drop a pack here</p>
                 <Description className="text-sm text-dim">
-                  tarball, zip, or asar — or click to choose
+                  tarball, zip, vsix, wheel, jar, or asar — or click to choose
                 </Description>
                 {!locked && (
                   <input
                     id={inputId}
                     type="file"
                     className="sr-only"
-                    accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz"
+                    accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem"
                     onChange={(event) => onFiles(event.target.files)}
                   />
                 )}

@@ -69,7 +69,7 @@ program
 
 program
   .command("scan")
-  .argument("<path>", "Directory, npm tarball, zip, or Electron asar to scan")
+  .argument("<path>", "Directory or packed artifact (tarball, zip, vsix, wheel, jar, crx, xpi, nupkg, gem, asar)")
   .option("--strict", "Fail on warnings as well as critical findings", false)
   .option("--json", "Print the report as JSON", false)
   .option("--sarif <file>", "Write a SARIF 2.1 report to this path")

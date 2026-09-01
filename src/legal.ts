@@ -140,7 +140,7 @@ const RETENTION: LegalDoc = {
     {
       heading: "Packed bytes",
       paragraphs: [
-        "Release assets and uploads exist on temporary worker disk only for the scan. They are deleted in a finally path. The database is not an archive of customer source.",
+        "Release assets and uploads exist on temporary worker disk only for the scan. They are deleted in a finally path. The database is not an archive of customer source. Packed formats include npm tarballs, zip, VSIX, Python wheels, JAR/WAR, NuGet packages, Chrome/Firefox extensions, Ruby gems, and Electron asar. Encrypted zip and CRX wrappers without a ZIP payload are inconclusive, never a passing receipt. Installers (DMG/EXE/MSI/AppImage) are not scanned in this worker.",
       ],
     },
     {

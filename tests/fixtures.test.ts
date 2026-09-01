@@ -51,6 +51,15 @@ describe("packed fixtures", () => {
     );
   });
 
+  it("fails a VSIX that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.vsix"));
+    expect(report.kind).toBe("vsix");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.vsix", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
   it("fails a tarball that contains a .env", async () => {
     const report = await scan(path.join(fixtures, "dotenv.tgz"));
     expect(report.ok).toBe(false);

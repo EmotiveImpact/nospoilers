@@ -205,7 +205,7 @@ export async function handleJob(
         ...alertBase,
         kind: job.kind,
         title: `No release on ${repo.fullName}`,
-        body: "Publish a GitHub Release with a .tgz, .zip, or .asar attached, then scan again.",
+        body: "Publish a GitHub Release with a packed artifact attached (.tgz, .zip, .vsix, .whl, .jar, …), then scan again.",
       });
       return;
     }
@@ -232,7 +232,7 @@ export async function handleJob(
         ...alertBase,
         kind: job.kind,
         title: `Release ${tag} has no pack we can scan`,
-        body: "NoSpoilers looks for .tgz, .tar.gz, .zip, or .asar on the release. Source trees are not scanned on push.",
+        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .gem). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt.",
       });
       return;
     }

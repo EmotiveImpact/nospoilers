@@ -1,7 +1,9 @@
-export const PACK_NAME = /\.(?:tgz|tar\.gz|zip|asar)$/i;
+import { PACK_FILE_RE } from "../scanner/formats.ts";
+
+export const PACK_NAME = PACK_FILE_RE;
 
 export function isPackAssetName(name: string): boolean {
-  return PACK_NAME.test(name);
+  return PACK_FILE_RE.test(name);
 }
 
 export function cheapSensitivePaths(filenames: string[]): string[] {

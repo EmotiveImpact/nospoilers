@@ -36,7 +36,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Directory, `.tar`, tgz/tar.gz, ZIP, asar and single-file scanning | Built | NoSpoilers |
+| Directory, `.tar`, tgz/tar.gz, ZIP, asar, VSIX, CRX, XPI, wheel, JAR/WAR, nupkg, gem and single-file scanning | Built | NoSpoilers |
 | Source maps, embedded source and map URL rules | Built | NoSpoilers |
 | Environment, private key and high-confidence token rules | Built | NoSpoilers |
 | Credential config, AI context, internal location, debug rules | Built | NoSpoilers |
@@ -60,8 +60,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | `.nospoilers.yml` policy file | Built: CLI/Action + hosted DB exceptions | NoSpoilers |
 | Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
-| Nested archive scanning | Built: unpack nested tgz/zip/asar up to 3 levels, never execute | NoSpoilers |
+| Nested archive scanning | Built: unpack nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem up to 3 levels, never execute | NoSpoilers |
 | Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
+| Escaping archive entry paths | Built: ARC-002 on zip/tar `..` and absolute names; zip-slip entries are not unpacked for content | NoSpoilers |
 | Source archives and backup files | Built: BAK-001 | NoSpoilers |
 | Database exports/dumps | Built: DB-001 | NoSpoilers |
 | SSH/cloud/service-account configuration | Built: `.ssh/`, kube, AWS, Azure, GCP, Docker, tfstate, PKCS12, service-account JSON | NoSpoilers |
@@ -115,14 +116,14 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Production website JS/CSS/assets | Planned | NoSpoilers |
 | Sentry source-map custody | Planned | NoSpoilers |
 | Bugsnag source-map custody | Planned | NoSpoilers |
-| VS Code `.vsix` | Planned | NoSpoilers |
-| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Planned | NoSpoilers |
-| Python wheel and source distribution | Planned | NoSpoilers |
-| Java JAR/WAR | Planned | NoSpoilers |
-| NuGet `.nupkg` and `.snupkg` | Planned | NoSpoilers |
-| Ruby gems | Planned | NoSpoilers |
+| VS Code `.vsix` | Built: ZIP magic, hostile fixture, GitHub Release asset, Scan example | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP | NoSpoilers |
+| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path | NoSpoilers |
+| Java JAR/WAR | Built: ZIP magic | NoSpoilers |
+| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic | NoSpoilers |
+| Ruby gems | Built: tar + nested `data.tar.gz`, never executed | NoSpoilers |
 | Docker/OCI image layers | Planned, later | NoSpoilers |
-| Serverless deployment bundles | Planned | NoSpoilers |
+| Serverless deployment bundles | Built: ZIP family, same zip scanner | NoSpoilers |
 | Android APK/AAB | Planned, later | NoSpoilers |
 | iOS IPA | Planned, later | NoSpoilers |
 | Electron DMG | Deferred isolated worker | NoSpoilers |

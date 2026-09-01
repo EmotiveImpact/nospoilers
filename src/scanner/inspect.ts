@@ -1,4 +1,5 @@
 import path from "node:path";
+import { PACK_FILE_RE } from "./formats.ts";
 import type { Finding } from "./types.ts";
 
 const TEXT_LIMIT = 2_000_000;
@@ -199,7 +200,7 @@ function crashDump(base: string, buf: Buffer): boolean {
 }
 
 export function isNestedPack(filePath: string): boolean {
-  return /\.(?:tgz|tar\.gz|tar|zip|asar)$/i.test(path.posix.basename(filePath.replace(/\\/g, "/")));
+  return PACK_FILE_RE.test(path.posix.basename(filePath.replace(/\\/g, "/")));
 }
 
 function backupFile(base: string): boolean {
@@ -259,6 +260,17 @@ export function linkFinding(relPath: string, target: string): Finding | null {
     path: posixPath(relPath).replace(/^\.\//, ""),
     title: "Suspicious symlink in the pack",
     detail: "The link points outside the artifact (absolute path or ..). Symlinks are not followed.",
+  };
+}
+
+export function escapingArchivePathFinding(relPath: string): Finding {
+  return {
+    rule: "ARC-002",
+    severity: "critical",
+    path: posixPath(relPath).replace(/^\.\//, ""),
+    title: "Archive entry path escapes the pack",
+    detail:
+      "An entry name is absolute or contains '..'. The path is not used as a filesystem location. Escaping zip entries are not unpacked for content inspection.",
   };
 }
 
@@ -350,7 +362,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
       path: rel,
       title: "Nested packed artifact",
       detail:
-        "Another tarball, zip, or asar is inside this pack. Nested archives are unpacked for inspection, never executed.",
+        "Another packed artifact is inside this pack. Nested archives are unpacked for inspection, never executed.",
     });
   }
 

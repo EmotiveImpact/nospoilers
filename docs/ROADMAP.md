@@ -9,13 +9,15 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Proven locally
 
-- Scanner: directories, npm tarballs, ZIP, and Electron `app.asar`.
+- Scanner: directories, npm tarballs, ZIP, VSIX, CRX, XPI, wheels, JAR/WAR, NuGet packs, Ruby gems, and Electron `app.asar`.
 - Critical detection: maps, embedded source, map URLs, environment files, private keys, and
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
   TypeScript/JSX, abnormal size, nested packs, backups, internal docs, and build caches.
 - Additional critical paths: database dumps, crash dumps/minidumps/ELF cores, and escaping
-  symlinks. Nested tgz/zip/asar are unpacked for inspection (never executed) up to three levels.
+  symlinks and archive entry paths (ARC-002). Nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem
+  are unpacked for inspection (never executed) up to three levels. Encrypted zip and CRX wrappers
+  without a ZIP payload are inconclusive.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
@@ -78,6 +80,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Configurable data retention: 90, 180, or 365 days, or keep while this install exists.
   Query-time lists. Append-only evidence is not deleted. Typed confirm. Solo allowed.
   Unpaid 402. Members may read.
+- Extra packed formats: VSIX, CRX, XPI, wheels, JAR/WAR, NuGet, Ruby gems. ZIP/tar magic.
+  Encrypted zip and CRX without ZIP are inconclusive. Zip-slip is ARC-002 and is not unpacked
+  for content. Scan accepts those extensions and includes a VSIX fixture example. Not a Pricing change.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists,

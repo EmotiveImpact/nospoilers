@@ -8,7 +8,19 @@ export type Finding = {
   detail: string;
 };
 
-export type ScanTargetKind = "directory" | "tarball" | "zip" | "asar" | "file";
+export type ScanTargetKind =
+  | "directory"
+  | "tarball"
+  | "zip"
+  | "asar"
+  | "file"
+  | "vsix"
+  | "crx"
+  | "xpi"
+  | "wheel"
+  | "jar"
+  | "nupkg"
+  | "gem";
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive";
 
