@@ -153,6 +153,7 @@ async function packageArtifact(
 export async function inspectGithubRepository(
   value: string,
   token: string,
+  maxAssetBytes = 80 * 1024 * 1024,
 ): Promise<PublicArtifact[]> {
   const parsed = parseGithubRepository(value);
   if (!parsed) throw new Error("Use owner/repo or a github.com/owner/repo URL.");
@@ -166,7 +167,7 @@ export async function inspectGithubRepository(
     allow404: true,
   });
   for (const asset of release?.assets ?? []) {
-    if (!isPackAssetName(asset.name)) continue;
+    if (!isPackAssetName(asset.name) || asset.size > maxAssetBytes) continue;
     artifacts.push({
       source: "github_release",
       owner: parsed.owner,
@@ -212,8 +213,9 @@ export async function inspectAndQueueRepository(
   store: Store,
   repository: string,
   token: string,
+  maxAssetBytes: number,
 ): Promise<{ repositories: number; found: number; queued: number; existing: number; errors: string[] }> {
-  const artifacts = await inspectGithubRepository(repository, token);
+  const artifacts = await inspectGithubRepository(repository, token, maxAssetBytes);
   const result = await registerArtifacts(store, artifacts);
   return { repositories: 1, ...result, errors: [] };
 }
@@ -222,6 +224,7 @@ export async function discoverAndQueueProspects(
   store: Store,
   input: { query?: string; limit?: number },
   token: string,
+  maxAssetBytes: number,
 ): Promise<{
   repositories: number;
   found: number;
@@ -245,7 +248,7 @@ export async function discoverAndQueueProspects(
   const errors: string[] = [];
   for (const repository of repositories) {
     try {
-      const artifacts = await inspectGithubRepository(repository, token);
+      const artifacts = await inspectGithubRepository(repository, token, maxAssetBytes);
       const registered = await registerArtifacts(store, artifacts);
       found += registered.found;
       queued += registered.queued;

@@ -120,6 +120,7 @@ export function createApp(deps: AppDeps): Hono {
           limit: typeof body.limit === "number" ? body.limit : undefined,
         },
         deps.config.githubDiscoveryToken,
+        deps.config.maxAssetBytes,
       );
       return c.json(result);
     } catch (error) {
@@ -140,6 +141,7 @@ export function createApp(deps: AppDeps): Hono {
           deps.store,
           repository,
           deps.config.githubDiscoveryToken,
+          deps.config.maxAssetBytes,
         ),
       );
     } catch (error) {
