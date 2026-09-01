@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, readdir, readlink, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, readlink, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
 import { applyPolicy } from "../policy.ts";
-import { INSPECT_BYTES, inspectEntry, linkFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
+import { INSPECT_BYTES, inspectEntry, isNestedPack, linkFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
 import {
   ScanInconclusiveError,
   type Finding,
@@ -145,6 +145,32 @@ type ScanChunk = {
   manifest: ManifestEntry[];
 };
 
+export const MAX_NEST_DEPTH = 3;
+
+type ScanCtx = {
+  limits: ScanLimits;
+  budget: ScanBudget;
+  depth: number;
+};
+
+function emptyChunk(budget: ScanBudget): ScanChunk {
+  return { findings: [], fileCount: budget.files, totalBytes: budget.bytes, manifest: [] };
+}
+
+function nestPrefix(outer: string, inner: string): string {
+  const left = outer.replace(/\\/g, "/").replace(/^\.\//, "");
+  const right = inner.replace(/\\/g, "/").replace(/^\.\//, "");
+  return `${left}!/${right}`;
+}
+
+function packKindFromName(name: string): ScanTargetKind | null {
+  const lower = name.toLowerCase();
+  if (lower.endsWith(".asar")) return "asar";
+  if (lower.endsWith(".zip")) return "zip";
+  if (lower.endsWith(".tgz") || lower.endsWith(".tar.gz") || lower.endsWith(".tar")) return "tarball";
+  return null;
+}
+
 function sha256Buffer(buf: Buffer): string {
   return createHash("sha256").update(buf).digest("hex");
 }
@@ -156,35 +182,84 @@ function hashFileBytes(bytes: Buffer): { sha256: string; sha512: string } {
   };
 }
 
+async function withTempFile(bytes: Buffer, ext: string, run: (filePath: string) => Promise<ScanChunk>): Promise<ScanChunk> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-nest-"));
+  const dest = path.join(dir, `inner${ext}`);
+  try {
+    await writeFile(dest, bytes);
+    return await run(dest);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function maybeScanNested(rel: string, bytes: Buffer, ctx: ScanCtx): Promise<ScanChunk> {
+  const kind = packKindFromName(rel);
+  if (!kind || ctx.depth >= MAX_NEST_DEPTH || bytes.length < 20) {
+    return emptyChunk(ctx.budget);
+  }
+  const nested: ScanCtx = { ...ctx, depth: ctx.depth + 1 };
+  try {
+    if (kind === "zip") return await scanZipBytes(bytes, nested, rel);
+    if (kind === "tarball") {
+      const ext = rel.toLowerCase().endsWith(".tar") ? ".tar" : ".tgz";
+      return await withTempFile(bytes, ext, (filePath) => scanTarball(filePath, nested, rel));
+    }
+    return await withTempFile(bytes, ".asar", (filePath) => scanAsar(filePath, nested, rel));
+  } catch (error) {
+    if (error instanceof ScanInconclusiveError && error.reason !== "malformed") throw error;
+    return emptyChunk(ctx.budget);
+  }
+}
+
+async function mergeNested(
+  rel: string,
+  bytes: Buffer,
+  ctx: ScanCtx,
+  findings: Finding[],
+  manifest: ManifestEntry[],
+): Promise<void> {
+  if (!isNestedPack(rel)) return;
+  const nested = await maybeScanNested(rel, bytes, ctx);
+  findings.push(...nested.findings);
+  manifest.push(...nested.manifest);
+}
+
 async function scanDirectory(
   root: string,
-  limits: ScanLimits,
-  prefix = "",
+  ctx: ScanCtx,
+  label = "",
+  countFiles = true,
 ): Promise<ScanChunk> {
   const { files, links } = await walkTree(root);
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
-  const budget = new ScanBudget(limits);
+  const relOf = (abs: string) => {
+    const inner = path.relative(root, abs).split(path.sep).join("/");
+    return label ? nestPrefix(label, inner) : inner;
+  };
   for (const link of links) {
-    const rel = path.join(prefix, path.relative(root, link.abs)).split(path.sep).join("/");
+    const rel = relOf(link.abs);
     const finding = linkFinding(rel, link.target);
     if (finding) findings.push(finding);
   }
   for (const abs of files) {
-    const rel = path.join(prefix, path.relative(root, abs)).split(path.sep).join("/");
+    const rel = relOf(abs);
     const info = await stat(abs);
-    budget.beginFile(rel);
-    budget.addBytes(rel, info.size, info.size);
+    if (countFiles) {
+      ctx.budget.beginFile(rel);
+      ctx.budget.addBytes(rel, info.size, info.size);
+    }
     const buf = await readFile(abs);
     findings.push(...inspectEntry(rel, buf.subarray(0, INSPECT_BYTES), info.size));
     manifest.push({ path: rel, size: info.size, sha256: sha256Buffer(buf) });
+    await mergeNested(rel, buf, ctx, findings, manifest);
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
 }
 
-async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChunk> {
+async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-tar-"));
-  const extractionBudget = new ScanBudget(limits);
   let limitError: ScanInconclusiveError | null = null;
   const linkFindings: Finding[] = [];
   try {
@@ -196,10 +271,11 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
         try {
           const type = "type" in entry ? entry.type : "File";
           const storedPath = "path" in entry ? entry.path : entryPath;
+          const display = label ? nestPrefix(label, String(storedPath)) : String(storedPath);
           if (type === "SymbolicLink" || type === "Link") {
             const target =
               "linkpath" in entry && typeof entry.linkpath === "string" ? entry.linkpath : "";
-            const finding = linkFinding(storedPath, target);
+            const finding = linkFinding(display, target);
             if (finding) linkFindings.push(finding);
             return false;
           }
@@ -209,8 +285,8 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
             type === "ContiguousFile";
           if (!file) return false;
           const size = entry.size ?? 0;
-          extractionBudget.beginFile(storedPath);
-          extractionBudget.addBytes(storedPath, size, size);
+          ctx.budget.beginFile(display);
+          ctx.budget.addBytes(display, size, size);
           return true;
         } catch (error) {
           if (error instanceof ScanInconclusiveError) {
@@ -222,7 +298,7 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
       },
     });
     if (limitError) throw limitError;
-    const scanned = await scanDirectory(dir, limits);
+    const scanned = await scanDirectory(dir, ctx, label, false);
     return {
       ...scanned,
       findings: [...linkFindings, ...scanned.findings],
@@ -232,16 +308,7 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
   }
 }
 
-async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> {
-  let buf: Buffer;
-  try {
-    buf = await readFile(archive);
-  } catch (error) {
-    throw new ScanInconclusiveError(
-      "malformed",
-      error instanceof Error ? error.message : "Could not read zip.",
-    );
-  }
+async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(buf);
@@ -253,17 +320,18 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
   }
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
-  const budget = new ScanBudget(limits);
   const names = Object.keys(zip.files);
   for (const name of names) {
     const entry = zip.files[name];
     if (!entry || entry.dir) continue;
-    budget.beginFile(name);
+    const display = label ? nestPrefix(label, name) : name;
+    ctx.budget.beginFile(display);
     const stream = entry.nodeStream("nodebuffer");
     const chunks: Buffer[] = [];
     const hash = createHash("sha256");
     let fileBytes = 0;
     let retainedBytes = 0;
+    const keepAll = isNestedPack(name);
     await new Promise<void>((resolve, reject) => {
       let stopped = false;
       stream.on("data", (raw: Buffer | Uint8Array) => {
@@ -271,10 +339,10 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
         try {
           const chunk = Buffer.from(raw);
           fileBytes += chunk.length;
-          budget.addBytes(name, chunk.length, fileBytes);
+          ctx.budget.addBytes(display, chunk.length, fileBytes);
           hash.update(chunk);
-          if (retainedBytes < INSPECT_BYTES) {
-            const kept = chunk.subarray(0, INSPECT_BYTES - retainedBytes);
+          if (keepAll || retainedBytes < INSPECT_BYTES) {
+            const kept = keepAll ? chunk : chunk.subarray(0, INSPECT_BYTES - retainedBytes);
             chunks.push(kept);
             retainedBytes += kept.length;
           }
@@ -297,17 +365,31 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
         resolve();
       });
     });
-    findings.push(...inspectEntry(name, Buffer.concat(chunks, retainedBytes), fileBytes));
-    manifest.push({ path: name, size: fileBytes, sha256: hash.digest("hex") });
+    const retained = Buffer.concat(chunks, retainedBytes);
+    findings.push(...inspectEntry(display, retained.subarray(0, INSPECT_BYTES), fileBytes));
+    manifest.push({ path: display, size: fileBytes, sha256: hash.digest("hex") });
+    if (keepAll) await mergeNested(display, retained, ctx, findings, manifest);
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
 }
 
-async function scanAsar(archive: string, limits: ScanLimits): Promise<ScanChunk> {
+async function scanZip(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
+  let buf: Buffer;
+  try {
+    buf = await readFile(archive);
+  } catch (error) {
+    throw new ScanInconclusiveError(
+      "malformed",
+      error instanceof Error ? error.message : "Could not read zip.",
+    );
+  }
+  return await scanZipBytes(buf, ctx, label);
+}
+
+async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   const listed = asar.listPackage(archive, { isPack: false });
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
-  const budget = new ScanBudget(limits);
   for (const raw of listed) {
     const rel = raw.replace(/^\/+/, "");
     const posix = rel.split(path.sep).join("/");
@@ -319,13 +401,15 @@ async function scanAsar(archive: string, limits: ScanLimits): Promise<ScanChunk>
       continue;
     }
     if (!("size" in record)) continue;
-    budget.beginFile(posix);
-    budget.addBytes(posix, record.size, record.size);
+    const display = label ? nestPrefix(label, posix) : posix;
+    ctx.budget.beginFile(display);
+    ctx.budget.addBytes(display, record.size, record.size);
     const content = asar.extractFile(archive, posix);
-    findings.push(...inspectEntry(posix, content.subarray(0, INSPECT_BYTES), record.size));
-    manifest.push({ path: posix, size: record.size, sha256: sha256Buffer(content) });
+    findings.push(...inspectEntry(display, content.subarray(0, INSPECT_BYTES), record.size));
+    manifest.push({ path: display, size: record.size, sha256: sha256Buffer(content) });
+    await mergeNested(display, content, ctx, findings, manifest);
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
+  return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest };
 }
 
 export async function scan(target: string, options: ScanOptions = {}): Promise<ScanReport> {
@@ -382,14 +466,16 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     let totalBytes = 0;
     let manifest: ManifestEntry[] = [];
 
+    const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0 };
+
     if (kind === "directory") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanDirectory(resolved, limits));
+      ({ findings, fileCount, totalBytes, manifest } = await scanDirectory(resolved, ctx));
     } else if (kind === "tarball") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanTarball(resolved, limits));
+      ({ findings, fileCount, totalBytes, manifest } = await scanTarball(resolved, ctx));
     } else if (kind === "zip") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanZip(resolved, limits));
+      ({ findings, fileCount, totalBytes, manifest } = await scanZip(resolved, ctx));
     } else if (kind === "asar") {
-      ({ findings, fileCount, totalBytes, manifest } = await scanAsar(resolved, limits));
+      ({ findings, fileCount, totalBytes, manifest } = await scanAsar(resolved, ctx));
     } else {
       const budget = new ScanBudget(limits);
       const name = path.basename(resolved);

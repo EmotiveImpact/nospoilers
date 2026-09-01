@@ -82,6 +82,7 @@ Legal/support pages and strong secret checks are done.
 Public npm package watching (latest tarball) is in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
+Nested tgz/zip/asar are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.

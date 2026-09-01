@@ -201,7 +201,7 @@ On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It 
 | SRC-001 | warn | `.ts` / `.tsx` / `.jsx` source (not `.d.ts`) |
 | SIZE-001 | warn | A packed file is 10 MB or larger |
 | SIZE-002 | warn | Unpacked payload is 50 MB or larger |
-| ARC-001 | warn | Nested `.tgz` / `.zip` / `.asar` inside the pack (not unpacked) |
+| ARC-001 | warn | Nested `.tgz` / `.zip` / `.asar` inside the pack (unpacked for inspection, not executed) |
 | BAK-001 | warn | Backup copy (`*.bak`, `*~`, `.backup`) |
 | DB-001 | critical | Database dump packed into the artifact |
 | DOC-001 | warn | Internal ROADMAP/HANDOFF/TODO/PRD filename |

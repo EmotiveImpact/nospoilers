@@ -60,7 +60,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | `.nospoilers.yml` policy file | Built: CLI/Action + hosted DB exceptions | NoSpoilers |
 | Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
-| Nested archive scanning | Partial: nested tgz/zip/asar flagged (ARC-001), not unpacked | NoSpoilers |
+| Nested archive scanning | Built: unpack nested tgz/zip/asar up to 3 levels, never execute | NoSpoilers |
 | Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
 | Source archives and backup files | Built: BAK-001 | NoSpoilers |
 | Database exports/dumps | Built: DB-001 | NoSpoilers |

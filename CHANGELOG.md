@@ -14,6 +14,7 @@
 - Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, and dist-tags.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.
+- Unpack nested tgz/zip/asar for inspection (never execute) up to three levels.
 - Load `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approve a scan baseline.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.

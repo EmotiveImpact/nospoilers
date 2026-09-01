@@ -2,6 +2,7 @@ import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { c as tarCreate } from "tar";
 import { FILE_WARN_BYTES } from "../src/scanner/inspect.ts";
 import { scan } from "../src/scanner/index.ts";
 
@@ -159,6 +160,26 @@ describe("scan", () => {
       expect(report.ok).toBe(false);
     } finally {
       await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("unpacks nested tarballs and flags spoilers inside them without executing", async () => {
+    const inner = await mkdtemp(path.join(os.tmpdir(), "ns-nest-in-"));
+    const outer = await mkdtemp(path.join(os.tmpdir(), "ns-nest-out-"));
+    try {
+      await writeFile(path.join(inner, ".env"), "SECRET=1\n");
+      await tarCreate({ gzip: true, file: path.join(outer, "payload.tgz"), cwd: inner }, ["."]);
+      const report = await scan(outer);
+      expect(report.findings.some((row) => row.rule === "ARC-001" && row.path.endsWith("payload.tgz"))).toBe(
+        true,
+      );
+      const env = report.findings.find((row) => row.rule === "SEC-001");
+      expect(env?.path).toMatch(/payload\.tgz!.*\.env/);
+      expect(report.ok).toBe(false);
+      expect(report.status).toBe("failed-policy");
+    } finally {
+      await rm(inner, { recursive: true, force: true });
+      await rm(outer, { recursive: true, force: true });
     }
   });
 

@@ -120,8 +120,8 @@ function debugArtifact(rel: string, base: string): boolean {
   );
 }
 
-function nestedPack(base: string): boolean {
-  return /\.(?:tgz|tar\.gz|tar|zip|asar)$/i.test(base);
+export function isNestedPack(filePath: string): boolean {
+  return /\.(?:tgz|tar\.gz|tar|zip|asar)$/i.test(path.posix.basename(filePath.replace(/\\/g, "/")));
 }
 
 function backupFile(base: string): boolean {
@@ -243,14 +243,14 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (nestedPack(base)) {
+  if (isNestedPack(rel)) {
     findings.push({
       rule: "ARC-001",
       severity: "warn",
       path: rel,
       title: "Nested packed artifact",
       detail:
-        "Another tarball, zip, or asar is inside this pack. Nested archives are identified, not executed.",
+        "Another tarball, zip, or asar is inside this pack. Nested archives are unpacked for inspection, never executed.",
     });
   }
 
