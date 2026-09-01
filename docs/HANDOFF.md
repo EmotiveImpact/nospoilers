@@ -26,16 +26,18 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Nineteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-one product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
-  `010_release_revisions`, `011_package_identities`, `012_install_health`, and
-  `013_incident_response` are applied. Hosted
+  `010_release_revisions`, `011_package_identities`, `012_install_health`,
+  `013_incident_response`, and `014_notification_destinations` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
-  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Scan API tokens are SHA-256
+  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks
+  are the same ciphertext and are never returned after save. Notification deliveries are
+  append-only. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). Alert acknowledgement, assignment, resolution notes, and
   reopen append `alert_events` (append-only). Live permission tests store JSON on the installation,
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
@@ -97,6 +99,9 @@ Read in this order:
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
   Watch can export that activity as JSON. Incident actions stay available when unpaid
   or GitHub-suspended.
+- Trial and Team installs can save a Slack incoming webhook (encrypted, never returned).
+  New Watch alerts POST to Slack after they are stored. Watch **Test delivery** talks to
+  Slack and never inserts an alert. Solo paid does not get Slack. Email still needs Resend.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -142,6 +147,7 @@ that test; alert ack/assign/resolve; exposure duration; rotation checklist; appe
 Multiple GitHub organizations are in (Watch install switcher; `installationId` list filter;
 writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
+Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.

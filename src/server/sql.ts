@@ -346,6 +346,53 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "013_incident_response",
   ]);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS notification_destinations (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('slack')),
+      host TEXT NOT NULL,
+      webhook_ciphertext TEXT NOT NULL,
+      last_delivery_at TIMESTAMPTZ,
+      last_delivery_status TEXT,
+      last_delivery_error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (installation_id, kind)
+    );
+    CREATE INDEX IF NOT EXISTS notification_destinations_install_idx
+      ON notification_destinations (installation_id);
+    CREATE TABLE IF NOT EXISTS notification_deliveries (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
+      alert_id BIGINT REFERENCES alerts (id) ON DELETE SET NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('slack')),
+      status TEXT NOT NULL CHECK (status IN ('sent', 'failed')),
+      invented_incident BOOLEAN NOT NULL DEFAULT false CHECK (invented_incident = false),
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS notification_deliveries_install_idx
+      ON notification_deliveries (installation_id, created_at DESC, id DESC);
+    CREATE OR REPLACE FUNCTION reject_notification_delivery_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'notification_deliveries are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS notification_deliveries_no_update ON notification_deliveries;
+    CREATE TRIGGER notification_deliveries_no_update
+      BEFORE UPDATE ON notification_deliveries
+      FOR EACH ROW EXECUTE PROCEDURE reject_notification_delivery_mutation();
+    DROP TRIGGER IF EXISTS notification_deliveries_no_delete ON notification_deliveries;
+    CREATE TRIGGER notification_deliveries_no_delete
+      BEFORE DELETE ON notification_deliveries
+      FOR EACH ROW EXECUTE PROCEDURE reject_notification_delivery_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "014_notification_destinations",
+  ]);
 }
 
 export function num(value: unknown): number {

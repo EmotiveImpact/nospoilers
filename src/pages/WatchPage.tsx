@@ -93,6 +93,26 @@ type NpmRegistry = {
   updated_at: string;
 };
 
+type NotificationDestination = {
+  id: number;
+  installationId: number;
+  kind: "slack";
+  host: string;
+  lastDeliveryAt: string | null;
+  lastDeliveryStatus: string | null;
+  lastDeliveryError: string | null;
+  updatedAt: string;
+};
+
+type NotificationDelivery = {
+  id: number;
+  kind: "slack";
+  status: "sent" | "failed";
+  inventedIncident: false;
+  error: string | null;
+  createdAt: string;
+};
+
 type ScanApiToken = {
   id: number;
   installation_id: number;
@@ -471,6 +491,13 @@ export function WatchPage({ search }: { search: string }) {
     status: "loading",
   });
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
+  const [destinations, setDestinations] = useState<NotificationDestination[]>([]);
+  const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
+  const [slackWebhook, setSlackWebhook] = useState("");
+  const [savingSlack, setSavingSlack] = useState(false);
+  const [testingSlackId, setTestingSlackId] = useState<number | null>(null);
+  const [removingSlackId, setRemovingSlackId] = useState<number | null>(null);
+  const [slackError, setSlackError] = useState<string | null>(null);
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
   const [protections, setProtections] = useState<PackageProtection[]>([]);
@@ -531,13 +558,15 @@ export function WatchPage({ search }: { search: string }) {
     setPackages({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody, protectionBody, jobBody] =
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, tokenBody, releaseBody, protectionBody, jobBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>(q("/api/repos")),
         loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
         loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
         loadJson<{ exceptions: PolicyExceptionView[] }>(q("/api/exceptions")),
         loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
+        loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
+        loadJson<{ deliveries: NotificationDelivery[] }>(q("/api/destinations/deliveries")),
         loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
         loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
         loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
@@ -548,6 +577,8 @@ export function WatchPage({ search }: { search: string }) {
       setPackages({ status: "ready", data: packageBody });
       setExceptions(exceptionBody.exceptions);
       setRegistries(registryBody.registries);
+      setDestinations(destinationBody.destinations);
+      setDeliveries(deliveryBody.deliveries);
       setScanTokens(tokenBody.tokens);
       setReleases(releaseBody.releases);
       setProtections(protectionBody.protections);
@@ -593,6 +624,8 @@ export function WatchPage({ search }: { search: string }) {
           setExceptions([]);
           setBaselineByPackage({});
           setRegistries([]);
+          setDestinations([]);
+          setDeliveries([]);
           setScanTokens([]);
           setReleases([]);
           setProtections([]);
@@ -1161,6 +1194,179 @@ export function WatchPage({ search }: { search: string }) {
                 </li>
               ))}
             </ul>
+          </>
+        )}
+      </section>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Team and trial installs can send Watch alerts to a Slack incoming webhook. The URL is
+          encrypted and never shown again. A delivery test talks to Slack and never creates a Watch
+          alert.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot send Slack. No invented incident.
+          </p>
+        ) : deskCoverage?.plan === "solo" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Slack alerts are on Team. Email for Solo waits on Resend.
+          </p>
+        ) : (
+          <>
+            {destinations.length === 0 ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">No Slack webhook saved on this install.</p>
+            ) : (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {destinations.map((destination) => (
+                  <li key={destination.id} className="py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-mono text-sm text-snow">{destination.host}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={testingSlackId === destination.id}
+                          onClick={() => {
+                            setSlackError(null);
+                            setTestingSlackId(destination.id);
+                            void (async () => {
+                              try {
+                                const response = await fetch(`/api/destinations/${destination.id}/test`, {
+                                  method: "POST",
+                                  credentials: "include",
+                                });
+                                const body = (await response.json()) as {
+                                  error?: string;
+                                  inventedIncident?: boolean;
+                                  detail?: string;
+                                };
+                                if (!response.ok || body.inventedIncident) {
+                                  throw new Error(body.error ?? body.detail ?? "Could not test Slack.");
+                                }
+                                await refreshSignedIn(selectedInstallId);
+                              } catch (error) {
+                                setSlackError(
+                                  error instanceof Error ? error.message : "Could not test Slack.",
+                                );
+                              } finally {
+                                setTestingSlackId(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {testingSlackId === destination.id ? "Testing…" : "Test delivery"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={removingSlackId === destination.id}
+                          onClick={() => {
+                            setSlackError(null);
+                            setRemovingSlackId(destination.id);
+                            void (async () => {
+                              try {
+                                const response = await fetch(`/api/destinations/${destination.id}`, {
+                                  method: "DELETE",
+                                  credentials: "include",
+                                });
+                                const body = (await response.json()) as { error?: string };
+                                if (!response.ok) throw new Error(body.error ?? "Could not remove Slack.");
+                                await refreshSignedIn(selectedInstallId);
+                              } catch (error) {
+                                setSlackError(
+                                  error instanceof Error ? error.message : "Could not remove Slack.",
+                                );
+                              } finally {
+                                setRemovingSlackId(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {removingSlackId === destination.id ? "Removing…" : "Remove"}
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-dim">
+                      {destination.lastDeliveryStatus
+                        ? `${destination.lastDeliveryStatus}${
+                            destination.lastDeliveryAt
+                              ? ` · ${new Date(destination.lastDeliveryAt).toLocaleString()}`
+                              : ""
+                          }`
+                        : "No delivery yet"}
+                      {destination.lastDeliveryError ? ` · ${destination.lastDeliveryError}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!ended && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (savingSlack || !activeInstallId) return;
+                  setSlackError(null);
+                  setSavingSlack(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/slack", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          webhookUrl: slackWebhook,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save Slack.");
+                      setSlackWebhook("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(error instanceof Error ? error.message : "Could not save Slack.");
+                    } finally {
+                      setSavingSlack(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    Slack incoming webhook
+                  </span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={slackWebhook}
+                    onChange={(event) => setSlackWebhook(event.target.value)}
+                    placeholder="https://hooks.slack.com/services/…"
+                    className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" size="sm" disabled={savingSlack || !slackWebhook.trim()}>
+                  {savingSlack ? "Saving…" : "Save Slack"}
+                </Button>
+              </form>
+            )}
+            {deliveries.length > 0 ? (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {deliveries.slice(0, 8).map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+                    <p className="text-sm text-snow">{row.status}</p>
+                    <p className="text-xs text-dim">
+                      {new Date(row.createdAt).toLocaleString()}
+                      {row.error ? ` · ${row.error}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {slackError ? <p className="mt-4 text-sm text-danger">{slackError}</p> : null}
           </>
         )}
       </section>

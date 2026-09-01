@@ -32,7 +32,7 @@ import {
   inspectAndQueueRepository,
 } from "./prospects.ts";
 import type { Store } from "./store.ts";
-import type { AlertEventRow, AlertRow, PolicyExceptionRow, ProspectStatus } from "./store.ts";
+import type { AlertEventRow, AlertRow, PolicyExceptionRow, ProspectStatus, ReleaseRevisionRow } from "./store.ts";
 import {
   exposureMs,
   findingRules,
@@ -47,7 +47,12 @@ import {
   parseReleaseScanMeta,
   ReleaseLedgerError,
 } from "./release-ledger.ts";
-import type { ReleaseRevisionRow } from "./store.ts";
+import {
+  parseSlackWebhook,
+  postSlackWebhook,
+  slackPlanDeniedFromBilling,
+  slackTestText,
+} from "./slack.ts";
 import {
   MAX_SCAN_TOKENS,
   parseScanBearer,
@@ -64,6 +69,7 @@ export type AppDeps = {
   npm?: NpmPort;
   scan?: typeof scan;
   wakeWorker?: () => void;
+  slackFetch?: typeof fetch;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -173,6 +179,28 @@ async function hostedWorkDenied(
   if (!block) return null;
   const denied = httpErrorForWorkBlock(block, unpaidMessage);
   return { error: denied.message, status: denied.status };
+}
+
+function publicDestination(row: {
+  id: number;
+  installationId: number;
+  kind: "slack";
+  host: string;
+  lastDeliveryAt: string | null;
+  lastDeliveryStatus: string | null;
+  lastDeliveryError: string | null;
+  updatedAt: string;
+}) {
+  return {
+    id: row.id,
+    installationId: row.installationId,
+    kind: row.kind,
+    host: row.host,
+    lastDeliveryAt: row.lastDeliveryAt,
+    lastDeliveryStatus: row.lastDeliveryStatus,
+    lastDeliveryError: row.lastDeliveryError,
+    updatedAt: row.updatedAt,
+  };
 }
 
 export function createApp(deps: AppDeps): Hono {
@@ -1524,6 +1552,131 @@ export function createApp(deps: AppDeps): Hono {
       coordinate: result.receipt?.coordinate,
       artifactSha256: result.receipt?.artifactSha256,
     });
+  });
+
+  app.get("/api/destinations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const destinations = await deps.store.listNotificationDestinationsForUser(
+      user.userId,
+      queryInstallationId(c),
+    );
+    return c.json({ destinations: destinations.map(publicDestination) });
+  });
+
+  app.get("/api/destinations/deliveries", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const deliveries = await deps.store.listNotificationDeliveriesForUser(
+      user.userId,
+      queryInstallationId(c),
+    );
+    return c.json({
+      deliveries: deliveries.map((row) => ({
+        id: row.id,
+        installationId: row.installationId,
+        destinationId: row.destinationId,
+        alertId: row.alertId,
+        kind: row.kind,
+        status: row.status,
+        inventedIncident: row.inventedIncident,
+        error: row.error,
+        createdAt: row.createdAt,
+      })),
+    });
+  });
+
+  app.post("/api/destinations/slack", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach Slack to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = slackPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const parsed = parseSlackWebhook(String(body.webhookUrl ?? ""));
+    if (!parsed) {
+      return c.json(
+        {
+          error: "Use an https Slack incoming webhook on hooks.slack.com. Other hosts are not allowed.",
+        },
+        400,
+      );
+    }
+    try {
+      const destination = await deps.store.upsertSlackDestination({
+        installationId,
+        webhookUrl: parsed.url,
+        host: parsed.host,
+      });
+      return c.json({ ok: true, destination: publicDestination(destination) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that Slack webhook." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/destinations/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown destination." }, 404);
+    const removed = await deps.store.deleteNotificationDestinationForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown destination." }, 404);
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/destinations/:id/test", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) {
+      return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
+    }
+    const destination = await deps.store.getNotificationDestinationForUser(id, user.userId);
+    if (!destination) return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
+    const webhook = await deps.store.getSlackWebhookForInstallation(destination.installationId);
+    if (!webhook || webhook.id !== destination.id) {
+      return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
+    }
+    const install = await deps.store.getInstallation(destination.installationId);
+    const posted = await postSlackWebhook(
+      webhook.url,
+      { text: slackTestText(install?.account_login ?? "") },
+      deps.slackFetch ?? fetch,
+    );
+    await deps.store.recordNotificationDelivery({
+      installationId: destination.installationId,
+      destinationId: destination.id,
+      alertId: null,
+      kind: "slack",
+      status: posted.ok ? "sent" : "failed",
+      error: posted.error,
+    });
+    return c.json({
+      ok: posted.ok,
+      inventedIncident: false,
+      status: posted.status,
+      error: posted.ok ? null : posted.error,
+      detail: posted.ok
+        ? "Slack received a delivery test. This is not a security incident."
+        : posted.error,
+    }, posted.ok ? 200 : 502);
   });
 
   return app;

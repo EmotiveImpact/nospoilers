@@ -106,6 +106,29 @@ export type NpmRegistryRow = {
   updated_at: string;
 };
 
+export type NotificationDestinationRow = {
+  id: number;
+  installationId: number;
+  kind: "slack";
+  host: string;
+  lastDeliveryAt: string | null;
+  lastDeliveryStatus: string | null;
+  lastDeliveryError: string | null;
+  updatedAt: string;
+};
+
+export type NotificationDeliveryRow = {
+  id: number;
+  installationId: number;
+  destinationId: number;
+  alertId: number | null;
+  kind: "slack";
+  status: "sent" | "failed";
+  inventedIncident: false;
+  error: string | null;
+  createdAt: string;
+};
+
 export type ScanApiTokenRow = {
   id: number;
   installation_id: number;
@@ -715,6 +738,24 @@ export function createStore(
       const row = rows[0];
       if (!row) return false;
       return coverageIsOn(coverageFrom(iso(row.trial_ends_at), row.plan));
+    },
+
+    async installationBilling(
+      installationId: number,
+    ): Promise<{ trialEndsAt: string | null; plan: string | null } | null> {
+      const { rows } = await sql.query<{
+        trial_ends_at: string | Date | null;
+        plan: string | null;
+      }>(
+        `SELECT b.trial_ends_at, b.plan
+         FROM installations i
+         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         WHERE i.id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return { trialEndsAt: iso(row.trial_ends_at), plan: row.plan };
     },
 
     async deleteInstallation(id: number): Promise<void> {
@@ -1863,6 +1904,221 @@ export function createStore(
         host: row.host,
         token: decryptSecret(row.token_ciphertext, tokenSecret),
       };
+    },
+
+    async listNotificationDestinationsForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<NotificationDestinationRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        last_delivery_at: string | Date | null;
+        last_delivery_status: string | null;
+        last_delivery_error: string | null;
+        updated_at: string | Date;
+      }>(
+        `SELECT d.id, d.installation_id, d.kind, d.host, d.last_delivery_at,
+                d.last_delivery_status, d.last_delivery_error, d.updated_at
+         FROM notification_destinations d
+         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR d.installation_id = $2)
+         ORDER BY d.kind`,
+        [userId, scoped],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        installationId: num(row.installation_id),
+        kind: "slack",
+        host: row.host,
+        lastDeliveryAt: iso(row.last_delivery_at),
+        lastDeliveryStatus: row.last_delivery_status,
+        lastDeliveryError: row.last_delivery_error,
+        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async getNotificationDestinationForUser(
+      id: number,
+      userId: string,
+    ): Promise<NotificationDestinationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        last_delivery_at: string | Date | null;
+        last_delivery_status: string | null;
+        last_delivery_error: string | null;
+        updated_at: string | Date;
+      }>(
+        `SELECT d.id, d.installation_id, d.kind, d.host, d.last_delivery_at,
+                d.last_delivery_status, d.last_delivery_error, d.updated_at
+         FROM notification_destinations d
+         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         WHERE d.id = $1 AND iu.user_id = $2`,
+        [id, userId],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        id: num(row.id),
+        installationId: num(row.installation_id),
+        kind: "slack",
+        host: row.host,
+        lastDeliveryAt: iso(row.last_delivery_at),
+        lastDeliveryStatus: row.last_delivery_status,
+        lastDeliveryError: row.last_delivery_error,
+        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async upsertSlackDestination(input: {
+      installationId: number;
+      webhookUrl: string;
+      host: string;
+    }): Promise<NotificationDestinationRow> {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("This instance cannot encrypt Slack webhooks."), { status: 400 });
+      }
+      const ciphertext = encryptSecret(input.webhookUrl, tokenSecret);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        last_delivery_at: string | Date | null;
+        last_delivery_status: string | null;
+        last_delivery_error: string | null;
+        updated_at: string | Date;
+      }>(
+        `INSERT INTO notification_destinations (
+           installation_id, kind, host, webhook_ciphertext
+         )
+         VALUES ($1, 'slack', $2, $3)
+         ON CONFLICT (installation_id, kind) DO UPDATE SET
+           host = excluded.host,
+           webhook_ciphertext = excluded.webhook_ciphertext,
+           updated_at = now()
+         RETURNING id, installation_id, kind, host, last_delivery_at,
+                   last_delivery_status, last_delivery_error, updated_at`,
+        [input.installationId, input.host, ciphertext],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not save the Slack webhook.");
+      return {
+        id: num(row.id),
+        installationId: num(row.installation_id),
+        kind: "slack",
+        host: row.host,
+        lastDeliveryAt: iso(row.last_delivery_at),
+        lastDeliveryStatus: row.last_delivery_status,
+        lastDeliveryError: row.last_delivery_error,
+        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async deleteNotificationDestinationForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM notification_destinations d
+         USING installation_users iu
+         WHERE d.id = $1
+           AND d.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING d.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async getSlackWebhookForInstallation(installationId: number): Promise<{
+      id: number;
+      url: string;
+    } | null> {
+      const { rows } = await sql.query<{ id: unknown; webhook_ciphertext: string }>(
+        `SELECT id, webhook_ciphertext
+         FROM notification_destinations
+         WHERE installation_id = $1 AND kind = 'slack'`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row || !tokenSecret) return null;
+      return { id: num(row.id), url: decryptSecret(row.webhook_ciphertext, tokenSecret) };
+    },
+
+    async recordNotificationDelivery(input: {
+      installationId: number;
+      destinationId: number;
+      alertId?: number | null;
+      kind: "slack";
+      status: "sent" | "failed";
+      error?: string | null;
+    }): Promise<void> {
+      await sql.query(
+        `INSERT INTO notification_deliveries (
+           installation_id, destination_id, alert_id, kind, status, invented_incident, error
+         )
+         VALUES ($1, $2, $3, $4, $5, false, $6)`,
+        [
+          input.installationId,
+          input.destinationId,
+          input.alertId ?? null,
+          input.kind,
+          input.status,
+          input.error ?? null,
+        ],
+      );
+      await sql.query(
+        `UPDATE notification_destinations
+         SET last_delivery_at = now(),
+             last_delivery_status = $2,
+             last_delivery_error = $3,
+             updated_at = now()
+         WHERE id = $1`,
+        [input.destinationId, input.status, input.error ?? null],
+      );
+    },
+
+    async listNotificationDeliveriesForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<NotificationDeliveryRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        destination_id: unknown;
+        alert_id: unknown;
+        kind: string;
+        status: "sent" | "failed";
+        error: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT d.id, d.installation_id, d.destination_id, d.alert_id, d.kind, d.status,
+                d.error, d.created_at
+         FROM notification_deliveries d
+         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR d.installation_id = $2)
+         ORDER BY d.created_at DESC, d.id DESC
+         LIMIT 50`,
+        [userId, scoped],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        installationId: num(row.installation_id),
+        destinationId: num(row.destination_id),
+        alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
+        kind: "slack",
+        status: row.status,
+        inventedIncident: false,
+        error: row.error,
+        createdAt: iso(row.created_at) ?? new Date().toISOString(),
+      }));
     },
 
     async countScanApiTokens(installationId: number): Promise<number> {

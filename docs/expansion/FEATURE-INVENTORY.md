@@ -159,7 +159,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | --- | --- | --- |
 | Dashboard alerts | Built | NoSpoilers |
 | Email alerts | Planned | NoSpoilers |
-| Slack alerts | Planned | NoSpoilers Team |
+| Slack alerts | Built: encrypted incoming webhook on trial/Team; test delivery never invents an incident | NoSpoilers Team |
 | Jira tickets | Planned | NoSpoilers Team |
 | SIEM/custom webhooks | Planned | NoSpoilers Team |
 | PagerDuty/incident routing | Planned, later | NoSpoilers Team |
@@ -172,7 +172,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |
-| Multiple notification destinations | Planned | NoSpoilers Team |
+| Multiple notification destinations | Partial: one Slack incoming webhook per install; Jira/SIEM still planned | NoSpoilers Team |
 
 ## Internal acquisition and responsible disclosure
 

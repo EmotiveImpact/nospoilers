@@ -76,12 +76,16 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
   revision, stored CI run URL). Historical rows cannot be edited or deleted.
+- Save an encrypted Slack incoming webhook on a trial or Team install. The URL is never
+  returned after save. A delivery test talks to Slack and never inserts an alert. Real
+  Watch alerts POST to that webhook after they are stored. Solo paid installs do not
+  get Slack. Email still waits on Resend.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack webhooks, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -97,6 +101,8 @@ A member who can manage the customer’s GitHub installation membership and prod
 
 - Invite/remove members on their billing account.
 - Configure routing destinations they pay for (email now; Slack/Jira/SIEM on Team).
+  Until Team roles ship, every signed-in member on a trial or Team install may save
+  the Slack incoming webhook.
 - Restrict who may manage `.nospoilers.yml`, baselines, and allowlists (Members do this today).
 
 **Must not**
@@ -212,5 +218,8 @@ writes without an install id return 400 when two installs exist, unpaid or GitHu
 suspended coverage on one org does not lock a sibling trial org, last-delivery on
 the permission test comes from a real customer job and never inserts an alert, and
 `/api/health` still omits `DATABASE_URL` and tenant data.
+`tests/notifications.test.ts` proves Slack incoming webhooks are encrypted, never returned,
+tenant-scoped, unpaid saves return 402, Solo paid returns 403, a delivery test never inserts
+an alert, real alerts POST after insert, and `notification_deliveries` are append-only.
 Keep those
 tests green when adding internal routes.

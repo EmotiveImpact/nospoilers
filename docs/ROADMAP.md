@@ -57,6 +57,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Multiple GitHub organizations: Watch switches installs; coverage and GitHub suspend
   apply to the selected org only. Live permission tests include the last customer job.
 - Public `/status` page from `/api/health` (no tenant data, no connection string).
+- Slack incoming webhooks for trial/Team: encrypted URL, event-driven delivery, test that
+  never invents an incident. Email still waits on Resend.
 - Internal docs (DOC-001): architecture/design/rfc/spec/product/month1/feature-inventory/
   electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
