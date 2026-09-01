@@ -10,8 +10,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
-| GitHub OAuth login | Partial: code exists, real credentials unproven | NoSpoilers |
-| GitHub App installation | Partial | NoSpoilers |
+| GitHub OAuth login | Built: real GitHub user session on Neon | NoSpoilers |
+| GitHub App installation | Built: live App install and HMAC webhooks | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
 | Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
@@ -26,10 +26,10 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Partial: stale running jobs requeued; no dead-letter UI | NoSpoilers |
 | Upload/API rate limiting | Built: hosted `/api/scan` per address | NoSpoilers |
-| Readiness/health checks and structured logs | Partial: health exists; logs are console JSON alerts | NoSpoilers |
-| Secure cookies and strong secret validation | Partial: Secure cookies on https; secret strength not enforced | NoSpoilers |
+| Readiness/health checks and structured logs | Built: `/api/health` liveness, `/api/ready` DB ping, JSON logs | NoSpoilers |
+| Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
-| Privacy, Terms, retention, refund and support pages | Planned | NoSpoilers |
+| Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
 | Cloud usage warnings and hard budget controls | Planned | Infrastructure |
 
 ## Scanner and release automation

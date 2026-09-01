@@ -3,6 +3,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
 import { coverageFromQuery, type Coverage } from "@/coverage.ts"
+import { LEGAL_NAV } from "@/legal.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import { Menu as MenuIcon } from "lucide-react"
@@ -205,7 +206,7 @@ export function SiteChrome({
       </header>
       <div className="flex-1">{children}</div>
       <footer className="border-t border-white/5">
-        <div className="mx-auto grid max-w-5xl gap-10 px-5 py-12 sm:grid-cols-3">
+        <div className="mx-auto grid max-w-5xl gap-10 px-5 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <img src="/logo.png" alt="" className="h-6 w-auto" />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-dim">
@@ -217,6 +218,18 @@ export function SiteChrome({
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Product</p>
             <ul className="mt-3 flex flex-col gap-2 text-sm text-mute">
               {LINKS.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className="hover:text-snow" onClick={(event) => go(event, link.href)}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Legal</p>
+            <ul className="mt-3 flex flex-col gap-2 text-sm text-mute">
+              {LEGAL_NAV.map((link) => (
                 <li key={link.href}>
                   <a href={link.href} className="hover:text-snow" onClick={(event) => go(event, link.href)}>
                     {link.label}

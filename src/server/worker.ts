@@ -4,6 +4,7 @@ import path from "node:path";
 import { scan, type ScanReport } from "../scanner/index.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
+import { logJson } from "./log.ts";
 import { isPackAssetName } from "./paths.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
@@ -260,6 +261,12 @@ export function createWorker(opts: {
       await opts.store.finishJob(job.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      logJson("error", "job.failed", {
+        jobId: job.id,
+        kind: job.kind,
+        attempts: job.attempts,
+        message,
+      });
       await opts.store.finishJob(job.id, message);
     } finally {
       if (job.kind === "prospect_scan") prospectRunning -= 1;

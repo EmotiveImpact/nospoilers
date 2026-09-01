@@ -1,3 +1,4 @@
+import { logJson } from "./log.ts";
 import type { Finding } from "../scanner/types.ts";
 import type { Store } from "./store.ts";
 
@@ -19,17 +20,14 @@ export function createLogNotifier(store: Store): AlertNotifier {
   return {
     async send(alert) {
       const id = await store.insertAlert(alert);
-      console.log(
-        JSON.stringify({
-          level: "alert",
-          id,
-          kind: alert.kind,
-          title: alert.title,
-          installationId: alert.installationId,
-          repoId: alert.repoId ?? null,
-          findings: alert.findings?.length ?? 0,
-        }),
-      );
+      logJson("info", "alert.sent", {
+        id,
+        kind: alert.kind,
+        title: alert.title,
+        installationId: alert.installationId,
+        repoId: alert.repoId ?? null,
+        findings: alert.findings?.length ?? 0,
+      });
     },
   };
 }

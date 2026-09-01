@@ -121,6 +121,24 @@ export function createApp(deps: AppDeps): Hono {
     }),
   );
 
+  app.get("/api/ready", async (c) => {
+    let databaseOk = false;
+    try {
+      databaseOk = await deps.store.ping();
+    } catch {
+      databaseOk = false;
+    }
+    const body = {
+      ready: databaseOk,
+      githubApp: githubAppConfigured(deps.config),
+      database: {
+        mode: databaseMode(deps.config.databaseUrl),
+        ok: databaseOk,
+      },
+    };
+    return c.json(body, databaseOk ? 200 : 503);
+  });
+
   app.get("/api/internal/prospects", async (c) => {
     const limit = Number(c.req.query("limit") ?? 100);
     const [prospects, stats] = await Promise.all([

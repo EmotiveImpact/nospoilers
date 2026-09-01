@@ -9,6 +9,8 @@
 - Attach billing accounts to GitHub installation IDs; skip hosted work when coverage has ended.
 - Retry failed jobs with backoff and requeue stale locks after a worker crash.
 - Encrypt GitHub OAuth tokens at rest, set Secure cookies on https, and cap hosted scans per address.
+- Publish Privacy, Terms, retention, disclosure, support, and refund pages.
+- Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

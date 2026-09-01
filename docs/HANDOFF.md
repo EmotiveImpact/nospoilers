@@ -39,6 +39,9 @@ Read in this order:
 - API routes wake the worker immediately after enqueue. The 15-minute timer is recovery only.
   Failed jobs retry with backoff; stale running locks are requeued. GitHub OAuth tokens are
   encrypted at rest. Hosted `/api/scan` is rate-limited per address. HTTPS origins set Secure cookies.
+  Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
+  `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
+- Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
@@ -63,6 +66,7 @@ Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
 docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
+Legal/support pages and strong secret checks are done.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
 Do not start Stripe or the Electron installer worker yet.

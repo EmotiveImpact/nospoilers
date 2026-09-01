@@ -14,10 +14,10 @@ Unauthenticated browser traffic.
 
 **May**
 
-- View Product, Pricing, documentation, and (later) legal pages.
+- View Product, Pricing, documentation, Privacy, Terms, Retention, Disclosure, Support, and Refunds.
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
-- Hit `/api/health` (no connection strings, no tenant data).
+- Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
 - Call GitHub App webhooks with a valid HMAC.
 
 **Must not**

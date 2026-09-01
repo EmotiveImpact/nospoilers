@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { cookieSettings } from "../src/server/cookies.ts";
+import { logJson, sanitizeFields } from "../src/server/log.ts";
 import { clientKey, createRateLimiter } from "../src/server/rate-limit.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "../src/server/secret-box.ts";
+import {
+  assertProductionSecrets,
+  productionSecretsRequired,
+  secretIsStrong,
+} from "../src/server/secrets.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore } from "../src/server/store.ts";
 import { createApp } from "../src/server/app.ts";
@@ -116,5 +122,93 @@ describe("hosted scan rate limit", () => {
     } finally {
       await sql.close();
     }
+  });
+});
+
+describe("strong secrets", () => {
+  it("rejects short, default, and repeated secrets", () => {
+    expect(secretIsStrong("short")).toBe(false);
+    expect(secretIsStrong("dev-session-not-for-production")).toBe(false);
+    expect(secretIsStrong("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).toBe(false);
+    expect(secretIsStrong("a".repeat(32))).toBe(false);
+    expect(secretIsStrong("n0spoilers-session-secret-value!!")).toBe(true);
+  });
+
+  it("allows weak secrets only on local PGlite http", () => {
+    const local = loadConfig({
+      databaseUrl: "pglite://:memory:",
+      appBaseUrl: "http://127.0.0.1:4347",
+      sessionSecret: "sess",
+      githubWebhookSecret: "wh",
+    });
+    expect(productionSecretsRequired(local)).toBe(false);
+    expect(() => assertProductionSecrets(local)).not.toThrow();
+  });
+
+  it("refuses to boot Neon or https with a weak session secret", () => {
+    const neon = loadConfig({
+      databaseUrl: "postgresql://u:p@ep-x.c-4.us-east-2.aws.neon.tech/neondb",
+      appBaseUrl: "http://127.0.0.1:4347",
+      sessionSecret: "sess",
+      githubWebhookSecret: "wh",
+    });
+    expect(productionSecretsRequired(neon)).toBe(true);
+    expect(() => assertProductionSecrets(neon)).toThrow(/SESSION_SECRET/);
+
+    const httpsLocal = loadConfig({
+      databaseUrl: "pglite://:memory:",
+      appBaseUrl: "https://example.trycloudflare.com",
+      sessionSecret: "sess",
+    });
+    expect(() => assertProductionSecrets(httpsLocal)).toThrow(/SESSION_SECRET/);
+  });
+
+  it("requires webhook and session secrets to differ when the GitHub App is configured", () => {
+    const shared = "n0spoilers-shared-secret-value-ok";
+    const config = loadConfig({
+      databaseUrl: "postgresql://u:p@ep-x.c-4.us-east-2.aws.neon.tech/neondb",
+      appBaseUrl: "https://app.example",
+      sessionSecret: shared,
+      githubWebhookSecret: shared,
+      githubClientSecret: "n0spoilers-github-client-secret-ok",
+      githubAppId: "1",
+      githubPrivateKey: "-----BEGIN FAKE-----",
+      githubClientId: "client",
+    });
+    expect(() => assertProductionSecrets(config)).toThrow(/distinct/);
+  });
+});
+
+describe("structured logs", () => {
+  it("redacts secrets and connection strings", () => {
+    const line = sanitizeFields({
+      sessionSecret: "abc",
+      databaseUrl: "postgres://u:p@host/db",
+      dsn: "postgres://u:p@host/db",
+      pglite: "pglite://./data/nospoilers",
+      repo: "EmotiveImpact/nospoilers-throwaway",
+    });
+    expect(line.sessionSecret).toBe("[redacted]");
+    expect(line.databaseUrl).toBe("[redacted]");
+    expect(line.dsn).toBe("[redacted-url]");
+    expect(line.pglite).toBe("[redacted-url]");
+    expect(line.repo).toBe("EmotiveImpact/nospoilers-throwaway");
+
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((value: unknown) => {
+      logged.push(String(value));
+    });
+    logJson("info", "runtime.start", {
+      database: "neon",
+      token: "ghu_should_not_print",
+    });
+    spy.mockRestore();
+    expect(logged).toHaveLength(1);
+    const parsed = JSON.parse(logged[0] ?? "{}") as Record<string, unknown>;
+    expect(parsed.event).toBe("runtime.start");
+    expect(parsed.level).toBe("info");
+    expect(parsed.database).toBe("neon");
+    expect(parsed.token).toBe("[redacted]");
+    expect(JSON.stringify(parsed)).not.toContain("ghu_");
   });
 });

@@ -105,6 +105,11 @@ export function createStore(
   return {
     sql,
 
+    async ping(): Promise<boolean> {
+      const { rows } = await sql.query<{ ok: string | number }>("SELECT 1 AS ok");
+      return Number(rows[0]?.ok) === 1;
+    },
+
     async upsertUser(input: {
       id: string;
       login: string;

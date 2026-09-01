@@ -1,5 +1,7 @@
 import { SiteChrome } from "@/components/SiteChrome.tsx"
+import { legalSlugFromPath } from "@/legal.ts"
 import { LandingPage } from "@/pages/LandingPage.tsx"
+import { LegalPage } from "@/pages/LegalPage.tsx"
 import { MockupsPage } from "@/pages/MockupsPage.tsx"
 import { PricingPage } from "@/pages/PricingPage.tsx"
 import { ProspectsPage } from "@/pages/ProspectsPage.tsx"
@@ -21,7 +23,10 @@ function useLoc(): { path: string; search: string } {
   return loc
 }
 
-function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups" | "prospects" {
+function pageFor(
+  path: string,
+): "home" | "watch" | "scan" | "pricing" | "mockups" | "prospects" | "legal" {
+  if (legalSlugFromPath(path)) return "legal"
   if (path === "/internal/prospects") return "prospects"
   if (path === "/scan" || path.startsWith("/scan/")) return "scan"
   if (path === "/pricing" || path.startsWith("/pricing/")) return "pricing"
@@ -33,6 +38,7 @@ function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups
 export default function App() {
   const { path, search } = useLoc()
   const page = pageFor(path)
+  const legalSlug = legalSlugFromPath(path)
   const chromePath =
     page === "home"
       ? "/"
@@ -44,7 +50,9 @@ export default function App() {
             ? "/pricing"
             : page === "mockups"
               ? "/mockups"
-              : "/internal/prospects"
+              : page === "legal"
+                ? path.replace(/\/$/, "") || "/"
+                : "/internal/prospects"
 
   return (
     <SiteChrome path={chromePath} search={search}>
@@ -54,6 +62,7 @@ export default function App() {
       {page === "pricing" && <PricingPage />}
       {page === "mockups" && <MockupsPage />}
       {page === "prospects" && <ProspectsPage />}
+      {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}
     </SiteChrome>
   )
 }

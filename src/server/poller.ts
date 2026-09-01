@@ -1,3 +1,4 @@
+import { logJson } from "./log.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
@@ -42,7 +43,8 @@ export function startPoller(
 ): { stop: () => void } {
   const timer = setInterval(() => {
     void runVisibilityPoll(deps).catch((error: unknown) => {
-      console.error("visibility poll failed", error);
+      const message = error instanceof Error ? error.message : String(error);
+      logJson("error", "poller.failed", { message });
     });
   }, intervalMs);
   return {

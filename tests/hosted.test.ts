@@ -124,6 +124,17 @@ describe("runtime health", () => {
       expect(body.worker.visibilityPollIntervalMs).toBeGreaterThanOrEqual(60_000);
       expect(JSON.stringify(body)).not.toMatch(/postgres(?:ql)?:\/\//i);
       expect(JSON.stringify(body)).not.toMatch(/pglite:\/\//i);
+
+      const ready = await app.request("/api/ready");
+      expect(ready.status).toBe(200);
+      const readyBody = (await ready.json()) as {
+        ready: boolean;
+        database: { mode: string; ok: boolean };
+      };
+      expect(readyBody.ready).toBe(true);
+      expect(readyBody.database.ok).toBe(true);
+      expect(readyBody.database.mode).toBe("pglite");
+      expect(JSON.stringify(readyBody)).not.toMatch(/postgres(?:ql)?:\/\//i);
     });
   });
 });

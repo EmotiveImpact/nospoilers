@@ -28,12 +28,14 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:4347** (port **4347**). `GET /api/health` reports whether the process is on
-Neon, generic Postgres, or PGlite and never includes the connection string.
+Neon, generic Postgres, or PGlite and never includes the connection string. `GET /api/ready` pings
+the database and returns 503 if it cannot.
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
 - **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops.
 - **Scan** (`/scan`) — drop a tarball, zip, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
+- **Legal** — `/privacy`, `/terms`, `/retention`, `/disclosure`, `/support`, `/refunds`.
 
 Two logged-in states: **trial desk** (bot is thinking) and **unpaid locked scan** (drop zone stays, we do not unpack).
 
@@ -133,7 +135,9 @@ Create the app. Then:
 3. Copy **Client ID** → `GITHUB_CLIENT_ID`
 4. Generate a **client secret** → `GITHUB_CLIENT_SECRET`
 5. Public link slug (the name in `github.com/apps/…`) → `GITHUB_APP_SLUG`
-6. Webhook secret → `GITHUB_WEBHOOK_SECRET`
+6. Webhook secret → `GITHUB_WEBHOOK_SECRET` (at least 32 random characters)
+7. `SESSION_SECRET` → a **different** long random string (at least 32 characters). Neon and https
+   origins refuse to boot if this is missing, short, a known default, or equal to the webhook secret.
 
 Where to install: **Install App** on your user or org, only the throwaway repo until you trust it.
 

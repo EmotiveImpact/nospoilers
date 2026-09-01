@@ -21,6 +21,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Event-driven worker wake-up with a 15-minute recovery check.
 - Failed-job retry with backoff and stale-lock recovery after a worker crash.
 - Installation billing accounts and unpaid hosted-work enforcement.
+- Privacy, Terms, retention, responsible disclosure, support, and refund pages.
+- Strong secret-length checks on Neon/https boot; `/api/ready` database ping; JSON logs.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
@@ -35,7 +37,6 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Fixture release-asset scan on `EmotiveImpact/nospoilers-throwaway` (attach `fixtures/sourcemap.tgz`).
 - Stripe checkout/subscription webhooks and card-on-file trial.
 - Production deployment, email delivery, and monitoring.
-- Legal/support pages. Strong secret-length enforcement.
 
 ## Milestone 0 — prove Neon runtime
 
@@ -84,10 +85,7 @@ Exit: customer one can pay without GitHub Marketplace. Marketplace is optional a
 
 - Railway web/API and normal worker; Neon Postgres; Cloudflare DNS.
 - Before customers: Railway warning near $25 and hard stop near $50; review before production.
-- Resend email, retries/backoff, stale-lock recovery, rate limits, readiness checks, logs, failed jobs.
-- Serve built frontend and API together or document the production split.
-- Secure cookies, encrypted tokens, strong secrets, verified installation setup.
-- Privacy, Terms, retention, responsible disclosure, and support.
+- Resend email. Serve built frontend and API together or document the production split.
 
 ## Milestone 5 — repeatable acquisition
 
