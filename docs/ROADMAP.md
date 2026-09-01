@@ -34,8 +34,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 - Fixture release-asset scan on `EmotiveImpact/nospoilers-throwaway` (attach `fixtures/sourcemap.tgz`).
 - Stripe checkout/subscription webhooks and card-on-file trial.
-- Production deployment, email delivery, rate limits, and monitoring.
-- Secure production cookies, encrypted OAuth tokens, legal/support pages.
+- Production deployment, email delivery, and monitoring.
+- Legal/support pages. Strong secret-length enforcement.
 
 ## Milestone 0 — prove Neon runtime
 

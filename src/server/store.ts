@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { coverageFrom, coverageIsOn } from "../coverage.ts";
+import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { num, type SqlClient } from "./sql.ts";
 
 export type JobPriority = "light" | "heavy";
@@ -96,10 +97,11 @@ function prospectRow(row: ProspectRow): ProspectRow {
 
 export function createStore(
   sql: SqlClient,
-  opts: { jobMaxAttempts?: number; jobRetryBaseMs?: number } = {},
+  opts: { jobMaxAttempts?: number; jobRetryBaseMs?: number; tokenSecret?: string } = {},
 ) {
   const jobMaxAttempts = opts.jobMaxAttempts ?? 5;
   const jobRetryBaseMs = opts.jobRetryBaseMs ?? 15_000;
+  const tokenSecret = opts.tokenSecret?.trim() ?? "";
   return {
     sql,
 
@@ -109,6 +111,10 @@ export function createStore(
       avatarUrl?: string;
       accessToken?: string;
     }): Promise<void> {
+      const accessToken =
+        input.accessToken && tokenSecret
+          ? encryptSecret(input.accessToken, tokenSecret)
+          : (input.accessToken ?? null);
       await sql.query(
         `INSERT INTO users (id, login, avatar_url, access_token, trial_ends_at, plan)
          VALUES ($1, $2, $3, $4, now() + interval '14 days', 'trial')
@@ -118,7 +124,7 @@ export function createStore(
            access_token = COALESCE(excluded.access_token, users.access_token),
            trial_ends_at = COALESCE(users.trial_ends_at, now() + interval '14 days'),
            plan = COALESCE(users.plan, 'trial')`,
-        [input.id, input.login, input.avatarUrl ?? null, input.accessToken ?? null],
+        [input.id, input.login, input.avatarUrl ?? null, accessToken],
       );
     },
 
@@ -170,8 +176,17 @@ export function createStore(
         `SELECT access_token FROM users WHERE id = $1`,
         [userId],
       );
-      const token = rows[0]?.access_token?.trim();
-      return token ? token : null;
+      const stored = rows[0]?.access_token?.trim();
+      if (!stored) return null;
+      if (!tokenSecret) return stored;
+      const plain = decryptSecret(stored, tokenSecret);
+      if (!looksEncrypted(stored)) {
+        await sql.query(`UPDATE users SET access_token = $2 WHERE id = $1`, [
+          userId,
+          encryptSecret(plain, tokenSecret),
+        ]);
+      }
+      return plain;
     },
 
     async upsertInstallation(input: {

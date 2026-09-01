@@ -14,6 +14,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   await migrate(sql);
   const store = createStore(sql, {
     jobMaxAttempts: config.jobMaxAttempts,
+    tokenSecret: config.sessionSecret,
   });
   const github = githubAppConfigured(config) ? createGithubPort(config) : stubGithub();
   const notifier = createLogNotifier(store);
