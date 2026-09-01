@@ -256,6 +256,7 @@ function publicRelease(row: ReleaseRevisionRow) {
     ciRunUrl: row.ci_run_url,
     previousSha256: row.previous_sha256,
     mismatch: row.mismatch,
+    receiptStatus: row.receipt_status,
     createdAt: row.created_at,
   };
 }

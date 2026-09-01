@@ -47,6 +47,11 @@ const EXAMPLES = [
     hint: "Image layers, never executed",
   },
   {
+    path: "fixtures/sourcemap.oci.tar",
+    label: "OCI image with a source map",
+    hint: "Layout sniff. Layers are not executed.",
+  },
+  {
     path: "fixtures/sourcemap.apk",
     label: "Android APK with a source map",
     hint: "ZIP magic. DEX is not executed.",
@@ -272,7 +277,7 @@ export function ScanPage({ search }: { search: string }) {
                 <Upload className="h-5 w-5 text-mute" aria-hidden />
                 <p className="font-display text-lg text-snow">Drop a pack here</p>
                 <Description className="text-sm text-dim">
-                  tarball, zip, vsix, docker save, apk, lambda zip, or asar — or click to choose
+                  tarball, zip, vsix, docker save, oci, apk, lambda zip, or asar — or click to choose
                 </Description>
                 {!locked && (
                   <input

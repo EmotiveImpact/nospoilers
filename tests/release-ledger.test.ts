@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -161,11 +162,13 @@ describe("release ledger", () => {
           artifactSha256: string;
           sourceRevision: string | null;
           ciRunUrl: string | null;
+          receiptStatus: "passed" | "failed-policy" | "inconclusive" | null;
         };
       };
       expect(firstBody.release.channel).toBe("stable");
       expect(firstBody.release.mismatch).toBe(false);
       expect(firstBody.release.receiptId).toBeGreaterThan(0);
+      expect(firstBody.release.receiptStatus).toBe("passed");
       expect(firstBody.release.sourceRevision).toBe("v1.0.0");
       expect(firstBody.release.ciRunUrl).toBe("https://github.com/octo/app/actions/runs/99");
       expect(firstBody.receipt.channel).toBe("stable");
@@ -212,9 +215,17 @@ describe("release ledger", () => {
       });
       expect(dirty.status).toBe(200);
       const dirtyBody = (await dirty.json()) as {
-        release: { id: number; mismatch: boolean; previousSha256: string | null; artifactSha256: string };
+        release: {
+          id: number;
+          mismatch: boolean;
+          previousSha256: string | null;
+          artifactSha256: string;
+          receiptStatus: "passed" | "failed-policy" | "inconclusive" | null;
+        };
       };
       expect(dirtyBody.release.mismatch).toBe(true);
+      expect(dirtyBody.release.receiptStatus).toBe("failed-policy");
+      expect(dirtyBody.release.receiptStatus).not.toBe("passed");
       expect(dirtyBody.release.previousSha256).toBe(firstBody.release.artifactSha256);
       expect(dirtyBody.release.artifactSha256).not.toBe(firstBody.release.artifactSha256);
 
@@ -226,11 +237,29 @@ describe("release ledger", () => {
 
       const listed = await app.request("/api/releases", { headers: { cookie } });
       const listedBody = (await listed.json()) as {
-        releases: { id: number; receiptId: number; mismatch: boolean }[];
+        releases: {
+          id: number;
+          receiptId: number;
+          mismatch: boolean;
+          receiptStatus: "passed" | "failed-policy" | "inconclusive" | null;
+        }[];
       };
       expect(listedBody.releases.length).toBeGreaterThanOrEqual(4);
       expect(listedBody.releases.some((row) => row.mismatch)).toBe(true);
       expect(listedBody.releases.every((row) => row.receiptId > 0)).toBe(true);
+      const listedClean = listedBody.releases.find((row) => row.id === firstBody.release.id);
+      const listedDirty = listedBody.releases.find((row) => row.id === dirtyBody.release.id);
+      expect(listedClean?.receiptStatus).toBe("passed");
+      expect(listedDirty?.receiptStatus).toBe("failed-policy");
+      expect(listedDirty?.receiptStatus).not.toBe("passed");
+
+      const one = await app.request(`/api/releases/${dirtyBody.release.id}`, { headers: { cookie } });
+      expect(one.status).toBe(200);
+      const oneBody = (await one.json()) as {
+        release: { receiptStatus: "passed" | "failed-policy" | "inconclusive" | null };
+      };
+      expect(oneBody.release.receiptStatus).toBe("failed-policy");
+      expect(oneBody.release.receiptStatus).not.toBe("passed");
 
       const downloaded = await app.request(`/api/receipts/${firstBody.release.receiptId}`, {
         headers: { cookie },
@@ -314,6 +343,15 @@ describe("release ledger", () => {
       expect(unpaidReceipt.status).toBe(200);
       const unpaidReleases = await app.request("/api/releases", { headers: { cookie } });
       expect(unpaidReleases.status).toBe(200);
+      const unpaidList = (await unpaidReleases.json()) as {
+        releases: { id: number; receiptStatus: "passed" | "failed-policy" | "inconclusive" | null }[];
+      };
+      expect(unpaidList.releases.find((row) => row.id === firstBody.release.id)?.receiptStatus).toBe(
+        "passed",
+      );
+      expect(unpaidList.releases.find((row) => row.id === dirtyBody.release.id)?.receiptStatus).toBe(
+        "failed-policy",
+      );
     } finally {
       await sql.close();
     }
@@ -356,10 +394,21 @@ describe("release ledger", () => {
       });
       expect(persisted.revision.channel).toBe("beta");
       expect(persisted.revision.mismatch).toBe(false);
+      expect(persisted.revision.receipt_status).toBe("passed");
       expect(persisted.revision.source_revision).toBe("1.0.0-beta.1");
       expect(parseReleaseScanMeta({ coordinate: "npm:demo-pack@1.0.0-beta.1" }).channel).toBe("beta");
     } finally {
       await sql.close();
     }
+  });
+
+  it("shows linked receipt status on Watch Releases, not a clean label for spoilers", () => {
+    const page = readFileSync(path.resolve("src/pages/WatchPage.tsx"), "utf8");
+    expect(page).toMatch(/receiptStatusMark/);
+    expect(page).toMatch(/failed policy/);
+    expect(page).toMatch(/Failed-policy and/);
+    expect(page).toMatch(/inconclusive are not clean/);
+    expect(page).not.toMatch(/failed-policy is clean/);
+    expect(page).not.toMatch(/Authentic · allowed to ship/);
   });
 });

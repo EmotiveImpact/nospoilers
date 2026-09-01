@@ -319,6 +319,175 @@ describe("GitHub webhooks", () => {
     });
   });
 
+  it("queues a light job when a collaborator is added", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "member", "d-member-1", {
+        action: "added",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        member: { login: "new-collab" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(true);
+      expect(body.kind).toBe("member_added");
+      const { rows } = await store.sql.query<{
+        kind: string;
+        priority: string;
+        payload: { login?: string };
+      }>("SELECT kind, priority, payload FROM jobs");
+      expect(rows).toEqual([
+        { kind: "member_added", priority: "light", payload: expect.objectContaining({ login: "new-collab" }) },
+      ]);
+    });
+  });
+
+  it("does not queue work for other member actions", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "member", "d-member-removed", {
+        action: "removed",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        member: { login: "new-collab" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(false);
+      expect(body.kind).toBe("member");
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("queues a light job when a repository is forked", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "fork", "d-fork-1", {
+        installation: { id: 7 },
+        repository: sampleRepo,
+        forkee: { full_name: "other/throwaway" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(true);
+      expect(body.kind).toBe("fork");
+      const { rows } = await store.sql.query<{
+        kind: string;
+        priority: string;
+        payload: { fork?: string };
+      }>("SELECT kind, priority, payload FROM jobs");
+      expect(rows).toEqual([
+        { kind: "fork", priority: "light", payload: expect.objectContaining({ fork: "other/throwaway" }) },
+      ]);
+    });
+  });
+
+  it("queues a light job only for cheap *.map and .env push paths", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const ignored = await postWebhook(app, "push", "d-push-ignored", {
+        ref: "refs/heads/main",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        commits: [
+          {
+            added: ["src/index.js", "secret.env"],
+            modified: ["README.md"],
+            removed: ["docs/notes.txt"],
+          },
+        ],
+      });
+      expect(ignored.status).toBe(200);
+      const ignoredBody = (await ignored.json()) as { queued: boolean; kind: string };
+      expect(ignoredBody.queued).toBe(false);
+      expect(ignoredBody.kind).toBe("push_ignored");
+      expect(Number((await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs")).rows[0]?.n)).toBe(
+        0,
+      );
+
+      const hit = await postWebhook(app, "push", "d-push-map", {
+        ref: "refs/heads/main",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        commits: [
+          {
+            added: ["dist/app.js.map", "src/index.js"],
+            modified: [".env.local"],
+            removed: ["secret.env"],
+          },
+        ],
+      });
+      expect(hit.status).toBe(200);
+      const hitBody = (await hit.json()) as { queued: boolean; kind: string };
+      expect(hitBody.queued).toBe(true);
+      expect(hitBody.kind).toBe("push_sensitive_path");
+      const { rows } = await store.sql.query<{
+        kind: string;
+        priority: string;
+        payload: { paths?: string[] };
+      }>("SELECT kind, priority, payload FROM jobs");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.kind).toBe("push_sensitive_path");
+      expect(rows[0]?.priority).toBe("light");
+      expect(rows[0]?.payload.paths?.sort()).toEqual([".env.local", "dist/app.js.map"]);
+    });
+  });
+
+  it("returns 200 without queueing member, fork, or push work when unpaid", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const { app } = appFor(store);
+      const member = await postWebhook(app, "member", "d-member-unpaid", {
+        action: "added",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: sampleRepo,
+        member: { login: "new-collab" },
+      });
+      const fork = await postWebhook(app, "fork", "d-fork-unpaid", {
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: sampleRepo,
+        forkee: { full_name: "other/throwaway" },
+      });
+      const push = await postWebhook(app, "push", "d-push-unpaid", {
+        ref: "refs/heads/main",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: sampleRepo,
+        commits: [{ added: ["app.js.map"], modified: [], removed: [] }],
+      });
+      for (const res of [member, fork, push]) {
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { ok: boolean; queued: boolean; skipped?: string };
+        expect(body.ok).toBe(true);
+        expect(body.queued).toBe(false);
+        expect(body.skipped).toBe("uncovered");
+      }
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("rejects member, fork, and push webhooks without HMAC", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      for (const event of ["member", "fork", "push"] as const) {
+        const res = await postWebhook(app, event, `d-${event}-bad`, { installation: { id: 7 } }, "sha256=deadbeef");
+        expect(res.status).toBe(401);
+      }
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
   it("still drops a deleted repository when coverage has ended", async () => {
     await withStore(async ({ store }) => {
       await store.upsertInstallation({

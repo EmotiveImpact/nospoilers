@@ -314,6 +314,8 @@ type ScanApiToken = {
   created_at: string;
 };
 
+type ReceiptScanStatus = "passed" | "failed-policy" | "inconclusive";
+
 type ReleaseRevision = {
   id: number;
   receiptId: number;
@@ -323,8 +325,26 @@ type ReleaseRevision = {
   sourceRevision: string | null;
   ciRunUrl: string | null;
   mismatch: boolean;
+  receiptStatus: ReceiptScanStatus | null;
   createdAt: string;
 };
+
+function receiptStatusMark(status: ReceiptScanStatus | null) {
+  if (status === "failed-policy") {
+    return (
+      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">failed policy</span>
+    );
+  }
+  if (status === "inconclusive") {
+    return (
+      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">inconclusive</span>
+    );
+  }
+  if (status === "passed") {
+    return <span className="text-[11px] uppercase tracking-[0.16em] text-dim">passed</span>;
+  }
+  return null;
+}
 
 type PackageProtection = {
   id: number;
@@ -3797,7 +3817,9 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
           canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
-          and never fetched. Download the signed receipt JSON and check it on Scan or with{" "}
+          and never fetched. Each row shows the linked receipt status. Failed-policy and
+          inconclusive are not clean and are not allowed to ship. Download the signed receipt JSON
+          and check it on Scan or with{" "}
           <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
           . That check is not hosted unpack. Coverage ended still allows the download.
         </p>
@@ -3824,9 +3846,11 @@ export function WatchPage({ search }: { search: string }) {
                     <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
                       digest changed
                     </span>
-                  ) : (
+                  ) : null}
+                  {receiptStatusMark(release.receiptStatus)}
+                  {!release.mismatch && !release.receiptStatus ? (
                     <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
-                  )}
+                  ) : null}
                   <Button
                     type="button"
                     size="sm"

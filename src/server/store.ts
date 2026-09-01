@@ -314,6 +314,7 @@ export type ReleaseRevisionRow = {
   ci_run_url: string | null;
   previous_sha256: string | null;
   mismatch: boolean;
+  receipt_status: ScanStatus | null;
   created_at: string;
 };
 
@@ -624,7 +625,7 @@ function asManifest(value: unknown): ManifestEntry[] {
   return out;
 }
 
-function releaseRevisionRow(row: {
+type ReleaseRevisionSqlRow = {
   id: unknown;
   installation_id: unknown;
   package_id: unknown;
@@ -639,7 +640,15 @@ function releaseRevisionRow(row: {
   previous_sha256: string | null;
   mismatch: boolean | unknown;
   created_at: string | Date;
-}): ReleaseRevisionRow {
+  receipt_status?: string | null;
+};
+
+function parseReceiptStatus(value: unknown): ScanStatus | null {
+  if (value === "passed" || value === "failed-policy" || value === "inconclusive") return value;
+  return null;
+}
+
+function releaseRevisionRow(row: ReleaseRevisionSqlRow): ReleaseRevisionRow {
   return {
     id: num(row.id),
     installation_id: num(row.installation_id),
@@ -654,6 +663,7 @@ function releaseRevisionRow(row: {
     ci_run_url: row.ci_run_url,
     previous_sha256: row.previous_sha256,
     mismatch: Boolean(row.mismatch),
+    receipt_status: parseReceiptStatus(row.receipt_status),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -4036,22 +4046,7 @@ export function createStore(
       previousSha256?: string | null;
       mismatch: boolean;
     }): Promise<ReleaseRevisionRow> {
-      const { rows } = await sql.query<{
-        id: unknown;
-        installation_id: unknown;
-        package_id: unknown;
-        repo_id: unknown;
-        receipt_id: unknown;
-        channel: string;
-        coordinate: string;
-        artifact_sha256: string;
-        artifact_sha512: string | null;
-        source_revision: string | null;
-        ci_run_url: string | null;
-        previous_sha256: string | null;
-        mismatch: boolean | unknown;
-        created_at: string | Date;
-      }>(
+      const { rows } = await sql.query<ReleaseRevisionSqlRow>(
         `INSERT INTO release_revisions (
            installation_id, package_id, repo_id, receipt_id, channel, coordinate,
            artifact_sha256, artifact_sha512, source_revision, ci_run_url,
@@ -4075,7 +4070,14 @@ export function createStore(
         ],
       );
       if (!rows[0]) throw new Error("release revision insert returned no row");
-      return releaseRevisionRow(rows[0]);
+      const { rows: statusRows } = await sql.query<{ status: string }>(
+        `SELECT status FROM scan_receipts WHERE id = $1`,
+        [rows[0].receipt_id],
+      );
+      return releaseRevisionRow({
+        ...rows[0],
+        receipt_status: statusRows[0]?.status ?? null,
+      });
     },
 
     async listReleaseRevisionsForUser(
@@ -4084,25 +4086,11 @@ export function createStore(
     ): Promise<ReleaseRevisionRow[]> {
       const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
       const scoped = optionalInstallId(opts.installationId);
-      const { rows } = await sql.query<{
-        id: unknown;
-        installation_id: unknown;
-        package_id: unknown;
-        repo_id: unknown;
-        receipt_id: unknown;
-        channel: string;
-        coordinate: string;
-        artifact_sha256: string;
-        artifact_sha512: string | null;
-        source_revision: string | null;
-        ci_run_url: string | null;
-        previous_sha256: string | null;
-        mismatch: boolean | unknown;
-        created_at: string | Date;
-      }>(
-        `SELECT rr.*
+      const { rows } = await sql.query<ReleaseRevisionSqlRow>(
+        `SELECT rr.*, sr.status AS receipt_status
          FROM release_revisions rr
          JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE iu.user_id = $1
            AND ($3::bigint IS NULL OR rr.installation_id = $3)
            AND row_within_retention(rr.installation_id, rr.created_at)
@@ -4117,25 +4105,11 @@ export function createStore(
       id: number,
       userId: string,
     ): Promise<ReleaseRevisionRow | null> {
-      const { rows } = await sql.query<{
-        id: unknown;
-        installation_id: unknown;
-        package_id: unknown;
-        repo_id: unknown;
-        receipt_id: unknown;
-        channel: string;
-        coordinate: string;
-        artifact_sha256: string;
-        artifact_sha512: string | null;
-        source_revision: string | null;
-        ci_run_url: string | null;
-        previous_sha256: string | null;
-        mismatch: boolean | unknown;
-        created_at: string | Date;
-      }>(
-        `SELECT rr.*
+      const { rows } = await sql.query<ReleaseRevisionSqlRow>(
+        `SELECT rr.*, sr.status AS receipt_status
          FROM release_revisions rr
          JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE rr.id = $1 AND iu.user_id = $2`,
         [id, userId],
       );

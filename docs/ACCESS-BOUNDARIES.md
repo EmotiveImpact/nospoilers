@@ -97,7 +97,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Bearer token unpacks a packed artifact, applies the installation allowlist, mints a
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
-  revision, stored CI run URL). Historical rows cannot be edited or deleted. Download the
+  revision, stored CI run URL, linked receipt status). Failed-policy and inconclusive are
+  not a passing result. Historical rows cannot be edited or deleted. Download the
   linked signed receipt JSON (`GET /api/receipts/:id`). Unpaid still allowed. Another tenant
   is 404. Pack bytes are not included.
 - List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
@@ -310,11 +311,16 @@ three, another tenant is not stuck behind a Solo queue, and the global heavy cap
 applies. The same file proves GitHub `release.edited` rescans only when pack assets change,
 title-only edits and non-pack assets do not enqueue, assets attached after publish enqueue a
 second scan, `unpublished`/`deleted` are light jobs that alert without downloading, `repository.deleted`
-removes the Watch row instead of resurrecting it, `renamed` updates the stored name, and
+removes the Watch row instead of resurrecting it, `renamed` updates the stored name,
+`member` added / `fork` / cheap `push` (`*.map` / `.env` only) enqueue light jobs (other member
+actions and non-matching pushes do not; HMAC required; unpaid is HTTP 200 with no job), and
 `github_app_authorization` revoked drops that user’s sessions and stored OAuth token without
 enqueueing work or deleting the install (HMAC still required; unpaid coverage does not skip it).
 `installation_target` renamed updates the stored account login without a job (HMAC required;
-unpaid still updates; unknown installs do not create a tenant). `tests/receipts.test.ts` also
+unpaid still updates; unknown installs do not create a tenant). `tests/release-ledger.test.ts`
+proves listed and fetched releases include linked receipt status from `scan_receipts` (not an
+`ok` column), dirty packs are `failed-policy` not passed, unpaid GET still returns status, and
+another tenant is 404. `tests/receipts.test.ts` also
 proves anonymous `POST /api/receipts/verify` does not consume the hosted unpack budget, does
 not call a failed-policy receipt clean, and never requires a session.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,

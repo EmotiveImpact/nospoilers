@@ -103,6 +103,13 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
   });
 
+  it("lists the OCI fixture on Scan next to docker save", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/sourcemap.oci.tar"/);
+    expect(page).toMatch(/Layers are not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.docker.tar"/);
+  });
+
   it("lets a clean APK ship", async () => {
     const report = await scan(path.join(fixtures, "clean.apk"));
     expect(report.kind).toBe("apk");

@@ -21,7 +21,10 @@
 - GitHub `installation_target` renamed updates the Watch account login in place. No job. HMAC required. Unpaid still updates.
 - Scan page checks a signed receipt JSON without unpacking. Optional pack SHA-256 is hashed in the browser and not uploaded. Authentic failed-policy or inconclusive is not clean. Coverage ended still allows the check.
 - Watch downloads the signed receipt JSON for a sealed release. Unpaid still allowed. Another tenant is 404.
+- Watch Releases lists the linked receipt status (`passed`, `failed-policy`, `inconclusive`). Failed-policy and inconclusive are not clean and are not allowed to ship. Unpaid still allowed.
 - Scan lists the iOS IPA fixture next to APK. Mach-O is not executed.
+- Scan lists the OCI image fixture next to docker save. Layers are not executed.
+- GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue light Watch jobs. Other member actions and pushes without those paths do not. HMAC required. Unpaid still HTTP 200 with no job. Real GitHub proof is still outstanding.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.

@@ -80,7 +80,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | SHA-256/SHA-512 artifact identity | Built: packed-file SHA-256/SHA-512 on receipts | NoSpoilers |
-| Append-only sealed release revisions | Built: append-only `release_revisions`; digest mismatch appends, never rewrites; Watch downloads the linked signed receipt JSON | NoSpoilers |
+| Append-only sealed release revisions | Built: append-only `release_revisions`; digest mismatch appends, never rewrites; Watch lists linked receipt status (`passed` / `failed-policy` / `inconclusive`) and downloads the signed receipt JSON; failed-policy and inconclusive are not clean | NoSpoilers |
 | Build/source revision and CI provenance link | Built: git SHA/tag/version and HTTPS CI URL stored, never fetched; Sigstore still Planned | NoSpoilers |
 | CycloneDX/SPDX SBOM attachment | Planned | NoSpoilers Team |
 | SLSA/in-toto provenance validation | Planned | NoSpoilers Team |
@@ -89,7 +89,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Stable/beta/canary release channels | Built: `stable` / `beta` / `canary` on each revision | NoSpoilers |
 | Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
 | Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
-| Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check; Scan page checks JSON you already have (optional pack hashed in-browser, never uploaded); Watch downloads the signed JSON for a sealed release; authentic failed-policy/inconclusive is not clean | NoSpoilers |
+| Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check; Scan page checks JSON you already have (optional pack hashed in-browser, never uploaded); Watch lists receipt status and downloads the signed JSON for a sealed release; authentic failed-policy/inconclusive is not clean | NoSpoilers |
 | Public verification page controlled by customer | Planned, later | NoSpoilers |
 
 ## Package Identity module
@@ -123,7 +123,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Java JAR/WAR | Built: ZIP magic | NoSpoilers |
 | NuGet `.nupkg` and `.snupkg` | Built: ZIP magic | NoSpoilers |
 | Ruby gems | Built: tar + nested `data.tar.gz`, never executed | NoSpoilers |
-| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive | NoSpoilers |
+| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; Scan docker-save and OCI examples | NoSpoilers |
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
 | Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified | NoSpoilers |
 | iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; Scan IPA example | NoSpoilers |
@@ -141,9 +141,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
 | Repository deleted | Built: row is removed; deleted webhooks do not resurrect it | NoSpoilers |
 | Repository transfer | Built/needs real proof | NoSpoilers |
-| Collaborator added | Built/needs real proof | NoSpoilers |
-| Fork event | Built/needs real proof | NoSpoilers |
-| Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
+| Collaborator added | Built: `member` / `added` enqueues a light `member_added` job; other member actions do not; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Fork event | Built: `fork` enqueues a light job with the forkee full name; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Cheap sensitive-path push event | Built: `push` cheap-checks `*.map` / `.env` / `.env.*` only and enqueues a light job on hits; other paths are ignored; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
 | GitHub Release unpublished or deleted | Built: light Watch alert; gone assets are not downloaded | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | GitHub App authorization revoke | Built: HMAC webhook drops that user’s sessions and stored OAuth token; the installation stays; coverage does not gate this | NoSpoilers |

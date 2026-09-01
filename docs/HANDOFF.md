@@ -122,7 +122,8 @@ Read in this order:
   deletes the bytes. Optional headers: `X-NoSpoilers-Channel`, `X-NoSpoilers-Source-Revision`,
   `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
   return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
-  revisions; preview invents none. Watch **Protect identity** verifies npm scope or GitHub
+  revisions with the linked receipt status; preview invents none. Unpaid still allows the list
+  and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
   generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
   resurrection, and release-burst/version-jump alerts. Admins allowlist with a reason and typed
@@ -144,8 +145,8 @@ Read in this order:
 - Packed scans also cover Docker save and OCI image archives. Layout sniff uses `manifest.json`
   plus `layer.tar`, or `oci-layout` / `blobs/sha256`. Gzip layer blobs without a `.tar` name are
   unpacked. Overlay whiteouts are not applied, so lower-layer spoilers remain visible. Encrypted
-  layers are inconclusive. Image signatures are not verified or executed. Scan lists a docker-save
-  fixture example. Not a Pricing extras change.
+  layers are inconclusive. Image signatures are not verified or executed. Scan lists docker-save
+  and OCI fixture examples. Not a Pricing extras change.
 - Packed scans also cover Android APK/AAB and iOS IPA. Layout sniff uses `AndroidManifest.xml` /
   `classes.dex`, `BundleConfig.pb`, or `Payload/*.app`. ZIP magic, not the extension. Encrypted zip
   is inconclusive. APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not
@@ -256,7 +257,7 @@ content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not adve
 Pricing change.
 Docker/OCI image layers are in (docker save + OCI layout sniff; layer tars and gzip blobs;
 overlay whiteouts not applied; encrypted layers inconclusive; signatures not verified; Scan
-docker-save example). Not advertised as a Pricing change.
+docker-save and OCI examples). Not advertised as a Pricing change.
 APK/AAB/IPA are in (ZIP magic; AndroidManifest/BundleConfig/Payload layout; DEX/Mach-O never
 executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK
 and IPA examples). Not advertised as a Pricing change.
@@ -294,11 +295,16 @@ sessions and stored OAuth token. The installation stays. HMAC required. Not cove
 Sign-out deletes only the current session.
 GitHub `installation_target` / `renamed` updates the stored account login in place. No extra
 job. HMAC required. Unpaid still updates. Subscribe the App to Installation target.
+GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue light jobs.
+Other member actions and pushes without those paths do not. HMAC required. Unpaid is HTTP 200
+with no job. Real GitHub proof is still outstanding.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
-still allows that check. Authentic failed-policy/inconclusive is not clean. Watch downloads the
-signed receipt JSON for a sealed release; unpaid still allowed.
+still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
+linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
+Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save and OCI
+fixture examples. Layers are not executed.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

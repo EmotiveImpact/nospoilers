@@ -55,7 +55,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   and deletes the upload. Unpaid mint/scan return 402. Local Action remains the default CI path.
 - Release Ledger foundations: append-only `release_revisions` with stable/beta/canary channels,
   SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
-  Watch Releases view. Digest mismatch appends a new row and an explainable alert. Development
+  Watch Releases view with linked receipt status (`passed` / `failed-policy` / `inconclusive`).
+  Failed-policy and inconclusive are not clean. Digest mismatch appends a new row and an
+  explainable alert. Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers
@@ -103,7 +105,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   for content. Scan accepts those extensions and includes a VSIX fixture example. Not a Pricing change.
 - Docker/OCI image layers: docker save (`manifest.json` + `layer.tar`) and OCI layout (`oci-layout` /
   `blobs/sha256`). MIME/magic, not extension. Overlay whiteouts are not applied. Encrypted layers
-  are inconclusive. Image signatures are not verified. Scan includes a docker-save fixture example.
+  are inconclusive. Image signatures are not verified. Scan includes docker-save and OCI
+  fixture examples. Layers are not executed.
   Not a Pricing change.
 - APK/AAB/IPA: ZIP magic plus AndroidManifest/BundleConfig/`Payload/*.app` layout. DEX, native
   libraries, and Mach-O are never executed. APK/Apple signatures are not verified. Encrypted zip
