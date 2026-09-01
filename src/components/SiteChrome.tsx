@@ -1,5 +1,6 @@
 import { signOut } from "@/auth.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
+import { DashboardShell } from "@/components/DashboardShell.tsx"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,7 @@ import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 
 const LINKS = [
   { href: "/", label: "Product" },
-  { href: "/watch", label: "Watch" },
+  { href: "/watch", label: "Dashboard" },
   { href: "/scan", label: "Scan" },
   { href: "/pricing", label: "Pricing" },
 ] as const
@@ -83,6 +84,21 @@ export function SiteChrome({
   const signedIn = Boolean(login)
   const previewing = Boolean(coverage) && !signedIn
   const home = path === "/"
+  const appSurface = path === "/watch" || path === "/scan" || path === "/internal/prospects"
+
+  if (appSurface) {
+    return (
+      <DashboardShell
+        path={path}
+        login={login}
+        coverage={coverage}
+        githubApp={githubApp}
+        signedIn={signedIn}
+      >
+        {children}
+      </DashboardShell>
+    )
+  }
 
   return (
     <div className="flex min-h-svh flex-col">

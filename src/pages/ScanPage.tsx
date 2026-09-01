@@ -134,7 +134,7 @@ export function ScanPage({ search }: { search: string }) {
   )
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-10 md:py-16">
+    <main className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
       {previewing ? <LoggedInLook current={locked ? "ended" : "trial"} /> : null}
 
       <PageHeader

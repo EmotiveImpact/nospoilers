@@ -71,7 +71,7 @@ export function PricingPage() {
       <p className="mt-8 max-w-2xl text-sm leading-relaxed text-dim">
         When the trial ends unpaid: we stop processing webhooks (still 200 so GitHub is happy), stop
         the poller, and Watch says subscribe to keep watching. Stripe checkout is next — locally the
-        trial button {githubApp ? "starts GitHub sign-in" : "opens the watch desk"}. Yearly: ~$290
+        trial button {githubApp ? "starts GitHub sign-in" : "opens the dashboard"}. Yearly: ~$290
         Solo · ~$990 Team.
       </p>
     </main>

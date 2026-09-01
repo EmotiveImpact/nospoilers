@@ -51,7 +51,7 @@ export function LandingPage() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           {signedIn ? (
             <Button type="button" size="lg" onClick={() => navigate("/watch")}>
-              Open watch desk
+              Open dashboard
             </Button>
           ) : githubApp ? (
             <Button as="a" href="/api/auth/github" size="lg">
@@ -94,7 +94,7 @@ export function LandingPage() {
         <h2 className="mt-3 font-display text-2xl tracking-tight text-snow md:text-3xl">
           Repos on the left. Alerts on the right.
         </h2>
-        <p className="mt-2 max-w-lg text-sm text-mute">Click through to a sample watch desk.</p>
+        <p className="mt-2 max-w-lg text-sm text-mute">Click through to a sample dashboard.</p>
         <div className="mt-6">
           <ProductFrame />
         </div>

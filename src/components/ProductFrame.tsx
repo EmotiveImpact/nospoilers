@@ -36,7 +36,7 @@ export function ProductFrame() {
       <div className="grid gap-0 md:grid-cols-2">
         <div className="border-b border-white/8 px-5 py-6 md:border-b-0 md:border-r">
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">{PREVIEW_LOGIN}</p>
-          <p className="mt-2 font-display text-xl text-snow">Watch desk</p>
+          <p className="mt-2 font-display text-xl text-snow">Dashboard</p>
           <p className="mt-5 text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</p>
           {repos.map((repo) => (
             <div key={repo.id} className="mt-3 rounded-xl border border-white/8 bg-inset px-3 py-3">
