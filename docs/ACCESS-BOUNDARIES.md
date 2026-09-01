@@ -269,8 +269,9 @@ tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unp
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
-permission skips return copy-paste YAML instead of failing the worker, and the merge API
-is never called. `tests/remediation.test.ts` proves remediation files are tenant-scoped,
+permission skips return copy-paste YAML instead of failing the worker, the merge API
+is never called, and the generated workflow lists only existing `package.tgz` / `dist/` packs
+(skips source-tree tarballs and symlinks, caps at 8, fails closed when none exist). `tests/remediation.test.ts` proves remediation files are tenant-scoped,
 unpaid POST returns 402, GitHub-suspended POST returns 409, permission skips return
 copy-paste files, required permissions are listed before write, customer ignore/policy
 files are not overwritten, empty `.nospoilers.yml` has no allowlist, and the merge API
@@ -294,7 +295,8 @@ the summary is queued/running/done/failed counts with no scan-credit field.
 three, another tenant is not stuck behind a Solo queue, and the global heavy cap still
 applies. The same file proves GitHub `release.edited` rescans only when pack assets change,
 title-only edits and non-pack assets do not enqueue, assets attached after publish enqueue a
-second scan, and `unpublished`/`deleted` are light jobs that alert without downloading.
+second scan, `unpublished`/`deleted` are light jobs that alert without downloading, `repository.deleted`
+removes the Watch row instead of resurrecting it, and `renamed` updates the stored name.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,

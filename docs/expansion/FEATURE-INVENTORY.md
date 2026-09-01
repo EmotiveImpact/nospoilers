@@ -49,8 +49,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
-| Pre-publish CI gate | Partial: Action exists; optional `policy` input; generated workflow gates packed artifacts only | NoSpoilers |
-| App-generated setup PR | Partial: reviewable PR, never merged; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
+| Pre-publish CI gate | Partial: Action exists; generated workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked | NoSpoilers |
+| App-generated setup PR | Partial: reviewable PR, never merged; generated CI scans each existing pack under package.tgz and dist/; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
 | Required-check setup guidance | Partial: setup PR body tells maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
 | Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
@@ -137,6 +137,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | --- | --- | --- |
 | Private → public alert | Built/needs real proof | NoSpoilers |
 | Repository created public | Built/needs real proof | NoSpoilers |
+| Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
+| Repository deleted | Built: row is removed; deleted webhooks do not resurrect it | NoSpoilers |
 | Repository transfer | Built/needs real proof | NoSpoilers |
 | Collaborator added | Built/needs real proof | NoSpoilers |
 | Fork event | Built/needs real proof | NoSpoilers |

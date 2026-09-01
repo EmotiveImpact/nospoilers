@@ -90,10 +90,12 @@ Read in this order:
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
   and approve a packed receipt as the shipping baseline. Hosted scans apply those exceptions
   before minting a receipt. CLI and the GitHub Action load `.nospoilers.yml` when present.
-- Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml` (packed
-  artifacts only). The App never merges it. If GitHub returns 403/404, the API returns 409 plus
-  copy-paste YAML. Hosted `release_scan` jobs post a **NoSpoilers** Check with rule/path
-  annotations when Checks write is granted; otherwise the job still completes.
+- Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml`. That
+  workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each with the Action, and
+  fails closed if none exist. Source pushes are not unpacked. The App never merges the PR. If GitHub
+  returns 403/404, the API returns 409 plus copy-paste YAML. Hosted `release_scan` jobs post a
+  **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
+  still completes.
 - Watch **Remediation PR** opens a reviewable PR on `nospoilers/remediate` with ignore rules,
   an empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files`
   snippet, and the packed-artifact workflow if missing. Existing customer ignore/policy/workflow
@@ -213,6 +215,7 @@ Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
+Generated setup CI lists existing package.tgz and dist/ packs, scans each, and fails closed if none.
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
@@ -273,6 +276,10 @@ Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.
+Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails
+closed if none exist. Source pushes are not unpacked. Reviewable, never merged.
+GitHub `repository.deleted` removes the Watch row and does not resurrect it. `renamed` updates
+name/URL in place. No extra job.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

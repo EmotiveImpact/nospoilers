@@ -236,6 +236,104 @@ describe("GitHub webhooks", () => {
     });
   });
 
+  it("removes a deleted repository instead of resurrecting it", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "repository", "d-del-pub", {
+        action: "publicized",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      const deleted = await postWebhook(app, "repository", "d-del-1", {
+        action: "deleted",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      expect(deleted.status).toBe(200);
+      expect(((await deleted.json()) as { queued: boolean; kind: string }).kind).toBe("repo_deleted");
+      const { rows: afterDelete } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM repos",
+      );
+      expect(Number(afterDelete[0]?.n)).toBe(0);
+
+      const again = await postWebhook(app, "repository", "d-del-2", {
+        action: "deleted",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      expect(again.status).toBe(200);
+      const { rows: stillGone } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM repos",
+      );
+      expect(Number(stillGone[0]?.n)).toBe(0);
+    });
+  });
+
+  it("updates a renamed repository without a second job", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "repository", "d-ren-1", {
+        action: "publicized",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      const renamed = await postWebhook(app, "repository", "d-ren-2", {
+        action: "renamed",
+        installation: { id: 7 },
+        repository: {
+          ...sampleRepo,
+          name: "renamed",
+          full_name: "octo/renamed",
+          html_url: "https://github.com/octo/renamed",
+        },
+      });
+      expect(renamed.status).toBe(200);
+      expect(((await renamed.json()) as { queued: boolean }).queued).toBe(false);
+      const { rows } = await store.sql.query<{ full_name: string; html_url: string }>(
+        "SELECT full_name, html_url FROM repos",
+      );
+      expect(rows).toEqual([
+        { full_name: "octo/renamed", html_url: "https://github.com/octo/renamed" },
+      ]);
+      const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(jobs[0]?.n)).toBe(1);
+    });
+  });
+
+  it("still drops a deleted repository when coverage has ended", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: false,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "repository", "d-del-unpaid", {
+        action: "deleted",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: sampleRepo,
+      });
+      expect(res.status).toBe(200);
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM repos");
+      expect(Number(rows[0]?.n)).toBe(0);
+      const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(jobs[0]?.n)).toBe(0);
+    });
+  });
+
   it("fingerprints pack assets without download URLs", () => {
     const withUrls = packAssetFingerprint([
       {

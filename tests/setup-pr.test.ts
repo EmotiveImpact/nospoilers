@@ -1,19 +1,81 @@
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
-import { setupPullRequestBody, setupWorkflowYaml } from "../src/server/setup-workflow.ts";
+import {
+  MAX_SETUP_PACKS,
+  SETUP_PACK_GLOBS,
+  setupPullRequestBody,
+  setupWorkflowYaml,
+} from "../src/server/setup-workflow.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
+import { PACK_FILE_RE } from "../src/scanner/formats.ts";
 import { scan } from "../src/scanner/index.ts";
+
+const execFileAsync = promisify(execFile);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FIXTURE = path.join(root, "fixtures/sourcemap.tgz");
+
+function workflowListPython(): string {
+  const yaml = setupWorkflowYaml();
+  const match = yaml.match(/python3 - <<'PY'\n([\s\S]*?)\n\s*PY\n/);
+  if (!match?.[1]) throw new Error("generated workflow is missing pack-list python");
+  const lines = match[1].split("\n");
+  const indent = lines[0]?.match(/^ */)?.[0].length ?? 0;
+  return lines.map((line) => line.slice(indent)).join("\n");
+}
+
+function packsFromGithubOutput(text: string): unknown {
+  const marker = "packs<<NS_PACKS\n";
+  const start = text.indexOf(marker);
+  if (start < 0) throw new Error("GITHUB_OUTPUT missing packs delimiter");
+  const rest = text.slice(start + marker.length);
+  const end = rest.indexOf("\nNS_PACKS");
+  if (end < 0) throw new Error("GITHUB_OUTPUT missing packs terminator");
+  return JSON.parse(rest.slice(0, end));
+}
+
+async function runWorkflowList(
+  cwd: string,
+  python: string,
+  extraEnv: Record<string, string>,
+): Promise<string[]> {
+  const script = path.join(os.tmpdir(), `ns-list-packs-${Date.now()}-${Math.random().toString(16).slice(2)}.py`);
+  const output = path.join(os.tmpdir(), `ns-gh-out-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await writeFile(script, python);
+  await writeFile(output, "");
+  try {
+    await execFileAsync("python3", [script], {
+      cwd,
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_OUTPUT: output,
+        NS_PACK_GLOBS: JSON.stringify([...SETUP_PACK_GLOBS]),
+        NS_PACK_RE: PACK_FILE_RE.source,
+        NS_MAX_PACKS: String(MAX_SETUP_PACKS),
+        ...extraEnv,
+      },
+    });
+  } catch (error) {
+    const err = error as { stderr?: string; message?: string };
+    throw new Error(err.stderr || err.message || "pack list failed");
+  }
+  const listed = packsFromGithubOutput(await readFile(output, "utf8"));
+  if (!Array.isArray(listed) || listed.some((row) => typeof row !== "string")) {
+    throw new Error("pack list was not a string array");
+  }
+  return listed;
+}
 
 function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
   const fail = async (): Promise<never> => {
@@ -54,10 +116,19 @@ describe("generated setup workflow", () => {
     expect(yaml).toContain("dist/*.gem");
     expect(yaml).toContain("dist/*.tar");
     expect(yaml).toContain("dist/*.apk");
+    expect(yaml).toContain("dist/*.tar.gz");
+    expect(yaml).toContain("fromJSON(needs.list-packs.outputs.packs)");
+    expect(yaml).toContain("No packed artifact found");
+    expect(yaml).toContain("matrix.pack");
+    expect(yaml).not.toContain("github.event.inputs.path || 'package.tgz'");
     expect(yaml).not.toMatch(/on:\s*\n\s*push:\s*\n\s*branches/);
+    for (const glob of SETUP_PACK_GLOBS) {
+      expect(yaml).toContain(`- ${glob}`);
+    }
     const body = setupPullRequestBody();
     expect(body).toContain("**not** merged automatically");
     expect(body).toContain("packed");
+    expect(body).toContain("fails closed");
     expect(body).toContain("Do **not** grant Administration");
     expect(body).toContain("Optionally mark the **NoSpoilers** check as required");
   });
@@ -67,6 +138,52 @@ describe("generated setup workflow", () => {
     expect(source).not.toMatch(/\/merge\b/);
     expect(source).not.toMatch(/mergePullRequest|merge_pull|putMerge|POST merge/i);
     expect(source).toContain("createSetupPullRequest");
+  });
+
+  it("lists only existing root/dist packs and fails closed when empty", async () => {
+    const python = workflowListPython();
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-setup-packs-"));
+    await mkdir(path.join(dir, "dist"));
+    await mkdir(path.join(dir, "src"));
+    await writeFile(path.join(dir, "package.tgz"), "pack");
+    await writeFile(path.join(dir, "dist", "app.vsix"), "vsix");
+    await writeFile(path.join(dir, "dist", "notes.txt"), "nope");
+    await writeFile(path.join(dir, "src", "secret.tgz"), "secret");
+    await symlink(path.join(dir, "src", "secret.tgz"), path.join(dir, "dist", "link.tgz"));
+
+    expect(await runWorkflowList(dir, python, { GITHUB_EVENT_NAME: "push" })).toEqual([
+      "dist/app.vsix",
+      "package.tgz",
+    ]);
+    expect(await runWorkflowList(dir, python, { GITHUB_EVENT_NAME: "pull_request" })).toEqual([
+      "dist/app.vsix",
+      "package.tgz",
+    ]);
+
+    const empty = await mkdtemp(path.join(os.tmpdir(), "ns-setup-empty-"));
+    expect(await runWorkflowList(empty, python, { GITHUB_EVENT_NAME: "push" })).toEqual([]);
+
+    expect(
+      await runWorkflowList(dir, python, {
+        GITHUB_EVENT_NAME: "workflow_dispatch",
+        NS_DISPATCH_PATH: "dist/app.vsix",
+      }),
+    ).toEqual(["dist/app.vsix"]);
+
+    await expect(
+      runWorkflowList(dir, python, {
+        GITHUB_EVENT_NAME: "workflow_dispatch",
+        NS_DISPATCH_PATH: "../secret.tgz",
+      }),
+    ).rejects.toThrow(/workflow_dispatch path/);
+
+    const many = await mkdtemp(path.join(os.tmpdir(), "ns-setup-many-"));
+    await mkdir(path.join(many, "dist"));
+    for (let i = 0; i < MAX_SETUP_PACKS + 3; i += 1) {
+      await writeFile(path.join(many, "dist", `app${i}.tgz`), "pack");
+    }
+    const listed = await runWorkflowList(many, python, { GITHUB_EVENT_NAME: "push" });
+    expect(listed).toHaveLength(MAX_SETUP_PACKS);
   });
 });
 

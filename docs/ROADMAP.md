@@ -43,8 +43,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   Warn, not a failed receipt. Allowlistable. GitHub Checks get a warning annotation.
 - `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.
 - App-generated setup PR (reviewable, never merged) and hosted GitHub Checks on release scans.
-  Live GitHub writes skip with copy-paste YAML / no Check until the App is granted Contents write,
-  Pull requests write, and Checks write. Do not grant Administration.
+  Generated CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails closed
+  if none exist. Source pushes are not unpacked. Live GitHub writes skip with copy-paste YAML /
+  no Check until the App is granted Contents write, Pull requests write, and Checks write. Do not
+  grant Administration.
 - Packed npm/pnpm/Yarn/Bun workspace discovery: list roots and members from package.json /
   pnpm-workspace.yaml / lockfile presence. Never execute. Never auto-watch discovered names.
 - Hosted scan API: hashed `nsp_` tokens per install; `POST /api/v1/scan` returns a signed receipt

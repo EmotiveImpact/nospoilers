@@ -1427,13 +1427,16 @@ export function WatchPage({ search }: { search: string }) {
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-            Setup PR adds packed-artifact CI. Remediation PR adds ignore rules, an empty
-            .nospoilers.yml (no silent allowlist), bundler hints, and that CI workflow if it is
-            missing. Both PRs need Contents write and Pull requests write. They are reviewable and
-            never merged. They do not need Administration, and they do not make the repository
-            private or delete a Release asset. A GitHub Release is scanned when it is published,
-            and again when pack assets are added or replaced. Unpublishing or deleting a release
-            is an alert only; gone assets are not downloaded.
+            Setup PR adds packed-artifact CI that scans each{" "}
+            <code className="text-snow">package.tgz</code> or{" "}
+            <code className="text-snow">dist/</code> pack that exists, not only a hardcoded
+            package.tgz. If none exist, that workflow fails closed. Remediation PR adds ignore
+            rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
+            workflow if it is missing. Both PRs need Contents write and Pull requests write. They
+            are reviewable and never merged. They do not need Administration, and they do not make
+            the repository private or delete a Release asset. A GitHub Release is scanned when it
+            is published, and again when pack assets are added or replaced. Unpublishing or deleting
+            a release is an alert only; gone assets are not downloaded.
           </p>
           {previewing ? (
             <p className="mt-3 text-sm leading-relaxed text-mute">

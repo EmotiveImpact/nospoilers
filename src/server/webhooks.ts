@@ -277,10 +277,16 @@ export async function enqueueFromWebhook(
   if (installationId === null) return { queued: false, kind: null };
 
   if (event === "repository" || event === "public") {
-    await rememberRepo(store, installationId, payload);
     const action = event === "public" ? "publicized" : str(payload.action);
     const repo = repoFrom(payload);
     if (!repo) return { queued: false, kind: event };
+
+    if (action === "deleted") {
+      await store.removeRepo(repo.id);
+      return { queued: false, kind: "repo_deleted" };
+    }
+
+    await rememberRepo(store, installationId, payload);
 
     let kind: string | null = null;
     if (action === "publicized") kind = "repo_publicized";

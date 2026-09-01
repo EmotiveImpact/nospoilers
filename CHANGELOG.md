@@ -13,13 +13,15 @@
 - Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
 - Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, dist-tags, and prerelease-channel tarballs (`next`/`beta`/`canary`/`rc`/`alpha`/`preview`, cap three extras). Other dist-tag moves stay tag-only.
 - GitHub Release `edited` / `prereleased` / `released` enqueue a pack scan only when assets change. `unpublished` / `deleted` alert without downloading.
+- GitHub `repository.deleted` removes the Watch row and does not upsert it again. `renamed` updates name and URL in place with no extra job.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.
 - Unpack nested tgz/zip/asar for inspection (never execute) up to three levels.
 - Load `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approve a scan baseline.
-- Open a reviewable setup PR for the packed-artifact GitHub Action (never merged). Hosted
-  release scans post GitHub Checks with rule/path annotations when Checks write is granted.
+- Open a reviewable setup PR for the packed-artifact GitHub Action (never merged). The generated
+  workflow lists existing `package.tgz` and `dist/` packs, scans each, and fails closed if none exist.
+  Hosted release scans post GitHub Checks with rule/path annotations when Checks write is granted.
 - Watch private npm registries: encrypted per-install tokens, same-host HTTPS tarballs, SSRF blocked.
 - Discover npm/pnpm/Yarn/Bun workspaces in packed artifacts (members listed, never executed, never auto-watched).
 - Flag crash dumps and ELF cores as CRASH-001; extra debug symbols stay DBG-001.
