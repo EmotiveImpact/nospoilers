@@ -33,6 +33,9 @@ on:
       - dist/*.xpi
       - dist/*.gem
       - dist/*.tar
+      - dist/*.apk
+      - dist/*.aab
+      - dist/*.ipa
   pull_request:
     paths:
       - package.tgz
@@ -47,6 +50,9 @@ on:
       - dist/*.xpi
       - dist/*.gem
       - dist/*.tar
+      - dist/*.apk
+      - dist/*.aab
+      - dist/*.ipa
 
 jobs:
   nospoilers:
@@ -68,7 +74,7 @@ export function setupPullRequestBody(): string {
   return [
     "This pull request is from NoSpoilers. It is **not** merged automatically.",
     "",
-    "It adds a GitHub Action that scans a **packed** artifact (npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, or Electron asar).",
+    "It adds a GitHub Action that scans a **packed** artifact (npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, or Electron asar).",
     "It does not unpack the git tree on ordinary source pushes.",
     "",
     "After you merge:",

@@ -53,6 +53,7 @@ describe("generated setup workflow", () => {
     expect(yaml).toContain("dist/*.vsix");
     expect(yaml).toContain("dist/*.gem");
     expect(yaml).toContain("dist/*.tar");
+    expect(yaml).toContain("dist/*.apk");
     expect(yaml).not.toMatch(/on:\s*\n\s*push:\s*\n\s*branches/);
     const body = setupPullRequestBody();
     expect(body).toContain("**not** merged automatically");

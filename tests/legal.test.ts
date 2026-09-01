@@ -47,6 +47,8 @@ describe("legal pages", () => {
     expect(retention).toMatch(/append-only evidence/i);
     expect(retention).toMatch(/90 days/);
     expect(retention).toMatch(/Map custody stores encrypted Sentry/i);
+    expect(retention).toMatch(/APK Signature Scheme/i);
+    expect(retention).toMatch(/never executed/i);
 
     const disclosure = textOf("disclosure");
     expect(disclosure).toMatch(/do not automatically email maintainers/i);

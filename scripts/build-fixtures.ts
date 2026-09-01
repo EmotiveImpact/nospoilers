@@ -39,6 +39,14 @@ async function packTar(srcDir: string, dest: string): Promise<void> {
   await tarCreate({ gzip: true, file: dest, cwd: srcDir }, ["."]);
 }
 
+async function writeZipPack(dest: string, files: Record<string, string | Buffer>): Promise<void> {
+  const zip = new JSZip();
+  for (const [name, contents] of Object.entries(files)) {
+    zip.file(name, contents);
+  }
+  await writeFile(dest, await zip.generateAsync({ type: "nodebuffer" }));
+}
+
 async function main(): Promise<void> {
   await mkdir(fixtures, { recursive: true });
 
@@ -125,6 +133,25 @@ async function main(): Promise<void> {
     await writeOciArchive(path.join(fixtures, "sourcemap.oci.tar"), {
       "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "index.js.map": sourceMap,
+    });
+
+    const dexStub = Buffer.from("dex\n035\0", "latin1");
+    await writeZipPack(path.join(fixtures, "clean.apk"), {
+      "AndroidManifest.xml": '<?xml version="1.0"?><manifest package="app.clean"></manifest>',
+      "classes.dex": dexStub,
+      "assets/www/index.js": minified,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.apk"), {
+      "AndroidManifest.xml": '<?xml version="1.0"?><manifest package="app.spoiler"></manifest>',
+      "classes.dex": dexStub,
+      "META-INF/CERT.RSA": Buffer.from("not-a-real-signature"),
+      "assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "assets/www/index.js.map": sourceMap,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.ipa"), {
+      "Payload/Spoiler.app/Info.plist": '<?xml version="1.0"?><plist></plist>',
+      "Payload/Spoiler.app/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "Payload/Spoiler.app/www/index.js.map": sourceMap,
     });
   } finally {
     await rm(cleanDir, { recursive: true, force: true });

@@ -77,6 +77,32 @@ describe("packed fixtures", () => {
     expect(report.findings).toEqual([]);
   });
 
+  it("fails an APK that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.apk"));
+    expect(report.kind).toBe("apk");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.apk", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
+  it("fails an IPA that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.ipa"));
+    expect(report.kind).toBe("ipa");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.ipa", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
+  it("lets a clean APK ship", async () => {
+    const report = await scan(path.join(fixtures, "clean.apk"));
+    expect(report.kind).toBe("apk");
+    expect(report.ok).toBe(true);
+    expect(report.status).toBe("passed");
+    expect(report.findings).toEqual([]);
+  });
+
   it("fails a tarball that contains a .env", async () => {
     const report = await scan(path.join(fixtures, "dotenv.tgz"));
     expect(report.ok).toBe(false);

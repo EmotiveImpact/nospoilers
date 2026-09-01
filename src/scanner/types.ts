@@ -22,7 +22,10 @@ export type ScanTargetKind =
   | "nupkg"
   | "gem"
   | "docker"
-  | "oci";
+  | "oci"
+  | "apk"
+  | "aab"
+  | "ipa";
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive";
 

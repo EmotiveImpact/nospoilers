@@ -129,7 +129,11 @@ describe("extra packed formats", () => {
     expect(packFormatFromName("App.1.0.0.nupkg")).toBe("nupkg");
     expect(packFormatFromName("App.1.0.0.snupkg")).toBe("nupkg");
     expect(packFormatFromName("spoiler-1.0.0.gem")).toBe("gem");
+    expect(packFormatFromName("app.apk")).toBe("apk");
+    expect(packFormatFromName("app.aab")).toBe("aab");
+    expect(packFormatFromName("app.ipa")).toBe("ipa");
     expect(isPackAssetName("dist/app.vsix")).toBe(true);
+    expect(isPackAssetName("dist/app.apk")).toBe(true);
     expect(isPackAssetName("README.md")).toBe(false);
   });
 

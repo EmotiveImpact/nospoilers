@@ -2,7 +2,7 @@
 
 **No spoilers in production.**
 
-Secret scanners read git. NoSpoilers reads the **packed artifact** — the npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, or Electron `app.asar` you are about to ship — and watches GitHub so a private repo going public does not go unnoticed.
+Secret scanners read git. NoSpoilers reads the **packed artifact** — the npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, or Electron `app.asar` you are about to ship — and watches GitHub so a private repo going public does not go unnoticed.
 
 That is the class of leak that shipped Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer. GitHub secret scanning does not catch packed maps. Making the git repo private does not catch an installer on a CDN.
 
@@ -33,7 +33,7 @@ the database and returns 503 if it cannot.
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
 - **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops. Connect a public npm package to scan the `latest` tarball automatically. Connect an HTTPS origin to crawl same-origin JS/CSS/maps. Admins can connect Sentry or Bugsnag map custody.
-- **Scan** (`/scan`) — drop a tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
+- **Scan** (`/scan`) — drop a tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
 - **Legal** — `/privacy`, `/terms`, `/retention`, `/disclosure`, `/support`, `/refunds`.
 

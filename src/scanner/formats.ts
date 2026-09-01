@@ -2,7 +2,7 @@ import path from "node:path";
 import type { ScanTargetKind } from "./types.ts";
 
 export const PACK_FILE_RE =
-  /\.(?:tgz|tar\.gz|tar|zip|asar|vsix|crx|xpi|whl|jar|war|nupkg|snupkg|gem)$/i;
+  /\.(?:tgz|tar\.gz|tar|zip|asar|vsix|crx|xpi|whl|jar|war|nupkg|snupkg|gem|apk|aab|ipa|xapk)$/i;
 
 const ZIP_KINDS = new Set<ScanTargetKind>([
   "zip",
@@ -12,7 +12,12 @@ const ZIP_KINDS = new Set<ScanTargetKind>([
   "wheel",
   "jar",
   "nupkg",
+  "apk",
+  "aab",
+  "ipa",
 ]);
+
+const NAMED_ZIP_KINDS = new Set<ScanTargetKind>(["vsix", "crx", "xpi", "wheel", "jar", "nupkg"]);
 
 const TAR_KINDS = new Set<ScanTargetKind>(["tarball", "gem", "docker", "oci"]);
 
@@ -34,6 +39,9 @@ export function packFormatFromName(name: string): ScanTargetKind | null {
   if (lower.endsWith(".jar") || lower.endsWith(".war")) return "jar";
   if (lower.endsWith(".nupkg") || lower.endsWith(".snupkg")) return "nupkg";
   if (lower.endsWith(".gem")) return "gem";
+  if (lower.endsWith(".apk") || lower.endsWith(".xapk")) return "apk";
+  if (lower.endsWith(".aab")) return "aab";
+  if (lower.endsWith(".ipa")) return "ipa";
   if (lower.endsWith(".oci.tar") || lower.endsWith(".oci")) return "oci";
   if (lower.endsWith(".docker.tar")) return "docker";
   if (lower.endsWith(".zip")) return "zip";
@@ -190,12 +198,44 @@ export function archivePathEscapes(name: string): boolean {
   return n.split("/").includes("..");
 }
 
+export function sniffMobileLayout(paths: string[]): "apk" | "aab" | "ipa" | null {
+  const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
+  if (names.some((n) => /(?:^|\/)Payload\/[^/]+\.app\//i.test(n) || n === "iTunesMetadata.plist")) {
+    return "ipa";
+  }
+  if (
+    names.some(
+      (n) =>
+        n === "BundleConfig.pb" ||
+        n.endsWith("/BundleConfig.pb") ||
+        n.startsWith("base/manifest/") ||
+        n.includes("/base/manifest/"),
+    )
+  ) {
+    return "aab";
+  }
+  if (
+    names.some(
+      (n) =>
+        n === "AndroidManifest.xml" ||
+        n.endsWith("/AndroidManifest.xml") ||
+        /(?:^|\/)classes\d*\.dex$/i.test(n),
+    )
+  ) {
+    return "apk";
+  }
+  return null;
+}
+
 export function sniffPackFormat(bytes: Buffer, filename = ""): ScanTargetKind | null {
   const fromName = packFormatFromName(filename);
   if (isCrxMagic(bytes)) return "crx";
   if (isZipMagic(bytes)) {
-    if (fromName && ZIP_KINDS.has(fromName)) return fromName;
     if (fromName === "crx") return "crx";
+    if (fromName && NAMED_ZIP_KINDS.has(fromName)) return fromName;
+    const mobile = sniffMobileLayout(listZipEntryNames(bytes));
+    if (mobile) return mobile;
+    if (fromName && ZIP_KINDS.has(fromName)) return fromName;
     return "zip";
   }
   if (isGzipMagic(bytes) || isTarMagic(bytes)) {
@@ -214,6 +254,9 @@ export const CRX_INCONCLUSIVE =
 
 export const IMAGE_ENCRYPTION_INCONCLUSIVE =
   "Encrypted OCI/Docker layers are not decrypted. The scan is inconclusive, never a passing receipt. Image signatures are not verified and not executed.";
+
+export const MOBILE_SIGNING_NOTE =
+  "APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not verified. FairPlay-encrypted Mach-O and other encrypted payloads are not decrypted. DEX, native libraries, and Mach-O are never executed.";
 
 function posixArchivePath(rel: string): string {
   return rel.replace(/\\/g, "/").replace(/^\.\//, "");
