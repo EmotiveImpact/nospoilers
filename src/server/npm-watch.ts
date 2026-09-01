@@ -6,6 +6,12 @@ import {
   PUBLIC_NPM_ORIGIN,
 } from "./npm-registry.ts";
 import {
+  checkIdentitySignals,
+  identityPlanDeniedFromBilling,
+  persistIdentityCandidates,
+} from "./identity-signals.ts";
+import type { AlertNotifier } from "./notifier.ts";
+import {
   diffPackageIdentity,
   describeIdentityChange,
   emptyPackageIdentity,
@@ -58,6 +64,7 @@ export async function syncProtectedIdentity(
   store: Store,
   pkg: WatchedPackageRow,
   pack: NpmPack,
+  notifier?: AlertNotifier,
 ): Promise<{ snapshot: boolean; alerts: number }> {
   const protection = await store.getPackageProtection(pkg.id);
   if (!protection) return { snapshot: false, alerts: 0 };
@@ -65,7 +72,8 @@ export async function syncProtectedIdentity(
   const previous = await store.latestPackageIdentitySnapshot(pkg.id);
   const prevFacts = previous ? factsFromSnapshot(previous) : null;
   const changes = diffPackageIdentity(prevFacts, identity);
-  if (prevFacts && changes.length === 0) return { snapshot: false, alerts: 0 };
+  const versionChanged = Boolean(previous?.version && previous.version !== pack.version);
+  if (prevFacts && changes.length === 0 && !versionChanged) return { snapshot: false, alerts: 0 };
   await store.insertPackageIdentitySnapshot({
     installationId: pkg.installation_id,
     packageId: pkg.id,
@@ -75,16 +83,20 @@ export async function syncProtectedIdentity(
     homepage: identity.homepage,
     binNames: identity.binNames,
     lifecycleScripts: identity.lifecycleScripts,
+    publishedAt: pack.publishedAt ?? null,
   });
   let alerts = 0;
   for (const change of changes) {
     const described = describeIdentityChange(pkg.package_name, change);
-    await store.insertAlert({
+    const payload = {
       installationId: pkg.installation_id,
+      packageName: pkg.package_name,
       kind: described.kind,
       title: described.title,
       body: described.body,
-    });
+    };
+    if (notifier) await notifier.send(payload);
+    else await store.insertAlert(payload);
     alerts += 1;
   }
   return { snapshot: true, alerts };
@@ -153,6 +165,10 @@ export async function protectWatchedPackage(
     });
   }
   const synced = await syncProtectedIdentity(store, pkg, pack);
+  const billing = await store.installationBilling(pkg.installation_id);
+  if (!identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan)) {
+    await persistIdentityCandidates(store, pkg);
+  }
   return { protection, snapshot: synced.snapshot };
 }
 
@@ -282,6 +298,7 @@ export async function checkWatchedPackage(
   store: Store,
   npm: NpmPort,
   pkg: WatchedPackageRow,
+  notifier?: AlertNotifier,
 ): Promise<{ queued: boolean; deltas: WatchDelta[] }> {
   if (!(await store.installationWorkAllowed(pkg.installation_id))) {
     await store.touchWatchedPackage(pkg.id, {});
@@ -313,7 +330,9 @@ export async function checkWatchedPackage(
     tarballUrl: pack.tarballUrl,
     shasum: pack.shasum,
   });
-  await syncProtectedIdentity(store, pkg, pack);
+  const previous = await store.latestPackageIdentitySnapshot(pkg.id);
+  await syncProtectedIdentity(store, pkg, pack, notifier);
+  await checkIdentitySignals({ store, npm, notifier, pkg, pack, previous, auth });
   let queued = false;
   for (const delta of deltas) {
     if (await enqueueFromDelta(store, pkg, pack, delta)) queued = true;
@@ -324,13 +343,14 @@ export async function checkWatchedPackage(
 export async function runNpmWatchPoll(deps: {
   store: Store;
   npm: NpmPort;
+  notifier?: AlertNotifier;
 }): Promise<{ checked: number; queued: number }> {
   const packages = await deps.store.listAllWatchedPackages();
   let checked = 0;
   let queued = 0;
   for (const pkg of packages) {
     checked += 1;
-    const result = await checkWatchedPackage(deps.store, deps.npm, pkg);
+    const result = await checkWatchedPackage(deps.store, deps.npm, pkg, deps.notifier);
     if (result.queued) queued += 1;
   }
   return { checked, queued };

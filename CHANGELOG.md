@@ -37,6 +37,7 @@
 - Jira Cloud tickets on trial/Team installs: `*.atlassian.net` only, encrypted email+token, listed project key, event-driven issue create, delivery test that GETs myself+project and never creates a ticket or Watch alert.
 - Team alert routing: min severity, repository, package, teammate assign, and destination. Destinations without a route still receive every alert. Routed tests never invent an incident.
 - Team audit log: append-only admin writes, typed confirmation on destructive actions, and a titles-only export of alerts and notification deliveries. Trial/Team. Solo 403. Unpaid 402. Members may read/export. Never stores URLs, emails, tokens, or secret values.
+- Package Identity Team signals: bounded lookalike names, dormant resurrection, and release burst/version jump on trial/Team installs. Metadata-only candidate checks. Typed allowlist. Not a malware verdict. No auto advisory/takedown.
 - Automatic remediation PRs: Watch opens a reviewable PR with ignore rules, empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files` snippet, and packed-artifact CI if missing. Never merged. 409 copy-paste when Contents+PR write is missing. Customer ignore/policy/workflow files are not overwritten.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.

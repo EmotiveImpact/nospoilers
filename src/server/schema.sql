@@ -423,6 +423,7 @@ CREATE TABLE IF NOT EXISTS package_identity_snapshots (
   homepage TEXT,
   bin_names JSONB NOT NULL,
   lifecycle_scripts JSONB NOT NULL,
+  published_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -446,6 +447,39 @@ CREATE TRIGGER package_identity_snapshots_no_delete
   BEFORE DELETE ON package_identity_snapshots
   FOR EACH ROW EXECUTE PROCEDURE reject_package_identity_snapshot_mutation();
 
+CREATE TABLE IF NOT EXISTS identity_candidates (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT NOT NULL REFERENCES watched_packages (id) ON DELETE CASCADE,
+  candidate_name TEXT NOT NULL,
+  transformation TEXT NOT NULL CHECK (transformation IN (
+    'homoglyph',
+    'adjacent_key',
+    'separator',
+    'token_order',
+    'scope_confusion',
+    'edit_distance'
+  )),
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_checked_at TIMESTAMPTZ,
+  registered_at TIMESTAMPTZ,
+  last_version TEXT,
+  last_published_at TIMESTAMPTZ,
+  allowlisted_at TIMESTAMPTZ,
+  allowlist_reason TEXT,
+  allowlisted_by_login TEXT,
+  UNIQUE (package_id, candidate_name)
+);
+
+CREATE INDEX IF NOT EXISTS identity_candidates_pkg_idx
+  ON identity_candidates (package_id, candidate_name);
+
+CREATE INDEX IF NOT EXISTS identity_candidates_check_idx
+  ON identity_candidates (package_id, last_checked_at ASC NULLS FIRST, id ASC);
+
+CREATE INDEX IF NOT EXISTS identity_candidates_install_idx
+  ON identity_candidates (installation_id, package_id);
+
 CREATE TABLE IF NOT EXISTS audit_events (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -466,7 +500,9 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'member.remove',
     'setup_pr.create',
     'remediation_pr.create',
-    'package.unwatch'
+    'package.unwatch',
+    'identity.allowlist',
+    'identity.revoke_allowlist'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

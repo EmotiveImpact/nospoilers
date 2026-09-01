@@ -38,7 +38,7 @@ import {
   inspectAndQueueRepository,
 } from "./prospects.ts";
 import type { Store } from "./store.ts";
-import type { AlertEventRow, AlertRow, PolicyExceptionRow, ProspectStatus, ReleaseRevisionRow } from "./store.ts";
+import type { AlertEventRow, AlertRow, IdentityCandidateRow, PolicyExceptionRow, ProspectStatus, ReleaseRevisionRow } from "./store.ts";
 import {
   exposureMs,
   findingRules,
@@ -107,6 +107,11 @@ import {
   typedConfirm,
   type AuditAction,
 } from "./audit.ts";
+import {
+  identityPlanDeniedFromBilling,
+  parseAllowlistReason,
+} from "./identity-signals.ts";
+import { createLogNotifier, type AlertNotifier } from "./notifier.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -119,6 +124,7 @@ export type AppDeps = {
   wakeWorker?: () => void;
   slackFetch?: typeof fetch;
   webhookLookup?: WebhookHostLookup;
+  notifier?: AlertNotifier;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -162,6 +168,22 @@ function publicException(row: PolicyExceptionRow) {
     revokedAt: row.revoked_at,
     createdAt: row.created_at,
     active: !row.revoked_at && Number.isFinite(expires) && expires > Date.now(),
+  };
+}
+
+function publicIdentityCandidate(row: IdentityCandidateRow) {
+  return {
+    id: row.id,
+    candidateName: row.candidate_name,
+    transformation: row.transformation,
+    firstSeenAt: row.first_seen_at,
+    lastCheckedAt: row.last_checked_at,
+    registeredAt: row.registered_at,
+    lastVersion: row.last_version,
+    lastPublishedAt: row.last_published_at,
+    allowlisted: Boolean(row.allowlisted_at),
+    allowlistReason: row.allowlist_reason,
+    allowlistedByLogin: row.allowlisted_by_login,
   };
 }
 
@@ -264,6 +286,7 @@ export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const scanFn = deps.scan ?? scan;
   const npm = deps.npm ?? createNpmPort();
+  const notifier = deps.notifier ?? createLogNotifier(deps.store);
   const cookieName = "ns_session";
   const scanLimiter = createRateLimiter({
     limit: deps.config.scanRateLimit,
@@ -1668,7 +1691,7 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching npm packages.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
-    const result = await checkWatchedPackage(deps.store, npm, pkg);
+    const result = await checkWatchedPackage(deps.store, npm, pkg, notifier);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
   });
@@ -1700,6 +1723,7 @@ export function createApp(deps: AppDeps): Hono {
             homepage: snapshot.homepage,
             binNames: snapshot.bin_names,
             lifecycleScripts: snapshot.lifecycle_scripts,
+            publishedAt: snapshot.published_at,
             createdAt: snapshot.created_at,
           }
         : null,
@@ -1734,6 +1758,99 @@ export function createApp(deps: AppDeps): Hono {
         errorStatus(error),
       );
     }
+  });
+
+  app.get("/api/packages/:id/candidates", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const candidates = await deps.store.listIdentityCandidates(pkg.id);
+    return c.json({ candidates: candidates.map(publicIdentityCandidate) });
+  });
+
+  app.post("/api/packages/:id/candidates/:candidateId/allowlist", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const candidateId = Number(c.req.param("candidateId"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, pkg.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const candidate = await deps.store.getIdentityCandidate(candidateId);
+    if (!candidate || candidate.package_id !== pkg.id || candidate.installation_id !== pkg.installation_id) {
+      return c.json({ error: "Unknown lookalike." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, candidate.candidate_name);
+    if (confirmError) return c.json(confirmError, 400);
+    const reason = parseAllowlistReason(body.reason);
+    if (!reason) return c.json({ error: "Give a short reason to allowlist this lookalike." }, 400);
+    const updated = await deps.store.allowlistIdentityCandidate({
+      id: candidate.id,
+      packageId: pkg.id,
+      reason,
+      actorLogin: user.login,
+    });
+    if (!updated) return c.json({ error: "That lookalike is already allowlisted." }, 409);
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: "identity.allowlist",
+      summary: `Allowlisted lookalike ${candidate.candidate_name} on ${pkg.package_name}`,
+      targetKind: "identity_candidate",
+      targetId: candidate.candidate_name,
+    });
+    return c.json({ ok: true, candidate: publicIdentityCandidate(updated) });
+  });
+
+  app.post("/api/packages/:id/candidates/:candidateId/revoke", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const candidateId = Number(c.req.param("candidateId"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, pkg.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const candidate = await deps.store.getIdentityCandidate(candidateId);
+    if (!candidate || candidate.package_id !== pkg.id || candidate.installation_id !== pkg.installation_id) {
+      return c.json({ error: "Unknown lookalike." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, candidate.candidate_name);
+    if (confirmError) return c.json(confirmError, 400);
+    const updated = await deps.store.revokeIdentityAllowlist({
+      id: candidate.id,
+      packageId: pkg.id,
+    });
+    if (!updated) return c.json({ error: "That lookalike is not allowlisted." }, 400);
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: "identity.revoke_allowlist",
+      summary: `Revoked lookalike allowlist ${candidate.candidate_name} on ${pkg.package_name}`,
+      targetKind: "identity_candidate",
+      targetId: candidate.candidate_name,
+    });
+    return c.json({ ok: true, candidate: publicIdentityCandidate(updated) });
   });
 
   app.get("/api/packages/:id/diff", async (c) => {

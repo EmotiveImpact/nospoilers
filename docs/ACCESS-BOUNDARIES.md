@@ -45,6 +45,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
   repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
+- On a trial or Team install, list bounded lookalike candidate names for a protected pack.
+  Metadata-only registry checks (never download or execute lookalike tarballs). Solo paid
+  returns 403. Unpaid returns 402. Another tenant’s package is 404. Alerts are facts, not a
+  malware verdict, and never auto-advisory or takedown.
 - Watch packs from private HTTPS registries already saved on those installations. Token
   values are never returned.
 - Trigger a latest-release scan on those repositories while coverage is active.
@@ -92,8 +96,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
 - Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
-  registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, or open
-  setup or remediation PRs. Those writes need an install admin.
+  registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
+  lookalike names, or open setup or remediation PRs. Those writes need an install admin.
 - See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
@@ -132,6 +136,8 @@ suspend does not block role changes. Email invite is not built.
   merges those PRs. Required Contents write and Pull requests write are shown before the
   button. Existing customer ignore/policy/workflow files are not overwritten. This is not
   make-private, asset deletion, or workflow disable.
+- Allowlist or revoke a lookalike candidate on a protected pack (reason required; type the
+  candidate name). Audit entries record the public package and candidate names only.
 
 **Must not**
 
@@ -237,8 +243,11 @@ proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan r
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
 SSRF CI URLs, and keep older HMAC receipts verifiable. `tests/package-identity.test.ts`
-proves arbitrary npm names cannot be protected, identity snapshots are append-only, and
-maintainer/repository/shape alerts never store emails or issue a malware verdict.
+proves arbitrary npm names cannot be protected, identity snapshots are append-only,
+maintainer/repository/shape alerts never store emails or issue a malware verdict, lookalike
+generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid
+402), registration/version/dormant/burst/jump alerts never download lookalike tarballs or
+claim malware, and allowlisting skips further lookalike alerts.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, and other tenants cannot read those jobs.

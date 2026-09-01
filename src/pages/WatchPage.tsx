@@ -182,6 +182,27 @@ type AuditView =
   | { status: "ended" }
   | { status: "error"; message: string };
 
+type IdentityCandidateView = {
+  id: number;
+  candidateName: string;
+  transformation: string;
+  firstSeenAt: string;
+  lastCheckedAt: string | null;
+  registeredAt: string | null;
+  lastVersion: string | null;
+  lastPublishedAt: string | null;
+  allowlisted: boolean;
+  allowlistReason: string | null;
+  allowlistedByLogin: string | null;
+};
+
+type IdentitySignalsView =
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "solo" }
+  | { status: "ended" }
+  | { status: "error"; message: string };
+
 type Confirming =
   | { kind: "destination"; id: number; expected: string }
   | { kind: "route"; id: number; expected: string }
@@ -189,6 +210,8 @@ type Confirming =
   | { kind: "package"; id: number; expected: string }
   | { kind: "token"; id: number; expected: string }
   | { kind: "exception"; id: number; expected: string }
+  | { kind: "identity-allowlist"; packageId: number; id: number; expected: string; reason: string }
+  | { kind: "identity-revoke"; packageId: number; id: number; expected: string }
   | { kind: "member"; userId: string; expected: string }
   | { kind: "role"; userId: string; expected: string; role: "admin" | "member" };
 
@@ -206,6 +229,10 @@ function confirmActionLabel(row: Confirming): string {
       return "revoke this scan token";
     case "exception":
       return "revoke this allowlist entry";
+    case "identity-allowlist":
+      return "allowlist this lookalike";
+    case "identity-revoke":
+      return "revoke this lookalike allowlist";
     case "member":
       return "remove this member";
     case "role":
@@ -755,6 +782,11 @@ export function WatchPage({ search }: { search: string }) {
   const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
   const [audit, setAudit] = useState<AuditView>({ status: "loading" });
   const [auditExportError, setAuditExportError] = useState<string | null>(null);
+  const [identitySignals, setIdentitySignals] = useState<IdentitySignalsView>({ status: "loading" });
+  const [candidatesByPackage, setCandidatesByPackage] = useState<Record<number, IdentityCandidateView[]>>(
+    {},
+  );
+  const [allowReasonByCandidate, setAllowReasonByCandidate] = useState<Record<number, string>>({});
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -769,6 +801,7 @@ export function WatchPage({ search }: { search: string }) {
     setPackages({ status: "loading" });
     setTimeline({ status: "loading" });
     setAudit({ status: "loading" });
+    setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
       const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
@@ -851,6 +884,35 @@ export function WatchPage({ search }: { search: string }) {
       } else {
         setAudit({ status: "ready", rows: auditBody.rows ?? [] });
       }
+      const nextCandidates: Record<number, IdentityCandidateView[]> = {};
+      let identityStatus: IdentitySignalsView = { status: "ready" };
+      for (const row of protectionBody.protections) {
+        const candidatesResponse = await fetch(q(`/api/packages/${row.packageId}/candidates`), {
+          credentials: "include",
+        });
+        const candidatesBody = (await candidatesResponse.json()) as {
+          error?: string;
+          candidates?: IdentityCandidateView[];
+        };
+        if (candidatesResponse.status === 402) {
+          identityStatus = { status: "ended" };
+          break;
+        }
+        if (candidatesResponse.status === 403) {
+          identityStatus = { status: "solo" };
+          break;
+        }
+        if (!candidatesResponse.ok) {
+          identityStatus = {
+            status: "error",
+            message: candidatesBody.error ?? "Could not load lookalike names.",
+          };
+          break;
+        }
+        nextCandidates[row.packageId] = candidatesBody.candidates ?? [];
+      }
+      setIdentitySignals(identityStatus);
+      setCandidatesByPackage(nextCandidates);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -867,6 +929,7 @@ export function WatchPage({ search }: { search: string }) {
       setPackages({ status: "error", message });
       setTimeline({ status: "error", message });
       setAudit({ status: "error", message });
+      setIdentitySignals({ status: "error", message });
       setMembers([]);
       setMembersError(message);
     }
@@ -930,6 +993,26 @@ export function WatchPage({ search }: { search: string }) {
             headers,
             body: JSON.stringify({ confirm }),
           });
+        } else if (confirming.kind === "identity-allowlist") {
+          response = await fetch(
+            `/api/packages/${confirming.packageId}/candidates/${confirming.id}/allowlist`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers,
+              body: JSON.stringify({ confirm, reason: confirming.reason }),
+            },
+          );
+        } else if (confirming.kind === "identity-revoke") {
+          response = await fetch(
+            `/api/packages/${confirming.packageId}/candidates/${confirming.id}/revoke`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers,
+              body: JSON.stringify({ confirm }),
+            },
+          );
         } else if (confirming.kind === "member") {
           if (!installId) throw new Error("Choose a GitHub installation.");
           response = await fetch(`/api/installations/${installId}/members/${confirming.userId}`, {
@@ -2510,8 +2593,25 @@ export function WatchPage({ search }: { search: string }) {
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>. Public
           packs use registry.npmjs.org. Private registries need an encrypted token (never shown
           again). Tarball hosts must match the saved registry. Source is not kept. Protect identity
-          only after the npm scope or GitHub repository field matches this install.
+          only after the npm scope or GitHub repository field matches this install. Trial and Team
+          installs then generate bounded lookalike names and watch dormant resurrection and release
+          bursts. That is not a malware verdict.
         </p>
+        {previewing ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Preview cannot watch lookalike names. No invented incident.
+          </p>
+        ) : deskCoverage?.plan === "solo" ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Lookalike, dormant, and burst signals are on Team.
+          </p>
+        ) : ended ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Subscribe to Team to watch lookalike names.
+          </p>
+        ) : identitySignals.status === "error" ? (
+          <p className="mt-4 max-w-xl text-sm text-danger">{identitySignals.message}</p>
+        ) : null}
         {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
         {!previewing && packages.status === "error" && (
           <p className="mt-6 text-sm text-danger">{packages.message}</p>
@@ -2688,6 +2788,7 @@ export function WatchPage({ search }: { search: string }) {
             {deskPackages.map((pkg) => {
               const diffState = diffByPackage[pkg.id];
               const protection = protections.find((row) => row.packageId === pkg.id);
+              const candidates = candidatesByPackage[pkg.id] ?? [];
               return (
                 <li key={pkg.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -2857,6 +2958,99 @@ export function WatchPage({ search }: { search: string }) {
                     </div>
                   </div>
                   {confirmForm(confirming?.kind === "package" && confirming.id === pkg.id)}
+                  {protection && identitySignals.status === "ready" && candidates.length > 0 ? (
+                    <div className="mt-4 max-w-xl">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Lookalike names</p>
+                      <ul className="mt-2 divide-y divide-white/5">
+                        {candidates.map((candidate) => (
+                          <li key={candidate.id} className="py-3">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                              <p className="font-mono text-xs text-snow">{candidate.candidateName}</p>
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                                {candidate.transformation.replaceAll("_", " ")}
+                                {candidate.allowlisted ? " · allowlisted" : ""}
+                                {candidate.registeredAt && !candidate.allowlisted
+                                  ? ` · registered${candidate.lastVersion ? ` ${candidate.lastVersion}` : ""}`
+                                  : ""}
+                              </p>
+                            </div>
+                            {candidate.allowlisted && candidate.allowlistReason ? (
+                              <p className="mt-1 text-xs text-mute">{candidate.allowlistReason}</p>
+                            ) : null}
+                            {installAdmin && !candidate.allowlisted ? (
+                              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+                                <label className="min-w-0 flex-1">
+                                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                                    Reason
+                                  </span>
+                                  <input
+                                    value={allowReasonByCandidate[candidate.id] ?? ""}
+                                    onChange={(event) =>
+                                      setAllowReasonByCandidate((current) => ({
+                                        ...current,
+                                        [candidate.id]: event.target.value,
+                                      }))
+                                    }
+                                    placeholder="Benign package we already trust"
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    disabled={previewing || locked}
+                                    className="mt-1 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                                  />
+                                </label>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    previewing ||
+                                    locked ||
+                                    confirmBusy ||
+                                    !(allowReasonByCandidate[candidate.id] ?? "").trim()
+                                  }
+                                  onClick={() =>
+                                    beginConfirm({
+                                      kind: "identity-allowlist",
+                                      packageId: pkg.id,
+                                      id: candidate.id,
+                                      expected: candidate.candidateName,
+                                      reason: (allowReasonByCandidate[candidate.id] ?? "").trim(),
+                                    })
+                                  }
+                                >
+                                  Allowlist
+                                </Button>
+                              </div>
+                            ) : null}
+                            {installAdmin && candidate.allowlisted ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="mt-2"
+                                disabled={previewing || locked || confirmBusy}
+                                onClick={() =>
+                                  beginConfirm({
+                                    kind: "identity-revoke",
+                                    packageId: pkg.id,
+                                    id: candidate.id,
+                                    expected: candidate.candidateName,
+                                  })
+                                }
+                              >
+                                Revoke allowlist
+                              </Button>
+                            ) : null}
+                            {confirmForm(
+                              (confirming?.kind === "identity-allowlist" ||
+                                confirming?.kind === "identity-revoke") &&
+                                confirming.id === candidate.id,
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {diffState && "error" in diffState ? (
                     <p className="mt-3 text-sm text-danger">{diffState.error}</p>
                   ) : null}

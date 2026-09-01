@@ -20,6 +20,8 @@ export const AUDIT_ACTIONS = [
   "setup_pr.create",
   "remediation_pr.create",
   "package.unwatch",
+  "identity.allowlist",
+  "identity.revoke_allowlist",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -41,7 +41,7 @@ export function PricingPage() {
             <li>Unlimited-feeling visibility alerts</li>
             <li>Hosted pack scans, higher fair use</li>
             <li>CLI included</li>
-            <li>Slack + Jira + routing + 90-day timeline + roles + audit export</li>
+            <li>Slack + Jira + routing + 90-day timeline + roles + audit export + identity signals</li>
           </ul>
           <Button type="button" className="mt-8" onClick={() => navigate("/watch?as=trial")}>
             Start trial

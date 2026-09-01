@@ -28,6 +28,8 @@ export type NpmPack = {
   integrity: string | null;
   bytes: number | null;
   identity: PackageIdentityFacts;
+  publishedAt?: Date | null;
+  recentVersions?: Array<{ version: string; publishedAt: Date }>;
 };
 
 export type NpmPort = {
@@ -101,6 +103,7 @@ type RegistryBody = {
   maintainers?: unknown;
   repository?: unknown;
   homepage?: unknown;
+  time?: Record<string, string>;
   "dist-tags"?: NpmDistTags;
   versions?: Record<
     string,
@@ -119,6 +122,28 @@ type RegistryBody = {
     }
   >;
 };
+
+export function parseRegistryTimes(
+  time: Record<string, string> | undefined,
+  version: string,
+  now = Date.now(),
+): { publishedAt: Date | null; recentVersions: Array<{ version: string; publishedAt: Date }> } {
+  if (!time) return { publishedAt: null, recentVersions: [] };
+  const versionStamp = time[version];
+  const publishedAtRaw = versionStamp ? new Date(versionStamp) : null;
+  const publishedAt =
+    publishedAtRaw && !Number.isNaN(publishedAtRaw.getTime()) ? publishedAtRaw : null;
+  const recentVersions: Array<{ version: string; publishedAt: Date }> = [];
+  const since = now - 7 * 24 * 60 * 60 * 1000;
+  for (const [key, iso] of Object.entries(time)) {
+    if (key === "created" || key === "modified") continue;
+    const at = new Date(iso);
+    if (Number.isNaN(at.getTime())) continue;
+    if (at.getTime() >= since) recentVersions.push({ version: key, publishedAt: at });
+  }
+  recentVersions.sort((a, b) => a.publishedAt.getTime() - b.publishedAt.getTime());
+  return { publishedAt, recentVersions };
+}
 
 function repositoryUrlFrom(raw: unknown): string | null {
   if (typeof raw === "string") return asHttpsMetadataUrl(raw) ?? (raw.trim() || null);
@@ -145,6 +170,7 @@ export function packFromRegistry(
   if (!dist?.tarball || typeof dist.tarball !== "string") return null;
   allowedNpmTarballUrl(dist.tarball, allowedHost);
   const versionMeta = body.versions?.[version];
+  const times = parseRegistryTimes(body.time, version);
   return {
     name: typeof body.name === "string" ? body.name : packageName,
     version,
@@ -153,6 +179,8 @@ export function packFromRegistry(
     shasum: typeof dist.shasum === "string" ? dist.shasum : null,
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
+    publishedAt: times.publishedAt,
+    recentVersions: times.recentVersions,
     identity: {
       maintainers: normalizeMaintainerNames(versionMeta?.maintainers ?? body.maintainers),
       repositoryUrl:

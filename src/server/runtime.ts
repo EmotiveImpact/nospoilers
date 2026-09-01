@@ -40,6 +40,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     store,
     github,
     npm,
+    notifier,
     wakeWorker: () => {
       void worker.tick();
     },

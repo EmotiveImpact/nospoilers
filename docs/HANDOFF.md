@@ -26,13 +26,13 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-three product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-four product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
-  `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`, and
-  `019_audit_events` are applied. Hosted
+  `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
+  `019_audit_events`, and `020_identity_signals` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -95,7 +95,10 @@ Read in this order:
   `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
   return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
   revisions; preview invents none. Watch **Protect identity** verifies npm scope or GitHub
-  repository ownership before snapshotting maintainers and metadata.
+  repository ownership before snapshotting maintainers and metadata. Trial and Team installs
+  generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
+  resurrection, and release-burst/version-jump alerts. Admins allowlist with a reason and typed
+  candidate name. This is not a malware verdict and not auto advisory/takedown.
 - Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
   permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
   **Install health** lists this install's jobs (no payloads, no prospect scans). GitHub
@@ -187,6 +190,8 @@ includes secrets; Solo 403; unpaid 402; members may read/export).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
 GitHub suspend does not block; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
+Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump;
+trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

@@ -283,7 +283,24 @@ export type PackageIdentitySnapshotRow = {
   homepage: string | null;
   bin_names: string[];
   lifecycle_scripts: string[];
+  published_at: string | null;
   created_at: string;
+};
+
+export type IdentityCandidateRow = {
+  id: number;
+  installation_id: number;
+  package_id: number;
+  candidate_name: string;
+  transformation: string;
+  first_seen_at: string;
+  last_checked_at: string | null;
+  registered_at: string | null;
+  last_version: string | null;
+  last_published_at: string | null;
+  allowlisted_at: string | null;
+  allowlist_reason: string | null;
+  allowlisted_by_login: string | null;
 };
 
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
@@ -341,6 +358,7 @@ function packageIdentitySnapshotRow(row: {
   homepage: string | null;
   bin_names: unknown;
   lifecycle_scripts: unknown;
+  published_at?: string | Date | null;
   created_at: string | Date;
 }): PackageIdentitySnapshotRow {
   return {
@@ -353,7 +371,40 @@ function packageIdentitySnapshotRow(row: {
     homepage: row.homepage,
     bin_names: asStringArray(row.bin_names),
     lifecycle_scripts: asStringArray(row.lifecycle_scripts),
+    published_at: iso(row.published_at ?? null),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function identityCandidateRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  candidate_name: string;
+  transformation: string;
+  first_seen_at: string | Date;
+  last_checked_at: string | Date | null;
+  registered_at: string | Date | null;
+  last_version: string | null;
+  last_published_at: string | Date | null;
+  allowlisted_at: string | Date | null;
+  allowlist_reason: string | null;
+  allowlisted_by_login: string | null;
+}): IdentityCandidateRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: num(row.package_id),
+    candidate_name: row.candidate_name,
+    transformation: row.transformation,
+    first_seen_at: iso(row.first_seen_at) ?? new Date().toISOString(),
+    last_checked_at: iso(row.last_checked_at),
+    registered_at: iso(row.registered_at),
+    last_version: row.last_version,
+    last_published_at: iso(row.last_published_at),
+    allowlisted_at: iso(row.allowlisted_at),
+    allowlist_reason: row.allowlist_reason,
+    allowlisted_by_login: row.allowlisted_by_login,
   };
 }
 
@@ -2003,6 +2054,7 @@ export function createStore(
         homepage: string | null;
         bin_names: unknown;
         lifecycle_scripts: unknown;
+        published_at: string | Date | null;
         created_at: string | Date;
       }>(
         `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -2020,6 +2072,7 @@ export function createStore(
       homepage?: string | null;
       binNames: string[];
       lifecycleScripts: string[];
+      publishedAt?: string | Date | null;
     }): Promise<PackageIdentitySnapshotRow> {
       const { rows } = await sql.query<{
         id: unknown;
@@ -2031,13 +2084,14 @@ export function createStore(
         homepage: string | null;
         bin_names: unknown;
         lifecycle_scripts: unknown;
+        published_at: string | Date | null;
         created_at: string | Date;
       }>(
         `INSERT INTO package_identity_snapshots (
            installation_id, package_id, version, maintainers, repository_url, homepage,
-           bin_names, lifecycle_scripts
+           bin_names, lifecycle_scripts, published_at
          )
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz)
          RETURNING *`,
         [
           input.installationId,
@@ -2048,10 +2102,186 @@ export function createStore(
           input.homepage ?? null,
           JSON.stringify(input.binNames),
           JSON.stringify(input.lifecycleScripts),
+          input.publishedAt ? iso(input.publishedAt) : null,
         ],
       );
       if (!rows[0]) throw new Error("package identity snapshot insert returned no row");
       return packageIdentitySnapshotRow(rows[0]);
+    },
+
+    async insertIdentityCandidates(input: {
+      installationId: number;
+      packageId: number;
+      candidates: Array<{ name: string; transformation: string }>;
+    }): Promise<number> {
+      let inserted = 0;
+      for (const candidate of input.candidates) {
+        const { rows } = await sql.query<{ id: unknown }>(
+          `INSERT INTO identity_candidates (
+             installation_id, package_id, candidate_name, transformation
+           )
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (package_id, candidate_name) DO NOTHING
+           RETURNING id`,
+          [input.installationId, input.packageId, candidate.name, candidate.transformation],
+        );
+        if (rows[0]) inserted += 1;
+      }
+      return inserted;
+    },
+
+    async listIdentityCandidates(packageId: number): Promise<IdentityCandidateRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        candidate_name: string;
+        transformation: string;
+        first_seen_at: string | Date;
+        last_checked_at: string | Date | null;
+        registered_at: string | Date | null;
+        last_version: string | null;
+        last_published_at: string | Date | null;
+        allowlisted_at: string | Date | null;
+        allowlist_reason: string | null;
+        allowlisted_by_login: string | null;
+      }>(
+        `SELECT * FROM identity_candidates WHERE package_id = $1 ORDER BY candidate_name ASC, id ASC`,
+        [packageId],
+      );
+      return rows.map(identityCandidateRow);
+    },
+
+    async getIdentityCandidate(id: number): Promise<IdentityCandidateRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        candidate_name: string;
+        transformation: string;
+        first_seen_at: string | Date;
+        last_checked_at: string | Date | null;
+        registered_at: string | Date | null;
+        last_version: string | null;
+        last_published_at: string | Date | null;
+        allowlisted_at: string | Date | null;
+        allowlist_reason: string | null;
+        allowlisted_by_login: string | null;
+      }>(`SELECT * FROM identity_candidates WHERE id = $1`, [id]);
+      return rows[0] ? identityCandidateRow(rows[0]) : null;
+    },
+
+    async listDueIdentityCandidates(packageId: number, limit: number): Promise<IdentityCandidateRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        candidate_name: string;
+        transformation: string;
+        first_seen_at: string | Date;
+        last_checked_at: string | Date | null;
+        registered_at: string | Date | null;
+        last_version: string | null;
+        last_published_at: string | Date | null;
+        allowlisted_at: string | Date | null;
+        allowlist_reason: string | null;
+        allowlisted_by_login: string | null;
+      }>(
+        `SELECT * FROM identity_candidates
+         WHERE package_id = $1 AND allowlisted_at IS NULL
+         ORDER BY last_checked_at ASC NULLS FIRST, id ASC
+         LIMIT $2`,
+        [packageId, limit],
+      );
+      return rows.map(identityCandidateRow);
+    },
+
+    async touchIdentityCandidateCheck(id: number): Promise<void> {
+      await sql.query(`UPDATE identity_candidates SET last_checked_at = now() WHERE id = $1`, [id]);
+    },
+
+    async recordIdentityCandidatePack(input: {
+      id: number;
+      registeredAt: string | Date;
+      lastVersion: string;
+      lastPublishedAt?: string | Date | null;
+    }): Promise<void> {
+      await sql.query(
+        `UPDATE identity_candidates
+         SET last_checked_at = now(),
+             registered_at = COALESCE(registered_at, $2::timestamptz),
+             last_version = $3,
+             last_published_at = $4::timestamptz
+         WHERE id = $1`,
+        [
+          input.id,
+          iso(input.registeredAt),
+          input.lastVersion,
+          input.lastPublishedAt ? iso(input.lastPublishedAt) : null,
+        ],
+      );
+    },
+
+    async allowlistIdentityCandidate(input: {
+      id: number;
+      packageId: number;
+      reason: string;
+      actorLogin: string;
+    }): Promise<IdentityCandidateRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        candidate_name: string;
+        transformation: string;
+        first_seen_at: string | Date;
+        last_checked_at: string | Date | null;
+        registered_at: string | Date | null;
+        last_version: string | null;
+        last_published_at: string | Date | null;
+        allowlisted_at: string | Date | null;
+        allowlist_reason: string | null;
+        allowlisted_by_login: string | null;
+      }>(
+        `UPDATE identity_candidates
+         SET allowlisted_at = now(),
+             allowlist_reason = $3,
+             allowlisted_by_login = $4
+         WHERE id = $1 AND package_id = $2 AND allowlisted_at IS NULL
+         RETURNING *`,
+        [input.id, input.packageId, input.reason, input.actorLogin],
+      );
+      return rows[0] ? identityCandidateRow(rows[0]) : null;
+    },
+
+    async revokeIdentityAllowlist(input: {
+      id: number;
+      packageId: number;
+    }): Promise<IdentityCandidateRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        candidate_name: string;
+        transformation: string;
+        first_seen_at: string | Date;
+        last_checked_at: string | Date | null;
+        registered_at: string | Date | null;
+        last_version: string | null;
+        last_published_at: string | Date | null;
+        allowlisted_at: string | Date | null;
+        allowlist_reason: string | null;
+        allowlisted_by_login: string | null;
+      }>(
+        `UPDATE identity_candidates
+         SET allowlisted_at = NULL,
+             allowlist_reason = NULL,
+             allowlisted_by_login = NULL
+         WHERE id = $1 AND package_id = $2 AND allowlisted_at IS NOT NULL
+         RETURNING *`,
+        [input.id, input.packageId],
+      );
+      return rows[0] ? identityCandidateRow(rows[0]) : null;
     },
 
     async countWatchedPackages(installationId: number): Promise<number> {

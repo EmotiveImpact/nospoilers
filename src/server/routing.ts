@@ -33,6 +33,8 @@ const CRITICAL_KINDS = new Set([
   "package_maintainer_changed",
   "package_repository_mismatch",
   "release_digest_mismatch",
+  "identity_lookalike_registered",
+  "identity_dormant",
 ]);
 
 const REPO_FULL_NAME_RE = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
@@ -74,7 +76,7 @@ export function alertSeverity(input: { kind: string; findings?: Finding[] }): Al
   if (input.findings?.some((row) => row.severity === "critical")) return "critical";
   if (CRITICAL_KINDS.has(input.kind)) return "critical";
   if (input.findings?.some((row) => row.severity === "warn")) return "warn";
-  if (input.kind.startsWith("package_") || input.kind === "app_unsuspended") return "warn";
+  if (input.kind.startsWith("package_") || input.kind.startsWith("identity_") || input.kind === "app_unsuspended") return "warn";
   if (input.kind === "fork" || input.kind === "npm_dist_tag") return "warn";
   return "info";
 }
