@@ -65,7 +65,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Source archives and backup files | Built: BAK-001 | NoSpoilers |
 | Database exports/dumps | Built: DB-001 | NoSpoilers |
 | SSH/cloud/service-account configuration | Partial: `.ssh/`, kube, AWS, Docker, service-account files | NoSpoilers |
-| Crash dumps and additional debug symbols | Planned | NoSpoilers |
+| Crash dumps and additional debug symbols | Built: CRASH-001 for cores/minidumps (never executed); DBG-001 for extra symbols/crash logs | NoSpoilers |
 | Build caches/compiler metadata | Partial | NoSpoilers |
 | Internal documentation and roadmaps | Partial: ROADMAP/HANDOFF/TODO/PRD filenames | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |

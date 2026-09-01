@@ -103,6 +103,46 @@ describe("scan", () => {
     );
   });
 
+  it("fails crash dumps and ELF cores without executing them", async () => {
+    const minidump = Buffer.concat([Buffer.from("MDMP"), Buffer.alloc(12, 0)]);
+    const elfCore = Buffer.from([
+      0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x04, 0x00, 0x00, 0x00,
+    ]);
+    const elfShared = Buffer.from([
+      0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x03, 0x00, 0x00, 0x00,
+    ]);
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-crash-"));
+    try {
+      await writeFile(path.join(dir, "core"), "deadbeef");
+      await writeFile(path.join(dir, "core.4412"), "deadbeef");
+      await writeFile(path.join(dir, "app.dmp"), minidump);
+      await writeFile(path.join(dir, "anonymous.bin"), elfCore);
+      await writeFile(path.join(dir, "libfoo.so"), elfShared);
+      await writeFile(path.join(dir, "core.js"), "export const core = 1\n");
+      await writeFile(path.join(dir, "coverage.gcno"), "notes");
+      const report = await scan(dir);
+      const rules = report.findings.map((row) => `${row.rule}:${row.path}`);
+      expect(rules).toEqual(
+        expect.arrayContaining([
+          "CRASH-001:core",
+          "CRASH-001:core.4412",
+          "CRASH-001:app.dmp",
+          "CRASH-001:anonymous.bin",
+          "DBG-001:coverage.gcno",
+        ]),
+      );
+      expect(rules.some((row) => row === "CRASH-001:libfoo.so")).toBe(false);
+      expect(rules.some((row) => row.startsWith("CRASH-001:core.js"))).toBe(false);
+      expect(report.findings.find((row) => row.rule === "CRASH-001")?.severity).toBe("critical");
+      expect(report.ok).toBe(false);
+      expect(report.status).toBe("failed-policy");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("fails an Electron asar that contains a source map", async () => {
     const { createPackage } = await import("@electron/asar");
     const dir = await mkdtemp(path.join(os.tmpdir(), "ns-asar-"));

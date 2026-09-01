@@ -66,6 +66,8 @@ Read in this order:
   `pnpm-workspace.yaml`, yarn/bun lockfile presence). Members are listed on the report, receipt,
   SARIF properties, alerts, and Checks. They are never executed and never auto-connected as
   watched packages.
+- Crash dumps, Windows minidumps, and ELF `ET_CORE` files fail as CRASH-001 (never executed).
+  Extra DWARF/gcov/breakpad symbols stay DBG-001 warnings.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.

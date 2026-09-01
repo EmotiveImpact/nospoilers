@@ -14,8 +14,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
   TypeScript/JSX, abnormal size, nested packs, backups, and internal docs.
-- Additional critical paths: database dumps and escaping symlinks. Nested tgz/zip/asar are unpacked
-  for inspection (never executed) up to three levels.
+- Additional critical paths: database dumps, crash dumps/minidumps/ELF cores, and escaping
+  symlinks. Nested tgz/zip/asar are unpacked for inspection (never executed) up to three levels.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,

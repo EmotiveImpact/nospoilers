@@ -112,12 +112,39 @@ function aiContextFile(rel: string, base: string): boolean {
 function debugArtifact(rel: string, base: string): boolean {
   const lower = rel.toLowerCase();
   return (
-    /\.(?:pdb|ilk|exp|symbols?|dmp|tsbuildinfo)$/i.test(base) ||
+    /\.(?:pdb|ilk|exp|symbols?|dwo|dwp|gcno|gcda|sym|crash|tsbuildinfo)$/i.test(base) ||
     /(?:^|\/)[^/]+\.dsym(?:\/|$)/i.test(lower) ||
     /(?:^|\/)(?:npm-debug|yarn-debug|yarn-error|debug)\.log$/i.test(lower) ||
+    /(?:^|\/)hs_err_pid\d+\.log$/i.test(lower) ||
     /(?:^|\/)(?:webpack-)?stats\.json$/i.test(lower) ||
+    /(?:^|\/)perf\.data$/i.test(lower) ||
     base === ".DS_Store"
   );
+}
+
+function crashDumpName(base: string): boolean {
+  return (
+    /\.(?:dmp|mdmp|hdmp)$/i.test(base) ||
+    /^core(?:\.\d+)?$/i.test(base) ||
+    /^vgcore\.\d+$/i.test(base)
+  );
+}
+
+function isMinidump(buf: Buffer): boolean {
+  return buf.length >= 4 && buf.subarray(0, 4).equals(Buffer.from("MDMP"));
+}
+
+function isElfCore(buf: Buffer): boolean {
+  if (buf.length < 18) return false;
+  if (buf[0] !== 0x7f || buf[1] !== 0x45 || buf[2] !== 0x4c || buf[3] !== 0x46) return false;
+  const data = buf[5];
+  if (data !== 1 && data !== 2) return false;
+  const type = data === 2 ? buf.readUInt16BE(16) : buf.readUInt16LE(16);
+  return type === 4;
+}
+
+function crashDump(base: string, buf: Buffer): boolean {
+  return crashDumpName(base) || isMinidump(buf) || isElfCore(buf);
 }
 
 export function isNestedPack(filePath: string): boolean {
@@ -271,6 +298,17 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
       path: rel,
       title: "Database dump shipped",
       detail: "SQL or database files do not belong in a public package or installer.",
+    });
+  }
+
+  if (crashDump(base, buf)) {
+    findings.push({
+      rule: "CRASH-001",
+      severity: "critical",
+      path: rel,
+      title: "Crash dump shipped",
+      detail:
+        "Core dumps and minidumps contain process memory. They are spoilers, not release artifacts.",
     });
   }
 
