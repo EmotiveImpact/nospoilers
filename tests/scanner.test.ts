@@ -143,4 +143,19 @@ describe("scan", () => {
       await expect(scan(dir, { maxUnpackedBytes: 8 })).rejects.toThrow("unpacked limit");
     });
   });
+
+  it("stops a compressed ZIP before it can exceed the unpacked budget", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    zip.file("payload.txt", "x".repeat(100_000));
+    const target = path.join(os.tmpdir(), `ns-limit-${Date.now()}.zip`);
+    try {
+      await writeFile(target, await zip.generateAsync({ type: "nodebuffer" }));
+      await expect(scan(target, { maxUnpackedBytes: 10_000 })).rejects.toThrow(
+        "unpacked limit",
+      );
+    } finally {
+      await rm(target, { force: true });
+    }
+  });
 });
