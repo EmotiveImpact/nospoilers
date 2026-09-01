@@ -124,7 +124,8 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
 - `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
   (HTTP 200) → job `repo_created_public` done → “was created public”. Fixture release scan is not
   proven yet.
-- Stripe, production deployment, and real notification delivery do not exist.
+- Stripe, production deployment, and email (Resend) do not exist. Slack incoming webhooks
+  are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
 
