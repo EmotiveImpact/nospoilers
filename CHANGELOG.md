@@ -4,6 +4,7 @@
 
 - Connected the application runtime to Neon `NoSpoilers` / `production` / `neondb`.
 - Documented access boundaries; customer sessions cannot read Artifact Leads.
+- Allowed the Cloudflare tunnel host so GitHub can reach `/api/webhooks/github`.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk
   PRD, and a standalone Employee Public Footprint PRD.
