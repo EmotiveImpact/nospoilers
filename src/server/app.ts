@@ -2618,6 +2618,14 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/receipts/verify", async (c) => {
+    const verifyLimited = rateLimited(
+      c,
+      scanLimiter,
+      `verify:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many receipt checks from this address. Wait and try again.",
+    );
+    if (verifyLimited) return verifyLimited;
     const body = jsonObj(await c.req.json().catch(() => ({})));
     const raw =
       typeof body.receipt === "string"
@@ -2629,11 +2637,15 @@ export function createApp(deps: AppDeps): Hono {
     const expected = typeof body.sha256 === "string" ? body.sha256 : undefined;
     const result = verifyReceipt(raw, deps.config.receiptSecret, expected);
     if (!result.ok) return c.json({ ok: false, reason: result.reason }, 400);
+    const receipt = result.receipt;
     return c.json({
       ok: true,
-      status: result.receipt?.status,
-      coordinate: result.receipt?.coordinate,
-      artifactSha256: result.receipt?.artifactSha256,
+      status: receipt?.status,
+      receiptOk: receipt?.ok ?? false,
+      coordinate: receipt?.coordinate,
+      artifactSha256: receipt?.artifactSha256,
+      findingCount: receipt?.findingCount ?? 0,
+      inconclusiveReason: receipt?.inconclusiveReason ?? null,
     });
   });
 

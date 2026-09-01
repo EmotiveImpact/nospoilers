@@ -29,7 +29,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     heading: "GitHub Watch",
     paragraphs: [
-      "Webhooks acknowledge HTTP 200 without unpacking. Work is queued and the worker wakes immediately. Light jobs cover private→public, born-public, transfer, collaborator added, fork, and cheap push hits on *.map / .env. Heavy jobs unpack GitHub Release packs when a release is published, and again when pack assets change. Unpublishing or deleting a release is an alert only; gone assets are not downloaded.",
+      "Webhooks acknowledge HTTP 200 without unpacking. Work is queued and the worker wakes immediately. Light jobs cover private→public, born-public, transfer, collaborator added, fork, and cheap push hits on *.map / .env. Heavy jobs unpack GitHub Release packs when a release is published, and again when pack assets change. Unpublishing or deleting a release is an alert only; gone assets are not downloaded. If the user or org the App is installed on is renamed, Watch updates that account login in place. No extra job.",
       "An hourly poller re-checks visibility if a webhook was missed. It does not download every latest release every hour. Watch Setup PR adds CI that scans each existing package.tgz and dist/ pack (cap 8) and fails closed if none exist. Source pushes are not unpacked. After you merge, mark the NoSpoilers check required if you want CI to block.",
     ],
   },
@@ -37,6 +37,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     heading: "Packed scans",
     paragraphs: [
       "Drop a pack on Scan, publish a GitHub Release asset, watch an npm package, crawl an HTTPS origin, or POST /api/v1/scan with a hashed token. Classification uses magic bytes, not the extension alone. Nested archives unpack for inspection up to three levels. Encrypted zip, CRX without a ZIP payload, and encrypted image layers are inconclusive, never a passing receipt.",
+      "Check a signed receipt JSON on Scan without unpacking. The optional pack is hashed in the browser; those bytes are not uploaded. An authentic failed-policy or inconclusive receipt is not a clean bill of health. The CLI is `npx nospoilers verify ./package.tgz --receipt receipt.json`. Coverage ended still allows this check.",
       "Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB per file, 90 seconds. Hitting a limit is inconclusive. Bytes are deleted when the job finishes. Hosted scans from one address are rate-limited. Sign-in and internal discovery are rate-limited too. GitHub webhooks are not; they must stay 200 so deliveries retry.",
     ],
   },

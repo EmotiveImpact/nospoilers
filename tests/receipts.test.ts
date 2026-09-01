@@ -697,6 +697,183 @@ describe("hosted receipts", () => {
   });
 });
 
+describe("public receipt verify", () => {
+  it("checks a receipt without a session and does not call failed-policy clean", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const config = loadConfig({
+        githubWebhookSecret: "wh",
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        receiptSecret: SECRET,
+      });
+      const app = createApp({
+        config,
+        store,
+        github: mockGithub(),
+      });
+      const passing = signReceipt(buildUnsignedReceipt(passedReport(), "npm:clean@1.0.0"), SECRET);
+      const failed = signReceipt(
+        buildUnsignedReceipt(
+          passedReport({
+            ok: false,
+            status: "failed-policy",
+            findings: [
+              {
+                rule: "MAP-001",
+                severity: "critical",
+                path: "package/app.js.map",
+                title: "Source map",
+                detail: "map",
+              },
+            ],
+          }),
+          "npm:leaky@1.0.0",
+        ),
+        SECRET,
+      );
+
+      const anonymous = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: passing }),
+      });
+      expect(anonymous.status).toBe(200);
+      expect(await anonymous.json()).toMatchObject({
+        ok: true,
+        status: "passed",
+        receiptOk: true,
+        coordinate: "npm:clean@1.0.0",
+      });
+
+      const leak = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: failed }),
+      });
+      expect(leak.status).toBe(200);
+      const leakBody = (await leak.json()) as {
+        ok: boolean;
+        status: string;
+        receiptOk: boolean;
+        findingCount: number;
+      };
+      expect(leakBody.ok).toBe(true);
+      expect(leakBody.status).toBe("failed-policy");
+      expect(leakBody.receiptOk).toBe(false);
+      expect(leakBody.findingCount).toBe(1);
+      expect(JSON.stringify(leakBody)).not.toMatch(/clean|allowed to ship/i);
+
+      const mismatch = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: passing, sha256: "00".repeat(32) }),
+      });
+      expect(mismatch.status).toBe(400);
+      expect(((await mismatch.json()) as { ok: boolean; reason?: string }).ok).toBe(false);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("does not spend the hosted unpack budget on a receipt check", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const config = loadConfig({
+        githubWebhookSecret: "wh",
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        receiptSecret: SECRET,
+        scanRateLimit: 1,
+        scanRateWindowMs: 60_000,
+      });
+      const app = createApp({
+        config,
+        store,
+        github: mockGithub(),
+      });
+      const passing = signReceipt(buildUnsignedReceipt(passedReport(), "npm:clean@1.0.0"), SECRET);
+      const scan1 = await app.request("/api/scan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: "fixtures/clean.tgz" }),
+      });
+      const scan2 = await app.request("/api/scan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: "fixtures/clean.tgz" }),
+      });
+      expect(scan1.status).toBe(200);
+      expect(scan2.status).toBe(429);
+      const verified = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: passing }),
+      });
+      expect(verified.status).toBe(200);
+      expect(((await verified.json()) as { ok: boolean }).ok).toBe(true);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("rate-limits receipt checks without blocking hosted unpack", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const config = loadConfig({
+        githubWebhookSecret: "wh",
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        receiptSecret: SECRET,
+        scanRateLimit: 1,
+        scanRateWindowMs: 60_000,
+      });
+      const app = createApp({
+        config,
+        store,
+        github: mockGithub(),
+      });
+      const passing = signReceipt(buildUnsignedReceipt(passedReport(), "npm:clean@1.0.0"), SECRET);
+      const first = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: passing }),
+      });
+      const second = await app.request("/api/receipts/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ receipt: passing }),
+      });
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(429);
+      expect(second.headers.get("retry-after")).toBeTruthy();
+      const scan = await app.request("/api/scan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: "fixtures/clean.tgz" }),
+      });
+      expect(scan.status).toBe(200);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
 describe("cli verify", () => {
   function run(args: string[], env: NodeJS.ProcessEnv): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {

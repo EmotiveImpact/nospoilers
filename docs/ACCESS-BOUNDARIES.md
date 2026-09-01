@@ -17,7 +17,7 @@ Unauthenticated browser traffic.
 - View Product, Pricing, documentation (`/docs`), Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
-- Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key.
+- Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. Coverage ended still allows this check. Authentic failed-policy or inconclusive is not a passing result.
 - Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
 - Call GitHub App webhooks with a valid HMAC.
 
@@ -257,6 +257,10 @@ These are never customer features:
   discards the stored GitHub OAuth token. HMAC is still required. The GitHub installation is
   not deleted. Coverage does not gate this. Other users on the same install keep their sessions.
   Sign-out deletes only the current session cookie’s row.
+- GitHub `installation_target` with `action: renamed` updates that installation’s stored
+  account login in place. HMAC is still required. No job, no alert, no worker wake. Unpaid
+  installs still update so Watch lists the current GitHub name. Unknown installs are a no-op
+  (no billing row is created). Coverage does not gate this.
 
 ## How access is checked today
 
@@ -306,6 +310,10 @@ second scan, `unpublished`/`deleted` are light jobs that alert without downloadi
 removes the Watch row instead of resurrecting it, `renamed` updates the stored name, and
 `github_app_authorization` revoked drops that user’s sessions and stored OAuth token without
 enqueueing work or deleting the install (HMAC still required; unpaid coverage does not skip it).
+`installation_target` renamed updates the stored account login without a job (HMAC required;
+unpaid still updates; unknown installs do not create a tenant). `tests/receipts.test.ts` also
+proves anonymous `POST /api/receipts/verify` does not consume the hosted unpack budget, does
+not call a failed-policy receipt clean, and never requires a session.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,

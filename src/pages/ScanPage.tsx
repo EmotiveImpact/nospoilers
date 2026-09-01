@@ -6,7 +6,7 @@ import { coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
-import { ChevronRight, Loader2, Upload } from "lucide-react"
+import { ChevronRight, FileJson, Loader2, Upload } from "lucide-react"
 import { useCallback, useEffect, useId, useState, type DragEvent, type ReactNode } from "react"
 
 type ViewState =
@@ -110,6 +110,57 @@ function severityVariant(severity: Finding["severity"]): "critical" | "warn" {
   return severity === "critical" ? "critical" : "warn"
 }
 
+type ReceiptCheck = {
+  ok: boolean
+  reason?: string
+  error?: string
+  status?: string
+  receiptOk?: boolean
+  coordinate?: string
+  artifactSha256?: string
+  findingCount?: number
+  inconclusiveReason?: string | null
+}
+
+type VerifyView =
+  | { status: "idle" }
+  | { status: "working"; label: string }
+  | { status: "error"; message: string }
+  | { status: "done"; result: ReceiptCheck }
+
+async function sha256Hex(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer())
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
+async function checkReceipt(receiptFile: File, packFile: File | null): Promise<ReceiptCheck> {
+  let receipt: unknown
+  try {
+    receipt = JSON.parse(await receiptFile.text()) as unknown
+  } catch {
+    throw new Error("That file is not valid JSON.")
+  }
+  if (!receipt || typeof receipt !== "object") {
+    throw new Error("A receipt must be a JSON object.")
+  }
+  const payload: { receipt: unknown; sha256?: string } = { receipt }
+  if (packFile) payload.sha256 = await sha256Hex(packFile)
+  const response = await fetch("/api/receipts/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  const body = (await response.json()) as ReceiptCheck
+  if (response.status === 429) {
+    throw new Error(body.error ?? "Too many receipt checks from this address.")
+  }
+  if (response.status === 400 && body.ok === false) return body
+  if (!response.ok) {
+    throw new Error(body.error ?? "Could not check that receipt.")
+  }
+  return body
+}
+
 export function ScanPage({ search }: { search: string }) {
   const inputId = useId()
   const [dragOver, setDragOver] = useState(false)
@@ -170,7 +221,7 @@ export function ScanPage({ search }: { search: string }) {
       </h1>
       <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
         {locked
-          ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active. Run the CLI at home if you want; that was never the bill."
+          ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active. Checking a signed receipt below still works — that is not hosted unpack. Run the CLI at home if you want; that was never the bill."
           : "Drop the tarball, zip, Docker/OCI image, APK/IPA, Lambda zip, or Electron asar customers download. Secret scanners read git. This reads the packed bytes."}
         {(session || previewing) && coverage?.status === "trial" ? " Hosted scan is on for this trial." : null}
       </p>
@@ -263,6 +314,8 @@ export function ScanPage({ search }: { search: string }) {
         <ResultsPanel state={state} locked={locked} />
       </div>
 
+      <ReceiptVerifyPanel />
+
       {!locked && (
         <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
           <Step n="01" title="Pack as usual">
@@ -289,6 +342,215 @@ function Step({ n, title, children }: { n: string; title: string; children: Reac
       <h2 className="mt-3 font-display text-lg text-snow">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-dim">{children}</p>
     </div>
+  )
+}
+
+function verifyHeadline(result: ReceiptCheck): { kicker: string; title: string; detail: string } {
+  if (!result.ok) {
+    return {
+      kicker: "Not authentic",
+      title: "This instance did not sign that receipt.",
+      detail: result.reason ?? "Signature, version, or artifact hash failed.",
+    }
+  }
+  if (result.status === "inconclusive") {
+    return {
+      kicker: "Authentic · inconclusive",
+      title: "Not a passing result.",
+      detail:
+        result.inconclusiveReason ??
+        "The signature is valid. Inconclusive is not a clean bill of health.",
+    }
+  }
+  if (result.status === "failed-policy" || result.receiptOk === false) {
+    return {
+      kicker: "Authentic · spoilers",
+      title: "The receipt is real. The pack was not allowed to ship.",
+      detail: `${result.findingCount ?? 0} finding${(result.findingCount ?? 0) === 1 ? "" : "s"} on ${result.coordinate ?? "this artifact"}. Authentic failed-policy is not clean.`,
+    }
+  }
+  if (result.status === "passed") {
+    return {
+      kicker: "Authentic · allowed to ship",
+      title: "This instance signed a passing receipt.",
+      detail: result.coordinate ?? "Coordinate recorded on the receipt.",
+    }
+  }
+  return {
+    kicker: "Authentic",
+    title: "The signature matches. Read the status before you ship.",
+    detail: result.status ? `Status ${result.status} is not automatically a clean pack.` : "Status missing.",
+  }
+}
+
+function ReceiptVerifyPanel() {
+  const receiptId = useId()
+  const packId = useId()
+  const [receiptOver, setReceiptOver] = useState(false)
+  const [packOver, setPackOver] = useState(false)
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [packFile, setPackFile] = useState<File | null>(null)
+  const [view, setView] = useState<VerifyView>({ status: "idle" })
+
+  const run = useCallback(async (nextReceipt: File, nextPack: File | null) => {
+    setView({
+      status: "working",
+      label: nextPack ? `Hashing ${nextPack.name} in this browser…` : `Checking ${nextReceipt.name}…`,
+    })
+    try {
+      const result = await checkReceipt(nextReceipt, nextPack)
+      setView({ status: "done", result })
+    } catch (error) {
+      setView({
+        status: "error",
+        message: error instanceof Error ? error.message : "Could not check that receipt.",
+      })
+    }
+  }, [])
+
+  const onReceipt = useCallback(
+    (list: FileList | null) => {
+      const file = list?.[0]
+      if (!file) return
+      setReceiptFile(file)
+      void run(file, packFile)
+    },
+    [packFile, run],
+  )
+
+  const onPack = useCallback(
+    (list: FileList | null) => {
+      const file = list?.[0]
+      if (!file) return
+      setPackFile(file)
+      if (receiptFile) void run(receiptFile, file)
+    },
+    [receiptFile, run],
+  )
+
+  const headline = view.status === "done" ? verifyHeadline(view.result) : null
+
+  return (
+    <section className="mt-20 border-t border-white/5 pt-12">
+      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Signed receipt</p>
+      <h2 className="mt-4 max-w-2xl font-display text-2xl tracking-tight text-snow md:text-3xl">
+        Check a receipt you already have.
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
+        This is not hosted unpack. Drop the signed JSON. Optionally drop the pack so this browser can
+        SHA-256 it — pack bytes never leave the machine for this check. An authentic failed-policy or
+        inconclusive receipt is not a clean bill of health. Coverage ended still allows this.
+        Local: <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
+      </p>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <Label
+              htmlFor={receiptId}
+              onDragOver={(event: DragEvent<HTMLLabelElement>) => {
+                event.preventDefault()
+                setReceiptOver(true)
+              }}
+              onDragLeave={() => setReceiptOver(false)}
+              onDrop={(event: DragEvent<HTMLLabelElement>) => {
+                event.preventDefault()
+                setReceiptOver(false)
+                onReceipt(event.dataTransfer.files)
+              }}
+              className={cn(
+                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
+                receiptOver
+                  ? "border-snow bg-white/[0.06]"
+                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+              )}
+            >
+              <FileJson className="h-5 w-5 text-mute" aria-hidden />
+              <p className="font-display text-base text-snow">Receipt JSON</p>
+              <Description className="text-xs text-dim">
+                {receiptFile ? receiptFile.name : "Drop or choose the signed receipt"}
+              </Description>
+              <input
+                id={receiptId}
+                type="file"
+                className="sr-only"
+                accept=".json,application/json"
+                onChange={(event) => onReceipt(event.target.files)}
+              />
+            </Label>
+          </Field>
+          <Field>
+            <Label
+              htmlFor={packId}
+              onDragOver={(event: DragEvent<HTMLLabelElement>) => {
+                event.preventDefault()
+                setPackOver(true)
+              }}
+              onDragLeave={() => setPackOver(false)}
+              onDrop={(event: DragEvent<HTMLLabelElement>) => {
+                event.preventDefault()
+                setPackOver(false)
+                onPack(event.dataTransfer.files)
+              }}
+              className={cn(
+                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
+                packOver
+                  ? "border-snow bg-white/[0.06]"
+                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+              )}
+            >
+              <Upload className="h-5 w-5 text-mute" aria-hidden />
+              <p className="font-display text-base text-snow">Pack (optional)</p>
+              <Description className="text-xs text-dim">
+                {packFile ? `${packFile.name} · hashed here` : "Hashed in this browser. Never uploaded."}
+              </Description>
+              <input
+                id={packId}
+                type="file"
+                className="sr-only"
+                accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip,.json"
+                onChange={(event) => onPack(event.target.files)}
+              />
+            </Label>
+          </Field>
+        </div>
+
+        <div className="flex min-h-40 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
+          {view.status === "idle" ? (
+            <>
+              <p className="text-sm text-dim">No receipt checked yet.</p>
+              <p className="mt-2 text-sm text-mute">
+                HMAC against this instance. We do not store the JSON or the pack.
+              </p>
+            </>
+          ) : null}
+          {view.status === "working" ? (
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+              <p className="text-sm text-mute">{view.label}</p>
+            </div>
+          ) : null}
+          {view.status === "error" ? (
+            <>
+              <p className="font-display text-lg text-snow">Could not check</p>
+              <p className="mt-2 text-sm text-mute">{view.message}</p>
+            </>
+          ) : null}
+          {headline ? (
+            <>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-dim">{headline.kicker}</p>
+              <h3 className="mt-3 font-display text-xl tracking-tight text-snow">{headline.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-mute">{headline.detail}</p>
+              {view.status === "done" && view.result.artifactSha256 ? (
+                <p className="mt-3 break-all font-mono text-[11px] text-dim">
+                  {view.result.artifactSha256}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </section>
   )
 }
 

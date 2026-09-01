@@ -73,8 +73,9 @@ Read in this order:
   encrypted at rest. `github_app_authorization` revoked drops that user’s sessions and discards
   the stored token. Sign-out deletes only the current session. The GitHub installation stays
   until `installation.deleted`. HMAC is still required. Coverage does not gate revoke.
-  Hosted `/api/scan` is rate-limited per address. GitHub OAuth start/callback and owner discovery
-  are rate-limited per address. GitHub webhooks are not. HTTPS origins set Secure cookies.
+  `installation_target` renamed updates the stored account login in place (no job, unpaid still
+  updates). Hosted `/api/scan` is rate-limited per address. GitHub OAuth start/callback and owner discovery
+  are rate-limited per address. Receipt verify uses a separate per-address budget. GitHub webhooks are not. HTTPS origins set Secure cookies.
   Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
   `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
@@ -291,8 +292,12 @@ name/URL in place. No extra job.
 GitHub App authorization revoke (`github_app_authorization` / `revoked`) drops that user’s
 sessions and stored OAuth token. The installation stays. HMAC required. Not coverage-gated.
 Sign-out deletes only the current session.
+GitHub `installation_target` / `renamed` updates the stored account login in place. No extra
+job. HMAC required. Unpaid still updates. Subscribe the App to Installation target.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
-address. GitHub webhooks are not.
+address. Receipt verify is a separate budget. GitHub webhooks are not.
+Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
+still allows that check. Authentic failed-policy/inconclusive is not clean.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

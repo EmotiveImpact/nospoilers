@@ -300,6 +300,25 @@ describe("GitHub webhooks", () => {
     });
   });
 
+  it("queues a light job when a repository is transferred", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "repository", "d-xfer-1", {
+        action: "transferred",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(true);
+      expect(body.kind).toBe("repo_transferred");
+      const { rows } = await store.sql.query<{ kind: string; priority: string }>(
+        "SELECT kind, priority FROM jobs",
+      );
+      expect(rows).toEqual([{ kind: "repo_transferred", priority: "light" }]);
+    });
+  });
+
   it("still drops a deleted repository when coverage has ended", async () => {
     await withStore(async ({ store }) => {
       await store.upsertInstallation({
@@ -449,6 +468,121 @@ describe("GitHub webhooks", () => {
       expect(Number(users[0]?.n)).toBe(0);
       const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
       expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("rejects an installation-target rename without HMAC", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 4242,
+      });
+      const { app } = appFor(store);
+      const res = await postWebhook(
+        app,
+        "installation_target",
+        "d-rename-bad",
+        {
+          action: "renamed",
+          target_type: "User",
+          account: { login: "octo-new", id: 4242, type: "User" },
+          changes: { login: { from: "octo" } },
+          installation: { id: 7, account: { login: "octo", id: 4242, type: "User" } },
+        },
+        "sha256=deadbeef",
+      );
+      expect(res.status).toBe(401);
+      const row = await store.getInstallation(7);
+      expect(row?.account_login).toBe("octo");
+    });
+  });
+
+  it("updates the stored account login when the install target is renamed", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 4242,
+      });
+      let wakes = 0;
+      const { app } = appFor(store, mockGithub(), () => {
+        wakes += 1;
+      });
+      const res = await postWebhook(app, "installation_target", "d-rename-1", {
+        action: "renamed",
+        target_type: "User",
+        account: { login: "octo-new", id: 4242, type: "User" },
+        changes: { login: { from: "octo" } },
+        installation: { id: 7, account: { login: "octo", id: 4242, type: "User" } },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { ok: boolean; queued: boolean; kind: string };
+      expect(body).toEqual({ ok: true, queued: false, kind: "installation_target" });
+      expect(JSON.stringify(body)).not.toMatch(/octo-new|octo-old|from/i);
+      expect(wakes).toBe(0);
+      const row = await store.getInstallation(7);
+      expect(row).toMatchObject({
+        account_login: "octo-new",
+        account_type: "User",
+        account_id: 4242,
+        suspended: false,
+      });
+      const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(jobs[0]?.n)).toBe(0);
+      const { rows: alerts } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM alerts",
+      );
+      expect(Number(alerts[0]?.n)).toBe(0);
+    });
+  });
+
+  it("still renames an unpaid install target and ignores other actions", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 4242,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const { app } = appFor(store);
+      const renamed = await postWebhook(app, "installation_target", "d-rename-unpaid", {
+        action: "renamed",
+        target_type: "Organization",
+        account: { slug: "octo-org", id: 99, type: "Organization" },
+        changes: { login: { from: "octo" } },
+        installation: { id: 7, account: { login: "octo", id: 4242, type: "User" } },
+      });
+      expect(renamed.status).toBe(200);
+      expect(((await renamed.json()) as { queued: boolean; skipped?: string }).skipped).toBeUndefined();
+      expect((await store.getInstallation(7))?.account_login).toBe("octo-org");
+      expect((await store.getInstallation(7))?.account_type).toBe("Organization");
+      expect((await store.getInstallation(7))?.account_id).toBe(99);
+      const other = await postWebhook(app, "installation_target", "d-rename-other", {
+        action: "created",
+        account: { login: "should-ignore", id: 1, type: "User" },
+        installation: { id: 7, account: { login: "octo-org", id: 99, type: "Organization" } },
+      });
+      expect(other.status).toBe(200);
+      expect((await store.getInstallation(7))?.account_login).toBe("octo-org");
+      const unknown = await postWebhook(app, "installation_target", "d-rename-unknown", {
+        action: "renamed",
+        account: { login: "ghost", id: 1, type: "User" },
+        installation: { id: 404, account: { login: "ghost", id: 1, type: "User" } },
+      });
+      expect(unknown.status).toBe(200);
+      expect(await store.getInstallation(404)).toBeNull();
+      const { rows: installs } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM installations",
+      );
+      expect(Number(installs[0]?.n)).toBe(1);
+      const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(jobs[0]?.n)).toBe(0);
     });
   });
 

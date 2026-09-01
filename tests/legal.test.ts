@@ -33,6 +33,8 @@ describe("legal pages", () => {
     expect(privacy).toMatch(/never store credential values/i);
     expect(privacy).toMatch(/encrypted Sentry or Bugsnag token/i);
     expect(privacy).toMatch(/Sign-in and owner discovery are rate-limited/i);
+    expect(privacy).toMatch(/hashed in your browser/i);
+    expect(privacy).toMatch(/Pack bytes are not uploaded for that check/i);
     expect(privacy).toMatch(/Revoking the GitHub App authorization/i);
     expect(privacy).toContain(SUPPORT_EMAIL);
 

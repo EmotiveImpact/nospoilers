@@ -1107,20 +1107,26 @@ export function createStore(
       id: number;
       account_login: string;
       account_type: string;
+      account_id: number;
       suspended: boolean;
     } | null> {
       const { rows } = await sql.query<{
         id: unknown;
         account_login: string;
         account_type: string;
+        account_id: unknown;
         suspended: boolean;
-      }>(`SELECT id, account_login, account_type, suspended FROM installations WHERE id = $1`, [id]);
+      }>(
+        `SELECT id, account_login, account_type, account_id, suspended FROM installations WHERE id = $1`,
+        [id],
+      );
       const row = rows[0];
       if (!row) return null;
       return {
         id: num(row.id),
         account_login: row.account_login,
         account_type: row.account_type,
+        account_id: num(row.account_id),
         suspended: Boolean(row.suspended),
       };
     },

@@ -152,6 +152,47 @@ async function enqueueCovered(
   return { queued: result.inserted, kind: input.kind };
 }
 
+async function renameInstallationTarget(
+  store: Store,
+  payload: Json,
+): Promise<{ queued: boolean; kind: string }> {
+  if (str(payload.action) !== "renamed") {
+    return { queued: false, kind: "installation_target" };
+  }
+  const id = installationIdOf(payload);
+  if (id === null) return { queued: false, kind: "installation_target" };
+  const existing = await store.getInstallation(id);
+  if (!existing) return { queued: false, kind: "installation_target" };
+
+  const account = obj(payload.account);
+  const installAccount = obj(obj(payload.installation).account);
+  const login =
+    str(account.login) ||
+    str(account.slug) ||
+    str(installAccount.login) ||
+    str(installAccount.slug);
+  if (!login) return { queued: false, kind: "installation_target" };
+
+  const type =
+    str(account.type) ||
+    str(payload.target_type) ||
+    str(installAccount.type) ||
+    existing.account_type;
+  const accountIdRaw = num(account.id) || num(installAccount.id);
+  const accountId =
+    Number.isFinite(accountIdRaw) && accountIdRaw > 0 ? accountIdRaw : existing.account_id;
+
+  await store.upsertInstallation({
+    id,
+    accountLogin: login,
+    accountType: type || "User",
+    accountId,
+    suspended: existing.suspended,
+  });
+  logJson("info", "installation_target.renamed", { installationId: id });
+  return { queued: false, kind: "installation_target" };
+}
+
 async function revokeGithubAppAuthorization(
   store: Store,
   payload: Json,
@@ -183,6 +224,10 @@ export async function enqueueFromWebhook(
 
   if (event === "github_app_authorization") {
     return await revokeGithubAppAuthorization(store, payload);
+  }
+
+  if (event === "installation_target") {
+    return await renameInstallationTarget(store, payload);
   }
 
   const installationId = await ensureInstallation(store, payload);

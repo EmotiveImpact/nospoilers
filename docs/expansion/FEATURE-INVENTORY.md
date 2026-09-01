@@ -11,7 +11,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | --- | --- | --- |
 | Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
 | GitHub OAuth login | Built: real GitHub user session on Neon; `github_app_authorization` revoked drops that user’s sessions and stored OAuth token | NoSpoilers |
-| GitHub App installation | Built: live App install and HMAC webhooks | NoSpoilers |
+| GitHub App installation | Built: live App install and HMAC webhooks; `installation_target` renamed updates the stored account login in place | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
 | Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
@@ -89,7 +89,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Stable/beta/canary release channels | Built: `stable` / `beta` / `canary` on each revision | NoSpoilers |
 | Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
 | Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
-| Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check | NoSpoilers |
+| Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check; Scan page checks JSON you already have (optional pack hashed in-browser, never uploaded); authentic failed-policy/inconclusive is not clean | NoSpoilers |
 | Public verification page controlled by customer | Planned, later | NoSpoilers |
 
 ## Package Identity module
