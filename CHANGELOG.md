@@ -26,7 +26,7 @@
 - Package Identity foundations: verified protect, maintainer snapshots, repo/homepage/shape alerts.
 - Install health: GitHub suspend/unsuspend/permission/repo-change alerts; tenant job list on Watch.
 - Extra inspect: cloud/service-account, PKCS12, build caches (CACHE-001), broader AI/MCP pack.
-- Incident response: live GitHub permission test without inventing an incident; alert ack/assign/resolve/reopen; exposure duration; rotation checklist; append-only `alert_events`.
+- Incident response: live GitHub permission test without inventing an incident; alert ack/assign/resolve/reopen; exposure duration; rotation checklist; append-only `alert_events`; tenant JSON export of that activity.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.

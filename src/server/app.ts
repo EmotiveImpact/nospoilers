@@ -569,6 +569,22 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ alerts: alerts.map(publicAlert) });
   });
 
+  app.get("/api/alerts/export", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const alerts = await deps.store.listAlertsForUser(user.userId);
+    const activity = await Promise.all(
+      alerts.map(async (alert) => ({
+        ...publicAlert(alert),
+        events: (await deps.store.listAlertEventsForUser(alert.id, user.userId)).map(publicAlertEvent),
+      })),
+    );
+    return c.json({
+      exportedAt: new Date().toISOString(),
+      alerts: activity,
+    });
+  });
+
   app.get("/api/alerts/:id/events", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);

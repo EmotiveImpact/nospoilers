@@ -94,7 +94,8 @@ Read in this order:
 - Watch **Test install** runs a live GitHub permission/read probe. It never creates an
   alert. Watch alerts can be acknowledged, assigned to an install member, resolved with a
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
-  Incident actions stay available when unpaid or GitHub-suspended.
+  Watch can export that activity as JSON. Incident actions stay available when unpaid
+  or GitHub-suspended.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.

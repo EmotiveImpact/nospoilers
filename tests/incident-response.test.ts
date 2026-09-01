@@ -235,6 +235,21 @@ describe("incident response", () => {
       const reopenBody = (await reopened.json()) as { alert: { resolved_at: string | null } };
       expect(reopenBody.alert.resolved_at).toBeNull();
 
+      const anonymousExport = await app.request("/api/alerts/export");
+      expect(anonymousExport.status).toBe(401);
+      const exported = await app.request("/api/alerts/export", { headers: { cookie } });
+      expect(exported.status).toBe(200);
+      const exportBody = (await exported.json()) as {
+        alerts: { id: number; title: string; events: { action: string }[] }[];
+      };
+      expect(exportBody.alerts.map((row) => row.id)).toEqual([mine]);
+      expect(exportBody.alerts[0]?.events.map((row) => row.action)).toContain("reopened");
+      expect(JSON.stringify(exportBody)).not.toContain("other/app");
+      const theirsExport = await app.request("/api/alerts/export", { headers: { cookie: other } });
+      const theirsBody = (await theirsExport.json()) as { alerts: { id: number; title: string }[] };
+      expect(theirsBody.alerts.map((row) => row.id)).toEqual([theirs]);
+      expect(theirsBody.alerts[0]?.title).toContain("forked");
+
       const patched = await app.request(`/api/alerts/${mine}`, {
         method: "PATCH",
         headers: { cookie, "content-type": "application/json" },

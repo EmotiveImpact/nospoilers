@@ -64,6 +64,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Acknowledge, assign (to a GitHub login on that install), resolve with a note, and
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.
+  They may export that same activity as JSON for their installs.
 - Mint and revoke hashed scan API tokens for those installations while coverage is active.
   The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
   unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
@@ -198,6 +199,6 @@ never returns payloads or prospect scans, and other tenants cannot read those jo
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,
-and `alert_events` cannot be updated or deleted.
+`alert_events` cannot be updated or deleted, and activity export is tenant-scoped.
 Keep those
 tests green when adding internal routes.

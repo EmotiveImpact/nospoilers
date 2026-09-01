@@ -168,7 +168,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Configurable data retention | Planned | NoSpoilers |
 | Team members and roles | Planned | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
-| Audit-log export | Planned | NoSpoilers Team |
+| Audit-log export | Partial: tenant JSON of alerts and append-only events; Team audit log still planned | NoSpoilers |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Planned | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |

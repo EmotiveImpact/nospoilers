@@ -506,6 +506,7 @@ export function WatchPage({ search }: { search: string }) {
   const [alertErrorById, setAlertErrorById] = useState<Record<number, string>>({});
   const [testingInstallId, setTestingInstallId] = useState<number | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const refreshSignedIn = useCallback(async () => {
     setRepos({ status: "loading" });
@@ -577,6 +578,7 @@ export function WatchPage({ search }: { search: string }) {
           setAlertEvents({});
           setAlertErrorById({});
           setTestError(null);
+          setExportError(null);
         }
       } catch (error) {
         if (cancelled) return;
@@ -853,6 +855,41 @@ export function WatchPage({ search }: { search: string }) {
             Acknowledge, assign, and resolve stay available when coverage has ended or GitHub has
             suspended the App. New scans still wait for coverage and an unsuspended install.
           </p>
+          {!previewing && (
+            <div className="mt-4">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setExportError(null);
+                  void (async () => {
+                    try {
+                      const body = await loadJson<{ exportedAt: string; alerts: Alert[] }>(
+                        "/api/alerts/export",
+                      );
+                      const blob = new Blob([JSON.stringify(body, null, 2)], {
+                        type: "application/json",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = `nospoilers-alerts-${body.exportedAt.slice(0, 10)}.json`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                    } catch (error) {
+                      setExportError(
+                        error instanceof Error ? error.message : "Could not export alerts.",
+                      );
+                    }
+                  })();
+                }}
+              >
+                Export activity
+              </Button>
+              {exportError ? <p className="mt-2 text-sm text-danger">{exportError}</p> : null}
+            </div>
+          )}
           {!previewing && alerts.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
           {!previewing && alerts.status === "error" && <p className="mt-6 text-sm text-danger">{alerts.message}</p>}
           {deskAlerts.length === 0 && (previewing || alerts.status === "ready") && (
