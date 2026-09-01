@@ -27,12 +27,11 @@ the immediate operational sequence. The exhaustive expansion plan is
 ### Connected but not loop-proven
 
 - Neon Auth remains disabled on purpose.
-- GitHub App credentials may exist in local `.env`; the throwaway-repository OAuth → webhook →
-  alert loop is still the next proof.
+- Throwaway repo Watch alert is proven (`repo_created_public`). Fixture release scan is not.
 
 ### Missing before launch
 
-- Real throwaway-repository private → public Watch alert and fixture release-asset scan.
+- Fixture release-asset scan on `EmotiveImpact/nospoilers-throwaway` (attach `fixtures/sourcemap.tgz`).
 - Stripe checkout/subscription webhooks and card-on-file trial.
 - Production deployment, email delivery, retries, stale-job recovery, rate limits, and monitoring.
 - Secure production cookies, encrypted OAuth tokens, legal/support pages.
@@ -45,9 +44,10 @@ empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARI
 
 ## Milestone 1 — prove the GitHub loop
 
-In progress. OAuth user, App install, HMAC webhook 200s (ping, installation, pushes) are real.
-Missing: a disposable private → public Watch alert and a fixture release-asset scan. Do not
-publicize a product repository. Setup no longer links an arbitrary `installation_id`.
+In progress. OAuth user, App install, HMAC webhook 200s, and a real Watch alert are proven.
+`EmotiveImpact/nospoilers-throwaway` was created public. GitHub delivered `repository.created`
+(HTTP 200) → job `repo_created_public` → alert **Created public**. Missing: a fixture
+release-asset scan on that same disposable repo. Do not publicize a product repository.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.
@@ -56,7 +56,8 @@ publicize a product repository. Setup no longer links an arbitrary `installation
 5. Publish a fixture release asset and receive real findings.
 6. Verify bad HMAC, duplicate delivery, suspend/uninstall, and poller fallback.
 
-Exit: OAuth → webhook → queue → worker → alert works without manual SQL.
+Exit: OAuth → webhook → queue → worker → alert works without manual SQL. Visibility alert
+is done (`repo_created_public`). Fixture release scan is not.
 
 ## Milestone 2 — make coverage commercially correct
 

@@ -47,8 +47,9 @@ Read in this order:
 
 The scanner, UI, and Neon runtime work. The commercial hosted product is not launch-ready:
 
-- No real private → public Watch alert or fixture release scan has been performed on a disposable
-  repository. OAuth, install, HMAC webhook 200s, and “no release on …” dashboard scans are real.
+- `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
+  (HTTP 200) → job `repo_created_public` done → “was created public”. Fixture release scan is not
+  proven yet.
 - Stripe, production deployment, and real notification delivery do not exist.
 
 Do not describe these as complete because the UI exists.
@@ -60,9 +61,9 @@ Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
 docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
-Milestone 1 still needs a disposable private repo: create EmotiveImpact/nospoilers-throwaway
-private, then publicize it, or set GITHUB_PROOF_TOKEN to a fine-grained PAT for only that
-repo and run npm run phase1:throwaway. Do not start Stripe or the Electron installer worker yet.
+Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
+Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
+Do not start Stripe or the Electron installer worker yet.
 ```
 
 ## Cleanup

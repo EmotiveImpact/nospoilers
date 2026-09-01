@@ -13,7 +13,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub OAuth login | Partial: code exists, real credentials unproven | NoSpoilers |
 | GitHub App installation | Partial | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
-| Real throwaway-repository proof | Planned | NoSpoilers |
+| Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
 | Complete unpaid webhook/worker/poller/scan enforcement | Built: webhook 200, work skipped | NoSpoilers |
 | Stripe monthly/yearly checkout | Planned | NoSpoilers |
