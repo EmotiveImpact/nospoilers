@@ -19,7 +19,7 @@ import {
 } from "./setup-workflow.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
-import { checkWatchedPackage, connectWatchedPackage } from "./npm-watch.ts";
+import { checkWatchedPackage, connectWatchedPackage, protectWatchedPackage } from "./npm-watch.ts";
 import {
   isPublicNpmOrigin,
   MAX_NPM_REGISTRIES,
@@ -849,6 +849,21 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ packages });
   });
 
+  app.get("/api/protections", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const protections = await deps.store.listPackageProtectionsForUser(user.userId);
+    return c.json({
+      protections: protections.map((row) => ({
+        id: row.id,
+        packageId: row.package_id,
+        verifiedVia: row.verified_via,
+        githubRepo: row.github_repo,
+        createdAt: row.created_at,
+      })),
+    });
+  });
+
   app.post("/api/packages", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -906,6 +921,69 @@ export function createApp(deps: AppDeps): Hono {
     const result = await checkWatchedPackage(deps.store, npm, pkg);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
+  });
+
+  app.get("/api/packages/:id/identity", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const protection = await deps.store.getPackageProtection(pkg.id);
+    const snapshot = await deps.store.latestPackageIdentitySnapshot(pkg.id);
+    return c.json({
+      protection: protection
+        ? {
+            id: protection.id,
+            verifiedVia: protection.verified_via,
+            githubRepo: protection.github_repo,
+            createdAt: protection.created_at,
+          }
+        : null,
+      snapshot: snapshot
+        ? {
+            version: snapshot.version,
+            maintainers: snapshot.maintainers,
+            repositoryUrl: snapshot.repository_url,
+            homepage: snapshot.homepage,
+            binNames: snapshot.bin_names,
+            lifecycleScripts: snapshot.lifecycle_scripts,
+            createdAt: snapshot.created_at,
+          }
+        : null,
+    });
+  });
+
+  app.post("/api/packages/:id/protect", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    try {
+      const result = await protectWatchedPackage(deps.store, npm, pkg);
+      return c.json(
+        {
+          ok: true,
+          protection: {
+            id: result.protection.id,
+            verifiedVia: result.protection.verified_via,
+            githubRepo: result.protection.github_repo,
+            createdAt: result.protection.created_at,
+          },
+        },
+        201,
+      );
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not protect that package." },
+        errorStatus(error),
+      );
+    }
   });
 
   app.get("/api/packages/:id/diff", async (c) => {

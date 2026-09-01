@@ -94,15 +94,15 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Verified protected package/scope ownership | Planned | NoSpoilers |
+| Verified protected package/scope ownership | Built: protect only if npm scope or GitHub repository field matches the install | NoSpoilers |
 | Bounded typo/edit-distance candidate generation | Planned | NoSpoilers Team |
 | Separator, keyboard, token-order, homoglyph and scope confusion | Planned | NoSpoilers Team |
-| Maintainer addition/removal history | Planned | NoSpoilers |
-| Package ownership continuity/transfer alert | Planned | NoSpoilers |
-| Repository/homepage/domain mismatch | Planned | NoSpoilers |
+| Maintainer addition/removal history | Built: append-only identity snapshots; emails never stored | NoSpoilers |
+| Package ownership continuity/transfer alert | Built: maintainer add/remove facts, not a malware verdict | NoSpoilers |
+| Repository/homepage/domain mismatch | Built: explainable npm repository/homepage change alerts | NoSpoilers |
 | Dormant-package resurrection | Planned | NoSpoilers Team |
 | Suspicious release burst/version jump | Planned | NoSpoilers Team |
-| Artifact hash/shape anomaly | Planned | NoSpoilers |
+| Artifact hash/shape anomaly | Built: new `bin` or install lifecycle scripts vs last snapshot | NoSpoilers |
 | Human-reviewed advisory/takedown evidence | Planned, later | NoSpoilers Team |
 | Automatic malware verdict/takedown | Do not build | None |
 

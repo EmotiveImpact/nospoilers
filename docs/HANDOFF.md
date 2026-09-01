@@ -26,10 +26,10 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Sixteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Eighteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
-  `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`, and
-  `010_release_revisions` are applied. Hosted
+  `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
+  `010_release_revisions`, and `011_package_identities` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -78,7 +78,8 @@ Read in this order:
   deletes the bytes. Optional headers: `X-NoSpoilers-Channel`, `X-NoSpoilers-Source-Revision`,
   `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
   return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
-  revisions; preview invents none.
+  revisions; preview invents none. Watch **Protect identity** verifies npm scope or GitHub
+  repository ownership before snapshotting maintainers and metadata.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -117,6 +118,7 @@ Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped o
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
+Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

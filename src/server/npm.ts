@@ -4,6 +4,13 @@ import {
   PUBLIC_NPM_ORIGIN,
   registryMetadataUrl,
 } from "./npm-registry.ts";
+import {
+  asHttpsMetadataUrl,
+  binNamesFromManifest,
+  lifecycleScriptsFromManifest,
+  normalizeMaintainerNames,
+  type PackageIdentityFacts,
+} from "./package-identity.ts";
 
 export type NpmDistTags = Record<string, string>;
 
@@ -20,6 +27,7 @@ export type NpmPack = {
   shasum: string | null;
   integrity: string | null;
   bytes: number | null;
+  identity: PackageIdentityFacts;
 };
 
 export type NpmPort = {
@@ -90,6 +98,9 @@ export function diffWatchedPack(
 
 type RegistryBody = {
   name?: string;
+  maintainers?: unknown;
+  repository?: unknown;
+  homepage?: unknown;
   "dist-tags"?: NpmDistTags;
   versions?: Record<
     string,
@@ -100,9 +111,27 @@ type RegistryBody = {
         integrity?: string;
         unpackedSize?: number;
       };
+      bin?: unknown;
+      scripts?: unknown;
+      repository?: unknown;
+      homepage?: unknown;
+      maintainers?: unknown;
     }
   >;
 };
+
+function repositoryUrlFrom(raw: unknown): string | null {
+  if (typeof raw === "string") return asHttpsMetadataUrl(raw) ?? (raw.trim() || null);
+  if (raw && typeof raw === "object") {
+    const url = (raw as { url?: unknown }).url;
+    if (typeof url === "string") return asHttpsMetadataUrl(url) ?? (url.trim() || null);
+  }
+  return null;
+}
+
+function homepageFrom(raw: unknown): string | null {
+  return typeof raw === "string" ? asHttpsMetadataUrl(raw) ?? (raw.trim() || null) : null;
+}
 
 export function packFromRegistry(
   packageName: string,
@@ -115,6 +144,7 @@ export function packFromRegistry(
   const dist = body.versions?.[version]?.dist;
   if (!dist?.tarball || typeof dist.tarball !== "string") return null;
   allowedNpmTarballUrl(dist.tarball, allowedHost);
+  const versionMeta = body.versions?.[version];
   return {
     name: typeof body.name === "string" ? body.name : packageName,
     version,
@@ -123,6 +153,14 @@ export function packFromRegistry(
     shasum: typeof dist.shasum === "string" ? dist.shasum : null,
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
+    identity: {
+      maintainers: normalizeMaintainerNames(versionMeta?.maintainers ?? body.maintainers),
+      repositoryUrl:
+        repositoryUrlFrom(versionMeta?.repository) ?? repositoryUrlFrom(body.repository),
+      homepage: homepageFrom(versionMeta?.homepage) ?? homepageFrom(body.homepage),
+      binNames: binNamesFromManifest(versionMeta?.bin),
+      lifecycleScripts: lifecycleScriptsFromManifest(versionMeta?.scripts),
+    },
   };
 }
 

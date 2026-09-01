@@ -308,6 +308,13 @@ describe("hosted allowlist and baseline", () => {
             shasum: "abc123",
             integrity: null,
             bytes: 100,
+            identity: {
+              maintainers: [],
+              repositoryUrl: null,
+              homepage: null,
+              binNames: [],
+              lifecycleScripts: [],
+            },
           }) satisfies NpmPack,
         downloadTarball: async (url) => {
           allowedNpmTarballUrl(url);

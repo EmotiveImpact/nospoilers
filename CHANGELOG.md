@@ -23,6 +23,7 @@
 - Flag crash dumps and ELF cores as CRASH-001; extra debug symbols stay DBG-001.
 - Hosted scan API: hashed per-install tokens, `POST /api/v1/scan`, signed receipt, bytes deleted.
 - Release Ledger foundations: append-only revisions, channels, source revision, stored CI URL.
+- Package Identity foundations: verified protect, maintainer snapshots, repo/homepage/shape alerts.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

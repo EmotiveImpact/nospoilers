@@ -74,6 +74,14 @@ type ReleaseRevision = {
   createdAt: string;
 };
 
+type PackageProtection = {
+  id: number;
+  packageId: number;
+  verifiedVia: "scope_match" | "github_repository";
+  githubRepo: string | null;
+  createdAt: string;
+};
+
 type ReleaseDiffView = {
   versus?: "baseline" | "previous" | null;
   baseline?: {
@@ -211,6 +219,8 @@ export function WatchPage({ search }: { search: string }) {
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
+  const [protections, setProtections] = useState<PackageProtection[]>([]);
+  const [protectingId, setProtectingId] = useState<number | null>(null);
   const [scanTokenName, setScanTokenName] = useState("CI");
   const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
   const [mintingScanToken, setMintingScanToken] = useState(false);
@@ -250,7 +260,7 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody] =
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody, protectionBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
@@ -259,6 +269,7 @@ export function WatchPage({ search }: { search: string }) {
         loadJson<{ registries: NpmRegistry[] }>("/api/registries"),
         loadJson<{ tokens: ScanApiToken[] }>("/api/scan-tokens"),
         loadJson<{ releases: ReleaseRevision[] }>("/api/releases"),
+        loadJson<{ protections: PackageProtection[] }>("/api/protections"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
@@ -267,6 +278,7 @@ export function WatchPage({ search }: { search: string }) {
       setRegistries(registryBody.registries);
       setScanTokens(tokenBody.tokens);
       setReleases(releaseBody.releases);
+      setProtections(protectionBody.protections);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -301,6 +313,7 @@ export function WatchPage({ search }: { search: string }) {
           setRegistries([]);
           setScanTokens([]);
           setReleases([]);
+          setProtections([]);
           setRevealedScanToken(null);
         }
       } catch (error) {
@@ -606,7 +619,8 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>. Public
           packs use registry.npmjs.org. Private registries need an encrypted token (never shown
-          again). Tarball hosts must match the saved registry. Source is not kept.
+          again). Tarball hosts must match the saved registry. Source is not kept. Protect identity
+          only after the npm scope or GitHub repository field matches this install.
         </p>
         {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
         {!previewing && packages.status === "error" && (
@@ -791,6 +805,7 @@ export function WatchPage({ search }: { search: string }) {
           <ul className="mt-4 divide-y divide-white/5">
             {deskPackages.map((pkg) => {
               const diffState = diffByPackage[pkg.id];
+              const protection = protections.find((row) => row.packageId === pkg.id);
               return (
                 <li key={pkg.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -808,6 +823,9 @@ export function WatchPage({ search }: { search: string }) {
                           : ""}
                         {baselineByPackage[pkg.id]
                           ? ` · baseline ${baselineByPackage[pkg.id]?.actorLogin} ${new Date(baselineByPackage[pkg.id]?.createdAt ?? "").toLocaleDateString()}`
+                          : ""}
+                        {protection
+                          ? ` · protected via ${protection.verifiedVia}${protection.githubRepo ? ` ${protection.githubRepo}` : ""}`
                           : ""}
                       </p>
                     </div>
@@ -841,6 +859,39 @@ export function WatchPage({ search }: { search: string }) {
                       >
                         {checkingId === pkg.id ? "Checking…" : "Check now"}
                       </Button>
+                      {!protection && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={previewing || ended || protectingId === pkg.id}
+                          onClick={() => {
+                            setPackageError(null);
+                            setProtectingId(pkg.id);
+                            void (async () => {
+                              try {
+                                const response = await fetch(`/api/packages/${pkg.id}/protect`, {
+                                  method: "POST",
+                                  credentials: "include",
+                                });
+                                const body = (await response.json()) as { error?: string };
+                                if (!response.ok) {
+                                  throw new Error(body.error ?? "Could not protect package.");
+                                }
+                                await refreshSignedIn();
+                              } catch (error) {
+                                setPackageError(
+                                  error instanceof Error ? error.message : "Could not protect package.",
+                                );
+                              } finally {
+                                setProtectingId(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {protectingId === pkg.id ? "Protecting…" : "Protect identity"}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="sm"

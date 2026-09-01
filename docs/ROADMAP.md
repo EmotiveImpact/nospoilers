@@ -41,6 +41,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
   Watch Releases view. Digest mismatch appends a new row and an explainable alert. Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
+- Package Identity foundations: customers protect a watched npm pack only when the npm scope or
+  GitHub repository field matches this install. Append-only identity snapshots record maintainers
+  (names only), repository, homepage, bin names, and install lifecycle scripts. Changes alert
+  with before/after facts and never a malware verdict.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

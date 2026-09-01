@@ -141,6 +141,28 @@ export type ReleaseRevisionRow = {
   created_at: string;
 };
 
+export type PackageProtectionRow = {
+  id: number;
+  installation_id: number;
+  package_id: number;
+  verified_via: "scope_match" | "github_repository";
+  github_repo: string | null;
+  created_at: string;
+};
+
+export type PackageIdentitySnapshotRow = {
+  id: number;
+  installation_id: number;
+  package_id: number;
+  version: string | null;
+  maintainers: string[];
+  repository_url: string | null;
+  homepage: string | null;
+  bin_names: string[];
+  lifecycle_scripts: string[];
+  created_at: string;
+};
+
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
 export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
 
@@ -167,6 +189,50 @@ export type ProspectRow = {
   contacted_at: string | null;
   updated_at: string;
 };
+
+function packageProtectionRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  verified_via: string;
+  github_repo: string | null;
+  created_at: string | Date;
+}): PackageProtectionRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: num(row.package_id),
+    verified_via: row.verified_via as PackageProtectionRow["verified_via"],
+    github_repo: row.github_repo,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function packageIdentitySnapshotRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  version: string | null;
+  maintainers: unknown;
+  repository_url: string | null;
+  homepage: string | null;
+  bin_names: unknown;
+  lifecycle_scripts: unknown;
+  created_at: string | Date;
+}): PackageIdentitySnapshotRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: num(row.package_id),
+    version: row.version,
+    maintainers: asStringArray(row.maintainers),
+    repository_url: row.repository_url,
+    homepage: row.homepage,
+    bin_names: asStringArray(row.bin_names),
+    lifecycle_scripts: asStringArray(row.lifecycle_scripts),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
 
 function parsePayload(value: unknown): unknown {
   if (typeof value === "string") {
@@ -535,6 +601,28 @@ export function createStore(
       await sql.query(`DELETE FROM installations WHERE id = $1`, [id]);
     },
 
+    async getInstallation(id: number): Promise<{
+      id: number;
+      account_login: string;
+      account_type: string;
+      suspended: boolean;
+    } | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        account_login: string;
+        account_type: string;
+        suspended: boolean;
+      }>(`SELECT id, account_login, account_type, suspended FROM installations WHERE id = $1`, [id]);
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        id: num(row.id),
+        account_login: row.account_login,
+        account_type: row.account_type,
+        suspended: Boolean(row.suspended),
+      };
+    },
+
     async linkUserInstallation(installationId: number, userId: string): Promise<void> {
       await sql.query(
         `INSERT INTO installation_users (installation_id, user_id)
@@ -594,6 +682,18 @@ export function createStore(
       const row = rows[0];
       if (!row) return null;
       return { ...row, id: num(row.id), installation_id: num(row.installation_id) };
+    },
+
+    async listReposForInstallation(installationId: number): Promise<RepoRow[]> {
+      const { rows } = await sql.query<RepoRow>(
+        `SELECT * FROM repos WHERE installation_id = $1 ORDER BY full_name`,
+        [installationId],
+      );
+      return rows.map((row) => ({
+        ...row,
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+      }));
     },
 
     async listReposForUser(userId: string): Promise<RepoRow[]> {
@@ -1067,6 +1167,124 @@ export function createStore(
         last_scan_status: string | null;
       }>(`SELECT * FROM watched_packages WHERE id = $1`, [id]);
       return rows[0] ? watchedPackageRow(rows[0]) : null;
+    },
+
+    async insertPackageProtection(input: {
+      installationId: number;
+      packageId: number;
+      verifiedVia: PackageProtectionRow["verified_via"];
+      githubRepo?: string | null;
+    }): Promise<PackageProtectionRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        verified_via: string;
+        github_repo: string | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO package_protections (installation_id, package_id, verified_via, github_repo)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (package_id) DO NOTHING
+         RETURNING *`,
+        [input.installationId, input.packageId, input.verifiedVia, input.githubRepo ?? null],
+      );
+      return rows[0] ? packageProtectionRow(rows[0]) : null;
+    },
+
+    async getPackageProtection(packageId: number): Promise<PackageProtectionRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        verified_via: string;
+        github_repo: string | null;
+        created_at: string | Date;
+      }>(`SELECT * FROM package_protections WHERE package_id = $1`, [packageId]);
+      return rows[0] ? packageProtectionRow(rows[0]) : null;
+    },
+
+    async listPackageProtectionsForUser(userId: string): Promise<PackageProtectionRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        verified_via: string;
+        github_repo: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT p.*
+         FROM package_protections p
+         JOIN installation_users iu ON iu.installation_id = p.installation_id
+         WHERE iu.user_id = $1
+         ORDER BY p.created_at DESC`,
+        [userId],
+      );
+      return rows.map(packageProtectionRow);
+    },
+
+    async latestPackageIdentitySnapshot(
+      packageId: number,
+    ): Promise<PackageIdentitySnapshotRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        version: string | null;
+        maintainers: unknown;
+        repository_url: string | null;
+        homepage: string | null;
+        bin_names: unknown;
+        lifecycle_scripts: unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT 1`,
+        [packageId],
+      );
+      return rows[0] ? packageIdentitySnapshotRow(rows[0]) : null;
+    },
+
+    async insertPackageIdentitySnapshot(input: {
+      installationId: number;
+      packageId: number;
+      version?: string | null;
+      maintainers: string[];
+      repositoryUrl?: string | null;
+      homepage?: string | null;
+      binNames: string[];
+      lifecycleScripts: string[];
+    }): Promise<PackageIdentitySnapshotRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        version: string | null;
+        maintainers: unknown;
+        repository_url: string | null;
+        homepage: string | null;
+        bin_names: unknown;
+        lifecycle_scripts: unknown;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO package_identity_snapshots (
+           installation_id, package_id, version, maintainers, repository_url, homepage,
+           bin_names, lifecycle_scripts
+         )
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.packageId,
+          input.version ?? null,
+          JSON.stringify(input.maintainers),
+          input.repositoryUrl ?? null,
+          input.homepage ?? null,
+          JSON.stringify(input.binNames),
+          JSON.stringify(input.lifecycleScripts),
+        ],
+      );
+      if (!rows[0]) throw new Error("package identity snapshot insert returned no row");
+      return packageIdentitySnapshotRow(rows[0]);
     },
 
     async countWatchedPackages(installationId: number): Promise<number> {

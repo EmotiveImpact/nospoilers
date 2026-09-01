@@ -5,7 +5,14 @@ import {
   parseRegistryOrigin,
   PUBLIC_NPM_ORIGIN,
 } from "./npm-registry.ts";
-import type { Store, WatchedPackageRow } from "./store.ts";
+import {
+  diffPackageIdentity,
+  describeIdentityChange,
+  emptyPackageIdentity,
+  verifyPackageOwnership,
+  type PackageIdentityFacts,
+} from "./package-identity.ts";
+import type { PackageIdentitySnapshotRow, PackageProtectionRow, Store, WatchedPackageRow } from "./store.ts";
 
 export const MAX_WATCHED_PACKAGES = 25;
 
@@ -30,6 +37,111 @@ export function npmDistTagDeliveryId(
     .map(([tag, version]) => `${tag}=${version}`)
     .join(",");
   return `npm-dist-tag:${installationId}:${registryOrigin}:${packageName}:${key}`;
+}
+
+function factsFromSnapshot(row: PackageIdentitySnapshotRow): PackageIdentityFacts {
+  return {
+    maintainers: row.maintainers,
+    repositoryUrl: row.repository_url,
+    homepage: row.homepage,
+    binNames: row.bin_names,
+    lifecycleScripts: row.lifecycle_scripts,
+  };
+}
+
+function identityOf(pack: NpmPack): PackageIdentityFacts {
+  return pack.identity ?? emptyPackageIdentity();
+}
+
+export async function syncProtectedIdentity(
+  store: Store,
+  pkg: WatchedPackageRow,
+  pack: NpmPack,
+): Promise<{ snapshot: boolean; alerts: number }> {
+  const protection = await store.getPackageProtection(pkg.id);
+  if (!protection) return { snapshot: false, alerts: 0 };
+  const identity = identityOf(pack);
+  const previous = await store.latestPackageIdentitySnapshot(pkg.id);
+  const prevFacts = previous ? factsFromSnapshot(previous) : null;
+  const changes = diffPackageIdentity(prevFacts, identity);
+  if (prevFacts && changes.length === 0) return { snapshot: false, alerts: 0 };
+  await store.insertPackageIdentitySnapshot({
+    installationId: pkg.installation_id,
+    packageId: pkg.id,
+    version: pack.version,
+    maintainers: identity.maintainers,
+    repositoryUrl: identity.repositoryUrl,
+    homepage: identity.homepage,
+    binNames: identity.binNames,
+    lifecycleScripts: identity.lifecycleScripts,
+  });
+  let alerts = 0;
+  for (const change of changes) {
+    const described = describeIdentityChange(pkg.package_name, change);
+    await store.insertAlert({
+      installationId: pkg.installation_id,
+      kind: described.kind,
+      title: described.title,
+      body: described.body,
+    });
+    alerts += 1;
+  }
+  return { snapshot: true, alerts };
+}
+
+export async function protectWatchedPackage(
+  store: Store,
+  npm: NpmPort,
+  pkg: WatchedPackageRow,
+): Promise<{ protection: PackageProtectionRow; snapshot: boolean }> {
+  if (!(await store.installationWorkAllowed(pkg.installation_id))) {
+    throw Object.assign(new Error("Coverage ended. Subscribe to protect package identity."), {
+      status: 402,
+    });
+  }
+  const existing = await store.getPackageProtection(pkg.id);
+  if (existing) {
+    throw Object.assign(new Error("That package is already protected on this install."), {
+      status: 409,
+    });
+  }
+  const installation = await store.getInstallation(pkg.installation_id);
+  if (!installation) {
+    throw Object.assign(new Error("Unknown GitHub installation."), { status: 404 });
+  }
+  const auth = await authForPackage(store, pkg);
+  const pack = await npm.getPack(pkg.package_name, auth);
+  if (!pack) {
+    throw Object.assign(new Error(`npm has no package named ${pkg.package_name}.`), { status: 404 });
+  }
+  const repos = await store.listReposForInstallation(pkg.installation_id);
+  const proof = verifyPackageOwnership({
+    packageName: pkg.package_name,
+    repositoryUrl: identityOf(pack).repositoryUrl,
+    installationAccountLogin: installation.account_login,
+    installationRepos: repos,
+  });
+  if (!proof) {
+    throw Object.assign(
+      new Error(
+        "Protect only packages whose npm scope or GitHub repository field matches this install. Naming an arbitrary pack is not ownership.",
+      ),
+      { status: 403 },
+    );
+  }
+  const protection = await store.insertPackageProtection({
+    installationId: pkg.installation_id,
+    packageId: pkg.id,
+    verifiedVia: proof.via,
+    githubRepo: proof.githubRepo,
+  });
+  if (!protection) {
+    throw Object.assign(new Error("That package is already protected on this install."), {
+      status: 409,
+    });
+  }
+  const synced = await syncProtectedIdentity(store, pkg, pack);
+  return { protection, snapshot: synced.snapshot };
 }
 
 async function authForPackage(
@@ -189,6 +301,7 @@ export async function checkWatchedPackage(
     tarballUrl: pack.tarballUrl,
     shasum: pack.shasum,
   });
+  await syncProtectedIdentity(store, pkg, pack);
   let queued = false;
   for (const delta of deltas) {
     if (await enqueueFromDelta(store, pkg, pack, delta)) queued = true;

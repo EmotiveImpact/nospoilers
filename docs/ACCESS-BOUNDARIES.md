@@ -38,6 +38,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - See Watch data for installations linked to their account.
 - Connect and watch public npm packages on those installations while coverage is active.
+- Protect a watched npm package’s identity after the npm scope or GitHub repository field
+  matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
+  repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
 - Save encrypted private npm registry tokens for those installations (token values are never
   returned after save) and watch packs from those HTTPS hosts while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
@@ -169,5 +172,7 @@ never returned, blocked off-tenant, and never written onto jobs. `tests/scan-api
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
-SSRF CI URLs, and keep older HMAC receipts verifiable. Keep those tests green when adding
-internal routes.
+SSRF CI URLs, and keep older HMAC receipts verifiable. `tests/package-identity.test.ts`
+proves arbitrary npm names cannot be protected, identity snapshots are append-only, and
+maintainer/repository/shape alerts never store emails or issue a malware verdict. Keep those
+tests green when adding internal routes.

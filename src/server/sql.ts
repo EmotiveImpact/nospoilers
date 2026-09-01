@@ -235,6 +235,50 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "010_release_revisions",
   ]);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS package_protections (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      package_id BIGINT NOT NULL REFERENCES watched_packages (id) ON DELETE CASCADE,
+      verified_via TEXT NOT NULL CHECK (verified_via IN ('scope_match', 'github_repository')),
+      github_repo TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (package_id)
+    );
+    CREATE INDEX IF NOT EXISTS package_protections_install_idx
+      ON package_protections (installation_id);
+    CREATE TABLE IF NOT EXISTS package_identity_snapshots (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      package_id BIGINT NOT NULL REFERENCES watched_packages (id) ON DELETE CASCADE,
+      version TEXT,
+      maintainers JSONB NOT NULL,
+      repository_url TEXT,
+      homepage TEXT,
+      bin_names JSONB NOT NULL,
+      lifecycle_scripts JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS package_identity_snapshots_pkg_idx
+      ON package_identity_snapshots (package_id, id DESC);
+    CREATE OR REPLACE FUNCTION reject_package_identity_snapshot_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'package_identity_snapshots are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS package_identity_snapshots_no_update ON package_identity_snapshots;
+    CREATE TRIGGER package_identity_snapshots_no_update
+      BEFORE UPDATE ON package_identity_snapshots
+      FOR EACH ROW EXECUTE PROCEDURE reject_package_identity_snapshot_mutation();
+    DROP TRIGGER IF EXISTS package_identity_snapshots_no_delete ON package_identity_snapshots;
+    CREATE TRIGGER package_identity_snapshots_no_delete
+      BEFORE DELETE ON package_identity_snapshots
+      FOR EACH ROW EXECUTE PROCEDURE reject_package_identity_snapshot_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "011_package_identities",
+  ]);
 }
 
 export function num(value: unknown): number {

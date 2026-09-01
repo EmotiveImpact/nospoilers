@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
+import { emptyPackageIdentity } from "../src/server/package-identity.ts";
 import {
   allowedNpmTarballUrl,
   diffWatchedPack,
@@ -34,6 +35,7 @@ function pack(overrides: Partial<NpmPack> = {}): NpmPack {
     shasum: "abc123",
     integrity: null,
     bytes: 100,
+    identity: emptyPackageIdentity(),
     ...overrides,
   };
 }
