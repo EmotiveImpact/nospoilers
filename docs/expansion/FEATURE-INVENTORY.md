@@ -25,11 +25,12 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Resend email delivery | Planned | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
-| Upload/API rate limiting | Built: hosted `/api/scan` per address | NoSpoilers |
+| Upload/API rate limiting | Built: hosted scan, GitHub OAuth, and owner discovery per address; GitHub webhooks are not limited | NoSpoilers |
 | Readiness/health checks and structured logs | Built: `/api/health` liveness, `/api/ready` DB ping, JSON logs | NoSpoilers |
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
+| Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe/Electron not claimed live) | NoSpoilers |
 | Cloud usage warnings and hard budget controls | Planned | Infrastructure |
 
 ## Scanner and release automation

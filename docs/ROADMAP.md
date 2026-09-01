@@ -135,6 +135,10 @@ the immediate operational sequence. The exhaustive expansion plan is
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth
   token. The installation stays. Coverage does not gate this. Sign-out deletes only the current
   session.
+- Public `/docs` (Watch, packed scans, coverage, never execute/retain source). Stripe and Electron
+  are not claimed live.
+- Rate limits: hosted scan, GitHub OAuth start/callback, and owner discovery per address.
+  GitHub webhooks stay unlimited so deliveries retry.
 
 ### Connected but not loop-proven
 

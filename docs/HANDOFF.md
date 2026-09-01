@@ -73,10 +73,13 @@ Read in this order:
   encrypted at rest. `github_app_authorization` revoked drops that user’s sessions and discards
   the stored token. Sign-out deletes only the current session. The GitHub installation stays
   until `installation.deleted`. HMAC is still required. Coverage does not gate revoke.
-  Hosted `/api/scan` is rate-limited per address. HTTPS origins set Secure cookies.
+  Hosted `/api/scan` is rate-limited per address. GitHub OAuth start/callback and owner discovery
+  are rate-limited per address. GitHub webhooks are not. HTTPS origins set Secure cookies.
   Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
   `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
+- Public `/docs` covers Watch, packed scans, coverage, and what we never do. It does not claim
+  Stripe or Electron are live.
 - Customers can watch public npm packages on a covered install. Connecting a name scans `latest`
   plus `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs when those tags point at another
   version (cap three extras). The hourly poller and Watch “Check now” enqueue new versions,
@@ -288,6 +291,8 @@ name/URL in place. No extra job.
 GitHub App authorization revoke (`github_app_authorization` / `revoked`) drops that user’s
 sessions and stored OAuth token. The installation stays. HMAC required. Not coverage-gated.
 Sign-out deletes only the current session.
+Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
+address. GitHub webhooks are not.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

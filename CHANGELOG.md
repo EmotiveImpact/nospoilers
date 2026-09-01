@@ -16,6 +16,8 @@
 - GitHub `repository.deleted` removes the Watch row and does not upsert it again. `renamed` updates name and URL in place with no extra job.
 - Drop every NoSpoilers session and the stored GitHub OAuth token when GitHub sends `github_app_authorization` revoked. The installation stays. HMAC required. Sign-out deletes only the current session.
 - Watch copy: after merging the setup PR, mark the NoSpoilers check required; the App does not set branch protection.
+- Public `/docs` for Watch, packed scans, coverage, and what we never do. Stripe checkout and Electron installers are not claimed live.
+- Rate-limit GitHub OAuth and owner discovery per address, with Retry-After. Hosted scan, latest-release, npm check, and website check share the scan budget. GitHub webhooks are not limited.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.

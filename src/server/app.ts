@@ -41,7 +41,7 @@ import {
   parseRegistryOrigin,
   validateRegistryToken,
 } from "./npm-registry.ts";
-import { clientKey, createRateLimiter } from "./rate-limit.ts";
+import { clientKey, createRateLimiter, retryAfterSeconds } from "./rate-limit.ts";
 import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
@@ -311,6 +311,30 @@ export function createApp(deps: AppDeps): Hono {
     limit: deps.config.scanRateLimit,
     windowMs: deps.config.scanRateWindowMs,
   });
+  const authLimiter = createRateLimiter({
+    limit: deps.config.authRateLimit,
+    windowMs: deps.config.authRateWindowMs,
+  });
+  const discoveryLimiter = createRateLimiter({
+    limit: deps.config.discoveryRateLimit,
+    windowMs: deps.config.discoveryRateWindowMs,
+  });
+
+  function requestIp(c: Context): string {
+    return clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
+  }
+
+  function rateLimited(
+    c: Context,
+    limiter: { allow: (key: string) => boolean },
+    key: string,
+    windowMs: number,
+    message: string,
+  ) {
+    if (limiter.allow(key)) return null;
+    c.header("Retry-After", retryAfterSeconds(windowMs));
+    return c.json({ error: message }, 429);
+  }
 
   async function currentUser(c: Context) {
     const raw = getCookie(c, cookieName);
@@ -496,6 +520,14 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/discover", async (c) => {
+    const limited = rateLimited(
+      c,
+      discoveryLimiter,
+      `discover:${requestIp(c)}`,
+      deps.config.discoveryRateWindowMs,
+      "Too many discovery requests. Wait and try again.",
+    );
+    if (limited) return limited;
     try {
       const body = jsonObj(await c.req.json());
       const result = await discoverAndQueueProspects(
@@ -518,6 +550,14 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/repository", async (c) => {
+    const limited = rateLimited(
+      c,
+      discoveryLimiter,
+      `inspect:${requestIp(c)}`,
+      deps.config.discoveryRateWindowMs,
+      "Too many discovery requests. Wait and try again.",
+    );
+    if (limited) return limited;
     try {
       const body = jsonObj(await c.req.json());
       const repository = typeof body.repository === "string" ? body.repository : "";
@@ -539,6 +579,14 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/:id/rescan", async (c) => {
+    const limited = rateLimited(
+      c,
+      discoveryLimiter,
+      `rescan:${requestIp(c)}`,
+      deps.config.discoveryRateWindowMs,
+      "Too many discovery requests. Wait and try again.",
+    );
+    if (limited) return limited;
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
     const prospect = await deps.store.getProspect(id);
@@ -578,10 +626,14 @@ export function createApp(deps: AppDeps): Hono {
         return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
       }
     }
-    const ip = clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
-    if (!scanLimiter.allow(ip)) {
-      return c.json({ error: "Too many hosted scans from this address. Wait and try again." }, 429);
-    }
+    const scanLimited = rateLimited(
+      c,
+      scanLimiter,
+      `scan:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this address. Wait and try again.",
+    );
+    if (scanLimited) return scanLimited;
     try {
       const contentType = c.req.header("content-type") ?? "";
       if (contentType.includes("application/json")) {
@@ -663,6 +715,14 @@ export function createApp(deps: AppDeps): Hono {
         503,
       );
     }
+    const limited = rateLimited(
+      c,
+      authLimiter,
+      `auth:${requestIp(c)}`,
+      deps.config.authRateWindowMs,
+      "Too many sign-in attempts from this address. Wait and try again.",
+    );
+    if (limited) return limited;
     const state = crypto.randomUUID();
     setCookie(c, "ns_oauth_state", state, cookieSettings(deps.config.appBaseUrl, 600));
     const url = new URL("https://github.com/login/oauth/authorize");
@@ -673,6 +733,14 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/auth/github/callback", async (c) => {
+    const limited = rateLimited(
+      c,
+      authLimiter,
+      `callback:${requestIp(c)}`,
+      deps.config.authRateWindowMs,
+      "Too many sign-in attempts from this address. Wait and try again.",
+    );
+    if (limited) return limited;
     const state = c.req.query("state");
     const expected = getCookie(c, "ns_oauth_state");
     if (!state || !expected || state !== expected) {
@@ -1220,6 +1288,14 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep scanning releases.",
     );
     if (denied) return c.json({ error: denied.error }, denied.status);
+    const latestLimited = rateLimited(
+      c,
+      scanLimiter,
+      `scan:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this address. Wait and try again.",
+    );
+    if (latestLimited) return latestLimited;
     const result = await deps.store.enqueueJob({
       priority: "heavy",
       kind: "scan_latest_release",
@@ -1587,10 +1663,15 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to unpack on our servers.",
     );
     if (scanDenied) return c.json({ error: scanDenied.error }, scanDenied.status);
-    const ip = clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
-    if (!scanLimiter.allow(`v1:${auth.id}:${ip}`)) {
-      return c.json({ error: "Too many hosted scans from this token. Wait and try again." }, 429);
-    }
+    const ip = requestIp(c);
+    const v1Limited = rateLimited(
+      c,
+      scanLimiter,
+      `v1:${auth.id}:${ip}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this token. Wait and try again.",
+    );
+    if (v1Limited) return v1Limited;
     const filenameHeader = c.req.header("x-filename");
     const filename =
       filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
@@ -1776,6 +1857,14 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching npm packages.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const checkLimited = rateLimited(
+      c,
+      scanLimiter,
+      `scan:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this address. Wait and try again.",
+    );
+    if (checkLimited) return checkLimited;
     const result = await checkWatchedPackage(deps.store, npm, pkg, notifier);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
@@ -1873,6 +1962,14 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching production websites.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const originLimited = rateLimited(
+      c,
+      scanLimiter,
+      `scan:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this address. Wait and try again.",
+    );
+    if (originLimited) return originLimited;
     const result = await checkWatchedOrigin(deps.store, origin, notifier);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued });

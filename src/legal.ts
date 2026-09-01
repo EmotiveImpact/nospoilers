@@ -50,7 +50,7 @@ const PRIVACY: LegalDoc = {
       paragraphs: [
         "GitHub account identifiers needed to sign you in: user id, login, and avatar URL. Installation id, account login, account type, and repository metadata (id, owner, name, visibility, HTML URL).",
         "Job and alert metadata: kind, title, body, finding path/rule/fingerprint counts, GitHub delivery id, timestamps. Coverage fields on the installation billing account (trial end, plan name). Session cookies that keep you signed in.",
-        "If you upload a pack through Scan, we process the file in memory or on temporary worker disk for that request. Anonymous Scan is size-limited and rate-limited. Hosted latest-release scans download the release asset the same way.",
+        "If you upload a pack through Scan, we process the file in memory or on temporary worker disk for that request. Anonymous Scan is size-limited and rate-limited. Sign-in and owner discovery are rate-limited per address. GitHub webhooks are not rate-limited. Hosted latest-release scans download the release asset the same way.",
         "If you connect map custody, we store an encrypted Sentry or Bugsnag token, the public host, and org/project slugs. After a website or npm scan we keep debug IDs and release names only. We look up whether the private service has that identifier. We do not download map files or store sourcesContent.",
       ],
     },

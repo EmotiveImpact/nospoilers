@@ -13,6 +13,7 @@ import { createStore } from "../src/server/store.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
+import { githubSignature } from "../src/server/hmac.ts";
 
 describe("secret box", () => {
   it("round-trips a GitHub token and refuses to leave it in plaintext", () => {
@@ -121,6 +122,125 @@ describe("hosted scan rate limit", () => {
       });
       expect(first.status).toBe(200);
       expect(second.status).toBe(429);
+      expect(second.headers.get("retry-after")).toBeTruthy();
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("rate-limits GitHub sign-in per address and never rate-limits webhooks", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const webhookSecret = "test-webhook-secret";
+      const config = loadConfig({
+        githubWebhookSecret: webhookSecret,
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        authRateLimit: 1,
+        authRateWindowMs: 60_000,
+      });
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const app = createApp({
+        config,
+        store,
+        github: {
+          exchangeCode: unused,
+          getUser: unused,
+          listUserInstallations: unused,
+          getInstallation: unused,
+          getRepo: unused,
+          listReleaseAssets: async () => [],
+          getLatestRelease: async () => null,
+          downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
+        },
+      });
+      const first = await app.request("/api/auth/github");
+      const second = await app.request("/api/auth/github");
+      expect(first.status).toBe(302);
+      expect(second.status).toBe(429);
+      expect(second.headers.get("retry-after")).toBeTruthy();
+      const pingBody = JSON.stringify({ zen: "ok" });
+      const ping = await app.request("/api/webhooks/github", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-github-event": "ping",
+          "x-github-delivery": "d-rate-ping",
+          "x-hub-signature-256": githubSignature(webhookSecret, pingBody),
+        },
+        body: pingBody,
+      });
+      expect(ping.status).toBe(200);
+      expect(((await ping.json()) as { kind: string }).kind).toBe("ping");
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("rate-limits owner discovery after auth and ignores anonymous 401s", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const config = loadConfig({
+        adminToken: "test-admin-token",
+        sessionSecret: "sess",
+        githubWebhookSecret: "wh",
+        discoveryRateLimit: 1,
+        discoveryRateWindowMs: 60_000,
+      });
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const app = createApp({
+        config,
+        store,
+        github: {
+          exchangeCode: unused,
+          getUser: unused,
+          listUserInstallations: unused,
+          getInstallation: unused,
+          getRepo: unused,
+          listReleaseAssets: async () => [],
+          getLatestRelease: async () => null,
+          downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
+        },
+      });
+      const anonymous = await app.request("/api/internal/prospects/discover", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "sourcemap" }),
+      });
+      expect(anonymous.status).toBe(401);
+      const first = await app.request("/api/internal/prospects/discover", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-admin-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ query: "sourcemap" }),
+      });
+      expect(first.status).not.toBe(429);
+      expect(first.status).not.toBe(401);
+      const second = await app.request("/api/internal/prospects/discover", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-admin-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ query: "sourcemap" }),
+      });
+      expect(second.status).toBe(429);
+      expect(second.headers.get("retry-after")).toBeTruthy();
     } finally {
       await sql.close();
     }

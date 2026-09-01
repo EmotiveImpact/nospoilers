@@ -14,7 +14,7 @@ Unauthenticated browser traffic.
 
 **May**
 
-- View Product, Pricing, documentation, Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
+- View Product, Pricing, documentation (`/docs`), Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
 - Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key.
@@ -250,6 +250,9 @@ These are never customer features:
   until unsuspend. Live permission tests and alert acknowledgement/assignment/resolution
   are not unpack work and stay available. Anonymous `POST /api/scan` stays a size-limited
   acquisition surface.
+- Sign-in (`/api/auth/github` and the OAuth callback) and owner Artifact Leads
+  discover/inspect/rescan are rate-limited per address after the relevant auth check.
+  Anonymous 401s do not consume the discovery budget. GitHub webhooks are not rate-limited.
 - GitHub `github_app_authorization` with `action: revoked` deletes that user’s sessions and
   discards the stored GitHub OAuth token. HMAC is still required. The GitHub installation is
   not deleted. Coverage does not gate this. Other users on the same install keep their sessions.
@@ -346,5 +349,9 @@ off-origin credential hrefs are not fetched.
 `tests/map-custody.test.ts` proves Sentry/Bugsnag tokens are encrypted, never returned, never
 written onto jobs, tenant-scoped, unpaid saves return 402, members cannot save, Solo paid may
 save, private DNS skips fetch, missing private artifacts flag MAP-011, public maps flag MAP-012,
-and Bugsnag without a release is inconclusive (debug ID lookup is not available). Keep those
-tests green when adding internal routes.
+and Bugsnag without a release is inconclusive (debug ID lookup is not available).
+`tests/secrets.test.ts` proves hosted `/api/scan`, GitHub OAuth start, and owner discovery
+return 429 after the configured cap, that anonymous 401s do not consume the discovery budget,
+and that GitHub webhooks are not rate-limited. `tests/docs.test.ts` proves `/docs` states we
+never execute packages or retain source, Stripe is not live, and Electron stays later.
+Keep those tests green when adding internal routes.

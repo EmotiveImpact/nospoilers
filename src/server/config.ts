@@ -25,6 +25,10 @@ export type AppConfig = {
   jobStaleMs: number;
   scanRateLimit: number;
   scanRateWindowMs: number;
+  authRateLimit: number;
+  authRateWindowMs: number;
+  discoveryRateLimit: number;
+  discoveryRateWindowMs: number;
 };
 
 function loadDotEnv(): void {
@@ -106,6 +110,10 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     jobStaleMs: Math.max(30_000, envInt("JOB_STALE_MS", 5 * 60 * 1000)),
     scanRateLimit: Math.max(0, envInt("SCAN_RATE_LIMIT", 60)),
     scanRateWindowMs: Math.max(1000, envInt("SCAN_RATE_WINDOW_MS", 60 * 60 * 1000)),
+    authRateLimit: Math.max(0, envInt("AUTH_RATE_LIMIT", 30)),
+    authRateWindowMs: Math.max(1000, envInt("AUTH_RATE_WINDOW_MS", 60 * 60 * 1000)),
+    discoveryRateLimit: Math.max(0, envInt("DISCOVERY_RATE_LIMIT", 20)),
+    discoveryRateWindowMs: Math.max(1000, envInt("DISCOVERY_RATE_WINDOW_MS", 60 * 60 * 1000)),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;

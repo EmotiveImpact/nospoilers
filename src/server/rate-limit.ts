@@ -19,3 +19,7 @@ export function clientKey(forwardedFor: string | undefined, realIp: string | und
   const forwarded = forwardedFor?.split(",")[0]?.trim();
   return forwarded || realIp?.trim() || "local";
 }
+
+export function retryAfterSeconds(windowMs: number): string {
+  return String(Math.max(1, Math.ceil(windowMs / 1000)));
+}
