@@ -33,7 +33,9 @@ Do not attempt to replace Socket, Snyk, GitGuardian or malware sandboxes.
 
 - Customer verifies ownership of npm packages/scopes and GitHub organizations.
 - Store canonical names, maintainers, repositories, release cadence and known domains.
-- Generate deterministic confusable/typosquat candidates.
+- Generate bounded, deterministic confusable/typosquat candidates using edit distance, missing or
+  extra separators, adjacent-key substitutions, token transposition, Unicode homoglyphs and scope
+  confusion. Preserve the exact transformation behind every candidate.
 - Monitor candidate registration and new versions.
 - Detect maintainer additions/removals and repository/homepage changes.
 - Dashboard, email alerts, acknowledgement and allowlist.
@@ -113,8 +115,8 @@ not mirror registries or execute package scripts.
 
 ## Pricing hypothesis
 
-- Maintainer: $29/month for a small package set.
-- Team: $99/month for namespace/scope protection and integrations.
+- Developer security: approximately $299/month for a bounded package set and two registries.
+- Business: approximately $1,500/month for larger watchlists, integrations and longer history.
 - Registry/API scale: quote after demand.
 
 ## Metrics

@@ -52,8 +52,12 @@ Not employee productivity scoring, surveillance of private accounts, or a genera
 ## Phase 1 — organization and identity baseline
 
 - GitHub organization connection and ownership verification.
+- Monitoring policy recording purpose, lawful basis, jurisdictions, employee notice, retention and
+  prohibited uses; collection cannot start until it is active.
 - Member import with source and last-confirmed timestamp.
 - Include/exclude controls and policy acknowledgement.
+- Employee self-service view for notice, identity correction/dispute, export and deletion requests
+  where applicable.
 - Public repository inventory per monitored identity.
 - Baseline approval to avoid treating all history as new.
 - Admin-only dashboard, roles, audit log and retention controls.
@@ -67,6 +71,7 @@ Acceptance:
 
 ## Phase 2 — public change detection
 
+- GitLab and Bitbucket public-identity adapters.
 - Scheduled public repository discovery.
 - New repository, visibility, fork and ownership-change detection.
 - Customer indicators: approved domains, package scopes, copyright strings, internal project names.
@@ -84,7 +89,7 @@ Acceptance:
 
 ## Phase 3 — lifecycle and response
 
-- HR/identity provider feed for joiner/mover/leaver scope, only with legal approval.
+- HR/identity provider and SCIM feed for joiner/mover/leaver scope, only with legal approval.
 - Former-member monitoring window with explicit retention.
 - Jira/SIEM/webhook routing.
 - Evidence export and remediation history.
@@ -102,6 +107,7 @@ Acceptance:
 
 - organizations
 - admins and roles
+- monitoring_policies
 - monitored_identities
 - identity_membership_evidence
 - scope_exclusions
@@ -112,6 +118,7 @@ Acceptance:
 - incidents and incident_events
 - notification_destinations/deliveries
 - retention_policies
+- privacy_requests
 - audit_events
 
 Do not store private repository content, credentials, or unrelated personal profile enrichment.
@@ -149,8 +156,8 @@ Use strict per-organization API and compute budgets. Customer programs must not 
 
 ## Pricing hypothesis
 
-- Team: $99/month for one organization and a limited member band.
-- Growth: $299/month for larger member count, routing and longer history.
+- Governed pilot: approximately $750/month for one organization and up to 250 enrolled identities.
+- Business: approximately $2,500/month for larger identity bands, SSO, ticketing and governance.
 - Larger programs: private quote only after demand.
 
 Pricing is a hypothesis; do not publish until legal and GitHub API costs are measured.

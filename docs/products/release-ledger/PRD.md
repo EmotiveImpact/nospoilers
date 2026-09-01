@@ -31,7 +31,7 @@ what users receive.
 ## Phase 1 — immutable release record
 
 - Project and release creation API/CLI.
-- Artifact SHA-256, size, media type and canonical delivery URLs.
+- Artifact SHA-256/SHA-512, size, media type and canonical delivery URLs.
 - Build/source revision and CI run link.
 - Scanner/policy result references.
 - Append-only release events.
@@ -121,7 +121,7 @@ retention requires explicit customer policy and separate object storage.
 - Use canonical digest representation and domain separation in signatures.
 - Signing keys in managed KMS/HSM, never application database.
 - Append-only events and audited corrections.
-- SSRF allowlists and redirect validation.
+- SSRF defenses with private/reserved-address blocking, DNS/IP revalidation and redirect validation.
 - Streaming size/time limits.
 - Verify signed URL handling and log redaction.
 - Tenant isolation and least-privileged API tokens.
@@ -130,7 +130,7 @@ retention requires explicit customer policy and separate object storage.
 ## Pricing hypothesis
 
 - Starter: $49/month for projects/releases within a fair-use band.
-- Team: $199/month for integrations, routing and governance.
+- Team: approximately $299/month for integrations, scheduled verification, routing and governance.
 - Compliance/large verification volume: quote after demand.
 
 ## Metrics
@@ -161,7 +161,7 @@ it offline, then detects that a controlled URL serves different bytes. No artifa
 
 ```text
 Create a new private repository for Release Ledger. Read this PRD. Build only Phase 1: TypeScript
-API, Postgres append-only release metadata, streaming SHA-256, signed JSON receipts, offline verify
+API, Postgres append-only release metadata, streaming SHA-256/SHA-512, signed JSON receipts, offline verify
 CLI, and a minimal project/release dashboard. Use a development signing key only behind an explicit
 adapter; document KMS as production requirement. Do not add blockchain, SBOM, Sigstore, CDN
 scheduling, billing, or artifact storage. Test digest mismatch, immutable events, signature

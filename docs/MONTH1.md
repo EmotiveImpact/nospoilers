@@ -10,7 +10,10 @@ Mix: mostly Solo ($29). One Team ($99) is a good month. CISOs at 200-person comp
 
 ~1,000–1,800 visitors → 30–50 GitHub App installs → 25–40 activated trials → **4–8 paid** if the trial requires a card. No card on file: cut paid roughly in half (2–4) even if trials go up.
 
-GitGlow (free, visibility-only) sits around **138 installs**. That is the honest comparable, not Snyk.
+GitGlow (free, visibility-only) publicly shows around **138 account-level installations**. One
+installation can cover an organization and many repositories/users, so this is demand evidence—not
+a customer-count ceiling or TAM estimate. Snyk/GitGuardian validate broad security demand but are
+not direct product/price comparables.
 
 ## Where the 4–8 come from
 
@@ -20,7 +23,7 @@ GitGlow (free, visibility-only) sits around **138 installs**. That is the honest
 | 2 | Warm / “will you install this on a throwaway org” | **0–2** | Ask for an install, not a retweet. |
 | 3 | One HN post with original unpack data | **0–2** | Unreliable. One shot. |
 | 4 | r/node, r/electronjs, Node/Electron Discord | **0–1** | Findings, not launch copy. |
-| 5 | X / Product Hunt / SEO / Marketplace | **usually 0** | Marketplace paid listing needs ~100 installs first. |
+| 5 | X / Product Hunt / SEO / Marketplace | **usually 0** | GitHub requires ~100 installs for Marketplace-paid plans; Stripe on our site can charge customer one. |
 
 SEO does not matter in month 1 on a new domain. Paid Marketplace discovery is not a month-1 engine.
 
