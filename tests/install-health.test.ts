@@ -285,6 +285,13 @@ describe("tenant job health", () => {
       };
       expect(JSON.stringify(mineBody)).not.toContain("ghu_must_not_appear");
       expect(JSON.stringify(mineBody)).not.toContain("ghu_other");
+      expect(JSON.stringify(mineBody)).not.toMatch(/credit/i);
+      expect(mineBody.summary).toEqual({
+        queued: expect.any(Number),
+        running: expect.any(Number),
+        done: expect.any(Number),
+        failed: expect.any(Number),
+      });
       expect(mineBody.jobs.every((row) => row.kind !== "prospect_scan")).toBe(true);
       expect(mineBody.jobs.map((row) => row.kind).sort()).toEqual(["fork", "member_added"]);
       expect(mineBody.summary.failed).toBe(1);

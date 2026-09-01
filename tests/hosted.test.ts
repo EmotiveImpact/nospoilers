@@ -9,6 +9,7 @@ import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
+import { SOLO_HEAVY_FAIR_USE, TEAM_HEAVY_FAIR_USE } from "../src/server/fair-use.ts";
 
 const SECRET = "test-webhook-secret";
 
@@ -350,6 +351,121 @@ describe("job concurrency", () => {
       await new Promise((resolve) => setTimeout(resolve, 120));
       await worker.stop();
       expect(kinds.some((k) => k === "repo_publicized" || k === "fork")).toBe(true);
+    });
+  });
+
+  it("caps heavy unpacks per Solo install and lets another tenant run", async () => {
+    await withStore(async ({ store, sql }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "solo-co",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 8,
+        accountLogin: "team-co",
+        accountType: "Organization",
+        accountId: 2,
+      });
+      await sql.query(
+        `UPDATE billing_accounts SET plan = 'solo', trial_ends_at = '2000-01-01T00:00:00Z' WHERE installation_id = 7`,
+      );
+      await sql.query(
+        `UPDATE billing_accounts SET plan = 'team', trial_ends_at = '2000-01-01T00:00:00Z' WHERE installation_id = 8`,
+      );
+      for (let i = 0; i < 4; i += 1) {
+        await store.enqueueJob({
+          priority: "heavy",
+          kind: "release_scan",
+          payload: { installationId: 7, i },
+        });
+      }
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: { installationId: 8, i: 0 },
+      });
+      let maxSolo = 0;
+      let maxTeam = 0;
+      const started: number[] = [];
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 8,
+        lightConcurrency: 2,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+        onJob: async (job) => {
+          const install = Number((job.payload as { installationId?: number }).installationId);
+          started.push(install);
+          const { rows } = await sql.query<{ installation_id: string; n: unknown }>(
+            `SELECT installation_id::text, count(*)::int AS n
+             FROM jobs
+             WHERE status = 'running' AND priority = 'heavy'
+             GROUP BY installation_id`,
+          );
+          for (const row of rows) {
+            const n = Number(row.n);
+            if (row.installation_id === "7") maxSolo = Math.max(maxSolo, n);
+            if (row.installation_id === "8") maxTeam = Math.max(maxTeam, n);
+          }
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        },
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(maxSolo).toBe(SOLO_HEAVY_FAIR_USE);
+      expect(started).toContain(8);
+      expect(maxTeam).toBeGreaterThan(0);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await worker.stop();
+      expect(maxSolo).toBe(SOLO_HEAVY_FAIR_USE);
+    });
+  });
+
+  it("gives Team a higher concurrent unpack cap than Solo", async () => {
+    await withStore(async ({ store, sql }) => {
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "team-co",
+        accountType: "Organization",
+        accountId: 9,
+      });
+      await sql.query(
+        `UPDATE billing_accounts SET plan = 'team' WHERE installation_id = 9`,
+      );
+      for (let i = 0; i < 6; i += 1) {
+        await store.enqueueJob({
+          priority: "heavy",
+          kind: "release_scan",
+          payload: { installationId: 9, i },
+        });
+      }
+      let maxTeam = 0;
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 8,
+        lightConcurrency: 2,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+        onJob: async () => {
+          const { rows } = await sql.query<{ n: unknown }>(
+            `SELECT count(*)::int AS n FROM jobs WHERE status = 'running' AND priority = 'heavy' AND installation_id = 9`,
+          );
+          maxTeam = Math.max(maxTeam, Number(rows[0]?.n ?? 0));
+          await new Promise((resolve) => setTimeout(resolve, 40));
+        },
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      expect(maxTeam).toBe(TEAM_HEAVY_FAIR_USE);
+      expect(maxTeam).toBeGreaterThan(SOLO_HEAVY_FAIR_USE);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await worker.stop();
     });
   });
 

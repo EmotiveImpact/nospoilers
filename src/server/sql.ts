@@ -729,6 +729,18 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "023_map_destinations",
   ]);
+  await migrateFairUseConcurrency(sql);
+}
+
+async function migrateFairUseConcurrency(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE INDEX IF NOT EXISTS jobs_running_heavy_install_idx
+      ON jobs (installation_id)
+      WHERE status = 'running' AND priority = 'heavy';
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "024_fair_use_concurrency",
+  ]);
 }
 
 export function num(value: unknown): number {

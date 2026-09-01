@@ -40,6 +40,8 @@ describe("legal pages", () => {
     expect(terms).toMatch(/14-day/);
     expect(terms).toMatch(/do not execute customer packages/i);
     expect(terms).toMatch(/do not enqueue hosted work/i);
+    expect(terms).toMatch(/concurrent unpacks/i);
+    expect(terms).toMatch(/scan-credit meter/i);
 
     const retention = textOf("retention");
     expect(retention).toMatch(/deleted in a finally path/i);
@@ -49,6 +51,8 @@ describe("legal pages", () => {
     expect(retention).toMatch(/Map custody stores encrypted Sentry/i);
     expect(retention).toMatch(/APK Signature Scheme/i);
     expect(retention).toMatch(/never executed/i);
+    expect(terms).toMatch(/concurrent unpacks/i);
+    expect(terms).toMatch(/scan-credit meter/i);
 
     const disclosure = textOf("disclosure");
     expect(disclosure).toMatch(/do not automatically email maintainers/i);

@@ -172,7 +172,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
-| Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |
+| Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack per install, Team/trial 3; global heavy cap still applies; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one Slack, one SIEM, and one Jira Cloud destination per install | NoSpoilers Team |
 
 ## Internal acquisition and responsible disclosure

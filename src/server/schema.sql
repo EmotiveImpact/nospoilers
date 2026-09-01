@@ -84,6 +84,10 @@ CREATE INDEX IF NOT EXISTS jobs_claim_idx
   ON jobs (priority, id)
   WHERE status = 'queued';
 
+CREATE INDEX IF NOT EXISTS jobs_running_heavy_install_idx
+  ON jobs (installation_id)
+  WHERE status = 'running' AND priority = 'heavy';
+
 CREATE TABLE IF NOT EXISTS alerts (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,

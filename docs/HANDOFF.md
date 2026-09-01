@@ -33,7 +33,7 @@ Read in this order:
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
-  `022_watched_origins`, and `023_map_destinations` are applied. Hosted
+  `022_watched_origins`, `023_map_destinations`, and `024_fair_use_concurrency` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -254,6 +254,8 @@ Automatic remediation PRs are in (reviewable, never merged; empty policy; no ove
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
+Fair-use hosted unpacks are in (Solo 1 concurrent heavy job per install; Team/trial 3; global
+heavy cap still applies; no scan-credit meter). Not advertised as a Pricing change.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

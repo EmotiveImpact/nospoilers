@@ -7,6 +7,7 @@ import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
+import { heavyFairUseCaseSql } from "./fair-use.ts";
 import type { PermissionTestResult } from "./install-test.ts";
 import { TIMELINE_LIMIT } from "./timeline.ts";
 import {
@@ -1279,12 +1280,26 @@ export function createStore(
         );
         if (num(countRows[0]?.n ?? 0) >= cap) return null;
 
+        const fairUse =
+          priority === "heavy"
+            ? `AND (
+                 j.installation_id IS NULL
+                 OR (
+                   SELECT count(*)::int FROM jobs r
+                   WHERE r.status = 'running' AND r.priority = j.priority
+                     AND r.installation_id = j.installation_id
+                 ) < ${heavyFairUseCaseSql()}
+               )`
+            : "";
+
         const { rows: picked } = await tx.query<{ id: unknown }>(
-          `SELECT id FROM jobs
-           WHERE status = 'queued' AND priority = $1 AND run_after <= now()
-             AND ($2::boolean OR kind <> 'prospect_scan')
-           ORDER BY CASE WHEN kind = 'prospect_scan' THEN 1 ELSE 0 END, id
-           FOR UPDATE SKIP LOCKED
+          `SELECT j.id FROM jobs j
+           LEFT JOIN billing_accounts b ON b.installation_id = j.installation_id
+           WHERE j.status = 'queued' AND j.priority = $1 AND j.run_after <= now()
+             AND ($2::boolean OR j.kind <> 'prospect_scan')
+             ${fairUse}
+           ORDER BY CASE WHEN j.kind = 'prospect_scan' THEN 1 ELSE 0 END, j.id
+           FOR UPDATE OF j SKIP LOCKED
            LIMIT 1`,
           [priority, includeProspectScans],
         );

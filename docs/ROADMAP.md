@@ -54,6 +54,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   treated as unpaid coverage.
 - Extra inspect: Azure/GCP service-account documents, PKCS12, terraform state, build caches
   (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
+- Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
+  Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
 - Incident response: live GitHub permission test without inventing an incident; Watch
   acknowledgement, assignment to install members, resolution notes, reopen, exposure
   duration, and a credential/source-map rotation checklist. `alert_events` are append-only.

@@ -72,7 +72,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - List recent jobs for those installations (kind, status, attempts, error, timestamps).
   Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
   or deleted by customers. Done and failed jobs older than the install list window are
-  hidden; queued and running jobs stay visible.
+  hidden; queued and running jobs stay visible. Counts are not a remaining-scan credit
+  meter. Hosted unpacks are capped by concurrent jobs per install (Solo one, Team/trial
+  three), not by a visible credit balance.
 - Read this install’s retention window (90, 180, 365 days, or keep while this install
   exists). Default is 90 days. GET is not Team-gated. Unpaid installs may read. Another
   tenant’s installation returns the default 90-day window, not that tenant’s setting.
@@ -276,7 +278,11 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
 claim malware, and allowlisting skips further lookalike alerts.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
-never returns payloads or prospect scans, and other tenants cannot read those jobs.
+never returns payloads or prospect scans, other tenants cannot read those jobs, and
+the summary is queued/running/done/failed counts with no scan-credit field.
+`tests/hosted.test.ts` proves Solo is capped to one concurrent heavy unpack, Team gets
+three, another tenant is not stuck behind a Solo queue, and the global heavy cap still
+applies.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,
