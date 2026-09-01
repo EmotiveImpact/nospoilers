@@ -51,13 +51,30 @@ describe("packed fixtures", () => {
     );
   });
 
-  it("fails a VSIX that contains a source map", async () => {
-    const report = await scan(path.join(fixtures, "sourcemap.vsix"));
-    expect(report.kind).toBe("vsix");
+  it("fails a Docker save image that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.docker.tar"));
+    expect(report.kind).toBe("docker");
     expect(report.ok).toBe(false);
-    expect(rules("sourcemap.vsix", report)).toEqual(
+    expect(rules("sourcemap.docker.tar", report)).toEqual(
       expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
     );
+  });
+
+  it("fails an OCI image archive that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.oci.tar"));
+    expect(report.kind).toBe("oci");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.oci.tar", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
+  it("lets a clean Docker save image ship", async () => {
+    const report = await scan(path.join(fixtures, "clean.docker.tar"));
+    expect(report.kind).toBe("docker");
+    expect(report.ok).toBe(true);
+    expect(report.status).toBe("passed");
+    expect(report.findings).toEqual([]);
   });
 
   it("fails a tarball that contains a .env", async () => {

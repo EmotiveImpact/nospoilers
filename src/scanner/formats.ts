@@ -14,7 +14,7 @@ const ZIP_KINDS = new Set<ScanTargetKind>([
   "nupkg",
 ]);
 
-const TAR_KINDS = new Set<ScanTargetKind>(["tarball", "gem"]);
+const TAR_KINDS = new Set<ScanTargetKind>(["tarball", "gem", "docker", "oci"]);
 
 export function isZipFamilyKind(kind: ScanTargetKind): boolean {
   return ZIP_KINDS.has(kind);
@@ -34,6 +34,8 @@ export function packFormatFromName(name: string): ScanTargetKind | null {
   if (lower.endsWith(".jar") || lower.endsWith(".war")) return "jar";
   if (lower.endsWith(".nupkg") || lower.endsWith(".snupkg")) return "nupkg";
   if (lower.endsWith(".gem")) return "gem";
+  if (lower.endsWith(".oci.tar") || lower.endsWith(".oci")) return "oci";
+  if (lower.endsWith(".docker.tar")) return "docker";
   if (lower.endsWith(".zip")) return "zip";
   if (lower.endsWith(".tgz") || lower.endsWith(".tar.gz") || lower.endsWith(".tar")) {
     return "tarball";
@@ -198,6 +200,7 @@ export function sniffPackFormat(bytes: Buffer, filename = ""): ScanTargetKind | 
   }
   if (isGzipMagic(bytes) || isTarMagic(bytes)) {
     if (fromName === "gem") return "gem";
+    if (fromName === "oci" || fromName === "docker") return fromName;
     return "tarball";
   }
   return fromName;
@@ -208,3 +211,64 @@ export const ENCRYPTION_INCONCLUSIVE =
 
 export const CRX_INCONCLUSIVE =
   "CRX header did not contain a ZIP payload. The signing wrapper is not executed.";
+
+export const IMAGE_ENCRYPTION_INCONCLUSIVE =
+  "Encrypted OCI/Docker layers are not decrypted. The scan is inconclusive, never a passing receipt. Image signatures are not verified and not executed.";
+
+function posixArchivePath(rel: string): string {
+  return rel.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+export function isImageLayerPath(rel: string): boolean {
+  const posix = posixArchivePath(rel);
+  const outer = posix.includes("!/") ? posix.slice(0, posix.indexOf("!/")) : posix;
+  const base = path.posix.basename(outer);
+  if (base === "layer.tar") return true;
+  return /(?:^|\/)blobs\/sha256\/[a-f0-9]{64}$/i.test(outer);
+}
+
+export function couldBeImageManifest(rel: string): boolean {
+  const posix = posixArchivePath(rel);
+  const base = path.posix.basename(posix);
+  if (base === "manifest.json" || base === "index.json" || base === "oci-layout") return true;
+  return /(?:^|\/)blobs\/sha256\/[a-f0-9]{64}$/i.test(posix);
+}
+
+function jsonHasEncryptedLayer(value: unknown, depth = 0): boolean {
+  if (depth > 10 || value == null) return false;
+  if (Array.isArray(value)) return value.some((item) => jsonHasEncryptedLayer(item, depth + 1));
+  if (typeof value === "object") {
+    const rec = value as Record<string, unknown>;
+    if (typeof rec.mediaType === "string") {
+      const mediaType = rec.mediaType.toLowerCase();
+      if (mediaType.includes("encrypted") && (mediaType.includes("layer") || mediaType.includes("tar"))) {
+        return true;
+      }
+    }
+    return Object.values(rec).some((item) => jsonHasEncryptedLayer(item, depth + 1));
+  }
+  return false;
+}
+
+export function imageManifestUsesEncryption(rel: string, buf: Buffer): boolean {
+  if (!couldBeImageManifest(rel) || buf.length > 2_000_000 || buf.length < 2) return false;
+  const start = buf.subarray(0, 1).toString("utf8");
+  if (start !== "{" && start !== "[") return false;
+  try {
+    return jsonHasEncryptedLayer(JSON.parse(buf.toString("utf8")));
+  } catch {
+    return false;
+  }
+}
+
+export function sniffImageLayout(paths: string[]): "docker" | "oci" | null {
+  const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
+  const hasOciLayout = names.some((n) => n === "oci-layout");
+  const hasIndex = names.some((n) => n === "index.json");
+  const hasBlobs = names.some((n) => n.startsWith("blobs/sha256/") || n.includes("/blobs/sha256/"));
+  if (hasOciLayout || (hasIndex && hasBlobs)) return "oci";
+  const hasManifest = names.some((n) => n === "manifest.json");
+  const hasLayerTar = names.some((n) => n === "layer.tar" || n.endsWith("/layer.tar"));
+  if (hasManifest && (hasLayerTar || hasBlobs)) return "docker";
+  return null;
+}

@@ -122,6 +122,11 @@ Read in this order:
   entry names flag ARC-002 and are not unpacked for content. GitHub Release asset matching
   includes those extensions. Scan lists a VSIX fixture example. These formats are not a
   Pricing extras change.
+- Packed scans also cover Docker save and OCI image archives. Layout sniff uses `manifest.json`
+  plus `layer.tar`, or `oci-layout` / `blobs/sha256`. Gzip layer blobs without a `.tar` name are
+  unpacked. Overlay whiteouts are not applied, so lower-layer spoilers remain visible. Encrypted
+  layers are inconclusive. Image signatures are not verified or executed. Scan lists a docker-save
+  fixture example. Not a Pricing extras change.
 - Covered installs can watch HTTPS production websites (same-origin JS/CSS/maps, SSRF-blocked,
   never executed). Admins can connect Sentry or Bugsnag map custody. Tokens are encrypted and
   never returned. After a website or npm scan the worker looks up debug IDs (Sentry) or release
@@ -186,7 +191,7 @@ Public npm package watching (latest tarball) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
-Nested tgz/zip/asar are unpacked for inspection (never executed).
+Nested tgz/zip/asar/docker/oci layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
@@ -218,6 +223,9 @@ Extra packed formats are in (VSIX/CRX/XPI/wheel/JAR/nupkg/gem; ZIP/tar magic; CR
 stripped; encrypted zip and CRX-without-ZIP inconclusive; zip-slip ARC-002 not unpacked for
 content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not advertised as a
 Pricing change.
+Docker/OCI image layers are in (docker save + OCI layout sniff; layer tars and gzip blobs;
+overlay whiteouts not applied; encrypted layers inconclusive; signatures not verified; Scan
+docker-save example). Not advertised as a Pricing change.
 Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps, SSRF-blocked, never
 executed, event-driven enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,

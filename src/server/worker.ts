@@ -217,7 +217,7 @@ export async function handleJob(
         ...alertBase,
         kind: job.kind,
         title: `No release on ${repo.fullName}`,
-        body: "Publish a GitHub Release with a packed artifact attached (.tgz, .zip, .vsix, .whl, .jar, …), then scan again.",
+        body: "Publish a GitHub Release with a packed artifact attached (.tgz, .tar, .zip, .vsix, .whl, .jar, …), then scan again.",
       });
       return;
     }
@@ -244,7 +244,7 @@ export async function handleJob(
         ...alertBase,
         kind: job.kind,
         title: `Release ${tag} has no pack we can scan`,
-        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .gem). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt.",
+        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .tar, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .gem). Docker save and OCI archives are tar layouts (manifest.json or oci-layout). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt. Encrypted image layers are not decrypted. Image signatures are not verified.",
       });
       return;
     }

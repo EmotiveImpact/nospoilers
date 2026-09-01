@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
-import { x as tarExtract } from "tar";
+import { t as tarList, x as tarExtract } from "tar";
 import { applyPolicy } from "../policy.ts";
 import { INSPECT_BYTES, inspectEntry, isNestedPack, linkFinding, escapingArchivePathFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
 import {
@@ -16,11 +16,16 @@ import {
 import {
   CRX_INCONCLUSIVE,
   ENCRYPTION_INCONCLUSIVE,
+  IMAGE_ENCRYPTION_INCONCLUSIVE,
   archivePathEscapes,
+  couldBeImageManifest,
+  imageManifestUsesEncryption,
+  isImageLayerPath,
   isTarFamilyKind,
   isZipFamilyKind,
   listZipEntryNames,
   packFormatFromName,
+  sniffImageLayout,
   sniffPackFormat,
   unwrapCrx,
   zipPayloadForKind,
@@ -169,6 +174,7 @@ type ScanChunk = {
   manifest: ManifestEntry[];
   workspaceFiles: WorkspaceFile[];
   identity: MapIdentity;
+  kindHint?: "docker" | "oci";
 };
 
 export const MAX_NEST_DEPTH = 3;
@@ -268,7 +274,7 @@ async function mergeNested(
   workspaceFiles: WorkspaceFile[],
   identity: MapIdentity,
 ): Promise<void> {
-  if (!isNestedPack(rel)) return;
+  if (!isNestedPack(rel) && !isImageLayerPath(rel)) return;
   const nested = await maybeScanNested(rel, bytes, ctx);
   findings.push(...nested.findings);
   manifest.push(...nested.manifest);
@@ -313,10 +319,33 @@ async function scanDirectory(
   return { findings, fileCount: ctx.budget.files, totalBytes: ctx.budget.bytes, manifest, workspaceFiles, identity };
 }
 
+async function listTarPaths(archive: string): Promise<string[]> {
+  const names: string[] = [];
+  try {
+    await tarList({
+      file: archive,
+      onReadEntry(entry) {
+        names.push(String(entry.path ?? ""));
+        entry.resume();
+      },
+    });
+  } catch {
+    return names;
+  }
+  return names;
+}
+
 async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<ScanChunk> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-tar-"));
   let limitError: ScanInconclusiveError | null = null;
   const linkFindings: Finding[] = [];
+  const listedLayout = sniffImageLayout(await listTarPaths(archive));
+  const withLayout = (error: ScanInconclusiveError): ScanInconclusiveError => {
+    if (listedLayout && !error.scanKind) {
+      return new ScanInconclusiveError(error.reason, error.message, listedLayout);
+    }
+    return error;
+  };
   try {
     await tarExtract({
       file: archive,
@@ -349,7 +378,7 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
           return true;
         } catch (error) {
           if (error instanceof ScanInconclusiveError) {
-            limitError = error;
+            limitError = withLayout(error);
             return false;
           }
           throw error;
@@ -357,11 +386,28 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
       },
     });
     if (limitError) throw limitError;
+    const { files } = await walkTree(dir);
+    const rels = files.map((abs) => path.relative(dir, abs).split(path.sep).join("/"));
+    const layout = sniffImageLayout(rels) ?? listedLayout;
+    if (layout) {
+      for (const abs of files) {
+        const rel = path.relative(dir, abs).split(path.sep).join("/");
+        if (!couldBeImageManifest(rel)) continue;
+        const buf = await readFile(abs);
+        if (imageManifestUsesEncryption(rel, buf)) {
+          throw new ScanInconclusiveError("malformed", IMAGE_ENCRYPTION_INCONCLUSIVE, layout);
+        }
+      }
+    }
     const scanned = await scanDirectory(dir, ctx, label, false);
     return {
       ...scanned,
       findings: [...linkFindings, ...scanned.findings],
+      kindHint: layout ?? undefined,
     };
+  } catch (error) {
+    if (error instanceof ScanInconclusiveError) throw withLayout(error);
+    throw error;
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -423,7 +469,7 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
     const hash = createHash("sha256");
     let fileBytes = 0;
     let retainedBytes = 0;
-    const keepAll = isNestedPack(name);
+    const keepAll = isNestedPack(name) || isImageLayerPath(name);
     await new Promise<void>((resolve, reject) => {
       let stopped = false;
       stream.on("data", (raw: Buffer | Uint8Array) => {
@@ -557,13 +603,23 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     let manifest: ManifestEntry[] = [];
     let workspaceFiles: WorkspaceFile[] = [];
     let identity = emptyMapIdentity();
+    let kindHint: "docker" | "oci" | undefined;
 
     const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0 };
 
     if (kind === "directory") {
       ({ findings, fileCount, totalBytes, manifest, workspaceFiles, identity } = await scanDirectory(resolved, ctx));
     } else if (isTarFamilyKind(kind)) {
-      ({ findings, fileCount, totalBytes, manifest, workspaceFiles, identity } = await scanTarball(resolved, ctx));
+      ({
+        findings,
+        fileCount,
+        totalBytes,
+        manifest,
+        workspaceFiles,
+        identity,
+        kindHint,
+      } = await scanTarball(resolved, ctx));
+      if (kind !== "gem" && kindHint) kind = kindHint;
     } else if (isZipFamilyKind(kind)) {
       if (!packed) throw new ScanInconclusiveError("malformed", "Could not read zip.");
       if (kind === "crx" && !unwrapCrx(packed)) {
@@ -629,6 +685,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     });
   } catch (error) {
     if (error instanceof ScanInconclusiveError) {
+      if (error.scanKind) kind = error.scanKind;
       return withPolicy(inconclusive(error.message));
     }
     throw error;

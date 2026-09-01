@@ -1,5 +1,5 @@
 import path from "node:path";
-import { PACK_FILE_RE } from "./formats.ts";
+import { PACK_FILE_RE, isImageLayerPath } from "./formats.ts";
 import type { Finding } from "./types.ts";
 
 const TEXT_LIMIT = 2_000_000;
@@ -203,6 +203,10 @@ export function isNestedPack(filePath: string): boolean {
   return PACK_FILE_RE.test(path.posix.basename(filePath.replace(/\\/g, "/")));
 }
 
+export function isOverlayWhiteout(base: string): boolean {
+  return base === ".wh..wh..opq" || base.startsWith(".wh.");
+}
+
 function backupFile(base: string): boolean {
   return /(?:\.(?:bak|old|orig|backup|swp|swo)|~)$/i.test(base);
 }
@@ -288,6 +292,7 @@ function internalLocation(text: string): boolean {
 export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.length): Finding[] {
   const rel = posixPath(relPath).replace(/^\.\//, "");
   const base = path.posix.basename(rel);
+  if (isOverlayWhiteout(base)) return [];
   const findings: Finding[] = [];
   const parts = rel.split("/");
 
@@ -355,7 +360,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (isNestedPack(rel)) {
+  if (isNestedPack(rel) && !isImageLayerPath(rel)) {
     findings.push({
       rule: "ARC-001",
       severity: "warn",

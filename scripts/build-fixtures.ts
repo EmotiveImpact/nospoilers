@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { c as tarCreate } from "tar";
+import { writeDockerSave, writeOciArchive } from "./image-archive.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = path.join(root, "fixtures");
@@ -111,6 +112,20 @@ async function main(): Promise<void> {
     } finally {
       await rm(workspaceDir, { recursive: true, force: true });
     }
+
+    await writeDockerSave(path.join(fixtures, "clean.docker.tar"), [
+      { "index.js": minified, "package.json": '{"name":"clean-image"}' },
+    ]);
+    await writeDockerSave(path.join(fixtures, "sourcemap.docker.tar"), [
+      {
+        "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+        "index.js.map": sourceMap,
+      },
+    ]);
+    await writeOciArchive(path.join(fixtures, "sourcemap.oci.tar"), {
+      "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "index.js.map": sourceMap,
+    });
   } finally {
     await rm(cleanDir, { recursive: true, force: true });
     await rm(dirtyDir, { recursive: true, force: true });

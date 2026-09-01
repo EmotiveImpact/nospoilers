@@ -20,7 +20,9 @@ export type ScanTargetKind =
   | "wheel"
   | "jar"
   | "nupkg"
-  | "gem";
+  | "gem"
+  | "docker"
+  | "oci";
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive";
 
@@ -105,10 +107,16 @@ export type ScanOptions = {
 
 export class ScanInconclusiveError extends Error {
   readonly reason: "limit" | "timeout" | "malformed";
+  readonly scanKind?: ScanTargetKind;
 
-  constructor(reason: "limit" | "timeout" | "malformed", message: string) {
+  constructor(
+    reason: "limit" | "timeout" | "malformed",
+    message: string,
+    scanKind?: ScanTargetKind,
+  ) {
     super(message);
     this.name = "ScanInconclusiveError";
     this.reason = reason;
+    this.scanKind = scanKind;
   }
 }
