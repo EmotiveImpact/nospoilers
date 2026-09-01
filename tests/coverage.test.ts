@@ -3,6 +3,7 @@ import { coverageFrom, coverageFromQuery, bestCoverage } from "../src/coverage.t
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
 describe("coverageFrom", () => {
@@ -85,6 +86,7 @@ describe("hosted coverage", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
       });
       const cookie = `ns_session=${signSession("sess", sessionId)}`;
@@ -158,6 +160,7 @@ describe("hosted coverage", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
       });
       const cookie = `ns_session=${signSession("sess", sessionId)}`;
@@ -220,6 +223,7 @@ describe("hosted coverage", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
       });
       const scan = await app.request("/api/scan", {

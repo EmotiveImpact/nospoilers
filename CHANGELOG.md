@@ -16,6 +16,8 @@
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.
 - Unpack nested tgz/zip/asar for inspection (never execute) up to three levels.
 - Load `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approve a scan baseline.
+- Open a reviewable setup PR for the packed-artifact GitHub Action (never merged). Hosted
+  release scans post GitHub Checks with rule/path annotations when Checks write is granted.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

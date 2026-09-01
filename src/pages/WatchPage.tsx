@@ -133,6 +133,44 @@ function defaultExpiryDate(): string {
   return when.toISOString().slice(0, 10);
 }
 
+type SetupPrView =
+  | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
+  | { status: "copy"; reason: string; workflow: string }
+  | { status: "error"; message: string };
+
+function SetupPrResult({ view }: { view: SetupPrView }) {
+  if (view.status === "opened") {
+    return (
+      <p className="mt-3 text-sm leading-relaxed text-mute">
+        {view.existing ? "Existing setup PR: " : "Opened setup PR: "}
+        <a
+          href={view.htmlUrl}
+          className="text-snow underline-offset-4 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          #{view.number}
+        </a>
+        . Review it; NoSpoilers does not merge.
+      </p>
+    );
+  }
+  if (view.status === "copy") {
+    return (
+      <div className="mt-3">
+        <p className="text-sm leading-relaxed text-mute">{view.reason}</p>
+        <p className="mt-2 text-xs leading-relaxed text-dim">
+          Paste this workflow yourself. It scans packed artifacts only and is never merged automatically.
+        </p>
+        <pre className="mt-3 max-h-64 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
+          {view.workflow}
+        </pre>
+      </div>
+    );
+  }
+  return <p className="mt-3 text-sm text-danger">{view.message}</p>;
+}
+
 export function WatchPage({ search }: { search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
@@ -143,6 +181,8 @@ export function WatchPage({ search }: { search: string }) {
   const [scanError, setScanError] = useState<string | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
   const [scanningId, setScanningId] = useState<number | null>(null);
+  const [setuppingId, setSetuppingId] = useState<number | null>(null);
+  const [setupByRepo, setSetupByRepo] = useState<Record<number, SetupPrView>>({});
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
   const [checkingId, setCheckingId] = useState<number | null>(null);
@@ -366,35 +406,102 @@ export function WatchPage({ search }: { search: string }) {
                     Last check{" "}
                     {repo.last_checked_at ? new Date(repo.last_checked_at).toLocaleString() : "not yet"}
                   </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="mt-3"
-                    disabled={previewing || scanningId === repo.id || ended}
-                    onClick={() => {
-                      if (previewing) return;
-                      setScanError(null);
-                      setScanningId(repo.id);
-                      void (async () => {
-                        try {
-                          const response = await fetch(`/api/repos/${repo.id}/scan-latest-release`, {
-                            method: "POST",
-                            credentials: "include",
-                          });
-                          const body = (await response.json()) as { error?: string };
-                          if (!response.ok) throw new Error(body.error ?? "Could not queue scan.");
-                          await refreshSignedIn();
-                        } catch (error) {
-                          setScanError(error instanceof Error ? error.message : "Could not queue scan.");
-                        } finally {
-                          setScanningId(null);
-                        }
-                      })();
-                    }}
-                  >
-                    {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
-                  </Button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || scanningId === repo.id || ended}
+                      onClick={() => {
+                        if (previewing) return;
+                        setScanError(null);
+                        setScanningId(repo.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/repos/${repo.id}/scan-latest-release`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as { error?: string };
+                            if (!response.ok) throw new Error(body.error ?? "Could not queue scan.");
+                            await refreshSignedIn();
+                          } catch (error) {
+                            setScanError(error instanceof Error ? error.message : "Could not queue scan.");
+                          } finally {
+                            setScanningId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || setuppingId === repo.id || ended}
+                      onClick={() => {
+                        if (previewing) return;
+                        setSetuppingId(repo.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/repos/${repo.id}/setup-pr`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as {
+                              error?: string;
+                              reason?: string;
+                              workflow?: string;
+                              htmlUrl?: string;
+                              number?: number;
+                              existing?: boolean;
+                              skipped?: string;
+                            };
+                            if (response.status === 409 && body.workflow) {
+                              setSetupByRepo((current) => ({
+                                ...current,
+                                [repo.id]: {
+                                  status: "copy",
+                                  reason: body.reason ?? "GitHub App cannot open a pull request.",
+                                  workflow: body.workflow ?? "",
+                                },
+                              }));
+                              return;
+                            }
+                            if (!response.ok || !body.htmlUrl || typeof body.number !== "number") {
+                              throw new Error(body.error ?? body.reason ?? "Could not open a setup PR.");
+                            }
+                            const htmlUrl = body.htmlUrl;
+                            const number = body.number;
+                            setSetupByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "opened",
+                                htmlUrl,
+                                number,
+                                existing: Boolean(body.existing),
+                              },
+                            }));
+                          } catch (error) {
+                            setSetupByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "error",
+                                message:
+                                  error instanceof Error ? error.message : "Could not open a setup PR.",
+                              },
+                            }));
+                          } finally {
+                            setSetuppingId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {setuppingId === repo.id ? "Opening…" : "Setup PR"}
+                    </Button>
+                  </div>
+                  {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
                 </li>
               ))}
             </ul>

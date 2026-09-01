@@ -49,10 +49,10 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Planned | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Planned | NoSpoilers |
-| Pre-publish CI gate | Partial: Action exists; optional `policy` input | NoSpoilers |
-| App-generated setup PR | Planned | NoSpoilers |
-| GitHub Checks and annotations | Planned | NoSpoilers |
-| Required-check setup guidance | Planned | NoSpoilers |
+| Pre-publish CI gate | Partial: Action exists; optional `policy` input; generated workflow gates packed artifacts only | NoSpoilers |
+| App-generated setup PR | Partial: reviewable PR, never merged; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
+| GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
+| Required-check setup guidance | Partial: setup PR body tells maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
 | Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
 | Release Diff between approved versions | Built: approved baseline receipt if present, else last two | NoSpoilers |
 | Baseline approval | Built: attributable `scan_baselines`, supersedes the previous | NoSpoilers |

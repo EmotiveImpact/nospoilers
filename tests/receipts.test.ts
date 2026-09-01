@@ -14,6 +14,7 @@ import { scan, type ScanReport } from "../src/scanner/index.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { allowedNpmTarballUrl, type NpmPack, type NpmPort } from "../src/server/npm.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
@@ -48,6 +49,7 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
     listReleaseAssets: fail,
     getLatestRelease: fail,
     downloadAsset: fail,
+    ...skippedGithubWrites(),
     ...overrides,
   };
 }

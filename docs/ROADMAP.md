@@ -29,6 +29,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.
 - `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.
+- App-generated setup PR (reviewable, never merged) and hosted GitHub Checks on release scans.
+  Live GitHub writes skip with copy-paste YAML / no Check until the App is granted Contents write,
+  Pull requests write, and Checks write. Do not grant Administration.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

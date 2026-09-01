@@ -14,6 +14,7 @@ import {
 } from "../src/server/npm.ts";
 import { checkWatchedPackage, connectWatchedPackage, runNpmWatchPoll } from "../src/server/npm-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
@@ -147,6 +148,7 @@ describe("hosted npm watch", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
         npm,
         wakeWorker: () => {
@@ -183,6 +185,7 @@ describe("hosted npm watch", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
         npm,
         notifier: createLogNotifier(store),
@@ -258,6 +261,7 @@ describe("hosted npm watch", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
         npm,
       });

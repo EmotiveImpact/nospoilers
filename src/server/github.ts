@@ -1,5 +1,13 @@
 import { createSign } from "node:crypto";
 import type { AppConfig } from "./config.ts";
+import {
+  SETUP_BRANCH,
+  SETUP_WORKFLOW_PATH,
+  setupCommitMessage,
+  setupPullRequestBody,
+  setupPullRequestTitle,
+  setupWorkflowYaml,
+} from "./setup-workflow.ts";
 
 export type GithubRepo = {
   id: number;
@@ -8,6 +16,7 @@ export type GithubRepo = {
   private: boolean;
   html_url: string;
   owner: { login: string };
+  default_branch?: string;
 };
 
 export type GithubReleaseAsset = {
@@ -16,6 +25,35 @@ export type GithubReleaseAsset = {
   size: number;
   url: string;
 };
+
+export type GithubCheckConclusion = "success" | "failure" | "neutral" | "timed_out";
+
+export type GithubCheckAnnotation = {
+  path: string;
+  start_line: number;
+  end_line: number;
+  annotation_level: "notice" | "warning" | "failure";
+  title?: string;
+  message: string;
+};
+
+export type GithubCheckResult =
+  | { skipped: "permission"; reason: string }
+  | { id: number; htmlUrl: string | null };
+
+export type GithubSetupPrResult =
+  | { skipped: "permission"; reason: string }
+  | { htmlUrl: string; number: number; existing: boolean };
+
+export class GithubApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "GithubApiError";
+    this.status = status;
+  }
+}
 
 export type GithubPort = {
   exchangeCode: (code: string) => Promise<string>;
@@ -37,9 +75,50 @@ export type GithubPort = {
     installationId: number,
     owner: string,
     repo: string,
-  ) => Promise<{ id: number; tag_name: string; name: string } | null>;
+  ) => Promise<{ id: number; tag_name: string; name: string; target_commitish: string | null } | null>;
   downloadAsset: (installationId: number, assetUrl: string, maxBytes: number) => Promise<Buffer>;
+  getRefSha: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    ref: string,
+  ) => Promise<string | null>;
+  createCheckRun: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    input: {
+      name: string;
+      headSha: string;
+      conclusion: GithubCheckConclusion;
+      title: string;
+      summary: string;
+      annotations?: GithubCheckAnnotation[];
+    },
+  ) => Promise<GithubCheckResult>;
+  createSetupPullRequest: (
+    installationId: number,
+    owner: string,
+    repo: string,
+  ) => Promise<GithubSetupPrResult>;
 };
+
+export function skippedGithubWrites(): Pick<
+  GithubPort,
+  "getRefSha" | "createCheckRun" | "createSetupPullRequest"
+> {
+  const reason =
+    "Grant Contents write and Pull requests write to open a setup PR. Grant Checks write to report release scans. Do not grant Administration.";
+  return {
+    getRefSha: async () => null,
+    createCheckRun: async () => ({ skipped: "permission", reason }),
+    createSetupPullRequest: async () => ({ skipped: "permission", reason }),
+  };
+}
+
+function permissionDenied(status: number): boolean {
+  return status === 403 || status === 404;
+}
 
 function b64urlJson(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -73,7 +152,7 @@ async function githubJson<T>(
   });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`GitHub ${response.status} ${url}: ${text.slice(0, 400)}`);
+    throw new GithubApiError(response.status, `GitHub ${response.status} ${url}: ${text.slice(0, 400)}`);
   }
   if (response.status === 204) return {} as T;
   return (await response.json()) as T;
@@ -174,9 +253,20 @@ export function createGithubPort(config: AppConfig): GithubPort {
       if (response.status === 404) return null;
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`GitHub ${response.status}: ${text.slice(0, 400)}`);
+        throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
       }
-      return (await response.json()) as { id: number; tag_name: string; name: string };
+      const body = (await response.json()) as {
+        id: number;
+        tag_name: string;
+        name: string;
+        target_commitish?: string;
+      };
+      return {
+        id: body.id,
+        tag_name: body.tag_name,
+        name: body.name,
+        target_commitish: body.target_commitish ?? null,
+      };
     },
 
     async downloadAsset(installationId, assetUrl, maxBytes) {
@@ -201,6 +291,162 @@ export function createGithubPort(config: AppConfig): GithubPort {
         throw new Error(`Asset is larger than ${maxBytes} bytes.`);
       }
       return buf;
+    },
+
+    async getRefSha(installationId, owner, repo, ref) {
+      if (!ref.trim()) return null;
+      const token = await installationToken(installationId);
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}`,
+        {
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "nospoilers",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        },
+      );
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const text = await response.text();
+        if (permissionDenied(response.status)) return null;
+        throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
+      }
+      const body = (await response.json()) as { sha?: string };
+      return typeof body.sha === "string" ? body.sha : null;
+    },
+
+    async createCheckRun(installationId, owner, repo, input) {
+      const token = await installationToken(installationId);
+      try {
+        const body = await githubJson<{ id: number; html_url?: string | null }>(
+          `https://api.github.com/repos/${owner}/${repo}/check-runs`,
+          token,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: input.name,
+              head_sha: input.headSha,
+              status: "completed",
+              conclusion: input.conclusion,
+              output: {
+                title: input.title.slice(0, 255),
+                summary: input.summary.slice(0, 64_000),
+                annotations: (input.annotations ?? []).slice(0, 50),
+              },
+            }),
+          },
+        );
+        return { id: body.id, htmlUrl: body.html_url ?? null };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return {
+            skipped: "permission",
+            reason:
+              "Grant Checks write to report release scans on the commit SHA. Do not grant Administration.",
+          };
+        }
+        throw error;
+      }
+    },
+
+    async createSetupPullRequest(installationId, owner, repo) {
+      const token = await installationToken(installationId);
+      const reason =
+        "Grant Contents write and Pull requests write to open a setup PR. Do not grant Administration.";
+      try {
+        const repoInfo = await githubJson<{ default_branch?: string }>(
+          `https://api.github.com/repos/${owner}/${repo}`,
+          token,
+        );
+        const defaultBranch = repoInfo.default_branch?.trim() || "main";
+        const baseRef = await githubJson<{ object: { sha: string } }>(
+          `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`,
+          token,
+        );
+        const baseSha = baseRef.object.sha;
+        const created = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+          method: "POST",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "nospoilers",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ref: `refs/heads/${SETUP_BRANCH}`, sha: baseSha }),
+        });
+        if (!created.ok && created.status !== 422) {
+          const text = await created.text();
+          throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
+        }
+
+        let fileSha: string | undefined;
+        const existingFile = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${SETUP_WORKFLOW_PATH}?ref=${encodeURIComponent(SETUP_BRANCH)}`,
+          {
+            headers: {
+              Accept: "application/vnd.github+json",
+              Authorization: `Bearer ${token}`,
+              "User-Agent": "nospoilers",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          },
+        );
+        if (existingFile.ok) {
+          const fileBody = (await existingFile.json()) as { sha?: string };
+          if (typeof fileBody.sha === "string") fileSha = fileBody.sha;
+        } else if (existingFile.status !== 404) {
+          const text = await existingFile.text();
+          throw new GithubApiError(
+            existingFile.status,
+            `GitHub ${existingFile.status}: ${text.slice(0, 400)}`,
+          );
+        }
+
+        await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${SETUP_WORKFLOW_PATH}`, token, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: setupCommitMessage(),
+            content: Buffer.from(setupWorkflowYaml(), "utf8").toString("base64"),
+            branch: SETUP_BRANCH,
+            ...(fileSha ? { sha: fileSha } : {}),
+          }),
+        });
+
+        const open = await githubJson<{ html_url: string; number: number }[]>(
+          `https://api.github.com/repos/${owner}/${repo}/pulls?head=${encodeURIComponent(`${owner}:${SETUP_BRANCH}`)}&state=open`,
+          token,
+        );
+        if (open[0]) {
+          return { htmlUrl: open[0].html_url, number: open[0].number, existing: true };
+        }
+
+        const pull = await githubJson<{ html_url: string; number: number }>(
+          `https://api.github.com/repos/${owner}/${repo}/pulls`,
+          token,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: setupPullRequestTitle(),
+              head: SETUP_BRANCH,
+              base: defaultBranch,
+              body: setupPullRequestBody(),
+              draft: false,
+            }),
+          },
+        );
+        return { htmlUrl: pull.html_url, number: pull.number, existing: false };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return { skipped: "permission", reason };
+        }
+        throw error;
+      }
     },
   };
 }

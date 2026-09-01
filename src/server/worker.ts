@@ -10,6 +10,7 @@ import { logJson } from "./log.ts";
 import type { NpmPort } from "./npm.ts";
 import { isPackAssetName } from "./paths.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
+import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
@@ -203,6 +204,7 @@ export async function handleJob(
     payload.releaseId = latest.id;
     payload.tag = latest.tag_name;
     payload.name = latest.name || latest.tag_name;
+    payload.targetCommitish = latest.target_commitish ?? payload.targetCommitish;
     job = { ...job, kind: "release_scan", payload };
   }
 
@@ -275,15 +277,35 @@ export async function handleJob(
     }
 
     const status = foldScanStatus(statuses);
+    const title = titleForScan(
+      status,
+      `${repo.fullName} ${tag} is allowed to ship`,
+      `Spoilers in ${repo.fullName} ${tag}`,
+      `Inconclusive scan of ${repo.fullName} ${tag}`,
+    );
+    const sha =
+      (await deps.github.getRefSha(installationId, repo.owner, repo.name, `tags/${tag}`)) ??
+      (await deps.github.getRefSha(
+        installationId,
+        repo.owner,
+        repo.name,
+        String(payload.targetCommitish ?? tag),
+      ));
+    if (sha) {
+      const check = await deps.github.createCheckRun(installationId, repo.owner, repo.name, {
+        name: "NoSpoilers",
+        headSha: sha,
+        conclusion: checkConclusionFor(status),
+        title: checkTitleFor(status, repo.fullName, tag),
+        summary: notes.join(" "),
+        annotations: annotationsForFindings(allFindings),
+      });
+      if (!("skipped" in check) && check.htmlUrl) notes.push(`Check ${check.htmlUrl}`);
+    }
     await deps.notifier.send({
       ...alertBase,
       kind: job.kind,
-      title: titleForScan(
-        status,
-        `${repo.fullName} ${tag} is allowed to ship`,
-        `Spoilers in ${repo.fullName} ${tag}`,
-        `Inconclusive scan of ${repo.fullName} ${tag}`,
-      ),
+      title,
       body: notes.join(" "),
       findings: allFindings,
     });

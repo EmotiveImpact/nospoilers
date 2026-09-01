@@ -129,8 +129,14 @@ GitHub → your profile → **Settings** → **Developer settings** → **GitHub
 **Permissions** (Repository):
 
 - **Metadata** — Read-only (required)
-- **Contents** — Read-only (release assets)
+- **Contents** — Read-only to download release assets. Optional **Read and write** to open a
+  setup PR (writes `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`)
+- **Pull requests** — Optional **Read and write** to open that setup PR. The App **never merges** it
+- **Checks** — Optional **Read and write** to report hosted release-scan results on the tag SHA
 - **Members** — Read-only (collaborator added)
+
+Do **not** grant Administration on all repositories. Branch protection / required checks stay a
+maintainer action after they merge the setup PR.
 
 **Subscribe to events:** `Meta`, `Installation`, `Installation repositories`, `Repository`, `Public`, `Push`, `Release`, `Member`, `Fork`.
 

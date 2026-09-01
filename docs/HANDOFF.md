@@ -54,6 +54,13 @@ Read in this order:
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
   and approve a packed receipt as the shipping baseline. Hosted scans apply those exceptions
   before minting a receipt. CLI and the GitHub Action load `.nospoilers.yml` when present.
+- Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml` (packed
+  artifacts only). The App never merges it. If GitHub returns 403/404, the API returns 409 plus
+  copy-paste YAML. Hosted `release_scan` jobs post a **NoSpoilers** Check with rule/path
+  annotations when Checks write is granted; otherwise the job still completes.
+- The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
+  Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
+  grant Administration on all repositories.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
@@ -84,6 +91,9 @@ Release manifests, signed receipts, inconclusive status, and Release Diff are in
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
+Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
+Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
+Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
 Do not start Stripe or the Electron installer worker yet.

@@ -237,6 +237,7 @@ export async function enqueueFromWebhook(
         releaseId: num(release.id),
         tag: str(release.tag_name),
         name: str(release.name) || str(release.tag_name),
+        targetCommitish: str(release.target_commitish),
       },
     });
   }

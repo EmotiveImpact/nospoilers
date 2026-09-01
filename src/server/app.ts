@@ -13,6 +13,10 @@ import type { AppConfig } from "./config.ts";
 import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
 import type { GithubPort } from "./github.ts";
+import {
+  SETUP_PERMISSIONS,
+  setupWorkflowYaml,
+} from "./setup-workflow.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
 import { checkWatchedPackage, connectWatchedPackage } from "./npm-watch.ts";
@@ -506,6 +510,65 @@ export function createApp(deps: AppDeps): Hono {
     });
     if (result.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.inserted, jobId: result.id });
+  });
+
+  app.get("/api/repos/:id/setup-workflow", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    return c.json({
+      path: ".github/workflows/nospoilers.yml",
+      workflow: setupWorkflowYaml(),
+      permissions: SETUP_PERMISSIONS,
+    });
+  });
+
+  app.post("/api/repos/:id/setup-pr", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    if (!(await deps.store.installationWorkAllowed(repo.installation_id))) {
+      return c.json({ error: "Coverage ended. Subscribe to open a setup PR." }, 402);
+    }
+    const result = await deps.github.createSetupPullRequest(
+      repo.installation_id,
+      repo.owner,
+      repo.name,
+    );
+    if ("skipped" in result) {
+      return c.json(
+        {
+          ok: false,
+          skipped: result.skipped,
+          reason: result.reason,
+          workflow: setupWorkflowYaml(),
+          permissions: SETUP_PERMISSIONS,
+        },
+        409,
+      );
+    }
+    return c.json(
+      {
+        ok: true,
+        htmlUrl: result.htmlUrl,
+        number: result.number,
+        existing: result.existing,
+        merged: false,
+      },
+      result.existing ? 200 : 201,
+    );
   });
 
   app.get("/api/packages", async (c) => {

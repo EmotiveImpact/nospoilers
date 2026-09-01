@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { databaseMode, loadConfig } from "../src/server/config.ts";
-import type { GithubPort, GithubRepo } from "../src/server/github.ts";
+import { skippedGithubWrites, type GithubPort, type GithubRepo } from "../src/server/github.ts";
 import { githubSignature } from "../src/server/hmac.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { runVisibilityPoll } from "../src/server/poller.ts";
@@ -25,6 +25,7 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
     listReleaseAssets: fail,
     getLatestRelease: fail,
     downloadAsset: fail,
+    ...skippedGithubWrites(),
     ...overrides,
   };
 }

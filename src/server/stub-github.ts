@@ -1,4 +1,4 @@
-import type { GithubPort } from "./github.ts";
+import { skippedGithubWrites, type GithubPort } from "./github.ts";
 
 export function stubGithub(): GithubPort {
   const fail = async (): Promise<never> => {
@@ -13,5 +13,6 @@ export function stubGithub(): GithubPort {
     listReleaseAssets: fail,
     getLatestRelease: fail,
     downloadAsset: fail,
+    ...skippedGithubWrites(),
   };
 }

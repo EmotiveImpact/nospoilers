@@ -13,6 +13,7 @@ import { persistHostedReceipt } from "../src/server/receipts.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { allowedNpmTarballUrl, type NpmPack, type NpmPort } from "../src/server/npm.ts";
 import { scan, type ScanReport } from "../src/scanner/index.ts";
@@ -39,6 +40,7 @@ function mockGithub(): GithubPort {
     listReleaseAssets: fail,
     getLatestRelease: fail,
     downloadAsset: fail,
+    ...skippedGithubWrites(),
   };
 }
 

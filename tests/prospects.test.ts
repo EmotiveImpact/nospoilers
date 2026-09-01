@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 import { parseGithubRepository } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
@@ -19,6 +20,7 @@ function unusedGithub(): GithubPort {
     listReleaseAssets: unused,
     getLatestRelease: unused,
     downloadAsset: unused,
+    ...skippedGithubWrites(),
   };
 }
 

@@ -12,6 +12,7 @@ import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore } from "../src/server/store.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
+import { skippedGithubWrites } from "../src/server/github.ts";
 
 describe("secret box", () => {
   it("round-trips a GitHub token and refuses to leave it in plaintext", () => {
@@ -105,6 +106,7 @@ describe("hosted scan rate limit", () => {
           listReleaseAssets: async () => [],
           getLatestRelease: async () => null,
           downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
         },
       });
       const first = await app.request("/api/scan", {

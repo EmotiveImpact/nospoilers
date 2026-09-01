@@ -36,6 +36,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - See Watch data for installations linked to their account.
 - Connect and watch public npm packages on those installations while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
+- Open a reviewable setup PR (or copy the packed-artifact workflow YAML) on those repositories
+  while coverage is active. The App never merges that PR.
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved).
 - Manage expiring allowlist exceptions and approve scan baselines on those installations.
@@ -149,4 +151,6 @@ mutate Artifact Leads. `tests/receipts.test.ts` proves customers cannot read ano
 tenant’s receipts and that receipts cannot be patched. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
-Keep those tests green when adding internal routes.
+`tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
+permission skips return copy-paste YAML instead of failing the worker, and the merge API
+is never called. Keep those tests green when adding internal routes.
