@@ -305,7 +305,12 @@ export function createStore(sql: SqlClient) {
       return num(rows[0]?.n ?? 0);
     },
 
-    async claimJob(priority: JobPriority, cap: number, workerId: string): Promise<JobRow | null> {
+    async claimJob(
+      priority: JobPriority,
+      cap: number,
+      workerId: string,
+      includeProspectScans = true,
+    ): Promise<JobRow | null> {
       return await sql.transaction(async (tx) => {
         const { rows: countRows } = await tx.query<{ n: unknown }>(
           `SELECT count(*)::int AS n FROM jobs WHERE status = 'running' AND priority = $1`,
@@ -316,10 +321,11 @@ export function createStore(sql: SqlClient) {
         const { rows: picked } = await tx.query<{ id: unknown }>(
           `SELECT id FROM jobs
            WHERE status = 'queued' AND priority = $1 AND run_after <= now()
-           ORDER BY id
+             AND ($2::boolean OR kind <> 'prospect_scan')
+           ORDER BY CASE WHEN kind = 'prospect_scan' THEN 1 ELSE 0 END, id
            FOR UPDATE SKIP LOCKED
            LIMIT 1`,
-          [priority],
+          [priority, includeProspectScans],
         );
         const pickedId = picked[0]?.id;
         if (pickedId === undefined) return null;

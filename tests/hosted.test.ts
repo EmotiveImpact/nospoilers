@@ -206,6 +206,48 @@ describe("job concurrency", () => {
       expect(kinds.some((k) => k === "repo_publicized" || k === "fork")).toBe(true);
     });
   });
+
+  it("prioritizes customer release jobs and caps internal prospect scans at one", async () => {
+    await withStore(async ({ store }) => {
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "prospect_scan",
+        payload: { prospectId: 1 },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "prospect_scan",
+        payload: { prospectId: 2 },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: { installationId: 7 },
+      });
+      const started: string[] = [];
+      let maxProspects = 0;
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 3,
+        lightConcurrency: 2,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+        onJob: async (job) => {
+          started.push(job.kind);
+          maxProspects = Math.max(maxProspects, worker.running.prospect);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        },
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(started[0]).toBe("release_scan");
+      expect(maxProspects).toBeLessThanOrEqual(1);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      worker.stop();
+    });
+  });
 });
 
 describe("visibility poller", () => {

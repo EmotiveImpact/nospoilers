@@ -218,6 +218,7 @@ export function createWorker(opts: {
   const workerId = `w-${process.pid}-${Math.random().toString(16).slice(2)}`;
   let lightRunning = 0;
   let heavyRunning = 0;
+  let prospectRunning = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   let stopped = false;
 
@@ -225,6 +226,7 @@ export function createWorker(opts: {
     const inc = job.priority === "heavy" ? () => (heavyRunning += 1) : () => (lightRunning += 1);
     const dec = job.priority === "heavy" ? () => (heavyRunning -= 1) : () => (lightRunning -= 1);
     inc();
+    if (job.kind === "prospect_scan") prospectRunning += 1;
     try {
       if (opts.onJob) await opts.onJob(job);
       else {
@@ -241,6 +243,7 @@ export function createWorker(opts: {
       const message = error instanceof Error ? error.message : String(error);
       await opts.store.finishJob(job.id, message);
     } finally {
+      if (job.kind === "prospect_scan") prospectRunning -= 1;
       dec();
     }
   }
@@ -253,7 +256,12 @@ export function createWorker(opts: {
       void runClaimed(job);
     }
     while (heavyRunning < opts.heavyConcurrency) {
-      const job = await opts.store.claimJob("heavy", opts.heavyConcurrency, workerId);
+      const job = await opts.store.claimJob(
+        "heavy",
+        opts.heavyConcurrency,
+        workerId,
+        prospectRunning < 1,
+      );
       if (!job) break;
       void runClaimed(job);
     }
@@ -262,7 +270,7 @@ export function createWorker(opts: {
   return {
     tick,
     get running() {
-      return { light: lightRunning, heavy: heavyRunning };
+      return { light: lightRunning, heavy: heavyRunning, prospect: prospectRunning };
     },
     start() {
       if (timer) return;

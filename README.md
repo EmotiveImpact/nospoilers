@@ -38,6 +38,7 @@ GitHub's public API limit from 60 to 5,000 requests per hour.
 
 The desk deliberately supports only public `.tgz`, `.tar.gz`, `.zip`, and `.asar` artifacts from
 GitHub and npm. Use findings for private, responsible disclosure—never public prospect lists.
+Prospect scans run one at a time and customer release jobs stay ahead of them in the heavy queue.
 
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 
