@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Store } from "./store.ts";
+import { logJson } from "./log.ts";
 import { cheapSensitivePaths, isPackAssetName, pathsFromPushPayload } from "./paths.ts";
 import {
   describeInstallHealth,
@@ -151,6 +152,27 @@ async function enqueueCovered(
   return { queued: result.inserted, kind: input.kind };
 }
 
+async function revokeGithubAppAuthorization(
+  store: Store,
+  payload: Json,
+): Promise<{ queued: boolean; kind: string }> {
+  if (str(payload.action) !== "revoked") {
+    return { queued: false, kind: "github_app_authorization" };
+  }
+  const senderId = num(obj(payload.sender).id);
+  if (!Number.isFinite(senderId) || senderId <= 0) {
+    return { queued: false, kind: "github_app_authorization" };
+  }
+  const userId = String(senderId);
+  if (!(await store.userExists(userId))) {
+    return { queued: false, kind: "github_app_authorization" };
+  }
+  await store.deleteUserSessions(userId);
+  await store.clearUserAccessToken(userId);
+  logJson("info", "github_app_authorization.revoked", { userId });
+  return { queued: false, kind: "github_app_authorization" };
+}
+
 export async function enqueueFromWebhook(
   store: Store,
   event: string,
@@ -158,6 +180,10 @@ export async function enqueueFromWebhook(
   payload: Json,
 ): Promise<{ queued: boolean; kind: string | null; skipped?: "uncovered" }> {
   if (event === "ping") return { queued: false, kind: "ping" };
+
+  if (event === "github_app_authorization") {
+    return await revokeGithubAppAuthorization(store, payload);
+  }
 
   const installationId = await ensureInstallation(store, payload);
 

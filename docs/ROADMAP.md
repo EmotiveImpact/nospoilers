@@ -44,7 +44,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.
 - App-generated setup PR (reviewable, never merged) and hosted GitHub Checks on release scans.
   Generated CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails closed
-  if none exist. Source pushes are not unpacked. Live GitHub writes skip with copy-paste YAML /
+  if none exist. Source pushes are not unpacked. Watch and the setup PR body tell maintainers to
+  mark the NoSpoilers check required; the App does not set branch protection. Live GitHub writes
+  skip with copy-paste YAML /
   no Check until the App is granted Contents write, Pull requests write, and Checks write. Do not
   grant Administration.
 - Packed npm/pnpm/Yarn/Bun workspace discovery: list roots and members from package.json /
@@ -130,6 +132,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
+- GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth
+  token. The installation stays. Coverage does not gate this. Sign-out deletes only the current
+  session.
 
 ### Connected but not loop-proven
 

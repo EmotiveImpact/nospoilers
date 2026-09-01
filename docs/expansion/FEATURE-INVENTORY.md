@@ -10,7 +10,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
-| GitHub OAuth login | Built: real GitHub user session on Neon | NoSpoilers |
+| GitHub OAuth login | Built: real GitHub user session on Neon; `github_app_authorization` revoked drops that user’s sessions and stored OAuth token | NoSpoilers |
 | GitHub App installation | Built: live App install and HMAC webhooks | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
 | Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert | NoSpoilers |
@@ -52,7 +52,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Pre-publish CI gate | Partial: Action exists; generated workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked | NoSpoilers |
 | App-generated setup PR | Partial: reviewable PR, never merged; generated CI scans each existing pack under package.tgz and dist/; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
-| Required-check setup guidance | Partial: setup PR body tells maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
+| Required-check setup guidance | Partial: setup PR body and Watch copy tell maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
 | Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
 | Release Diff between approved versions | Built: approved baseline receipt if present, else last two | NoSpoilers |
 | Baseline approval | Built: attributable `scan_baselines`, supersedes the previous | NoSpoilers |
@@ -145,6 +145,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
 | GitHub Release unpublished or deleted | Built: light Watch alert; gone assets are not downloaded | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
+| GitHub App authorization revoke | Built: HMAC webhook drops that user’s sessions and stored OAuth token; the installation stays; coverage does not gate this | NoSpoilers |
 | Hourly missed-webhook visibility check | Built | NoSpoilers |
 | Event acknowledgement and assignment | Built: ack/assign to install members; append-only `alert_events` | NoSpoilers |
 | Resolution notes/evidence | Built: resolve requires a note; files are not stored | NoSpoilers |

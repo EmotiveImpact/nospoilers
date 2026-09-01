@@ -144,7 +144,7 @@ GitHub → your profile → **Settings** → **Developer settings** → **GitHub
 Do **not** grant Administration on all repositories. Branch protection / required checks stay a
 maintainer action after they merge the setup PR.
 
-**Subscribe to events:** `Meta`, `Installation`, `Installation repositories`, `Repository`, `Public`, `Push`, `Release`, `Member`, `Fork`.
+**Subscribe to events:** `Meta`, `Installation`, `Installation repositories`, `Repository`, `Public`, `Push`, `Release`, `Member`, `Fork`, `GitHub App authorization`.
 
 Create the app. Then:
 

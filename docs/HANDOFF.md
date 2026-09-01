@@ -70,7 +70,10 @@ Read in this order:
 - Without `DATABASE_URL`, development uses PGlite under `data/nospoilers`.
 - API routes wake the worker immediately after enqueue. The 15-minute timer is recovery only.
   Failed jobs retry with backoff; stale running locks are requeued. GitHub OAuth tokens are
-  encrypted at rest. Hosted `/api/scan` is rate-limited per address. HTTPS origins set Secure cookies.
+  encrypted at rest. `github_app_authorization` revoked drops that user’s sessions and discards
+  the stored token. Sign-out deletes only the current session. The GitHub installation stays
+  until `installation.deleted`. HMAC is still required. Coverage does not gate revoke.
+  Hosted `/api/scan` is rate-limited per address. HTTPS origins set Secure cookies.
   Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
   `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
@@ -92,7 +95,9 @@ Read in this order:
   before minting a receipt. CLI and the GitHub Action load `.nospoilers.yml` when present.
 - Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml`. That
   workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each with the Action, and
-  fails closed if none exist. Source pushes are not unpacked. The App never merges the PR. If GitHub
+  fails closed if none exist. Source pushes are not unpacked. The App never merges the PR. Watch
+  and the PR body tell maintainers to mark the NoSpoilers check required; the App does not set
+  branch protection. If GitHub
   returns 403/404, the API returns 409 plus copy-paste YAML. Hosted `release_scan` jobs post a
   **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
   still completes.
@@ -280,6 +285,9 @@ Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), scans
 closed if none exist. Source pushes are not unpacked. Reviewable, never merged.
 GitHub `repository.deleted` removes the Watch row and does not resurrect it. `renamed` updates
 name/URL in place. No extra job.
+GitHub App authorization revoke (`github_app_authorization` / `revoked`) drops that user’s
+sessions and stored OAuth token. The installation stays. HMAC required. Not coverage-gated.
+Sign-out deletes only the current session.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

@@ -709,7 +709,10 @@ export function createApp(deps: AppDeps): Hono {
     return c.redirect("/");
   });
 
-  app.post("/api/auth/logout", (c) => {
+  app.post("/api/auth/logout", async (c) => {
+    const raw = getCookie(c, cookieName);
+    const sessionId = readSignedSession(deps.config.sessionSecret, raw);
+    if (sessionId) await deps.store.deleteSession(sessionId);
     deleteCookie(c, cookieName, { path: "/" });
     return c.json({ ok: true });
   });

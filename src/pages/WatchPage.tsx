@@ -1434,7 +1434,9 @@ export function WatchPage({ search }: { search: string }) {
             rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
             workflow if it is missing. Both PRs need Contents write and Pull requests write. They
             are reviewable and never merged. They do not need Administration, and they do not make
-            the repository private or delete a Release asset. A GitHub Release is scanned when it
+            the repository private or delete a Release asset. After you merge the setup PR, mark the
+            NoSpoilers check required in branch protection if you want CI to block; the App does
+            not change branch protection. A GitHub Release is scanned when it
             is published, and again when pack assets are added or replaced. Unpublishing or deleting
             a release is an alert only; gone assets are not downloaded.
           </p>

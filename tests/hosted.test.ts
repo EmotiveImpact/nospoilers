@@ -334,6 +334,124 @@ describe("GitHub webhooks", () => {
     });
   });
 
+  it("rejects a GitHub App authorization revoke without HMAC", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "4242", login: "octo", accessToken: "ghu_keep" });
+      const sessionId = await store.createSession("4242");
+      const { app } = appFor(store);
+      const res = await postWebhook(
+        app,
+        "github_app_authorization",
+        "d-authz-bad",
+        { action: "revoked", sender: { id: 4242, login: "octo" } },
+        "sha256=deadbeef",
+      );
+      expect(res.status).toBe(401);
+      expect(await store.getSession(sessionId)).not.toBeNull();
+      expect(await store.getUserAccessToken("4242")).toBe("ghu_keep");
+    });
+  });
+
+  it("drops that user's sessions and OAuth token when GitHub App authorization is revoked", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "4242", login: "octo", accessToken: "ghu_revoked" });
+      await store.upsertUser({ id: "99", login: "other", accessToken: "ghu_other" });
+      const revokedA = await store.createSession("4242");
+      const revokedB = await store.createSession("4242");
+      const otherSession = await store.createSession("99");
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 4242,
+      });
+      await store.linkUserInstallation(7, "4242");
+      let wakes = 0;
+      const { app } = appFor(store, mockGithub(), () => {
+        wakes += 1;
+      });
+      const res = await postWebhook(app, "github_app_authorization", "d-authz-1", {
+        action: "revoked",
+        sender: { id: 4242, login: "octo", html_url: "https://github.com/octo" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { ok: boolean; queued: boolean; kind: string };
+      expect(body).toEqual({ ok: true, queued: false, kind: "github_app_authorization" });
+      expect(JSON.stringify(body)).not.toMatch(/ghu_|token/i);
+      expect(wakes).toBe(0);
+      expect(await store.getSession(revokedA)).toBeNull();
+      expect(await store.getSession(revokedB)).toBeNull();
+      expect(await store.getSession(otherSession)).not.toBeNull();
+      expect(await store.getUserAccessToken("4242")).toBeNull();
+      expect(await store.getUserAccessToken("99")).toBe("ghu_other");
+      const cookie = `ns_session=${signSession("sess", revokedA)}`;
+      const me = await app.request("/api/me", { headers: { cookie } });
+      expect(((await me.json()) as { user: unknown }).user).toBeNull();
+      const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(jobs[0]?.n)).toBe(0);
+      const { rows: installs } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM installations",
+      );
+      expect(Number(installs[0]?.n)).toBe(1);
+    });
+  });
+
+  it("still drops sessions on authorization revoke when the install is unpaid", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "4242", login: "octo", accessToken: "ghu_unpaid" });
+      const sessionId = await store.createSession("4242");
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 4242,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "github_app_authorization", "d-authz-unpaid", {
+        action: "revoked",
+        sender: { id: 4242, login: "octo" },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; skipped?: string };
+      expect(body.queued).toBe(false);
+      expect(body.skipped).toBeUndefined();
+      expect(await store.getSession(sessionId)).toBeNull();
+      expect(await store.getUserAccessToken("4242")).toBeNull();
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("ignores an unknown sender and non-revoked GitHub App authorization actions", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "4242", login: "octo", accessToken: "ghu_keep" });
+      const sessionId = await store.createSession("4242");
+      const { app } = appFor(store);
+      const unknown = await postWebhook(app, "github_app_authorization", "d-authz-unknown", {
+        action: "revoked",
+        sender: { id: 999001, login: "ghost" },
+      });
+      expect(unknown.status).toBe(200);
+      expect(((await unknown.json()) as { queued: boolean }).queued).toBe(false);
+      const otherAction = await postWebhook(app, "github_app_authorization", "d-authz-other", {
+        action: "created",
+        sender: { id: 4242, login: "octo" },
+      });
+      expect(otherAction.status).toBe(200);
+      expect(await store.getSession(sessionId)).not.toBeNull();
+      expect(await store.getUserAccessToken("4242")).toBe("ghu_keep");
+      const { rows: users } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM users WHERE id = '999001'",
+      );
+      expect(Number(users[0]?.n)).toBe(0);
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
   it("fingerprints pack assets without download URLs", () => {
     const withUrls = packAssetFingerprint([
       {
@@ -603,6 +721,27 @@ describe("installation ownership", () => {
         "SELECT installation_id::text, user_id FROM installation_users",
       );
       expect(rows).toEqual([{ installation_id: "7", user_id: "u-owner" }]);
+    });
+  });
+
+  it("deletes only the current session on logout", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "4242", login: "octo", accessToken: "ghu_keep" });
+      const leaving = await store.createSession("4242");
+      const staying = await store.createSession("4242");
+      const { app } = appFor(store);
+      const res = await app.request("/api/auth/logout", {
+        method: "POST",
+        headers: { cookie: `ns_session=${signSession("sess", leaving)}` },
+      });
+      expect(res.status).toBe(200);
+      expect(await store.getSession(leaving)).toBeNull();
+      expect(await store.getSession(staying)).not.toBeNull();
+      expect(await store.getUserAccessToken("4242")).toBe("ghu_keep");
+      const me = await app.request("/api/me", {
+        headers: { cookie: `ns_session=${signSession("sess", leaving)}` },
+      });
+      expect(((await me.json()) as { user: unknown }).user).toBeNull();
     });
   });
 });

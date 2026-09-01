@@ -76,7 +76,7 @@ const PRIVACY: LegalDoc = {
     {
       heading: "Your choices",
       paragraphs: [
-        `Uninstall the GitHub App to stop hosted watching for that installation. Sign out to drop the session cookie. Email ${SUPPORT_EMAIL} to ask what we hold for your login or to request deletion of account rows we can lawfully remove.`,
+        `Uninstall the GitHub App to stop hosted watching for that installation. Sign out to drop this browser’s session. Revoking the GitHub App authorization on GitHub drops every NoSpoilers session for that user and discards the stored GitHub OAuth token; the installation stays until you uninstall it. Email ${SUPPORT_EMAIL} to ask what we hold for your login or to request deletion of account rows we can lawfully remove.`,
       ],
     },
   ],

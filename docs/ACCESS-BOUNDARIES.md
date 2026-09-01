@@ -250,6 +250,10 @@ These are never customer features:
   until unsuspend. Live permission tests and alert acknowledgement/assignment/resolution
   are not unpack work and stay available. Anonymous `POST /api/scan` stays a size-limited
   acquisition surface.
+- GitHub `github_app_authorization` with `action: revoked` deletes that user’s sessions and
+  discards the stored GitHub OAuth token. HMAC is still required. The GitHub installation is
+  not deleted. Coverage does not gate this. Other users on the same install keep their sessions.
+  Sign-out deletes only the current session cookie’s row.
 
 ## How access is checked today
 
@@ -296,7 +300,9 @@ three, another tenant is not stuck behind a Solo queue, and the global heavy cap
 applies. The same file proves GitHub `release.edited` rescans only when pack assets change,
 title-only edits and non-pack assets do not enqueue, assets attached after publish enqueue a
 second scan, `unpublished`/`deleted` are light jobs that alert without downloading, `repository.deleted`
-removes the Watch row instead of resurrecting it, and `renamed` updates the stored name.
+removes the Watch row instead of resurrecting it, `renamed` updates the stored name, and
+`github_app_authorization` revoked drops that user’s sessions and stored OAuth token without
+enqueueing work or deleting the install (HMAC still required; unpaid coverage does not skip it).
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,

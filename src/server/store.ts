@@ -954,6 +954,25 @@ export function createStore(
       }
     },
 
+    async userExists(userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: string }>(`SELECT id FROM users WHERE id = $1`, [
+        userId,
+      ]);
+      return Boolean(rows[0]);
+    },
+
+    async deleteSession(id: string): Promise<void> {
+      await sql.query(`DELETE FROM sessions WHERE id = $1`, [id]);
+    },
+
+    async deleteUserSessions(userId: string): Promise<void> {
+      await sql.query(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
+    },
+
+    async clearUserAccessToken(userId: string): Promise<void> {
+      await sql.query(`UPDATE users SET access_token = NULL WHERE id = $1`, [userId]);
+    },
+
     async getUserAccessToken(userId: string): Promise<string | null> {
       const { rows } = await sql.query<{ access_token: string | null }>(
         `SELECT access_token FROM users WHERE id = $1`,
