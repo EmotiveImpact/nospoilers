@@ -1,6 +1,5 @@
 import { signOut } from "@/auth.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
-import { DashboardShell } from "@/components/DashboardShell.tsx"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
 import { coverageFromQuery, type Coverage } from "@/coverage.ts"
@@ -30,6 +29,7 @@ function go(event: MouseEvent<HTMLAnchorElement>, href: string) {
 function productHref(href: string, search: string, signedIn: boolean): string {
   if (signedIn) return href
   const as = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("as")
+  if (href === "/watch") return as === "ended" ? "/watch?as=ended" : "/watch?as=trial"
   if (href === "/scan") {
     if (as === "ended") return "/scan?as=ended"
     if (as === "trial") return "/scan?as=trial"
@@ -80,15 +80,9 @@ export function SiteChrome({
   const ended = coverage?.status === "ended"
   const signedIn = Boolean(login)
   const previewing = Boolean(coverage) && !signedIn
-  const appSurface =
-    signedIn && (path === "/watch" || path === "/scan" || path === "/internal/prospects")
 
-  if (appSurface && login) {
-    return (
-      <DashboardShell path={path} login={login} coverage={sessionCoverage}>
-        {children}
-      </DashboardShell>
-    )
+  if (signedIn && path === "/watch") {
+    return <>{children}</>
   }
 
   return (

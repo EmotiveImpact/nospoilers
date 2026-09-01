@@ -1,3 +1,5 @@
+import type { Finding } from "@/report-types"
+
 /** Layout-only desk used when GitHub is not connected. Not a live install. */
 export const PREVIEW_LOGIN = "emotive-impact"
 
@@ -26,7 +28,7 @@ export function previewAlerts() {
       kind: "repo_publicized",
       title: `${PREVIEW_LOGIN}/old-cli flipped to public`,
       body: "Visibility job finished in 400ms. No pack attached to this event.",
-      findings: null,
+      findings: null as Finding[] | null,
       created_at: at.toISOString(),
       full_name: `${PREVIEW_LOGIN}/old-cli`,
     },

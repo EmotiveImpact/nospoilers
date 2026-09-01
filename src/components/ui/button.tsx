@@ -1,50 +1,66 @@
-import { Button as HeadlessButton } from "@headlessui/react"
+import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import type { ComponentPropsWithoutRef, ElementType } from "react"
+import { Slot } from "radix-ui"
+
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium tracking-tight transition-colors data-focus:outline-none data-focus:ring-1 data-focus:ring-snow/40 data-disabled:pointer-events-none data-disabled:opacity-40",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-oklch(0.708 0 0) focus-visible:ring-[3px] focus-visible:ring-oklch(0.708 0 0)/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-oklch(0.577 0.245 27.325) aria-invalid:ring-oklch(0.577 0.245 27.325)/20 dark:aria-invalid:ring-oklch(0.577 0.245 27.325)/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 dark:focus-visible:border-oklch(0.556 0 0) dark:focus-visible:ring-oklch(0.556 0 0)/50 dark:aria-invalid:border-oklch(0.704 0.191 22.216) dark:aria-invalid:ring-oklch(0.704 0.191 22.216)/20 dark:dark:aria-invalid:ring-oklch(0.704 0.191 22.216)/40",
   {
     variants: {
       variant: {
-        default: "bg-snow text-ink data-hover:bg-white data-active:bg-zinc-200",
+        default: "bg-oklch(0.205 0 0) text-oklch(0.985 0 0) hover:bg-oklch(0.205 0 0)/90 dark:bg-oklch(0.922 0 0) dark:text-oklch(0.205 0 0) dark:hover:bg-oklch(0.922 0 0)/90",
+        destructive:
+          "bg-oklch(0.577 0.245 27.325) text-white hover:bg-oklch(0.577 0.245 27.325)/90 focus-visible:ring-oklch(0.577 0.245 27.325)/20 dark:bg-oklch(0.577 0.245 27.325)/60 dark:focus-visible:ring-oklch(0.577 0.245 27.325)/40 dark:bg-oklch(0.704 0.191 22.216) dark:hover:bg-oklch(0.704 0.191 22.216)/90 dark:focus-visible:ring-oklch(0.704 0.191 22.216)/20 dark:dark:bg-oklch(0.704 0.191 22.216)/60 dark:dark:focus-visible:ring-oklch(0.704 0.191 22.216)/40",
         outline:
-          "border border-white/15 bg-transparent text-snow data-hover:border-white/30 data-hover:bg-white/[0.04] data-active:bg-white/[0.07]",
-        ghost: "text-mute data-hover:bg-white/[0.05] data-hover:text-snow data-active:bg-white/[0.08]",
-        danger: "text-danger data-hover:text-snow",
+          "border bg-oklch(1 0 0) shadow-xs hover:bg-oklch(0.97 0 0) hover:text-oklch(0.205 0 0) dark:border-oklch(0.922 0 0) dark:bg-oklch(0.922 0 0)/30 dark:hover:bg-oklch(0.922 0 0)/50 dark:bg-oklch(0.145 0 0) dark:hover:bg-oklch(0.269 0 0) dark:hover:text-oklch(0.985 0 0) dark:dark:border-oklch(1 0 0 / 15%) dark:dark:bg-oklch(1 0 0 / 15%)/30 dark:dark:hover:bg-oklch(1 0 0 / 15%)/50",
+        secondary:
+          "bg-oklch(0.97 0 0) text-oklch(0.205 0 0) hover:bg-oklch(0.97 0 0)/80 dark:bg-oklch(0.269 0 0) dark:text-oklch(0.985 0 0) dark:hover:bg-oklch(0.269 0 0)/80",
+        ghost:
+          "hover:bg-oklch(0.97 0 0) hover:text-oklch(0.205 0 0) dark:hover:bg-oklch(0.97 0 0)/50 dark:hover:bg-oklch(0.269 0 0) dark:hover:text-oklch(0.985 0 0) dark:dark:hover:bg-oklch(0.269 0 0)/50",
+        link: "text-oklch(0.205 0 0) underline-offset-4 hover:underline dark:text-oklch(0.922 0 0)",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-12 px-6",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  },
+  }
 )
 
-type ButtonProps<T extends ElementType = "button"> = {
+type ButtonProps<T extends React.ElementType = "button"> = {
   as?: T
+  asChild?: boolean
   className?: string
 } & VariantProps<typeof buttonVariants> &
-  Omit<ComponentPropsWithoutRef<T>, "as" | "className">
+  Omit<React.ComponentPropsWithoutRef<T>, "as" | "asChild" | "className">
 
-function Button<T extends ElementType = "button">({
-  as,
+function Button<T extends React.ElementType = "button">({
   className,
-  variant,
-  size,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  as,
   ...props
 }: ButtonProps<T>) {
-  const Comp = (as ?? "button") as "button"
+  const Comp = (asChild ? Slot.Root : (as ?? "button")) as React.ElementType
+
   return (
-    <HeadlessButton
-      as={Comp}
-      className={cn(buttonVariants({ variant, size }), className)}
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   )

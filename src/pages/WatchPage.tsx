@@ -1,5 +1,6 @@
-import { AtlasDashboard } from "@/components/AtlasDashboard.tsx";
+import { AppShell } from "@/components/app-shell";
 import { CoverageLock } from "@/components/CoverageLock.tsx";
+import { Dashboard } from "@/components/dashboard";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFromQuery, type Coverage } from "@/coverage.ts";
@@ -136,7 +137,7 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const { user, githubApp, installUrl, installations, coverage: sessionCoverage } = me.data;
+  const { user, githubApp, coverage: sessionCoverage } = me.data;
   const queryCoverage = coverageFromQuery(search);
   const previewing = !user;
   const coverage: Coverage | undefined = user
@@ -176,52 +177,19 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const ended = coverage?.status === "ended";
-  const login = user?.login ?? PREVIEW_LOGIN;
-  const watching = user
-    ? installations.map((row) => row.account_login)
-    : PREVIEW_INSTALLATIONS.map((row) => row.account_login);
-  const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
-  const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
-
   if (user) {
     return (
-      <AtlasDashboard
-        login={login}
-        watching={watching}
-        coverage={coverage}
-        ended={ended}
-        repos={deskRepos}
-        alerts={deskAlerts}
-        reposLoading={repos.status === "loading"}
-        reposError={repos.status === "error" ? repos.message : null}
-        alertsLoading={alerts.status === "loading"}
-        alertsError={alerts.status === "error" ? alerts.message : null}
-        scanError={scanError}
-        scanningId={scanningId}
-        installUrl={installUrl && githubApp ? installUrl : undefined}
-        onScan={(repoId) => {
-          setScanError(null);
-          setScanningId(repoId);
-          void (async () => {
-            try {
-              const response = await fetch(`/api/repos/${repoId}/scan-latest-release`, {
-                method: "POST",
-                credentials: "include",
-              });
-              const body = (await response.json()) as { error?: string };
-              if (!response.ok) throw new Error(body.error ?? "Could not queue scan.");
-              await refreshSignedIn();
-            } catch (error) {
-              setScanError(error instanceof Error ? error.message : "Could not queue scan.");
-            } finally {
-              setScanningId(null);
-            }
-          })();
-        }}
-      />
+      <AppShell>
+        <Dashboard />
+      </AppShell>
     );
   }
+
+  const ended = coverage?.status === "ended";
+  const login = PREVIEW_LOGIN;
+  const watching = PREVIEW_INSTALLATIONS.map((row) => row.account_login);
+  const deskRepos = previewRepos();
+  const deskAlerts = previewAlerts();
 
   return (
     <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
@@ -251,11 +219,6 @@ export function WatchPage({ search }: { search: string }) {
               {coverage.label}
             </span>
           )}
-          {installUrl && githubApp && user && (
-            <Button as="a" href={installUrl}>
-              Install on GitHub
-            </Button>
-          )}
           {ended && (
             <Button type="button" onClick={() => navigate("/pricing")}>
               Subscribe
@@ -274,7 +237,7 @@ export function WatchPage({ search }: { search: string }) {
           {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
           {deskRepos.length === 0 && (previewing || repos.status === "ready") && (
             <p className="mt-6 text-sm leading-relaxed text-mute">
-              Nothing on this install yet. Install NoSpoilers on a GitHub repo.
+              Nothing on this install yet. Install NoSpoilers on a private throwaway repo.
             </p>
           )}
           {deskRepos.length > 0 && (
