@@ -72,21 +72,20 @@ operations. Do not value an early product at 10–15× based on category headlin
 - Platform-policy violations or excessive GitHub permissions.
 - Multiple half-built products sharing one database and support burden.
 
-## Portfolio value
+## Platform and portfolio value
 
-The four standalone PRDs have no financial value merely because they are written or built. Each
-must independently earn recurring revenue. Do not add hypothetical valuations together.
+Release Ledger and Package Identity are NoSpoilers modules, not separately valued companies. Their
+job is to increase retention, Team adoption and defensibility inside the same ARR.
 
-The portfolio becomes strategically useful if:
+Disclosure Desk is an internal operating tool. It has no separate value unless a later,
+independently built consultancy product earns revenue.
 
-- NoSpoilers owns release confidentiality.
-- Employee Public Footprint owns employee-origin exposure.
-- Release Ledger owns artifact integrity.
-- Package Impersonation Monitor owns package identity.
-- Disclosure Desk owns the human coordination workflow.
+Employee Public Footprint is the only planned separate application. Its value must be measured from
+its own recurring revenue; do not add hypothetical PRD value to NoSpoilers.
 
-Shared distribution and trust can reduce acquisition cost, but production data and permissions
-remain isolated.
+The structure becomes strategically useful if NoSpoilers owns release confidentiality, integrity
+and package identity while Employee Public Footprint separately owns governed employee-origin
+exposure. Production databases and permissions remain isolated between those two applications.
 
 ## Practical target
 

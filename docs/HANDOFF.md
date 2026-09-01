@@ -10,7 +10,7 @@ Read in this order:
 6. `README.md` — operation and GitHub App checklist
 7. `docs/ELECTRON.md` — installer work intentionally on ice
 8. `docs/MONTH1.md` — evidence-led acquisition
-9. `docs/products/README.md` — separate-product boundaries and PRDs
+9. `docs/products/README.md` — final platform/module boundary and PRDs
 
 ## Repository
 

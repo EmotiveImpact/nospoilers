@@ -1,6 +1,7 @@
-# Package Impersonation Monitor — Standalone Product PRD
+# Package Identity — NoSpoilers Module PRD
 
-Working name only. Build separately from NoSpoilers.
+Package Identity is a later NoSpoilers module. It extends automatic package monitoring with
+identity-continuity and impersonation signals.
 
 ## Product
 
@@ -14,8 +15,8 @@ customer’s packages or indicate account takeover.
 - Software supply-chain security
 - Maintainer of a widely installed package
 
-This is separate because it protects package identity and dependency consumers, not customer-owned
-artifact confidentiality.
+It protects package identity and dependency consumers alongside NoSpoilers artifact confidentiality
+without creating a second package watch, account or alerting system.
 
 ## Problem
 
@@ -102,6 +103,10 @@ Registry feeds/pollers → normalized events → identity/risk rules → bounded
 Use one adapter per registry. Keep immutable raw event metadata only where licensing permits; do
 not mirror registries or execute package scripts.
 
+Reuse NoSpoilers workspaces, billing accounts, watched packages, release artifacts, queues,
+findings, incidents, routing and audit events. Add identity-specific tables rather than duplicating
+the platform.
+
 ## Security and abuse constraints
 
 - Verify customer ownership before monitoring/protecting a name.
@@ -113,11 +118,13 @@ not mirror registries or execute package scripts.
 - Respect registry terms, caching and rate limits.
 - Human approval before public advisory or takedown request.
 
-## Pricing hypothesis
+## Packaging
 
-- Developer security: approximately $299/month for a bounded package set and two registries.
-- Business: approximately $1,500/month for larger watchlists, integrations and longer history.
-- Registry/API scale: quote after demand.
+- Core identity continuity for a customer’s own watched npm packages can strengthen Solo.
+- Team receives namespace watchlists, integrations, longer history and broader protected assets.
+- Large registry/API programs can become negotiated high-volume terms after demand.
+- Do not create a separate Package Identity subscription or change locked NoSpoilers pricing
+  without an explicit product decision.
 
 ## Metrics
 
@@ -146,11 +153,12 @@ package without executing package code.
 ## First agent prompt
 
 ```text
-Create a new private repository for Package Impersonation Monitor. Read this PRD. Build Phase 1 for
-npm only. Require package ownership verification, normalize real npm metadata, generate bounded
-confusable candidates, detect maintainers/repository/homepage changes, deduplicate alerts, and
-provide human approval/allowlist. Do not execute packages, add malware claims, support other
-registries, or add billing. Use TypeScript, Postgres, adapters, queued polling, strict rate limits,
-tests with recorded metadata contracts, and desktop/mobile UI states. Commit and push; no PR unless
-asked.
+Continue inside EmotiveImpact/nospoilers after automatic npm monitoring and stable package identity
+exist. Read docs/PRODUCT.md, the Ultimate PRD, feature inventory, and this module PRD. Extend the
+existing npm adapter with verified protected names, bounded confusable candidates, maintainer and
+ownership history, dormant-package and release-burst rules, explainable deduplicated alerts, and
+human allowlisting. Reuse NoSpoilers tenancy, billing, package, queue, incident, notification and
+audit systems. Do not create a second app/database/login, execute packages, issue malware verdicts,
+add other registries, or change billing. Use real npm contracts at the boundary and deterministic
+tests. Commit and push; no PR unless asked.
 ```

@@ -1,64 +1,71 @@
-# Product portfolio
+# Product and module map
 
-This directory contains standalone product PRDs. It is not a monorepo scaffold. Each product should
-receive its own private repository and Cloud Agent conversation when development begins.
+This directory holds detailed briefs. It does not mean every folder becomes separate software.
 
-## Product boundary
+## Final structure
 
-| Product | Repository | Relationship |
-| --- | --- | --- |
-| NoSpoilers | `EmotiveImpact/nospoilers` | Current product |
-| Employee Public Footprint | New separate repo | Different privacy model and security buyer |
-| Release Ledger | New separate repo | Artifact integrity/provenance |
-| Package Impersonation Monitor | New separate repo | Registry identity/supply-chain threats |
-| Disclosure Desk | New separate repo if commercialized | Research/consultancy disclosure workflow |
+```text
+Emotive Impact
+├── NoSpoilers platform                    ← current software/repository
+│   ├── Artifact and web exposure scanning
+│   ├── GitHub visibility and response
+│   ├── Release Ledger module
+│   ├── Package Identity module
+│   ├── Internal Disclosure Desk
+│   └── Isolated Electron worker later
+└── Employee Public Footprint              ← separate future application/repository
+```
 
-## What stays inside NoSpoilers
+## What is software today
 
-- Release/package/web scanning
-- GitHub visibility and incident response
-- npm monitoring and CI prevention
-- Release Diff, policies, baseline and receipts
-- Sentry/Bugsnag custody
-- VSIX, browser extension, language package and deployment-bundle formats
-- AI-context protection
-- Internal Artifact Leads
-- Electron installer scanning in a separate worker service
+Only NoSpoilers has application code. The other documents are specifications, not built apps.
 
-A separate worker is not automatically a separate product. DMG/EXE/AppImage/MSI scans use an
-isolated service but remain inside the NoSpoilers UI and subscription.
+## NoSpoilers modules
 
-## Standalone PRDs
+### Release Ledger
 
-- `employee-public-footprint/PRD.md`
-- `release-ledger/PRD.md`
-- `package-impersonation-monitor/PRD.md`
-- `disclosure-desk/PRD.md`
+`release-ledger/PRD.md`
 
-Each PRD contains its own first-agent prompt, acceptance criteria, data model, architecture,
-security constraints and pricing hypothesis.
+Artifact hashes, signed receipts, provenance, SBOM evidence and delivery-drift verification use the
+same customer, artifact, release manifest and billing account as NoSpoilers. Building this as a
+separate app would duplicate the most sensitive data and workflow.
 
-## Recommended development order
+### Package Identity
 
-1. Complete NoSpoilers Phases 0–2.
-2. Create one private repository per standalone product.
-3. Start separate Cloud Agent conversations using the exact prompts in each PRD.
-4. Build only each product’s Phase 1 proof first.
-5. Do not copy customer records, secrets or source between products.
+`package-impersonation-monitor/PRD.md`
 
-The products may share high-level patterns, not a production database, billing account, queue or
-tenant boundary. Shared scanner code should become a versioned package only after two products
-need the same stable interface; do not copy-paste it preemptively.
+Typosquat, maintainer, ownership, dormant-package and release-behavior monitoring extends the same
+npm/package watch already required by NoSpoilers. It is an optional later module, not a new login
+or product database.
 
-## Cloud Agent launch plan
+### Disclosure Desk
 
-For each product:
+`disclosure-desk/PRD.md`
 
-1. Create the private repository.
-2. Add only that product’s PRD as the initial commit.
-3. Configure a separate Neon project/branch and secrets.
-4. Start a Cloud Agent from that repository with the PRD’s first-agent prompt.
-5. Keep branches, deployments and billing isolated.
+Artifact Leads grows into an internal verification and responsible-disclosure workflow. It remains
+admin-only. If an external consultancy product is ever justified, copy the approved PRD into a new
+repository then; do not build that commercial app now.
 
-Do not launch those agents from `EmotiveImpact/nospoilers`; doing so would accidentally turn this
-repository into a multi-product monorepo.
+### Electron
+
+DMG/EXE/AppImage/MSI scanning stays in the NoSpoilers UI and subscription. It runs in a separate
+disposable worker service for safety; a separate worker is not a separate product.
+
+## Separate application
+
+### Employee Public Footprint
+
+`employee-public-footprint/PRD.md`
+
+This alone receives a separate repository, database, permissions and Cloud Agent conversation. It
+monitors enrolled employees’ personal public repositories and therefore has materially different
+privacy, legal and authorization requirements.
+
+## Development order
+
+1. Complete NoSpoilers Phases 0–2 from the Ultimate PRD.
+2. Continue Release Ledger and Package Identity as later NoSpoilers phases/modules.
+3. Expand Disclosure Desk only as an internal operator surface.
+4. Create Employee Public Footprint separately only when development is intentionally started.
+
+Do not create four repositories or a multi-product monorepo.

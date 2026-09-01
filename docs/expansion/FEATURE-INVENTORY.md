@@ -73,6 +73,39 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Explicit inconclusive status for limits, malformed/encrypted/partial scans | Planned | NoSpoilers |
 | External scanning API | Planned | NoSpoilers |
 
+## Release Ledger module
+
+| Feature | Status | Home |
+| --- | --- | --- |
+| SHA-256/SHA-512 artifact identity | Partial: SHA-256 planned in receipts | NoSpoilers |
+| Append-only sealed release revisions | Planned | NoSpoilers |
+| Build/source revision and CI provenance link | Planned | NoSpoilers |
+| CycloneDX/SPDX SBOM attachment | Planned | NoSpoilers Team |
+| SLSA/in-toto provenance validation | Planned | NoSpoilers Team |
+| Sigstore/cosign signature verification | Planned | NoSpoilers Team |
+| npm/GitHub attestation adapters | Planned | NoSpoilers |
+| Stable/beta/canary release channels | Planned | NoSpoilers |
+| Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
+| Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
+| Offline signed-receipt verification | Planned | NoSpoilers |
+| Public verification page controlled by customer | Planned, later | NoSpoilers |
+
+## Package Identity module
+
+| Feature | Status | Home |
+| --- | --- | --- |
+| Verified protected package/scope ownership | Planned | NoSpoilers |
+| Bounded typo/edit-distance candidate generation | Planned | NoSpoilers Team |
+| Separator, keyboard, token-order, homoglyph and scope confusion | Planned | NoSpoilers Team |
+| Maintainer addition/removal history | Planned | NoSpoilers |
+| Package ownership continuity/transfer alert | Planned | NoSpoilers |
+| Repository/homepage/domain mismatch | Planned | NoSpoilers |
+| Dormant-package resurrection | Planned | NoSpoilers Team |
+| Suspicious release burst/version jump | Planned | NoSpoilers Team |
+| Artifact hash/shape anomaly | Planned | NoSpoilers |
+| Human-reviewed advisory/takedown evidence | Planned, later | NoSpoilers Team |
+| Automatic malware verdict/takedown | Do not build | None |
+
 ## Distribution surfaces and formats
 
 | Surface | Status | Home |
@@ -163,14 +196,14 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Automated outreach/public naming | Do not build | None |
 | Retention of public source/credential values | Do not build | None |
 
-## Standalone products
+## Platform modules and separate software
 
-| Product | Status | Why separate |
+| Product/module | Status | Boundary |
 | --- | --- | --- |
 | Employee Public Footprint | Separate product | Different privacy, permissions and security buyer |
-| Release Ledger | Separate product | Integrity/provenance rather than accidental disclosure |
-| Package Impersonation Monitor | Separate product | Registry identity and supply-chain threat category |
-| Disclosure Desk | Separate product if commercialized | Research/consultancy workflow and legal obligations |
+| Release Ledger | NoSpoilers module | Same release artifact, customer, manifest, receipt and billing |
+| Package Identity/Impersonation | NoSpoilers module | Same watched package, registry adapter, incident and billing |
+| Disclosure Desk | Internal NoSpoilers module | Extends Artifact Leads; commercial split only after review |
 
 Electron Inspector is **not** a separate product decision. Installer scanning appears inside
 NoSpoilers but executes in a separate isolated worker service.

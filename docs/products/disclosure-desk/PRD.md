@@ -1,7 +1,7 @@
-# Disclosure Desk — Standalone Product PRD
+# Disclosure Desk — Internal NoSpoilers PRD
 
-Working name only. The current NoSpoilers Artifact Leads remains internal; commercializing this
-workflow requires a separate repository, product and legal policy.
+Disclosure Desk extends the current NoSpoilers Artifact Leads surface for our own responsible
+disclosure and acquisition operations. It is not a customer product today.
 
 ## Product
 
@@ -9,12 +9,14 @@ A private case-management system for security researchers and consultancies to v
 artifact findings, avoid duplicate outreach, coordinate responsible disclosure, track remediation,
 and generate defensible reports.
 
-## Buyer
+## Operator
 
-- Independent security researcher
-- AppSec consultancy
-- Coordinated-disclosure team
-- Vendor security research group
+- NoSpoilers operator verifying public artifact findings.
+- Authorized internal reviewer coordinating responsible disclosure.
+
+Independent researchers and consultancies are only a future commercialization hypothesis. If that
+decision is ever made, this PRD must be copied into a separate repository and undergo fresh legal,
+abuse and tenancy review.
 
 ## Problem
 
@@ -111,6 +113,10 @@ Public artifact adapters → bounded scanner → unverified signals
 Discovery and communication workers must be separate. A scanner result can never call the mail
 adapter directly.
 
+Reuse the existing NoSpoilers internal admin boundary, prospects, scan findings and audit patterns.
+Keep internal prospect/disclosure data logically isolated from customer tenancy and never expose it
+through customer APIs.
+
 ## Security, legal and abuse controls
 
 - Strong workspace isolation and MFA-ready auth.
@@ -124,11 +130,13 @@ adapter directly.
 - Abuse reporting and account suspension.
 - No public searchable target/finding database.
 
-## Pricing hypothesis
+## Commercialization rule
 
-- Researcher: $29/month.
-- Consultancy: $99–$299/month by workspace/features.
-- Do not price per disclosure or bounty percentage; that incentivizes bad behavior.
+- Internal use has no subscription.
+- If external researchers/consultancies later request the workflow, create a separate product and
+  database after legal and abuse review.
+- A future hypothesis is $29/month researcher and $249/month consultancy.
+- Never price per disclosure or bounty percentage; that incentivizes bad behavior.
 
 ## Metrics
 
@@ -160,11 +168,12 @@ and closes a fixed-version rescan. No external message is sent in Phase 1.
 ## First agent prompt
 
 ```text
-Create a new private repository for Disclosure Desk. Read this PRD. Build Phase 1 only: private
-workspaces, cases, evidence metadata/expiry, verification checklist, duplicate detection, security
-contact/policy records, and immutable audit history. Do not send email, automate outreach, publish
-targets, add billing, or store credential values. Use TypeScript, Postgres, encrypted-object adapter
-interface, strict tenant isolation, and tests for verification gating, duplicates, retention and
-authorization. Use real user-entered case data only; no seeded targets. Commit and push; no PR
-unless asked.
+Continue inside EmotiveImpact/nospoilers after customer-critical launch work. Read docs/PRODUCT.md,
+the Ultimate PRD, feature inventory, and this internal PRD. Extend `/internal/prospects` with
+verification checklists, company/finding deduplication, security contact/policy provenance,
+responsible-disclosure drafts, deadlines, remediation versions, fixed-version rescans, conversion
+attribution and immutable internal audit history. Reuse the existing scanner/prospect data; keep it
+separate from customer APIs. Do not send messages automatically, publish targets, add billing,
+store source/credential values, or create a second application. Use real user-entered/public data
+only; no seeded target companies. Commit and push; no PR unless asked.
 ```

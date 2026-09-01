@@ -15,7 +15,7 @@ The complete expansion PRD is
 **[docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md](docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md)**.
 The exhaustive feature ledger is
 **[docs/expansion/FEATURE-INVENTORY.md](docs/expansion/FEATURE-INVENTORY.md)**, the value model is
-**[docs/expansion/VALUE-MODEL.md](docs/expansion/VALUE-MODEL.md)**, and standalone product PRDs are
+**[docs/expansion/VALUE-MODEL.md](docs/expansion/VALUE-MODEL.md)**, and product/module PRDs are
 indexed in **[docs/products/README.md](docs/products/README.md)**.
 
 ## Run locally

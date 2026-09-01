@@ -19,6 +19,21 @@ It covers three doors in one product:
 The product combines prevention before release, automatic verification after release, and incident
 response when something escapes.
 
+### Platform boundary
+
+NoSpoilers is one customer platform:
+
+- Artifact/Web Guard — confidentiality and accidental exposure.
+- Release Ledger — manifests, receipts, provenance and delivery integrity.
+- Package Identity — ownership continuity, impersonation and suspicious registry changes.
+- GitHub Watch/Response — visibility, access, alerts and containment.
+- Electron Inspector — later isolated worker, same UI and subscription.
+
+Disclosure Desk is an internal NoSpoilers operator module built on Artifact Leads. Employee Public
+Footprint is the only planned separate customer application because employee monitoring requires a
+different legal basis, permission model, database and buyer. Do not create separate Release Ledger,
+Package Identity or Disclosure Desk customer applications.
+
 ## 2. Why it exists
 
 Repository scanners inspect source control. Customers receive a different object: an npm tarball,
@@ -202,6 +217,10 @@ Scope:
 - Unexpected size/file changes, nested archives, suspicious symlinks, source archives, backups,
   database dumps, cloud/SSH configs, crash/debug/build material, internal docs, and AI-context rules.
 - Signed scan receipts and external scan API.
+- Release Ledger foundations: append-only release revisions, SHA-256/SHA-512 identity, build/source
+  provenance links, stable/beta/canary channels and offline receipt verification.
+- Package Identity foundations: verified protected names/scopes, maintainer/ownership continuity,
+  repository/domain mismatch and artifact-shape anomalies.
 
 Acceptance:
 
@@ -215,6 +234,8 @@ Acceptance:
   passing receipt.
 - Generated setup PR is reviewable, never auto-merges, and explains that only configured publish
   paths are gated.
+- A maintainer, ownership, repository or artifact-identity change produces explainable before/after
+  facts without claiming compromise.
 
 ### Phase 3 — integrations, team and incident response
 
@@ -232,6 +253,10 @@ Scope:
 - Confirmed one-click make-private, bad Release asset removal/suspension, and unsafe workflow disable.
 - Queue/usage health and public service status.
 - SSO/SAML only after a real request.
+- Package Identity Team signals: bounded typosquat/homoglyph/scope candidates, dormant resurrection
+  and release bursts; human review before advisory/takedown.
+- Release Ledger Team evidence: CycloneDX/SPDX, SLSA/in-toto, Sigstore/cosign, npm/GitHub
+  attestations and scheduled registry/CDN drift verification.
 
 Acceptance:
 

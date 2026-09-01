@@ -1,6 +1,7 @@
-# Release Ledger — Standalone Product PRD
+# Release Ledger — NoSpoilers Module PRD
 
-Working name only. Build separately from NoSpoilers.
+Release Ledger is a later NoSpoilers module. It uses the existing repository, customer account,
+artifact identity, policy, scan result, queue and billing system.
 
 ## Product
 
@@ -15,8 +16,8 @@ bytes.
 - Compliance and procurement
 - Vendors distributing downloadable software
 
-This is separate because its promise is **integrity and provenance**, while NoSpoilers protects
-confidentiality and accidental exposure.
+Its promise is **integrity and provenance**, complementing NoSpoilers confidentiality and exposure
+protection without asking customers to install another product.
 
 ## Problem
 
@@ -116,6 +117,9 @@ Signature/provenance/SBOM adapters → policy engine
 Do not store large artifacts by default. Store digests and signed metadata. Optional evidence
 retention requires explicit customer policy and separate object storage.
 
+Extend existing NoSpoilers entities and migrations. Do not create duplicate users, installations,
+billing accounts, artifacts, policies, queues, notification destinations or authentication.
+
 ## Security requirements
 
 - Use canonical digest representation and domain separation in signatures.
@@ -127,11 +131,13 @@ retention requires explicit customer policy and separate object storage.
 - Tenant isolation and least-privileged API tokens.
 - Independent receipt verification library/CLI.
 
-## Pricing hypothesis
+## Packaging
 
-- Starter: $49/month for projects/releases within a fair-use band.
-- Team: approximately $299/month for integrations, scheduled verification, routing and governance.
-- Compliance/large verification volume: quote after demand.
+- Artifact hashes, release manifests and signed scan receipts strengthen the existing Solo plan.
+- Team receives provenance/SBOM integrations, scheduled delivery verification, routing and
+  governance as those capabilities become operational.
+- Do not create a separate Release Ledger subscription or change locked NoSpoilers pricing without
+  an explicit product decision based on measured cost and demand.
 
 ## Metrics
 
@@ -160,10 +166,12 @@ it offline, then detects that a controlled URL serves different bytes. No artifa
 ## First agent prompt
 
 ```text
-Create a new private repository for Release Ledger. Read this PRD. Build only Phase 1: TypeScript
-API, Postgres append-only release metadata, streaming SHA-256/SHA-512, signed JSON receipts, offline verify
-CLI, and a minimal project/release dashboard. Use a development signing key only behind an explicit
-adapter; document KMS as production requirement. Do not add blockchain, SBOM, Sigstore, CDN
-scheduling, billing, or artifact storage. Test digest mismatch, immutable events, signature
-verification and tenant isolation. Commit and push; no PR unless asked.
+Continue inside EmotiveImpact/nospoilers after the Ultimate PRD reaches its Release Ledger phase.
+Read docs/PRODUCT.md, the Ultimate PRD, feature inventory, and this module PRD. Extend existing
+artifact manifests and scan runs with append-only release revisions, streaming SHA-256/SHA-512,
+signed JSON receipts, offline receipt verification, and a Releases view. Reuse NoSpoilers tenancy,
+billing, policy, queue, notification and audit boundaries. Use a development signer only behind an
+adapter and document KMS as production-required. Do not create a second app/database/login, add
+blockchain, store artifacts, or start SBOM/Sigstore/CDN scheduling yet. Test digest mismatch,
+immutability, signatures and cross-tenant authorization. Commit and push; no PR unless asked.
 ```
