@@ -149,7 +149,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | One-click make repository private | Planned, high permission | NoSpoilers |
 | Remove/suspend bad GitHub Release asset | Planned, high permission | NoSpoilers |
 | Disable unsafe release workflow | Planned, high permission | NoSpoilers |
-| Automatic remediation PR | Planned | NoSpoilers |
+| Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
 | Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; never invents an incident | NoSpoilers |
 

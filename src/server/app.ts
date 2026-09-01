@@ -14,6 +14,12 @@ import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
 import { GithubApiError, type GithubPort } from "./github.ts";
 import {
+  REMEDIATION_BRANCH,
+  REMEDIATION_PERMISSIONS,
+  remediationBundle,
+  remediationPullRequestBody,
+} from "./remediation.ts";
+import {
   SETUP_PERMISSIONS,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
@@ -839,6 +845,72 @@ export function createApp(deps: AppDeps): Hono {
           reason: result.reason,
           workflow: setupWorkflowYaml(),
           permissions: SETUP_PERMISSIONS,
+        },
+        409,
+      );
+    }
+    return c.json(
+      {
+        ok: true,
+        htmlUrl: result.htmlUrl,
+        number: result.number,
+        existing: result.existing,
+        merged: false,
+      },
+      result.existing ? 200 : 201,
+    );
+  });
+
+  app.get("/api/repos/:id/remediation", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    return c.json({
+      branch: REMEDIATION_BRANCH,
+      files: remediationBundle(),
+      permissions: REMEDIATION_PERMISSIONS,
+      body: remediationPullRequestBody(),
+      merged: false,
+    });
+  });
+
+  app.post("/api/repos/:id/remediation-pr", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to open a remediation PR.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const result = await deps.github.createRemediationPullRequest(
+      repo.installation_id,
+      repo.owner,
+      repo.name,
+    );
+    if ("skipped" in result) {
+      return c.json(
+        {
+          ok: false,
+          skipped: result.skipped,
+          reason: result.reason,
+          branch: REMEDIATION_BRANCH,
+          files: remediationBundle(),
+          permissions: REMEDIATION_PERMISSIONS,
+          merged: false,
         },
         409,
       );

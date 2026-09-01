@@ -73,6 +73,12 @@ Read in this order:
   artifacts only). The App never merges it. If GitHub returns 403/404, the API returns 409 plus
   copy-paste YAML. Hosted `release_scan` jobs post a **NoSpoilers** Check with rule/path
   annotations when Checks write is granted; otherwise the job still completes.
+- Watch **Remediation PR** opens a reviewable PR on `nospoilers/remediate` with ignore rules,
+  an empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files`
+  snippet, and the packed-artifact workflow if missing. Existing customer ignore/policy/workflow
+  files are not overwritten. Required Contents write and Pull requests write are shown before
+  the button. 409 returns the file bundle for copy-paste. The App never merges it. This is not
+  make-private or asset deletion.
 - Packed scans discover npm/pnpm/Yarn/Bun workspaces (package.json `workspaces`,
   `pnpm-workspace.yaml`, yarn/bun lockfile presence). Members are listed on the report, receipt,
   SARIF properties, alerts, and Checks. They are never executed and never auto-connected as
@@ -148,6 +154,8 @@ Multiple GitHub organizations are in (Watch install switcher; `installationId` l
 writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
+Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
+ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.

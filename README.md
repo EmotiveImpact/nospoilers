@@ -133,8 +133,10 @@ GitHub → your profile → **Settings** → **Developer settings** → **GitHub
 
 - **Metadata** — Read-only (required)
 - **Contents** — Read-only to download release assets. Optional **Read and write** to open a
-  setup PR (writes `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`)
-- **Pull requests** — Optional **Read and write** to open that setup PR. The App **never merges** it
+  setup PR (writes `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`) or a
+  remediation PR (ignore rules, empty `.nospoilers.yml`, bundler hints, and that workflow on
+  branch `nospoilers/remediate`)
+- **Pull requests** — Optional **Read and write** to open those PRs. The App **never merges** them
 - **Checks** — Optional **Read and write** to report hosted release-scan results on the tag SHA
 - **Members** — Read-only (collaborator added)
 

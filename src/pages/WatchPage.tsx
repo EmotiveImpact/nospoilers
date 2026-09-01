@@ -293,6 +293,13 @@ type SetupPrView =
   | { status: "copy"; reason: string; workflow: string }
   | { status: "error"; message: string };
 
+type RemediationFileView = { path: string; content: string };
+
+type RemediationPrView =
+  | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
+  | { status: "copy"; reason: string; files: RemediationFileView[] }
+  | { status: "error"; message: string };
+
 function SetupPrResult({ view }: { view: SetupPrView }) {
   if (view.status === "opened") {
     return (
@@ -320,6 +327,44 @@ function SetupPrResult({ view }: { view: SetupPrView }) {
         <pre className="mt-3 max-h-64 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
           {view.workflow}
         </pre>
+      </div>
+    );
+  }
+  return <p className="mt-3 text-sm text-danger">{view.message}</p>;
+}
+
+function RemediationPrResult({ view }: { view: RemediationPrView }) {
+  if (view.status === "opened") {
+    return (
+      <p className="mt-3 text-sm leading-relaxed text-mute">
+        {view.existing ? "Existing remediation PR: " : "Opened remediation PR: "}
+        <a
+          href={view.htmlUrl}
+          className="text-snow underline-offset-4 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          #{view.number}
+        </a>
+        . Review it; NoSpoilers does not merge.
+      </p>
+    );
+  }
+  if (view.status === "copy") {
+    return (
+      <div className="mt-3 space-y-4">
+        <p className="text-sm leading-relaxed text-mute">{view.reason}</p>
+        <p className="text-xs leading-relaxed text-dim">
+          Paste these files yourself. They are additive, reviewable, and never merged automatically.
+        </p>
+        {view.files.map((file) => (
+          <div key={file.path}>
+            <p className="font-mono text-[11px] text-snow">{file.path}</p>
+            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
+              {file.content}
+            </pre>
+          </div>
+        ))}
       </div>
     );
   }
@@ -525,6 +570,8 @@ export function WatchPage({ search }: { search: string }) {
   const [scanningId, setScanningId] = useState<number | null>(null);
   const [setuppingId, setSetuppingId] = useState<number | null>(null);
   const [setupByRepo, setSetupByRepo] = useState<Record<number, SetupPrView>>({});
+  const [remediatingId, setRemediatingId] = useState<number | null>(null);
+  const [remediateByRepo, setRemediateByRepo] = useState<Record<number, RemediationPrView>>({});
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
   const [checkingId, setCheckingId] = useState<number | null>(null);
@@ -808,6 +855,18 @@ export function WatchPage({ search }: { search: string }) {
           ) : null}
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</h2>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+            Setup PR adds packed-artifact CI. Remediation PR adds ignore rules, an empty
+            .nospoilers.yml (no silent allowlist), bundler hints, and that CI workflow if it is
+            missing. Both PRs need Contents write and Pull requests write. They are reviewable and
+            never merged. They do not need Administration, and they do not make the repository
+            private or delete a Release asset.
+          </p>
+          {previewing ? (
+            <p className="mt-3 text-sm leading-relaxed text-mute">
+              Preview cannot open GitHub PRs. No invented incident.
+            </p>
+          ) : null}
           {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
           {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
           {deskRepos.length === 0 && (previewing || repos.status === "ready") && (
@@ -930,8 +989,80 @@ export function WatchPage({ search }: { search: string }) {
                     >
                       {setuppingId === repo.id ? "Opening…" : "Setup PR"}
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || remediatingId === repo.id || locked}
+                      onClick={() => {
+                        if (previewing) return;
+                        setRemediatingId(repo.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/repos/${repo.id}/remediation-pr`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as {
+                              error?: string;
+                              reason?: string;
+                              files?: RemediationFileView[];
+                              htmlUrl?: string;
+                              number?: number;
+                              existing?: boolean;
+                              skipped?: string;
+                            };
+                            if (response.status === 409 && Array.isArray(body.files) && body.files.length > 0) {
+                              setRemediateByRepo((current) => ({
+                                ...current,
+                                [repo.id]: {
+                                  status: "copy",
+                                  reason: body.reason ?? "GitHub App cannot open a pull request.",
+                                  files: body.files ?? [],
+                                },
+                              }));
+                              return;
+                            }
+                            if (!response.ok || !body.htmlUrl || typeof body.number !== "number") {
+                              throw new Error(
+                                body.error ?? body.reason ?? "Could not open a remediation PR.",
+                              );
+                            }
+                            const htmlUrl = body.htmlUrl;
+                            const number = body.number;
+                            setRemediateByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "opened",
+                                htmlUrl,
+                                number,
+                                existing: Boolean(body.existing),
+                              },
+                            }));
+                          } catch (error) {
+                            setRemediateByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "error",
+                                message:
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not open a remediation PR.",
+                              },
+                            }));
+                          } finally {
+                            setRemediatingId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {remediatingId === repo.id ? "Opening…" : "Remediation PR"}
+                    </Button>
                   </div>
                   {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
+                  {remediateByRepo[repo.id] ? (
+                    <RemediationPrResult view={remediateByRepo[repo.id]!} />
+                  ) : null}
                 </li>
               ))}
             </ul>

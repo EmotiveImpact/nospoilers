@@ -31,6 +31,7 @@
 - Live permission test reports the last customer job (kind/status/time) and still never inserts an alert.
 - Public status page at `/status` from `/api/health` (no tenant data, no connection string).
 - Slack incoming webhooks on trial/Team installs: encrypted URL, event-driven alert POST, delivery test that never invents an incident.
+- Automatic remediation PRs: Watch opens a reviewable PR with ignore rules, empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files` snippet, and packed-artifact CI if missing. Never merged. 409 copy-paste when Contents+PR write is missing. Customer ignore/policy/workflow files are not overwritten.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.

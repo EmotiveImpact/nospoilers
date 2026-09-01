@@ -50,6 +50,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Trigger a latest-release scan on those repositories while coverage is active.
 - Open a reviewable setup PR (or copy the packed-artifact workflow YAML) on those repositories
   while coverage is active. The App never merges that PR.
+- Open a reviewable remediation PR (or copy ignore rules, empty `.nospoilers.yml`, bundler
+  hints, a `package.json` `files` snippet, and the packed-artifact workflow) on those
+  repositories while coverage is active. Required Contents write and Pull requests write
+  are shown before the button. Existing customer ignore/policy/workflow files are not
+  overwritten. The App never merges that PR. This is not make-private, asset deletion, or
+  workflow disable.
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved).
 - Manage expiring allowlist exceptions and approve scan baselines on those installations.
@@ -197,6 +203,10 @@ allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not D
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
 permission skips return copy-paste YAML instead of failing the worker, and the merge API
+is never called. `tests/remediation.test.ts` proves remediation files are tenant-scoped,
+unpaid POST returns 402, GitHub-suspended POST returns 409, permission skips return
+copy-paste files, required permissions are listed before write, customer ignore/policy
+files are not overwritten, empty `.nospoilers.yml` has no allowlist, and the merge API
 is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
 never returned, blocked off-tenant, and never written onto jobs. `tests/scan-api.test.ts`
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,

@@ -1,6 +1,15 @@
 import { createSign } from "node:crypto";
 import type { AppConfig } from "./config.ts";
 import {
+  REMEDIATION_BRANCH,
+  isCustomerOwnedRemediationPath,
+  remediationBundle,
+  remediationCommitMessage,
+  remediationPullRequestBody,
+  remediationPullRequestTitle,
+  remediationWrites,
+} from "./remediation.ts";
+import {
   SETUP_BRANCH,
   SETUP_WORKFLOW_PATH,
   setupCommitMessage,
@@ -103,18 +112,24 @@ export type GithubPort = {
     owner: string,
     repo: string,
   ) => Promise<GithubSetupPrResult>;
+  createRemediationPullRequest: (
+    installationId: number,
+    owner: string,
+    repo: string,
+  ) => Promise<GithubSetupPrResult>;
 };
 
 export function skippedGithubWrites(): Pick<
   GithubPort,
-  "getRefSha" | "createCheckRun" | "createSetupPullRequest"
+  "getRefSha" | "createCheckRun" | "createSetupPullRequest" | "createRemediationPullRequest"
 > {
   const reason =
-    "Grant Contents write and Pull requests write to open a setup PR. Grant Checks write to report release scans. Do not grant Administration.";
+    "Grant Contents write and Pull requests write to open a setup or remediation PR. Grant Checks write to report release scans. Do not grant Administration.";
   return {
     getRefSha: async () => null,
     createCheckRun: async () => ({ skipped: "permission", reason }),
     createSetupPullRequest: async () => ({ skipped: "permission", reason }),
+    createRemediationPullRequest: async () => ({ skipped: "permission", reason }),
   };
 }
 
@@ -459,5 +474,162 @@ export function createGithubPort(config: AppConfig): GithubPort {
         throw error;
       }
     },
+
+    async createRemediationPullRequest(installationId, owner, repo) {
+      const token = await installationToken(installationId);
+      const reason =
+        "Grant Contents write and Pull requests write to open a remediation PR. Do not grant Administration.";
+      try {
+        const repoInfo = await githubJson<{ default_branch?: string }>(
+          `https://api.github.com/repos/${owner}/${repo}`,
+          token,
+        );
+        const defaultBranch = repoInfo.default_branch?.trim() || "main";
+        const baseRef = await githubJson<{ object: { sha: string } }>(
+          `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(defaultBranch)}`,
+          token,
+        );
+        const baseSha = baseRef.object.sha;
+        const created = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+          method: "POST",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "nospoilers",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ref: `refs/heads/${REMEDIATION_BRANCH}`, sha: baseSha }),
+        });
+        if (!created.ok && created.status !== 422) {
+          const text = await created.text();
+          throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
+        }
+
+        const existingOnDefault: string[] = [];
+        for (const file of remediationBundle()) {
+          if (!isCustomerOwnedRemediationPath(file.path)) continue;
+          if (await githubFileExists(token, owner, repo, file.path, defaultBranch)) {
+            existingOnDefault.push(file.path);
+          }
+        }
+        const writes = remediationWrites(existingOnDefault);
+        for (const file of writes) {
+          await putGithubFile(
+            token,
+            owner,
+            repo,
+            file.path,
+            file.content,
+            REMEDIATION_BRANCH,
+            remediationCommitMessage(),
+          );
+        }
+
+        const open = await githubJson<{ html_url: string; number: number }[]>(
+          `https://api.github.com/repos/${owner}/${repo}/pulls?head=${encodeURIComponent(`${owner}:${REMEDIATION_BRANCH}`)}&state=open`,
+          token,
+        );
+        if (open[0]) {
+          return { htmlUrl: open[0].html_url, number: open[0].number, existing: true };
+        }
+
+        const pull = await githubJson<{ html_url: string; number: number }>(
+          `https://api.github.com/repos/${owner}/${repo}/pulls`,
+          token,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: remediationPullRequestTitle(),
+              head: REMEDIATION_BRANCH,
+              base: defaultBranch,
+              body: remediationPullRequestBody(),
+              draft: false,
+            }),
+          },
+        );
+        return { htmlUrl: pull.html_url, number: pull.number, existing: false };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return { skipped: "permission", reason };
+        }
+        throw error;
+      }
+    },
   };
+}
+
+async function githubFileExists(
+  token: string,
+  owner: string,
+  repo: string,
+  filePath: string,
+  ref: string,
+): Promise<boolean> {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${encodeURIComponent(ref)}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "nospoilers",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    },
+  );
+  if (response.status === 404) return false;
+  if (!response.ok) {
+    const text = await response.text();
+    throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
+  }
+  return true;
+}
+
+async function putGithubFile(
+  token: string,
+  owner: string,
+  repo: string,
+  filePath: string,
+  content: string,
+  branch: string,
+  message: string,
+): Promise<void> {
+  let fileSha: string | undefined;
+  const existingFile = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${encodeURIComponent(branch)}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "nospoilers",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    },
+  );
+  if (existingFile.ok) {
+    const fileBody = (await existingFile.json()) as { sha?: string; content?: string; encoding?: string };
+    if (typeof fileBody.sha === "string") fileSha = fileBody.sha;
+    if (typeof fileBody.content === "string") {
+      const decoded = Buffer.from(fileBody.content.replace(/\n/g, ""), "base64").toString("utf8");
+      if (decoded === content) return;
+    }
+  } else if (existingFile.status !== 404) {
+    const text = await existingFile.text();
+    throw new GithubApiError(
+      existingFile.status,
+      `GitHub ${existingFile.status}: ${text.slice(0, 400)}`,
+    );
+  }
+
+  await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, token, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      content: Buffer.from(content, "utf8").toString("base64"),
+      branch,
+      ...(fileSha ? { sha: fileSha } : {}),
+    }),
+  });
 }
