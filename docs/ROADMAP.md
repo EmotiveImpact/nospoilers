@@ -61,11 +61,14 @@ the immediate operational sequence. The exhaustive expansion plan is
   never invents an incident. Email still waits on Resend.
 - SIEM HTTPS webhooks for trial/Team: encrypted URL, private/local/metadata/Slack hosts
   blocked, DNS-resolved SSRF check, event-driven JSON POST, test that never invents an incident.
+- Jira Cloud tickets for trial/Team: `*.atlassian.net` only, encrypted email+token, listed
+  project key, event-driven issue create, test that GETs myself+project and never creates a
+  ticket or Watch alert.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for 90 days. Solo 403. Unpaid 402. No invented rows.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
-  block. Members keep Watch/ack/test. Admins save Slack/SIEM, registries, tokens, allowlists,
+  block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, registries, tokens, allowlists,
   baselines, and open setup/remediation PRs.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.

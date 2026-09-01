@@ -17,6 +17,7 @@ import {
   type InstallationMember,
   type InstallationRole,
 } from "./roles.ts";
+import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -115,13 +116,14 @@ export type NpmRegistryRow = {
   updated_at: string;
 };
 
-export type NotificationKind = "slack" | "siem";
+export type NotificationKind = "slack" | "siem" | "jira";
 
 export type NotificationDestinationRow = {
   id: number;
   installationId: number;
   kind: NotificationKind;
   host: string;
+  projectKey: string | null;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
   lastDeliveryError: string | null;
@@ -343,7 +345,8 @@ function optionalInstallId(id?: number | null): number | null {
 }
 
 function asNotificationKind(value: string): NotificationKind {
-  return value === "siem" ? "siem" : "slack";
+  if (value === "siem" || value === "jira") return value;
+  return "slack";
 }
 
 function destinationRow(row: {
@@ -351,6 +354,7 @@ function destinationRow(row: {
   installation_id: unknown;
   kind: string;
   host: string;
+  project_key?: string | null;
   last_delivery_at: string | Date | null;
   last_delivery_status: string | null;
   last_delivery_error: string | null;
@@ -361,6 +365,7 @@ function destinationRow(row: {
     installationId: num(row.installation_id),
     kind: asNotificationKind(row.kind),
     host: row.host,
+    projectKey: row.project_key ?? null,
     lastDeliveryAt: iso(row.last_delivery_at),
     lastDeliveryStatus: row.last_delivery_status,
     lastDeliveryError: row.last_delivery_error,
@@ -2151,12 +2156,13 @@ export function createStore(
         installation_id: unknown;
         kind: string;
         host: string;
+        project_key: string | null;
         last_delivery_at: string | Date | null;
         last_delivery_status: string | null;
         last_delivery_error: string | null;
         updated_at: string | Date;
       }>(
-        `SELECT d.id, d.installation_id, d.kind, d.host, d.last_delivery_at,
+        `SELECT d.id, d.installation_id, d.kind, d.host, d.project_key, d.last_delivery_at,
                 d.last_delivery_status, d.last_delivery_error, d.updated_at
          FROM notification_destinations d
          JOIN installation_users iu ON iu.installation_id = d.installation_id
@@ -2177,12 +2183,13 @@ export function createStore(
         installation_id: unknown;
         kind: string;
         host: string;
+        project_key: string | null;
         last_delivery_at: string | Date | null;
         last_delivery_status: string | null;
         last_delivery_error: string | null;
         updated_at: string | Date;
       }>(
-        `SELECT d.id, d.installation_id, d.kind, d.host, d.last_delivery_at,
+        `SELECT d.id, d.installation_id, d.kind, d.host, d.project_key, d.last_delivery_at,
                 d.last_delivery_status, d.last_delivery_error, d.updated_at
          FROM notification_destinations d
          JOIN installation_users iu ON iu.installation_id = d.installation_id
@@ -2210,11 +2217,27 @@ export function createStore(
       return await this.upsertNotificationDestination({ ...input, kind: "siem" });
     },
 
+    async upsertJiraDestination(input: {
+      installationId: number;
+      host: string;
+      projectKey: string;
+      secret: string;
+    }): Promise<NotificationDestinationRow> {
+      return await this.upsertNotificationDestination({
+        installationId: input.installationId,
+        kind: "jira",
+        webhookUrl: input.secret,
+        host: input.host,
+        projectKey: input.projectKey,
+      });
+    },
+
     async upsertNotificationDestination(input: {
       installationId: number;
       kind: NotificationKind;
       webhookUrl: string;
       host: string;
+      projectKey?: string | null;
     }): Promise<NotificationDestinationRow> {
       if (!tokenSecret) {
         throw Object.assign(new Error("This instance cannot encrypt notification webhooks."), {
@@ -2227,22 +2250,24 @@ export function createStore(
         installation_id: unknown;
         kind: string;
         host: string;
+        project_key: string | null;
         last_delivery_at: string | Date | null;
         last_delivery_status: string | null;
         last_delivery_error: string | null;
         updated_at: string | Date;
       }>(
         `INSERT INTO notification_destinations (
-           installation_id, kind, host, webhook_ciphertext
+           installation_id, kind, host, project_key, webhook_ciphertext
          )
-         VALUES ($1, $2, $3, $4)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (installation_id, kind) DO UPDATE SET
            host = excluded.host,
+           project_key = excluded.project_key,
            webhook_ciphertext = excluded.webhook_ciphertext,
            updated_at = now()
-         RETURNING id, installation_id, kind, host, last_delivery_at,
+         RETURNING id, installation_id, kind, host, project_key, last_delivery_at,
                    last_delivery_status, last_delivery_error, updated_at`,
-        [input.installationId, input.kind, input.host, ciphertext],
+        [input.installationId, input.kind, input.host, input.projectKey ?? null, ciphertext],
       );
       const row = rows[0];
       if (!row) throw new Error("Could not save that webhook.");
@@ -2276,6 +2301,35 @@ export function createStore(
       return await this.getDestinationWebhookForInstallation(installationId, "siem");
     },
 
+    async getJiraAuthForInstallation(installationId: number): Promise<{
+      id: number;
+      host: string;
+      projectKey: string;
+      secret: JiraSecret;
+    } | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        host: string;
+        project_key: string | null;
+        webhook_ciphertext: string;
+      }>(
+        `SELECT id, host, project_key, webhook_ciphertext
+         FROM notification_destinations
+         WHERE installation_id = $1 AND kind = 'jira'`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row || !tokenSecret || !row.project_key) return null;
+      const secret = decodeJiraSecret(decryptSecret(row.webhook_ciphertext, tokenSecret));
+      if (!secret) return null;
+      return {
+        id: num(row.id),
+        host: row.host,
+        projectKey: row.project_key,
+        secret,
+      };
+    },
+
     async getDestinationWebhookForInstallation(
       installationId: number,
       kind: NotificationKind,
@@ -2283,6 +2337,7 @@ export function createStore(
       id: number;
       url: string;
     } | null> {
+      if (kind === "jira") return null;
       const { rows } = await sql.query<{ id: unknown; webhook_ciphertext: string }>(
         `SELECT id, webhook_ciphertext
          FROM notification_destinations

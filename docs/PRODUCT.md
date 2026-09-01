@@ -98,7 +98,7 @@ They pay a **monthly subscription for coverage**, not scan credits. Credits trai
 | Visibility alerts | Unlimited | Unlimited |
 | Pack scans | Included, fair use (not a credit counter in the UI) | Included, higher fair use |
 | CLI | Included with the plan | Included |
-| Extra | Email | Slack + 90-day timeline + roles |
+| Extra | Email | Slack + Jira + 90-day timeline + roles |
 
 - **14-day full trial**, then the card bills.
 - Yearly: 10 months for the price of 12 (~$290 / ~$990).

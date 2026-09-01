@@ -97,8 +97,9 @@ type NpmRegistry = {
 type NotificationDestination = {
   id: number;
   installationId: number;
-  kind: "slack" | "siem";
+  kind: "slack" | "siem" | "jira";
   host: string;
+  projectKey?: string | null;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
   lastDeliveryError: string | null;
@@ -107,12 +108,18 @@ type NotificationDestination = {
 
 type NotificationDelivery = {
   id: number;
-  kind: "slack" | "siem";
+  kind: "slack" | "siem" | "jira";
   status: "sent" | "failed";
   inventedIncident: false;
   error: string | null;
   createdAt: string;
 };
+
+function destinationKindLabel(kind: string): string {
+  if (kind === "jira") return "Jira";
+  if (kind === "siem") return "SIEM";
+  return "Slack";
+}
 
 type TeamMember = {
   userId: string;
@@ -568,8 +575,13 @@ export function WatchPage({ search }: { search: string }) {
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
   const [slackWebhook, setSlackWebhook] = useState("");
   const [siemWebhook, setSiemWebhook] = useState("");
+  const [jiraSite, setJiraSite] = useState("");
+  const [jiraEmail, setJiraEmail] = useState("");
+  const [jiraToken, setJiraToken] = useState("");
+  const [jiraProjectKey, setJiraProjectKey] = useState("");
   const [savingSlack, setSavingSlack] = useState(false);
   const [savingSiem, setSavingSiem] = useState(false);
+  const [savingJira, setSavingJira] = useState(false);
   const [testingSlackId, setTestingSlackId] = useState<number | null>(null);
   const [removingSlackId, setRemovingSlackId] = useState<number | null>(null);
   const [slackError, setSlackError] = useState<string | null>(null);
@@ -1313,7 +1325,7 @@ export function WatchPage({ search }: { search: string }) {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm text-snow">
                     {entry.type === "delivery"
-                      ? `${entry.kind === "siem" ? "SIEM" : "Slack"} ${entry.deliveryStatus ?? "delivery"}`
+                      ? `${destinationKindLabel(entry.kind ?? "")} ${entry.deliveryStatus ?? "delivery"}`
                       : entry.type === "alert_event"
                         ? `${entry.action ?? "activity"}${entry.actorLogin ? ` · ${entry.actorLogin}` : ""}`
                         : entry.title ?? entry.kind ?? "Alert"}
@@ -1336,7 +1348,7 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
           change roles and remove people. The last admin stays. GitHub suspend does not block this.
-          Email invite is not built. An install admin also saves Slack, SIEM, registries, scan
+          Email invite is not built. An install admin also saves Slack, SIEM, Jira, registries, scan
           tokens, allowlists, and baselines, and opens setup or remediation PRs.
         </p>
         {previewing ? (
@@ -1617,23 +1629,23 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs can send Watch alerts to Slack and to a SIEM HTTPS webhook. URLs
-          are encrypted and never shown again. A delivery test talks to the destination and never
-          creates a Watch alert.
+          Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, and Jira
+          Cloud. Secrets are encrypted and never shown again. A delivery test talks to the
+          destination and never creates a Watch alert. Jira tests never open a ticket.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot send Slack or SIEM. No invented incident.
+            Preview cannot send Slack, SIEM, or Jira. No invented incident.
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Slack and SIEM alerts are on Team. Email for Solo waits on Resend.
+            Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend.
           </p>
         ) : (
           <>
             {destinations.length === 0 ? (
               <p className="mt-6 text-sm leading-relaxed text-mute">
-                No Slack or SIEM webhook saved on this install.
+                No Slack, SIEM, or Jira destination saved on this install.
               </p>
             ) : (
               <ul className="mt-6 max-w-xl divide-y divide-white/5">
@@ -1641,7 +1653,10 @@ export function WatchPage({ search }: { search: string }) {
                   <li key={destination.id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="font-mono text-sm text-snow">
-                        {destination.kind === "siem" ? "SIEM" : "Slack"} · {destination.host}
+                        {destinationKindLabel(destination.kind)} · {destination.host}
+                        {destination.kind === "jira" && destination.projectKey
+                          ? ` · ${destination.projectKey}`
+                          : ""}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -1824,11 +1839,126 @@ export function WatchPage({ search }: { search: string }) {
                 </Button>
               </form>
             )}
+            {!ended && installAdmin && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (
+                    savingJira ||
+                    !activeInstallId ||
+                    !jiraSite.trim() ||
+                    !jiraEmail.trim() ||
+                    !jiraToken.trim() ||
+                    !jiraProjectKey.trim()
+                  ) {
+                    return;
+                  }
+                  setSlackError(null);
+                  setSavingJira(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/jira", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          site: jiraSite,
+                          email: jiraEmail,
+                          token: jiraToken,
+                          projectKey: jiraProjectKey,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save Jira.");
+                      setJiraSite("");
+                      setJiraEmail("");
+                      setJiraToken("");
+                      setJiraProjectKey("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(error instanceof Error ? error.message : "Could not save Jira.");
+                    } finally {
+                      setSavingJira(false);
+                    }
+                  })();
+                }}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      Jira Cloud site
+                    </span>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={jiraSite}
+                      onChange={(event) => setJiraSite(event.target.value)}
+                      placeholder="acme.atlassian.net"
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    />
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      Project key
+                    </span>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={jiraProjectKey}
+                      onChange={(event) => setJiraProjectKey(event.target.value)}
+                      placeholder="NOS"
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    />
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Email</span>
+                    <input
+                      type="email"
+                      autoComplete="off"
+                      value={jiraEmail}
+                      onChange={(event) => setJiraEmail(event.target.value)}
+                      placeholder="bot@example.com"
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    />
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      API token
+                    </span>
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={jiraToken}
+                      onChange={(event) => setJiraToken(event.target.value)}
+                      placeholder="encrypted after save"
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    />
+                  </label>
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    savingJira ||
+                    !jiraSite.trim() ||
+                    !jiraEmail.trim() ||
+                    !jiraToken.trim() ||
+                    !jiraProjectKey.trim()
+                  }
+                >
+                  {savingJira ? "Saving…" : "Save Jira"}
+                </Button>
+              </form>
+            )}
             {deliveries.length > 0 ? (
               <ul className="mt-6 max-w-xl divide-y divide-white/5">
                 {deliveries.slice(0, 8).map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-                    <p className="text-sm text-snow">{row.status}</p>
+                    <p className="text-sm text-snow">
+                      {destinationKindLabel(row.kind)} · {row.status}
+                    </p>
                     <p className="text-xs text-dim">
                       {new Date(row.createdAt).toLocaleString()}
                       {row.error ? ` · ${row.error}` : ""}

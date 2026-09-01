@@ -67,6 +67,16 @@ import {
   type WebhookHostLookup,
 } from "./siem.ts";
 import {
+  encodeJiraSecret,
+  jiraPlanDeniedFromBilling,
+  parseJiraEmail,
+  parseJiraIssueType,
+  parseJiraProjectKey,
+  parseJiraSite,
+  parseJiraToken,
+  testJiraDestination,
+} from "./jira.ts";
+import {
   MAX_SCAN_TOKENS,
   parseScanBearer,
   validateScanTokenName,
@@ -205,11 +215,18 @@ async function hostedWorkDenied(
   return { error: denied.message, status: denied.status };
 }
 
+function destinationKindLabel(kind: "slack" | "siem" | "jira"): string {
+  if (kind === "jira") return "Jira";
+  if (kind === "siem") return "SIEM";
+  return "Slack";
+}
+
 function publicDestination(row: {
   id: number;
   installationId: number;
-  kind: "slack" | "siem";
+  kind: "slack" | "siem" | "jira";
   host: string;
+  projectKey?: string | null;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
   lastDeliveryError: string | null;
@@ -220,6 +237,7 @@ function publicDestination(row: {
     installationId: row.installationId,
     kind: row.kind,
     host: row.host,
+    projectKey: row.kind === "jira" ? (row.projectKey ?? null) : null,
     lastDeliveryAt: row.lastDeliveryAt,
     lastDeliveryStatus: row.lastDeliveryStatus,
     lastDeliveryError: row.lastDeliveryError,
@@ -1924,6 +1942,76 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/destinations/jira", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach Jira to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = jiraPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const site = parseJiraSite(String(body.site ?? body.host ?? ""));
+    const email = parseJiraEmail(String(body.email ?? ""));
+    const token = parseJiraToken(String(body.token ?? ""));
+    const projectKey = parseJiraProjectKey(String(body.projectKey ?? ""));
+    if (!site) {
+      return c.json(
+        {
+          error: "Use a Jira Cloud site on *.atlassian.net. Other hosts are not allowed.",
+        },
+        400,
+      );
+    }
+    if (!email) {
+      return c.json({ error: "Use a Jira Cloud email for Basic auth." }, 400);
+    }
+    if (!token) {
+      return c.json(
+        { error: "Use a Jira Cloud API token. It is encrypted and never shown again." },
+        400,
+      );
+    }
+    if (!projectKey) {
+      return c.json(
+        { error: "Use a Jira project key (letters and numbers, starting with a letter)." },
+        400,
+      );
+    }
+    try {
+      const destination = await deps.store.upsertJiraDestination({
+        installationId,
+        host: site.host,
+        projectKey,
+        secret: encodeJiraSecret({
+          email,
+          token,
+          issueType: parseJiraIssueType(String(body.issueType ?? "Task")),
+        }),
+      });
+      return c.json({ ok: true, destination: publicDestination(destination) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that Jira destination." },
+        errorStatus(error),
+      );
+    }
+  });
+
   app.delete("/api/destinations/:id", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -1947,6 +2035,32 @@ export function createApp(deps: AppDeps): Hono {
     }
     const destination = await deps.store.getNotificationDestinationForUser(id, user.userId);
     if (!destination) return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
+    const install = await deps.store.getInstallation(destination.installationId);
+    const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
+    if (destination.kind === "jira") {
+      const auth = await deps.store.getJiraAuthForInstallation(destination.installationId);
+      if (!auth || auth.id !== destination.id) {
+        return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
+      }
+      const posted = await testJiraDestination(auth.host, auth.projectKey, auth.secret, outbound);
+      await deps.store.recordNotificationDelivery({
+        installationId: destination.installationId,
+        destinationId: destination.id,
+        alertId: null,
+        kind: "jira",
+        status: posted.ok ? "sent" : "failed",
+        error: posted.error,
+      });
+      return c.json({
+        ok: posted.ok,
+        inventedIncident: false,
+        status: posted.status,
+        error: posted.ok ? null : posted.error,
+        detail: posted.ok
+          ? "Jira received a delivery test. This talked to Jira (myself and the project) and never created a ticket or Watch alert. This is not a security incident."
+          : posted.error,
+      }, posted.ok ? 200 : 502);
+    }
     const webhook = await deps.store.getDestinationWebhookForInstallation(
       destination.installationId,
       destination.kind,
@@ -1954,8 +2068,6 @@ export function createApp(deps: AppDeps): Hono {
     if (!webhook || webhook.id !== destination.id) {
       return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
     }
-    const install = await deps.store.getInstallation(destination.installationId);
-    const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
     const posted =
       destination.kind === "siem"
         ? await postSiemWebhook(webhook.url, siemTestPayload(install?.account_login ?? ""), outbound)
@@ -1972,7 +2084,7 @@ export function createApp(deps: AppDeps): Hono {
       status: posted.ok ? "sent" : "failed",
       error: posted.error,
     });
-    const label = destination.kind === "siem" ? "SIEM" : "Slack";
+    const label = destinationKindLabel(destination.kind);
     return c.json({
       ok: posted.ok,
       inventedIncident: false,

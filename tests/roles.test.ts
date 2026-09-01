@@ -46,6 +46,7 @@ function appFor(store: ReturnType<typeof createStore>, slackFetch?: typeof fetch
     store,
     github: unusedGithub(),
     slackFetch,
+    webhookLookup: async () => [{ address: "1.1.1.1", family: 4 }],
   });
 }
 
@@ -213,6 +214,47 @@ describe("installation roles", () => {
         }),
       });
       expect(memberSiem.status).toBe(403);
+
+      const jira = await app.request("/api/destinations/jira", {
+        method: "POST",
+        headers: { cookie: adminCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          site: "acme.atlassian.net",
+          email: "bot@example.com",
+          token: "ATATT3xFfGF0-jira-api-token",
+          projectKey: "NOS",
+        }),
+      });
+      expect(jira.status).toBe(201);
+      const jiraBody = (await jira.json()) as { destination: { id: number } };
+
+      const memberJira = await app.request("/api/destinations/jira", {
+        method: "POST",
+        headers: { cookie: memberCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          site: "acme.atlassian.net",
+          email: "bot@example.com",
+          token: "ATATT3xFfGF0-jira-api-token",
+          projectKey: "NOS",
+        }),
+      });
+      expect(memberJira.status).toBe(403);
+      expect(((await memberJira.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
+
+      const memberDeleteJira = await app.request(`/api/destinations/${jiraBody.destination.id}`, {
+        method: "DELETE",
+        headers: { cookie: memberCookie },
+      });
+      expect(memberDeleteJira.status).toBe(403);
+
+      const testJira = await app.request(`/api/destinations/${jiraBody.destination.id}/test`, {
+        method: "POST",
+        headers: { cookie: memberCookie },
+      });
+      expect(testJira.status).toBe(200);
+      expect(((await testJira.json()) as { inventedIncident: boolean }).inventedIncident).toBe(false);
 
       const memberDelete = await app.request(`/api/destinations/${slackBody.destination.id}`, {
         method: "DELETE",

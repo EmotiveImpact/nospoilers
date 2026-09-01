@@ -160,19 +160,19 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Dashboard alerts | Built | NoSpoilers |
 | Email alerts | Planned | NoSpoilers |
 | Slack alerts | Built: encrypted incoming webhook on trial/Team; test delivery never invents an incident | NoSpoilers Team |
-| Jira tickets | Planned | NoSpoilers Team |
+| Jira tickets | Built: Jira Cloud only (`*.atlassian.net`); encrypted email+token; project key listed; trial/Team; test GETs myself+project and never creates a ticket or Watch alert | NoSpoilers Team |
 | SIEM/custom webhooks | Built: encrypted HTTPS webhook on trial/Team; private/local/metadata/Slack hosts blocked; DNS-resolved SSRF check; test never invents an incident | NoSpoilers Team |
 | PagerDuty/incident routing | Planned, later | NoSpoilers Team |
 | Severity and repository routing rules | Planned | NoSpoilers Team |
 | 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for 90 days; trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Planned | NoSpoilers |
-| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
+| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Partial: tenant JSON of alerts and append-only events; Team audit log still planned | NoSpoilers |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |
-| Multiple notification destinations | Partial: Slack plus one SIEM HTTPS webhook per install; Jira still planned | NoSpoilers Team |
+| Multiple notification destinations | Built: one Slack, one SIEM, and one Jira Cloud destination per install | NoSpoilers Team |
 
 ## Internal acquisition and responsible disclosure
 

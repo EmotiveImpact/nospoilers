@@ -72,8 +72,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
   revision, stored CI run URL). Historical rows cannot be edited or deleted.
-- List Slack and SIEM destination hosts on a trial or Team install (URLs are never
-  returned). A delivery test talks to the destination and never inserts an alert.
+- List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
+  tokens are never returned). Jira lists the project key. A delivery test talks to the
+  destination and never inserts an alert. A Jira test never creates a ticket.
 - Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
@@ -84,10 +85,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- Change roles, remove members, save or delete Slack/SIEM webhooks, save or delete private
+- Change roles, remove members, save or delete Slack/SIEM/Jira destinations, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, or open
   setup or remediation PRs. Those writes need an install admin.
-- See other tenants’ registry tokens, Slack or SIEM webhooks, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -105,9 +106,12 @@ suspend does not block role changes. Email invite is not built.
 
 - Promote, demote, and remove people on that install. The last admin cannot be demoted
   or removed (409).
-- Save and delete encrypted Slack incoming webhooks and SIEM HTTPS webhooks on a trial
-  or Team install. URLs are never returned after save. Private, local, metadata, and Slack
-  hosts are rejected for SIEM, and DNS must resolve to a public address before POST.
+- Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, and Jira Cloud
+  destinations on a trial or Team install. URLs, emails, and API tokens are never returned
+  after save. Jira is `*.atlassian.net` only (site name, host, or https URL). Private, local,
+  metadata, and Slack hosts are rejected for SIEM, and DNS must resolve to a public address
+  before POST. Jira tests GET `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never
+  POST `/issue`.
 - Save encrypted private npm registry tokens (never returned after save).
 - Mint and revoke hashed scan API tokens. The secret is shown once and never stored.
 - Manage expiring allowlist exceptions and approve scan baselines.
@@ -241,10 +245,13 @@ an alert, real alerts POST after insert, and `notification_deliveries` are appen
 The same file proves SIEM HTTPS webhooks follow those rules, reject private/local/Slack
 hosts, skip fetch when DNS resolves private, never return the URL or query token, and
 POST JSON with `inventedIncident: false`.
+The same file proves Jira Cloud destinations encrypt email+token, never return them, reject
+non-`*.atlassian.net` hosts, skip fetch when DNS resolves private, test with GET myself+project
+(never POST `/issue`, never insert an alert), and real alerts POST `/rest/api/3/issue`.
 `tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
 90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
-members can watch and test but cannot save Slack/SIEM, registries, scan tokens, allowlists,
+members can watch and test but cannot save Slack/SIEM/Jira, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 Keep those

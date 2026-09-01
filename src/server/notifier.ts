@@ -9,6 +9,7 @@ import {
   siemAlertPayload,
   type WebhookHostLookup,
 } from "./siem.ts";
+import { postJiraIssue } from "./jira.ts";
 import type { Store } from "./store.ts";
 
 export type AlertInput = {
@@ -93,6 +94,42 @@ export async function deliverSiemAlert(
   });
 }
 
+export async function deliverJiraAlert(
+  store: Store,
+  input: {
+    installationId: number;
+    alertId: number | null;
+    kind: string;
+    title: string;
+    body: string;
+  },
+  opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
+): Promise<void> {
+  const dest = await store.getJiraAuthForInstallation(input.installationId);
+  if (!dest) return;
+  const posted = await postJiraIssue(
+    dest.host,
+    dest.projectKey,
+    dest.secret,
+    { title: input.title, body: input.body, kind: input.kind },
+    opts,
+  );
+  await store.recordNotificationDelivery({
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    kind: "jira",
+    status: posted.ok ? "sent" : "failed",
+    error: posted.error,
+  });
+  logJson(posted.ok ? "info" : "error", posted.ok ? "alert.jira_sent" : "alert.jira_failed", {
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    status: posted.status,
+  });
+}
+
 export function createLogNotifier(
   store: Store,
   opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
@@ -145,6 +182,25 @@ export function createLogNotifier(
           id,
           installationId: alert.installationId,
           error: error instanceof Error ? error.message : "SIEM delivery failed.",
+        });
+      }
+      try {
+        await deliverJiraAlert(
+          store,
+          {
+            installationId: alert.installationId,
+            alertId: id,
+            kind: alert.kind,
+            title: alert.title,
+            body: alert.body,
+          },
+          { fetch: fetchImpl, lookup: opts.lookup },
+        );
+      } catch (error) {
+        logJson("error", "alert.jira_failed", {
+          id,
+          installationId: alert.installationId,
+          error: error instanceof Error ? error.message : "Jira delivery failed.",
         });
       }
     },

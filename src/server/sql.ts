@@ -413,6 +413,18 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "016_installation_roles",
   ]);
+  await sql.exec(`
+    ALTER TABLE notification_destinations ADD COLUMN IF NOT EXISTS project_key TEXT;
+    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira'));
+    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira'));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "017_jira_destinations",
+  ]);
 }
 
 export function num(value: unknown): number {

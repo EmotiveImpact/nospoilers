@@ -30,15 +30,16 @@ Read in this order:
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
-  `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`, and
-  `016_installation_roles` are applied.
+  `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
+  `016_installation_roles`, and `017_jira_destinations` are applied.
   Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
-  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks
-  and SIEM HTTPS webhooks are the same ciphertext and are never returned after save. Notification deliveries are
+  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
+  SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
+  after save. Jira stores a plaintext project key for the list UI. Notification deliveries are
   append-only. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). `installation_users.role` is `admin` or `member`
   (first linked user is admin). Alert acknowledgement, assignment, resolution notes, and
@@ -108,18 +109,19 @@ Read in this order:
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
   Watch can export that activity as JSON. Incident actions stay available when unpaid
   or GitHub-suspended.
-- Trial and Team installs can save a Slack incoming webhook and a SIEM HTTPS webhook
-  (encrypted, never returned). New Watch alerts POST to those destinations after they are
-  stored. Watch **Test delivery** talks to Slack or SIEM and never inserts an alert. Solo
-  paid does not get Slack or SIEM. Email still needs Resend. SIEM hosts cannot be private,
-  local, metadata, or hooks.slack.com.
+- Trial and Team installs can save a Slack incoming webhook, a SIEM HTTPS webhook, and a Jira
+  Cloud destination (encrypted, never returned). New Watch alerts POST to those destinations
+  after they are stored. Watch **Test delivery** talks to Slack, SIEM, or Jira and never
+  inserts an alert. A Jira test GETs myself+project and never creates a ticket. Solo paid does
+  not get Slack, SIEM, or Jira. Email still needs Resend. SIEM hosts cannot be private, local,
+  metadata, or hooks.slack.com. Jira is `*.atlassian.net` only.
 - Trial and Team installs get a Watch **90-day timeline** of this install’s alerts,
   acknowledgement activity, and notification deliveries. Solo 403. Unpaid 402. No invented
   rows.
 - Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
-  delivery tests. Admins save Slack/SIEM, registries, scan tokens, allowlists, baselines,
+  delivery tests. Admins save Slack/SIEM/Jira, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Email invite is not built.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
@@ -137,8 +139,8 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
 - `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
   (HTTP 200) → job `repo_created_public` done → “was created public”. Fixture release scan is not
   proven yet.
-- Stripe, production deployment, and email (Resend) do not exist. Slack and SIEM webhooks
-  are live on trial/Team.
+- Stripe, production deployment, and email (Resend) do not exist. Slack, SIEM, and Jira
+  destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
 
@@ -169,9 +171,11 @@ writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
+Jira Cloud tickets are in (trial/Team, `*.atlassian.net` only, encrypted email+token, test never
+creates an issue or Watch alert).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
-GitHub suspend does not block; members cannot save Slack/SIEM/registries/tokens/allowlists/PRs).
+GitHub suspend does not block; members cannot save Slack/SIEM/Jira/registries/tokens/allowlists/PRs).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
