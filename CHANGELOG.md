@@ -12,6 +12,7 @@
 - Publish Privacy, Terms, retention, disclosure, support, and refund pages.
 - Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
 - Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, and dist-tags.
+- Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { coverageFrom, coverageIsOn } from "../coverage.ts";
+import type { SignedReceipt } from "../receipt.ts";
+import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { num, type SqlClient } from "./sql.ts";
 
@@ -54,6 +56,24 @@ export type WatchedPackageRow = {
   last_scan_status: string | null;
 };
 
+export type ScanReceiptRow = {
+  id: number;
+  installation_id: number;
+  package_id: number | null;
+  repo_id: number | null;
+  coordinate: string;
+  artifact_sha256: string;
+  artifact_sha512: string | null;
+  artifact_bytes: number | null;
+  status: ScanStatus;
+  engine_version: string;
+  manifest: ManifestEntry[];
+  finding_fingerprints: string[];
+  signature: string;
+  receipt: SignedReceipt;
+  created_at: string;
+};
+
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
 export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
 
@@ -106,6 +126,64 @@ function prospectRow(row: ProspectRow): ProspectRow {
     critical_count: row.critical_count === null ? null : num(row.critical_count),
     warning_count: row.warning_count === null ? null : num(row.warning_count),
     findings: parsePayload(row.findings),
+  };
+}
+
+function asStringArray(value: unknown): string[] {
+  const raw = parsePayload(value);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((entry): entry is string => typeof entry === "string");
+}
+
+function asManifest(value: unknown): ManifestEntry[] {
+  const raw = parsePayload(value);
+  if (!Array.isArray(raw)) return [];
+  const out: ManifestEntry[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.path !== "string" || typeof row.sha256 !== "string") continue;
+    const size = typeof row.size === "number" ? row.size : Number(row.size);
+    if (!Number.isFinite(size)) continue;
+    out.push({ path: row.path, size, sha256: row.sha256 });
+  }
+  return out;
+}
+
+function scanReceiptRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  repo_id: unknown;
+  coordinate: string;
+  artifact_sha256: string;
+  artifact_sha512: string | null;
+  artifact_bytes: unknown;
+  status: string;
+  engine_version: string;
+  manifest: unknown;
+  finding_fingerprints: unknown;
+  signature: string;
+  receipt: unknown;
+  created_at: string | Date;
+}): ScanReceiptRow {
+  const parsedReceipt = parsePayload(row.receipt);
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: row.package_id === null || row.package_id === undefined ? null : num(row.package_id),
+    repo_id: row.repo_id === null || row.repo_id === undefined ? null : num(row.repo_id),
+    coordinate: row.coordinate,
+    artifact_sha256: row.artifact_sha256,
+    artifact_sha512: row.artifact_sha512,
+    artifact_bytes: row.artifact_bytes === null || row.artifact_bytes === undefined ? null : num(row.artifact_bytes),
+    status: row.status as ScanStatus,
+    engine_version: row.engine_version,
+    manifest: asManifest(row.manifest),
+    finding_fingerprints: asStringArray(row.finding_fingerprints),
+    signature: row.signature,
+    receipt: parsedReceipt as SignedReceipt,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
 
@@ -915,6 +993,174 @@ export function createStore(
          WHERE id = $1`,
         [id, input.status, input.sha256],
       );
+    },
+
+    async insertScanReceipt(input: {
+      installationId: number;
+      packageId?: number | null;
+      repoId?: number | null;
+      receipt: SignedReceipt;
+    }): Promise<ScanReceiptRow> {
+      const signed = input.receipt;
+      if (signed.status === "passed" && signed.ok !== true) {
+        throw new Error("cannot mint a passing receipt for a failed scan");
+      }
+      if (signed.status === "inconclusive" && signed.ok) {
+        throw new Error("inconclusive receipts cannot be marked ok");
+      }
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        artifact_bytes: unknown;
+        status: string;
+        engine_version: string;
+        manifest: unknown;
+        finding_fingerprints: unknown;
+        signature: string;
+        receipt: unknown;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO scan_receipts (
+           installation_id, package_id, repo_id, coordinate,
+           artifact_sha256, artifact_sha512, artifact_bytes,
+           status, engine_version, manifest, finding_fingerprints,
+           signature, receipt
+         )
+         VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13::jsonb
+         )
+         RETURNING *`,
+        [
+          input.installationId,
+          input.packageId ?? null,
+          input.repoId ?? null,
+          signed.coordinate,
+          signed.artifactSha256,
+          signed.artifactSha512,
+          signed.artifactBytes,
+          signed.status,
+          signed.engineVersion,
+          JSON.stringify(signed.manifest),
+          JSON.stringify(signed.findingFingerprints),
+          signed.signature,
+          JSON.stringify(signed),
+        ],
+      );
+      if (!rows[0]) throw new Error("scan receipt insert returned no row");
+      return scanReceiptRow(rows[0]);
+    },
+
+    async getScanReceiptForUser(id: number, userId: string): Promise<ScanReceiptRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        artifact_bytes: unknown;
+        status: string;
+        engine_version: string;
+        manifest: unknown;
+        finding_fingerprints: unknown;
+        signature: string;
+        receipt: unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT sr.*
+         FROM scan_receipts sr
+         JOIN installation_users iu ON iu.installation_id = sr.installation_id
+         WHERE sr.id = $1 AND iu.user_id = $2`,
+        [id, userId],
+      );
+      return rows[0] ? scanReceiptRow(rows[0]) : null;
+    },
+
+    async listScanReceiptsForUser(
+      userId: string,
+      opts: { packageId?: number; repoId?: number; limit?: number } = {},
+    ): Promise<ScanReceiptRow[]> {
+      const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        artifact_bytes: unknown;
+        status: string;
+        engine_version: string;
+        manifest: unknown;
+        finding_fingerprints: unknown;
+        signature: string;
+        receipt: unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT sr.*
+         FROM scan_receipts sr
+         JOIN installation_users iu ON iu.installation_id = sr.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR sr.package_id = $2)
+           AND ($3::bigint IS NULL OR sr.repo_id = $3)
+         ORDER BY sr.created_at DESC, sr.id DESC
+         LIMIT $4`,
+        [userId, opts.packageId ?? null, opts.repoId ?? null, limit],
+      );
+      return rows.map(scanReceiptRow);
+    },
+
+    async latestScanReceipts(opts: {
+      installationId: number;
+      packageId?: number | null;
+      repoId?: number | null;
+      coordinate?: string | null;
+      limit?: number;
+    }): Promise<ScanReceiptRow[]> {
+      const limit = Math.min(10, Math.max(1, opts.limit ?? 2));
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        artifact_bytes: unknown;
+        status: string;
+        engine_version: string;
+        manifest: unknown;
+        finding_fingerprints: unknown;
+        signature: string;
+        receipt: unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT *
+         FROM scan_receipts
+         WHERE installation_id = $1
+           AND (
+             ($2::bigint IS NOT NULL AND package_id = $2)
+             OR ($2::bigint IS NULL AND $3::bigint IS NOT NULL AND repo_id = $3 AND ($4::text IS NULL OR coordinate = $4))
+             OR ($2::bigint IS NULL AND $3::bigint IS NULL AND $4::text IS NOT NULL AND coordinate = $4)
+           )
+         ORDER BY id DESC
+         LIMIT $5`,
+        [
+          opts.installationId,
+          opts.packageId ?? null,
+          opts.repoId ?? null,
+          opts.coordinate ?? null,
+          limit,
+        ],
+      );
+      return rows.map(scanReceiptRow);
     },
   };
 }

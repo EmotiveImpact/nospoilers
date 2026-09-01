@@ -19,6 +19,8 @@
     "vite.config.ts",
     "src/plugin.ts",
     "src/cli.ts",
+    "src/receipt.ts",
+    "src/release-diff.ts",
     "src/scanner/**/*.ts",
     "src/server/**/*.ts",
     "scripts/**/*.ts",

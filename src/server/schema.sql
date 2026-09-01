@@ -144,3 +144,35 @@ CREATE TABLE IF NOT EXISTS watched_packages (
 CREATE INDEX IF NOT EXISTS watched_packages_install_idx
   ON watched_packages (installation_id, package_name);
 
+CREATE TABLE IF NOT EXISTS scan_receipts (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT REFERENCES watched_packages (id) ON DELETE SET NULL,
+  repo_id BIGINT REFERENCES repos (id) ON DELETE SET NULL,
+  coordinate TEXT NOT NULL,
+  artifact_sha256 TEXT NOT NULL DEFAULT '',
+  artifact_sha512 TEXT,
+  artifact_bytes BIGINT,
+  status TEXT NOT NULL CHECK (status IN ('passed', 'failed-policy', 'inconclusive')),
+  engine_version TEXT NOT NULL,
+  manifest JSONB NOT NULL,
+  finding_fingerprints JSONB NOT NULL,
+  signature TEXT NOT NULL,
+  receipt JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS scan_receipts_install_idx
+  ON scan_receipts (installation_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS scan_receipts_package_idx
+  ON scan_receipts (package_id, created_at DESC)
+  WHERE package_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS scan_receipts_repo_idx
+  ON scan_receipts (repo_id, created_at DESC)
+  WHERE repo_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS scan_receipts_coordinate_idx
+  ON scan_receipts (installation_id, coordinate, created_at DESC);
+

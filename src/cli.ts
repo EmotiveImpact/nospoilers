@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
 import { Command } from "commander";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
+import { receiptSecretFromEnv, verifyReceipt } from "./receipt.ts";
 
 const program = new Command();
 
@@ -28,7 +30,8 @@ program
         } else {
           process.stdout.write(`${formatReport(report)}\n`);
         }
-        process.exitCode = report.ok ? 0 : 1;
+        if (report.status === "inconclusive") process.exitCode = 2;
+        else process.exitCode = report.ok ? 0 : 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         process.stderr.write(`NoSpoilers could not scan that path: ${message}\n`);
@@ -36,5 +39,53 @@ program
       }
     },
   );
+
+program
+  .command("verify")
+  .argument("<path>", "Packed artifact to re-hash")
+  .requiredOption("--receipt <file>", "Signed scan receipt JSON")
+  .action(async (target: string, opts: { receipt: string }) => {
+    const secret = receiptSecretFromEnv();
+    if (!secret) {
+      process.stderr.write(
+        "Set RECEIPT_SECRET or SESSION_SECRET to verify a hosted HMAC receipt. Production signing will move to KMS.\n",
+      );
+      process.exitCode = 2;
+      return;
+    }
+    try {
+      const bytes = await readFile(target);
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      const raw = await readFile(opts.receipt, "utf8");
+      const result = verifyReceipt(raw, secret, sha256);
+      if (!result.ok || !result.receipt) {
+        process.stderr.write(`${result.reason ?? "Receipt did not verify."}\n`);
+        process.exitCode = 1;
+        return;
+      }
+      const receipt = result.receipt;
+      process.stdout.write(
+        `Receipt ${receipt.status}  sha256 ${receipt.artifactSha256}  ${receipt.coordinate}\n`,
+      );
+      if (receipt.status === "inconclusive") {
+        process.stdout.write(
+          `${receipt.inconclusiveReason ?? "Inconclusive."} Authentic, but not a passing result.\n`,
+        );
+        process.exitCode = 2;
+        return;
+      }
+      if (receipt.status !== "passed") {
+        process.stdout.write("Authentic receipt, but this artifact failed policy.\n");
+        process.exitCode = 1;
+        return;
+      }
+      process.stdout.write("Artifact SHA-256 matches a passing receipt.\n");
+      process.exitCode = 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`NoSpoilers could not verify that receipt: ${message}\n`);
+      process.exitCode = 2;
+    }
+  });
 
 await program.parseAsync(process.argv);

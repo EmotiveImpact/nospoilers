@@ -53,13 +53,13 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | App-generated setup PR | Planned | NoSpoilers |
 | GitHub Checks and annotations | Planned | NoSpoilers |
 | Required-check setup guidance | Planned | NoSpoilers |
-| Release manifest: path, size, hash | Planned | NoSpoilers |
-| Release Diff between approved versions | Planned | NoSpoilers |
+| Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
+| Release Diff between approved versions | Built: last two receipts on a watched package | NoSpoilers |
 | Baseline approval | Planned | NoSpoilers |
 | Path/rule allowlist with expiry and reason | Planned | NoSpoilers |
 | `.nospoilers.yml` policy file | Planned | NoSpoilers |
-| Unexpected package-size increase | Planned | NoSpoilers |
-| Files newly absent/present vs approved release | Planned | NoSpoilers |
+| Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
+| Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
 | Nested archive scanning | Planned | NoSpoilers |
 | Escaping/suspicious symlink detection | Planned | NoSpoilers |
 | Source archives and backup files | Planned | NoSpoilers |
@@ -69,16 +69,16 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Build caches/compiler metadata | Partial | NoSpoilers |
 | Internal documentation and roadmaps | Planned | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |
-| Signed scan receipt with artifact SHA-256 | Planned | NoSpoilers |
-| Explicit inconclusive status for limits, malformed/encrypted/partial scans | Planned | NoSpoilers |
+| Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
+| Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |
 | External scanning API | Planned | NoSpoilers |
 
 ## Release Ledger module
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| SHA-256/SHA-512 artifact identity | Partial: SHA-256 planned in receipts | NoSpoilers |
-| Append-only sealed release revisions | Planned | NoSpoilers |
+| SHA-256/SHA-512 artifact identity | Built: packed-file SHA-256/SHA-512 on receipts | NoSpoilers |
+| Append-only sealed release revisions | Partial: append-only `scan_receipts` rows; no channels/SBOM yet | NoSpoilers |
 | Build/source revision and CI provenance link | Planned | NoSpoilers |
 | CycloneDX/SPDX SBOM attachment | Planned | NoSpoilers Team |
 | SLSA/in-toto provenance validation | Planned | NoSpoilers Team |
@@ -87,7 +87,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Stable/beta/canary release channels | Planned | NoSpoilers |
 | Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
 | Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
-| Offline signed-receipt verification | Planned | NoSpoilers |
+| Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check | NoSpoilers |
 | Public verification page controlled by customer | Planned, later | NoSpoilers |
 
 ## Package Identity module

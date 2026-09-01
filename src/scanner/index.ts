@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -5,11 +6,28 @@ import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
 import { INSPECT_BYTES, inspectEntry, TOTAL_WARN_BYTES } from "./inspect.ts";
-import type { Finding, ScanOptions, ScanReport, ScanTargetKind } from "./types.ts";
+import {
+  ScanInconclusiveError,
+  type Finding,
+  type ManifestEntry,
+  type ScanOptions,
+  type ScanReport,
+  type ScanStatus,
+  type ScanTargetKind,
+} from "./types.ts";
 
-export type { Finding, ScanOptions, ScanReport, ScanTargetKind } from "./types.ts";
+export type {
+  Finding,
+  ManifestEntry,
+  ScanOptions,
+  ScanReport,
+  ScanStatus,
+  ScanTargetKind,
+} from "./types.ts";
+export { ScanInconclusiveError } from "./types.ts";
 export { toSarif } from "./sarif.ts";
 
+export const ENGINE_VERSION = "0.1.0";
 export const DEFAULT_MAX_INPUT_BYTES = 80 * 1024 * 1024;
 export const DEFAULT_MAX_UNPACKED_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_MAX_FILES = 25_000;
@@ -36,7 +54,10 @@ class ScanBudget {
 
   checkTime(): void {
     if (Date.now() > this.limits.deadline) {
-      throw new Error(`Scan exceeded ${this.limits.timeoutMs / 1000} seconds.`);
+      throw new ScanInconclusiveError(
+        "timeout",
+        `Scan exceeded ${this.limits.timeoutMs / 1000} seconds.`,
+      );
     }
   }
 
@@ -44,7 +65,8 @@ class ScanBudget {
     this.checkTime();
     this.files += 1;
     if (this.files > this.limits.maxFiles) {
-      throw new Error(
+      throw new ScanInconclusiveError(
+        "limit",
         `Archive contains more than ${this.limits.maxFiles} files (stopped at ${filePath}).`,
       );
     }
@@ -53,13 +75,15 @@ class ScanBudget {
   addBytes(filePath: string, chunkBytes: number, fileBytes: number): void {
     this.checkTime();
     if (fileBytes > this.limits.maxFileBytes) {
-      throw new Error(
+      throw new ScanInconclusiveError(
+        "limit",
         `${filePath} expands beyond the ${this.limits.maxFileBytes} byte per-file limit.`,
       );
     }
     this.bytes += chunkBytes;
     if (this.bytes > this.limits.maxUnpackedBytes) {
-      throw new Error(
+      throw new ScanInconclusiveError(
+        "limit",
         `Archive expands beyond the ${this.limits.maxUnpackedBytes} byte unpacked limit.`,
       );
     }
@@ -102,7 +126,23 @@ async function walkFiles(root: string): Promise<string[]> {
   return files;
 }
 
-type ScanChunk = { findings: Finding[]; fileCount: number; totalBytes: number };
+type ScanChunk = {
+  findings: Finding[];
+  fileCount: number;
+  totalBytes: number;
+  manifest: ManifestEntry[];
+};
+
+function sha256Buffer(buf: Buffer): string {
+  return createHash("sha256").update(buf).digest("hex");
+}
+
+function hashFileBytes(bytes: Buffer): { sha256: string; sha512: string } {
+  return {
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    sha512: createHash("sha512").update(bytes).digest("hex"),
+  };
+}
 
 async function scanDirectory(
   root: string,
@@ -111,6 +151,7 @@ async function scanDirectory(
 ): Promise<ScanChunk> {
   const files = await walkFiles(root);
   const findings: Finding[] = [];
+  const manifest: ManifestEntry[] = [];
   const budget = new ScanBudget(limits);
   for (const abs of files) {
     const rel = path.join(prefix, path.relative(root, abs)).split(path.sep).join("/");
@@ -119,31 +160,43 @@ async function scanDirectory(
     budget.addBytes(rel, info.size, info.size);
     const buf = await readFile(abs);
     findings.push(...inspectEntry(rel, buf.subarray(0, INSPECT_BYTES), info.size));
+    manifest.push({ path: rel, size: info.size, sha256: sha256Buffer(buf) });
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes };
+  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
 }
 
 async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChunk> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-tar-"));
   const extractionBudget = new ScanBudget(limits);
+  let limitError: ScanInconclusiveError | null = null;
   try {
     await tarExtract({
       file: archive,
       cwd: dir,
       filter(entryPath, entry) {
-        const type = "type" in entry ? entry.type : "File";
-        const storedPath = "path" in entry ? entry.path : entryPath;
-        const file =
-          type === "File" ||
-          type === "OldFile" ||
-          type === "ContiguousFile";
-        if (!file) return type !== "SymbolicLink" && type !== "Link";
-        const size = entry.size ?? 0;
-        extractionBudget.beginFile(storedPath);
-        extractionBudget.addBytes(storedPath, size, size);
-        return true;
+        if (limitError) return false;
+        try {
+          const type = "type" in entry ? entry.type : "File";
+          const storedPath = "path" in entry ? entry.path : entryPath;
+          const file =
+            type === "File" ||
+            type === "OldFile" ||
+            type === "ContiguousFile";
+          if (!file) return type !== "SymbolicLink" && type !== "Link";
+          const size = entry.size ?? 0;
+          extractionBudget.beginFile(storedPath);
+          extractionBudget.addBytes(storedPath, size, size);
+          return true;
+        } catch (error) {
+          if (error instanceof ScanInconclusiveError) {
+            limitError = error;
+            return false;
+          }
+          throw error;
+        }
       },
     });
+    if (limitError) throw limitError;
     return await scanDirectory(dir, limits);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -151,9 +204,26 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
 }
 
 async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> {
-  const buf = await readFile(archive);
-  const zip = await JSZip.loadAsync(buf);
+  let buf: Buffer;
+  try {
+    buf = await readFile(archive);
+  } catch (error) {
+    throw new ScanInconclusiveError(
+      "malformed",
+      error instanceof Error ? error.message : "Could not read zip.",
+    );
+  }
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(buf);
+  } catch (error) {
+    throw new ScanInconclusiveError(
+      "malformed",
+      error instanceof Error ? error.message : "Zip archive is malformed.",
+    );
+  }
   const findings: Finding[] = [];
+  const manifest: ManifestEntry[] = [];
   const budget = new ScanBudget(limits);
   const names = Object.keys(zip.files);
   for (const name of names) {
@@ -162,6 +232,7 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
     budget.beginFile(name);
     const stream = entry.nodeStream("nodebuffer");
     const chunks: Buffer[] = [];
+    const hash = createHash("sha256");
     let fileBytes = 0;
     let retainedBytes = 0;
     await new Promise<void>((resolve, reject) => {
@@ -172,6 +243,7 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
           const chunk = Buffer.from(raw);
           fileBytes += chunk.length;
           budget.addBytes(name, chunk.length, fileBytes);
+          hash.update(chunk);
           if (retainedBytes < INSPECT_BYTES) {
             const kept = chunk.subarray(0, INSPECT_BYTES - retainedBytes);
             chunks.push(kept);
@@ -197,13 +269,15 @@ async function scanZip(archive: string, limits: ScanLimits): Promise<ScanChunk> 
       });
     });
     findings.push(...inspectEntry(name, Buffer.concat(chunks, retainedBytes), fileBytes));
+    manifest.push({ path: name, size: fileBytes, sha256: hash.digest("hex") });
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes };
+  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
 }
 
 async function scanAsar(archive: string, limits: ScanLimits): Promise<ScanChunk> {
   const listed = asar.listPackage(archive, { isPack: false });
   const findings: Finding[] = [];
+  const manifest: ManifestEntry[] = [];
   const budget = new ScanBudget(limits);
   for (const raw of listed) {
     const rel = raw.replace(/^\/+/, "");
@@ -220,8 +294,9 @@ async function scanAsar(archive: string, limits: ScanLimits): Promise<ScanChunk>
     budget.addBytes(posix, record.size, record.size);
     const content = asar.extractFile(archive, posix);
     findings.push(...inspectEntry(posix, content.subarray(0, INSPECT_BYTES), record.size));
+    manifest.push({ path: posix, size: record.size, sha256: sha256Buffer(content) });
   }
-  return { findings, fileCount: budget.files, totalBytes: budget.bytes };
+  return { findings, fileCount: budget.files, totalBytes: budget.bytes, manifest };
 }
 
 export async function scan(target: string, options: ScanOptions = {}): Promise<ScanReport> {
@@ -229,59 +304,113 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
   const info = await stat(resolved);
   const kind = kindOf(resolved, info.isDirectory());
   const limits = limitsFor(options);
-  if (!info.isDirectory() && info.size > limits.maxInputBytes) {
-    throw new Error(`Input is larger than the ${limits.maxInputBytes} byte scan limit.`);
-  }
+  let artifactSha256: string | null = null;
+  let artifactSha512: string | null = null;
+  let artifactBytes: number | null = info.isDirectory() ? null : info.size;
 
-  let findings: Finding[] = [];
-  let fileCount = 0;
-  let totalBytes = 0;
-
-  if (kind === "directory") {
-    ({ findings, fileCount, totalBytes } = await scanDirectory(resolved, limits));
-  } else if (kind === "tarball") {
-    ({ findings, fileCount, totalBytes } = await scanTarball(resolved, limits));
-  } else if (kind === "zip") {
-    ({ findings, fileCount, totalBytes } = await scanZip(resolved, limits));
-  } else if (kind === "asar") {
-    ({ findings, fileCount, totalBytes } = await scanAsar(resolved, limits));
-  } else {
-    const budget = new ScanBudget(limits);
-    budget.beginFile(path.basename(resolved));
-    budget.addBytes(path.basename(resolved), info.size, info.size);
-    const buf = await readFile(resolved);
-    findings = inspectEntry(path.basename(resolved), buf.subarray(0, INSPECT_BYTES), info.size);
-    fileCount = 1;
-    totalBytes = buf.length;
-  }
-
-  if (totalBytes >= TOTAL_WARN_BYTES) {
-    findings.push({
-      rule: "SIZE-002",
-      severity: "warn",
-      path: path.basename(resolved),
-      title: "Packed artifact is far over a normal baseline",
-      detail: `Unpacked payload is ${totalBytes} bytes. A jump like this is how a 59 MB source map ships.`,
-    });
-  }
-
-  const critical = findings.filter((f) => f.severity === "critical");
-  const ok = options.strict ? findings.length === 0 : critical.length === 0;
-
-  return {
+  const inconclusive = (reason: string): ScanReport => ({
     target: resolved,
     kind,
-    fileCount,
-    findings,
-    ok,
+    fileCount: 0,
+    findings: [],
+    ok: false,
+    status: "inconclusive",
+    inconclusiveReason: reason,
+    manifest: [],
+    engineVersion: ENGINE_VERSION,
+    artifactSha256,
+    artifactSha512,
+    artifactBytes,
     scannedAt: new Date().toISOString(),
-  };
+  });
+
+  if (!info.isDirectory() && info.size > limits.maxInputBytes) {
+    return inconclusive(`Input is larger than the ${limits.maxInputBytes} byte scan limit.`);
+  }
+
+  try {
+    if (!info.isDirectory()) {
+      const packed = await readFile(resolved);
+      const hashed = hashFileBytes(packed);
+      artifactSha256 = hashed.sha256;
+      artifactSha512 = hashed.sha512;
+      artifactBytes = packed.length;
+    }
+
+    let findings: Finding[] = [];
+    let fileCount = 0;
+    let totalBytes = 0;
+    let manifest: ManifestEntry[] = [];
+
+    if (kind === "directory") {
+      ({ findings, fileCount, totalBytes, manifest } = await scanDirectory(resolved, limits));
+    } else if (kind === "tarball") {
+      ({ findings, fileCount, totalBytes, manifest } = await scanTarball(resolved, limits));
+    } else if (kind === "zip") {
+      ({ findings, fileCount, totalBytes, manifest } = await scanZip(resolved, limits));
+    } else if (kind === "asar") {
+      ({ findings, fileCount, totalBytes, manifest } = await scanAsar(resolved, limits));
+    } else {
+      const budget = new ScanBudget(limits);
+      const name = path.basename(resolved);
+      budget.beginFile(name);
+      budget.addBytes(name, info.size, info.size);
+      const buf = await readFile(resolved);
+      findings = inspectEntry(name, buf.subarray(0, INSPECT_BYTES), info.size);
+      fileCount = 1;
+      totalBytes = buf.length;
+      manifest = [{ path: name, size: buf.length, sha256: sha256Buffer(buf) }];
+    }
+
+    if (totalBytes >= TOTAL_WARN_BYTES) {
+      findings.push({
+        rule: "SIZE-002",
+        severity: "warn",
+        path: path.basename(resolved),
+        title: "Packed artifact is far over a normal baseline",
+        detail: `Unpacked payload is ${totalBytes} bytes. A jump like this is how a 59 MB source map ships.`,
+      });
+    }
+
+    const critical = findings.filter((f) => f.severity === "critical");
+    const ok = options.strict ? findings.length === 0 : critical.length === 0;
+    const status: ScanStatus = ok ? "passed" : "failed-policy";
+
+    return {
+      target: resolved,
+      kind,
+      fileCount,
+      findings,
+      ok,
+      status,
+      inconclusiveReason: null,
+      manifest,
+      engineVersion: ENGINE_VERSION,
+      artifactSha256,
+      artifactSha512,
+      artifactBytes,
+      scannedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    if (error instanceof ScanInconclusiveError) {
+      return inconclusive(error.message);
+    }
+    throw error;
+  }
 }
 
 export function formatReport(report: ScanReport): string {
   const lines: string[] = [];
   lines.push(`NoSpoilers  ·  ${report.target}`);
-  lines.push(`kind ${report.kind}  files ${report.fileCount}  findings ${report.findings.length}`);
+  lines.push(`kind ${report.kind}  files ${report.fileCount}  status ${report.status}`);
+  if (report.artifactSha256) {
+    lines.push(`sha256 ${report.artifactSha256}`);
+  }
+  if (report.status === "inconclusive") {
+    lines.push(report.inconclusiveReason ?? "Inconclusive.");
+    lines.push("This is not a clean bill of health. No passing receipt.");
+    return lines.join("\n");
+  }
   if (report.findings.length === 0) {
     lines.push("Clean. This artifact is allowed to ship.");
     return lines.join("\n");

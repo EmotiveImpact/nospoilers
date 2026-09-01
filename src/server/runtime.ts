@@ -33,6 +33,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     maxAssetBytes: config.maxAssetBytes,
     intervalMs: config.workerIntervalMs,
     staleAfterMs: config.jobStaleMs,
+    receiptSecret: config.receiptSecret,
   });
   const app = createApp({
     config,

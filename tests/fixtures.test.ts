@@ -17,6 +17,10 @@ describe("packed fixtures", () => {
     const report = await scan(path.join(fixtures, "clean.tgz"));
     expect(report.kind).toBe("tarball");
     expect(report.ok).toBe(true);
+    expect(report.status).toBe("passed");
+    expect(report.artifactSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(report.artifactSha512).toMatch(/^[a-f0-9]{128}$/);
+    expect(report.manifest.length).toBeGreaterThan(0);
     expect(report.findings).toEqual([]);
   });
 
@@ -50,6 +54,13 @@ describe("packed fixtures", () => {
     const report = await scan(path.join(fixtures, "dotenv.tgz"));
     expect(report.ok).toBe(false);
     expect(rules("dotenv.tgz", report)).toContain("SEC-001");
+  });
+
+  it("marks a tarball that exceeds the unpacked budget as inconclusive", async () => {
+    const report = await scan(path.join(fixtures, "clean.tgz"), { maxUnpackedBytes: 1 });
+    expect(report.ok).toBe(false);
+    expect(report.status).toBe("inconclusive");
+    expect(report.inconclusiveReason).toMatch(/unpacked limit/);
   });
 
   it("writes SARIF errors for a dirty pack", async () => {

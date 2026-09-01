@@ -2,12 +2,14 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { scan, type ScanReport } from "../scanner/index.ts";
+import { ENGINE_VERSION, scan, type ScanReport } from "../scanner/index.ts";
+import type { ScanStatus } from "../scanner/types.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
 import type { NpmPort } from "./npm.ts";
 import { isPackAssetName } from "./paths.ts";
+import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 
@@ -32,6 +34,52 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
+function foldScanStatus(statuses: ScanStatus[]): ScanStatus {
+  if (statuses.includes("failed-policy")) return "failed-policy";
+  if (statuses.length === 0 || statuses.includes("inconclusive")) return "inconclusive";
+  return "passed";
+}
+
+function titleForScan(
+  status: ScanStatus,
+  passed: string,
+  failed: string,
+  inconclusive: string,
+): string {
+  if (status === "passed") return passed;
+  if (status === "failed-policy") return failed;
+  return inconclusive;
+}
+
+function inconclusiveReport(reason: string, extra: Partial<ScanReport> = {}): ScanReport {
+  return {
+    target: extra.target ?? "",
+    kind: extra.kind ?? "file",
+    fileCount: extra.fileCount ?? 0,
+    findings: extra.findings ?? [],
+    ok: false,
+    status: "inconclusive",
+    inconclusiveReason: reason,
+    manifest: extra.manifest ?? [],
+    engineVersion: extra.engineVersion ?? ENGINE_VERSION,
+    artifactSha256: extra.artifactSha256 ?? null,
+    artifactSha512: extra.artifactSha512 ?? null,
+    artifactBytes: extra.artifactBytes ?? null,
+    scannedAt: extra.scannedAt ?? new Date().toISOString(),
+  };
+}
+
+function noteForAsset(name: string, report: ScanReport): string {
+  if (report.status === "inconclusive") {
+    return `${name}: inconclusive (${report.inconclusiveReason ?? "scan could not finish"}).`;
+  }
+  if (report.status === "failed-policy") {
+    const critical = report.findings.filter((finding) => finding.severity === "critical").length;
+    return `${name}: ${critical} critical finding(s).`;
+  }
+  return `${name}: ${report.findings.length === 0 ? "clean" : "warnings only"} (${report.fileCount} files).`;
+}
+
 export async function handleJob(
   job: JobRow,
   deps: {
@@ -41,6 +89,7 @@ export async function handleJob(
     scan: ScanFn;
     maxAssetBytes: number;
     npm?: NpmPort;
+    receiptSecret?: string;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
@@ -177,36 +226,54 @@ export async function handleJob(
 
     const allFindings: ScanReport["findings"] = [];
     const notes: string[] = [];
+    const statuses: ScanStatus[] = [];
     for (const asset of packs) {
+      const coordinate = `github:${repo.fullName}@${tag}#${asset.name}`;
+      let report: ScanReport;
       if (asset.size > deps.maxAssetBytes) {
-        notes.push(`${asset.name} skipped (larger than ${deps.maxAssetBytes} bytes).`);
-        continue;
-      }
-      const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-rel-"));
-      const dest = path.join(dir, asset.name.replace(/[^\w.-]+/g, "_"));
-      try {
-        const bytes = await deps.github.downloadAsset(installationId, asset.url, deps.maxAssetBytes);
-        await writeFile(dest, bytes);
-        const report = await deps.scan(dest);
-        allFindings.push(...report.findings);
-        notes.push(
-          report.ok
-            ? `${asset.name}: clean (${report.fileCount} files).`
-            : `${asset.name}: ${report.findings.filter((f) => f.severity === "critical").length} critical finding(s).`,
+        report = inconclusiveReport(
+          `${asset.name} is larger than the ${deps.maxAssetBytes} byte scan limit.`,
+          { artifactBytes: asset.size, target: asset.name },
         );
-      } finally {
-        await rm(dir, { recursive: true, force: true });
+      } else {
+        const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-rel-"));
+        const dest = path.join(dir, asset.name.replace(/[^\w.-]+/g, "_"));
+        try {
+          const bytes = await deps.github.downloadAsset(installationId, asset.url, deps.maxAssetBytes);
+          await writeFile(dest, bytes);
+          report = await deps.scan(dest);
+        } finally {
+          await rm(dir, { recursive: true, force: true });
+        }
+      }
+      statuses.push(report.status);
+      allFindings.push(...report.findings);
+      notes.push(noteForAsset(asset.name, report));
+      if (deps.receiptSecret) {
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.receiptSecret,
+          installationId,
+          repoId: repo.id,
+          coordinate,
+          report,
+        });
+        const diffNote = summarizeDiff(persisted.diff);
+        if (diffNote) notes.push(diffNote);
+        if (report.artifactSha256) notes.push(`sha256 ${report.artifactSha256}`);
       }
     }
 
-    const critical = allFindings.filter((f) => f.severity === "critical").length;
+    const status = foldScanStatus(statuses);
     await deps.notifier.send({
       ...alertBase,
       kind: job.kind,
-      title:
-        critical > 0
-          ? `Spoilers in ${repo.fullName} ${tag}`
-          : `${repo.fullName} ${tag} is allowed to ship`,
+      title: titleForScan(
+        status,
+        `${repo.fullName} ${tag} is allowed to ship`,
+        `Spoilers in ${repo.fullName} ${tag}`,
+        `Inconclusive scan of ${repo.fullName} ${tag}`,
+      ),
       body: notes.join(" "),
       findings: allFindings,
     });
@@ -237,30 +304,64 @@ export async function handleJob(
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
       const report = await deps.scan(dest);
+      const status = report.status;
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
       if (Number.isFinite(packageId) && packageId > 0) {
         await deps.store.recordWatchedPackageScan(packageId, {
-          sha256,
-          status: critical > 0 ? "failed-policy" : "passed",
+          sha256: report.artifactSha256 ?? sha256,
+          status,
         });
+      }
+      const notes = [
+        status === "inconclusive"
+          ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
+          : critical > 0
+            ? `${critical} critical finding(s).`
+            : "No critical findings.",
+        `sha256 ${report.artifactSha256 ?? sha256}`,
+      ];
+      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.receiptSecret,
+          installationId,
+          packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+          coordinate: `npm:${packageName}@${version}`,
+          report,
+        });
+        const diffNote = summarizeDiff(persisted.diff);
+        if (diffNote) notes.push(diffNote);
       }
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
-        title:
-          critical > 0
-            ? `Spoilers in npm ${packageName}@${version}`
-            : `npm ${packageName}@${version} is allowed to ship`,
-        body: `${critical > 0 ? `${critical} critical finding(s).` : "No critical findings."} sha256 ${sha256}`,
+        title: titleForScan(
+          status,
+          `npm ${packageName}@${version} is allowed to ship`,
+          `Spoilers in npm ${packageName}@${version}`,
+          `Inconclusive scan of npm ${packageName}@${version}`,
+        ),
+        body: notes.join(" "),
         findings: report.findings,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("larger than")) {
+        const report = inconclusiveReport(message);
         if (Number.isFinite(packageId) && packageId > 0) {
           await deps.store.recordWatchedPackageScan(packageId, {
             sha256: null,
             status: "inconclusive",
+          });
+        }
+        if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
+          await persistHostedReceipt({
+            store: deps.store,
+            secret: deps.receiptSecret,
+            installationId,
+            packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+            coordinate: `npm:${packageName}@${version}`,
+            report,
           });
         }
         await deps.notifier.send({
@@ -289,6 +390,7 @@ export function createWorker(opts: {
   intervalMs: number;
   staleAfterMs?: number;
   npm?: NpmPort;
+  receiptSecret?: string;
   onJob?: (job: JobRow) => Promise<void>;
 }) {
   const scanFn = opts.scan ?? scan;
@@ -326,6 +428,7 @@ export function createWorker(opts: {
           scan: scanFn,
           maxAssetBytes: opts.maxAssetBytes,
           npm: opts.npm,
+          receiptSecret: opts.receiptSecret,
         });
       }
       await opts.store.finishJob(job.id);

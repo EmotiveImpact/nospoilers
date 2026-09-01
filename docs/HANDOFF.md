@@ -26,9 +26,11 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Eleven tables and migrations `001_init`, `002_coverage`, `003_prospects`, `004_billing_accounts`,
-  `005_watched_packages` are applied. Hosted coverage belongs to the GitHub installation billing
-  account, not the user row.
+- Twelve tables. Migrations `001_init`, `002_coverage`, `003_prospects`, `004_billing_accounts`,
+  `005_watched_packages`, and `006_scan_receipts` are applied. Hosted coverage belongs to the GitHub
+  installation billing account, not the user row. Scan receipts are append-only HMAC JSON; they
+  store manifests and hashes, never source. Development receipts use `RECEIPT_SECRET` (falls back to
+  `SESSION_SECRET`). Production signing should move to KMS.
 - The application boots with `DATABASE_URL` from `.env` (gitignored). Keep that same URL as a
   Cloud Agent Runtime Secret so new runs do not fall back to PGlite.
 - Do not import local PGlite data; Neon starts clean.
@@ -45,7 +47,8 @@ Read in this order:
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
 - Customers can watch public npm packages on a covered install. Connecting a name scans `latest`;
   the hourly poller and Watch “Check now” enqueue new versions, mutated tarballs, and dist-tag moves.
-  The 15-minute worker timer is still recovery only — enqueue wakes the worker.
+  Covered npm and GitHub release scans persist a signed receipt and can diff the last two. The
+  15-minute worker timer is still recovery only — enqueue wakes the worker.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
@@ -72,6 +75,7 @@ docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md fi
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest tarball) is in.
+Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
 Do not start Stripe or the Electron installer worker yet.

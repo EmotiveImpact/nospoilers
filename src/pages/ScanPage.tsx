@@ -309,20 +309,36 @@ function ResultsPanel({ state, locked }: { state: ViewState; locked: boolean }) 
   }
 
   const { report } = state
+  const status = report.status ?? (report.ok ? "passed" : "failed-policy")
   const critical = report.findings.filter((f) => f.severity === "critical").length
+  const inconclusive = status === "inconclusive"
+  const headline = inconclusive
+    ? "Inconclusive"
+    : report.ok
+      ? "Clean pack"
+      : "Spoilers in the pack"
+  const kicker = inconclusive
+    ? "Not a passing result"
+    : report.ok
+      ? "Allowed to ship"
+      : `${critical} critical`
 
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
       <p className="text-[11px] uppercase tracking-[0.22em] text-dim">
-        {report.ok ? "Allowed to ship" : `${critical} critical`} · {report.fileCount} files
+        {kicker} · {report.fileCount} files
       </p>
-      <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">
-        {report.ok ? "Clean pack" : "Spoilers in the pack"}
-      </h2>
+      <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">{headline}</h2>
       <p className="mt-1 text-sm text-dim">
         {state.label} · {report.kind}
+        {report.artifactSha256 ? ` · ${report.artifactSha256.slice(0, 12)}` : ""}
       </p>
-      {report.findings.length === 0 ? (
+      {inconclusive ? (
+        <p className="mt-6 text-sm leading-relaxed text-mute">
+          {report.inconclusiveReason ?? "The scan could not finish."} This is not a clean bill of
+          health. No passing receipt.
+        </p>
+      ) : report.findings.length === 0 ? (
         <p className="mt-6 text-sm leading-relaxed text-mute">
           No source maps, no embedded original source, no env files, no keys, no .git.
         </p>

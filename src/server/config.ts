@@ -15,6 +15,7 @@ export type AppConfig = {
   adminToken: string;
   adminGithubLogin: string;
   sessionSecret: string;
+  receiptSecret: string;
   heavyConcurrency: number;
   lightConcurrency: number;
   maxAssetBytes: number;
@@ -95,6 +96,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     adminToken: env("ADMIN_TOKEN"),
     adminGithubLogin: env("ADMIN_GITHUB_LOGIN", "EmotiveImpact"),
     sessionSecret: env("SESSION_SECRET") || env("GITHUB_WEBHOOK_SECRET") || "dev-session-not-for-production",
+    receiptSecret: env("RECEIPT_SECRET"),
     heavyConcurrency: heavy,
     lightConcurrency: light,
     maxAssetBytes: envInt("MAX_ASSET_BYTES", 80 * 1024 * 1024),
@@ -105,7 +107,9 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     scanRateLimit: Math.max(0, envInt("SCAN_RATE_LIMIT", 60)),
     scanRateWindowMs: Math.max(1000, envInt("SCAN_RATE_WINDOW_MS", 60 * 60 * 1000)),
   };
-  return { ...base, ...overrides };
+  const merged = { ...base, ...overrides };
+  if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;
+  return merged;
 }
 
 export function githubAppConfigured(config: AppConfig): boolean {

@@ -162,6 +162,9 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "005_watched_packages",
   ]);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "006_scan_receipts",
+  ]);
 }
 
 export function num(value: unknown): number {

@@ -17,6 +17,7 @@ Unauthenticated browser traffic.
 - View Product, Pricing, documentation, Privacy, Terms, Retention, Disclosure, Support, and Refunds.
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
+- Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key.
 - Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
 - Call GitHub App webhooks with a valid HMAC.
 
@@ -35,6 +36,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - See Watch data for installations linked to their account.
 - Connect and watch public npm packages on those installations while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
+- Read signed scan receipts for those installations and diff the last two receipts on a watched package.
 - View their own coverage status.
 - Use Scan under the same coverage rules as the rest of the hosted product.
 
@@ -42,7 +44,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ alerts, repos, jobs, or artifacts.
+- See other tenants’ alerts, repos, jobs, artifacts, or scan receipts.
+- Edit or delete scan receipts. Receipts are append-only.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
 
@@ -138,4 +141,6 @@ These are never customer features:
 ## Tests
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
-mutate Artifact Leads. Keep those tests green when adding internal routes.
+mutate Artifact Leads. `tests/receipts.test.ts` proves customers cannot read another
+tenant’s receipts and that receipts cannot be patched. Keep those tests green when adding
+internal routes.

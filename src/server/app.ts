@@ -1,11 +1,13 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { bestCoverage, coverageFrom } from "../coverage.ts";
-import { scan } from "../scanner/index.ts";
+import { ENGINE_VERSION, scan } from "../scanner/index.ts";
+import { verifyReceipt } from "../receipt.ts";
+import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
 import type { AppConfig } from "./config.ts";
 import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
@@ -280,7 +282,21 @@ export function createApp(deps: AppDeps): Hono {
         filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
       const buf = Buffer.from(await c.req.arrayBuffer());
       if (buf.length > MAX_UPLOAD) {
-        return c.json({ error: "Upload is larger than 80 MB." }, 400);
+        return c.json({
+          target: filename,
+          kind: "file",
+          fileCount: 0,
+          findings: [],
+          ok: false,
+          status: "inconclusive",
+          inconclusiveReason: "Upload is larger than 80 MB.",
+          manifest: [],
+          engineVersion: ENGINE_VERSION,
+          artifactSha256: createHash("sha256").update(buf).digest("hex"),
+          artifactSha512: createHash("sha512").update(buf).digest("hex"),
+          artifactBytes: buf.length,
+          scannedAt: new Date().toISOString(),
+        });
       }
       const dir = path.join(os.tmpdir(), "nospoilers-upload");
       await mkdir(dir, { recursive: true });
@@ -535,6 +551,107 @@ export function createApp(deps: AppDeps): Hono {
     const result = await checkWatchedPackage(deps.store, npm, pkg);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
+  });
+
+  app.get("/api/packages/:id/diff", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const rows = await deps.store.latestScanReceipts({
+      installationId: pkg.installation_id,
+      packageId: pkg.id,
+      limit: 2,
+    });
+    const current = rows[0] ?? null;
+    const previous = rows[1] ?? null;
+    const diff =
+      current && previous
+        ? mergeReleaseDiff(
+            diffManifests(previous.manifest, current.manifest),
+            diffFingerprints(previous.finding_fingerprints, current.finding_fingerprints),
+          )
+        : null;
+    return c.json({
+      package: { id: pkg.id, package_name: pkg.package_name },
+      current: current
+        ? {
+            id: current.id,
+            coordinate: current.coordinate,
+            status: current.status,
+            artifactSha256: current.artifact_sha256,
+            createdAt: current.created_at,
+          }
+        : null,
+      previous: previous
+        ? {
+            id: previous.id,
+            coordinate: previous.coordinate,
+            status: previous.status,
+            artifactSha256: previous.artifact_sha256,
+            createdAt: previous.created_at,
+          }
+        : null,
+      diff,
+    });
+  });
+
+  app.get("/api/receipts", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const packageId = Number(c.req.query("packageId"));
+    const repoId = Number(c.req.query("repoId"));
+    const receipts = await deps.store.listScanReceiptsForUser(user.userId, {
+      packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : undefined,
+      repoId: Number.isFinite(repoId) && repoId > 0 ? repoId : undefined,
+    });
+    return c.json({
+      receipts: receipts.map((row) => ({
+        id: row.id,
+        installationId: row.installation_id,
+        packageId: row.package_id,
+        repoId: row.repo_id,
+        coordinate: row.coordinate,
+        status: row.status,
+        artifactSha256: row.artifact_sha256,
+        artifactBytes: row.artifact_bytes,
+        engineVersion: row.engine_version,
+        createdAt: row.created_at,
+      })),
+    });
+  });
+
+  app.get("/api/receipts/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown receipt." }, 404);
+    const row = await deps.store.getScanReceiptForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown receipt." }, 404);
+    return c.json({ receipt: row.receipt, id: row.id, createdAt: row.created_at });
+  });
+
+  app.post("/api/receipts/verify", async (c) => {
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const raw =
+      typeof body.receipt === "string"
+        ? body.receipt
+        : body.receipt && typeof body.receipt === "object"
+          ? JSON.stringify(body.receipt)
+          : "";
+    if (!raw) return c.json({ error: "Provide a receipt object or JSON string." }, 400);
+    const expected = typeof body.sha256 === "string" ? body.sha256 : undefined;
+    const result = verifyReceipt(raw, deps.config.receiptSecret, expected);
+    if (!result.ok) return c.json({ ok: false, reason: result.reason }, 400);
+    return c.json({
+      ok: true,
+      status: result.receipt?.status,
+      coordinate: result.receipt?.coordinate,
+      artifactSha256: result.receipt?.artifactSha256,
+    });
   });
 
   return app;

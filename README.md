@@ -75,7 +75,13 @@ CLI and Action still work without the GitHub App:
 
 ```bash
 npx tsx src/cli.ts scan ./package.tgz
+npx tsx src/cli.ts verify ./package.tgz --receipt ./receipt.json
 ```
+
+`scan` exits 0 on pass, 1 on failed policy, and 2 when the result is inconclusive (limits,
+malformed archive, timeout). Inconclusive is never a clean bill of health. `verify` re-hashes the
+file and checks the HMAC receipt. Set `RECEIPT_SECRET` (or `SESSION_SECRET`) to the same value the
+host used; production should move this signer to KMS.
 
 ## Prove the loop on a throwaway repo
 

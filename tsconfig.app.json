@@ -24,5 +24,5 @@
     }
   },
   "include": ["src"],
-  "exclude": ["src/cli.ts", "src/plugin.ts", "src/scanner", "src/server"]
+  "exclude": ["src/cli.ts", "src/plugin.ts", "src/scanner", "src/server", "src/receipt.ts", "src/release-diff.ts"]
 }

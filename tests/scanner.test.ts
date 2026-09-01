@@ -22,7 +22,11 @@ describe("scan", () => {
     await withDir({ "index.js": "console.log(1)" }, async (dir) => {
       const report = await scan(dir);
       expect(report.ok).toBe(true);
+      expect(report.status).toBe("passed");
       expect(report.findings).toEqual([]);
+      expect(report.manifest.length).toBe(1);
+      expect(report.manifest[0]?.path).toMatch(/index\.js$/);
+      expect(report.manifest[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 
@@ -41,6 +45,7 @@ describe("scan", () => {
       async (dir) => {
         const report = await scan(dir);
         expect(report.ok).toBe(false);
+        expect(report.status).toBe("failed-policy");
         const rules = report.findings.map((f) => f.rule);
         expect(rules).toContain("MAP-001");
         expect(rules).toContain("MAP-002");
@@ -136,24 +141,35 @@ describe("scan", () => {
     });
   });
 
-  it("stops when archive safety limits are exceeded", async () => {
+  it("marks archive safety limits as inconclusive, never clean", async () => {
     await withDir({ "a.js": "12345", "b.js": "67890" }, async (dir) => {
-      await expect(scan(dir, { maxFiles: 1 })).rejects.toThrow("more than 1 files");
-      await expect(scan(dir, { maxFileBytes: 4 })).rejects.toThrow("per-file limit");
-      await expect(scan(dir, { maxUnpackedBytes: 8 })).rejects.toThrow("unpacked limit");
+      const tooMany = await scan(dir, { maxFiles: 1 });
+      expect(tooMany.ok).toBe(false);
+      expect(tooMany.status).toBe("inconclusive");
+      expect(tooMany.inconclusiveReason).toMatch(/more than 1 files/);
+
+      const perFile = await scan(dir, { maxFileBytes: 4 });
+      expect(perFile.status).toBe("inconclusive");
+      expect(perFile.inconclusiveReason).toMatch(/per-file limit/);
+
+      const unpacked = await scan(dir, { maxUnpackedBytes: 8 });
+      expect(unpacked.status).toBe("inconclusive");
+      expect(unpacked.inconclusiveReason).toMatch(/unpacked limit/);
     });
   });
 
-  it("stops a compressed ZIP before it can exceed the unpacked budget", async () => {
+  it("marks a ZIP that exceeds the unpacked budget as inconclusive", async () => {
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
     zip.file("payload.txt", "x".repeat(100_000));
     const target = path.join(os.tmpdir(), `ns-limit-${Date.now()}.zip`);
     try {
       await writeFile(target, await zip.generateAsync({ type: "nodebuffer" }));
-      await expect(scan(target, { maxUnpackedBytes: 10_000 })).rejects.toThrow(
-        "unpacked limit",
-      );
+      const report = await scan(target, { maxUnpackedBytes: 10_000 });
+      expect(report.ok).toBe(false);
+      expect(report.status).toBe("inconclusive");
+      expect(report.inconclusiveReason).toMatch(/unpacked limit/);
+      expect(report.artifactSha256).toMatch(/^[a-f0-9]{64}$/);
     } finally {
       await rm(target, { force: true });
     }

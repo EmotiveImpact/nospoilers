@@ -38,9 +38,24 @@ type WatchedPackage = {
   installation_id: number;
   package_name: string;
   last_version: string | null;
+  last_sha256: string | null;
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+};
+
+type ReleaseDiffView = {
+  current: { id: number; coordinate: string; status: string; artifactSha256: string } | null;
+  previous: { id: number; coordinate: string; status: string; artifactSha256: string } | null;
+  diff: {
+    added: { path: string }[];
+    removed: { path: string }[];
+    changed: { path: string }[];
+    sizeDelta: number;
+    unexpectedSizeJump: boolean;
+    newFindings: string[];
+    resolvedFindings: string[];
+  } | null;
 };
 
 type LoadState<T> =
@@ -96,6 +111,10 @@ export function WatchPage({ search }: { search: string }) {
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
   const [checkingId, setCheckingId] = useState<number | null>(null);
+  const [diffingId, setDiffingId] = useState<number | null>(null);
+  const [diffByPackage, setDiffByPackage] = useState<Record<number, ReleaseDiffView | { error: string }>>(
+    {},
+  );
 
   const refreshSignedIn = useCallback(async () => {
     setRepos({ status: "loading" });
@@ -430,77 +449,150 @@ export function WatchPage({ search }: { search: string }) {
         )}
         {deskPackages.length > 0 && (
           <ul className="mt-4 divide-y divide-white/5">
-            {deskPackages.map((pkg) => (
-              <li key={pkg.id} className="flex flex-wrap items-baseline justify-between gap-3 py-5">
-                <div>
-                  <p className="font-mono text-sm text-snow">{pkg.package_name}</p>
-                  <p className="mt-1 text-xs text-dim">
-                    {pkg.last_version ? `@${pkg.last_version}` : "not scanned yet"}
-                    {pkg.last_scan_status ? ` · ${pkg.last_scan_status}` : ""}
-                    {pkg.last_checked_at
-                      ? ` · checked ${new Date(pkg.last_checked_at).toLocaleString()}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={previewing || ended || checkingId === pkg.id}
-                    onClick={() => {
-                      setPackageError(null);
-                      setCheckingId(pkg.id);
-                      void (async () => {
-                        try {
-                          const response = await fetch(`/api/packages/${pkg.id}/check`, {
-                            method: "POST",
-                            credentials: "include",
-                          });
-                          const body = (await response.json()) as { error?: string };
-                          if (!response.ok) throw new Error(body.error ?? "Could not check package.");
-                          await refreshSignedIn();
-                        } catch (error) {
-                          setPackageError(
-                            error instanceof Error ? error.message : "Could not check package.",
-                          );
-                        } finally {
-                          setCheckingId(null);
-                        }
-                      })();
-                    }}
-                  >
-                    {checkingId === pkg.id ? "Checking…" : "Check now"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={previewing || ended}
-                    onClick={() => {
-                      setPackageError(null);
-                      void (async () => {
-                        try {
-                          const response = await fetch(`/api/packages/${pkg.id}`, {
-                            method: "DELETE",
-                            credentials: "include",
-                          });
-                          const body = (await response.json()) as { error?: string };
-                          if (!response.ok) throw new Error(body.error ?? "Could not remove package.");
-                          await refreshSignedIn();
-                        } catch (error) {
-                          setPackageError(
-                            error instanceof Error ? error.message : "Could not remove package.",
-                          );
-                        }
-                      })();
-                    }}
-                  >
-                    Stop
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {deskPackages.map((pkg) => {
+              const diffState = diffByPackage[pkg.id];
+              return (
+                <li key={pkg.id} className="py-5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm text-snow">{pkg.package_name}</p>
+                      <p className="mt-1 text-xs text-dim">
+                        {pkg.last_version ? `@${pkg.last_version}` : "not scanned yet"}
+                        {pkg.last_scan_status ? ` · ${pkg.last_scan_status}` : ""}
+                        {pkg.last_sha256 ? ` · ${pkg.last_sha256.slice(0, 12)}` : ""}
+                        {pkg.last_checked_at
+                          ? ` · checked ${new Date(pkg.last_checked_at).toLocaleString()}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={previewing || ended || checkingId === pkg.id}
+                        onClick={() => {
+                          setPackageError(null);
+                          setCheckingId(pkg.id);
+                          void (async () => {
+                            try {
+                              const response = await fetch(`/api/packages/${pkg.id}/check`, {
+                                method: "POST",
+                                credentials: "include",
+                              });
+                              const body = (await response.json()) as { error?: string };
+                              if (!response.ok) throw new Error(body.error ?? "Could not check package.");
+                              await refreshSignedIn();
+                            } catch (error) {
+                              setPackageError(
+                                error instanceof Error ? error.message : "Could not check package.",
+                              );
+                            } finally {
+                              setCheckingId(null);
+                            }
+                          })();
+                        }}
+                      >
+                        {checkingId === pkg.id ? "Checking…" : "Check now"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={previewing || ended || diffingId === pkg.id}
+                        onClick={() => {
+                          setPackageError(null);
+                          setDiffingId(pkg.id);
+                          void (async () => {
+                            try {
+                              const body = await loadJson<ReleaseDiffView>(
+                                `/api/packages/${pkg.id}/diff`,
+                              );
+                              setDiffByPackage((current) => ({ ...current, [pkg.id]: body }));
+                            } catch (error) {
+                              setDiffByPackage((current) => ({
+                                ...current,
+                                [pkg.id]: {
+                                  error:
+                                    error instanceof Error ? error.message : "Could not load diff.",
+                                },
+                              }));
+                            } finally {
+                              setDiffingId(null);
+                            }
+                          })();
+                        }}
+                      >
+                        {diffingId === pkg.id ? "Diffing…" : "Diff"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={previewing || ended}
+                        onClick={() => {
+                          setPackageError(null);
+                          void (async () => {
+                            try {
+                              const response = await fetch(`/api/packages/${pkg.id}`, {
+                                method: "DELETE",
+                                credentials: "include",
+                              });
+                              const body = (await response.json()) as { error?: string };
+                              if (!response.ok) {
+                                throw new Error(body.error ?? "Could not remove package.");
+                              }
+                              await refreshSignedIn();
+                            } catch (error) {
+                              setPackageError(
+                                error instanceof Error ? error.message : "Could not remove package.",
+                              );
+                            }
+                          })();
+                        }}
+                      >
+                        Stop
+                      </Button>
+                    </div>
+                  </div>
+                  {diffState && "error" in diffState ? (
+                    <p className="mt-3 text-sm text-danger">{diffState.error}</p>
+                  ) : null}
+                  {diffState && "diff" in diffState ? (
+                    <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
+                      {!diffState.previous || !diffState.current || !diffState.diff ? (
+                        <p className="text-sm text-mute">
+                          Need two receipts on this package before a release diff exists.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                            {diffState.previous.coordinate} → {diffState.current.coordinate}
+                            {diffState.diff.unexpectedSizeJump ? " · unexpected size jump" : ""}
+                          </p>
+                          <p className="mt-2 text-xs text-dim">
+                            +{diffState.diff.added.length} −{diffState.diff.removed.length} ~
+                            {diffState.diff.changed.length} · {diffState.diff.sizeDelta >= 0 ? "+" : ""}
+                            {diffState.diff.sizeDelta} bytes
+                          </p>
+                          <ul className="mt-3 flex flex-col gap-1 font-mono text-[11px] text-mute">
+                            {diffState.diff.added.map((entry) => (
+                              <li key={`a-${entry.path}`}>+ {entry.path}</li>
+                            ))}
+                            {diffState.diff.removed.map((entry) => (
+                              <li key={`r-${entry.path}`}>− {entry.path}</li>
+                            ))}
+                            {diffState.diff.changed.map((entry) => (
+                              <li key={`c-${entry.path}`}>~ {entry.path}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
