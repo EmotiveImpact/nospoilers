@@ -76,32 +76,39 @@ npx tsx src/cli.ts scan ./package.tgz
 5. Within about a minute the Watch page should show **Went public**.
 6. (Optional) Create a Release, attach `fixtures/sourcemap.tgz`, wait for **Spoilers in …** or click **Scan latest release**.
 
-If GitHub cannot reach your laptop, start a webhook relay (leave `npm run dev` running):
+`127.0.0.1` is **this machine**. GitHub's servers cannot call it. Your browser can use it only if you are sitting on that same machine.
 
-```bash
-npx smee-client --url https://smee.io/your-channel --target http://127.0.0.1:4347/api/webhooks/github
-```
+- **Laptop, browser on that laptop:** Homepage / Callback / Setup can be `http://127.0.0.1:4347…`. Webhooks still need a public URL.
+- **Cloud Agent or any remote VM:** Homepage, Callback, Setup, **and** Webhook must be a public HTTPS origin. Set `APP_BASE_URL` to that origin and sign in from it, not from `127.0.0.1`.
 
-Put that smee URL in the GitHub App **Webhook URL**. Or:
+Leave `npm run dev` running, then:
 
 ```bash
 cloudflared tunnel --url http://127.0.0.1:4347
 ```
 
-Use `https://<tunnel>/api/webhooks/github` as the Webhook URL.
+Quick tunnels print a host like `https://random-words.trycloudflare.com`. That host **changes every restart**. Put it in the GitHub App and in `APP_BASE_URL`, then restart `npm run dev`.
+
+Webhook-only relay (does **not** fix OAuth on a remote VM):
+
+```bash
+npx smee-client --url https://smee.io/your-channel --target http://127.0.0.1:4347/api/webhooks/github
+```
 
 ## Create the GitHub App (you click this; an agent cannot)
 
 GitHub → your profile → **Settings** → **Developer settings** → **GitHub Apps** → **New GitHub App**.
 
+Replace `ORIGIN` with `http://127.0.0.1:4347` on a laptop, or with the current `https://….trycloudflare.com` on this Cloud Agent.
+
 | Field | Value |
 | --- | --- |
 | GitHub App name | `NoSpoilers` (or `NoSpoilers-dev` if the name is taken) |
-| Homepage URL | `http://127.0.0.1:4347` |
-| Callback URL | `http://127.0.0.1:4347/api/auth/github/callback` |
-| Setup URL | `http://127.0.0.1:4347/api/github/setup` |
+| Homepage URL | `ORIGIN` |
+| Callback URL | `ORIGIN/api/auth/github/callback` |
+| Setup URL | `ORIGIN/api/github/setup` |
 | Redirect on update | checked |
-| Webhook URL | `http://127.0.0.1:4347/api/webhooks/github` **or** your smee/cloudflared URL |
+| Webhook URL | `ORIGIN/api/webhooks/github` |
 | Webhook secret | a long random string; same value as `GITHUB_WEBHOOK_SECRET` |
 | Expire user authorization tokens | optional; leave off for local |
 

@@ -21,11 +21,13 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 4347,
       strictPort: true,
+      allowedHosts: [".trycloudflare.com", "localhost"],
     },
     preview: {
       host: true,
       port: 4347,
       strictPort: true,
+      allowedHosts: [".trycloudflare.com", "localhost"],
     },
     test: {
       environment: "node",

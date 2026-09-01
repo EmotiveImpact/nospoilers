@@ -6,6 +6,7 @@
 - `/api/health` reports database driver/host/name and worker intervals without secrets.
 - Apply schema statements one at a time so Neon’s pooler can run idempotent migrations.
 - Tests: API enqueue wakes the worker; recovery timer is 15 minutes, not 500ms; visibility poller is hourly.
+- Allow `*.trycloudflare.com` on the Vite server so a Cloud Agent tunnel can serve GitHub OAuth and webhooks. `127.0.0.1` is not a GitHub-reachable address.
 
 ## 0.1.0
 

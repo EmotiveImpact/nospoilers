@@ -31,6 +31,8 @@ Single TypeScript package. Vite UI on port **4347** with the Hono API mounted at
 
 Create the GitHub App. An agent cannot. Exact checklist: [README.md](../README.md) → “Create the GitHub App”.
 
+Do **not** paste `http://127.0.0.1:4347` into the GitHub App while this is a Cloud Agent. GitHub cannot reach that address, and your browser is not on this VM. Use the current Cloudflare quick-tunnel origin, set `APP_BASE_URL` to it, and sign in from that HTTPS URL.
+
 Until those env vars exist, `/api/health` shows `githubApp: false` and sign-in returns 503.
 
 ## Do not start yet
