@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS installation_users (
   PRIMARY KEY (installation_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS billing_accounts (
+  installation_id BIGINT PRIMARY KEY REFERENCES installations (id) ON DELETE CASCADE,
+  trial_ends_at TIMESTAMPTZ,
+  plan TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS repos (
   id BIGINT PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,

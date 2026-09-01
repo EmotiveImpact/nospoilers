@@ -83,6 +83,11 @@ npx tsx src/cli.ts scan ./package.tgz
 5. Within about a minute the Watch page should show **Went public**.
 6. (Optional) Create a Release, attach `fixtures/sourcemap.tgz`, wait for **Spoilers in …** or click **Scan latest release**.
 
+An agent cannot create or publicize that repo with the GitHub App’s read-only token. To let an
+agent finish the proof, create `EmotiveImpact/nospoilers-throwaway` yourself, then add a
+**fine-grained** PAT for **only that repo** (Administration + Contents write) as
+`GITHUB_PROOF_TOKEN` and run `npm run phase1:throwaway`. Do not grant a classic `repo` PAT.
+
 If GitHub cannot reach your laptop, start a webhook relay (leave `npm run dev` running):
 
 ```bash

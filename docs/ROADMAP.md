@@ -19,6 +19,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
   release scans, alerts, and Watch desk.
 - Event-driven worker wake-up with a 15-minute recovery check.
+- Installation billing accounts and unpaid hosted-work enforcement.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
@@ -31,9 +32,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Missing before launch
 
-- Real GitHub App credentials and throwaway-repository end-to-end proof.
-- Installation-scoped billing. Coverage currently belongs to users, which is wrong for org installs.
-- Unpaid enforcement in webhook enqueue, worker, and visibility poller.
+- Real throwaway-repository private → public Watch alert and fixture release-asset scan.
 - Stripe checkout/subscription webhooks and card-on-file trial.
 - Production deployment, email delivery, retries, stale-job recovery, rate limits, and monitoring.
 - Secure production cookies, encrypted OAuth tokens, legal/support pages.
@@ -61,11 +60,10 @@ Exit: OAuth → webhook → queue → worker → alert works without manual SQL.
 
 ## Milestone 2 — make coverage commercially correct
 
-1. Attach billing accounts/subscriptions to GitHub installation IDs, not users.
-2. Enforce coverage in webhooks, workers, poller, hosted upload, and release scans.
-3. Return webhook 200 while skipping uncovered work.
-4. Test that ended installations consume no hosted work.
-5. Decide whether anonymous scanning remains a limited acquisition surface.
+Done. Billing accounts attach to GitHub installation IDs. New installs start a 14-day trial.
+Unpaid or suspended installs still receive webhook HTTP 200, but enqueue, worker, visibility
+poller, hosted upload, and latest-release scan skip their work. Anonymous `POST /api/scan`
+stays a size-limited acquisition surface (80 MiB). Stripe is still Milestone 3.
 
 Exit: unpaid installations cannot receive hosted coverage through any path.
 

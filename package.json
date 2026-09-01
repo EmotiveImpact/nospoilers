@@ -15,6 +15,7 @@
     "scan": "tsx src/cli.ts scan",
     "fixtures": "tsx scripts/build-fixtures.ts",
     "neon:check": "tsx scripts/neon-runtime-check.ts",
+    "phase1:throwaway": "tsx scripts/phase1-throwaway.ts",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "lint": "oxlint src tests scripts"

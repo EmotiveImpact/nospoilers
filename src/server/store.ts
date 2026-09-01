@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { coverageFrom, coverageIsOn } from "../coverage.ts";
 import { num, type SqlClient } from "./sql.ts";
 
 export type JobPriority = "light" | "heavy";
@@ -74,6 +75,11 @@ function parsePayload(value: unknown): unknown {
     }
   }
   return value;
+}
+
+function iso(value: string | Date | null | undefined): string | null {
+  if (value == null) return null;
+  return value instanceof Date ? value.toISOString() : value;
 }
 
 function prospectRow(row: ProspectRow): ProspectRow {
@@ -180,6 +186,29 @@ export function createStore(sql: SqlClient) {
            suspended = excluded.suspended`,
         [input.id, input.accountLogin, input.accountType, input.accountId, input.suspended ?? false],
       );
+      await sql.query(
+        `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan)
+         VALUES ($1, now() + interval '14 days', 'trial')
+         ON CONFLICT (installation_id) DO NOTHING`,
+        [input.id],
+      );
+    },
+
+    async installationWorkAllowed(installationId: number): Promise<boolean> {
+      const { rows } = await sql.query<{
+        suspended: boolean;
+        trial_ends_at: string | Date | null;
+        plan: string | null;
+      }>(
+        `SELECT i.suspended, b.trial_ends_at, b.plan
+         FROM installations i
+         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         WHERE i.id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row || row.suspended) return false;
+      return coverageIsOn(coverageFrom(iso(row.trial_ends_at), row.plan));
     },
 
     async deleteInstallation(id: number): Promise<void> {
@@ -584,16 +613,28 @@ export function createStore(sql: SqlClient) {
     },
 
     async listInstallationsForUser(userId: string): Promise<
-      { id: number; account_login: string; account_type: string }[]
+      {
+        id: number;
+        account_login: string;
+        account_type: string;
+        suspended: boolean;
+        trialEndsAt: string | null;
+        plan: string | null;
+      }[]
     > {
       const { rows } = await sql.query<{
         id: unknown;
         account_login: string;
         account_type: string;
+        suspended: boolean;
+        trial_ends_at: string | Date | null;
+        plan: string | null;
       }>(
-        `SELECT i.id, i.account_login, i.account_type
+        `SELECT i.id, i.account_login, i.account_type, i.suspended,
+                b.trial_ends_at, b.plan
          FROM installations i
          JOIN installation_users iu ON iu.installation_id = i.id
+         LEFT JOIN billing_accounts b ON b.installation_id = i.id
          WHERE iu.user_id = $1
          ORDER BY i.account_login`,
         [userId],
@@ -602,6 +643,9 @@ export function createStore(sql: SqlClient) {
         id: num(row.id),
         account_login: row.account_login,
         account_type: row.account_type,
+        suspended: Boolean(row.suspended),
+        trialEndsAt: iso(row.trial_ends_at),
+        plan: row.plan,
       }));
     },
   };

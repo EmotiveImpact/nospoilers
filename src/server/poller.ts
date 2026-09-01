@@ -10,6 +10,7 @@ export async function runVisibilityPoll(deps: {
   const repos = await deps.store.listAllRepos();
   let alerts = 0;
   for (const repo of repos) {
+    if (!(await deps.store.installationWorkAllowed(repo.installation_id))) continue;
     const fresh = await deps.github.getRepo(repo.installation_id, repo.owner, repo.name);
     const wasPrivate = repo.last_private ?? repo.private;
     if (wasPrivate && !fresh.private) {

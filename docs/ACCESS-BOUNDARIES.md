@@ -39,8 +39,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 **Must not**
 
-- Link an arbitrary GitHub installation ID they do not own (planned enforcement; do not
-  treat the current setup callback as finished).
+- Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
+  user owns that install on this App.
 - See other tenants’ alerts, repos, jobs, or artifacts.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
@@ -123,6 +123,9 @@ These are never customer features:
 | Cross-tenant support views | not built; will be owner-only |
 
 - Arbitrary installation-ID linking is rejected unless GitHub says that user owns this App install.
+- Hosted jobs, alerts, release scans, and the visibility poller run only while that
+  installation’s billing account is on trial or a paid plan. Unpaid installs still get
+  webhook HTTP 200. Anonymous `POST /api/scan` stays a size-limited acquisition surface.
 
 ## How access is checked today
 

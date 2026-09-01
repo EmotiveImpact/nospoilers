@@ -77,12 +77,29 @@ async function rememberRepo(store: Store, installationId: number, payload: Json)
   });
 }
 
+async function enqueueCovered(
+  store: Store,
+  installationId: number,
+  input: {
+    deliveryId: string;
+    priority: "light" | "heavy";
+    kind: string;
+    payload: unknown;
+  },
+): Promise<{ queued: boolean; kind: string; skipped?: "uncovered" }> {
+  if (!(await store.installationWorkAllowed(installationId))) {
+    return { queued: false, kind: input.kind, skipped: "uncovered" };
+  }
+  const result = await store.enqueueJob(input);
+  return { queued: result.inserted, kind: input.kind };
+}
+
 export async function enqueueFromWebhook(
   store: Store,
   event: string,
   deliveryId: string,
   payload: Json,
-): Promise<{ queued: boolean; kind: string | null }> {
+): Promise<{ queued: boolean; kind: string | null; skipped?: "uncovered" }> {
   if (event === "ping") return { queued: false, kind: "ping" };
 
   const installationId = await ensureInstallation(store, payload);
@@ -169,13 +186,12 @@ export async function enqueueFromWebhook(
     else if (action === "transferred") kind = "repo_transferred";
     if (!kind) return { queued: false, kind: action };
 
-    const result = await store.enqueueJob({
+    return await enqueueCovered(store, installationId, {
       deliveryId,
       priority: "light",
       kind,
       payload: { installationId, repo },
     });
-    return { queued: result.inserted, kind };
   }
 
   if (event === "member") {
@@ -183,20 +199,19 @@ export async function enqueueFromWebhook(
     if (str(payload.action) !== "added") return { queued: false, kind: event };
     const member = obj(payload.member);
     const repo = repoFrom(payload);
-    const result = await store.enqueueJob({
+    return await enqueueCovered(store, installationId, {
       deliveryId,
       priority: "light",
       kind: "member_added",
       payload: { installationId, repo, login: str(member.login) },
     });
-    return { queued: result.inserted, kind: "member_added" };
   }
 
   if (event === "fork") {
     await rememberRepo(store, installationId, payload);
     const forkee = obj(payload.forkee);
     const repo = repoFrom(payload);
-    const result = await store.enqueueJob({
+    return await enqueueCovered(store, installationId, {
       deliveryId,
       priority: "light",
       kind: "fork",
@@ -206,7 +221,6 @@ export async function enqueueFromWebhook(
         fork: str(forkee.full_name),
       },
     });
-    return { queued: result.inserted, kind: "fork" };
   }
 
   if (event === "release") {
@@ -214,7 +228,7 @@ export async function enqueueFromWebhook(
     if (str(payload.action) !== "published") return { queued: false, kind: event };
     const release = obj(payload.release);
     const repo = repoFrom(payload);
-    const result = await store.enqueueJob({
+    return await enqueueCovered(store, installationId, {
       deliveryId,
       priority: "heavy",
       kind: "release_scan",
@@ -226,7 +240,6 @@ export async function enqueueFromWebhook(
         name: str(release.name) || str(release.tag_name),
       },
     });
-    return { queued: result.inserted, kind: "release_scan" };
   }
 
   if (event === "push") {
@@ -234,13 +247,12 @@ export async function enqueueFromWebhook(
     const hits = cheapSensitivePaths(pathsFromPushPayload(payload as { commits?: { added?: string[] }[] }));
     if (hits.length === 0) return { queued: false, kind: "push_ignored" };
     const repo = repoFrom(payload);
-    const result = await store.enqueueJob({
+    return await enqueueCovered(store, installationId, {
       deliveryId,
       priority: "light",
       kind: "push_sensitive_path",
       payload: { installationId, repo, paths: hits, ref: str(payload.ref) },
     });
-    return { queued: result.inserted, kind: "push_sensitive_path" };
   }
 
   return { queued: false, kind: event };

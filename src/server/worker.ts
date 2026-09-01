@@ -40,6 +40,12 @@ export async function handleJob(
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
+  if (job.kind !== "prospect_scan") {
+    const installationId = Number(payload.installationId);
+    if (Number.isFinite(installationId) && installationId > 0) {
+      if (!(await deps.store.installationWorkAllowed(installationId))) return;
+    }
+  }
   if (job.kind === "prospect_scan") {
     const prospectId = Number(payload.prospectId);
     if (!Number.isFinite(prospectId) || prospectId <= 0) {

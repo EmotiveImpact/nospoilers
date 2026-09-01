@@ -33,6 +33,30 @@ export function coverageFrom(
   return { status: "ended", plan: null, daysLeft: 0, label: "Coverage ended" }
 }
 
+export function coverageIsOn(coverage: Coverage): boolean {
+  return coverage.status === "trial" || coverage.status === "active"
+}
+
+export function preferCoverage(left: Coverage, right: Coverage): Coverage {
+  const rank = (coverage: Coverage): number => {
+    if (coverage.status === "active") return 2
+    if (coverage.status === "trial") return 1
+    return 0
+  }
+  const leftRank = rank(left)
+  const rightRank = rank(right)
+  if (rightRank !== leftRank) return rightRank > leftRank ? right : left
+  if (left.status === "trial" && right.status === "trial") {
+    return (right.daysLeft ?? 0) > (left.daysLeft ?? 0) ? right : left
+  }
+  return left
+}
+
+export function bestCoverage(rows: Coverage[]): Coverage {
+  if (rows.length === 0) return coverageFrom(null, null)
+  return rows.reduce(preferCoverage)
+}
+
 export function coverageFromQuery(search: string): Coverage | null {
   const as = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("as")
   if (as === "ended") return coverageFrom("2000-01-01T00:00:00.000Z", null)

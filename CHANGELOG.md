@@ -6,13 +6,12 @@
 - Documented access boundaries; customer sessions cannot read Artifact Leads.
 - Allowed the Cloudflare tunnel host so GitHub can reach `/api/webhooks/github`.
 - Verify GitHub App setup only links installs the signed-in user actually owns.
+- Attach billing accounts to GitHub installation IDs; skip hosted work when coverage has ended.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk
   PRD, and a standalone Employee Public Footprint PRD.
 - Added a revenue and indicative valuation model.
-- Register and prove the real GitHub App.
-- Move coverage from users to installation billing accounts.
-- Complete unpaid enforcement before Stripe.
+- Register and prove the real GitHub App on a disposable repository.
 
 ## [0.1.0] — 2026-09-01
 
@@ -46,7 +45,7 @@
 
 ### Known limitations
 
-- GitHub App has not been configured or tested end to end.
-- Stripe, production hosting, email, and installation-level entitlements are not built.
-- Background unpaid enforcement is incomplete.
+- GitHub App OAuth/install/webhooks are live; throwaway private → public and fixture release
+  scan are not proven.
+- Stripe, production hosting, and email are not built.
 - DMG/EXE/MSI/AppImage extraction is not supported.

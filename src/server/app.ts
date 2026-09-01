@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import { coverageFrom } from "../coverage.ts";
+import { bestCoverage, coverageFrom } from "../coverage.ts";
 import { scan } from "../scanner/index.ts";
 import type { AppConfig } from "./config.ts";
 import { databaseMode, githubAppConfigured } from "./config.ts";
@@ -51,6 +51,20 @@ export function createApp(deps: AppDeps): Hono {
     const sessionId = readSignedSession(deps.config.sessionSecret, raw);
     if (!sessionId) return null;
     return await deps.store.getSession(sessionId);
+  }
+
+  async function hostedCoverageForUser(user: {
+    userId: string;
+    trialEndsAt: string | null;
+    plan: string | null;
+  }) {
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    if (installations.length === 0) return coverageFrom(user.trialEndsAt, user.plan);
+    return bestCoverage(
+      installations.map((row) =>
+        row.suspended ? coverageFrom(null, null) : coverageFrom(row.trialEndsAt, row.plan),
+      ),
+    );
   }
 
   async function isInternalAdmin(c: Context): Promise<boolean> {
@@ -196,7 +210,7 @@ export function createApp(deps: AppDeps): Hono {
   app.post("/api/scan", async (c) => {
     const user = await currentUser(c);
     if (user) {
-      const coverage = coverageFrom(user.trialEndsAt, user.plan);
+      const coverage = await hostedCoverageForUser(user);
       if (coverage.status === "ended") {
         return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
       }
@@ -363,7 +377,7 @@ export function createApp(deps: AppDeps): Hono {
     const installations = await deps.store.listInstallationsForUser(user.userId);
     return c.json({
       user: { id: user.userId, login: user.login, avatarUrl: user.avatarUrl },
-      coverage: coverageFrom(user.trialEndsAt, user.plan),
+      coverage: await hostedCoverageForUser(user),
       installations,
       githubApp: githubAppConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
@@ -387,15 +401,15 @@ export function createApp(deps: AppDeps): Hono {
   app.post("/api/repos/:id/scan-latest-release", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    if (coverageFrom(user.trialEndsAt, user.plan).status === "ended") {
-      return c.json({ error: "Coverage ended. Subscribe to keep scanning releases." }, 402);
-    }
     const repoId = Number(c.req.param("id"));
     const repo = await deps.store.getRepo(repoId);
     if (!repo) return c.json({ error: "Unknown repository." }, 404);
     const allowed = await deps.store.listReposForUser(user.userId);
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    if (!(await deps.store.installationWorkAllowed(repo.installation_id))) {
+      return c.json({ error: "Coverage ended. Subscribe to keep scanning releases." }, 402);
     }
     const result = await deps.store.enqueueJob({
       priority: "heavy",

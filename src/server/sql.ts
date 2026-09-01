@@ -123,6 +123,42 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "003_prospects",
   ]);
+  const { rows: missingBilling } = await sql.query<{ id: string }>(
+    `SELECT i.id::text AS id
+     FROM installations i
+     LEFT JOIN billing_accounts b ON b.installation_id = i.id
+     WHERE b.installation_id IS NULL`,
+  );
+  for (const row of missingBilling) {
+    const installationId = Number(row.id);
+    const { rows: fromUser } = await sql.query<{
+      trial_ends_at: string | Date | null;
+      plan: string | null;
+    }>(
+      `SELECT u.trial_ends_at, u.plan
+       FROM installation_users iu
+       JOIN users u ON u.id = iu.user_id
+       WHERE iu.installation_id = $1
+       ORDER BY CASE WHEN u.plan IN ('solo', 'team') THEN 0 ELSE 1 END,
+                u.trial_ends_at DESC NULLS LAST
+       LIMIT 1`,
+      [installationId],
+    );
+    const trial = fromUser[0]?.trial_ends_at;
+    await sql.query(
+      `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan)
+       VALUES ($1, COALESCE($2::timestamptz, now() + interval '14 days'), $3)
+       ON CONFLICT (installation_id) DO NOTHING`,
+      [
+        installationId,
+        trial instanceof Date ? trial.toISOString() : (trial ?? null),
+        fromUser[0]?.plan ?? "trial",
+      ],
+    );
+  }
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "004_billing_accounts",
+  ]);
 }
 
 export function num(value: unknown): number {

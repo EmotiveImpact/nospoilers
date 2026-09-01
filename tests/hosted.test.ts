@@ -193,6 +193,33 @@ describe("GitHub webhooks", () => {
       expect(Number(rows[0]?.n)).toBe(1);
     });
   });
+
+  it("returns 200 without queueing work for an unpaid installation", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "repository", "d-unpaid-public", {
+        action: "publicized",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: { ...sampleRepo, private: false },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { ok: boolean; queued: boolean; skipped?: string };
+      expect(body.ok).toBe(true);
+      expect(body.queued).toBe(false);
+      expect(body.skipped).toBe("uncovered");
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
 });
 
 describe("installation ownership", () => {
@@ -384,6 +411,53 @@ describe("job concurrency", () => {
       expect(handled).toHaveLength(3);
     });
   });
+
+  it("finishes uncovered customer jobs without creating alerts", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      await store.enqueueJob({
+        priority: "light",
+        kind: "repo_publicized",
+        payload: {
+          installationId: 7,
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      await worker.stop();
+      const { rows: alerts } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM alerts",
+      );
+      const { rows: jobs } = await store.sql.query<{ status: string }>("SELECT status FROM jobs");
+      expect(Number(alerts[0]?.n)).toBe(0);
+      expect(jobs[0]?.status).toBe("done");
+    });
+  });
 });
 
 describe("visibility poller", () => {
@@ -426,6 +500,42 @@ describe("visibility poller", () => {
       );
       expect(rows[0]?.kind).toBe("repo_publicized");
       expect(rows[0]?.title).toContain("octo/throwaway");
+    });
+  });
+
+  it("does not poll or alert for an unpaid installation", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: true,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      let fetched = 0;
+      const n = await runVisibilityPoll({
+        store,
+        github: mockGithub({
+          getRepo: async () => {
+            fetched += 1;
+            throw new Error("unpaid poller must not call GitHub");
+          },
+        }),
+        notifier: createLogNotifier(store),
+      });
+      expect(n).toBe(0);
+      expect(fetched).toBe(0);
     });
   });
 });

@@ -14,8 +14,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub App installation | Partial | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
 | Real throwaway-repository proof | Planned | NoSpoilers |
-| Installation-scoped billing account | Planned | NoSpoilers |
-| Complete unpaid webhook/worker/poller/scan enforcement | Planned | NoSpoilers |
+| Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
+| Complete unpaid webhook/worker/poller/scan enforcement | Built: webhook 200, work skipped | NoSpoilers |
 | Stripe monthly/yearly checkout | Planned | NoSpoilers |
 | Card-on-file 14-day trial | Planned | NoSpoilers |
 | Stripe lifecycle webhooks | Planned | NoSpoilers |

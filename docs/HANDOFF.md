@@ -26,7 +26,8 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Nine tables and migrations `001_init`, `002_coverage`, `003_prospects` are applied.
+- Ten tables and migrations `001_init`, `002_coverage`, `003_prospects`, `004_billing_accounts`
+  are applied. Hosted coverage belongs to the GitHub installation billing account, not the user row.
 - The application boots with `DATABASE_URL` from `.env` (gitignored). Keep that same URL as a
   Cloud Agent Runtime Secret so new runs do not fall back to PGlite.
 - Do not import local PGlite data; Neon starts clean.
@@ -46,9 +47,8 @@ Read in this order:
 
 The scanner, UI, and Neon runtime work. The commercial hosted product is not launch-ready:
 
-- No real OAuth/install/webhook/release loop has been performed on a disposable repository.
-- Coverage is on users instead of installation billing accounts.
-- Unpaid webhook/worker/poller enforcement is incomplete.
+- No real private → public Watch alert or fixture release scan has been performed on a disposable
+  repository. OAuth, install, HMAC webhook 200s, and “no release on …” dashboard scans are real.
 - Stripe, production deployment, and real notification delivery do not exist.
 
 Do not describe these as complete because the UI exists.
@@ -59,9 +59,10 @@ Do not describe these as complete because the UI exists.
 Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
 docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
-Phase 0 (Neon runtime) is done. Execute Milestone 1: prove the real GitHub App on a disposable
-private repository (OAuth → install → webhook → queue → worker → Watch alert, then a fixture
-release scan). Do not start Stripe or the Electron installer worker yet.
+Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
+Milestone 1 still needs a disposable private repo: create EmotiveImpact/nospoilers-throwaway
+private, then publicize it, or set GITHUB_PROOF_TOKEN to a fine-grained PAT for only that
+repo and run npm run phase1:throwaway. Do not start Stripe or the Electron installer worker yet.
 ```
 
 ## Cleanup
