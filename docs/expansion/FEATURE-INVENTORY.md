@@ -118,11 +118,11 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
 | Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, hostile fixture, GitHub Release asset, Scan example | NoSpoilers |
-| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP | NoSpoilers |
-| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path | NoSpoilers |
-| Java JAR/WAR | Built: ZIP magic | NoSpoilers |
-| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic | NoSpoilers |
-| Ruby gems | Built: tar + nested `data.tar.gz`, never executed | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; Scan CRX and XPI examples | NoSpoilers |
+| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path; Scan wheel example | NoSpoilers |
+| Java JAR/WAR | Built: ZIP magic; Scan JAR example | NoSpoilers |
+| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; Scan nupkg example | NoSpoilers |
+| Ruby gems | Built: tar + nested `data.tar.gz`, never executed; Scan gem example | NoSpoilers |
 | Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; Scan docker-save and OCI examples | NoSpoilers |
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
 | Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified | NoSpoilers |
@@ -136,14 +136,15 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Private → public alert | Built/needs real proof | NoSpoilers |
+| Private → public alert | Built/needs real proof: `repository.publicized` and the GitHub `public` event enqueue the same light job | NoSpoilers |
 | Repository created public | Built/needs real proof | NoSpoilers |
 | Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
+| Repository made private | Built: Watch updates the private flag in place; no extra job | NoSpoilers |
 | Repository deleted | Built: row is removed; deleted webhooks do not resurrect it | NoSpoilers |
 | Repository transfer | Built/needs real proof | NoSpoilers |
-| Collaborator added | Built: `member` / `added` enqueues a light `member_added` job; other member actions do not; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
-| Fork event | Built: `fork` enqueues a light job with the forkee full name; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
-| Cheap sensitive-path push event | Built: `push` cheap-checks `*.map` / `.env` / `.env.*` only and enqueues a light job on hits; other paths are ignored; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Collaborator added | Built: `member` / `added` enqueues a light `member_added` job and the worker writes a Watch alert; other member actions do not; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Fork event | Built: `fork` enqueues a light job with the forkee full name and the worker writes a Watch alert; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Cheap sensitive-path push event | Built: `push` cheap-checks `*.map` / `.env` / `.env.*` only, enqueues a light job on hits, and the worker writes a Watch alert without unpacking the git tree; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
 | GitHub Release unpublished or deleted | Built: light Watch alert; gone assets are not downloaded | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | GitHub App authorization revoke | Built: HMAC webhook drops that user’s sessions and stored OAuth token; the installation stays; coverage does not gate this | NoSpoilers |

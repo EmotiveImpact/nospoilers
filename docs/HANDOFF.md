@@ -140,8 +140,8 @@ Read in this order:
   Ruby gems. Classification uses ZIP/tar/CRX magic, not the extension alone. Encrypted zip
   and CRX wrappers without a ZIP payload are inconclusive, never a passing receipt. Zip-slip
   entry names flag ARC-002 and are not unpacked for content. GitHub Release asset matching
-  includes those extensions. Scan lists a VSIX fixture example. These formats are not a
-  Pricing extras change.
+  includes those extensions. Scan lists VSIX, CRX, XPI, wheel, JAR, nupkg, and gem fixture
+  examples. These formats are not a Pricing extras change.
 - Packed scans also cover Docker save and OCI image archives. Layout sniff uses `manifest.json`
   plus `layer.tar`, or `oci-layout` / `blobs/sha256`. Gzip layer blobs without a `.tar` name are
   unpacked. Overlay whiteouts are not applied, so lower-layer spoilers remain visible. Encrypted
@@ -253,8 +253,8 @@ Configurable data retention is in (90/180/365/keep; query-time lists; typed conf
 allowed; unpaid 402; append-only evidence never deleted).
 Extra packed formats are in (VSIX/CRX/XPI/wheel/JAR/nupkg/gem; ZIP/tar magic; CRX header
 stripped; encrypted zip and CRX-without-ZIP inconclusive; zip-slip ARC-002 not unpacked for
-content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not advertised as a
-Pricing change.
+content; GitHub Release `isPackAssetName` extended; Scan VSIX/CRX/XPI/wheel/JAR/nupkg/gem
+examples). Not advertised as a Pricing change.
 Docker/OCI image layers are in (docker save + OCI layout sniff; layer tars and gzip blobs;
 overlay whiteouts not applied; encrypted layers inconclusive; signatures not verified; Scan
 docker-save and OCI examples). Not advertised as a Pricing change.
@@ -289,7 +289,7 @@ Not a Pricing change.
 Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails
 closed if none exist. Source pushes are not unpacked. Reviewable, never merged.
 GitHub `repository.deleted` removes the Watch row and does not resurrect it. `renamed` updates
-name/URL in place. No extra job.
+name/URL in place. `privatized` updates the private flag. No extra job.
 GitHub App authorization revoke (`github_app_authorization` / `revoked`) drops that user’s
 sessions and stored OAuth token. The installation stays. HMAC required. Not coverage-gated.
 Sign-out deletes only the current session.
@@ -297,14 +297,17 @@ GitHub `installation_target` / `renamed` updates the stored account login in pla
 job. HMAC required. Unpaid still updates. Subscribe the App to Installation target.
 GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue light jobs.
 Other member actions and pushes without those paths do not. HMAC required. Unpaid is HTTP 200
-with no job. Real GitHub proof is still outstanding.
+with no job. The worker writes Watch alerts for those jobs. The GitHub `public` event is the
+same light publicized job. `repository.privatized` updates the Watch row and does not enqueue.
+Real GitHub proof is still outstanding.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
-Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save and OCI
-fixture examples. Layers are not executed.
+Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save, OCI, VSIX,
+CRX, XPI, wheel, JAR, nupkg, and gem fixture examples. Layers, bytecode, Python, Ruby, and
+extension payloads are not executed.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

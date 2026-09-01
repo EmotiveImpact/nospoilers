@@ -312,8 +312,10 @@ applies. The same file proves GitHub `release.edited` rescans only when pack ass
 title-only edits and non-pack assets do not enqueue, assets attached after publish enqueue a
 second scan, `unpublished`/`deleted` are light jobs that alert without downloading, `repository.deleted`
 removes the Watch row instead of resurrecting it, `renamed` updates the stored name,
-`member` added / `fork` / cheap `push` (`*.map` / `.env` only) enqueue light jobs (other member
-actions and non-matching pushes do not; HMAC required; unpaid is HTTP 200 with no job), and
+`member` added / `fork` / cheap `push` (`*.map` / `.env` only) enqueue light jobs and the worker
+writes Watch alerts (other member actions and non-matching pushes do not; HMAC required; unpaid is
+HTTP 200 with no job), the GitHub `public` event queues the same publicized job,
+`repository.privatized` updates the Watch row without a job, and
 `github_app_authorization` revoked drops that user’s sessions and stored OAuth token without
 enqueueing work or deleting the install (HMAC still required; unpaid coverage does not skip it).
 `installation_target` renamed updates the stored account login without a job (HMAC required;

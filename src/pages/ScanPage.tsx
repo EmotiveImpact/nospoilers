@@ -42,6 +42,36 @@ const EXAMPLES = [
     hint: "ZIP magic, not the extension",
   },
   {
+    path: "fixtures/sourcemap.crx",
+    label: "Chrome CRX with a source map",
+    hint: "CRX header stripped. Payload is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.xpi",
+    label: "Firefox XPI with a source map",
+    hint: "ZIP magic. Extension code is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.whl",
+    label: "Python wheel with a source map",
+    hint: "ZIP magic. Python is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.jar",
+    label: "JAR with a source map",
+    hint: "ZIP magic. Bytecode is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.nupkg",
+    label: "NuGet pack with a source map",
+    hint: "ZIP magic. Install scripts are not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.gem",
+    label: "Ruby gem with a source map",
+    hint: "Nested data.tar.gz. Ruby is not executed.",
+  },
+  {
     path: "fixtures/sourcemap.docker.tar",
     label: "Docker save with a source map",
     hint: "Image layers, never executed",
@@ -277,7 +307,7 @@ export function ScanPage({ search }: { search: string }) {
                 <Upload className="h-5 w-5 text-mute" aria-hidden />
                 <p className="font-display text-lg text-snow">Drop a pack here</p>
                 <Description className="text-sm text-dim">
-                  tarball, zip, vsix, docker save, oci, apk, lambda zip, or asar — or click to choose
+                  tarball, zip, vsix, crx, wheel, jar, gem, docker save, oci, apk, lambda zip, or asar — or click to choose
                 </Description>
                 {!locked && (
                   <input

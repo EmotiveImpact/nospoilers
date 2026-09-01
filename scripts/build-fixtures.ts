@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { c as tarCreate } from "tar";
@@ -45,6 +46,33 @@ async function writeZipPack(dest: string, files: Record<string, string | Buffer>
     zip.file(name, contents);
   }
   await writeFile(dest, await zip.generateAsync({ type: "nodebuffer" }));
+}
+
+async function writeCrxPack(dest: string, files: Record<string, string | Buffer>): Promise<void> {
+  const zip = new JSZip();
+  for (const [name, contents] of Object.entries(files)) {
+    zip.file(name, contents);
+  }
+  const packed = Buffer.from(await zip.generateAsync({ type: "nodebuffer" }));
+  const buf = Buffer.alloc(12 + packed.length);
+  buf.write("Cr24", 0, 4, "latin1");
+  buf.writeUInt32LE(3, 4);
+  buf.writeUInt32LE(0, 8);
+  packed.copy(buf, 12);
+  await writeFile(dest, buf);
+}
+
+async function writeGemPack(dest: string, files: Record<string, string>): Promise<void> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "ns-gem-"));
+  const inner = path.join(dir, "inner");
+  try {
+    await writeTree(inner, files);
+    await tarCreate({ gzip: true, file: path.join(dir, "data.tar.gz"), cwd: inner }, ["."]);
+    await writeFile(path.join(dir, "metadata.gz"), gzipSync("---\nname: spoiler\nversion: 1.0.0\n"));
+    await tarCreate({ file: dest, cwd: dir }, ["data.tar.gz", "metadata.gz"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 async function main(): Promise<void> {
@@ -97,6 +125,31 @@ async function main(): Promise<void> {
       path.join(fixtures, "sourcemap.vsix"),
       await vsix.generateAsync({ type: "nodebuffer" }),
     );
+
+    const dirtyJs = {
+      "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "index.js.map": sourceMap,
+    };
+    await writeCrxPack(path.join(fixtures, "sourcemap.crx"), dirtyJs);
+    await writeZipPack(path.join(fixtures, "sourcemap.xpi"), {
+      "manifest.json": '{"manifest_version":2,"name":"spoiler"}',
+      ...dirtyJs,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.whl"), {
+      "pkg-1.0.0.dist-info/METADATA": "Name: pkg\nVersion: 1.0.0\n",
+      "pkg/static/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "pkg/static/index.js.map": sourceMap,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.jar"), {
+      "META-INF/MANIFEST.MF": "Manifest-Version: 1.0\n",
+      ...dirtyJs,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.nupkg"), {
+      "[Content_Types].xml": '<?xml version="1.0"?><Types></Types>',
+      "App.nuspec": "<package></package>",
+      ...dirtyJs,
+    });
+    await writeGemPack(path.join(fixtures, "sourcemap.gem"), dirtyJs);
 
     const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "ns-workspace-"));
     try {

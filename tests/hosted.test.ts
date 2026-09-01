@@ -319,6 +319,52 @@ describe("GitHub webhooks", () => {
     });
   });
 
+  it("queues a light job for the GitHub public event", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "public", "d-public-1", {
+        installation: { id: 7 },
+        repository: { ...sampleRepo, private: false },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(true);
+      expect(body.kind).toBe("repo_publicized");
+      const { rows } = await store.sql.query<{ kind: string; priority: string }>(
+        "SELECT kind, priority FROM jobs",
+      );
+      expect(rows).toEqual([{ kind: "repo_publicized", priority: "light" }]);
+    });
+  });
+
+  it("updates a privatized repository in place and does not enqueue a job", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "repository", "d-pub-then-priv", {
+        action: "publicized",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      const privatized = await postWebhook(app, "repository", "d-priv-1", {
+        action: "privatized",
+        installation: { id: 7 },
+        repository: { ...sampleRepo, private: true },
+      });
+      expect(privatized.status).toBe(200);
+      const body = (await privatized.json()) as { queued: boolean; kind: string };
+      expect(body.queued).toBe(false);
+      expect(body.kind).toBe("privatized");
+      const { rows } = await store.sql.query<{ full_name: string; private: boolean | unknown }>(
+        "SELECT full_name, private FROM repos",
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.full_name).toBe("octo/throwaway");
+      expect(Boolean(rows[0]?.private)).toBe(true);
+      const { rows: jobs } = await store.sql.query<{ kind: string }>("SELECT kind FROM jobs");
+      expect(jobs).toEqual([{ kind: "repo_publicized" }]);
+    });
+  });
+
   it("queues a light job when a collaborator is added", async () => {
     await withStore(async ({ store }) => {
       const { app } = appFor(store);
@@ -485,6 +531,62 @@ describe("GitHub webhooks", () => {
       }
       const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
       expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("alerts when member, fork, and cheap-push jobs run", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const member = await postWebhook(app, "member", "d-member-alert", {
+        action: "added",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        member: { login: "new-collab" },
+      });
+      const fork = await postWebhook(app, "fork", "d-fork-alert", {
+        installation: { id: 7 },
+        repository: sampleRepo,
+        forkee: { full_name: "other/throwaway" },
+      });
+      const push = await postWebhook(app, "push", "d-push-alert", {
+        ref: "refs/heads/main",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        commits: [{ added: ["dist/app.js.map"], modified: [], removed: [] }],
+      });
+      expect(member.status).toBe(200);
+      expect(fork.status).toBe(200);
+      expect(push.status).toBe(200);
+
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 4,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      const started = Date.now();
+      while (Date.now() - started < 4000) {
+        const { rows } = await store.sql.query<{ n: string }>(
+          "SELECT count(*)::text AS n FROM alerts WHERE kind IN ('member_added', 'fork', 'push_sensitive_path')",
+        );
+        if (Number(rows[0]?.n) === 3) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await worker.stop();
+      const { rows: alerts } = await store.sql.query<{ kind: string; title: string; body: string }>(
+        "SELECT kind, title, body FROM alerts ORDER BY id",
+      );
+      expect(alerts.map((row) => row.kind).sort()).toEqual(["fork", "member_added", "push_sensitive_path"]);
+      const byKind = Object.fromEntries(alerts.map((row) => [row.kind, row]));
+      expect(byKind.member_added?.title).toMatch(/new-collab/);
+      expect(byKind.fork?.body).toMatch(/other\/throwaway/);
+      expect(byKind.push_sensitive_path?.body).toMatch(/dist\/app\.js\.map/);
+      expect(byKind.push_sensitive_path?.body).toMatch(/did not unpack the git tree/);
+      expect(alerts.every((row) => !/ghs_|token=/i.test(`${row.title} ${row.body}`))).toBe(true);
     });
   });
 

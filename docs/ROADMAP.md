@@ -102,7 +102,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   Unpaid 402. Members may read.
 - Extra packed formats: VSIX, CRX, XPI, wheels, JAR/WAR, NuGet, Ruby gems. ZIP/tar magic.
   Encrypted zip and CRX without ZIP are inconclusive. Zip-slip is ARC-002 and is not unpacked
-  for content. Scan accepts those extensions and includes a VSIX fixture example. Not a Pricing change.
+  for content. Scan accepts those extensions and includes VSIX, CRX, XPI, wheel, JAR, nupkg,
+  and gem fixture examples. Payloads are not executed. Not a Pricing change.
 - Docker/OCI image layers: docker save (`manifest.json` + `layer.tar`) and OCI layout (`oci-layout` /
   `blobs/sha256`). MIME/magic, not extension. Overlay whiteouts are not applied. Encrypted layers
   are inconclusive. Image signatures are not verified. Scan includes docker-save and OCI

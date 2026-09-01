@@ -110,6 +110,38 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/path: "fixtures\/sourcemap.docker.tar"/);
   });
 
+  it("fails extra packed-format fixtures that contain a source map", async () => {
+    const cases = [
+      ["sourcemap.crx", "crx"],
+      ["sourcemap.xpi", "xpi"],
+      ["sourcemap.whl", "wheel"],
+      ["sourcemap.jar", "jar"],
+      ["sourcemap.nupkg", "nupkg"],
+      ["sourcemap.gem", "gem"],
+    ] as const;
+    for (const [file, kind] of cases) {
+      const report = await scan(path.join(fixtures, file));
+      expect(report.kind, file).toBe(kind);
+      expect(report.ok, file).toBe(false);
+      expect(report.status, file).toBe("failed-policy");
+      expect(rules(file, report)).toEqual(expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]));
+    }
+  });
+
+  it("lists CRX, XPI, wheel, JAR, nupkg, and gem fixtures on Scan", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/sourcemap.crx"/);
+    expect(page).toMatch(/CRX header stripped/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.xpi"/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.whl"/);
+    expect(page).toMatch(/Python is not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.jar"/);
+    expect(page).toMatch(/Bytecode is not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.nupkg"/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.gem"/);
+    expect(page).toMatch(/Ruby is not executed/);
+  });
+
   it("lets a clean APK ship", async () => {
     const report = await scan(path.join(fixtures, "clean.apk"));
     expect(report.kind).toBe("apk");
