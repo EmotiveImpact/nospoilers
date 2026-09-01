@@ -45,7 +45,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | JSON and SARIF reports | Built | NoSpoilers |
 | Automatic npm package watching | Built: public registry.npmjs.org and private HTTPS registries per GitHub install | NoSpoilers |
 | New npm version detection | Built: hourly check + Watch “Check now” | NoSpoilers |
-| npm dist-tag and prerelease-channel changes | Built: tag-only light alert, no extra download | NoSpoilers |
+| npm dist-tag and prerelease-channel changes | Built: next/beta/canary/rc/alpha/preview tarballs scanned (cap 3 extras); other tags stay a tag-only light alert | NoSpoilers |
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
@@ -112,7 +112,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Surface | Status | Home |
 | --- | --- | --- |
 | GitHub Release assets | Built/partial real proof | NoSpoilers |
-| npm registry packages | Partial: customer watch of public `latest` tarball | NoSpoilers |
+| npm registry packages | Built: customer watch of public `latest` plus prerelease-channel tarballs | NoSpoilers |
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for exposed files, credentials, and linked internal paths, SSRF blocked, never executed | NoSpoilers |
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
 | Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |

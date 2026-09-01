@@ -1,5 +1,5 @@
-import type { NpmAuth, NpmPack, NpmPort, WatchDelta } from "./npm.ts";
-import { diffWatchedPack, normalizePackageName } from "./npm.ts";
+import type { NpmAuth, NpmDistTags, NpmPack, NpmPort, WatchDelta } from "./npm.ts";
+import { channelScansForDelta, diffWatchedPack, normalizePackageName } from "./npm.ts";
 import {
   isPublicNpmOrigin,
   parseRegistryOrigin,
@@ -188,14 +188,76 @@ async function authForPackage(
   return { registryOrigin: saved.origin, token: saved.token };
 }
 
+async function enqueueNpmScan(
+  store: Store,
+  pkg: WatchedPackageRow,
+  input: {
+    version: string;
+    tarballUrl: string;
+    shasum: string | null;
+    reason: string;
+    distTag?: string;
+  },
+): Promise<boolean> {
+  const result = await store.enqueueJob({
+    deliveryId: npmScanDeliveryId(
+      pkg.installation_id,
+      pkg.package_name,
+      input.version,
+      input.shasum,
+      pkg.registry_origin,
+    ),
+    priority: "heavy",
+    kind: "npm_scan",
+    payload: {
+      installationId: pkg.installation_id,
+      packageId: pkg.id,
+      packageName: pkg.package_name,
+      registryOrigin: pkg.registry_origin,
+      version: input.version,
+      tarballUrl: input.tarballUrl,
+      shasum: input.shasum,
+      reason: input.reason,
+      ...(input.distTag ? { distTag: input.distTag } : {}),
+    },
+  });
+  return result.inserted;
+}
+
+async function enqueueChannelScans(
+  store: Store,
+  pkg: WatchedPackageRow,
+  pack: NpmPack,
+  previousTags: NpmDistTags | null | undefined,
+): Promise<boolean> {
+  let queued = false;
+  for (const row of channelScansForDelta(previousTags, pack)) {
+    if (
+      await enqueueNpmScan(store, pkg, {
+        version: row.version,
+        tarballUrl: row.tarballUrl,
+        shasum: row.shasum,
+        reason: "channel_tarball",
+        distTag: row.tag,
+      })
+    ) {
+      queued = true;
+    }
+  }
+  return queued;
+}
+
 async function enqueueFromDelta(
   store: Store,
   pkg: WatchedPackageRow,
   pack: NpmPack,
   delta: WatchDelta,
+  previousTags: NpmDistTags | null | undefined,
 ): Promise<boolean> {
   if (delta.type === "unchanged") return false;
   if (delta.type === "dist_tags") {
+    const scanned = await enqueueChannelScans(store, pkg, pack, delta.from);
+    if (scanned) return true;
     const result = await store.enqueueJob({
       deliveryId: npmDistTagDeliveryId(
         pkg.installation_id,
@@ -216,28 +278,19 @@ async function enqueueFromDelta(
     });
     return result.inserted;
   }
-  const result = await store.enqueueJob({
-    deliveryId: npmScanDeliveryId(
-      pkg.installation_id,
-      pkg.package_name,
-      pack.version,
-      pack.shasum,
-      pkg.registry_origin,
-    ),
-    priority: "heavy",
-    kind: "npm_scan",
-    payload: {
-      installationId: pkg.installation_id,
-      packageId: pkg.id,
-      packageName: pkg.package_name,
-      registryOrigin: pkg.registry_origin,
-      version: pack.version,
-      tarballUrl: pack.tarballUrl,
-      shasum: pack.shasum,
-      reason: delta.type,
-    },
+  const latest = await enqueueNpmScan(store, pkg, {
+    version: pack.version,
+    tarballUrl: pack.tarballUrl,
+    shasum: pack.shasum,
+    reason: delta.type,
   });
-  return result.inserted;
+  const extra = await enqueueChannelScans(
+    store,
+    pkg,
+    pack,
+    delta.type === "first" ? null : previousTags,
+  );
+  return latest || extra;
 }
 
 export async function connectWatchedPackage(
@@ -290,7 +343,7 @@ export async function connectWatchedPackage(
     tarballUrl: pack.tarballUrl,
     shasum: pack.shasum,
   });
-  const queued = await enqueueFromDelta(store, inserted, pack, { type: "first" });
+  const queued = await enqueueFromDelta(store, inserted, pack, { type: "first" }, null);
   return { package: inserted, queued };
 }
 
@@ -335,7 +388,7 @@ export async function checkWatchedPackage(
   await checkIdentitySignals({ store, npm, notifier, pkg, pack, previous, auth });
   let queued = false;
   for (const delta of deltas) {
-    if (await enqueueFromDelta(store, pkg, pack, delta)) queued = true;
+    if (await enqueueFromDelta(store, pkg, pack, delta, pkg.last_dist_tags)) queued = true;
   }
   return { queued, deltas };
 }

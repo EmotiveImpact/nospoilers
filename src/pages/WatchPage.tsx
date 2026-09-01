@@ -3149,12 +3149,15 @@ export function WatchPage({ search }: { search: string }) {
       <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          We fetch the tarball a registry serves for <code className="text-snow">latest</code>. Public
-          packs use registry.npmjs.org. Private registries need an encrypted token (never shown
-          again). Tarball hosts must match the saved registry. Source is not kept. A later pack that
-          is twice as large, or at least 5 MiB larger unpacked, raises SIZE-003 against the approved
-          baseline or the previous receipt. Protect identity only after the npm scope or GitHub
-          repository field matches this install. Trial and Team installs then generate bounded
+          We fetch the tarball a registry serves for <code className="text-snow">latest</code>, and
+          also <code className="text-snow">next</code>, <code className="text-snow">beta</code>,{" "}
+          <code className="text-snow">canary</code>, rc, alpha, and preview when those tags point at
+          another packed version. Other dist-tag moves stay a tag-only alert and do not download.
+          Public packs use registry.npmjs.org. Private registries need an encrypted token (never
+          shown again). Tarball hosts must match the saved registry. Source is not kept. A later
+          pack that is twice as large, or at least 5 MiB larger unpacked, raises SIZE-003 against the
+          approved baseline or the previous receipt. Protect identity only after the npm scope or
+          GitHub repository field matches this install. Trial and Team installs then generate bounded
           lookalike names and watch dormant resurrection and release bursts. That is not a malware
           verdict.
         </p>

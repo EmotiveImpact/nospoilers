@@ -29,6 +29,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Privacy, Terms, retention, responsible disclosure, support, and refund pages.
 - Strong secret-length checks on Neon/https boot; `/api/ready` database ping; JSON logs.
 - Public npm package watching: connect a pack, scan `latest`, detect the next version.
+- Prerelease npm channels: `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs unpack when
+  those tags point at another version (cap three extras). Other dist-tag moves stay tag-only
+  alerts and do not download. Event-driven. Not a Pricing change.
 - Private npm registries: encrypted per-install tokens, same-host tarball downloads only.
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.

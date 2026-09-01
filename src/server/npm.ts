@@ -19,6 +19,16 @@ export type NpmAuth = {
   token?: string;
 };
 
+export const WATCHED_DIST_TAGS = ["next", "beta", "canary", "rc", "alpha", "preview"] as const;
+export const MAX_CHANNEL_SCANS = 3;
+
+export type NpmChannelTarball = {
+  tag: (typeof WATCHED_DIST_TAGS)[number];
+  version: string;
+  tarballUrl: string;
+  shasum: string | null;
+};
+
 export type NpmPack = {
   name: string;
   version: string;
@@ -30,6 +40,8 @@ export type NpmPack = {
   identity: PackageIdentityFacts;
   publishedAt?: Date | null;
   recentVersions?: Array<{ version: string; publishedAt: Date }>;
+  /** next/beta/canary (and rc/alpha/preview) tarballs that are not `latest`. */
+  channelTarballs?: NpmChannelTarball[];
 };
 
 export type NpmPort = {
@@ -96,6 +108,43 @@ export function diffWatchedPack(
     deltas.push({ type: "dist_tags", from: previous.distTags ?? {}, to: next.distTags });
   }
   return deltas.length > 0 ? deltas : [{ type: "unchanged" }];
+}
+
+export function channelTarballsFromRegistry(
+  distTags: NpmDistTags,
+  versions: RegistryBody["versions"],
+  latestVersion: string,
+  allowedHost: string,
+): NpmChannelTarball[] {
+  const out: NpmChannelTarball[] = [];
+  for (const tag of WATCHED_DIST_TAGS) {
+    if (out.length >= MAX_CHANNEL_SCANS) break;
+    const version = distTags[tag];
+    if (!version || typeof version !== "string" || version === latestVersion) continue;
+    const dist = versions?.[version]?.dist;
+    if (!dist?.tarball || typeof dist.tarball !== "string") continue;
+    try {
+      allowedNpmTarballUrl(dist.tarball, allowedHost);
+    } catch {
+      continue;
+    }
+    out.push({
+      tag,
+      version,
+      tarballUrl: dist.tarball,
+      shasum: typeof dist.shasum === "string" ? dist.shasum : null,
+    });
+  }
+  return out;
+}
+
+export function channelScansForDelta(
+  previousTags: NpmDistTags | null | undefined,
+  pack: NpmPack,
+): NpmChannelTarball[] {
+  const channels = pack.channelTarballs ?? [];
+  if (!previousTags) return channels;
+  return channels.filter((row) => previousTags[row.tag] !== row.version);
 }
 
 type RegistryBody = {
@@ -181,6 +230,7 @@ export function packFromRegistry(
     bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
     publishedAt: times.publishedAt,
     recentVersions: times.recentVersions,
+    channelTarballs: channelTarballsFromRegistry(distTags, body.versions, version, allowedHost),
     identity: {
       maintainers: normalizeMaintainerNames(versionMeta?.maintainers ?? body.maintainers),
       repositoryUrl:

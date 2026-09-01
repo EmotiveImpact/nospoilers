@@ -11,7 +11,7 @@
 - Encrypt GitHub OAuth tokens at rest, set Secure cookies on https, and cap hosted scans per address.
 - Publish Privacy, Terms, retention, disclosure, support, and refund pages.
 - Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
-- Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, and dist-tags.
+- Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, dist-tags, and prerelease-channel tarballs (`next`/`beta`/`canary`/`rc`/`alpha`/`preview`, cap three extras). Other dist-tag moves stay tag-only.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.

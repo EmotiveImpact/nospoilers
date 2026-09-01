@@ -348,7 +348,7 @@ export async function handleJob(
       ...alertBase,
       kind: job.kind,
       title: `npm dist-tags changed on ${packageName || "a package"}`,
-      body: `latest is ${String(tags.latest ?? "unset")}. Tag-only changes do not download a tarball.`,
+      body: `latest is ${String(tags.latest ?? "unset")}. next/beta/canary tarballs are scanned when those tags point at another version. This alert is a tag-only change with nothing extra to unpack.`,
       packageName: packageName || null,
     });
     return;
@@ -358,6 +358,12 @@ export async function handleJob(
     if (!deps.npm) throw new Error("npm_scan job is missing the npm port.");
     const packageName = String(payload.packageName ?? "");
     const version = String(payload.version ?? "");
+    const distTag = String(payload.distTag ?? "").trim();
+    const npmLabel =
+      distTag && distTag !== "latest"
+        ? `${packageName}@${version} (${distTag})`
+        : `${packageName}@${version}`;
+    const channel = inferReleaseChannel(distTag || version);
     const tarballUrl = String(payload.tarballUrl ?? "");
     const packageId = Number(payload.packageId);
     const registryOrigin = String(payload.registryOrigin ?? PUBLIC_NPM_ORIGIN);
@@ -397,7 +403,7 @@ export async function handleJob(
           packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
           coordinate: `npm:${packageName}@${version}`,
           report,
-          channel: inferReleaseChannel(version),
+          channel,
           sourceRevision: version,
         });
         report = persisted.report;
@@ -429,6 +435,7 @@ export async function handleJob(
             : "No critical findings.",
         `sha256 ${report.artifactSha256 ?? sha256}`,
       ];
+      if (distTag && distTag !== "latest") notes.push(`dist-tag ${distTag}.`);
       if (report.suppressed.length > 0) {
         notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
       }
@@ -440,9 +447,9 @@ export async function handleJob(
         kind: job.kind,
         title: titleForScan(
           status,
-          `npm ${packageName}@${version} is allowed to ship`,
-          `Spoilers in npm ${packageName}@${version}`,
-          `Inconclusive scan of npm ${packageName}@${version}`,
+          `npm ${npmLabel} is allowed to ship`,
+          `Spoilers in npm ${npmLabel}`,
+          `Inconclusive scan of npm ${npmLabel}`,
         ),
         body: notes.join(" "),
         findings: report.findings,
@@ -466,14 +473,14 @@ export async function handleJob(
             packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
             coordinate: `npm:${packageName}@${version}`,
             report,
-            channel: inferReleaseChannel(version),
+            channel,
             sourceRevision: version,
           });
         }
         await deps.notifier.send({
           ...alertBase,
           kind: job.kind,
-          title: `Inconclusive scan of npm ${packageName}@${version}`,
+          title: `Inconclusive scan of npm ${npmLabel}`,
           body: `${message} This is not a clean bill of health.`,
           packageName: packageName || null,
         });

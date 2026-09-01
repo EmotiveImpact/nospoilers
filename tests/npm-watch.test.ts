@@ -7,7 +7,9 @@ import { createLogNotifier } from "../src/server/notifier.ts";
 import { emptyPackageIdentity } from "../src/server/package-identity.ts";
 import {
   allowedNpmTarballUrl,
+  channelScansForDelta,
   diffWatchedPack,
+  MAX_CHANNEL_SCANS,
   normalizePackageName,
   packFromRegistry,
   type NpmAuth,
@@ -25,6 +27,8 @@ import { scan } from "../src/scanner/index.ts";
 
 const FIXTURE = path.resolve("fixtures/sourcemap.tgz");
 const TARBALL = "https://registry.npmjs.org/demo-pack/-/demo-pack-1.0.0.tgz";
+const BETA_TARBALL = "https://registry.npmjs.org/demo-pack/-/demo-pack-2.0.0-beta.1.tgz";
+const NEXT_TARBALL = "https://registry.npmjs.org/demo-pack/-/demo-pack-1.1.0-next.0.tgz";
 
 function pack(overrides: Partial<NpmPack> = {}): NpmPack {
   return {
@@ -87,6 +91,79 @@ describe("npm names and diffs", () => {
     });
     expect(parsed?.version).toBe("1.0.0");
     expect(parsed?.shasum).toBe("abc123");
+    expect(parsed?.channelTarballs).toEqual([]);
+  });
+
+  it("extracts next/beta/canary tarballs that are not latest, skips bad hosts, and caps extras", () => {
+    const parsed = packFromRegistry("demo-pack", {
+      name: "demo-pack",
+      "dist-tags": {
+        latest: "1.0.0",
+        next: "1.1.0-next.0",
+        beta: "2.0.0-beta.1",
+        canary: "1.0.0",
+        nightly: "9.0.0",
+        rc: "3.0.0-rc.1",
+        alpha: "0.9.0-alpha.1",
+        preview: "4.0.0-preview.1",
+      },
+      versions: {
+        "1.0.0": { dist: { tarball: TARBALL, shasum: "abc123" } },
+        "1.1.0-next.0": { dist: { tarball: NEXT_TARBALL, shasum: "next" } },
+        "2.0.0-beta.1": { dist: { tarball: BETA_TARBALL, shasum: "beta" } },
+        "3.0.0-rc.1": {
+          dist: { tarball: "https://evil.example/demo-pack-3.0.0-rc.1.tgz", shasum: "rc" },
+        },
+        "0.9.0-alpha.1": {
+          dist: {
+            tarball: "https://registry.npmjs.org/demo-pack/-/demo-pack-0.9.0-alpha.1.tgz",
+            shasum: "alpha",
+          },
+        },
+        "4.0.0-preview.1": {
+          dist: {
+            tarball: "https://registry.npmjs.org/demo-pack/-/demo-pack-4.0.0-preview.1.tgz",
+            shasum: "preview",
+          },
+        },
+      },
+    });
+    expect(parsed?.channelTarballs).toEqual([
+      { tag: "next", version: "1.1.0-next.0", tarballUrl: NEXT_TARBALL, shasum: "next" },
+      { tag: "beta", version: "2.0.0-beta.1", tarballUrl: BETA_TARBALL, shasum: "beta" },
+      {
+        tag: "alpha",
+        version: "0.9.0-alpha.1",
+        tarballUrl: "https://registry.npmjs.org/demo-pack/-/demo-pack-0.9.0-alpha.1.tgz",
+        shasum: "alpha",
+      },
+    ]);
+    expect(parsed?.channelTarballs).toHaveLength(MAX_CHANNEL_SCANS);
+    expect(channelScansForDelta(null, parsed!)).toHaveLength(MAX_CHANNEL_SCANS);
+    expect(
+      channelScansForDelta(
+        {
+          latest: "1.0.0",
+          next: "1.1.0-next.0",
+          beta: "1.0.0-beta.0",
+          alpha: "0.9.0-alpha.1",
+        },
+        parsed!,
+      ),
+    ).toEqual([
+      { tag: "beta", version: "2.0.0-beta.1", tarballUrl: BETA_TARBALL, shasum: "beta" },
+    ]);
+    expect(
+      channelScansForDelta(
+        {
+          latest: "1.0.0",
+          next: "1.1.0-next.0",
+          beta: "2.0.0-beta.1",
+          alpha: "0.9.0-alpha.1",
+        },
+        parsed!,
+      ),
+    ).toEqual([]);
   });
 
   it("detects first scan, new version, mutated bytes, and dist-tag moves", () => {
@@ -362,6 +439,144 @@ describe("hosted npm watch", () => {
       expect(fresh).not.toBeNull();
       const check = await checkWatchedPackage(store, npm, fresh!);
       expect(check.deltas[0]?.type).toBe("unchanged");
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("scans a beta tarball on connect and when that dist-tag moves, not as a tag-only alert", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const betaPack = pack({
+        distTags: { latest: "1.0.0", beta: "2.0.0-beta.1" },
+        channelTarballs: [
+          { tag: "beta", version: "2.0.0-beta.1", tarballUrl: BETA_TARBALL, shasum: "beta" },
+        ],
+      });
+      const current = { pack: betaPack };
+      const downloads: string[] = [];
+      const npm = stubNpm(current, downloads);
+      const connected = await connectWatchedPackage(store, npm, {
+        installationId: 7,
+        packageName: "demo-pack",
+      });
+      const { rows: firstJobs } = await sql.query<{ kind: string; payload: unknown }>(
+        "SELECT kind, payload FROM jobs ORDER BY id",
+      );
+      const firstPayloads = firstJobs.map((row) => {
+        const payload =
+          typeof row.payload === "string"
+            ? (JSON.parse(row.payload) as { version?: string; distTag?: string; tarballUrl?: string })
+            : (row.payload as { version?: string; distTag?: string; tarballUrl?: string });
+        return { kind: row.kind, ...payload };
+      });
+      expect(firstPayloads).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: "npm_scan", version: "1.0.0" }),
+          expect.objectContaining({ kind: "npm_scan", version: "2.0.0-beta.1", distTag: "beta" }),
+        ]),
+      );
+      expect(firstPayloads.every((row) => row.kind !== "npm_dist_tag")).toBe(true);
+      expect(JSON.stringify(firstPayloads)).not.toMatch(/ghp_|token/i);
+
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        npm,
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        receiptSecret: "receipt-test-secret",
+      });
+      await worker.tick();
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        if (downloads.length >= 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await worker.stop();
+      expect(downloads.sort()).toEqual([TARBALL, BETA_TARBALL].sort());
+      const { rows: alerts } = await sql.query<{ title: string }>("SELECT title FROM alerts ORDER BY id");
+      expect(alerts.some((row) => /demo-pack@2\.0\.0-beta\.1 \(beta\)/.test(row.title))).toBe(true);
+      const { rows: revisions } = await sql.query<{ channel: string; coordinate: string }>(
+        "SELECT channel, coordinate FROM release_revisions ORDER BY id",
+      );
+      expect(revisions.some((row) => row.coordinate.includes("2.0.0-beta.1") && row.channel === "beta")).toBe(
+        true,
+      );
+
+      current.pack = pack({
+        distTags: { latest: "1.0.0", beta: "2.0.0-beta.2" },
+        channelTarballs: [
+          {
+            tag: "beta",
+            version: "2.0.0-beta.2",
+            tarballUrl: "https://registry.npmjs.org/demo-pack/-/demo-pack-2.0.0-beta.2.tgz",
+            shasum: "beta2",
+          },
+        ],
+      });
+      const moved = await checkWatchedPackage(store, npm, (await store.getWatchedPackage(connected.package.id))!);
+      expect(moved.queued).toBe(true);
+      const { rows: later } = await sql.query<{ kind: string; payload: unknown }>(
+        "SELECT kind, payload FROM jobs ORDER BY id DESC LIMIT 3",
+      );
+      const kinds = later.map((row) => {
+        const payload =
+          typeof row.payload === "string"
+            ? (JSON.parse(row.payload) as { version?: string; distTag?: string })
+            : (row.payload as { version?: string; distTag?: string });
+        return { kind: row.kind, version: payload.version, distTag: payload.distTag };
+      });
+      expect(kinds.some((row) => row.kind === "npm_scan" && row.version === "2.0.0-beta.2" && row.distTag === "beta")).toBe(
+        true,
+      );
+      expect(kinds.every((row) => row.kind !== "npm_dist_tag")).toBe(true);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("keeps a light dist-tag alert when only a custom tag moves", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const npm = stubNpm({ pack: pack() });
+      const connected = await connectWatchedPackage(store, npm, {
+        installationId: 7,
+        packageName: "demo-pack",
+      });
+      const npmMoved = stubNpm({
+        pack: pack({ distTags: { latest: "1.0.0", nightly: "9.9.9" } }),
+      });
+      const moved = await checkWatchedPackage(
+        store,
+        npmMoved,
+        (await store.getWatchedPackage(connected.package.id))!,
+      );
+      expect(moved.deltas[0]?.type).toBe("dist_tags");
+      expect(moved.queued).toBe(true);
+      const { rows } = await sql.query<{ kind: string }>("SELECT kind FROM jobs ORDER BY id");
+      expect(rows.some((row) => row.kind === "npm_dist_tag")).toBe(true);
+      expect(rows.filter((row) => row.kind === "npm_scan")).toHaveLength(1);
     } finally {
       await sql.close();
     }

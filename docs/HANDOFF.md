@@ -74,8 +74,10 @@ Read in this order:
   Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
   `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
-- Customers can watch public npm packages on a covered install. Connecting a name scans `latest`;
-  the hourly poller and Watch “Check now” enqueue new versions, mutated tarballs, and dist-tag moves.
+- Customers can watch public npm packages on a covered install. Connecting a name scans `latest`
+  plus `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs when those tags point at another
+  version (cap three extras). The hourly poller and Watch “Check now” enqueue new versions,
+  mutated tarballs, channel-tag tarballs, and tag-only alerts for other dist-tag moves.
   Private HTTPS registries (GitHub Packages, GitLab, Verdaccio, …) take an encrypted read token;
   tarball hosts must match the saved origin. Tokens are never returned and never written onto jobs.
   Covered npm and GitHub release scans persist a signed receipt and can diff the last two. A later
@@ -202,7 +204,7 @@ docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
 Legal/support pages and strong secret checks are done.
-Public npm package watching (latest tarball) is in.
+Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
@@ -263,6 +265,9 @@ Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; cu
 stale locks; no payloads). Not a customer page.
 SIZE-003 unexpected unpacked growth is in (2× or ≥5 MiB versus previous receipt or approved
 baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a Pricing change.
+Prerelease npm channel tarballs are in (`next`/`beta`/`canary`/`rc`/`alpha`/`preview` when those
+tags point at another version, cap three extras; other dist-tags stay tag-only). Event-driven.
+Not a Pricing change.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
