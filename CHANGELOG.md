@@ -2,11 +2,12 @@
 
 ## [Unreleased]
 
+- Connected the application runtime to Neon `NoSpoilers` / `production` / `neondb`.
+- Documented access boundaries; customer sessions cannot read Artifact Leads.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk
   PRD, and a standalone Employee Public Footprint PRD.
 - Added a revenue and indicative valuation model.
-- Verify application runtime against Neon.
 - Register and prove the real GitHub App.
 - Move coverage from users to installation billing accounts.
 - Complete unpaid enforcement before Stripe.

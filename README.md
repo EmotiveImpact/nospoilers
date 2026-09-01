@@ -27,7 +27,8 @@ cp .env.example .env
 npm run dev
 ```
 
-Open **http://127.0.0.1:4347** (port **4347**).
+Open **http://127.0.0.1:4347** (port **4347**). `GET /api/health` reports whether the process is on
+Neon, generic Postgres, or PGlite and never includes the connection string.
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
 - **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops.

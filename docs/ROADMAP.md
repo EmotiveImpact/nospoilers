@@ -20,14 +20,14 @@ the immediate operational sequence. The exhaustive expansion plan is
   release scans, alerts, and Watch desk.
 - Event-driven worker wake-up with a 15-minute recovery check.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
-- 38 automated tests passed before repository handoff.
+- Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
+- Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 
-### Connected but not runtime-proven
+### Connected but not loop-proven
 
-- Neon Free project `NoSpoilers`, default branch `production`, database `neondb`.
-- Neon Auth is intentionally disabled.
-- Nine tables and migrations `001_init`, `002_coverage`, `003_prospects` are applied.
-- The application itself has not booted with the saved `DATABASE_URL`.
+- Neon Auth remains disabled on purpose.
+- GitHub App credentials may exist in local `.env`; the throwaway-repository OAuth → webhook →
+  alert loop is still the next proof.
 
 ### Missing before launch
 
@@ -40,13 +40,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ## Milestone 0 — prove Neon runtime
 
-1. Start from `EmotiveImpact/nospoilers` with `DATABASE_URL` as a Runtime Secret.
-2. Boot the application against Neon and run idempotent migrations.
-3. Test a temporary write/read transaction without importing PGlite data.
-4. Prove an API enqueue wakes the worker immediately.
-5. Confirm the worker does not return to 500 ms idle polling.
-
-Exit: the application—not only Neon tooling—uses `neondb`.
+Done. Health reports `database.mode: neon` without a URL. Idempotent migrations, a temporary
+write/read/delete probe, event-driven enqueue wake, and a 15-minute recovery interval (not 500 ms
+empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARIES.md`.
 
 ## Milestone 1 — prove the GitHub loop
 

@@ -9,7 +9,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Neon application runtime | Partial: schema applied, runtime unproven | NoSpoilers |
+| Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
 | GitHub OAuth login | Partial: code exists, real credentials unproven | NoSpoilers |
 | GitHub App installation | Partial | NoSpoilers |
 | Installation ownership verification | Planned | NoSpoilers |

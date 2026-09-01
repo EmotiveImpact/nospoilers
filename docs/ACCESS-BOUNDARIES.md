@@ -1,0 +1,138 @@
+# Access boundaries
+
+This file is the authorization source of truth for NoSpoilers. Product PRDs describe
+what exists; this file describes **who may see or change it**.
+
+Employee Public Footprint is a separate future application. It is not built in this
+repository and has no role here.
+
+## Roles
+
+### Public Visitor
+
+Unauthenticated browser traffic.
+
+**May**
+
+- View Product, Pricing, documentation, and (later) legal pages.
+- Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
+- Use the local pack drop zone (`POST /api/scan`) within hard size limits.
+- Hit `/api/health` (no connection strings, no tenant data).
+- Call GitHub App webhooks with a valid HMAC.
+
+**Must not**
+
+- Read another customer’s repositories, alerts, jobs, billing, or scan receipts.
+- Open Artifact Leads, Disclosure Desk, prospect records, global queues, or cost data.
+- Start unbounded hosted unpack work.
+
+### Customer Member
+
+A GitHub user signed into NoSpoilers who belongs to an installation they are allowed to use.
+
+**May**
+
+- See Watch data for installations linked to their account.
+- Trigger a latest-release scan on those repositories while coverage is active.
+- View their own coverage status.
+- Use Scan under the same coverage rules as the rest of the hosted product.
+
+**Must not**
+
+- Link an arbitrary GitHub installation ID they do not own (planned enforcement; do not
+  treat the current setup callback as finished).
+- See other tenants’ alerts, repos, jobs, or artifacts.
+- Access `/internal/*` or `/api/internal/*`.
+- Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
+
+### Customer Administrator
+
+A member who can manage the customer’s GitHub installation membership and product settings
+(Team plan). **Planned.** Until Team roles ship, treat every signed-in customer as a Member.
+
+**May (when built)**
+
+- Invite/remove members on their billing account.
+- Configure routing destinations they pay for (email now; Slack/Jira/SIEM on Team).
+- Manage `.nospoilers.yml`, baselines, and allowlists for their artifacts.
+
+**Must not**
+
+- Anything on the internal operator list below.
+
+### Billing Administrator
+
+A member who can change plan, payment method, and invoices. **Planned** with Stripe.
+
+**May (when built)**
+
+- Start Checkout, open Billing Portal, see invoices for their billing account.
+
+**Must not**
+
+- See other customers’ Stripe objects or NoSpoilers revenue totals.
+- Toggle coverage for installations they do not administer.
+
+### NoSpoilers Operator
+
+Internal staff running acquisition and disclosure work.
+
+**May**
+
+- Use Artifact Leads / Disclosure Desk for **public** artifacts only.
+- Queue one prospect scan at a time, behind customer jobs.
+- Record outreach state. Never send mail without a later human-confirm step.
+
+**Must not**
+
+- Browse customer source, credential values, or packed bytes (we do not store those).
+- Change another customer’s billing or GitHub installation.
+- Export cross-customer datasets for research without anonymization review.
+
+**Current implementation:** Operator is not a separate login. Use Owner credentials
+(`ADMIN_TOKEN` or `ADMIN_GITHUB_LOGIN`) until a narrower operator grant exists.
+
+### NoSpoilers Owner
+
+The product owner (GitHub login `EmotiveImpact` unless `ADMIN_GITHUB_LOGIN` is changed).
+
+**May**
+
+- Everything an Operator may do.
+- Hold `ADMIN_TOKEN`, GitHub App PEM, Neon, Stripe, and infrastructure secrets.
+- See global queue depth, failed jobs, and cost controls when those exist.
+- Change production configuration.
+
+**Must not**
+
+- Keep customer source or secret values in notes, tickets, or the database.
+- Publish prospect lists or name companies from Artifact Leads.
+
+## Surfaces that are owner-only
+
+These are never customer features:
+
+| Surface | Route / data |
+| --- | --- |
+| Artifact Leads | `/internal/prospects`, `/api/internal/prospects*` |
+| Disclosure Desk | future internal routes extending Artifact Leads |
+| Prospect companies and artifacts | `prospects` table |
+| Disclosure records and campaigns | not built; will be internal-only |
+| Global job/queue operations | worker internals, not a customer page |
+| Infrastructure costs | billing of *our* cloud, not customer invoices |
+| Cross-tenant support views | not built; will be owner-only |
+
+A customer session cookie, even a valid one, must receive **401 or 403** on those APIs and
+must not receive prospect rows.
+
+## How access is checked today
+
+1. **Public / customer APIs** — signed session cookie `ns_session` where required.
+2. **Internal APIs** — `Authorization: Bearer $ADMIN_TOKEN`, `x-admin-token`, **or** a
+   session whose GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`).
+3. Health reports `database.mode` as `neon`, `postgres`, or `pglite` and never the URL.
+
+## Tests
+
+`tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
+mutate Artifact Leads. Keep those tests green when adding internal routes.

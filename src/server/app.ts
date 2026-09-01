@@ -7,7 +7,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { coverageFrom } from "../coverage.ts";
 import { scan } from "../scanner/index.ts";
 import type { AppConfig } from "./config.ts";
-import { githubAppConfigured } from "./config.ts";
+import { databaseMode, githubAppConfigured } from "./config.ts";
 import type { GithubPort } from "./github.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import {
@@ -91,6 +91,13 @@ export function createApp(deps: AppDeps): Hono {
       ok: true,
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
+      database: {
+        mode: databaseMode(deps.config.databaseUrl),
+      },
+      worker: {
+        recoveryIntervalMs: deps.config.workerIntervalMs,
+        visibilityPollIntervalMs: deps.config.pollIntervalMs,
+      },
     }),
   );
 

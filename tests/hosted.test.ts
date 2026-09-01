@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
-import { loadConfig } from "../src/server/config.ts";
+import { databaseMode, loadConfig } from "../src/server/config.ts";
 import type { GithubPort, GithubRepo } from "../src/server/github.ts";
 import { githubSignature } from "../src/server/hmac.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
@@ -47,6 +47,7 @@ function appFor(
 ) {
   const scans: string[] = [];
   const config = loadConfig({
+    databaseUrl: "pglite://:memory:",
     githubWebhookSecret: SECRET,
     githubAppId: "1",
     githubPrivateKey: "x",
@@ -95,6 +96,35 @@ const sampleRepo = {
   html_url: "https://github.com/octo/throwaway",
   owner: { login: "octo" },
 };
+
+describe("runtime health", () => {
+  it("classifies neon hosts without exposing a connection string", () => {
+    expect(databaseMode("pglite://./data/nospoilers")).toBe("pglite");
+    expect(databaseMode("postgresql://u:p@ep-x.c-4.us-east-2.aws.neon.tech/neondb")).toBe("neon");
+    expect(databaseMode("postgres://nospoilers:nospoilers@127.0.0.1:5433/nospoilers")).toBe(
+      "postgres",
+    );
+  });
+
+  it("reports database mode and recovery interval, never a URL", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await app.request("/api/health");
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        ok: boolean;
+        database: { mode: string };
+        worker: { recoveryIntervalMs: number; visibilityPollIntervalMs: number };
+      };
+      expect(body.ok).toBe(true);
+      expect(body.database.mode).toBe("pglite");
+      expect(body.worker.recoveryIntervalMs).toBeGreaterThanOrEqual(60_000);
+      expect(body.worker.visibilityPollIntervalMs).toBeGreaterThanOrEqual(60_000);
+      expect(JSON.stringify(body)).not.toMatch(/postgres(?:ql)?:\/\//i);
+      expect(JSON.stringify(body)).not.toMatch(/pglite:\/\//i);
+    });
+  });
+});
 
 describe("GitHub webhooks", () => {
   it("rejects a bad HMAC", async () => {

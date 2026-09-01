@@ -56,6 +56,20 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+export type DatabaseMode = "pglite" | "neon" | "postgres";
+
+export function databaseMode(databaseUrl: string): DatabaseMode {
+  const url = databaseUrl.trim();
+  if (!url || url.startsWith("pglite:")) return "pglite";
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host === "neon.tech" || host.endsWith(".neon.tech")) return "neon";
+  } catch {
+    return "postgres";
+  }
+  return "postgres";
+}
+
 export function normalizePem(raw: string): string {
   return raw.replace(/\\n/g, "\n").trim();
 }
