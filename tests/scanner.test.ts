@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -139,6 +139,27 @@ describe("scan", () => {
       expect(report.ok).toBe(true);
       expect(report.findings.some((f) => f.rule === "SIZE-001")).toBe(true);
     });
+  });
+
+  it("flags backups, dumps, nested packs, internal docs, and escaping symlinks", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-extra-"));
+    try {
+      await writeFile(path.join(dir, "app.js.bak"), "old");
+      await writeFile(path.join(dir, "prod.sql"), "SELECT 1");
+      await writeFile(path.join(dir, "nested.tgz"), "not-a-real-tarball");
+      await writeFile(path.join(dir, "ROADMAP.md"), "secret plan");
+      await symlink("/etc/passwd", path.join(dir, "escape"));
+      const report = await scan(dir);
+      const rules = report.findings.map((row) => row.rule);
+      expect(rules).toEqual(
+        expect.arrayContaining(["BAK-001", "DB-001", "ARC-001", "DOC-001", "LNK-001"]),
+      );
+      expect(report.findings.find((row) => row.rule === "DB-001")?.severity).toBe("critical");
+      expect(report.findings.find((row) => row.rule === "LNK-001")?.severity).toBe("critical");
+      expect(report.ok).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("marks archive safety limits as inconclusive, never clean", async () => {

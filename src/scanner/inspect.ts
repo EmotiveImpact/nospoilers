@@ -88,7 +88,9 @@ function credentialConfig(rel: string, base: string): boolean {
       "service_account.json", "application_default_credentials.json"].includes(base.toLowerCase()) ||
     lower.endsWith("/.aws/credentials") ||
     lower.endsWith("/.docker/config.json") ||
-    lower.endsWith("/.kube/config")
+    lower.endsWith("/.kube/config") ||
+    lower.includes("/.ssh/") ||
+    lower.startsWith(".ssh/")
   );
 }
 
@@ -116,6 +118,47 @@ function debugArtifact(rel: string, base: string): boolean {
     /(?:^|\/)(?:webpack-)?stats\.json$/i.test(lower) ||
     base === ".DS_Store"
   );
+}
+
+function nestedPack(base: string): boolean {
+  return /\.(?:tgz|tar\.gz|tar|zip|asar)$/i.test(base);
+}
+
+function backupFile(base: string): boolean {
+  return /(?:\.(?:bak|old|orig|backup|swp|swo)|~)$/i.test(base);
+}
+
+function dumpFile(base: string): boolean {
+  return /\.(?:sql|sqlite|sqlite3|dump|pgdump|rdb)$/i.test(base);
+}
+
+function internalDoc(base: string): boolean {
+  const name = base.toLowerCase();
+  return (
+    ["roadmap.md", "handoff.md", "todo.md", "todos.md", "internal.md"].includes(name) ||
+    name.endsWith(".prd.md")
+  );
+}
+
+export function suspiciousLink(target: string): boolean {
+  const trimmed = target.trim();
+  if (!trimmed) return false;
+  if (path.isAbsolute(trimmed) || trimmed.startsWith("~") || /^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return true;
+  }
+  const parts = trimmed.replace(/\\/g, "/").split("/");
+  return parts.includes("..");
+}
+
+export function linkFinding(relPath: string, target: string): Finding | null {
+  if (!suspiciousLink(target)) return null;
+  return {
+    rule: "LNK-001",
+    severity: "critical",
+    path: posixPath(relPath).replace(/^\.\//, ""),
+    title: "Suspicious symlink in the pack",
+    detail: "The link points outside the artifact (absolute path or ..). Symlinks are not followed.",
+  };
 }
 
 function internalLocation(text: string): boolean {
@@ -163,7 +206,8 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     PRIVATE_KEY.test(text) ||
     base === "id_rsa" ||
     base === "id_ed25519" ||
-    base === "id_dsa"
+    base === "id_dsa" ||
+    base === "id_ecdsa"
   ) {
     findings.push({
       rule: "SEC-002",
@@ -196,6 +240,47 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
       title: "Credential configuration file shipped",
       detail:
         "This configuration file commonly carries registry, cloud, container, or service credentials.",
+    });
+  }
+
+  if (nestedPack(base)) {
+    findings.push({
+      rule: "ARC-001",
+      severity: "warn",
+      path: rel,
+      title: "Nested packed artifact",
+      detail:
+        "Another tarball, zip, or asar is inside this pack. Nested archives are identified, not executed.",
+    });
+  }
+
+  if (backupFile(base)) {
+    findings.push({
+      rule: "BAK-001",
+      severity: "warn",
+      path: rel,
+      title: "Backup file shipped",
+      detail: "Backup copies often retain secrets or source that the intended release dropped.",
+    });
+  }
+
+  if (dumpFile(base)) {
+    findings.push({
+      rule: "DB-001",
+      severity: "critical",
+      path: rel,
+      title: "Database dump shipped",
+      detail: "SQL or database files do not belong in a public package or installer.",
+    });
+  }
+
+  if (internalDoc(base)) {
+    findings.push({
+      rule: "DOC-001",
+      severity: "warn",
+      path: rel,
+      title: "Internal documentation shipped",
+      detail: "Roadmaps, handoffs, and PRDs are internal context, not customer-facing pack contents.",
     });
   }
 

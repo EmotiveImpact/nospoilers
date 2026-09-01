@@ -60,14 +60,14 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | `.nospoilers.yml` policy file | Planned | NoSpoilers |
 | Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
-| Nested archive scanning | Planned | NoSpoilers |
-| Escaping/suspicious symlink detection | Planned | NoSpoilers |
-| Source archives and backup files | Planned | NoSpoilers |
-| Database exports/dumps | Planned | NoSpoilers |
-| SSH/cloud/service-account configuration | Planned | NoSpoilers |
+| Nested archive scanning | Partial: nested tgz/zip/asar flagged (ARC-001), not unpacked | NoSpoilers |
+| Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
+| Source archives and backup files | Built: BAK-001 | NoSpoilers |
+| Database exports/dumps | Built: DB-001 | NoSpoilers |
+| SSH/cloud/service-account configuration | Partial: `.ssh/`, kube, AWS, Docker, service-account files | NoSpoilers |
 | Crash dumps and additional debug symbols | Planned | NoSpoilers |
 | Build caches/compiler metadata | Partial | NoSpoilers |
-| Internal documentation and roadmaps | Planned | NoSpoilers |
+| Internal documentation and roadmaps | Partial: ROADMAP/HANDOFF/TODO/PRD filenames | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
 | Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |

@@ -76,6 +76,7 @@ Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest tarball) is in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
+Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
 Do not start Stripe or the Electron installer worker yet.

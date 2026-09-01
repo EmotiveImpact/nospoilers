@@ -13,7 +13,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Critical detection: maps, embedded source, map URLs, environment files, private keys, and
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
-  TypeScript/JSX, and abnormal size.
+  TypeScript/JSX, abnormal size, nested packs, backups, and internal docs.
+- Additional critical paths: database dumps and escaping symlinks.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,

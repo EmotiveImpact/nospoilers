@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, readlink, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
-import { INSPECT_BYTES, inspectEntry, TOTAL_WARN_BYTES } from "./inspect.ts";
+import { INSPECT_BYTES, inspectEntry, linkFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
 import {
   ScanInconclusiveError,
   type Finding,
@@ -115,15 +115,26 @@ function kindOf(target: string, isDir: boolean): ScanTargetKind {
   return "file";
 }
 
-async function walkFiles(root: string): Promise<string[]> {
+async function walkTree(
+  root: string,
+): Promise<{ files: string[]; links: { abs: string; target: string }[] }> {
   const files: string[] = [];
+  const links: { abs: string; target: string }[] = [];
   const entries = await readdir(root, { withFileTypes: true, recursive: true });
   for (const entry of entries) {
-    if (!entry.isFile()) continue;
     const parent = entry.parentPath;
-    files.push(path.join(parent, entry.name));
+    const abs = path.join(parent, entry.name);
+    if (entry.isSymbolicLink()) {
+      try {
+        links.push({ abs, target: await readlink(abs) });
+      } catch {
+        links.push({ abs, target: "" });
+      }
+      continue;
+    }
+    if (entry.isFile()) files.push(abs);
   }
-  return files;
+  return { files, links };
 }
 
 type ScanChunk = {
@@ -149,10 +160,15 @@ async function scanDirectory(
   limits: ScanLimits,
   prefix = "",
 ): Promise<ScanChunk> {
-  const files = await walkFiles(root);
+  const { files, links } = await walkTree(root);
   const findings: Finding[] = [];
   const manifest: ManifestEntry[] = [];
   const budget = new ScanBudget(limits);
+  for (const link of links) {
+    const rel = path.join(prefix, path.relative(root, link.abs)).split(path.sep).join("/");
+    const finding = linkFinding(rel, link.target);
+    if (finding) findings.push(finding);
+  }
   for (const abs of files) {
     const rel = path.join(prefix, path.relative(root, abs)).split(path.sep).join("/");
     const info = await stat(abs);
@@ -169,6 +185,7 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
   const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-tar-"));
   const extractionBudget = new ScanBudget(limits);
   let limitError: ScanInconclusiveError | null = null;
+  const linkFindings: Finding[] = [];
   try {
     await tarExtract({
       file: archive,
@@ -178,11 +195,18 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
         try {
           const type = "type" in entry ? entry.type : "File";
           const storedPath = "path" in entry ? entry.path : entryPath;
+          if (type === "SymbolicLink" || type === "Link") {
+            const target =
+              "linkpath" in entry && typeof entry.linkpath === "string" ? entry.linkpath : "";
+            const finding = linkFinding(storedPath, target);
+            if (finding) linkFindings.push(finding);
+            return false;
+          }
           const file =
             type === "File" ||
             type === "OldFile" ||
             type === "ContiguousFile";
-          if (!file) return type !== "SymbolicLink" && type !== "Link";
+          if (!file) return false;
           const size = entry.size ?? 0;
           extractionBudget.beginFile(storedPath);
           extractionBudget.addBytes(storedPath, size, size);
@@ -197,7 +221,11 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
       },
     });
     if (limitError) throw limitError;
-    return await scanDirectory(dir, limits);
+    const scanned = await scanDirectory(dir, limits);
+    return {
+      ...scanned,
+      findings: [...linkFindings, ...scanned.findings],
+    };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
