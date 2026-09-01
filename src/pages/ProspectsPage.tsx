@@ -192,7 +192,7 @@ export function ProspectsPage() {
 
   if (state.status === "loading") {
     return (
-      <main className="mx-auto max-w-5xl px-5 py-20">
+      <main className="mx-auto max-w-6xl px-5 py-20">
         <p className="text-sm text-dim">Opening Artifact Leads…</p>
       </main>
     )
@@ -255,7 +255,7 @@ export function ProspectsPage() {
 
   const { data } = state
   return (
-    <main className="mx-auto max-w-5xl px-5 py-12 md:py-16">
+    <main className="mx-auto max-w-6xl px-5 py-12 md:py-16">
       <p className="text-[11px] uppercase tracking-[0.28em] text-danger">Internal · public artifacts only</p>
       <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>

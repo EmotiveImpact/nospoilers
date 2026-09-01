@@ -12,8 +12,8 @@ export function CoverageLock({
   children?: ReactNode
 }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col justify-center gap-3 bg-ink/90 p-6 backdrop-blur-[1px]">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-danger">
+    <div className="absolute inset-0 z-10 flex flex-col justify-center gap-3 rounded-2xl bg-ink/92 p-6 backdrop-blur-sm">
+      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-danger">
         {variant === "scan" ? "Hosted scan is off" : "Hosted coverage is off"}
       </p>
       <h2 className="font-display text-2xl tracking-tight text-snow">{title}</h2>
