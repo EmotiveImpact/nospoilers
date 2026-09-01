@@ -3,6 +3,7 @@ import type { Finding } from "./types.ts";
 
 const TEXT_LIMIT = 2_000_000;
 const MAP_PEEK = 256_000;
+export const INSPECT_BYTES = 8_000_000;
 export const FILE_WARN_BYTES = 10_000_000;
 export const TOTAL_WARN_BYTES = 50_000_000;
 
@@ -52,7 +53,86 @@ function hasEmbeddedSources(buf: Buffer): boolean {
 const PRIVATE_KEY =
   /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/;
 
-export function inspectEntry(relPath: string, buf: Buffer): Finding[] {
+const HIGH_CONFIDENCE_TOKEN =
+  /(?:github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{36,255}|npm_[A-Za-z0-9]{36}|(?:sk|rk)_live_[A-Za-z0-9]{20,}|sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|glpat-[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35})/;
+
+const CREDENTIAL_ASSIGNMENT =
+  /(?:_authToken|api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token|password)\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{12,})/gi;
+
+const PLACEHOLDER =
+  /(?:example|placeholder|dummy|sample|changeme|replace[_-]?me|your[_-]?(?:token|key|secret)|test[_-]?(?:token|key|secret))/i;
+
+function likelyText(buf: Buffer): boolean {
+  const sample = buf.subarray(0, Math.min(buf.length, 4096));
+  if (sample.length === 0) return true;
+  let zeroes = 0;
+  for (const byte of sample) {
+    if (byte === 0) zeroes += 1;
+  }
+  return zeroes / sample.length < 0.01;
+}
+
+function hasAssignedCredential(text: string): boolean {
+  CREDENTIAL_ASSIGNMENT.lastIndex = 0;
+  for (const match of text.matchAll(CREDENTIAL_ASSIGNMENT)) {
+    const value = match[1] ?? "";
+    if (!PLACEHOLDER.test(value) && !/^(.)\1{11,}$/.test(value)) return true;
+  }
+  return false;
+}
+
+function credentialConfig(rel: string, base: string): boolean {
+  const lower = rel.toLowerCase();
+  return (
+    [".npmrc", ".pypirc", ".netrc", "credentials.json", "service-account.json",
+      "service_account.json", "application_default_credentials.json"].includes(base.toLowerCase()) ||
+    lower.endsWith("/.aws/credentials") ||
+    lower.endsWith("/.docker/config.json") ||
+    lower.endsWith("/.kube/config")
+  );
+}
+
+function aiContextFile(rel: string, base: string): boolean {
+  const lower = rel.toLowerCase();
+  const name = base.toLowerCase();
+  return (
+    ["claude.md", "claude.local.md", "agents.md", ".mcp.json", "mcp.json",
+      "copilot-instructions.md"].includes(name) ||
+    lower.includes("/.claude/") ||
+    lower.startsWith(".claude/") ||
+    lower.includes("/.cursor/") ||
+    lower.startsWith(".cursor/") ||
+    lower.includes("/.windsurf/") ||
+    lower.startsWith(".windsurf/") ||
+    lower.includes("/prompts/") ||
+    lower.includes("/memory/") ||
+    /(?:^|\/)(?:chat-)?transcripts?\//.test(lower)
+  );
+}
+
+function debugArtifact(rel: string, base: string): boolean {
+  const lower = rel.toLowerCase();
+  return (
+    /\.(?:pdb|ilk|exp|symbols?|dmp|tsbuildinfo)$/i.test(base) ||
+    /(?:^|\/)[^/]+\.dsym(?:\/|$)/i.test(lower) ||
+    /(?:^|\/)(?:npm-debug|yarn-debug|yarn-error|debug)\.log$/i.test(lower) ||
+    /(?:^|\/)(?:webpack-)?stats\.json$/i.test(lower) ||
+    base === ".DS_Store"
+  );
+}
+
+function internalLocation(text: string): boolean {
+  return (
+    /(?:\/Users\/[A-Za-z0-9._-]+\/|\/home\/[A-Za-z0-9._-]+\/|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+\\)/.test(
+      text,
+    ) ||
+    /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|[A-Za-z0-9.-]+\.(?:internal|local))(?::\d+)?(?:[/?#]|$)/i.test(
+      text,
+    )
+  );
+}
+
+export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.length): Finding[] {
   const rel = posixPath(relPath).replace(/^\.\//, "");
   const base = path.posix.basename(rel);
   const findings: Finding[] = [];
@@ -79,7 +159,7 @@ export function inspectEntry(relPath: string, buf: Buffer): Finding[] {
     });
   }
 
-  const text = asText(buf);
+  const text = likelyText(buf) ? asText(buf) : "";
   if (
     /\.(pem|key)$/i.test(base) ||
     PRIVATE_KEY.test(text) ||
@@ -93,6 +173,61 @@ export function inspectEntry(relPath: string, buf: Buffer): Finding[] {
       path: rel,
       title: "Private key shipped",
       detail: "A private key or PEM was found in the packed bytes.",
+    });
+  }
+
+  if (text && (HIGH_CONFIDENCE_TOKEN.test(text) || hasAssignedCredential(text))) {
+    findings.push({
+      rule: "SEC-003",
+      severity: "critical",
+      path: rel,
+      title: "Credential or access token shipped",
+      detail:
+        "A high-confidence credential pattern was found. NoSpoilers does not include the value in reports.",
+    });
+  }
+
+  if (credentialConfig(rel, base)) {
+    findings.push({
+      rule: "SEC-004",
+      severity: "warn",
+      path: rel,
+      title: "Credential configuration file shipped",
+      detail:
+        "This configuration file commonly carries registry, cloud, container, or service credentials.",
+    });
+  }
+
+  if (aiContextFile(rel, base)) {
+    findings.push({
+      rule: "AI-001",
+      severity: "warn",
+      path: rel,
+      title: "AI agent context shipped",
+      detail:
+        "Agent instructions, prompts, memory, or tool configuration can reveal internal operating context.",
+    });
+  }
+
+  if (debugArtifact(rel, base)) {
+    findings.push({
+      rule: "DBG-001",
+      severity: "warn",
+      path: rel,
+      title: "Debug or build metadata shipped",
+      detail:
+        "Debug symbols, build statistics, logs, and compiler state can expose implementation details.",
+    });
+  }
+
+  if (text && internalLocation(text)) {
+    findings.push({
+      rule: "NET-001",
+      severity: "warn",
+      path: rel,
+      title: "Internal endpoint or developer path shipped",
+      detail:
+        "The artifact contains a private-network URL, local endpoint, or absolute developer-machine path.",
     });
   }
 
@@ -138,13 +273,13 @@ export function inspectEntry(relPath: string, buf: Buffer): Finding[] {
     });
   }
 
-  if (buf.length >= FILE_WARN_BYTES) {
+  if (actualBytes >= FILE_WARN_BYTES) {
     findings.push({
       rule: "SIZE-001",
       severity: "warn",
       path: rel,
       title: "Packed file is far over a normal baseline",
-      detail: `${base} is ${buf.length} bytes. A surprise 10+ MB file in a release is often a source map.`,
+      detail: `${base} is ${actualBytes} bytes. A surprise 10+ MB file in a release is often a source map.`,
     });
   }
 

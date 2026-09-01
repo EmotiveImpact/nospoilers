@@ -140,10 +140,23 @@ On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It 
 | MAP-003 | critical | A JS/CSS file has a `sourceMappingURL` comment |
 | SEC-001 | critical | `.env` / `.env.*` |
 | SEC-002 | critical | Private key / PEM |
+| SEC-003 | critical | High-confidence GitHub, npm, Stripe, OpenAI, Anthropic, Slack, GitLab, AWS, or Google credential |
+| SEC-004 | warn | Credential configuration such as `.npmrc`, `.pypirc`, cloud credentials, Docker or Kubernetes config |
+| AI-001 | warn | Agent instructions, prompts, memory, transcripts, or MCP configuration |
+| NET-001 | warn | Private-network URL, localhost endpoint, or absolute developer-machine path |
+| DBG-001 | warn | Debug symbols, compiler state, build statistics, or debug logs |
 | GIT-001 | critical | `.git` packed into the artifact |
 | SRC-001 | warn | `.ts` / `.tsx` / `.jsx` source (not `.d.ts`) |
 | SIZE-001 | warn | A packed file is 10 MB or larger |
 | SIZE-002 | warn | Unpacked payload is 50 MB or larger |
+
+Credential values are never included in reports. Default safety limits are 80 MiB input, 500 MiB
+unpacked, 25,000 files, 25 MiB per file, and 90 seconds. Exceeding a hard limit stops the scan
+rather than partially declaring an artifact clean.
+
+`.dmg`, `.exe`, and `.AppImage` installer extraction is not supported yet. It is deliberately kept
+outside this worker until it can run as an isolated, ephemeral job with its own memory, disk, CPU,
+network, and timeout limits. See [docs/ELECTRON.md](docs/ELECTRON.md).
 
 ## Hidden maps for crash reporting
 

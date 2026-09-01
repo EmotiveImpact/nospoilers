@@ -57,6 +57,46 @@ describe("scan", () => {
     });
   });
 
+  it("finds high-confidence access tokens without echoing their values", async () => {
+    const token = `ghp_${"A".repeat(36)}`;
+    await withDir({ "config.js": `export const token = "${token}"` }, async (dir) => {
+      const report = await scan(dir);
+      expect(report.ok).toBe(false);
+      const finding = report.findings.find((row) => row.rule === "SEC-003");
+      expect(finding).toBeDefined();
+      expect(JSON.stringify(finding)).not.toContain(token);
+    });
+  });
+
+  it("flags credential configuration files and assigned credentials", async () => {
+    await withDir(
+      { ".npmrc": "_authToken=AbCDefghijkLMNopqrstUVWXyz012345\n" },
+      async (dir) => {
+        const report = await scan(dir);
+        expect(report.findings.map((row) => row.rule)).toEqual(
+          expect.arrayContaining(["SEC-003", "SEC-004"]),
+        );
+      },
+    );
+  });
+
+  it("warns on AI context, internal locations, and debug artifacts", async () => {
+    await withDir(
+      {
+        "AGENTS.md": "Internal release instructions",
+        "bundle.js": 'fetch("http://10.2.3.4/internal")\n// /Users/alice/product/src',
+        "app.pdb": "debug symbols",
+      },
+      async (dir) => {
+        const report = await scan(dir);
+        expect(report.ok).toBe(true);
+        expect(report.findings.map((row) => row.rule)).toEqual(
+          expect.arrayContaining(["AI-001", "NET-001", "DBG-001"]),
+        );
+      },
+    );
+  });
+
   it("fails an Electron asar that contains a source map", async () => {
     const { createPackage } = await import("@electron/asar");
     const dir = await mkdtemp(path.join(os.tmpdir(), "ns-asar-"));
@@ -93,6 +133,14 @@ describe("scan", () => {
       const report = await scan(dir);
       expect(report.ok).toBe(true);
       expect(report.findings.some((f) => f.rule === "SIZE-001")).toBe(true);
+    });
+  });
+
+  it("stops when archive safety limits are exceeded", async () => {
+    await withDir({ "a.js": "12345", "b.js": "67890" }, async (dir) => {
+      await expect(scan(dir, { maxFiles: 1 })).rejects.toThrow("more than 1 files");
+      await expect(scan(dir, { maxFileBytes: 4 })).rejects.toThrow("per-file limit");
+      await expect(scan(dir, { maxUnpackedBytes: 8 })).rejects.toThrow("unpacked limit");
     });
   });
 });

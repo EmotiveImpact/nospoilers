@@ -21,4 +21,9 @@ export type ScanReport = {
 
 export type ScanOptions = {
   strict?: boolean;
+  maxInputBytes?: number;
+  maxUnpackedBytes?: number;
+  maxFiles?: number;
+  maxFileBytes?: number;
+  timeoutMs?: number;
 };
