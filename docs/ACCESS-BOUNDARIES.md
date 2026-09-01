@@ -35,6 +35,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - See Watch data for installations linked to their account.
 - Connect and watch public npm packages on those installations while coverage is active.
+- Save encrypted private npm registry tokens for those installations (token values are never
+  returned after save) and watch packs from those HTTPS hosts while coverage is active.
 - Trigger a latest-release scan on those repositories while coverage is active.
 - Open a reviewable setup PR (or copy the packed-artifact workflow YAML) on those repositories
   while coverage is active. The App never merges that PR.
@@ -50,7 +52,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ alerts, repos, jobs, artifacts, or scan receipts.
+- See other tenants’ registry tokens, ciphertext, alerts, repos, jobs, artifacts, or scan receipts.
 - Edit or delete scan receipts. Receipts are append-only.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
@@ -153,4 +155,6 @@ allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not D
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
 permission skips return copy-paste YAML instead of failing the worker, and the merge API
-is never called. Keep those tests green when adding internal routes.
+is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
+never returned, blocked off-tenant, and never written onto jobs. Keep those tests green
+when adding internal routes.

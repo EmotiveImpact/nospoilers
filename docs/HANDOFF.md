@@ -26,13 +26,15 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Thirteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
-  `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`, and
-  `007_policy_exceptions` are applied. Hosted coverage belongs to the GitHub installation
-  billing account, not the user row. Scan receipts are append-only HMAC JSON; they store
-  manifests and hashes, never source. Development receipts use `RECEIPT_SECRET` (falls back to
-  `SESSION_SECRET`). Production signing should move to KMS. Policy exceptions are revoked in
-  place (no silent DELETE). Scan baselines supersede the previous active row for a package.
+- Fourteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+  `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
+  `007_policy_exceptions`, and `008_npm_registries` are applied. Hosted coverage belongs to the
+  GitHub installation billing account, not the user row. Scan receipts are append-only HMAC JSON;
+  they store manifests and hashes, never source. Private registry tokens are AES-GCM ciphertext
+  (`ns1.` prefix) and are never returned after save. Development receipts use `RECEIPT_SECRET`
+  (falls back to `SESSION_SECRET`). Production signing should move to KMS. Policy exceptions are
+  revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
+  package.
 - The application boots with `DATABASE_URL` from `.env` (gitignored). Keep that same URL as a
   Cloud Agent Runtime Secret so new runs do not fall back to PGlite.
 - Do not import local PGlite data; Neon starts clean.
@@ -49,6 +51,8 @@ Read in this order:
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
 - Customers can watch public npm packages on a covered install. Connecting a name scans `latest`;
   the hourly poller and Watch “Check now” enqueue new versions, mutated tarballs, and dist-tag moves.
+  Private HTTPS registries (GitHub Packages, GitLab, Verdaccio, …) take an encrypted read token;
+  tarball hosts must match the saved origin. Tokens are never returned and never written onto jobs.
   Covered npm and GitHub release scans persist a signed receipt and can diff the last two. The
   15-minute worker timer is still recovery only — enqueue wakes the worker.
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
@@ -87,6 +91,7 @@ docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md fi
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest tarball) is in.
+Private npm registries (encrypted tokens, same-host tarballs) are in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar are unpacked for inspection (never executed).

@@ -26,6 +26,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Privacy, Terms, retention, responsible disclosure, support, and refund pages.
 - Strong secret-length checks on Neon/https boot; `/api/ready` database ping; JSON logs.
 - Public npm package watching: connect a pack, scan `latest`, detect the next version.
+- Private npm registries: encrypted per-install tokens, same-host tarball downloads only.
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.
 - `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.

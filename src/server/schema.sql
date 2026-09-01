@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS watched_packages (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
   package_name TEXT NOT NULL,
+  registry_origin TEXT NOT NULL DEFAULT 'https://registry.npmjs.org',
   last_version TEXT,
   last_dist_tags JSONB,
   last_tarball_url TEXT,
@@ -138,11 +139,25 @@ CREATE TABLE IF NOT EXISTS watched_packages (
   last_scanned_at TIMESTAMPTZ,
   last_scan_status TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (installation_id, package_name)
+  UNIQUE (installation_id, package_name, registry_origin)
 );
 
 CREATE INDEX IF NOT EXISTS watched_packages_install_idx
   ON watched_packages (installation_id, package_name);
+
+CREATE TABLE IF NOT EXISTS npm_registries (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  origin TEXT NOT NULL,
+  host TEXT NOT NULL,
+  token_ciphertext TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (installation_id, origin)
+);
+
+CREATE INDEX IF NOT EXISTS npm_registries_install_idx
+  ON npm_registries (installation_id);
 
 CREATE TABLE IF NOT EXISTS scan_receipts (
   id BIGSERIAL PRIMARY KEY,

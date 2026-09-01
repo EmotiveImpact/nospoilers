@@ -43,11 +43,11 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Git/source/size rules | Built | NoSpoilers |
 | Hard input/unpacked/file/time budgets | Built | NoSpoilers |
 | JSON and SARIF reports | Built | NoSpoilers |
-| Automatic npm package watching | Built: public registry.npmjs.org, per GitHub install | NoSpoilers |
+| Automatic npm package watching | Built: public registry.npmjs.org and private HTTPS registries per GitHub install | NoSpoilers |
 | New npm version detection | Built: hourly check + Watch “Check now” | NoSpoilers |
 | npm dist-tag and prerelease-channel changes | Built: tag-only light alert, no extra download | NoSpoilers |
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
-| Private npm registry support | Planned | NoSpoilers |
+| Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Planned | NoSpoilers |
 | Pre-publish CI gate | Partial: Action exists; optional `policy` input; generated workflow gates packed artifacts only | NoSpoilers |
 | App-generated setup PR | Partial: reviewable PR, never merged; 409 YAML copy-paste until Contents+PR write | NoSpoilers |

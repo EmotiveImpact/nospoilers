@@ -7,7 +7,8 @@ import type { ScanStatus } from "../scanner/types.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
-import type { NpmPort } from "./npm.ts";
+import type { NpmAuth, NpmPort } from "./npm.ts";
+import { isPublicNpmOrigin, PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { isPackAssetName } from "./paths.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
@@ -329,10 +330,25 @@ export async function handleJob(
     const version = String(payload.version ?? "");
     const tarballUrl = String(payload.tarballUrl ?? "");
     const packageId = Number(payload.packageId);
+    const registryOrigin = String(payload.registryOrigin ?? PUBLIC_NPM_ORIGIN);
+    let auth: NpmAuth | undefined;
+    if (!isPublicNpmOrigin(registryOrigin)) {
+      const saved = await deps.store.getNpmRegistryAuth(installationId, registryOrigin);
+      if (!saved) {
+        await deps.notifier.send({
+          ...alertBase,
+          kind: job.kind,
+          title: `Missing registry token for ${packageName || "a package"}`,
+          body: "Save an encrypted private-registry token on Watch, then check the package again. The token is not stored on the job.",
+        });
+        return;
+      }
+      auth = { registryOrigin: saved.origin, token: saved.token };
+    }
     const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-npm-"));
     const dest = path.join(dir, `${packageName.replace(/[^\w.-]+/g, "_") || "package"}-${version}.tgz`);
     try {
-      const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes);
+      const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes, auth);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
       const report = await applyHostedPolicy(

@@ -3,6 +3,7 @@ import { coverageFrom, coverageIsOn } from "../coverage.ts";
 import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
+import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { num, type SqlClient } from "./sql.ts";
 
 export type JobPriority = "light" | "heavy";
@@ -46,6 +47,7 @@ export type WatchedPackageRow = {
   id: number;
   installation_id: number;
   package_name: string;
+  registry_origin: string;
   last_version: string | null;
   last_dist_tags: Record<string, string> | null;
   last_tarball_url: string | null;
@@ -54,6 +56,14 @@ export type WatchedPackageRow = {
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+};
+
+export type NpmRegistryRow = {
+  id: number;
+  installation_id: number;
+  origin: string;
+  host: string;
+  updated_at: string;
 };
 
 export type ScanReceiptRow = {
@@ -229,6 +239,7 @@ function watchedPackageRow(row: {
   id: unknown;
   installation_id: unknown;
   package_name: string;
+  registry_origin?: string | null;
   last_version: string | null;
   last_dist_tags: unknown;
   last_tarball_url: string | null;
@@ -242,6 +253,7 @@ function watchedPackageRow(row: {
     id: num(row.id),
     installation_id: num(row.installation_id),
     package_name: row.package_name,
+    registry_origin: row.registry_origin?.trim() || PUBLIC_NPM_ORIGIN,
     last_version: row.last_version,
     last_dist_tags: parseDistTags(row.last_dist_tags),
     last_tarball_url: row.last_tarball_url,
@@ -938,6 +950,7 @@ export function createStore(
         id: unknown;
         installation_id: unknown;
         package_name: string;
+        registry_origin?: string | null;
         last_version: string | null;
         last_dist_tags: unknown;
         last_tarball_url: string | null;
@@ -962,6 +975,7 @@ export function createStore(
         id: unknown;
         installation_id: unknown;
         package_name: string;
+        registry_origin?: string | null;
         last_version: string | null;
         last_dist_tags: unknown;
         last_tarball_url: string | null;
@@ -979,6 +993,7 @@ export function createStore(
         id: unknown;
         installation_id: unknown;
         package_name: string;
+        registry_origin?: string | null;
         last_version: string | null;
         last_dist_tags: unknown;
         last_tarball_url: string | null;
@@ -1002,11 +1017,13 @@ export function createStore(
     async insertWatchedPackage(
       installationId: number,
       packageName: string,
+      registryOrigin: string = PUBLIC_NPM_ORIGIN,
     ): Promise<WatchedPackageRow | null> {
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
         package_name: string;
+        registry_origin?: string | null;
         last_version: string | null;
         last_dist_tags: unknown;
         last_tarball_url: string | null;
@@ -1016,11 +1033,11 @@ export function createStore(
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
       }>(
-        `INSERT INTO watched_packages (installation_id, package_name)
-         VALUES ($1, $2)
-         ON CONFLICT (installation_id, package_name) DO NOTHING
+        `INSERT INTO watched_packages (installation_id, package_name, registry_origin)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (installation_id, package_name, registry_origin) DO NOTHING
          RETURNING *`,
-        [installationId, packageName],
+        [installationId, packageName, registryOrigin],
       );
       return rows[0] ? watchedPackageRow(rows[0]) : null;
     },
@@ -1036,6 +1053,107 @@ export function createStore(
         [id, userId],
       );
       return Boolean(rows[0]);
+    },
+
+    async countNpmRegistries(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM npm_registries WHERE installation_id = $1`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async listNpmRegistriesForUser(userId: string): Promise<NpmRegistryRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin: string;
+        host: string;
+        updated_at: string | Date;
+      }>(
+        `SELECT r.id, r.installation_id, r.origin, r.host, r.updated_at
+         FROM npm_registries r
+         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         WHERE iu.user_id = $1
+         ORDER BY r.host`,
+        [userId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+        origin: row.origin,
+        host: row.host,
+        updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async upsertNpmRegistry(input: {
+      installationId: number;
+      origin: string;
+      host: string;
+      token: string;
+    }): Promise<NpmRegistryRow> {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("This instance cannot encrypt registry tokens."), { status: 400 });
+      }
+      const ciphertext = encryptSecret(input.token, tokenSecret);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        origin: string;
+        host: string;
+        updated_at: string | Date;
+      }>(
+        `INSERT INTO npm_registries (installation_id, origin, host, token_ciphertext)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (installation_id, origin) DO UPDATE SET
+           host = excluded.host,
+           token_ciphertext = excluded.token_ciphertext,
+           updated_at = now()
+         RETURNING id, installation_id, origin, host, updated_at`,
+        [input.installationId, input.origin, input.host, ciphertext],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not save the registry token.");
+      return {
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+        origin: row.origin,
+        host: row.host,
+        updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async deleteNpmRegistryForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM npm_registries r
+         USING installation_users iu
+         WHERE r.id = $1
+           AND r.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING r.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async getNpmRegistryAuth(
+      installationId: number,
+      origin: string,
+    ): Promise<{ origin: string; host: string; token: string } | null> {
+      const { rows } = await sql.query<{ origin: string; host: string; token_ciphertext: string }>(
+        `SELECT origin, host, token_ciphertext
+         FROM npm_registries
+         WHERE installation_id = $1 AND origin = $2`,
+        [installationId, origin],
+      );
+      const row = rows[0];
+      if (!row || !tokenSecret) return null;
+      return {
+        origin: row.origin,
+        host: row.host,
+        token: decryptSecret(row.token_ciphertext, tokenSecret),
+      };
     },
 
     async touchWatchedPackage(

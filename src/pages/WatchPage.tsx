@@ -37,11 +37,20 @@ type WatchedPackage = {
   id: number;
   installation_id: number;
   package_name: string;
+  registry_origin?: string;
   last_version: string | null;
   last_sha256: string | null;
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+};
+
+type NpmRegistry = {
+  id: number;
+  installation_id: number;
+  origin: string;
+  host: string;
+  updated_at: string;
 };
 
 type ReleaseDiffView = {
@@ -178,6 +187,13 @@ export function WatchPage({ search }: { search: string }) {
   const [packages, setPackages] = useState<LoadState<{ packages: WatchedPackage[] }>>({
     status: "loading",
   });
+  const [registries, setRegistries] = useState<NpmRegistry[]>([]);
+  const [registryOriginInput, setRegistryOriginInput] = useState("");
+  const [registryToken, setRegistryToken] = useState("");
+  const [savingRegistry, setSavingRegistry] = useState(false);
+  const [registryError, setRegistryError] = useState<string | null>(null);
+  const [removingRegistryId, setRemovingRegistryId] = useState<number | null>(null);
+  const [watchRegistryOrigin, setWatchRegistryOrigin] = useState("https://registry.npmjs.org");
   const [scanError, setScanError] = useState<string | null>(null);
   const [packageError, setPackageError] = useState<string | null>(null);
   const [scanningId, setScanningId] = useState<number | null>(null);
@@ -206,16 +222,18 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody, exceptionBody] = await Promise.all([
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody] = await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
         loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
         loadJson<{ exceptions: PolicyExceptionView[] }>("/api/exceptions"),
+        loadJson<{ registries: NpmRegistry[] }>("/api/registries"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
       setPackages({ status: "ready", data: packageBody });
       setExceptions(exceptionBody.exceptions);
+      setRegistries(registryBody.registries);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -247,6 +265,7 @@ export function WatchPage({ search }: { search: string }) {
           setPackages({ status: "ready", data: { packages: [] } });
           setExceptions([]);
           setBaselineByPackage({});
+          setRegistries([]);
         }
       } catch (error) {
         if (cancelled) return;
@@ -549,13 +568,116 @@ export function WatchPage({ search }: { search: string }) {
       <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          We fetch the tarball registry.npmjs.org serves for <code className="text-snow">latest</code>
-          . New versions, mutated bytes under the same version, and dist-tag moves enqueue a job.
-          Source is not kept.
+          We fetch the tarball a registry serves for <code className="text-snow">latest</code>. Public
+          packs use registry.npmjs.org. Private registries need an encrypted token (never shown
+          again). Tarball hosts must match the saved registry. Source is not kept.
         </p>
         {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
         {!previewing && packages.status === "error" && (
           <p className="mt-6 text-sm text-danger">{packages.message}</p>
+        )}
+        {!previewing && user && installations.length > 0 && (
+          <form
+            className="mt-6 flex max-w-xl flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (ended || savingRegistry) return;
+              setRegistryError(null);
+              setSavingRegistry(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/registries", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      origin: registryOriginInput,
+                      token: registryToken,
+                      installationId: installations[0]?.id,
+                    }),
+                  });
+                  const body = (await response.json()) as { error?: string };
+                  if (!response.ok) throw new Error(body.error ?? "Could not save registry.");
+                  setRegistryToken("");
+                  setRegistryOriginInput("");
+                  await refreshSignedIn();
+                } catch (error) {
+                  setRegistryError(error instanceof Error ? error.message : "Could not save registry.");
+                } finally {
+                  setSavingRegistry(false);
+                }
+              })();
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Private registry</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="min-w-0 flex-1">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Origin</span>
+                <input
+                  value={registryOriginInput}
+                  onChange={(event) => setRegistryOriginInput(event.target.value)}
+                  placeholder="https://npm.pkg.github.com"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={ended}
+                  className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                />
+              </label>
+              <label className="min-w-0 flex-1">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Token</span>
+                <input
+                  type="password"
+                  value={registryToken}
+                  onChange={(event) => setRegistryToken(event.target.value)}
+                  placeholder="read-only token"
+                  autoComplete="new-password"
+                  disabled={ended}
+                  className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                />
+              </label>
+              <Button type="submit" disabled={ended || savingRegistry || !registryOriginInput.trim() || !registryToken.trim()}>
+                {savingRegistry ? "Saving…" : "Save token"}
+              </Button>
+            </div>
+          </form>
+        )}
+        {registryError && <p className="mt-4 text-sm text-danger">{registryError}</p>}
+        {!previewing && registries.length > 0 && (
+          <ul className="mt-4 max-w-xl divide-y divide-white/5">
+            {registries.map((registry) => (
+              <li key={registry.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <p className="font-mono text-xs text-mute">{registry.origin}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={ended || removingRegistryId === registry.id}
+                  onClick={() => {
+                    setRemovingRegistryId(registry.id);
+                    void (async () => {
+                      try {
+                        const response = await fetch(`/api/registries/${registry.id}`, {
+                          method: "DELETE",
+                          credentials: "include",
+                        });
+                        const body = (await response.json()) as { error?: string };
+                        if (!response.ok) throw new Error(body.error ?? "Could not remove registry.");
+                        await refreshSignedIn();
+                      } catch (error) {
+                        setRegistryError(
+                          error instanceof Error ? error.message : "Could not remove registry.",
+                        );
+                      } finally {
+                        setRemovingRegistryId(null);
+                      }
+                    })();
+                  }}
+                >
+                  {removingRegistryId === registry.id ? "Removing…" : "Remove"}
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
         {!previewing && user && installations.length > 0 && (
           <form
@@ -574,6 +696,7 @@ export function WatchPage({ search }: { search: string }) {
                     body: JSON.stringify({
                       packageName,
                       installationId: installations[0]?.id,
+                      registryOrigin: watchRegistryOrigin,
                     }),
                   });
                   const body = (await response.json()) as { error?: string };
@@ -600,6 +723,22 @@ export function WatchPage({ search }: { search: string }) {
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
               />
             </label>
+            <label className="min-w-0 sm:w-56">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Registry</span>
+              <select
+                value={watchRegistryOrigin}
+                onChange={(event) => setWatchRegistryOrigin(event.target.value)}
+                disabled={ended}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+              >
+                <option value="https://registry.npmjs.org">registry.npmjs.org</option>
+                {registries.map((registry) => (
+                  <option key={registry.id} value={registry.origin}>
+                    {registry.host}
+                  </option>
+                ))}
+              </select>
+            </label>
             <Button type="submit" disabled={ended || watchingPackage || !packageName.trim()}>
               {watchingPackage ? "Connecting…" : "Watch package"}
             </Button>
@@ -608,8 +747,8 @@ export function WatchPage({ search }: { search: string }) {
         {packageError && <p className="mt-4 text-sm text-danger">{packageError}</p>}
         {deskPackages.length === 0 && (previewing || packages.status === "ready") && (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            No packages yet. Connect a public package you ship. Private registries are not in this
-            slice.
+            No packages yet. Connect a public pack, or save a private registry token and watch from
+            that host.
           </p>
         )}
         {deskPackages.length > 0 && (
@@ -622,6 +761,9 @@ export function WatchPage({ search }: { search: string }) {
                     <div>
                       <p className="font-mono text-sm text-snow">{pkg.package_name}</p>
                       <p className="mt-1 text-xs text-dim">
+                        {pkg.registry_origin && pkg.registry_origin !== "https://registry.npmjs.org"
+                          ? `${pkg.registry_origin} · `
+                          : ""}
                         {pkg.last_version ? `@${pkg.last_version}` : "not scanned yet"}
                         {pkg.last_scan_status ? ` · ${pkg.last_scan_status}` : ""}
                         {pkg.last_sha256 ? ` · ${pkg.last_sha256.slice(0, 12)}` : ""}

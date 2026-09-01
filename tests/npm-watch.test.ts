@@ -9,12 +9,15 @@ import {
   diffWatchedPack,
   normalizePackageName,
   packFromRegistry,
+  type NpmAuth,
   type NpmPack,
   type NpmPort,
 } from "../src/server/npm.ts";
+import { parseRegistryOrigin } from "../src/server/npm-registry.ts";
 import { checkWatchedPackage, connectWatchedPackage, runNpmWatchPoll } from "../src/server/npm-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
+import { looksEncrypted } from "../src/server/secret-box.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
@@ -35,11 +38,22 @@ function pack(overrides: Partial<NpmPack> = {}): NpmPack {
   };
 }
 
-function stubNpm(current: { pack: NpmPack | null }, downloads: string[] = []): NpmPort {
+function stubNpm(
+  current: { pack: NpmPack | null },
+  downloads: string[] = [],
+  auths: Array<NpmAuth | undefined> = [],
+): NpmPort {
   return {
-    getPack: async () => current.pack,
-    downloadTarball: async (url) => {
-      allowedNpmTarballUrl(url);
+    getPack: async (_name, auth) => {
+      auths.push(auth);
+      return current.pack;
+    },
+    downloadTarball: async (url, _max, auth) => {
+      auths.push(auth);
+      const host = auth
+        ? (parseRegistryOrigin(auth.registryOrigin)?.host ?? "registry.npmjs.org")
+        : "registry.npmjs.org";
+      allowedNpmTarballUrl(url, host);
       downloads.push(url);
       return await readFile(FIXTURE);
     },
@@ -351,3 +365,246 @@ describe("hosted npm watch", () => {
     }
   });
 });
+
+const PRIVATE_TARBALL = "https://npm.pkg.github.com/@acme/pack/-/pack-1.0.0.tgz";
+const PRIVATE_TOKEN = "ghp_private_registry_token_value";
+
+function unusedGithub() {
+  return {
+    exchangeCode: async () => {
+      throw new Error("unused");
+    },
+    getUser: async () => {
+      throw new Error("unused");
+    },
+    listUserInstallations: async () => [],
+    getInstallation: async () => {
+      throw new Error("unused");
+    },
+    getRepo: async () => {
+      throw new Error("unused");
+    },
+    listReleaseAssets: async () => [],
+    getLatestRelease: async () => null,
+    downloadAsset: async () => Buffer.alloc(0),
+    ...skippedGithubWrites(),
+  };
+}
+
+describe("private npm registries", () => {
+  it("encrypts tokens, never returns them, and blocks SSRF and other tenants", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 8,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(8, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const other = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm({ pack: pack() }),
+      });
+
+      expect((await app.request("/api/registries")).status).toBe(401);
+      const ssrf = await app.request("/api/registries", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          origin: "https://127.0.0.1/npm",
+          token: PRIVATE_TOKEN,
+          installationId: 7,
+        }),
+      });
+      expect(ssrf.status).toBe(400);
+      const publicToken = await app.request("/api/registries", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          origin: "https://registry.npmjs.org",
+          token: PRIVATE_TOKEN,
+          installationId: 7,
+        }),
+      });
+      expect(publicToken.status).toBe(400);
+
+      const saved = await app.request("/api/registries", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          origin: "https://npm.pkg.github.com",
+          token: PRIVATE_TOKEN,
+          installationId: 7,
+        }),
+      });
+      expect(saved.status).toBe(201);
+      const savedBody = (await saved.json()) as { registry: { origin: string; token?: string } };
+      expect(savedBody.registry.origin).toBe("https://npm.pkg.github.com");
+      expect(JSON.stringify(savedBody)).not.toContain(PRIVATE_TOKEN);
+      expect(savedBody.registry.token).toBeUndefined();
+
+      const { rows } = await sql.query<{ token_ciphertext: string }>(
+        "SELECT token_ciphertext FROM npm_registries",
+      );
+      expect(looksEncrypted(rows[0]?.token_ciphertext ?? "")).toBe(true);
+      expect(rows[0]?.token_ciphertext).not.toContain(PRIVATE_TOKEN);
+
+      const listed = await app.request("/api/registries", { headers: { cookie } });
+      const listBody = (await listed.json()) as { registries: Record<string, unknown>[] };
+      expect(listBody.registries).toHaveLength(1);
+      expect(JSON.stringify(listBody)).not.toContain(PRIVATE_TOKEN);
+      expect(JSON.stringify(listBody)).not.toContain("token_ciphertext");
+
+      const stolen = await app.request("/api/registries", { headers: { cookie: other } });
+      expect(((await stolen.json()) as { registries: unknown[] }).registries).toEqual([]);
+      const stolenDelete = await app.request("/api/registries/1", {
+        method: "DELETE",
+        headers: { cookie: other },
+      });
+      expect(stolenDelete.status).toBe(404);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const unpaid = await app.request("/api/registries", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          origin: "https://npm.pkg.github.com",
+          token: PRIVATE_TOKEN,
+          installationId: 7,
+        }),
+      });
+      expect(unpaid.status).toBe(402);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("watches a private pack with the saved token and never writes the token onto the job", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const auths: Array<NpmAuth | undefined> = [];
+      const npm = stubNpm(
+        {
+          pack: pack({
+            name: "@acme/pack",
+            tarballUrl: PRIVATE_TARBALL,
+          }),
+        },
+        [],
+        auths,
+      );
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+          receiptSecret: "receipt-secret",
+        }),
+        store,
+        github: unusedGithub(),
+        npm,
+      });
+      const saved = await app.request("/api/registries", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          origin: "https://npm.pkg.github.com",
+          token: PRIVATE_TOKEN,
+          installationId: 7,
+        }),
+      });
+      expect(saved.status).toBe(201);
+      const created = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          packageName: "@acme/pack",
+          installationId: 7,
+          registryOrigin: "https://npm.pkg.github.com",
+        }),
+      });
+      expect(created.status).toBe(201);
+      expect(auths.some((auth) => auth?.token === PRIVATE_TOKEN)).toBe(true);
+
+      const { rows: jobs } = await sql.query<{ payload: unknown }>("SELECT payload FROM jobs");
+      expect(JSON.stringify(jobs)).not.toContain(PRIVATE_TOKEN);
+      const payload =
+        typeof jobs[0]?.payload === "string"
+          ? (JSON.parse(jobs[0].payload) as { registryOrigin?: string; tarballUrl?: string })
+          : (jobs[0]?.payload as { registryOrigin?: string; tarballUrl?: string });
+      expect(payload.registryOrigin).toBe("https://npm.pkg.github.com");
+      expect(payload.tarballUrl).toBe(PRIVATE_TARBALL);
+
+      const downloadAuths: Array<NpmAuth | undefined> = [];
+      const workerNpm = stubNpm(
+        { pack: pack({ tarballUrl: PRIVATE_TARBALL }) },
+        [],
+        downloadAuths,
+      );
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        npm: workerNpm,
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+      });
+      await worker.tick();
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        const { rows } = await sql.query<{ status: string }>("SELECT status FROM jobs");
+        if (rows[0]?.status === "done") break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await worker.stop();
+      expect(downloadAuths.some((auth) => auth?.token === PRIVATE_TOKEN)).toBe(true);
+      const { rows: done } = await sql.query<{ status: string }>("SELECT status FROM jobs");
+      expect(done[0]?.status).toBe("done");
+    } finally {
+      await sql.close();
+    }
+  });
+});
+

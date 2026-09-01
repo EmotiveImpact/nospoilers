@@ -1,4 +1,16 @@
+import {
+  parseRegistryOrigin,
+  PUBLIC_NPM_HOST,
+  PUBLIC_NPM_ORIGIN,
+  registryMetadataUrl,
+} from "./npm-registry.ts";
+
 export type NpmDistTags = Record<string, string>;
+
+export type NpmAuth = {
+  registryOrigin: string;
+  token?: string;
+};
 
 export type NpmPack = {
   name: string;
@@ -11,8 +23,8 @@ export type NpmPack = {
 };
 
 export type NpmPort = {
-  getPack: (packageName: string) => Promise<NpmPack | null>;
-  downloadTarball: (url: string, maxBytes: number) => Promise<Buffer>;
+  getPack: (packageName: string, auth?: NpmAuth) => Promise<NpmPack | null>;
+  downloadTarball: (url: string, maxBytes: number, auth?: NpmAuth) => Promise<Buffer>;
 };
 
 const NAME_RE = /^(?:@[a-z0-9][a-z0-9-._]{0,212}\/)?[a-z0-9][a-z0-9-._]{0,213}$/;
@@ -27,13 +39,17 @@ export function normalizePackageName(raw: string): string | null {
   return name;
 }
 
-export function allowedNpmTarballUrl(raw: string): URL {
+export function allowedNpmTarballUrl(raw: string, allowedHost: string = PUBLIC_NPM_HOST): URL {
   const url = new URL(raw);
   if (url.protocol !== "https:") {
     throw new Error("npm tarball URL must be https.");
   }
-  if (url.hostname.toLowerCase() !== "registry.npmjs.org") {
-    throw new Error("npm tarball host is not registry.npmjs.org.");
+  if (url.username || url.password) {
+    throw new Error("npm tarball URL must not include credentials.");
+  }
+  const host = url.hostname.toLowerCase();
+  if (host !== allowedHost.toLowerCase()) {
+    throw new Error(`npm tarball host is not ${allowedHost}.`);
   }
   return url;
 }
@@ -88,13 +104,17 @@ type RegistryBody = {
   >;
 };
 
-export function packFromRegistry(packageName: string, body: RegistryBody): NpmPack | null {
+export function packFromRegistry(
+  packageName: string,
+  body: RegistryBody,
+  allowedHost: string = PUBLIC_NPM_HOST,
+): NpmPack | null {
   const distTags = body["dist-tags"] && typeof body["dist-tags"] === "object" ? body["dist-tags"] : {};
   const version = distTags.latest;
   if (!version || typeof version !== "string") return null;
   const dist = body.versions?.[version]?.dist;
   if (!dist?.tarball || typeof dist.tarball !== "string") return null;
-  allowedNpmTarballUrl(dist.tarball);
+  allowedNpmTarballUrl(dist.tarball, allowedHost);
   return {
     name: typeof body.name === "string" ? body.name : packageName,
     version,
@@ -104,6 +124,30 @@ export function packFromRegistry(packageName: string, body: RegistryBody): NpmPa
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
   };
+}
+
+function resolveAuth(auth?: NpmAuth): { origin: string; host: string; token?: string } {
+  if (!auth?.registryOrigin) {
+    return { origin: PUBLIC_NPM_ORIGIN, host: PUBLIC_NPM_HOST };
+  }
+  const parsed = parseRegistryOrigin(auth.registryOrigin);
+  if (!parsed) throw new Error("Invalid npm registry origin.");
+  const token = auth.token?.trim();
+  return {
+    origin: parsed.origin,
+    host: parsed.host,
+    token: parsed.host === PUBLIC_NPM_HOST ? undefined : token || undefined,
+  };
+}
+
+function npmHeaders(auth?: NpmAuth, acceptJson = false): Record<string, string> {
+  const resolved = resolveAuth(auth);
+  const headers: Record<string, string> = {
+    "User-Agent": "NoSpoilers",
+    ...(acceptJson ? { Accept: "application/json" } : {}),
+  };
+  if (resolved.token) headers.Authorization = `Bearer ${resolved.token}`;
+  return headers;
 }
 
 async function readLimitedBody(response: Response, maxBytes: number): Promise<Buffer> {
@@ -128,27 +172,29 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 
 export function createNpmPort(): NpmPort {
   return {
-    async getPack(packageName) {
+    async getPack(packageName, auth) {
       const name = normalizePackageName(packageName);
       if (!name) throw new Error("Invalid npm package name.");
-      const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, {
-        headers: { Accept: "application/json", "User-Agent": "NoSpoilers" },
+      const resolved = resolveAuth(auth);
+      const response = await fetch(registryMetadataUrl(resolved.origin, name), {
+        headers: npmHeaders(auth, true),
         signal: AbortSignal.timeout(20_000),
       });
       if (response.status === 404) return null;
       if (!response.ok) throw new Error(`npm registry returned ${response.status}.`);
       const body = (await response.json()) as RegistryBody;
-      return packFromRegistry(name, body);
+      return packFromRegistry(name, body, resolved.host);
     },
-    async downloadTarball(url, maxBytes) {
-      allowedNpmTarballUrl(url);
+    async downloadTarball(url, maxBytes, auth) {
+      const resolved = resolveAuth(auth);
+      allowedNpmTarballUrl(url, resolved.host);
       const response = await fetch(url, {
-        headers: { "User-Agent": "NoSpoilers" },
+        headers: npmHeaders(auth),
         redirect: "follow",
         signal: AbortSignal.timeout(60_000),
       });
       if (!response.ok) throw new Error(`npm tarball download returned ${response.status}.`);
-      allowedNpmTarballUrl(response.url);
+      allowedNpmTarballUrl(response.url, resolved.host);
       return await readLimitedBody(response, maxBytes);
     },
   };

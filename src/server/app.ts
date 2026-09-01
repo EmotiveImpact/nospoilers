@@ -20,6 +20,12 @@ import {
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
 import { checkWatchedPackage, connectWatchedPackage } from "./npm-watch.ts";
+import {
+  isPublicNpmOrigin,
+  MAX_NPM_REGISTRIES,
+  parseRegistryOrigin,
+  validateRegistryToken,
+} from "./npm-registry.ts";
 import { clientKey, createRateLimiter } from "./rate-limit.ts";
 import {
   discoverAndQueueProspects,
@@ -571,6 +577,84 @@ export function createApp(deps: AppDeps): Hono {
     );
   });
 
+  app.get("/api/registries", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const registries = await deps.store.listNpmRegistriesForUser(user.userId);
+    return c.json({ registries });
+  });
+
+  app.post("/api/registries", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach this registry to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    if (!(await deps.store.installationWorkAllowed(installationId))) {
+      return c.json({ error: "Coverage ended. Subscribe to save a private registry." }, 402);
+    }
+    const parsed = parseRegistryOrigin(String(body.origin ?? ""));
+    if (!parsed) {
+      return c.json(
+        { error: "Use an https registry host. Loopback, private, and IP addresses are not allowed." },
+        400,
+      );
+    }
+    if (isPublicNpmOrigin(parsed.origin)) {
+      return c.json(
+        { error: "registry.npmjs.org does not need a token. Watch the public pack directly." },
+        400,
+      );
+    }
+    const token = validateRegistryToken(String(body.token ?? ""));
+    if (!token) {
+      return c.json({ error: "Registry token must be 8–8192 characters with no whitespace." }, 400);
+    }
+    const count = await deps.store.countNpmRegistries(installationId);
+    const existing = (await deps.store.listNpmRegistriesForUser(user.userId)).some(
+      (row) => row.installation_id === installationId && row.origin === parsed.origin,
+    );
+    if (!existing && count >= MAX_NPM_REGISTRIES) {
+      return c.json({ error: `This install already has ${MAX_NPM_REGISTRIES} private registries.` }, 400);
+    }
+    try {
+      const registry = await deps.store.upsertNpmRegistry({
+        installationId,
+        origin: parsed.origin,
+        host: parsed.host,
+        token,
+      });
+      return c.json({ ok: true, registry }, existing ? 200 : 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that registry." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/registries/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown registry." }, 404);
+    const removed = await deps.store.deleteNpmRegistryForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown registry." }, 404);
+    return c.json({ ok: true });
+  });
+
   app.get("/api/packages", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -599,6 +683,7 @@ export function createApp(deps: AppDeps): Hono {
       const result = await connectWatchedPackage(deps.store, npm, {
         installationId,
         packageName: String(body.packageName ?? ""),
+        registryOrigin: String(body.registryOrigin ?? ""),
       });
       if (result.queued) deps.wakeWorker?.();
       return c.json({ ok: true, queued: result.queued, package: result.package }, 201);

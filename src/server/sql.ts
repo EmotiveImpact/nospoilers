@@ -168,6 +168,15 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "007_policy_exceptions",
   ]);
+  await sql.exec(`
+    ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS registry_origin TEXT NOT NULL DEFAULT 'https://registry.npmjs.org';
+    ALTER TABLE watched_packages DROP CONSTRAINT IF EXISTS watched_packages_installation_id_package_name_key;
+    CREATE UNIQUE INDEX IF NOT EXISTS watched_packages_install_name_registry_uidx
+      ON watched_packages (installation_id, package_name, registry_origin);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "008_npm_registries",
+  ]);
 }
 
 export function num(value: unknown): number {
