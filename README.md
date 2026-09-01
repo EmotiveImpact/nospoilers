@@ -93,7 +93,8 @@ stored and never fetched.
 3. In the UI, **Sign in with GitHub**, then **Install on GitHub**. Choose only that throwaway repo.
 4. In GitHub: Settings → General → Danger zone → **Change visibility** → Public.
 5. Within about a minute the Watch page should show **Went public**.
-6. (Optional) Create a Release, attach `fixtures/sourcemap.tgz`, wait for **Spoilers in …** or click **Scan latest release**.
+6. (Optional) Create a Release and attach `fixtures/sourcemap.tgz`. Publishing with no pack yet,
+   then uploading the asset, still scans (`release.edited`). Or click **Scan latest release**.
 
 An agent cannot create or publicize that repo with the GitHub App’s read-only token. To let an
 agent finish the proof, create `EmotiveImpact/nospoilers-throwaway` yourself, then add a

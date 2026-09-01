@@ -84,7 +84,9 @@ Read in this order:
   pack that is twice as large, or at least 5 MiB larger unpacked, mints SIZE-003 against the
   approved baseline or the previous receipt. First scans do not. The finding is a warning,
   allowlistable, and appears on Watch alerts and GitHub Checks. Source is not stored. The
-  15-minute worker timer is still recovery only — enqueue wakes the worker.
+  15-minute worker timer is still recovery only — enqueue wakes the worker. GitHub Release
+  `edited` (and prereleased/released) enqueue another heavy scan only when pack assets change.
+  `unpublished` and `deleted` are light alerts and never download.
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
   and approve a packed receipt as the shipping baseline. Hosted scans apply those exceptions
   before minting a receipt. CLI and the GitHub Action load `.nospoilers.yml` when present.
@@ -267,6 +269,9 @@ SIZE-003 unexpected unpacked growth is in (2× or ≥5 MiB versus previous recei
 baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a Pricing change.
 Prerelease npm channel tarballs are in (`next`/`beta`/`canary`/`rc`/`alpha`/`preview` when those
 tags point at another version, cap three extras; other dist-tags stay tag-only). Event-driven.
+Not a Pricing change.
+GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
+idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.

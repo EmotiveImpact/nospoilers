@@ -77,7 +77,14 @@ export function alertSeverity(input: { kind: string; findings?: Finding[] }): Al
   if (CRITICAL_KINDS.has(input.kind)) return "critical";
   if (input.findings?.some((row) => row.severity === "warn")) return "warn";
   if (input.kind.startsWith("package_") || input.kind.startsWith("identity_") || input.kind === "app_unsuspended") return "warn";
-  if (input.kind === "fork" || input.kind === "npm_dist_tag") return "warn";
+  if (
+    input.kind === "fork" ||
+    input.kind === "npm_dist_tag" ||
+    input.kind === "release_unpublished" ||
+    input.kind === "release_deleted"
+  ) {
+    return "warn";
+  }
   return "info";
 }
 

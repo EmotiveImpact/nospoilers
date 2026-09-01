@@ -495,6 +495,10 @@ function kindLabel(kind: string): string {
     case "release_scan":
     case "scan_latest_release":
       return "Release pack";
+    case "release_unpublished":
+      return "Release unpublished";
+    case "release_deleted":
+      return "Release deleted";
     case "push_sensitive_path":
       return "Path watch";
     case "npm_scan":
@@ -1427,7 +1431,9 @@ export function WatchPage({ search }: { search: string }) {
             .nospoilers.yml (no silent allowlist), bundler hints, and that CI workflow if it is
             missing. Both PRs need Contents write and Pull requests write. They are reviewable and
             never merged. They do not need Administration, and they do not make the repository
-            private or delete a Release asset.
+            private or delete a Release asset. A GitHub Release is scanned when it is published,
+            and again when pack assets are added or replaced. Unpublishing or deleting a release
+            is an alert only; gone assets are not downloaded.
           </p>
           {previewing ? (
             <p className="mt-3 text-sm leading-relaxed text-mute">

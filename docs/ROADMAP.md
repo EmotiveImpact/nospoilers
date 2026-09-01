@@ -32,6 +32,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Prerelease npm channels: `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs unpack when
   those tags point at another version (cap three extras). Other dist-tag moves stay tag-only
   alerts and do not download. Event-driven. Not a Pricing change.
+- GitHub Release `edited` / `prereleased` / `released` enqueue another pack scan only when
+  attached pack assets change. `unpublished` and `deleted` are light alerts and never download.
+  Event-driven. Not a Pricing change.
 - Private npm registries: encrypted per-install tokens, same-host tarball downloads only.
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.

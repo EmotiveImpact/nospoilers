@@ -62,7 +62,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   malware verdict, and never auto-advisory or takedown.
 - Watch packs from private HTTPS registries already saved on those installations. Token
   values are never returned.
-- Trigger a latest-release scan on those repositories while coverage is active.
+- Trigger a latest-release scan on those repositories while coverage is active. GitHub
+  `release.published` and later pack-asset edits enqueue the same hosted unpack; unpublishing
+  or deleting a release is an alert only.
 - Read the packed-artifact setup workflow YAML and the remediation file bundle on those
   repositories. Opening the reviewable PRs is an install admin action.
 - Read signed scan receipts for those installations and diff against an approved baseline
@@ -290,7 +292,9 @@ never returns payloads or prospect scans, other tenants cannot read those jobs, 
 the summary is queued/running/done/failed counts with no scan-credit field.
 `tests/hosted.test.ts` proves Solo is capped to one concurrent heavy unpack, Team gets
 three, another tenant is not stuck behind a Solo queue, and the global heavy cap still
-applies.
+applies. The same file proves GitHub `release.edited` rescans only when pack assets change,
+title-only edits and non-pack assets do not enqueue, assets attached after publish enqueue a
+second scan, and `unpublished`/`deleted` are light jobs that alert without downloading.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,

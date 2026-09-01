@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import type { Store } from "./store.ts";
-import { cheapSensitivePaths, pathsFromPushPayload } from "./paths.ts";
+import { cheapSensitivePaths, isPackAssetName, pathsFromPushPayload } from "./paths.ts";
 import {
   describeInstallHealth,
   namesFromRepoList,
@@ -22,6 +23,33 @@ function num(value: unknown): number {
 
 function bool(value: unknown): boolean {
   return Boolean(value);
+}
+
+export function packAssetFingerprint(assets: unknown): string {
+  if (!Array.isArray(assets)) return "empty";
+  const rows = assets
+    .filter((asset): asset is Record<string, unknown> => Boolean(asset) && typeof asset === "object")
+    .filter((asset) => isPackAssetName(String(asset.name ?? "")))
+    .map((asset) => ({
+      id: asset.id ?? "",
+      name: String(asset.name ?? ""),
+      size: asset.size ?? "",
+      digest: String(asset.digest ?? ""),
+    }))
+    .sort(
+      (left, right) =>
+        String(left.id).localeCompare(String(right.id)) || left.name.localeCompare(right.name),
+    );
+  if (rows.length === 0) return "empty";
+  return createHash("sha256").update(JSON.stringify(rows)).digest("hex").slice(0, 16);
+}
+
+export function releaseScanDeliveryId(
+  installationId: number,
+  releaseId: number,
+  fingerprint: string,
+): string {
+  return `release-scan:${installationId}:${releaseId}:${fingerprint}`;
 }
 
 function repoFrom(payload: Json): {
@@ -299,19 +327,52 @@ export async function enqueueFromWebhook(
 
   if (event === "release") {
     await rememberRepo(store, installationId, payload);
-    if (str(payload.action) !== "published") return { queued: false, kind: event };
+    const action = str(payload.action);
     const release = obj(payload.release);
     const repo = repoFrom(payload);
+    const releaseId = num(release.id);
+    const tag = str(release.tag_name);
+    if (!repo || !Number.isFinite(releaseId) || releaseId <= 0 || !tag) {
+      return { queued: false, kind: event };
+    }
+    const releaseName = str(release.name) || tag;
+
+    if (action === "unpublished" || action === "deleted") {
+      const kind = action === "unpublished" ? "release_unpublished" : "release_deleted";
+      return await enqueueCovered(store, installationId, {
+        deliveryId: `${kind}:${installationId}:${releaseId}`,
+        priority: "light",
+        kind,
+        payload: {
+          installationId,
+          repo,
+          releaseId,
+          tag,
+          name: releaseName,
+        },
+      });
+    }
+
+    const scanActions = new Set(["published", "edited", "prereleased", "released"]);
+    if (!scanActions.has(action)) {
+      return { queued: false, kind: event };
+    }
+
+    const fingerprint = packAssetFingerprint(release.assets);
+    if (action !== "published" && fingerprint === "empty") {
+      return { queued: false, kind: "release_scan" };
+    }
+
     return await enqueueCovered(store, installationId, {
-      deliveryId,
+      deliveryId: releaseScanDeliveryId(installationId, releaseId, fingerprint),
       priority: "heavy",
       kind: "release_scan",
       payload: {
         installationId,
         repo,
-        releaseId: num(release.id),
-        tag: str(release.tag_name),
-        name: str(release.name) || str(release.tag_name),
+        releaseId,
+        tag,
+        name: releaseName,
         targetCommitish: str(release.target_commitish),
       },
     });

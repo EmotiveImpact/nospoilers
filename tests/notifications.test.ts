@@ -859,6 +859,8 @@ describe("Notification routes", () => {
     expect(parseRouteMinSeverity("pager")).toBeNull();
     expect(alertSeverity({ kind: "repo_created_public" })).toBe("critical");
     expect(alertSeverity({ kind: "release_scan", findings: [] })).toBe("info");
+    expect(alertSeverity({ kind: "release_unpublished" })).toBe("warn");
+    expect(alertSeverity({ kind: "release_deleted" })).toBe("warn");
     expect(
       alertSeverity({
         kind: "npm_scan",

@@ -209,6 +209,20 @@ export async function handleJob(
     return;
   }
 
+  if (job.kind === "release_unpublished" || job.kind === "release_deleted") {
+    const tag = String(payload.tag ?? payload.name ?? payload.releaseId);
+    const gone = job.kind === "release_unpublished" ? "unpublished" : "deleted";
+    await deps.notifier.send({
+      ...alertBase,
+      kind: job.kind,
+      title: repo
+        ? `Release ${tag} was ${gone} on ${repo.fullName}`
+        : `Release ${tag} was ${gone}`,
+      body: "GitHub no longer hosts this release. NoSpoilers will not scan assets that are gone. Previous receipts stay on Watch.",
+    });
+    return;
+  }
+
   if (job.kind === "scan_latest_release") {
     if (!repo) throw new Error("scan_latest_release job missing repo");
     const latest = await deps.github.getLatestRelease(installationId, repo.owner, repo.name);

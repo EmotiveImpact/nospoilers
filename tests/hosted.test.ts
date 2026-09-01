@@ -8,6 +8,7 @@ import { runVisibilityPoll } from "../src/server/poller.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
+import { packAssetFingerprint, releaseScanDeliveryId } from "../src/server/webhooks.ts";
 import { scan } from "../src/scanner/index.ts";
 import { SOLO_HEAVY_FAIR_USE, TEAM_HEAVY_FAIR_USE } from "../src/server/fair-use.ts";
 
@@ -232,6 +233,225 @@ describe("GitHub webhooks", () => {
       expect(body.skipped).toBe("uncovered");
       const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
       expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("fingerprints pack assets without download URLs", () => {
+    const withUrls = packAssetFingerprint([
+      {
+        id: 2,
+        name: "app.tgz",
+        size: 12,
+        digest: "sha256:abc",
+        url: "https://api.github.com/repos/octo/throwaway/releases/assets/2",
+        browser_download_url: "https://github.com/octo/throwaway/releases/download/v1/app.tgz",
+      },
+      {
+        id: 1,
+        name: "README.md",
+        size: 4,
+        url: "https://api.github.com/repos/octo/throwaway/releases/assets/1",
+      },
+    ]);
+    const withoutUrls = packAssetFingerprint([
+      { id: 2, name: "app.tgz", size: 12, digest: "sha256:abc" },
+    ]);
+    expect(withUrls).toBe(withoutUrls);
+    expect(withUrls).not.toBe("empty");
+    expect(packAssetFingerprint([{ name: "notes.txt", size: 1 }])).toBe("empty");
+    expect(releaseScanDeliveryId(7, 55, withUrls)).toBe(`release-scan:7:55:${withUrls}`);
+  });
+
+  it("scans a release again only when pack assets change", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const pack = {
+        id: 901,
+        name: "app.tgz",
+        size: 12,
+        digest: "sha256:abc",
+        url: "https://api.github.com/repos/octo/throwaway/releases/assets/901",
+        browser_download_url: "https://github.com/octo/throwaway/releases/download/v1.2.0/app.tgz?token=ghs_secret",
+      };
+      const published = await postWebhook(app, "release", "d-rel-edit-1", {
+        action: "published",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 80, tag_name: "v1.2.0", name: "v1.2.0", assets: [pack] },
+      });
+      const editedSame = await postWebhook(app, "release", "d-rel-edit-2", {
+        action: "edited",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 80, tag_name: "v1.2.0", name: "v1.2.0 notes", assets: [pack] },
+      });
+      const editedNew = await postWebhook(app, "release", "d-rel-edit-3", {
+        action: "edited",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: {
+          id: 80,
+          tag_name: "v1.2.0",
+          name: "v1.2.0 notes",
+          assets: [{ ...pack, id: 902, size: 24, digest: "sha256:def" }],
+        },
+      });
+      expect(published.status).toBe(200);
+      expect(editedSame.status).toBe(200);
+      expect(editedNew.status).toBe(200);
+      expect(((await editedSame.json()) as { queued: boolean }).queued).toBe(false);
+      expect(((await editedNew.json()) as { queued: boolean }).queued).toBe(true);
+      const { rows } = await store.sql.query<{
+        kind: string;
+        priority: string;
+        delivery_id: string;
+        payload: unknown;
+      }>("SELECT kind, priority, delivery_id, payload FROM jobs ORDER BY id");
+      expect(rows).toHaveLength(2);
+      expect(rows.every((row) => row.kind === "release_scan" && row.priority === "heavy")).toBe(true);
+      const firstFp = packAssetFingerprint([pack]);
+      const secondFp = packAssetFingerprint([{ ...pack, id: 902, size: 24, digest: "sha256:def" }]);
+      expect(rows.map((row) => row.delivery_id)).toEqual([
+        releaseScanDeliveryId(7, 80, firstFp),
+        releaseScanDeliveryId(7, 80, secondFp),
+      ]);
+      const payloads = JSON.stringify(rows.map((row) => row.payload));
+      expect(payloads).not.toMatch(/browser_download_url|releases\/assets|ghs_secret|token=/i);
+      expect(payloads).not.toContain('"assets"');
+    });
+  });
+
+  it("does not scan an edited release that still has no pack", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const created = await postWebhook(app, "release", "d-rel-created", {
+        action: "created",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 81, tag_name: "v1.2.1", name: "v1.2.1", assets: [] },
+      });
+      const edited = await postWebhook(app, "release", "d-rel-edited-empty", {
+        action: "edited",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 81, tag_name: "v1.2.1", name: "v1.2.1", assets: [{ name: "notes.txt", size: 4 }] },
+      });
+      expect(created.status).toBe(200);
+      expect(edited.status).toBe(200);
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
+      expect(Number(rows[0]?.n)).toBe(0);
+    });
+  });
+
+  it("queues a second scan when assets appear after publish", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "release", "d-rel-empty-pub", {
+        action: "published",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 82, tag_name: "v1.2.2", name: "v1.2.2" },
+      });
+      const edited = await postWebhook(app, "release", "d-rel-later-asset", {
+        action: "edited",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: {
+          id: 82,
+          tag_name: "v1.2.2",
+          name: "v1.2.2",
+          assets: [{ id: 910, name: "app.zip", size: 40 }],
+        },
+      });
+      expect(((await edited.json()) as { queued: boolean; kind: string }).kind).toBe("release_scan");
+      const { rows } = await store.sql.query<{ delivery_id: string }>(
+        "SELECT delivery_id FROM jobs ORDER BY id",
+      );
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.delivery_id).toBe(releaseScanDeliveryId(7, 82, "empty"));
+      expect(rows[1]?.delivery_id).toBe(
+        releaseScanDeliveryId(7, 82, packAssetFingerprint([{ id: 910, name: "app.zip", size: 40 }])),
+      );
+    });
+  });
+
+  it("alerts when a release is unpublished or deleted without downloading", async () => {
+    await withStore(async ({ store }) => {
+      let downloads = 0;
+      const github = mockGithub({
+        listReleaseAssets: async () => {
+          throw new Error("unpublished/deleted jobs must not list assets");
+        },
+        downloadAsset: async () => {
+          downloads += 1;
+          throw new Error("unpublished/deleted jobs must not download");
+        },
+      });
+      const { app } = appFor(store, github);
+      const unpublished = await postWebhook(app, "release", "d-rel-unpub", {
+        action: "unpublished",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: {
+          id: 83,
+          tag_name: "v1.3.0",
+          name: "v1.3.0",
+          assets: [
+            {
+              name: "app.tgz",
+              url: "https://api.github.com/repos/octo/throwaway/releases/assets/1",
+            },
+          ],
+        },
+      });
+      const deleted = await postWebhook(app, "release", "d-rel-del", {
+        action: "deleted",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 84, tag_name: "v1.3.1", name: "v1.3.1" },
+      });
+      expect(unpublished.status).toBe(200);
+      expect(deleted.status).toBe(200);
+      const { rows: jobs } = await store.sql.query<{
+        kind: string;
+        priority: string;
+        payload: unknown;
+      }>("SELECT kind, priority, payload FROM jobs ORDER BY id");
+      expect(jobs).toEqual([
+        { kind: "release_unpublished", priority: "light", payload: expect.any(Object) },
+        { kind: "release_deleted", priority: "light", payload: expect.any(Object) },
+      ]);
+      expect(JSON.stringify(jobs.map((row) => row.payload))).not.toMatch(
+        /browser_download_url|releases\/assets|ghs_secret|token=/i,
+      );
+
+      const worker = createWorker({
+        store,
+        github,
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 4,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      const started = Date.now();
+      while (Date.now() - started < 4000) {
+        const { rows } = await store.sql.query<{ n: string }>(
+          "SELECT count(*)::text AS n FROM alerts WHERE kind IN ('release_unpublished', 'release_deleted')",
+        );
+        if (Number(rows[0]?.n) === 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await worker.stop();
+      const { rows: alerts } = await store.sql.query<{ kind: string; title: string; body: string }>(
+        "SELECT kind, title, body FROM alerts ORDER BY id",
+      );
+      expect(alerts.map((row) => row.kind)).toEqual(["release_unpublished", "release_deleted"]);
+      expect(alerts[0]?.title).toContain("unpublished");
+      expect(alerts[1]?.title).toContain("deleted");
+      expect(alerts.every((row) => !/github\.com|token=/i.test(`${row.title} ${row.body}`))).toBe(true);
+      expect(downloads).toBe(0);
     });
   });
 });

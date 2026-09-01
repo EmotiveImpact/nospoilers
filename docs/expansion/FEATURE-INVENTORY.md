@@ -111,7 +111,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Surface | Status | Home |
 | --- | --- | --- |
-| GitHub Release assets | Built/partial real proof | NoSpoilers |
+| GitHub Release assets | Built: published plus edited/prereleased/released when pack assets change; unpublished/deleted are light alerts with no download. Real throwaway fixture scan is still unproven | NoSpoilers |
 | npm registry packages | Built: customer watch of public `latest` plus prerelease-channel tarballs | NoSpoilers |
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for exposed files, credentials, and linked internal paths, SSRF blocked, never executed | NoSpoilers |
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
@@ -141,6 +141,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Collaborator added | Built/needs real proof | NoSpoilers |
 | Fork event | Built/needs real proof | NoSpoilers |
 | Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
+| GitHub Release unpublished or deleted | Built: light Watch alert; gone assets are not downloaded | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | Hourly missed-webhook visibility check | Built | NoSpoilers |
 | Event acknowledgement and assignment | Built: ack/assign to install members; append-only `alert_events` | NoSpoilers |
