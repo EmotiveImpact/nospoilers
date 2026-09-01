@@ -28,6 +28,7 @@ Unauthenticated browser traffic.
 - Start unbounded hosted unpack work.
 - Call `POST /api/v1/scan` without a valid, unrevoked scan API token for an installation
   that still has coverage.
+- Read another customer’s release revisions.
 
 ### Customer Member
 
@@ -52,13 +53,15 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
   unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
   deletes the bytes.
+- List append-only release revisions for those installations (channel, digests, source
+  revision, stored CI run URL). Historical rows cannot be edited or deleted.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, or scan receipts.
-- Edit or delete scan receipts. Receipts are append-only.
+- See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- Edit or delete scan receipts or release revisions. Both are append-only.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
 
@@ -164,4 +167,7 @@ permission skips return copy-paste YAML instead of failing the worker, and the m
 is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
 never returned, blocked off-tenant, and never written onto jobs. `tests/scan-api.test.ts`
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
-and revoked tokens cannot unpack. Keep those tests green when adding internal routes.
+and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
+are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
+SSRF CI URLs, and keep older HMAC receipts verifiable. Keep those tests green when adding
+internal routes.

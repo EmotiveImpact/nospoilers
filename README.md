@@ -81,7 +81,10 @@ npx tsx src/cli.ts verify ./package.tgz --receipt ./receipt.json
 `scan` exits 0 on pass, 1 on failed policy, and 2 when the result is inconclusive (limits,
 malformed archive, timeout). Inconclusive is never a clean bill of health. `verify` re-hashes the
 file and checks the HMAC receipt. Set `RECEIPT_SECRET` (or `SESSION_SECRET`) to the same value the
-host used; production should move this signer to KMS.
+host used. The development signer is HMAC `dev-hmac` behind an adapter; production signing should
+move this signer to KMS. Hosted scans may send `--channel`, `--source-revision`, and `--ci-run`
+(or `NOSPOILERS_CHANNEL` / `NOSPOILERS_SOURCE_REVISION` / `NOSPOILERS_CI_RUN`). CI run URLs are
+stored and never fetched.
 
 ## Prove the loop on a throwaway repo
 

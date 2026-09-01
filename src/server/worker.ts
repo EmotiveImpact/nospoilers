@@ -14,6 +14,7 @@ import { isPackAssetName } from "./paths.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
+import { inferReleaseChannel } from "./release-ledger.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 
@@ -275,6 +276,8 @@ export async function handleJob(
           repoId: repo.id,
           coordinate,
           report,
+          channel: inferReleaseChannel(tag),
+          sourceRevision: tag,
         });
         const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
@@ -391,6 +394,8 @@ export async function handleJob(
           packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
           coordinate: `npm:${packageName}@${version}`,
           report,
+          channel: inferReleaseChannel(version),
+          sourceRevision: version,
         });
         const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
@@ -425,6 +430,8 @@ export async function handleJob(
             packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
             coordinate: `npm:${packageName}@${version}`,
             report,
+            channel: inferReleaseChannel(version),
+            sourceRevision: version,
           });
         }
         await deps.notifier.send({

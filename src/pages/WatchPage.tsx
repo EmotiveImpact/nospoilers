@@ -63,6 +63,17 @@ type ScanApiToken = {
   created_at: string;
 };
 
+type ReleaseRevision = {
+  id: number;
+  channel: "stable" | "beta" | "canary";
+  coordinate: string;
+  artifactSha256: string;
+  sourceRevision: string | null;
+  ciRunUrl: string | null;
+  mismatch: boolean;
+  createdAt: string;
+};
+
 type ReleaseDiffView = {
   versus?: "baseline" | "previous" | null;
   baseline?: {
@@ -199,6 +210,7 @@ export function WatchPage({ search }: { search: string }) {
   });
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
+  const [releases, setReleases] = useState<ReleaseRevision[]>([]);
   const [scanTokenName, setScanTokenName] = useState("CI");
   const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
   const [mintingScanToken, setMintingScanToken] = useState(false);
@@ -238,13 +250,15 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody] = await Promise.all([
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody] =
+        await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
         loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
         loadJson<{ exceptions: PolicyExceptionView[] }>("/api/exceptions"),
         loadJson<{ registries: NpmRegistry[] }>("/api/registries"),
         loadJson<{ tokens: ScanApiToken[] }>("/api/scan-tokens"),
+        loadJson<{ releases: ReleaseRevision[] }>("/api/releases"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
@@ -252,6 +266,7 @@ export function WatchPage({ search }: { search: string }) {
       setExceptions(exceptionBody.exceptions);
       setRegistries(registryBody.registries);
       setScanTokens(tokenBody.tokens);
+      setReleases(releaseBody.releases);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -285,6 +300,7 @@ export function WatchPage({ search }: { search: string }) {
           setBaselineByPackage({});
           setRegistries([]);
           setScanTokens([]);
+          setReleases([]);
           setRevealedScanToken(null);
         }
       } catch (error) {
@@ -1082,6 +1098,43 @@ export function WatchPage({ search }: { search: string }) {
               </ul>
             )}
           </>
+        )}
+      </section>
+
+      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Releases</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
+          canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
+          and never fetched.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
+        ) : releases.length === 0 ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
+        ) : (
+          <ul className="mt-6 divide-y divide-white/5">
+            {releases.map((release) => (
+              <li key={release.id} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
+                <div className="min-w-0">
+                  <p className="font-mono text-sm text-snow">{release.coordinate}</p>
+                  <p className="mt-1 text-xs text-dim">
+                    {release.channel}
+                    {release.sourceRevision ? ` · ${release.sourceRevision}` : ""}
+                    {` · ${release.artifactSha256.slice(0, 12)}`}
+                    {release.createdAt ? ` · ${release.createdAt.slice(0, 10)}` : ""}
+                  </p>
+                </div>
+                {release.mismatch ? (
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                    digest changed
+                  </span>
+                ) : (
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

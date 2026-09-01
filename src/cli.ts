@@ -8,11 +8,21 @@ import { loadPolicyFile } from "./policy.ts";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
 import { receiptSecretFromEnv, verifyReceipt } from "./receipt.ts";
 import type { ScanReport } from "./scanner/types.ts";
+import { inferReleaseChannel } from "./server/release-ledger.ts";
+
+function githubActionsRunUrl(): string {
+  const server = (process.env.GITHUB_SERVER_URL || "").replace(/\/$/, "");
+  const repo = process.env.GITHUB_REPOSITORY || "";
+  const runId = process.env.GITHUB_RUN_ID || "";
+  if (!server.startsWith("https://") || !repo || !runId) return "";
+  return `${server}/${repo}/actions/runs/${runId}`;
+}
 
 async function scanViaHostedApi(
   target: string,
   apiUrl: string,
   token: string,
+  meta: { channel?: string; sourceRevision?: string; ciRun?: string },
 ): Promise<{ report: ScanReport; receiptId?: number }> {
   const info = statSync(target);
   if (info.isDirectory()) {
@@ -20,13 +30,23 @@ async function scanViaHostedApi(
   }
   const bytes = await readFile(target);
   const origin = apiUrl.replace(/\/$/, "");
+  const channel =
+    (meta.channel || process.env.NOSPOILERS_CHANNEL || "").trim() ||
+    (process.env.GITHUB_REF_NAME ? inferReleaseChannel(process.env.GITHUB_REF_NAME) : "");
+  const sourceRevision =
+    (meta.sourceRevision || process.env.NOSPOILERS_SOURCE_REVISION || process.env.GITHUB_SHA || "").trim();
+  const ciRun = (meta.ciRun || process.env.NOSPOILERS_CI_RUN || githubActionsRunUrl()).trim();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "X-Filename": path.basename(target),
+    "Content-Type": "application/octet-stream",
+  };
+  if (channel) headers["X-NoSpoilers-Channel"] = channel;
+  if (sourceRevision) headers["X-NoSpoilers-Source-Revision"] = sourceRevision;
+  if (ciRun) headers["X-NoSpoilers-CI-Run"] = ciRun;
   const response = await fetch(`${origin}/api/v1/scan`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "X-Filename": path.basename(target),
-      "Content-Type": "application/octet-stream",
-    },
+    headers,
     body: bytes,
   });
   const body = (await response.json()) as {
@@ -57,6 +77,9 @@ program
   .option("--no-policy", "Do not load .nospoilers.yml from the current directory")
   .option("--api-url <url>", "POST the packed file to a hosted NoSpoilers scan API")
   .option("--api-token <token>", "Scan API token from Watch (nsp_…). Prefer NOSPOILERS_API_TOKEN.")
+  .option("--channel <name>", "stable, beta, or canary. Hosted scans only.")
+  .option("--source-revision <rev>", "Git SHA, tag, or version recorded on the release revision.")
+  .option("--ci-run <url>", "HTTPS CI run URL stored as metadata. Never fetched.")
   .action(
     async (
       target: string,
@@ -67,6 +90,9 @@ program
         policy?: string | boolean;
         apiUrl?: string;
         apiToken?: string;
+        channel?: string;
+        sourceRevision?: string;
+        ciRun?: string;
       },
     ) => {
       try {
@@ -86,7 +112,11 @@ program
               "Hosted scan uses the installation allowlist, not a local policy file.\n",
             );
           }
-          const hosted = await scanViaHostedApi(path.resolve(target), apiUrl, apiToken);
+          const hosted = await scanViaHostedApi(path.resolve(target), apiUrl, apiToken, {
+            channel: opts.channel,
+            sourceRevision: opts.sourceRevision,
+            ciRun: opts.ciRun,
+          });
           report = hosted.report;
         } else {
           let policyPath: string | null = null;

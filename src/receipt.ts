@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Finding, ManifestEntry, ScanReport, ScanStatus, WorkspaceDiscovery } from "./scanner/types.ts";
+import type { ReleaseChannel } from "./server/release-ledger.ts";
 
 export const RECEIPT_VERSION = 1;
 export const RECEIPT_ALG = "HMAC-SHA256";
@@ -42,6 +43,12 @@ export type UnsignedReceipt = {
   suppressedFingerprints: string[];
   /** Present on receipts minted after workspace discovery; omitted on older receipts. */
   workspaces?: ReceiptWorkspace[];
+  /** Present on receipts minted with a release channel; omitted on older receipts. */
+  channel?: ReleaseChannel;
+  /** Git SHA, tag, or package version recorded at scan time. */
+  sourceRevision?: string | null;
+  /** HTTPS CI run URL stored as metadata; never fetched. */
+  ciRunUrl?: string | null;
 };
 
 export type SignedReceipt = UnsignedReceipt & {
@@ -115,7 +122,15 @@ function hmacPayload(unsigned: UnsignedReceipt): string {
   return `${RECEIPT_DOMAIN}\n${canonicalJson(unsigned)}`;
 }
 
-export function buildUnsignedReceipt(report: ScanReport, coordinate: string): UnsignedReceipt {
+export function buildUnsignedReceipt(
+  report: ScanReport,
+  coordinate: string,
+  meta?: {
+    channel?: ReleaseChannel;
+    sourceRevision?: string | null;
+    ciRunUrl?: string | null;
+  },
+): UnsignedReceipt {
   if (report.status === "passed" && !report.ok) {
     throw new Error("cannot mint a passing receipt for a failed scan");
   }
@@ -126,7 +141,7 @@ export function buildUnsignedReceipt(report: ScanReport, coordinate: string): Un
     throw new Error("failed scans must include findings or be marked inconclusive");
   }
   const fingerprints = report.findings.map(findingFingerprint).sort();
-  return {
+  const unsigned: UnsignedReceipt = {
     v: RECEIPT_VERSION,
     alg: RECEIPT_ALG,
     signer: "dev-hmac",
@@ -152,6 +167,10 @@ export function buildUnsignedReceipt(report: ScanReport, coordinate: string): Un
       .sort(),
     workspaces: compactWorkspaces(report.workspaces),
   };
+  if (meta?.channel) unsigned.channel = meta.channel;
+  if (meta?.sourceRevision) unsigned.sourceRevision = meta.sourceRevision;
+  if (meta?.ciRunUrl) unsigned.ciRunUrl = meta.ciRunUrl;
+  return unsigned;
 }
 
 export function signReceipt(unsigned: UnsignedReceipt, secret: string): SignedReceipt {

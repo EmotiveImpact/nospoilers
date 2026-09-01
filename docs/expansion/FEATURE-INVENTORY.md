@@ -78,13 +78,13 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | SHA-256/SHA-512 artifact identity | Built: packed-file SHA-256/SHA-512 on receipts | NoSpoilers |
-| Append-only sealed release revisions | Partial: append-only `scan_receipts` rows; no channels/SBOM yet | NoSpoilers |
-| Build/source revision and CI provenance link | Planned | NoSpoilers |
+| Append-only sealed release revisions | Built: append-only `release_revisions`; digest mismatch appends, never rewrites | NoSpoilers |
+| Build/source revision and CI provenance link | Built: git SHA/tag/version and HTTPS CI URL stored, never fetched; Sigstore still Planned | NoSpoilers |
 | CycloneDX/SPDX SBOM attachment | Planned | NoSpoilers Team |
 | SLSA/in-toto provenance validation | Planned | NoSpoilers Team |
 | Sigstore/cosign signature verification | Planned | NoSpoilers Team |
 | npm/GitHub attestation adapters | Planned | NoSpoilers |
-| Stable/beta/canary release channels | Planned | NoSpoilers |
+| Stable/beta/canary release channels | Built: `stable` / `beta` / `canary` on each revision | NoSpoilers |
 | Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
 | Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
 | Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check | NoSpoilers |

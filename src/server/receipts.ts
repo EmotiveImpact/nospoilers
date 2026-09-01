@@ -6,7 +6,13 @@ import {
   type ReleaseDiff,
 } from "../release-diff.ts";
 import type { ScanReport } from "../scanner/types.ts";
-import type { ScanBaselineRow, ScanReceiptRow, Store } from "./store.ts";
+import {
+  appendReleaseRevision,
+  inferReleaseChannelFromCoordinate,
+  versionFromCoordinate,
+  type ReleaseChannel,
+} from "./release-ledger.ts";
+import type { ReleaseRevisionRow, ScanBaselineRow, ScanReceiptRow, Store } from "./store.ts";
 
 export type ReceiptCompareKind = "baseline" | "previous";
 
@@ -18,14 +24,25 @@ export async function persistHostedReceipt(opts: {
   repoId?: number | null;
   coordinate: string;
   report: ScanReport;
+  channel?: ReleaseChannel;
+  sourceRevision?: string | null;
+  ciRunUrl?: string | null;
 }): Promise<{
   row: ScanReceiptRow;
   receipt: SignedReceipt;
   diff: ReleaseDiff | null;
   comparedTo: ReceiptCompareKind | null;
   baseline: ScanBaselineRow | null;
+  revision: ReleaseRevisionRow;
 }> {
-  const unsigned = buildUnsignedReceipt(opts.report, opts.coordinate);
+  const channel = opts.channel ?? inferReleaseChannelFromCoordinate(opts.coordinate);
+  const sourceRevision =
+    opts.sourceRevision ?? versionFromCoordinate(opts.coordinate) ?? null;
+  const unsigned = buildUnsignedReceipt(opts.report, opts.coordinate, {
+    channel,
+    sourceRevision,
+    ciRunUrl: opts.ciRunUrl ?? null,
+  });
   const receipt = signReceipt(unsigned, opts.secret);
   const baseline =
     opts.packageId != null
@@ -55,13 +72,25 @@ export async function persistHostedReceipt(opts: {
     repoId: opts.repoId ?? null,
     receipt,
   });
+  const revision = await appendReleaseRevision(opts.store, {
+    installationId: opts.installationId,
+    packageId: opts.packageId ?? null,
+    repoId: opts.repoId ?? null,
+    receiptId: row.id,
+    channel,
+    coordinate: opts.coordinate,
+    artifactSha256: receipt.artifactSha256,
+    artifactSha512: receipt.artifactSha512,
+    sourceRevision: sourceRevision ?? receipt.sourceRevision ?? null,
+    ciRunUrl: opts.ciRunUrl ?? receipt.ciRunUrl ?? null,
+  });
   const diff = previous
     ? mergeReleaseDiff(
         diffManifests(previous.manifest, receipt.manifest),
         diffFingerprints(previous.finding_fingerprints, receipt.findingFingerprints),
       )
     : null;
-  return { row, receipt, diff, comparedTo, baseline };
+  return { row, receipt, diff, comparedTo, baseline, revision };
 }
 
 export function summarizeDiff(

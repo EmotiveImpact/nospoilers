@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { coverageFrom, coverageIsOn } from "../coverage.ts";
 import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
+import type { ReleaseChannel } from "./release-ledger.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
@@ -123,6 +124,23 @@ export type ScanBaselineRow = {
   superseded_at: string | null;
 };
 
+export type ReleaseRevisionRow = {
+  id: number;
+  installation_id: number;
+  package_id: number | null;
+  repo_id: number | null;
+  receipt_id: number;
+  channel: ReleaseChannel;
+  coordinate: string;
+  artifact_sha256: string;
+  artifact_sha512: string | null;
+  source_revision: string | null;
+  ci_run_url: string | null;
+  previous_sha256: string | null;
+  mismatch: boolean;
+  created_at: string;
+};
+
 export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
 export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
 
@@ -197,6 +215,40 @@ function asManifest(value: unknown): ManifestEntry[] {
     out.push({ path: row.path, size, sha256: row.sha256 });
   }
   return out;
+}
+
+function releaseRevisionRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  repo_id: unknown;
+  receipt_id: unknown;
+  channel: string;
+  coordinate: string;
+  artifact_sha256: string;
+  artifact_sha512: string | null;
+  source_revision: string | null;
+  ci_run_url: string | null;
+  previous_sha256: string | null;
+  mismatch: boolean | unknown;
+  created_at: string | Date;
+}): ReleaseRevisionRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: row.package_id === null || row.package_id === undefined ? null : num(row.package_id),
+    repo_id: row.repo_id === null || row.repo_id === undefined ? null : num(row.repo_id),
+    receipt_id: num(row.receipt_id),
+    channel: row.channel as ReleaseChannel,
+    coordinate: row.coordinate,
+    artifact_sha256: row.artifact_sha256,
+    artifact_sha512: row.artifact_sha512,
+    source_revision: row.source_revision,
+    ci_run_url: row.ci_run_url,
+    previous_sha256: row.previous_sha256,
+    mismatch: Boolean(row.mismatch),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
 }
 
 function scanReceiptRow(row: {
@@ -1507,6 +1559,154 @@ export function createStore(
         created_at: string | Date;
       }>(`SELECT * FROM scan_receipts WHERE id = $1`, [id]);
       return rows[0] ? scanReceiptRow(rows[0]) : null;
+    },
+
+    async latestReleaseRevision(
+      installationId: number,
+      coordinate: string,
+      channel: ReleaseChannel,
+    ): Promise<ReleaseRevisionRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        receipt_id: unknown;
+        channel: string;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        source_revision: string | null;
+        ci_run_url: string | null;
+        previous_sha256: string | null;
+        mismatch: boolean | unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT *
+         FROM release_revisions
+         WHERE installation_id = $1 AND coordinate = $2 AND channel = $3
+         ORDER BY id DESC
+         LIMIT 1`,
+        [installationId, coordinate, channel],
+      );
+      return rows[0] ? releaseRevisionRow(rows[0]) : null;
+    },
+
+    async insertReleaseRevision(input: {
+      installationId: number;
+      packageId?: number | null;
+      repoId?: number | null;
+      receiptId: number;
+      channel: ReleaseChannel;
+      coordinate: string;
+      artifactSha256: string;
+      artifactSha512?: string | null;
+      sourceRevision?: string | null;
+      ciRunUrl?: string | null;
+      previousSha256?: string | null;
+      mismatch: boolean;
+    }): Promise<ReleaseRevisionRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        receipt_id: unknown;
+        channel: string;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        source_revision: string | null;
+        ci_run_url: string | null;
+        previous_sha256: string | null;
+        mismatch: boolean | unknown;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO release_revisions (
+           installation_id, package_id, repo_id, receipt_id, channel, coordinate,
+           artifact_sha256, artifact_sha512, source_revision, ci_run_url,
+           previous_sha256, mismatch
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.packageId ?? null,
+          input.repoId ?? null,
+          input.receiptId,
+          input.channel,
+          input.coordinate,
+          input.artifactSha256,
+          input.artifactSha512 ?? null,
+          input.sourceRevision ?? null,
+          input.ciRunUrl ?? null,
+          input.previousSha256 ?? null,
+          input.mismatch,
+        ],
+      );
+      if (!rows[0]) throw new Error("release revision insert returned no row");
+      return releaseRevisionRow(rows[0]);
+    },
+
+    async listReleaseRevisionsForUser(
+      userId: string,
+      opts: { limit?: number } = {},
+    ): Promise<ReleaseRevisionRow[]> {
+      const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        receipt_id: unknown;
+        channel: string;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        source_revision: string | null;
+        ci_run_url: string | null;
+        previous_sha256: string | null;
+        mismatch: boolean | unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT rr.*
+         FROM release_revisions rr
+         JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         WHERE iu.user_id = $1
+         ORDER BY rr.created_at DESC, rr.id DESC
+         LIMIT $2`,
+        [userId, limit],
+      );
+      return rows.map(releaseRevisionRow);
+    },
+
+    async getReleaseRevisionForUser(
+      id: number,
+      userId: string,
+    ): Promise<ReleaseRevisionRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        repo_id: unknown;
+        receipt_id: unknown;
+        channel: string;
+        coordinate: string;
+        artifact_sha256: string;
+        artifact_sha512: string | null;
+        source_revision: string | null;
+        ci_run_url: string | null;
+        previous_sha256: string | null;
+        mismatch: boolean | unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT rr.*
+         FROM release_revisions rr
+         JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         WHERE rr.id = $1 AND iu.user_id = $2`,
+        [id, userId],
+      );
+      return rows[0] ? releaseRevisionRow(rows[0]) : null;
     },
 
     async listActiveExceptions(

@@ -38,6 +38,11 @@ import { enqueueFromWebhook } from "./webhooks.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
 import { persistHostedReceipt } from "./receipts.ts";
 import {
+  parseReleaseScanMeta,
+  ReleaseLedgerError,
+} from "./release-ledger.ts";
+import type { ReleaseRevisionRow } from "./store.ts";
+import {
   MAX_SCAN_TOKENS,
   parseScanBearer,
   validateScanTokenName,
@@ -95,6 +100,25 @@ function publicException(row: PolicyExceptionRow) {
     revokedAt: row.revoked_at,
     createdAt: row.created_at,
     active: !row.revoked_at && Number.isFinite(expires) && expires > Date.now(),
+  };
+}
+
+function publicRelease(row: ReleaseRevisionRow) {
+  return {
+    id: row.id,
+    installationId: row.installation_id,
+    packageId: row.package_id,
+    repoId: row.repo_id,
+    receiptId: row.receipt_id,
+    channel: row.channel,
+    coordinate: row.coordinate,
+    artifactSha256: row.artifact_sha256,
+    artifactSha512: row.artifact_sha512,
+    sourceRevision: row.source_revision,
+    ciRunUrl: row.ci_run_url,
+    previousSha256: row.previous_sha256,
+    mismatch: row.mismatch,
+    createdAt: row.created_at,
   };
 }
 
@@ -733,6 +757,24 @@ export function createApp(deps: AppDeps): Hono {
     const filenameHeader = c.req.header("x-filename");
     const filename =
       filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
+    const coordinate = `api:${auth.installationId}#${filename}`;
+    let releaseMeta: ReturnType<typeof parseReleaseScanMeta>;
+    try {
+      releaseMeta = parseReleaseScanMeta({
+        channel: c.req.header("x-nospoilers-channel"),
+        sourceRevision: c.req.header("x-nospoilers-source-revision"),
+        ciRunUrl: c.req.header("x-nospoilers-ci-run"),
+        coordinate,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ReleaseLedgerError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Invalid release metadata.";
+      return c.json({ error: message }, 400);
+    }
     const buf = Buffer.from(await c.req.arrayBuffer());
     if (buf.length === 0) return c.json({ error: "Upload a packed artifact." }, 400);
     await deps.store.touchScanApiToken(auth.id);
@@ -759,13 +801,15 @@ export function createApp(deps: AppDeps): Hono {
         store: deps.store,
         secret: deps.config.receiptSecret,
         installationId: auth.installationId,
-        coordinate: `api:${auth.installationId}#${filename}`,
+        coordinate,
         report,
+        ...releaseMeta,
       });
       return c.json({
         report,
         receipt: persisted.receipt,
         receiptId: persisted.row.id,
+        release: publicRelease(persisted.revision),
       });
     }
     const dir = path.join(os.tmpdir(), "nospoilers-api-scan");
@@ -782,13 +826,15 @@ export function createApp(deps: AppDeps): Hono {
         store: deps.store,
         secret: deps.config.receiptSecret,
         installationId: auth.installationId,
-        coordinate: `api:${auth.installationId}#${filename}`,
+        coordinate,
         report,
+        ...releaseMeta,
       });
       return c.json({
         report,
         receipt: persisted.receipt,
         receiptId: persisted.row.id,
+        release: publicRelease(persisted.revision),
       });
     } finally {
       await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
@@ -1084,6 +1130,23 @@ export function createApp(deps: AppDeps): Hono {
     const row = await deps.store.revokePolicyExceptionForUser(id, user.userId, user.login);
     if (!row) return c.json({ error: "Unknown allowlist entry." }, 404);
     return c.json({ ok: true, exception: publicException(row) });
+  });
+
+  app.get("/api/releases", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const releases = await deps.store.listReleaseRevisionsForUser(user.userId);
+    return c.json({ releases: releases.map(publicRelease) });
+  });
+
+  app.get("/api/releases/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    return c.json({ release: publicRelease(row) });
   });
 
   app.get("/api/receipts", async (c) => {

@@ -37,6 +37,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   pnpm-workspace.yaml / lockfile presence. Never execute. Never auto-watch discovered names.
 - Hosted scan API: hashed `nsp_` tokens per install; `POST /api/v1/scan` returns a signed receipt
   and deletes the upload. Unpaid mint/scan return 402. Local Action remains the default CI path.
+- Release Ledger foundations: append-only `release_revisions` with stable/beta/canary channels,
+  SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
+  Watch Releases view. Digest mismatch appends a new row and an explainable alert. Development
+  receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

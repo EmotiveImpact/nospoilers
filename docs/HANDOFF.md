@@ -26,14 +26,18 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Fifteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Sixteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
-  `007_policy_exceptions`, `008_npm_registries`, and `009_scan_api_tokens` are applied. Hosted
+  `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`, and
+  `010_release_revisions` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
-  append-only HMAC JSON; they store manifests and hashes, never source. Private registry tokens are
+  append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
+  append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
+  UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). Development receipts use `RECEIPT_SECRET`
-  (falls back to `SESSION_SECRET`). Production signing should move to KMS. Policy exceptions are
+  (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
+  move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
   package.
 - The application boots with `DATABASE_URL` from `.env` (gitignored). Keep that same URL as a
@@ -70,8 +74,11 @@ Read in this order:
 - Crash dumps, Windows minidumps, and ELF `ET_CORE` files fail as CRASH-001 (never executed).
   Extra DWARF/gcov/breakpad symbols stay DBG-001 warnings.
 - Covered installs can mint hashed scan API tokens (shown once). `POST /api/v1/scan` unpacks a
-  packed artifact, applies the allowlist, mints a receipt, and deletes the bytes. Unpaid mint/scan
-  return 402. The local GitHub Action stays the default CI path.
+  packed artifact, applies the allowlist, mints a receipt, appends a release revision, and
+  deletes the bytes. Optional headers: `X-NoSpoilers-Channel`, `X-NoSpoilers-Source-Revision`,
+  `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
+  return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
+  revisions; preview invents none.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -109,11 +116,13 @@ Nested tgz/zip/asar are unpacked for inspection (never executed).
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
+Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
 Do not start Stripe or the Electron installer worker yet.
+Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
 
 ## Cleanup

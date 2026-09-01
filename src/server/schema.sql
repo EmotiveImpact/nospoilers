@@ -243,3 +243,43 @@ CREATE INDEX IF NOT EXISTS scan_api_tokens_install_idx
   ON scan_api_tokens (installation_id)
   WHERE revoked_at IS NULL;
 
+CREATE TABLE IF NOT EXISTS release_revisions (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT REFERENCES watched_packages (id) ON DELETE SET NULL,
+  repo_id BIGINT REFERENCES repos (id) ON DELETE SET NULL,
+  receipt_id BIGINT NOT NULL REFERENCES scan_receipts (id) ON DELETE RESTRICT,
+  channel TEXT NOT NULL CHECK (channel IN ('stable', 'beta', 'canary')),
+  coordinate TEXT NOT NULL,
+  artifact_sha256 TEXT NOT NULL,
+  artifact_sha512 TEXT,
+  source_revision TEXT,
+  ci_run_url TEXT,
+  previous_sha256 TEXT,
+  mismatch BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS release_revisions_feed_idx
+  ON release_revisions (installation_id, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS release_revisions_channel_idx
+  ON release_revisions (installation_id, coordinate, channel, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_release_revision_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'release_revisions are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS release_revisions_no_update ON release_revisions;
+CREATE TRIGGER release_revisions_no_update
+  BEFORE UPDATE ON release_revisions
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_revision_mutation();
+
+DROP TRIGGER IF EXISTS release_revisions_no_delete ON release_revisions;
+CREATE TRIGGER release_revisions_no_delete
+  BEFORE DELETE ON release_revisions
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_revision_mutation();
+
