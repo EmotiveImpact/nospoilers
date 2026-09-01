@@ -435,7 +435,7 @@ function AlertDeskItem({
               disabled={previewing || busy}
               rows={3}
               className="mt-2 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
-            />
+            ></textarea>
           </label>
         )}
         {error ? <p className="text-sm text-danger">{error}</p> : null}
