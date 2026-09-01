@@ -43,8 +43,27 @@ CREATE TABLE IF NOT EXISTS billing_accounts (
   installation_id BIGINT PRIMARY KEY REFERENCES installations (id) ON DELETE CASCADE,
   trial_ends_at TIMESTAMPTZ,
   plan TEXT,
+  retention_days INTEGER NOT NULL DEFAULT 90 CHECK (retention_days IN (0, 90, 180, 365)),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE OR REPLACE FUNCTION row_within_retention(install_id BIGINT, created TIMESTAMPTZ)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    (
+      SELECT CASE
+        WHEN b.retention_days = 0 THEN TRUE
+        ELSE $2 >= now() - (b.retention_days * INTERVAL '1 day')
+      END
+      FROM billing_accounts b
+      WHERE b.installation_id = $1
+    ),
+    $2 >= now() - INTERVAL '90 days'
+  );
+$$;
 
 CREATE TABLE IF NOT EXISTS repos (
   id BIGINT PRIMARY KEY,
@@ -502,7 +521,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'remediation_pr.create',
     'package.unwatch',
     'identity.allowlist',
-    'identity.revoke_allowlist'
+    'identity.revoke_allowlist',
+    'retention.save'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

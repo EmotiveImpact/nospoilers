@@ -43,6 +43,8 @@ describe("legal pages", () => {
     const retention = textOf("retention");
     expect(retention).toMatch(/deleted in a finally path/i);
     expect(retention).toMatch(/not an archive of customer source/i);
+    expect(retention).toMatch(/append-only evidence/i);
+    expect(retention).toMatch(/90 days/);
 
     const disclosure = textOf("disclosure");
     expect(disclosure).toMatch(/do not automatically email maintainers/i);

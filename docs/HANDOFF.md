@@ -32,7 +32,7 @@ Read in this order:
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
-  `019_audit_events`, and `020_identity_signals` are applied. Hosted
+  `019_audit_events`, `020_identity_signals`, and `021_retention_policies` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -43,7 +43,10 @@ Read in this order:
   append-only. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). `installation_users.role` is `admin` or `member`
   (first linked user is admin). Alert acknowledgement, assignment, resolution notes, and
-  reopen append `alert_events` (append-only). Admin writes append `audit_events` (append-only). Live permission tests store JSON on the installation,
+  reopen append `alert_events` (append-only). Admin writes append `audit_events` (append-only).
+  `billing_accounts.retention_days` is 90, 180, 365, or 0 (keep while this install exists).
+  Lists use `row_within_retention`; append-only evidence is never deleted by that window.
+  Live permission tests store JSON on the installation,
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
   liveness from `/api/health`. Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
@@ -192,6 +195,8 @@ Team members and roles are in (first user admin; later members; trial/Team; last
 GitHub suspend does not block; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump;
 trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
+Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
+allowed; unpaid 402; append-only evidence never deleted).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

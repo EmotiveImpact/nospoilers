@@ -911,12 +911,13 @@ export function createStore(
 
     async installationBilling(
       installationId: number,
-    ): Promise<{ trialEndsAt: string | null; plan: string | null } | null> {
+    ): Promise<{ trialEndsAt: string | null; plan: string | null; retentionDays: number } | null> {
       const { rows } = await sql.query<{
         trial_ends_at: string | Date | null;
         plan: string | null;
+        retention_days: unknown;
       }>(
-        `SELECT b.trial_ends_at, b.plan
+        `SELECT b.trial_ends_at, b.plan, COALESCE(b.retention_days, 90) AS retention_days
          FROM installations i
          LEFT JOIN billing_accounts b ON b.installation_id = i.id
          WHERE i.id = $1`,
@@ -924,7 +925,23 @@ export function createStore(
       );
       const row = rows[0];
       if (!row) return null;
-      return { trialEndsAt: iso(row.trial_ends_at), plan: row.plan };
+      const retentionDays = num(row.retention_days);
+      return {
+        trialEndsAt: iso(row.trial_ends_at),
+        plan: row.plan,
+        retentionDays: retentionDays === 0 || retentionDays === 90 || retentionDays === 180 || retentionDays === 365
+          ? retentionDays
+          : 90,
+      };
+    },
+
+    async setRetentionDays(installationId: number, days: 0 | 90 | 180 | 365): Promise<void> {
+      await sql.query(
+        `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan, retention_days)
+         VALUES ($1, now() + interval '14 days', 'trial', $2)
+         ON CONFLICT (installation_id) DO UPDATE SET retention_days = excluded.retention_days`,
+        [installationId, days],
+      );
     },
 
     async deleteInstallation(id: number): Promise<void> {
@@ -1264,6 +1281,7 @@ export function createStore(
            SELECT installation_id FROM installation_users WHERE user_id = $1
          )
            AND ($2::bigint IS NULL OR a.installation_id = $2)
+           AND row_within_retention(a.installation_id, a.created_at)
          ORDER BY a.created_at DESC
          LIMIT 100`,
         [userId, scoped],
@@ -1293,6 +1311,7 @@ export function createStore(
          WHERE installation_id IN (${tenant})
            AND kind <> 'prospect_scan'
            AND ($2::bigint IS NULL OR installation_id = $2)
+           AND (status IN ('queued', 'running') OR row_within_retention(installation_id, created_at))
          ORDER BY created_at DESC, id DESC
          LIMIT 50`,
         [userId, scoped],
@@ -1303,6 +1322,7 @@ export function createStore(
          WHERE installation_id IN (${tenant})
            AND kind <> 'prospect_scan'
            AND ($2::bigint IS NULL OR installation_id = $2)
+           AND (status IN ('queued', 'running') OR row_within_retention(installation_id, created_at))
          GROUP BY status`,
         [userId, scoped],
       );
@@ -2696,6 +2716,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR d.installation_id = $2)
+           AND row_within_retention(d.installation_id, d.created_at)
          ORDER BY d.created_at DESC, d.id DESC
          LIMIT 50`,
         [userId, scoped],
@@ -2909,7 +2930,6 @@ export function createStore(
     async listTimelineForUser(
       userId: string,
       installationId: number,
-      sinceIso: string,
     ): Promise<TimelineEntry[]> {
       if (!optionalInstallId(installationId)) return [];
       const { rows } = await sql.query<{
@@ -2940,7 +2960,7 @@ export function createStore(
            JOIN installation_users iu ON iu.installation_id = a.installation_id
            WHERE iu.user_id = $1
              AND a.installation_id = $2
-             AND a.created_at >= $3::timestamptz
+             AND row_within_retention(a.installation_id, a.created_at)
            UNION ALL
            SELECT e.created_at AS at,
                   'alert_event'::text AS type,
@@ -2958,7 +2978,7 @@ export function createStore(
            JOIN installation_users iu ON iu.installation_id = e.installation_id
            WHERE iu.user_id = $1
              AND e.installation_id = $2
-             AND e.created_at >= $3::timestamptz
+             AND row_within_retention(e.installation_id, e.created_at)
            UNION ALL
            SELECT d.created_at AS at,
                   'delivery'::text AS type,
@@ -2974,11 +2994,11 @@ export function createStore(
            JOIN installation_users iu ON iu.installation_id = d.installation_id
            WHERE iu.user_id = $1
              AND d.installation_id = $2
-             AND d.created_at >= $3::timestamptz
+             AND row_within_retention(d.installation_id, d.created_at)
          ) timeline
          ORDER BY at DESC
-         LIMIT $4`,
-        [userId, installationId, sinceIso, TIMELINE_LIMIT],
+         LIMIT $3`,
+        [userId, installationId, TIMELINE_LIMIT],
       );
       return rows.map((row) => ({
         at: iso(row.at) ?? new Date().toISOString(),
@@ -3267,6 +3287,7 @@ export function createStore(
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR sr.package_id = $2)
            AND ($3::bigint IS NULL OR sr.repo_id = $3)
+           AND row_within_retention(sr.installation_id, sr.created_at)
          ORDER BY sr.created_at DESC, sr.id DESC
          LIMIT $4`,
         [userId, opts.packageId ?? null, opts.repoId ?? null, limit],
@@ -3455,6 +3476,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = rr.installation_id
          WHERE iu.user_id = $1
            AND ($3::bigint IS NULL OR rr.installation_id = $3)
+           AND row_within_retention(rr.installation_id, rr.created_at)
          ORDER BY rr.created_at DESC, rr.id DESC
          LIMIT $2`,
         [userId, limit, scoped],
@@ -3768,6 +3790,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = e.installation_id
          WHERE iu.user_id = $1
            AND e.installation_id = $2
+           AND row_within_retention(e.installation_id, e.created_at)
          ORDER BY e.created_at DESC, e.id DESC
          LIMIT 500`,
         [userId, installationId],
@@ -3806,6 +3829,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND d.installation_id = $2
+           AND row_within_retention(d.installation_id, d.created_at)
          ORDER BY d.created_at DESC, d.id DESC
          LIMIT 500`,
         [userId, installationId],
@@ -3821,6 +3845,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = a.installation_id
          WHERE iu.user_id = $1
            AND a.installation_id = $2
+           AND row_within_retention(a.installation_id, a.created_at)
          ORDER BY a.created_at DESC, a.id DESC
          LIMIT 500`,
         [userId, installationId],
@@ -3838,6 +3863,7 @@ export function createStore(
          JOIN installation_users iu ON iu.installation_id = a.installation_id
          WHERE iu.user_id = $1
            AND a.installation_id = $2
+           AND row_within_retention(e.installation_id, e.created_at)
          ORDER BY e.created_at DESC, e.id DESC
          LIMIT 1000`,
         [userId, installationId],

@@ -552,11 +552,60 @@ export async function migrate(sql: SqlClient): Promise<void> {
       'remediation_pr.create',
       'package.unwatch',
       'identity.allowlist',
-      'identity.revoke_allowlist'
+      'identity.revoke_allowlist',
+      'retention.save'
     ));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "020_identity_signals",
+  ]);
+  await sql.exec(`
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS retention_days INTEGER NOT NULL DEFAULT 90;
+    ALTER TABLE billing_accounts DROP CONSTRAINT IF EXISTS billing_accounts_retention_days_check;
+    ALTER TABLE billing_accounts ADD CONSTRAINT billing_accounts_retention_days_check
+      CHECK (retention_days IN (0, 90, 180, 365));
+    CREATE OR REPLACE FUNCTION row_within_retention(install_id BIGINT, created TIMESTAMPTZ)
+    RETURNS BOOLEAN
+    LANGUAGE sql
+    STABLE
+    AS $$
+      SELECT COALESCE(
+        (
+          SELECT CASE
+            WHEN b.retention_days = 0 THEN TRUE
+            ELSE $2 >= now() - (b.retention_days * INTERVAL '1 day')
+          END
+          FROM billing_accounts b
+          WHERE b.installation_id = $1
+        ),
+        $2 >= now() - INTERVAL '90 days'
+      );
+    $$;
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "021_retention_policies",
   ]);
 }
 

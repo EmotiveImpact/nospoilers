@@ -22,6 +22,7 @@ export const AUDIT_ACTIONS = [
   "package.unwatch",
   "identity.allowlist",
   "identity.revoke_allowlist",
+  "retention.save",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

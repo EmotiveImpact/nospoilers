@@ -146,7 +146,7 @@ const RETENTION: LegalDoc = {
     {
       heading: "Findings and alerts",
       paragraphs: [
-        "We keep finding metadata (path, rule, fingerprint, severity counts) and Watch alerts while the installation exists so you can see what fired. Team timeline length is a later product feature; until then alerts remain until uninstall or a deletion request.",
+        "We keep finding metadata (path, rule, fingerprint, severity counts) and Watch alerts while the installation exists so you can see what fired. Each install can set a list window of 90 days (default), 180 days, 365 days, or keep while this install exists. Lists hide older rows at query time. Append-only evidence (alert events, notification deliveries, audit events, identity snapshots, release revisions, and scan receipts) is not deleted by that window. Uninstall still drops the tenant.",
       ],
     },
     {

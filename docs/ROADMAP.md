@@ -74,7 +74,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   180 days, and burst/major-jump cadence alerts. Metadata-only candidate checks. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
-  deliveries for 90 days. Solo 403. Unpaid 402. No invented rows.
+  deliveries for the install list window (default 90 days). Solo 403. Unpaid 402. No invented rows.
+- Configurable data retention: 90, 180, or 365 days, or keep while this install exists.
+  Query-time lists. Append-only evidence is not deleted. Typed confirm. Solo allowed.
+  Unpaid 402. Members may read.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists,

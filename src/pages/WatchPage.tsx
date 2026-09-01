@@ -182,6 +182,33 @@ type AuditView =
   | { status: "ended" }
   | { status: "error"; message: string };
 
+type RetentionDays = 0 | 90 | 180 | 365;
+
+type RetentionView =
+  | { status: "loading" }
+  | { status: "ready"; days: RetentionDays }
+  | { status: "error"; message: string };
+
+function parseRetentionDays(raw: unknown): RetentionDays | null {
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  if (value === 0 || value === 90 || value === 180 || value === 365) return value;
+  return null;
+}
+
+function retentionConfirmToken(days: RetentionDays): string {
+  return days === 0 ? "keep" : String(days);
+}
+
+function retentionWindowLabel(days: number): string {
+  if (days === 0) return "while this install exists";
+  return `the last ${days} days`;
+}
+
+function timelineHeading(days: number): string {
+  if (days === 0) return "Install timeline";
+  return `${days}-day timeline`;
+}
+
 type IdentityCandidateView = {
   id: number;
   candidateName: string;
@@ -213,7 +240,8 @@ type Confirming =
   | { kind: "identity-allowlist"; packageId: number; id: number; expected: string; reason: string }
   | { kind: "identity-revoke"; packageId: number; id: number; expected: string }
   | { kind: "member"; userId: string; expected: string }
-  | { kind: "role"; userId: string; expected: string; role: "admin" | "member" };
+  | { kind: "role"; userId: string; expected: string; role: "admin" | "member" }
+  | { kind: "retention"; days: RetentionDays; expected: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -237,6 +265,8 @@ function confirmActionLabel(row: Confirming): string {
       return "remove this member";
     case "role":
       return row.role === "admin" ? "make this person an admin" : "make this person a member";
+    case "retention":
+      return "set this retention window";
   }
 }
 
@@ -782,6 +812,8 @@ export function WatchPage({ search }: { search: string }) {
   const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
   const [audit, setAudit] = useState<AuditView>({ status: "loading" });
   const [auditExportError, setAuditExportError] = useState<string | null>(null);
+  const [retention, setRetention] = useState<RetentionView>({ status: "loading" });
+  const [retentionDraft, setRetentionDraft] = useState<RetentionDays>(90);
   const [identitySignals, setIdentitySignals] = useState<IdentitySignalsView>({ status: "loading" });
   const [candidatesByPackage, setCandidatesByPackage] = useState<Record<number, IdentityCandidateView[]>>(
     {},
@@ -801,6 +833,7 @@ export function WatchPage({ search }: { search: string }) {
     setPackages({ status: "loading" });
     setTimeline({ status: "loading" });
     setAudit({ status: "loading" });
+    setRetention({ status: "loading" });
     setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
@@ -884,6 +917,21 @@ export function WatchPage({ search }: { search: string }) {
       } else {
         setAudit({ status: "ready", rows: auditBody.rows ?? [] });
       }
+      const retentionResponse = await fetch(q("/api/retention"), { credentials: "include" });
+      const retentionBody = (await retentionResponse.json()) as {
+        error?: string;
+        days?: number;
+      };
+      if (!retentionResponse.ok) {
+        setRetention({
+          status: "error",
+          message: retentionBody.error ?? "Could not load retention.",
+        });
+      } else {
+        const days = parseRetentionDays(retentionBody.days) ?? 90;
+        setRetention({ status: "ready", days });
+        setRetentionDraft(days);
+      }
       const nextCandidates: Record<number, IdentityCandidateView[]> = {};
       let identityStatus: IdentitySignalsView = { status: "ready" };
       for (const row of protectionBody.protections) {
@@ -929,6 +977,7 @@ export function WatchPage({ search }: { search: string }) {
       setPackages({ status: "error", message });
       setTimeline({ status: "error", message });
       setAudit({ status: "error", message });
+      setRetention({ status: "error", message });
       setIdentitySignals({ status: "error", message });
       setMembers([]);
       setMembersError(message);
@@ -1021,6 +1070,18 @@ export function WatchPage({ search }: { search: string }) {
             headers,
             body: JSON.stringify({ confirm }),
           });
+        } else if (confirming.kind === "retention") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch("/api/retention", {
+            method: "PUT",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              installationId: installId,
+              days: confirming.days,
+              confirm,
+            }),
+          });
         } else {
           if (!installId) throw new Error("Choose a GitHub installation.");
           response = await fetch(`/api/installations/${installId}/members`, {
@@ -1081,6 +1142,8 @@ export function WatchPage({ search }: { search: string }) {
           setMembersError(null);
           setAudit({ status: "ready", rows: [] });
           setAuditExportError(null);
+          setRetention({ status: "ready", days: 90 });
+          setRetentionDraft(90);
           setConfirming(null);
           setRevealedScanToken(null);
           setAlertNotes({});
@@ -1178,6 +1241,7 @@ export function WatchPage({ search }: { search: string }) {
   const installAdmin = selectedLiveInstall?.role === "admin";
   const canManageRoles =
     Boolean(installAdmin) && (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
   const watching = selectedInstall ? [selectedInstall.account_login] : [];
@@ -1625,30 +1689,40 @@ export function WatchPage({ search }: { search: string }) {
       </div>
 
       <section className="mt-16">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">90-day timeline</h2>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">
+          {timeline.status === "ready" ? timelineHeading(timeline.days) : "Timeline"}
+        </h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs see this install’s alerts, acknowledgement activity, and
-          notification deliveries for 90 days. Titles only — no secret values, webhook URLs, or
-          other tenants.
+          notification deliveries{" "}
+          {timeline.status === "ready"
+            ? retentionWindowLabel(timeline.days)
+            : "for the list window"}
+          . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
+          stays until uninstall.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot show a live 90-day timeline. No invented incident.
+            Preview cannot show a live timeline. No invented incident.
           </p>
         ) : timeline.status === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            The 90-day timeline is on Team. Email for Solo waits on Resend.
+            The install timeline is on Team. Email for Solo waits on Resend.
           </p>
         ) : timeline.status === "ended" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Subscribe to Team to keep the 90-day timeline.
+            Subscribe to Team to keep the install timeline.
           </p>
         ) : timeline.status === "error" ? (
           <p className="mt-6 text-sm text-danger">{timeline.message}</p>
         ) : timeline.status === "loading" ? (
           <p className="mt-6 text-sm text-dim">Loading…</p>
         ) : timeline.entries.length === 0 ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">Nothing in the last 90 days on this install.</p>
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            {timeline.days === 0
+              ? "Nothing on this install yet."
+              : `Nothing in the last ${timeline.days} days on this install.`}
+          </p>
         ) : (
           <ul className="mt-6 max-w-xl divide-y divide-white/5">
             {timeline.entries.map((entry, index) => (
@@ -1671,6 +1745,72 @@ export function WatchPage({ search }: { search: string }) {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Retention</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
+          Append-only evidence is not deleted. Uninstall still drops the tenant.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot change live retention. No invented incident.
+          </p>
+        ) : ended ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to keep configurable retention.
+          </p>
+        ) : retention.status === "error" ? (
+          <p className="mt-6 text-sm text-danger">{retention.message}</p>
+        ) : retention.status === "loading" ? (
+          <p className="mt-6 text-sm text-dim">Loading…</p>
+        ) : (
+          <div className="mt-6 max-w-xl">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">List window</span>
+              <select
+                value={retentionDraft}
+                disabled={!canChangeRetention || confirmBusy}
+                onChange={(event) => {
+                  const days = parseRetentionDays(Number(event.target.value));
+                  if (days === null) return;
+                  setRetentionDraft(days);
+                }}
+                className="h-10 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40 disabled:opacity-50"
+              >
+                <option value={90}>90 days</option>
+                <option value={180}>180 days</option>
+                <option value={365}>365 days</option>
+                <option value={0}>Keep while this install exists</option>
+              </select>
+            </label>
+            {canChangeRetention ? (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={confirmBusy || retentionDraft === retention.days}
+                  onClick={() =>
+                    beginConfirm({
+                      kind: "retention",
+                      days: retentionDraft,
+                      expected: retentionConfirmToken(retentionDraft),
+                    })
+                  }
+                >
+                  Save retention
+                </Button>
+                {confirmForm(confirming?.kind === "retention")}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm leading-relaxed text-mute">
+                An install admin has to change this window.
+              </p>
+            )}
+          </div>
         )}
       </section>
 

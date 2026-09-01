@@ -88,6 +88,16 @@ import {
   timelineWindow,
 } from "./timeline.ts";
 import {
+  RETENTION_DAYS_ERROR,
+  RETENTION_DEFAULT_DAYS,
+  normalizeRetentionDays,
+  parseRetentionDays,
+  retentionAuditSummary,
+  retentionConfirmToken,
+  retentionPlanDeniedFromBilling,
+  retentionWindow,
+} from "./retention.ts";
+import {
   ADMIN_REQUIRED_ERROR,
   parseInstallationRole,
   rolesPlanDeniedFromBilling,
@@ -781,24 +791,25 @@ export function createApp(deps: AppDeps): Hono {
         : installations.length === 1
           ? installations[0].id
           : NaN;
-    const window = timelineWindow();
+    const fallbackWindow = timelineWindow();
     if (!Number.isFinite(installationId) || installationId <= 0) {
       return c.json({ error: "Choose a GitHub installation for the 90-day timeline." }, 400);
     }
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({
         days: TIMELINE_DAYS,
-        since: window.since,
-        until: window.until,
+        since: fallbackWindow.since,
+        until: fallbackWindow.until,
         entries: [],
       });
     }
     const billing = await deps.store.installationBilling(installationId);
     const planDenied = timelinePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
-    const entries = await deps.store.listTimelineForUser(user.userId, installationId, window.since);
+    const window = retentionWindow(normalizeRetentionDays(billing?.retentionDays));
+    const entries = await deps.store.listTimelineForUser(user.userId, installationId);
     return c.json({
-      days: TIMELINE_DAYS,
+      days: window.days,
       since: window.since,
       until: window.until,
       entries: entries.map((row) => ({
@@ -814,6 +825,63 @@ export function createApp(deps: AppDeps): Hono {
         inventedIncident: row.inventedIncident,
       })),
     });
+  });
+
+  app.get("/api/retention", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for retention." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ days: RETENTION_DEFAULT_DAYS });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    return c.json({ days: normalizeRetentionDays(billing?.retentionDays) });
+  });
+
+  app.put("/api/retention", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for retention." }, 400);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = retentionPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const days = parseRetentionDays(body.days);
+    if (days === null) return c.json({ error: RETENTION_DAYS_ERROR }, 400);
+    const confirmError = typedConfirm(body, retentionConfirmToken(days));
+    if (confirmError) return c.json(confirmError, 400);
+    await deps.store.setRetentionDays(installationId, days);
+    await recordAudit({
+      installationId,
+      actorLogin: user.login,
+      action: "retention.save",
+      summary: retentionAuditSummary(days),
+      targetKind: "retention",
+      targetId: retentionConfirmToken(days),
+    });
+    return c.json({ ok: true, days });
   });
 
   app.get("/api/audit", async (c) => {

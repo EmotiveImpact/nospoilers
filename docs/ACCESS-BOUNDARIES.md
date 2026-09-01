@@ -62,7 +62,13 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Watch surface left for an uninstall notice.
 - List recent jobs for those installations (kind, status, attempts, error, timestamps).
   Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
-  or deleted by customers.
+  or deleted by customers. Done and failed jobs older than the install list window are
+  hidden; queued and running jobs stay visible.
+- Read this install’s retention window (90, 180, 365 days, or keep while this install
+  exists). Default is 90 days. GET is not Team-gated. Unpaid installs may read. Another
+  tenant’s installation returns the default 90-day window, not that tenant’s setting.
+  Alert, job, delivery, receipt, revision, audit, and Team timeline lists honor that
+  window. Direct alert, receipt, and revision ids still load for incident work.
 - Run a live GitHub permission test on installations they belong to. The test never
   inserts an alert and never claims a security incident. It reports the last customer
   job (kind, status, time) for that install, or that none exist. It stays available
@@ -97,7 +103,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, or open setup or remediation PRs. Those writes need an install admin.
+  lookalike names, change the retention window, or open setup or remediation PRs. Those writes need an install admin.
+- Delete append-only evidence by shortening retention. Alert events, notification deliveries,
+  audit events, identity snapshots, release revisions, and scan receipts are not deleted;
+  lists hide older rows at query time.
 - See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
@@ -138,6 +147,10 @@ suspend does not block role changes. Email invite is not built.
   make-private, asset deletion, or workflow disable.
 - Allowlist or revoke a lookalike candidate on a protected pack (reason required; type the
   candidate name). Audit entries record the public package and candidate names only.
+- Change this install’s list retention to 90, 180, or 365 days, or keep while this install
+  exists. Type `90`, `180`, `365`, or `keep`. Solo paid is allowed. Unpaid returns 402.
+  GitHub suspend does not block. Audit summaries are public only. Append-only evidence is
+  never deleted.
 
 **Must not**
 
@@ -276,6 +289,10 @@ every alert, critical-only routes skip info scans, and a matching teammate is as
 real alert.
 `tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
 90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
+`tests/retention.test.ts` proves the list window defaults to 90 days, hides older alerts
+without DELETE, honors 180/365/keep, requires typed confirmation, allows Solo writes,
+returns 402 when unpaid, returns 403 for members and other tenants, and that append-only
+`alert_events`, `notification_deliveries`, and `audit_events` still reject DELETE.
 `tests/audit.test.ts` proves the Team audit log is tenant-scoped, Solo 403, unpaid 402,
 typed confirmation is required for destructive deletes, export never includes webhook URLs
 or alert bodies, members can read/export, and `audit_events` cannot be updated or deleted.
