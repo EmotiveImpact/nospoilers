@@ -30,13 +30,14 @@ Read in this order:
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
-  `013_incident_response`, and `014_notification_destinations` are applied. Hosted
+  `013_incident_response`, `014_notification_destinations`, and `015_siem_destinations` are applied.
+  Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks
-  are the same ciphertext and are never returned after save. Notification deliveries are
+  and SIEM HTTPS webhooks are the same ciphertext and are never returned after save. Notification deliveries are
   append-only. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). Alert acknowledgement, assignment, resolution notes, and
   reopen append `alert_events` (append-only). Live permission tests store JSON on the installation,
@@ -105,9 +106,11 @@ Read in this order:
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
   Watch can export that activity as JSON. Incident actions stay available when unpaid
   or GitHub-suspended.
-- Trial and Team installs can save a Slack incoming webhook (encrypted, never returned).
-  New Watch alerts POST to Slack after they are stored. Watch **Test delivery** talks to
-  Slack and never inserts an alert. Solo paid does not get Slack. Email still needs Resend.
+- Trial and Team installs can save a Slack incoming webhook and a SIEM HTTPS webhook
+  (encrypted, never returned). New Watch alerts POST to those destinations after they are
+  stored. Watch **Test delivery** talks to Slack or SIEM and never inserts an alert. Solo
+  paid does not get Slack or SIEM. Email still needs Resend. SIEM hosts cannot be private,
+  local, metadata, or hooks.slack.com.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -124,7 +127,7 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
 - `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
   (HTTP 200) → job `repo_created_public` done → “was created public”. Fixture release scan is not
   proven yet.
-- Stripe, production deployment, and email (Resend) do not exist. Slack incoming webhooks
+- Stripe, production deployment, and email (Resend) do not exist. Slack and SIEM webhooks
   are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
@@ -155,6 +158,7 @@ Multiple GitHub organizations are in (Watch install switcher; `installationId` l
 writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
+SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

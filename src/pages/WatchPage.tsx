@@ -96,7 +96,7 @@ type NpmRegistry = {
 type NotificationDestination = {
   id: number;
   installationId: number;
-  kind: "slack";
+  kind: "slack" | "siem";
   host: string;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
@@ -106,7 +106,7 @@ type NotificationDestination = {
 
 type NotificationDelivery = {
   id: number;
-  kind: "slack";
+  kind: "slack" | "siem";
   status: "sent" | "failed";
   inventedIncident: false;
   error: string | null;
@@ -539,7 +539,9 @@ export function WatchPage({ search }: { search: string }) {
   const [destinations, setDestinations] = useState<NotificationDestination[]>([]);
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
   const [slackWebhook, setSlackWebhook] = useState("");
+  const [siemWebhook, setSiemWebhook] = useState("");
   const [savingSlack, setSavingSlack] = useState(false);
+  const [savingSiem, setSavingSiem] = useState(false);
   const [testingSlackId, setTestingSlackId] = useState<number | null>(null);
   const [removingSlackId, setRemovingSlackId] = useState<number | null>(null);
   const [slackError, setSlackError] = useState<string | null>(null);
@@ -1332,28 +1334,32 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs can send Watch alerts to a Slack incoming webhook. The URL is
-          encrypted and never shown again. A delivery test talks to Slack and never creates a Watch
-          alert.
+          Team and trial installs can send Watch alerts to Slack and to a SIEM HTTPS webhook. URLs
+          are encrypted and never shown again. A delivery test talks to the destination and never
+          creates a Watch alert.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot send Slack. No invented incident.
+            Preview cannot send Slack or SIEM. No invented incident.
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Slack alerts are on Team. Email for Solo waits on Resend.
+            Slack and SIEM alerts are on Team. Email for Solo waits on Resend.
           </p>
         ) : (
           <>
             {destinations.length === 0 ? (
-              <p className="mt-6 text-sm leading-relaxed text-mute">No Slack webhook saved on this install.</p>
+              <p className="mt-6 text-sm leading-relaxed text-mute">
+                No Slack or SIEM webhook saved on this install.
+              </p>
             ) : (
               <ul className="mt-6 max-w-xl divide-y divide-white/5">
                 {destinations.map((destination) => (
                   <li key={destination.id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-mono text-sm text-snow">{destination.host}</p>
+                      <p className="font-mono text-sm text-snow">
+                        {destination.kind === "siem" ? "SIEM" : "Slack"} · {destination.host}
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"
@@ -1375,7 +1381,7 @@ export function WatchPage({ search }: { search: string }) {
                                   detail?: string;
                                 };
                                 if (!response.ok || body.inventedIncident) {
-                                  throw new Error(body.error ?? body.detail ?? "Could not test Slack.");
+                                  throw new Error(body.error ?? body.detail ?? "Could not test delivery.");
                                 }
                                 await refreshSignedIn(selectedInstallId);
                               } catch (error) {
@@ -1405,7 +1411,7 @@ export function WatchPage({ search }: { search: string }) {
                                   credentials: "include",
                                 });
                                 const body = (await response.json()) as { error?: string };
-                                if (!response.ok) throw new Error(body.error ?? "Could not remove Slack.");
+                                if (!response.ok) throw new Error(body.error ?? "Could not remove that destination.");
                                 await refreshSignedIn(selectedInstallId);
                               } catch (error) {
                                 setSlackError(
@@ -1481,6 +1487,55 @@ export function WatchPage({ search }: { search: string }) {
                 </label>
                 <Button type="submit" size="sm" disabled={savingSlack || !slackWebhook.trim()}>
                   {savingSlack ? "Saving…" : "Save Slack"}
+                </Button>
+              </form>
+            )}
+            {!ended && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (savingSiem || !activeInstallId) return;
+                  setSlackError(null);
+                  setSavingSiem(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/siem", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          webhookUrl: siemWebhook,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save SIEM.");
+                      setSiemWebhook("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(error instanceof Error ? error.message : "Could not save SIEM.");
+                    } finally {
+                      setSavingSiem(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    SIEM HTTPS webhook
+                  </span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={siemWebhook}
+                    onChange={(event) => setSiemWebhook(event.target.value)}
+                    placeholder="https://siem.example.com/hooks/…"
+                    className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" size="sm" disabled={savingSiem || !siemWebhook.trim()}>
+                  {savingSiem ? "Saving…" : "Save SIEM"}
                 </Button>
               </form>
             )}

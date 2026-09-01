@@ -4,6 +4,11 @@ import {
   postSlackWebhook,
   slackAlertPayload,
 } from "./slack.ts";
+import {
+  postSiemWebhook,
+  siemAlertPayload,
+  type WebhookHostLookup,
+} from "./siem.ts";
 import type { Store } from "./store.ts";
 
 export type AlertInput = {
@@ -54,9 +59,43 @@ export async function deliverSlackAlert(
   });
 }
 
+export async function deliverSiemAlert(
+  store: Store,
+  input: {
+    installationId: number;
+    alertId: number | null;
+    kind: string;
+    title: string;
+    body: string;
+  },
+  opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
+): Promise<void> {
+  const dest = await store.getSiemWebhookForInstallation(input.installationId);
+  if (!dest) return;
+  const posted = await postSiemWebhook(
+    dest.url,
+    siemAlertPayload({ title: input.title, body: input.body, kind: input.kind }),
+    opts,
+  );
+  await store.recordNotificationDelivery({
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    kind: "siem",
+    status: posted.ok ? "sent" : "failed",
+    error: posted.error,
+  });
+  logJson(posted.ok ? "info" : "error", posted.ok ? "alert.siem_sent" : "alert.siem_failed", {
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    status: posted.status,
+  });
+}
+
 export function createLogNotifier(
   store: Store,
-  opts: { fetch?: typeof fetch } = {},
+  opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
 ): AlertNotifier {
   const fetchImpl = opts.fetch ?? fetch;
   return {
@@ -87,6 +126,25 @@ export function createLogNotifier(
           id,
           installationId: alert.installationId,
           error: error instanceof Error ? error.message : "Slack delivery failed.",
+        });
+      }
+      try {
+        await deliverSiemAlert(
+          store,
+          {
+            installationId: alert.installationId,
+            alertId: id,
+            kind: alert.kind,
+            title: alert.title,
+            body: alert.body,
+          },
+          { fetch: fetchImpl, lookup: opts.lookup },
+        );
+      } catch (error) {
+        logJson("error", "alert.siem_failed", {
+          id,
+          installationId: alert.installationId,
+          error: error instanceof Error ? error.message : "SIEM delivery failed.",
         });
       }
     },

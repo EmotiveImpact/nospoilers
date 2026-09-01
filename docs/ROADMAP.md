@@ -59,6 +59,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Public `/status` page from `/api/health` (no tenant data, no connection string).
 - Slack incoming webhooks for trial/Team: encrypted URL, event-driven delivery, test that
   never invents an incident. Email still waits on Resend.
+- SIEM HTTPS webhooks for trial/Team: encrypted URL, private/local/metadata/Slack hosts
+  blocked, DNS-resolved SSRF check, event-driven JSON POST, test that never invents an incident.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.
   Customer files are not overwritten. 409 copy-paste until Contents write and Pull requests

@@ -60,6 +60,13 @@ import {
   slackTestText,
 } from "./slack.ts";
 import {
+  parseSiemWebhook,
+  postSiemWebhook,
+  siemPlanDeniedFromBilling,
+  siemTestPayload,
+  type WebhookHostLookup,
+} from "./siem.ts";
+import {
   MAX_SCAN_TOKENS,
   parseScanBearer,
   validateScanTokenName,
@@ -76,6 +83,7 @@ export type AppDeps = {
   scan?: typeof scan;
   wakeWorker?: () => void;
   slackFetch?: typeof fetch;
+  webhookLookup?: WebhookHostLookup;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -190,7 +198,7 @@ async function hostedWorkDenied(
 function publicDestination(row: {
   id: number;
   installationId: number;
-  kind: "slack";
+  kind: "slack" | "siem";
   host: string;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
@@ -1703,6 +1711,52 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/destinations/siem", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach a SIEM webhook to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = siemPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const parsed = parseSiemWebhook(String(body.webhookUrl ?? ""));
+    if (!parsed) {
+      return c.json(
+        {
+          error:
+            "Use an https SIEM webhook on a public hostname. Private, local, metadata, and Slack hosts are not allowed.",
+        },
+        400,
+      );
+    }
+    try {
+      const destination = await deps.store.upsertSiemDestination({
+        installationId,
+        webhookUrl: parsed.url,
+        host: parsed.host,
+      });
+      return c.json({ ok: true, destination: publicDestination(destination) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that SIEM webhook." },
+        errorStatus(error),
+      );
+    }
+  });
+
   app.delete("/api/destinations/:id", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -1722,31 +1776,39 @@ export function createApp(deps: AppDeps): Hono {
     }
     const destination = await deps.store.getNotificationDestinationForUser(id, user.userId);
     if (!destination) return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
-    const webhook = await deps.store.getSlackWebhookForInstallation(destination.installationId);
+    const webhook = await deps.store.getDestinationWebhookForInstallation(
+      destination.installationId,
+      destination.kind,
+    );
     if (!webhook || webhook.id !== destination.id) {
       return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
     }
     const install = await deps.store.getInstallation(destination.installationId);
-    const posted = await postSlackWebhook(
-      webhook.url,
-      { text: slackTestText(install?.account_login ?? "") },
-      deps.slackFetch ?? fetch,
-    );
+    const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
+    const posted =
+      destination.kind === "siem"
+        ? await postSiemWebhook(webhook.url, siemTestPayload(install?.account_login ?? ""), outbound)
+        : await postSlackWebhook(
+            webhook.url,
+            { text: slackTestText(install?.account_login ?? "") },
+            outbound.fetch,
+          );
     await deps.store.recordNotificationDelivery({
       installationId: destination.installationId,
       destinationId: destination.id,
       alertId: null,
-      kind: "slack",
+      kind: destination.kind,
       status: posted.ok ? "sent" : "failed",
       error: posted.error,
     });
+    const label = destination.kind === "siem" ? "SIEM" : "Slack";
     return c.json({
       ok: posted.ok,
       inventedIncident: false,
       status: posted.status,
       error: posted.ok ? null : posted.error,
       detail: posted.ok
-        ? "Slack received a delivery test. This is not a security incident."
+        ? `${label} received a delivery test. This is not a security incident.`
         : posted.error,
     }, posted.ok ? 200 : 502);
   });

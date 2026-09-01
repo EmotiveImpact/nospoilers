@@ -106,10 +106,12 @@ export type NpmRegistryRow = {
   updated_at: string;
 };
 
+export type NotificationKind = "slack" | "siem";
+
 export type NotificationDestinationRow = {
   id: number;
   installationId: number;
-  kind: "slack";
+  kind: NotificationKind;
   host: string;
   lastDeliveryAt: string | null;
   lastDeliveryStatus: string | null;
@@ -122,7 +124,7 @@ export type NotificationDeliveryRow = {
   installationId: number;
   destinationId: number;
   alertId: number | null;
-  kind: "slack";
+  kind: NotificationKind;
   status: "sent" | "failed";
   inventedIncident: false;
   error: string | null;
@@ -316,6 +318,32 @@ function permissionTestFromDb(value: unknown): PermissionTestResult | null {
 
 function optionalInstallId(id?: number | null): number | null {
   return id && Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function asNotificationKind(value: string): NotificationKind {
+  return value === "siem" ? "siem" : "slack";
+}
+
+function destinationRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  kind: string;
+  host: string;
+  last_delivery_at: string | Date | null;
+  last_delivery_status: string | null;
+  last_delivery_error: string | null;
+  updated_at: string | Date;
+}): NotificationDestinationRow {
+  return {
+    id: num(row.id),
+    installationId: num(row.installation_id),
+    kind: asNotificationKind(row.kind),
+    host: row.host,
+    lastDeliveryAt: iso(row.last_delivery_at),
+    lastDeliveryStatus: row.last_delivery_status,
+    lastDeliveryError: row.last_delivery_error,
+    updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+  };
 }
 
 function alertRow(row: {
@@ -1930,16 +1958,7 @@ export function createStore(
          ORDER BY d.kind`,
         [userId, scoped],
       );
-      return rows.map((row) => ({
-        id: num(row.id),
-        installationId: num(row.installation_id),
-        kind: "slack",
-        host: row.host,
-        lastDeliveryAt: iso(row.last_delivery_at),
-        lastDeliveryStatus: row.last_delivery_status,
-        lastDeliveryError: row.last_delivery_error,
-        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
-      }));
+      return rows.map((row) => destinationRow(row));
     },
 
     async getNotificationDestinationForUser(
@@ -1965,16 +1984,7 @@ export function createStore(
       );
       const row = rows[0];
       if (!row) return null;
-      return {
-        id: num(row.id),
-        installationId: num(row.installation_id),
-        kind: "slack",
-        host: row.host,
-        lastDeliveryAt: iso(row.last_delivery_at),
-        lastDeliveryStatus: row.last_delivery_status,
-        lastDeliveryError: row.last_delivery_error,
-        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
-      };
+      return destinationRow(row);
     },
 
     async upsertSlackDestination(input: {
@@ -1982,8 +1992,27 @@ export function createStore(
       webhookUrl: string;
       host: string;
     }): Promise<NotificationDestinationRow> {
+      return await this.upsertNotificationDestination({ ...input, kind: "slack" });
+    },
+
+    async upsertSiemDestination(input: {
+      installationId: number;
+      webhookUrl: string;
+      host: string;
+    }): Promise<NotificationDestinationRow> {
+      return await this.upsertNotificationDestination({ ...input, kind: "siem" });
+    },
+
+    async upsertNotificationDestination(input: {
+      installationId: number;
+      kind: NotificationKind;
+      webhookUrl: string;
+      host: string;
+    }): Promise<NotificationDestinationRow> {
       if (!tokenSecret) {
-        throw Object.assign(new Error("This instance cannot encrypt Slack webhooks."), { status: 400 });
+        throw Object.assign(new Error("This instance cannot encrypt notification webhooks."), {
+          status: 400,
+        });
       }
       const ciphertext = encryptSecret(input.webhookUrl, tokenSecret);
       const { rows } = await sql.query<{
@@ -1999,27 +2028,18 @@ export function createStore(
         `INSERT INTO notification_destinations (
            installation_id, kind, host, webhook_ciphertext
          )
-         VALUES ($1, 'slack', $2, $3)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (installation_id, kind) DO UPDATE SET
            host = excluded.host,
            webhook_ciphertext = excluded.webhook_ciphertext,
            updated_at = now()
          RETURNING id, installation_id, kind, host, last_delivery_at,
                    last_delivery_status, last_delivery_error, updated_at`,
-        [input.installationId, input.host, ciphertext],
+        [input.installationId, input.kind, input.host, ciphertext],
       );
       const row = rows[0];
-      if (!row) throw new Error("Could not save the Slack webhook.");
-      return {
-        id: num(row.id),
-        installationId: num(row.installation_id),
-        kind: "slack",
-        host: row.host,
-        lastDeliveryAt: iso(row.last_delivery_at),
-        lastDeliveryStatus: row.last_delivery_status,
-        lastDeliveryError: row.last_delivery_error,
-        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
-      };
+      if (!row) throw new Error("Could not save that webhook.");
+      return destinationRow(row);
     },
 
     async deleteNotificationDestinationForUser(id: number, userId: string): Promise<boolean> {
@@ -2039,11 +2059,28 @@ export function createStore(
       id: number;
       url: string;
     } | null> {
+      return await this.getDestinationWebhookForInstallation(installationId, "slack");
+    },
+
+    async getSiemWebhookForInstallation(installationId: number): Promise<{
+      id: number;
+      url: string;
+    } | null> {
+      return await this.getDestinationWebhookForInstallation(installationId, "siem");
+    },
+
+    async getDestinationWebhookForInstallation(
+      installationId: number,
+      kind: NotificationKind,
+    ): Promise<{
+      id: number;
+      url: string;
+    } | null> {
       const { rows } = await sql.query<{ id: unknown; webhook_ciphertext: string }>(
         `SELECT id, webhook_ciphertext
          FROM notification_destinations
-         WHERE installation_id = $1 AND kind = 'slack'`,
-        [installationId],
+         WHERE installation_id = $1 AND kind = $2`,
+        [installationId, kind],
       );
       const row = rows[0];
       if (!row || !tokenSecret) return null;
@@ -2054,7 +2091,7 @@ export function createStore(
       installationId: number;
       destinationId: number;
       alertId?: number | null;
-      kind: "slack";
+      kind: NotificationKind;
       status: "sent" | "failed";
       error?: string | null;
     }): Promise<void> {
@@ -2113,7 +2150,7 @@ export function createStore(
         installationId: num(row.installation_id),
         destinationId: num(row.destination_id),
         alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
-        kind: "slack",
+        kind: asNotificationKind(row.kind),
         status: row.status,
         inventedIncident: false,
         error: row.error,

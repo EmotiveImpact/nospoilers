@@ -86,12 +86,17 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   returned after save. A delivery test talks to Slack and never inserts an alert. Real
   Watch alerts POST to that webhook after they are stored. Solo paid installs do not
   get Slack. Email still waits on Resend.
+- Save an encrypted SIEM HTTPS webhook on a trial or Team install. The URL is never
+  returned after save. Private, local, metadata, and Slack hosts are rejected, and DNS
+  must resolve to a public address before POST. A delivery test talks to the SIEM and
+  never inserts an alert. Real Watch alerts POST JSON after they are stored. Solo paid
+  installs do not get SIEM.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ registry tokens, Slack webhooks, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack or SIEM webhooks, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -232,5 +237,8 @@ the permission test comes from a real customer job and never inserts an alert, a
 `tests/notifications.test.ts` proves Slack incoming webhooks are encrypted, never returned,
 tenant-scoped, unpaid saves return 402, Solo paid returns 403, a delivery test never inserts
 an alert, real alerts POST after insert, and `notification_deliveries` are append-only.
+The same file proves SIEM HTTPS webhooks follow those rules, reject private/local/Slack
+hosts, skip fetch when DNS resolves private, never return the URL or query token, and
+POST JSON with `inventedIncident: false`.
 Keep those
 tests green when adding internal routes.

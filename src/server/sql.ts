@@ -350,7 +350,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS notification_destinations (
       id BIGSERIAL PRIMARY KEY,
       installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
-      kind TEXT NOT NULL CHECK (kind IN ('slack')),
+      kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem')),
       host TEXT NOT NULL,
       webhook_ciphertext TEXT NOT NULL,
       last_delivery_at TIMESTAMPTZ,
@@ -367,7 +367,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
       installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
       destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
       alert_id BIGINT REFERENCES alerts (id) ON DELETE SET NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('slack')),
+      kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem')),
       status TEXT NOT NULL CHECK (status IN ('sent', 'failed')),
       invented_incident BOOLEAN NOT NULL DEFAULT false CHECK (invented_incident = false),
       error TEXT,
@@ -392,6 +392,17 @@ export async function migrate(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "014_notification_destinations",
+  ]);
+  await sql.exec(`
+    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+      CHECK (kind IN ('slack', 'siem'));
+    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+      CHECK (kind IN ('slack', 'siem'));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "015_siem_destinations",
   ]);
 }
 
