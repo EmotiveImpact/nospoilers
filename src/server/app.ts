@@ -192,6 +192,13 @@ export function createApp(deps: AppDeps): Hono {
     return await deps.store.getSession(sessionId);
   }
 
+  function queryInstallationId(c: Context): number | null {
+    const raw = c.req.query("installationId");
+    if (raw == null || raw === "") return null;
+    const id = Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
   async function hostedCoverageForUser(user: {
     userId: string;
     trialEndsAt: string | null;
@@ -558,21 +565,22 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/repos", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const repos = await deps.store.listReposForUser(user.userId);
+    const repos = await deps.store.listReposForUser(user.userId, queryInstallationId(c));
     return c.json({ repos });
   });
 
   app.get("/api/alerts", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const alerts = await deps.store.listAlertsForUser(user.userId);
+    const alerts = await deps.store.listAlertsForUser(user.userId, queryInstallationId(c));
     return c.json({ alerts: alerts.map(publicAlert) });
   });
 
   app.get("/api/alerts/export", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const alerts = await deps.store.listAlertsForUser(user.userId);
+    const scoped = queryInstallationId(c);
+    const alerts = await deps.store.listAlertsForUser(user.userId, scoped);
     const activity = await Promise.all(
       alerts.map(async (alert) => ({
         ...publicAlert(alert),
@@ -699,12 +707,17 @@ export function createApp(deps: AppDeps): Hono {
         repoProbe = { fullName: first.full_name, ok: false };
       }
     }
+    const lastJob = await deps.store.latestCustomerJob(installationId);
+    const lastDelivery = lastJob
+      ? { kind: lastJob.kind, status: lastJob.status, at: lastJob.createdAt }
+      : null;
     const test = summarizePermissionTest({
       accountLogin: githubInstall.account.login,
       suspended: Boolean(githubInstall.suspended_at) || local.suspended,
       repositorySelection: githubInstall.repository_selection,
       permissions: githubInstall.permissions,
       repoProbe,
+      lastDelivery,
     });
     await deps.store.savePermissionTest(installationId, test);
     return c.json({ ok: true, inventedIncident: false, test });
@@ -713,7 +726,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/jobs", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const { jobs, summary } = await deps.store.listJobsForUser(user.userId);
+    const { jobs, summary } = await deps.store.listJobsForUser(user.userId, queryInstallationId(c));
     return c.json({ jobs, summary });
   });
 
@@ -817,7 +830,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/registries", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const registries = await deps.store.listNpmRegistriesForUser(user.userId);
+    const registries = await deps.store.listNpmRegistriesForUser(user.userId, queryInstallationId(c));
     return c.json({ registries });
   });
 
@@ -898,7 +911,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/scan-tokens", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const tokens = await deps.store.listScanApiTokensForUser(user.userId);
+    const tokens = await deps.store.listScanApiTokensForUser(user.userId, queryInstallationId(c));
     return c.json({ tokens });
   });
 
@@ -1059,14 +1072,17 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/packages", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const packages = await deps.store.listWatchedPackagesForUser(user.userId);
+    const packages = await deps.store.listWatchedPackagesForUser(user.userId, queryInstallationId(c));
     return c.json({ packages });
   });
 
   app.get("/api/protections", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const protections = await deps.store.listPackageProtectionsForUser(user.userId);
+    const protections = await deps.store.listPackageProtectionsForUser(
+      user.userId,
+      queryInstallationId(c),
+    );
     return c.json({
       protections: protections.map((row) => ({
         id: row.id,
@@ -1439,7 +1455,9 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/releases", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const releases = await deps.store.listReleaseRevisionsForUser(user.userId);
+    const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
+      installationId: queryInstallationId(c),
+    });
     return c.json({ releases: releases.map(publicRelease) });
   });
 

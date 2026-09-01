@@ -37,8 +37,9 @@ Read in this order:
   UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). Alert acknowledgement, assignment, resolution notes, and
-  reopen append `alert_events` (append-only). Live permission tests store JSON on the installation
-  and never insert an alert. Development receipts use `RECEIPT_SECRET`
+  reopen append `alert_events` (append-only). Live permission tests store JSON on the installation,
+  including the last customer job kind/status/time, and never insert an alert. `/status` is public
+  liveness from `/api/health`. Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
   move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
@@ -136,8 +137,11 @@ Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when 
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
-Incident response is in (live permission test with no invented incident; alert ack/assign/resolve;
-exposure duration; rotation checklist; append-only alert_events).
+Incident response is in (live permission test with no invented incident; last customer job on
+that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
+Multiple GitHub organizations are in (Watch install switcher; `installationId` list filter;
+writes require an id when two+ installs exist; coverage/suspend per install).
+Public `/status` is in (health liveness only).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.

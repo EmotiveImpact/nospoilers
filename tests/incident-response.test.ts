@@ -61,7 +61,19 @@ describe("permission test copy", () => {
     });
     expect(ok.inventedIncident).toBe(false);
     expect(ok.ok).toBe(true);
+    expect(ok.lastDelivery).toBeNull();
+    expect(ok.detail).toContain("No webhook jobs recorded yet.");
     expect(ok.detail.toLowerCase()).toContain("not a security incident");
+
+    const delivered = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: { contents: "read", metadata: "read" },
+      lastDelivery: { kind: "repo_created_public", status: "done", at: "2026-09-01T00:00:00.000Z" },
+    });
+    expect(delivered.lastDelivery?.kind).toBe("repo_created_public");
+    expect(delivered.detail).toContain("Last GitHub job: repo_created_public (done).");
+    expect(delivered.inventedIncident).toBe(false);
 
     const missing = summarizePermissionTest({
       accountLogin: "octo",
@@ -346,6 +358,7 @@ describe("incident response", () => {
           missingReads: string[];
           repoProbe: { ok: boolean; fullName: string } | null;
           optionalWrites: { name: string; granted: boolean }[];
+          lastDelivery: { kind: string; status: string; at: string } | null;
           detail: string;
         };
       };
@@ -354,6 +367,8 @@ describe("incident response", () => {
       expect(testBody.test.ok).toBe(true);
       expect(testBody.test.repoProbe).toEqual({ fullName: "octo/app", ok: true });
       expect(testBody.test.optionalWrites.find((row) => row.name === "checks")?.granted).toBe(true);
+      expect(testBody.test.lastDelivery).toBeNull();
+      expect(testBody.test.detail).toContain("No webhook jobs recorded yet.");
       expect(testBody.test.detail.toLowerCase()).toContain("not a security incident");
       expect(getInstallationCalls).toBe(1);
       expect(getRepoCalls).toBe(1);

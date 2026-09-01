@@ -27,6 +27,9 @@
 - Install health: GitHub suspend/unsuspend/permission/repo-change alerts; tenant job list on Watch.
 - Extra inspect: cloud/service-account, PKCS12, build caches (CACHE-001), broader AI/MCP pack.
 - Incident response: live GitHub permission test without inventing an incident; alert ack/assign/resolve/reopen; exposure duration; rotation checklist; append-only `alert_events`; tenant JSON export of that activity.
+- Multiple GitHub organizations: Watch selects one install; list APIs filter by `installationId`; sibling unpaid or GitHub-suspended orgs do not lock a live one.
+- Live permission test reports the last customer job (kind/status/time) and still never inserts an alert.
+- Public status page at `/status` from `/api/health` (no tenant data, no connection string).
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.

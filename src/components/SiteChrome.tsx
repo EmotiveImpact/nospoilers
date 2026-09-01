@@ -16,6 +16,8 @@ const LINKS = [
   { href: "/pricing", label: "Pricing" },
 ] as const
 
+const FOOTER_PRODUCT = [...LINKS, { href: "/status", label: "Status" }] as const
+
 function isActive(path: string, href: string): boolean {
   if (href === "/") return path === "/"
   return path === href || path.startsWith(`${href}/`)
@@ -217,7 +219,7 @@ export function SiteChrome({
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Product</p>
             <ul className="mt-3 flex flex-col gap-2 text-sm text-mute">
-              {LINKS.map((link) => (
+              {FOOTER_PRODUCT.map((link) => (
                 <li key={link.href}>
                   <a href={link.href} className="hover:text-snow" onClick={(event) => go(event, link.href)}>
                     {link.label}

@@ -8,6 +8,12 @@ export type RepoProbe = {
   ok: boolean;
 };
 
+export type LastDelivery = {
+  kind: string;
+  status: string;
+  at: string;
+};
+
 export type PermissionTestResult = {
   ok: boolean;
   inventedIncident: false;
@@ -19,6 +25,7 @@ export type PermissionTestResult = {
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
   repoProbe: RepoProbe | null;
+  lastDelivery: LastDelivery | null;
   testedAt: string;
   detail: string;
 };
@@ -44,6 +51,7 @@ export function summarizePermissionTest(input: {
   repositorySelection?: string | null;
   permissions?: PermissionMap | null;
   repoProbe?: RepoProbe | null;
+  lastDelivery?: LastDelivery | null;
   testedAt?: string;
 }): PermissionTestResult {
   const permissions = input.permissions ?? {};
@@ -55,6 +63,7 @@ export function summarizePermissionTest(input: {
   const administrationGranted = hasWrite(permissions, "administration") || levelOf(permissions, "administration") === "admin";
   const suspended = input.suspended;
   const repoProbe = input.repoProbe ?? null;
+  const lastDelivery = input.lastDelivery ?? null;
   const reachableReads = missingReads.length === 0;
   const repoOk = repoProbe === null || repoProbe.ok;
   const ok = reachableReads && !suspended && repoOk;
@@ -69,13 +78,12 @@ export function summarizePermissionTest(input: {
   if (administrationGranted) {
     bits.push("Administration is granted; NoSpoilers does not need it.");
   }
-  if (bits.length === 0) {
-    bits.push(
-      ok
-        ? "GitHub App can read this install. This is not a security incident."
-        : "GitHub App responded. This is not a security incident.",
-    );
-  } else if (!bits.some((row) => row.includes("not a security incident"))) {
+  if (lastDelivery) {
+    bits.push(`Last GitHub job: ${lastDelivery.kind} (${lastDelivery.status}).`);
+  } else {
+    bits.push("No webhook jobs recorded yet.");
+  }
+  if (bits.length === 0 || !bits.some((row) => row.includes("not a security incident"))) {
     bits.push("This is not a security incident.");
   }
   return {
@@ -89,6 +97,7 @@ export function summarizePermissionTest(input: {
     optionalWrites,
     administrationGranted,
     repoProbe,
+    lastDelivery,
     testedAt: input.testedAt ?? new Date().toISOString(),
     detail: bits.join(" "),
   };

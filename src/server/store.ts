@@ -291,6 +291,10 @@ function permissionTestFromDb(value: unknown): PermissionTestResult | null {
   return parsed as PermissionTestResult;
 }
 
+function optionalInstallId(id?: number | null): number | null {
+  return id && Number.isFinite(id) && id > 0 ? id : null;
+}
+
 function alertRow(row: {
   id: unknown;
   installation_id: unknown;
@@ -813,14 +817,16 @@ export function createStore(
       }));
     },
 
-    async listReposForUser(userId: string): Promise<RepoRow[]> {
+    async listReposForUser(userId: string, installationId?: number | null): Promise<RepoRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<RepoRow>(
         `SELECT r.*
          FROM repos r
          JOIN installation_users iu ON iu.installation_id = r.installation_id
          WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR r.installation_id = $2)
          ORDER BY r.full_name`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map((row) => ({
         ...row,
@@ -1021,7 +1027,8 @@ export function createStore(
       }
     },
 
-    async listAlertsForUser(userId: string): Promise<AlertRow[]> {
+    async listAlertsForUser(userId: string, installationId?: number | null): Promise<AlertRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<AlertRow>(
         `SELECT a.*, r.full_name
          FROM alerts a
@@ -1029,16 +1036,19 @@ export function createStore(
          WHERE a.installation_id IN (
            SELECT installation_id FROM installation_users WHERE user_id = $1
          )
+           AND ($2::bigint IS NULL OR a.installation_id = $2)
          ORDER BY a.created_at DESC
          LIMIT 100`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map((row) => alertRow(row));
     },
 
     async listJobsForUser(
       userId: string,
+      installationId?: number | null,
     ): Promise<{ jobs: TenantJobRow[]; summary: JobSummary }> {
+      const scoped = optionalInstallId(installationId);
       const tenant = `SELECT installation_id FROM installation_users WHERE user_id = $1`;
       const { rows } = await sql.query<{
         id: unknown;
@@ -1055,17 +1065,19 @@ export function createStore(
          FROM jobs
          WHERE installation_id IN (${tenant})
            AND kind <> 'prospect_scan'
+           AND ($2::bigint IS NULL OR installation_id = $2)
          ORDER BY created_at DESC, id DESC
          LIMIT 50`,
-        [userId],
+        [userId, scoped],
       );
       const { rows: counts } = await sql.query<{ status: string; n: unknown }>(
         `SELECT status, count(*)::int AS n
          FROM jobs
          WHERE installation_id IN (${tenant})
            AND kind <> 'prospect_scan'
+           AND ($2::bigint IS NULL OR installation_id = $2)
          GROUP BY status`,
-        [userId],
+        [userId, scoped],
       );
       const summary: JobSummary = { queued: 0, running: 0, done: 0, failed: 0 };
       for (const row of counts) {
@@ -1086,6 +1098,30 @@ export function createStore(
           runAfter: iso(row.run_after) ?? new Date().toISOString(),
         })),
         summary,
+      };
+    },
+
+    async latestCustomerJob(
+      installationId: number,
+    ): Promise<{ kind: string; status: string; createdAt: string } | null> {
+      const { rows } = await sql.query<{
+        kind: string;
+        status: string;
+        created_at: string | Date;
+      }>(
+        `SELECT kind, status, created_at
+         FROM jobs
+         WHERE installation_id = $1 AND kind <> 'prospect_scan'
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        kind: row.kind,
+        status: row.status,
+        createdAt: iso(row.created_at) ?? new Date().toISOString(),
       };
     },
 
@@ -1485,7 +1521,11 @@ export function createStore(
       return num(rows[0]?.n ?? 0) > 0;
     },
 
-    async listWatchedPackagesForUser(userId: string): Promise<WatchedPackageRow[]> {
+    async listWatchedPackagesForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<WatchedPackageRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -1504,8 +1544,9 @@ export function createStore(
          FROM watched_packages wp
          JOIN installation_users iu ON iu.installation_id = wp.installation_id
          WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR wp.installation_id = $2)
          ORDER BY wp.package_name`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map(watchedPackageRow);
     },
@@ -1581,7 +1622,11 @@ export function createStore(
       return rows[0] ? packageProtectionRow(rows[0]) : null;
     },
 
-    async listPackageProtectionsForUser(userId: string): Promise<PackageProtectionRow[]> {
+    async listPackageProtectionsForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<PackageProtectionRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -1594,8 +1639,9 @@ export function createStore(
          FROM package_protections p
          JOIN installation_users iu ON iu.installation_id = p.installation_id
          WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR p.installation_id = $2)
          ORDER BY p.created_at DESC`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map(packageProtectionRow);
     },
@@ -1721,7 +1767,11 @@ export function createStore(
       return num(rows[0]?.n ?? 0);
     },
 
-    async listNpmRegistriesForUser(userId: string): Promise<NpmRegistryRow[]> {
+    async listNpmRegistriesForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<NpmRegistryRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -1733,8 +1783,9 @@ export function createStore(
          FROM npm_registries r
          JOIN installation_users iu ON iu.installation_id = r.installation_id
          WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR r.installation_id = $2)
          ORDER BY r.host`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map((row) => ({
         id: num(row.id),
@@ -1823,7 +1874,11 @@ export function createStore(
       return num(rows[0]?.n ?? 0);
     },
 
-    async listScanApiTokensForUser(userId: string): Promise<ScanApiTokenRow[]> {
+    async listScanApiTokensForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<ScanApiTokenRow[]> {
+      const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -1838,8 +1893,9 @@ export function createStore(
          FROM scan_api_tokens t
          JOIN installation_users iu ON iu.installation_id = t.installation_id
          WHERE iu.user_id = $1 AND t.revoked_at IS NULL
+           AND ($2::bigint IS NULL OR t.installation_id = $2)
          ORDER BY t.created_at DESC`,
-        [userId],
+        [userId, scoped],
       );
       return rows.map((row) => ({
         id: num(row.id),
@@ -2245,9 +2301,10 @@ export function createStore(
 
     async listReleaseRevisionsForUser(
       userId: string,
-      opts: { limit?: number } = {},
+      opts: { limit?: number; installationId?: number | null } = {},
     ): Promise<ReleaseRevisionRow[]> {
       const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+      const scoped = optionalInstallId(opts.installationId);
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -2268,9 +2325,10 @@ export function createStore(
          FROM release_revisions rr
          JOIN installation_users iu ON iu.installation_id = rr.installation_id
          WHERE iu.user_id = $1
+           AND ($3::bigint IS NULL OR rr.installation_id = $3)
          ORDER BY rr.created_at DESC, rr.id DESC
          LIMIT $2`,
-        [userId, limit],
+        [userId, limit, scoped],
       );
       return rows.map(releaseRevisionRow);
     },

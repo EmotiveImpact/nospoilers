@@ -1,7 +1,7 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
-import { coverageFromQuery, type Coverage } from "@/coverage.ts";
+import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { navigate } from "@/nav.ts";
 import { PREVIEW_INSTALLATIONS, PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
 import type { Finding } from "@/report-types";
@@ -16,6 +16,7 @@ type PermissionTest = {
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
   repoProbe: { fullName: string; ok: boolean } | null;
+  lastDelivery: { kind: string; status: string; at: string } | null;
   testedAt: string;
   detail: string;
 };
@@ -28,6 +29,8 @@ type Me = {
     account_login: string;
     account_type: string;
     suspended?: boolean;
+    trialEndsAt?: string | null;
+    plan?: string | null;
     lastPermissionTestAt?: string | null;
     lastPermissionTest?: PermissionTest | null;
   }[];
@@ -37,6 +40,7 @@ type Me = {
 
 type Repo = {
   id: number;
+  installation_id?: number;
   full_name: string;
   private: boolean;
   html_url: string;
@@ -192,6 +196,18 @@ async function loadJson<T>(url: string): Promise<T> {
     throw new Error(body.error ?? `Request failed (${response.status})`);
   }
   return body;
+}
+
+function scopedApi(path: string, installationId: number | null): string {
+  if (!installationId) return path;
+  const join = path.includes("?") ? "&" : "?";
+  return `${path}${join}installationId=${installationId}`;
+}
+
+function installIdFromSearch(search: string): number | null {
+  const raw = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("install");
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 function formatExposure(ms: number | undefined, createdAt: string, resolvedAt: string | null | undefined): string {
@@ -507,23 +523,25 @@ export function WatchPage({ search }: { search: string }) {
   const [testingInstallId, setTestingInstallId] = useState<number | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
 
-  const refreshSignedIn = useCallback(async () => {
+  const refreshSignedIn = useCallback(async (installationId: number | null) => {
     setRepos({ status: "loading" });
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
+      const q = (path: string) => scopedApi(path, installationId);
       const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody, protectionBody, jobBody] =
         await Promise.all([
-        loadJson<{ repos: Repo[] }>("/api/repos"),
-        loadJson<{ alerts: Alert[] }>("/api/alerts"),
-        loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
-        loadJson<{ exceptions: PolicyExceptionView[] }>("/api/exceptions"),
-        loadJson<{ registries: NpmRegistry[] }>("/api/registries"),
-        loadJson<{ tokens: ScanApiToken[] }>("/api/scan-tokens"),
-        loadJson<{ releases: ReleaseRevision[] }>("/api/releases"),
-        loadJson<{ protections: PackageProtection[] }>("/api/protections"),
-        loadJson<{ jobs: TenantJob[]; summary: JobSummary }>("/api/jobs"),
+        loadJson<{ repos: Repo[] }>(q("/api/repos")),
+        loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
+        loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
+        loadJson<{ exceptions: PolicyExceptionView[] }>(q("/api/exceptions")),
+        loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
+        loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
+        loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
+        loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
+        loadJson<{ jobs: TenantJob[]; summary: JobSummary }>(q("/api/jobs")),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
@@ -559,8 +577,13 @@ export function WatchPage({ search }: { search: string }) {
         const body = await loadJson<Me>("/api/me");
         if (cancelled) return;
         setMe({ status: "ready", data: body });
-        if (body.user) await refreshSignedIn();
-        else {
+        if (body.user) {
+          const wanted = installIdFromSearch(search);
+          const ids = body.installations.map((row) => row.id);
+          const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
+          setSelectedInstallId(pick);
+          await refreshSignedIn(pick);
+        } else {
           setRepos({ status: "ready", data: { repos: [] } });
           setAlerts({ status: "ready", data: { alerts: [] } });
           setPackages({ status: "ready", data: { packages: [] } });
@@ -591,7 +614,7 @@ export function WatchPage({ search }: { search: string }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshSignedIn]);
+  }, [refreshSignedIn, search]);
 
   if (me.status === "loading") {
     return (
@@ -610,7 +633,8 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const { user, githubApp, installUrl, installations, coverage: sessionCoverage } = me.data;
+  const { user, githubApp, installUrl, coverage: sessionCoverage } = me.data;
+  const installations = me.data.installations ?? [];
   const queryCoverage = coverageFromQuery(search);
   const previewing = !user;
   const coverage: Coverage | undefined = user
@@ -650,15 +674,23 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const ended = coverage?.status === "ended";
-  const githubPaused = Boolean(
-    !previewing && installations.some((row) => row.suspended),
-  );
+  const selectedLiveInstall = previewing
+    ? null
+    : (selectedInstallId
+        ? (installations.find((row) => row.id === selectedInstallId) ?? installations[0])
+        : installations[0]) ?? null;
+  const selectedInstall = previewing ? PREVIEW_INSTALLATIONS[0] : selectedLiveInstall;
+  const deskCoverage = previewing
+    ? coverage
+    : selectedLiveInstall
+      ? coverageFrom(selectedLiveInstall.trialEndsAt, selectedLiveInstall.plan)
+      : coverage;
+  const ended = deskCoverage?.status === "ended";
+  const githubPaused = Boolean(selectedLiveInstall?.suspended);
   const locked = ended || githubPaused;
   const login = user?.login ?? PREVIEW_LOGIN;
-  const watching = user
-    ? installations.map((row) => row.account_login)
-    : PREVIEW_INSTALLATIONS.map((row) => row.account_login);
+  const watching = selectedInstall ? [selectedInstall.account_login] : [];
+  const activeInstallId = selectedLiveInstall?.id ?? null;
   const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
   const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
   const deskPackages = previewing
@@ -681,12 +713,12 @@ export function WatchPage({ search }: { search: string }) {
               : githubPaused
                 ? "GitHub suspended the NoSpoilers App. Repositories stay listed. We do not scan until GitHub unsuspends it."
                 : watching.length > 0
-                ? `Watching ${watching.join(", ")}. Hosted pack scans are on${coverage?.status === "trial" ? " for this trial" : ""}.`
+                ? `Watching ${watching.join(", ")}. Hosted pack scans are on${deskCoverage?.status === "trial" ? " for this trial" : ""}.`
                 : "No installs linked yet"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {coverage && (
+          {deskCoverage && (
             <span
               className={
                 ended
@@ -694,8 +726,31 @@ export function WatchPage({ search }: { search: string }) {
                   : "text-[11px] uppercase tracking-[0.16em] text-dim"
               }
             >
-              {coverage.label}
+              {deskCoverage.label}
             </span>
+          )}
+          {!previewing && installations.length > 1 && (
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">GitHub install</span>
+              <select
+                value={activeInstallId ?? ""}
+                onChange={(event) => {
+                  const id = Number(event.target.value);
+                  if (!Number.isFinite(id) || id <= 0) return;
+                  setSelectedInstallId(id);
+                  navigate(`/watch?install=${id}`);
+                  void refreshSignedIn(id);
+                }}
+                className="h-10 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+              >
+                {installations.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.account_login}
+                    {row.suspended ? " (suspended)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           {installUrl && githubApp && user && (
             <Button as="a" href={installUrl}>
@@ -763,7 +818,7 @@ export function WatchPage({ search }: { search: string }) {
                             });
                             const body = (await response.json()) as { error?: string };
                             if (!response.ok) throw new Error(body.error ?? "Could not queue scan.");
-                            await refreshSignedIn();
+                            await refreshSignedIn(selectedInstallId);
                           } catch (error) {
                             setScanError(error instanceof Error ? error.message : "Could not queue scan.");
                           } finally {
@@ -866,7 +921,7 @@ export function WatchPage({ search }: { search: string }) {
                   void (async () => {
                     try {
                       const body = await loadJson<{ exportedAt: string; alerts: Alert[] }>(
-                        "/api/alerts/export",
+                        scopedApi("/api/alerts/export", activeInstallId),
                       );
                       const blob = new Blob([JSON.stringify(body, null, 2)], {
                         type: "application/json",
@@ -980,10 +1035,7 @@ export function WatchPage({ search }: { search: string }) {
         {githubPaused ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">
             GitHub suspended the NoSpoilers App
-            {installations
-              .filter((row) => row.suspended)
-              .map((row) => ` on ${row.account_login}`)
-              .join("")}
+            {selectedInstall ? ` on ${selectedInstall.account_login}` : ""}
             . This is not a billing change.
           </p>
         ) : null}
@@ -993,7 +1045,9 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : (
           <ul className="mt-6 max-w-xl divide-y divide-white/5">
-            {installations.map((install) => {
+            {installations
+              .filter((row) => !activeInstallId || row.id === activeInstallId)
+              .map((install) => {
               const test = install.lastPermissionTest;
               return (
                 <li key={install.id} className="py-4">
@@ -1137,14 +1191,14 @@ export function WatchPage({ search }: { search: string }) {
                     body: JSON.stringify({
                       origin: registryOriginInput,
                       token: registryToken,
-                      installationId: installations[0]?.id,
+                      installationId: activeInstallId,
                     }),
                   });
                   const body = (await response.json()) as { error?: string };
                   if (!response.ok) throw new Error(body.error ?? "Could not save registry.");
                   setRegistryToken("");
                   setRegistryOriginInput("");
-                  await refreshSignedIn();
+                  await refreshSignedIn(selectedInstallId);
                 } catch (error) {
                   setRegistryError(error instanceof Error ? error.message : "Could not save registry.");
                 } finally {
@@ -1206,7 +1260,7 @@ export function WatchPage({ search }: { search: string }) {
                         });
                         const body = (await response.json()) as { error?: string };
                         if (!response.ok) throw new Error(body.error ?? "Could not remove registry.");
-                        await refreshSignedIn();
+                        await refreshSignedIn(selectedInstallId);
                       } catch (error) {
                         setRegistryError(
                           error instanceof Error ? error.message : "Could not remove registry.",
@@ -1239,14 +1293,14 @@ export function WatchPage({ search }: { search: string }) {
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({
                       packageName,
-                      installationId: installations[0]?.id,
+                      installationId: activeInstallId,
                       registryOrigin: watchRegistryOrigin,
                     }),
                   });
                   const body = (await response.json()) as { error?: string };
                   if (!response.ok) throw new Error(body.error ?? "Could not watch package.");
                   setPackageName("");
-                  await refreshSignedIn();
+                  await refreshSignedIn(selectedInstallId);
                 } catch (error) {
                   setPackageError(error instanceof Error ? error.message : "Could not watch package.");
                 } finally {
@@ -1340,7 +1394,7 @@ export function WatchPage({ search }: { search: string }) {
                               });
                               const body = (await response.json()) as { error?: string };
                               if (!response.ok) throw new Error(body.error ?? "Could not check package.");
-                              await refreshSignedIn();
+                              await refreshSignedIn(selectedInstallId);
                             } catch (error) {
                               setPackageError(
                                 error instanceof Error ? error.message : "Could not check package.",
@@ -1372,7 +1426,7 @@ export function WatchPage({ search }: { search: string }) {
                                 if (!response.ok) {
                                   throw new Error(body.error ?? "Could not protect package.");
                                 }
-                                await refreshSignedIn();
+                                await refreshSignedIn(selectedInstallId);
                               } catch (error) {
                                 setPackageError(
                                   error instanceof Error ? error.message : "Could not protect package.",
@@ -1436,7 +1490,7 @@ export function WatchPage({ search }: { search: string }) {
                               if (!response.ok) {
                                 throw new Error(body.error ?? "Could not approve baseline.");
                               }
-                              await refreshSignedIn();
+                              await refreshSignedIn(selectedInstallId);
                             } catch (error) {
                               setPackageError(
                                 error instanceof Error ? error.message : "Could not approve baseline.",
@@ -1466,7 +1520,7 @@ export function WatchPage({ search }: { search: string }) {
                               if (!response.ok) {
                                 throw new Error(body.error ?? "Could not remove package.");
                               }
-                              await refreshSignedIn();
+                              await refreshSignedIn(selectedInstallId);
                             } catch (error) {
                               setPackageError(
                                 error instanceof Error ? error.message : "Could not remove package.",
@@ -1552,13 +1606,13 @@ export function WatchPage({ search }: { search: string }) {
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({
                           name: scanTokenName,
-                          installationId: installations[0]?.id,
+                          installationId: activeInstallId,
                         }),
                       });
                       const body = (await response.json()) as { error?: string; token?: string };
                       if (!response.ok) throw new Error(body.error ?? "Could not mint token.");
                       if (body.token) setRevealedScanToken(body.token);
-                      await refreshSignedIn();
+                      await refreshSignedIn(selectedInstallId);
                     } catch (error) {
                       setScanTokenError(
                         error instanceof Error ? error.message : "Could not mint token.",
@@ -1625,7 +1679,7 @@ export function WatchPage({ search }: { search: string }) {
                             if (revealedScanToken?.startsWith(token.token_prefix)) {
                               setRevealedScanToken(null);
                             }
-                            await refreshSignedIn();
+                            await refreshSignedIn(selectedInstallId);
                           } catch (error) {
                             setScanTokenError(
                               error instanceof Error ? error.message : "Could not revoke token.",
@@ -1716,7 +1770,7 @@ export function WatchPage({ search }: { search: string }) {
                     credentials: "include",
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({
-                      installationId: installations[0]?.id,
+                      installationId: activeInstallId,
                       rule: allowRule,
                       path: allowPath,
                       reason: allowReason,
@@ -1728,7 +1782,7 @@ export function WatchPage({ search }: { search: string }) {
                   setAllowRule("");
                   setAllowPath("");
                   setAllowReason("");
-                  await refreshSignedIn();
+                  await refreshSignedIn(selectedInstallId);
                 } catch (error) {
                   setPackageError(
                     error instanceof Error ? error.message : "Could not save allowlist entry.",
@@ -1822,7 +1876,7 @@ export function WatchPage({ search }: { search: string }) {
                         });
                         const body = (await response.json()) as { error?: string };
                         if (!response.ok) throw new Error(body.error ?? "Could not revoke.");
-                        await refreshSignedIn();
+                        await refreshSignedIn(selectedInstallId);
                       } catch (error) {
                         setPackageError(error instanceof Error ? error.message : "Could not revoke.");
                       } finally {

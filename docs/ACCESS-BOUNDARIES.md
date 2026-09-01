@@ -14,7 +14,7 @@ Unauthenticated browser traffic.
 
 **May**
 
-- View Product, Pricing, documentation, Privacy, Terms, Retention, Disclosure, Support, and Refunds.
+- View Product, Pricing, documentation, Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
 - Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key.
@@ -36,7 +36,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 **May**
 
-- See Watch data for installations linked to their account.
+- See Watch data for the GitHub installation they select. List APIs accept
+  `?installationId=`; an id they do not belong to returns empty, not another tenant.
+  Writes that create install-scoped records require an explicit installation when the
+  user belongs to more than one. Coverage and GitHub suspend are enforced on that
+  install, not on a sibling org.
 - Connect and watch public npm packages on those installations while coverage is active.
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
@@ -59,8 +63,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
   or deleted by customers.
 - Run a live GitHub permission test on installations they belong to. The test never
-  inserts an alert and never claims a security incident. It stays available when coverage
-  has ended or GitHub has suspended the App.
+  inserts an alert and never claims a security incident. It reports the last customer
+  job (kind, status, time) for that install, or that none exist. It stays available
+  when coverage has ended or GitHub has suspended the App.
 - Acknowledge, assign (to a GitHub login on that install), resolve with a note, and
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.
@@ -175,6 +180,7 @@ These are never customer features:
 2. **Internal APIs** — `Authorization: Bearer $ADMIN_TOKEN`, `x-admin-token`, **or** a
    session whose GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`).
 3. Health reports `database.mode` as `neon`, `postgres`, or `pglite` and never the URL.
+   `/status` renders that same public liveness payload.
 
 ## Tests
 
@@ -200,5 +206,11 @@ never returns payloads or prospect scans, and other tenants cannot read those jo
 alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
 are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,
 `alert_events` cannot be updated or deleted, and activity export is tenant-scoped.
+`tests/multi-org.test.ts` proves one user with two GitHub installs sees each org’s
+repos/alerts/jobs only when `installationId` is set, another tenant’s id is empty,
+writes without an install id return 400 when two installs exist, unpaid or GitHub-
+suspended coverage on one org does not lock a sibling trial org, last-delivery on
+the permission test comes from a real customer job and never inserts an alert, and
+`/api/health` still omits `DATABASE_URL` and tenant data.
 Keep those
 tests green when adding internal routes.

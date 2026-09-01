@@ -150,8 +150,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Remove/suspend bad GitHub Release asset | Planned, high permission | NoSpoilers |
 | Disable unsafe release workflow | Planned, high permission | NoSpoilers |
 | Automatic remediation PR | Planned | NoSpoilers |
-| Multiple GitHub organizations | Planned | NoSpoilers |
-| Live installation/permission test | Built: GitHub install + optional repo probe; never invents an incident | NoSpoilers |
+| Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
+| Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; never invents an incident | NoSpoilers |
 
 ## Alerts, team and trust
 
@@ -170,7 +170,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Partial: tenant JSON of alerts and append-only events; Team audit log still planned | NoSpoilers |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
-| Public status page | Planned | Operations |
+| Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |
 | Multiple notification destinations | Planned | NoSpoilers Team |
 
