@@ -277,6 +277,8 @@ Grant Contents write, Pull requests write, and Checks write on the GitHub App to
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
+`npm run phase1:throwaway` creates that release, or attaches the fixture if the tag already
+exists without the asset. It still requires `GITHUB_PROOF_TOKEN`.
 Do not start Stripe or the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```

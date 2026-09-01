@@ -37,6 +37,40 @@ async function github(
   return { status: res.status, body };
 }
 
+async function attachFixture(
+  token: string,
+  uploadUrl: string,
+  bytes: Buffer,
+): Promise<void> {
+  const uploadBase = uploadUrl.replace(/\{.*\}$/, "");
+  const upload = await fetch(`${uploadBase}?name=sourcemap.tgz`, {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/octet-stream",
+      "User-Agent": "nospoilers-phase1",
+    },
+    body: bytes,
+  });
+  if (!upload.ok) {
+    const text = await upload.text();
+    throw new Error(`Could not attach fixture: ${upload.status} ${text.slice(0, 200)}`);
+  }
+}
+
+async function existingRelease(
+  token: string,
+): Promise<{ upload_url?: string; assets?: { name?: string }[] } | null> {
+  const listed = await github(token, `https://api.github.com/repos/${FULL}/releases/tags/phase1-fixture`);
+  if (listed.status === 404) return null;
+  if (listed.status >= 300) {
+    const message = (listed.body as { message?: string }).message ?? String(listed.status);
+    throw new Error(`Could not read release phase1-fixture: ${message}`);
+  }
+  return listed.body as { upload_url?: string; assets?: { name?: string }[] };
+}
+
 async function main(): Promise<void> {
   const token = proofToken();
   if (!token) {
@@ -110,29 +144,28 @@ async function main(): Promise<void> {
     errors?: unknown;
     upload_url?: string;
     id?: number;
+    assets?: { name?: string }[];
   };
+  let uploadUrl = releaseBody.upload_url;
   if (release.status === 422) {
-    process.stdout.write("release phase1-fixture already exists\n");
-    return;
-  }
-  if (release.status >= 300 || !releaseBody.upload_url) {
+    const found = await existingRelease(token);
+    if (!found?.upload_url) {
+      throw new Error("Release phase1-fixture already exists but has no upload URL.");
+    }
+    const names = (found.assets ?? []).map((asset) => asset.name ?? "");
+    if (names.includes("sourcemap.tgz")) {
+      process.stdout.write("release phase1-fixture already has sourcemap.tgz\n");
+      return;
+    }
+    uploadUrl = found.upload_url;
+    process.stdout.write("release phase1-fixture exists; attaching missing fixture\n");
+  } else if (release.status >= 300 || !uploadUrl) {
     throw new Error(`Could not create release: ${releaseBody.message ?? release.status}`);
   }
-  const uploadBase = releaseBody.upload_url.replace(/\{.*\}$/, "");
-  const upload = await fetch(`${uploadBase}?name=sourcemap.tgz`, {
-    method: "POST",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/octet-stream",
-      "User-Agent": "nospoilers-phase1",
-    },
-    body: bytes,
-  });
-  if (!upload.ok) {
-    const text = await upload.text();
-    throw new Error(`Could not attach fixture: ${upload.status} ${text.slice(0, 200)}`);
+  if (!uploadUrl) {
+    throw new Error("Release upload URL missing.");
   }
+  await attachFixture(token, uploadUrl, bytes);
   process.stdout.write(`attached fixtures/sourcemap.tgz to ${FULL} release phase1-fixture\n`);
 }
 
