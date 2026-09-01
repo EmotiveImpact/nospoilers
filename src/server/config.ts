@@ -11,6 +11,9 @@ export type AppConfig = {
   githubClientId: string;
   githubClientSecret: string;
   githubAppSlug: string;
+  githubDiscoveryToken: string;
+  adminToken: string;
+  adminGithubLogin: string;
   sessionSecret: string;
   heavyConcurrency: number;
   lightConcurrency: number;
@@ -70,6 +73,9 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     githubClientId: env("GITHUB_CLIENT_ID"),
     githubClientSecret: env("GITHUB_CLIENT_SECRET"),
     githubAppSlug: env("GITHUB_APP_SLUG", "nospoilers"),
+    githubDiscoveryToken: env("GITHUB_DISCOVERY_TOKEN"),
+    adminToken: env("ADMIN_TOKEN"),
+    adminGithubLogin: env("ADMIN_GITHUB_LOGIN", "EmotiveImpact"),
     sessionSecret: env("SESSION_SECRET") || env("GITHUB_WEBHOOK_SECRET") || "dev-session-not-for-production",
     heavyConcurrency: heavy,
     lightConcurrency: light,

@@ -26,6 +26,19 @@ Open **http://127.0.0.1:4347** (port **4347**).
 
 Two logged-in states: **trial desk** (bot is thinking) and **unpaid locked scan** (drop zone stays, we do not unpack).
 
+### Internal Artifact Leads
+
+The private company desk at `/internal/prospects` discovers real public GitHub Release packs and
+root npm packages, queues them through the scanner, and keeps only finding metadata. It never keeps
+source or secret values and never contacts maintainers automatically.
+
+Set a long random `ADMIN_TOKEN` in `.env`, then enter it in the page. A real GitHub session whose
+login matches `ADMIN_GITHUB_LOGIN` can also open it. `GITHUB_DISCOVERY_TOKEN` is optional but raises
+GitHub's public API limit from 60 to 5,000 requests per hour.
+
+The desk deliberately supports only public `.tgz`, `.tar.gz`, `.zip`, and `.asar` artifacts from
+GitHub and npm. Use findings for private, responsible disclosure—never public prospect lists.
+
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 
 ```bash

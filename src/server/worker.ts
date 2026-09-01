@@ -5,6 +5,7 @@ import { scan, type ScanReport } from "../scanner/index.ts";
 import type { GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { isPackAssetName } from "./paths.ts";
+import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
@@ -39,6 +40,19 @@ export async function handleJob(
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
+  if (job.kind === "prospect_scan") {
+    const prospectId = Number(payload.prospectId);
+    if (!Number.isFinite(prospectId) || prospectId <= 0) {
+      throw new Error("prospect_scan job missing prospectId");
+    }
+    await scanProspectArtifact(prospectId, {
+      store: deps.store,
+      scan: deps.scan,
+      maxAssetBytes: deps.maxAssetBytes,
+    });
+    return;
+  }
+
   const repo = repoOf(payload);
   const installationId = Number(payload.installationId);
   const deliveryId = job.delivery_id;

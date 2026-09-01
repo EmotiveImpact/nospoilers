@@ -38,6 +38,33 @@ export type AlertRow = {
   full_name?: string | null;
 };
 
+export type ProspectStatus = "new" | "contacted" | "fixed" | "ignored";
+export type ProspectScanStatus = "queued" | "scanning" | "complete" | "failed";
+
+export type ProspectRow = {
+  id: number;
+  source: "github_release" | "npm";
+  owner: string;
+  repo: string;
+  repository_url: string;
+  package_name: string | null;
+  release_tag: string | null;
+  artifact_name: string;
+  artifact_url: string;
+  artifact_bytes: number | null;
+  status: ProspectStatus;
+  scan_status: ProspectScanStatus;
+  file_count: number | null;
+  critical_count: number | null;
+  warning_count: number | null;
+  findings: unknown;
+  error: string | null;
+  discovered_at: string;
+  scanned_at: string | null;
+  contacted_at: string | null;
+  updated_at: string;
+};
+
 function parsePayload(value: unknown): unknown {
   if (typeof value === "string") {
     try {
@@ -47,6 +74,18 @@ function parsePayload(value: unknown): unknown {
     }
   }
   return value;
+}
+
+function prospectRow(row: ProspectRow): ProspectRow {
+  return {
+    ...row,
+    id: num(row.id),
+    artifact_bytes: row.artifact_bytes === null ? null : num(row.artifact_bytes),
+    file_count: row.file_count === null ? null : num(row.file_count),
+    critical_count: row.critical_count === null ? null : num(row.critical_count),
+    warning_count: row.warning_count === null ? null : num(row.warning_count),
+    findings: parsePayload(row.findings),
+  };
 }
 
 export function createStore(sql: SqlClient) {
@@ -370,6 +409,163 @@ export function createStore(sql: SqlClient) {
         [repoId, kind, sinceIso],
       );
       return num(rows[0]?.n ?? 0) > 0;
+    },
+
+    async upsertProspect(input: {
+      source: "github_release" | "npm";
+      owner: string;
+      repo: string;
+      repositoryUrl: string;
+      packageName?: string | null;
+      releaseTag?: string | null;
+      artifactName: string;
+      artifactUrl: string;
+      artifactBytes?: number | null;
+    }): Promise<{ id: number; inserted: boolean }> {
+      const inserted = await sql.query<{ id: unknown }>(
+        `INSERT INTO prospects (
+           source, owner, repo, repository_url, package_name, release_tag,
+           artifact_name, artifact_url, artifact_bytes
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (artifact_url) DO NOTHING
+         RETURNING id`,
+        [
+          input.source,
+          input.owner,
+          input.repo,
+          input.repositoryUrl,
+          input.packageName ?? null,
+          input.releaseTag ?? null,
+          input.artifactName,
+          input.artifactUrl,
+          input.artifactBytes ?? null,
+        ],
+      );
+      if (inserted.rows[0]) return { id: num(inserted.rows[0].id), inserted: true };
+      const existing = await sql.query<{ id: unknown }>(
+        `SELECT id FROM prospects WHERE artifact_url = $1`,
+        [input.artifactUrl],
+      );
+      if (!existing.rows[0]) throw new Error("Prospect artifact disappeared during insert.");
+      return { id: num(existing.rows[0].id), inserted: false };
+    },
+
+    async getProspect(id: number): Promise<ProspectRow | null> {
+      const { rows } = await sql.query<ProspectRow>(`SELECT * FROM prospects WHERE id = $1`, [id]);
+      return rows[0] ? prospectRow(rows[0]) : null;
+    },
+
+    async listProspects(limit = 100): Promise<ProspectRow[]> {
+      const { rows } = await sql.query<ProspectRow>(
+        `SELECT * FROM prospects
+         ORDER BY
+           CASE scan_status
+             WHEN 'complete' THEN 0
+             WHEN 'scanning' THEN 1
+             WHEN 'queued' THEN 2
+             ELSE 3
+           END,
+           COALESCE(critical_count, -1) DESC,
+           discovered_at DESC
+         LIMIT $1`,
+        [Math.min(500, Math.max(1, limit))],
+      );
+      return rows.map(prospectRow);
+    },
+
+    async prospectStats(): Promise<{
+      total: number;
+      actionable: number;
+      queued: number;
+      contacted: number;
+    }> {
+      const { rows } = await sql.query<{
+        total: unknown;
+        actionable: unknown;
+        queued: unknown;
+        contacted: unknown;
+      }>(
+        `SELECT
+           count(*)::int AS total,
+           count(*) FILTER (WHERE scan_status = 'complete' AND critical_count > 0)::int AS actionable,
+           count(*) FILTER (WHERE scan_status IN ('queued', 'scanning'))::int AS queued,
+           count(*) FILTER (WHERE status = 'contacted')::int AS contacted
+         FROM prospects`,
+      );
+      return {
+        total: num(rows[0]?.total ?? 0),
+        actionable: num(rows[0]?.actionable ?? 0),
+        queued: num(rows[0]?.queued ?? 0),
+        contacted: num(rows[0]?.contacted ?? 0),
+      };
+    },
+
+    async startProspectScan(id: number): Promise<void> {
+      await sql.query(
+        `UPDATE prospects
+         SET scan_status = 'scanning', error = NULL, updated_at = now()
+         WHERE id = $1`,
+        [id],
+      );
+    },
+
+    async queueProspectScan(id: number): Promise<void> {
+      await sql.query(
+        `UPDATE prospects
+         SET scan_status = 'queued', error = NULL, updated_at = now()
+         WHERE id = $1`,
+        [id],
+      );
+    },
+
+    async completeProspectScan(
+      id: number,
+      report: { fileCount: number; findings: unknown[] },
+    ): Promise<void> {
+      const critical = report.findings.filter(
+        (finding) =>
+          finding &&
+          typeof finding === "object" &&
+          "severity" in finding &&
+          finding.severity === "critical",
+      ).length;
+      const warnings = report.findings.length - critical;
+      await sql.query(
+        `UPDATE prospects
+         SET scan_status = 'complete',
+             file_count = $2,
+             critical_count = $3,
+             warning_count = $4,
+             findings = $5::jsonb,
+             error = NULL,
+             scanned_at = now(),
+             updated_at = now()
+         WHERE id = $1`,
+        [id, report.fileCount, critical, warnings, JSON.stringify(report.findings)],
+      );
+    },
+
+    async failProspectScan(id: number, error: string): Promise<void> {
+      await sql.query(
+        `UPDATE prospects
+         SET scan_status = 'failed', error = $2, updated_at = now()
+         WHERE id = $1`,
+        [id, error.slice(0, 2000)],
+      );
+    },
+
+    async updateProspectStatus(id: number, status: ProspectStatus): Promise<ProspectRow | null> {
+      const { rows } = await sql.query<ProspectRow>(
+        `UPDATE prospects
+         SET status = $2,
+             contacted_at = CASE WHEN $2 = 'contacted' THEN COALESCE(contacted_at, now()) ELSE contacted_at END,
+             updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [id, status],
+      );
+      return rows[0] ? prospectRow(rows[0]) : null;
     },
 
     async listInstallationsForUser(userId: string): Promise<

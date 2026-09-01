@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -9,7 +10,12 @@ import type { AppConfig } from "./config.ts";
 import { githubAppConfigured } from "./config.ts";
 import type { GithubPort } from "./github.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
+import {
+  discoverAndQueueProspects,
+  inspectAndQueueRepository,
+} from "./prospects.ts";
 import type { Store } from "./store.ts";
+import type { ProspectStatus } from "./store.ts";
 import { readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
 
@@ -28,6 +34,12 @@ function jsonObj(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function sameSecret(left: string, right: string): boolean {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const scanFn = deps.scan ?? scan;
@@ -40,6 +52,39 @@ export function createApp(deps: AppDeps): Hono {
     return await deps.store.getSession(sessionId);
   }
 
+  async function isInternalAdmin(c: Context): Promise<boolean> {
+    const authorization = c.req.header("authorization") ?? "";
+    const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    const headerToken = c.req.header("x-admin-token") ?? bearer;
+    if (
+      deps.config.adminToken &&
+      headerToken &&
+      sameSecret(deps.config.adminToken, headerToken)
+    ) {
+      return true;
+    }
+    const user = await currentUser(c);
+    return Boolean(
+      user &&
+        deps.config.adminGithubLogin &&
+        user.login.toLowerCase() === deps.config.adminGithubLogin.toLowerCase(),
+    );
+  }
+
+  app.use("/api/internal/*", async (c, next) => {
+    if (!(await isInternalAdmin(c))) {
+      return c.json(
+        {
+          error: "Admin access required.",
+          githubLogin: deps.config.adminGithubLogin,
+          tokenConfigured: Boolean(deps.config.adminToken),
+        },
+        401,
+      );
+    }
+    await next();
+  });
+
   app.get("/api/health", (c) =>
     c.json({
       ok: true,
@@ -47,6 +92,94 @@ export function createApp(deps: AppDeps): Hono {
       githubApp: githubAppConfigured(deps.config),
     }),
   );
+
+  app.get("/api/internal/prospects", async (c) => {
+    const limit = Number(c.req.query("limit") ?? 100);
+    const [prospects, stats] = await Promise.all([
+      deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
+      deps.store.prospectStats(),
+    ]);
+    return c.json({
+      prospects,
+      stats,
+      policy: {
+        publicArtifactsOnly: true,
+        sourceRetained: false,
+        outreachAutomatic: false,
+      },
+    });
+  });
+
+  app.post("/api/internal/prospects/discover", async (c) => {
+    try {
+      const body = jsonObj(await c.req.json());
+      const result = await discoverAndQueueProspects(
+        deps.store,
+        {
+          query: typeof body.query === "string" ? body.query : undefined,
+          limit: typeof body.limit === "number" ? body.limit : undefined,
+        },
+        deps.config.githubDiscoveryToken,
+      );
+      return c.json(result);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Discovery failed." },
+        400,
+      );
+    }
+  });
+
+  app.post("/api/internal/prospects/repository", async (c) => {
+    try {
+      const body = jsonObj(await c.req.json());
+      const repository = typeof body.repository === "string" ? body.repository : "";
+      if (!repository) return c.json({ error: "Provide owner/repo or a GitHub URL." }, 400);
+      return c.json(
+        await inspectAndQueueRepository(
+          deps.store,
+          repository,
+          deps.config.githubDiscoveryToken,
+        ),
+      );
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Repository inspection failed." },
+        400,
+      );
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/rescan", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    const prospect = await deps.store.getProspect(id);
+    if (!prospect) return c.json({ error: "Prospect not found." }, 404);
+    await deps.store.queueProspectScan(id);
+    const job = await deps.store.enqueueJob({
+      priority: "heavy",
+      kind: "prospect_scan",
+      payload: { prospectId: id },
+    });
+    return c.json({ ok: true, jobId: job.id });
+  });
+
+  app.patch("/api/internal/prospects/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    const body = jsonObj(await c.req.json());
+    const status = body.status;
+    const allowed: ProspectStatus[] = ["new", "contacted", "fixed", "ignored"];
+    if (
+      !Number.isFinite(id) ||
+      id <= 0 ||
+      typeof status !== "string" ||
+      !allowed.includes(status as ProspectStatus)
+    ) {
+      return c.json({ error: "Invalid prospect status." }, 400);
+    }
+    const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);
+    return prospect ? c.json({ prospect }) : c.json({ error: "Prospect not found." }, 404);
+  });
 
   app.post("/api/scan", async (c) => {
     const user = await currentUser(c);

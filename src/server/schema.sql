@@ -85,3 +85,35 @@ CREATE TABLE IF NOT EXISTS alerts (
 
 CREATE INDEX IF NOT EXISTS alerts_feed_idx
   ON alerts (installation_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS prospects (
+  id BIGSERIAL PRIMARY KEY,
+  source TEXT NOT NULL CHECK (source IN ('github_release', 'npm')),
+  owner TEXT NOT NULL,
+  repo TEXT NOT NULL,
+  repository_url TEXT NOT NULL,
+  package_name TEXT,
+  release_tag TEXT,
+  artifact_name TEXT NOT NULL,
+  artifact_url TEXT NOT NULL UNIQUE,
+  artifact_bytes BIGINT,
+  status TEXT NOT NULL DEFAULT 'new'
+    CHECK (status IN ('new', 'contacted', 'fixed', 'ignored')),
+  scan_status TEXT NOT NULL DEFAULT 'queued'
+    CHECK (scan_status IN ('queued', 'scanning', 'complete', 'failed')),
+  file_count INTEGER,
+  critical_count INTEGER,
+  warning_count INTEGER,
+  findings JSONB,
+  error TEXT,
+  discovered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  scanned_at TIMESTAMPTZ,
+  contacted_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS prospects_queue_idx
+  ON prospects (scan_status, id);
+
+CREATE INDEX IF NOT EXISTS prospects_action_idx
+  ON prospects (status, critical_count DESC, discovered_at DESC);

@@ -2,6 +2,7 @@ import { SiteChrome } from "@/components/SiteChrome.tsx"
 import { LandingPage } from "@/pages/LandingPage.tsx"
 import { MockupsPage } from "@/pages/MockupsPage.tsx"
 import { PricingPage } from "@/pages/PricingPage.tsx"
+import { ProspectsPage } from "@/pages/ProspectsPage.tsx"
 import { ScanPage } from "@/pages/ScanPage.tsx"
 import { WatchPage } from "@/pages/WatchPage.tsx"
 import { useEffect, useState } from "react"
@@ -20,7 +21,8 @@ function useLoc(): { path: string; search: string } {
   return loc
 }
 
-function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups" {
+function pageFor(path: string): "home" | "watch" | "scan" | "pricing" | "mockups" | "prospects" {
+  if (path === "/internal/prospects") return "prospects"
   if (path === "/scan" || path.startsWith("/scan/")) return "scan"
   if (path === "/pricing" || path.startsWith("/pricing/")) return "pricing"
   if (path === "/watch" || path.startsWith("/watch/")) return "watch"
@@ -40,7 +42,9 @@ export default function App() {
           ? "/scan"
           : page === "pricing"
             ? "/pricing"
-            : "/mockups"
+            : page === "mockups"
+              ? "/mockups"
+              : "/internal/prospects"
 
   return (
     <SiteChrome path={chromePath} search={search}>
@@ -49,6 +53,7 @@ export default function App() {
       {page === "scan" && <ScanPage search={search} />}
       {page === "pricing" && <PricingPage />}
       {page === "mockups" && <MockupsPage />}
+      {page === "prospects" && <ProspectsPage />}
     </SiteChrome>
   )
 }

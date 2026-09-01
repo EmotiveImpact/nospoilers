@@ -120,6 +120,9 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "002_coverage",
   ]);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "003_prospects",
+  ]);
 }
 
 export function num(value: unknown): number {
