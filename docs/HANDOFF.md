@@ -3,11 +3,14 @@
 Read in this order:
 
 1. `docs/PRODUCT.md` — product source of truth
-2. `docs/ROADMAP.md` — milestones and exit criteria
-3. `CHANGELOG.md` — completed work
-4. `README.md` — operation and GitHub App checklist
-5. `docs/ELECTRON.md` — installer work intentionally on ice
-6. `docs/MONTH1.md` — evidence-led acquisition
+2. `docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md` — complete product and phased plan
+3. `docs/expansion/FEATURE-INVENTORY.md` — exhaustive feature accounting
+4. `docs/ROADMAP.md` — immediate milestones and exit criteria
+5. `CHANGELOG.md` — completed work
+6. `README.md` — operation and GitHub App checklist
+7. `docs/ELECTRON.md` — installer work intentionally on ice
+8. `docs/MONTH1.md` — evidence-led acquisition
+9. `docs/products/README.md` — separate-product boundaries and PRDs
 
 ## Repository
 
@@ -51,13 +54,14 @@ Do not describe these as complete because the UI exists.
 ## Exact next prompt
 
 ```text
-Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md, docs/ROADMAP.md,
-docs/HANDOFF.md, and CHANGELOG.md first. Verify DATABASE_URL connects the application to the
-existing Neon NoSpoilers project without importing PGlite data. Reset the single server on port
-4347, run idempotent migrations, test a temporary database transaction, and prove an API-enqueued
-job wakes immediately without sub-second idle polling. Commit and push any required fixes. Then
-report the remaining user action for registering the real GitHub App; do not start Stripe or the
-Electron installer worker yet.
+Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
+docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
+docs/ROADMAP.md, docs/HANDOFF.md, and CHANGELOG.md first. Execute Phase 0 only: verify DATABASE_URL
+connects the application to the existing Neon NoSpoilers project without importing PGlite data.
+Reset the single server on port 4347, run idempotent migrations, test a temporary database
+transaction, and prove an API-enqueued job wakes immediately without sub-second idle polling.
+Commit and push any required fixes. Then report the remaining user action for registering the real
+GitHub App; do not start Stripe or the Electron installer worker yet.
 ```
 
 ## Cleanup

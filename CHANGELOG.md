@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
+- Added standalone PRDs for Employee Public Footprint, Release Ledger, Package Impersonation
+  Monitor, and Disclosure Desk.
+- Added a revenue and indicative valuation model.
 - Verify application runtime against Neon.
 - Register and prove the real GitHub App.
 - Move coverage from users to installation billing accounts.

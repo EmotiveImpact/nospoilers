@@ -1,7 +1,9 @@
 # NoSpoilers roadmap
 
 `docs/PRODUCT.md` is the source of truth for product, pricing, and architecture. This file tracks
-execution order.
+the immediate operational sequence. The exhaustive expansion plan is
+`docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md`; every discussed feature is recorded in
+`docs/expansion/FEATURE-INVENTORY.md`.
 
 ## Current — 0.1.0
 

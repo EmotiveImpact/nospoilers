@@ -11,6 +11,13 @@ Execution order is in **[docs/ROADMAP.md](docs/ROADMAP.md)**, completed work in
 **[CHANGELOG.md](CHANGELOG.md)**, and the next-agent brief in
 **[docs/HANDOFF.md](docs/HANDOFF.md)**.
 
+The complete expansion PRD is
+**[docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md](docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md)**.
+The exhaustive feature ledger is
+**[docs/expansion/FEATURE-INVENTORY.md](docs/expansion/FEATURE-INVENTORY.md)**, the value model is
+**[docs/expansion/VALUE-MODEL.md](docs/expansion/VALUE-MODEL.md)**, and standalone product PRDs are
+indexed in **[docs/products/README.md](docs/products/README.md)**.
+
 ## Run locally
 
 ```bash

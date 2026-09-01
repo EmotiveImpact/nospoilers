@@ -2,6 +2,10 @@
 
 This file is the source of truth for what we are building and why. Chat can run out of context. **Read this before changing product, pricing, or hosted architecture.**
 
+The exhaustive future product is specified in `docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md`.
+Every discussed feature is accounted for in `docs/expansion/FEATURE-INVENTORY.md`. Standalone
+product PRDs live under `docs/products/`.
+
 Tagline: **no spoilers in production.**
 
 Owner: Creative Director (Emotive Impact). GitHub login: `EmotiveImpact`.
