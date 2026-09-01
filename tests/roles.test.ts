@@ -256,6 +256,45 @@ describe("installation roles", () => {
       expect(testJira.status).toBe(200);
       expect(((await testJira.json()) as { inventedIncident: boolean }).inventedIncident).toBe(false);
 
+      const memberRoute = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie: memberCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          destinationId: slackBody.destination.id,
+          minSeverity: "critical",
+        }),
+      });
+      expect(memberRoute.status).toBe(403);
+
+      const adminRoute = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie: adminCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          destinationId: slackBody.destination.id,
+          minSeverity: "critical",
+        }),
+      });
+      expect(adminRoute.status).toBe(201);
+      const routeBody = (await adminRoute.json()) as { route: { id: number } };
+
+      const memberDeleteRoute = await app.request(`/api/destinations/routes/${routeBody.route.id}`, {
+        method: "DELETE",
+        headers: { cookie: memberCookie },
+      });
+      expect(memberDeleteRoute.status).toBe(403);
+
+      const memberRouteTest = await app.request("/api/destinations/route-test", {
+        method: "POST",
+        headers: { cookie: memberCookie, ...json },
+        body: JSON.stringify({ installationId: 7, severity: "critical" }),
+      });
+      expect(memberRouteTest.status).toBe(200);
+      expect(((await memberRouteTest.json()) as { inventedIncident: boolean }).inventedIncident).toBe(
+        false,
+      );
+
       const memberDelete = await app.request(`/api/destinations/${slackBody.destination.id}`, {
         method: "DELETE",
         headers: { cookie: memberCookie },

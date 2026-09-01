@@ -252,6 +252,30 @@ CREATE TRIGGER notification_deliveries_no_delete
   BEFORE DELETE ON notification_deliveries
   FOR EACH ROW EXECUTE PROCEDURE reject_notification_delivery_mutation();
 
+CREATE TABLE IF NOT EXISTS notification_routes (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
+  min_severity TEXT NOT NULL DEFAULT 'all' CHECK (min_severity IN ('all', 'warn', 'critical')),
+  repo_full_name TEXT,
+  package_name TEXT,
+  team_login TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS notification_routes_install_idx
+  ON notification_routes (installation_id, destination_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS notification_routes_uniq
+  ON notification_routes (
+    installation_id,
+    destination_id,
+    min_severity,
+    COALESCE(lower(repo_full_name), ''),
+    COALESCE(package_name, ''),
+    COALESCE(lower(team_login), '')
+  );
+
 CREATE TABLE IF NOT EXISTS scan_receipts (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,

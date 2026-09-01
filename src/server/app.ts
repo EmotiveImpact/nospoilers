@@ -92,6 +92,16 @@ import {
   parseInstallationRole,
   rolesPlanDeniedFromBilling,
 } from "./roles.ts";
+import {
+  MAX_NOTIFICATION_ROUTES,
+  destinationReceives,
+  parseRouteMinSeverity,
+  parseRoutePackageName,
+  parseRouteRepoFullName,
+  parseRouteSampleSeverity,
+  parseRouteTeamLogin,
+  routingPlanDeniedFromBilling,
+} from "./routing.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -278,6 +288,53 @@ export function createApp(deps: AppDeps): Hono {
       return { error: ADMIN_REQUIRED_ERROR, status: 403 as const };
     }
     return null;
+  }
+
+  async function testSavedDestination(destination: {
+    id: number;
+    installationId: number;
+    kind: "slack" | "siem" | "jira";
+  }): Promise<{ ok: boolean; status: number; error: string | null }> {
+    const install = await deps.store.getInstallation(destination.installationId);
+    const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
+    let posted: { ok: boolean; status: number; error: string | null };
+    if (destination.kind === "jira") {
+      const auth = await deps.store.getJiraAuthForInstallation(destination.installationId);
+      if (!auth || auth.id !== destination.id) {
+        posted = { ok: false, status: 0, error: "Unknown destination." };
+      } else {
+        posted = await testJiraDestination(auth.host, auth.projectKey, auth.secret, outbound);
+      }
+    } else {
+      const webhook = await deps.store.getDestinationWebhookForInstallation(
+        destination.installationId,
+        destination.kind,
+      );
+      if (!webhook || webhook.id !== destination.id) {
+        posted = { ok: false, status: 0, error: "Unknown destination." };
+      } else if (destination.kind === "siem") {
+        posted = await postSiemWebhook(
+          webhook.url,
+          siemTestPayload(install?.account_login ?? ""),
+          outbound,
+        );
+      } else {
+        posted = await postSlackWebhook(
+          webhook.url,
+          { text: slackTestText(install?.account_login ?? "") },
+          outbound.fetch,
+        );
+      }
+    }
+    await deps.store.recordNotificationDelivery({
+      installationId: destination.installationId,
+      destinationId: destination.id,
+      alertId: null,
+      kind: destination.kind,
+      status: posted.ok ? "sent" : "failed",
+      error: posted.error,
+    });
+    return posted;
   }
 
   async function hostedCoverageForUser(user: {
@@ -1847,6 +1904,232 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
 
+  app.get("/api/destinations/routes", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const routes = await deps.store.listNotificationRoutesForUser(
+      user.userId,
+      queryInstallationId(c),
+    );
+    return c.json({
+      routes: routes.map((row) => ({
+        id: row.id,
+        installationId: row.installationId,
+        destinationId: row.destinationId,
+        minSeverity: row.minSeverity,
+        repoFullName: row.repoFullName,
+        packageName: row.packageName,
+        teamLogin: row.teamLogin,
+        createdAt: row.createdAt,
+      })),
+    });
+  });
+
+  app.post("/api/destinations/routes", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach a route to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = routingPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const destinationId = Number(body.destinationId);
+    if (!Number.isFinite(destinationId) || destinationId <= 0) {
+      return c.json({ error: "Choose a Slack, SIEM, or Jira destination to route." }, 400);
+    }
+    const destination = await deps.store.getNotificationDestinationForUser(
+      destinationId,
+      user.userId,
+    );
+    if (!destination || destination.installationId !== installationId) {
+      return c.json({ error: "Unknown destination." }, 404);
+    }
+    const minSeverity = parseRouteMinSeverity(body.minSeverity ?? "all");
+    if (!minSeverity) {
+      return c.json({ error: "Use minSeverity all, warn, or critical." }, 400);
+    }
+    const repoRaw = String(body.repoFullName ?? "").trim();
+    const packageRaw = String(body.packageName ?? "").trim();
+    const teamRaw = String(body.teamLogin ?? "").trim();
+    const repoFullName = repoRaw ? parseRouteRepoFullName(repoRaw) : null;
+    if (repoRaw && !repoFullName) {
+      return c.json({ error: "Use a repository as owner/name on this install." }, 400);
+    }
+    const packageName = packageRaw ? parseRoutePackageName(packageRaw) : null;
+    if (packageRaw && !packageName) {
+      return c.json({ error: "Use a watched npm package name on this install." }, 400);
+    }
+    const parsedTeam = teamRaw ? parseRouteTeamLogin(teamRaw) : null;
+    if (teamRaw && !parsedTeam) {
+      return c.json({ error: "Assign only to a GitHub login on this install." }, 400);
+    }
+    if (repoFullName && !(await deps.store.installationHasRepoFullName(installationId, repoFullName))) {
+      return c.json({ error: "That repository is not on this GitHub install." }, 400);
+    }
+    if (packageName && !(await deps.store.installationHasWatchedPackage(installationId, packageName))) {
+      return c.json({ error: "That package is not watched on this install." }, 400);
+    }
+    let teamLogin = parsedTeam;
+    if (teamLogin) {
+      const members = await deps.store.listInstallationMemberLogins(installationId);
+      const wanted = teamLogin;
+      const match = members.find((row) => row.toLowerCase() === wanted.toLowerCase());
+      if (!match) {
+        return c.json({ error: "Assign only to someone on this GitHub install." }, 400);
+      }
+      teamLogin = match;
+    }
+    if ((await deps.store.countNotificationRoutes(installationId)) >= MAX_NOTIFICATION_ROUTES) {
+      return c.json({ error: `This install already has ${MAX_NOTIFICATION_ROUTES} routes.` }, 400);
+    }
+    try {
+      const route = await deps.store.insertNotificationRoute({
+        installationId,
+        destinationId,
+        minSeverity,
+        repoFullName,
+        packageName,
+        teamLogin,
+      });
+      return c.json(
+        {
+          ok: true,
+          route: {
+            id: route.id,
+            installationId: route.installationId,
+            destinationId: route.destinationId,
+            minSeverity: route.minSeverity,
+            repoFullName: route.repoFullName,
+            packageName: route.packageName,
+            teamLogin: route.teamLogin,
+            createdAt: route.createdAt,
+          },
+        },
+        201,
+      );
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that route." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.post("/api/destinations/route-test", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first.", inventedIncident: false }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json(
+        { error: "Choose a GitHub installation to test routing.", inventedIncident: false },
+        400,
+      );
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json(
+        { error: "That GitHub installation is not on your account.", inventedIncident: false },
+        403,
+      );
+    }
+    const severity = parseRouteSampleSeverity(body.severity ?? "critical");
+    if (!severity) {
+      return c.json({ error: "Use severity info, warn, or critical.", inventedIncident: false }, 400);
+    }
+    const repoRaw = String(body.repoFullName ?? "").trim();
+    const packageRaw = String(body.packageName ?? "").trim();
+    const repoFullName = repoRaw ? parseRouteRepoFullName(repoRaw) : null;
+    if (repoRaw && !repoFullName) {
+      return c.json(
+        { error: "Use a repository as owner/name on this install.", inventedIncident: false },
+        400,
+      );
+    }
+    const packageName = packageRaw ? parseRoutePackageName(packageRaw) : null;
+    if (packageRaw && !packageName) {
+      return c.json(
+        { error: "Use a watched npm package name on this install.", inventedIncident: false },
+        400,
+      );
+    }
+    const sample = { severity, repoFullName, packageName };
+    const destinations = await deps.store.listNotificationDestinationsForUser(
+      user.userId,
+      installationId,
+    );
+    const routes = await deps.store.listNotificationRoutesForInstallation(installationId);
+    const matched = destinations.filter((destination) =>
+      destinationReceives(
+        routes.filter((row) => row.destinationId === destination.id),
+        sample,
+      ),
+    );
+    const results: {
+      id: number;
+      kind: "slack" | "siem" | "jira";
+      host: string;
+      ok: boolean;
+      error: string | null;
+    }[] = [];
+    for (const destination of matched) {
+      const posted = await testSavedDestination(destination);
+      results.push({
+        id: destination.id,
+        kind: destination.kind,
+        host: destination.host,
+        ok: posted.ok,
+        error: posted.error,
+      });
+    }
+    const ok = results.every((row) => row.ok);
+    return c.json({
+      ok,
+      inventedIncident: false,
+      matched: results,
+      detail: matched.length === 0
+        ? "No destination matched that route. This is not a security incident."
+        : ok
+          ? "Matching destinations received a routed delivery test. This is not a security incident."
+          : results.find((row) => !row.ok)?.error,
+    }, matched.length === 0 || ok ? 200 : 502);
+  });
+
+  app.delete("/api/destinations/routes/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown route." }, 404);
+    const route = await deps.store.getNotificationRouteForUser(id, user.userId);
+    if (!route) return c.json({ error: "Unknown route." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, route.installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const removed = await deps.store.deleteNotificationRouteForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown route." }, 404);
+    return c.json({ ok: true });
+  });
+
   app.post("/api/destinations/slack", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -2035,64 +2318,18 @@ export function createApp(deps: AppDeps): Hono {
     }
     const destination = await deps.store.getNotificationDestinationForUser(id, user.userId);
     if (!destination) return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
-    const install = await deps.store.getInstallation(destination.installationId);
-    const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
-    if (destination.kind === "jira") {
-      const auth = await deps.store.getJiraAuthForInstallation(destination.installationId);
-      if (!auth || auth.id !== destination.id) {
-        return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
-      }
-      const posted = await testJiraDestination(auth.host, auth.projectKey, auth.secret, outbound);
-      await deps.store.recordNotificationDelivery({
-        installationId: destination.installationId,
-        destinationId: destination.id,
-        alertId: null,
-        kind: "jira",
-        status: posted.ok ? "sent" : "failed",
-        error: posted.error,
-      });
-      return c.json({
-        ok: posted.ok,
-        inventedIncident: false,
-        status: posted.status,
-        error: posted.ok ? null : posted.error,
-        detail: posted.ok
-          ? "Jira received a delivery test. This talked to Jira (myself and the project) and never created a ticket or Watch alert. This is not a security incident."
-          : posted.error,
-      }, posted.ok ? 200 : 502);
-    }
-    const webhook = await deps.store.getDestinationWebhookForInstallation(
-      destination.installationId,
-      destination.kind,
-    );
-    if (!webhook || webhook.id !== destination.id) {
-      return c.json({ error: "Unknown destination.", inventedIncident: false }, 404);
-    }
-    const posted =
-      destination.kind === "siem"
-        ? await postSiemWebhook(webhook.url, siemTestPayload(install?.account_login ?? ""), outbound)
-        : await postSlackWebhook(
-            webhook.url,
-            { text: slackTestText(install?.account_login ?? "") },
-            outbound.fetch,
-          );
-    await deps.store.recordNotificationDelivery({
-      installationId: destination.installationId,
-      destinationId: destination.id,
-      alertId: null,
-      kind: destination.kind,
-      status: posted.ok ? "sent" : "failed",
-      error: posted.error,
-    });
+    const posted = await testSavedDestination(destination);
     const label = destinationKindLabel(destination.kind);
+    const detail =
+      destination.kind === "jira"
+        ? "Jira received a delivery test. This talked to Jira (myself and the project) and never created a ticket or Watch alert. This is not a security incident."
+        : `${label} received a delivery test. This is not a security incident.`;
     return c.json({
       ok: posted.ok,
       inventedIncident: false,
       status: posted.status,
       error: posted.ok ? null : posted.error,
-      detail: posted.ok
-        ? `${label} received a delivery test. This is not a security incident.`
-        : posted.error,
+      detail: posted.ok ? detail : posted.error,
     }, posted.ok ? 200 : 502);
   });
 

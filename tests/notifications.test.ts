@@ -17,6 +17,11 @@ import {
   parseJiraToken,
   testJiraDestination,
 } from "../src/server/jira.ts";
+import {
+  alertSeverity,
+  destinationReceives,
+  parseRouteMinSeverity,
+} from "../src/server/routing.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
@@ -842,6 +847,347 @@ describe("Jira destinations", () => {
       expect(posts.some((row) => row.url === HOOK && row.body.includes("created public"))).toBe(true);
       expect(posts.join("")).not.toContain("ATATT3xFfGF0");
       expect(posts.some((row) => row.url.endsWith("/myself"))).toBe(false);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("Notification routes", () => {
+  it("classifies severity and matches destination filters", () => {
+    expect(parseRouteMinSeverity("critical")).toBe("critical");
+    expect(parseRouteMinSeverity("pager")).toBeNull();
+    expect(alertSeverity({ kind: "repo_created_public" })).toBe("critical");
+    expect(alertSeverity({ kind: "release_scan", findings: [] })).toBe("info");
+    expect(
+      alertSeverity({
+        kind: "npm_scan",
+        findings: [{ rule: "MAP-001", severity: "critical", path: "x.js", title: "map", detail: "map" }],
+      }),
+    ).toBe("critical");
+    expect(
+      destinationReceives(
+        [
+          {
+            id: 1,
+            installationId: 7,
+            destinationId: 3,
+            minSeverity: "critical",
+            repoFullName: "octo/app",
+            packageName: null,
+            teamLogin: null,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        { severity: "critical", repoFullName: "octo/app", packageName: null },
+      ),
+    ).toBe(true);
+    expect(
+      destinationReceives(
+        [
+          {
+            id: 1,
+            installationId: 7,
+            destinationId: 3,
+            minSeverity: "critical",
+            repoFullName: "octo/app",
+            packageName: null,
+            teamLogin: null,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        { severity: "info", repoFullName: "octo/app", packageName: null },
+      ),
+    ).toBe(false);
+    expect(destinationReceives([], { severity: "info", repoFullName: null, packageName: null })).toBe(
+      true,
+    );
+  });
+
+  it("stores tenant-scoped routes, routes a test without inventing an incident, and filters real alerts", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "Organization",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 11,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 3,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "acme",
+        accountType: "Organization",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u1");
+      await store.linkUserInstallation(11, "u2");
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "app",
+        fullName: "octo/app",
+        private: false,
+        htmlUrl: "https://github.com/octo/app",
+      });
+      await store.insertWatchedPackage(7, "demo-pack");
+
+      const posts: { url: string; body: string }[] = [];
+      const slackFetch: typeof fetch = (async (input, init) => {
+        posts.push({
+          url: String(input),
+          body: typeof init?.body === "string" ? init.body : "",
+        });
+        return new Response("ok", { status: 200 });
+      }) as typeof fetch;
+      const app = appFor(store, slackFetch);
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const other = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+
+      const saved = await app.request("/api/destinations/slack", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ webhookUrl: HOOK, installationId: 7 }),
+      });
+      expect(saved.status).toBe(201);
+      const slackId = ((await saved.json()) as { destination: { id: number } }).destination.id;
+
+      const siem = await app.request("/api/destinations/siem", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ webhookUrl: SIEM, installationId: 7 }),
+      });
+      expect(siem.status).toBe(201);
+
+      const missing = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ destinationId: slackId, minSeverity: "critical" }),
+      });
+      expect(missing.status).toBe(400);
+
+      const unknownRepo = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          destinationId: slackId,
+          minSeverity: "critical",
+          repoFullName: "octo/missing",
+        }),
+      });
+      expect(unknownRepo.status).toBe(400);
+
+      const stolen = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 11,
+          destinationId: slackId,
+          minSeverity: "critical",
+        }),
+      });
+      expect(stolen.status).toBe(403);
+
+      const created = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          destinationId: slackId,
+          minSeverity: "critical",
+          repoFullName: "octo/app",
+          teamLogin: "octo",
+        }),
+      });
+      expect(created.status).toBe(201);
+      const createdBody = (await created.json()) as {
+        route: { id: number; minSeverity: string; repoFullName: string; teamLogin: string };
+      };
+      expect(createdBody.route.minSeverity).toBe("critical");
+      expect(createdBody.route.repoFullName).toBe("octo/app");
+      expect(createdBody.route.teamLogin).toBe("octo");
+
+      const listed = await app.request("/api/destinations/routes?installationId=7", {
+        headers: { cookie },
+      });
+      expect(
+        ((await listed.json()) as { routes: { destinationId: number }[] }).routes.map(
+          (row) => row.destinationId,
+        ),
+      ).toEqual([slackId]);
+
+      const otherList = await app.request("/api/destinations/routes?installationId=7", {
+        headers: { cookie: other },
+      });
+      expect(((await otherList.json()) as { routes: unknown[] }).routes).toEqual([]);
+
+      posts.length = 0;
+      const { rows: before } = await sql.query<{ n: string }>("SELECT count(*)::text AS n FROM alerts");
+      const routed = await app.request("/api/destinations/route-test", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          severity: "critical",
+          repoFullName: "octo/app",
+        }),
+      });
+      expect(routed.status).toBe(200);
+      const routedBody = (await routed.json()) as {
+        inventedIncident: boolean;
+        matched: { id: number; kind: string }[];
+        detail: string;
+      };
+      expect(routedBody.inventedIncident).toBe(false);
+      expect(routedBody.detail.toLowerCase()).toContain("not a security incident");
+      expect(routedBody.matched.map((row) => row.kind).sort()).toEqual(["siem", "slack"]);
+      expect(posts.some((row) => row.url === HOOK)).toBe(true);
+      expect(posts.some((row) => row.url === SIEM)).toBe(true);
+      const { rows: afterTest } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM alerts",
+      );
+      expect(afterTest[0]?.n).toBe(before[0]?.n);
+
+      posts.length = 0;
+      const skipped = await app.request("/api/destinations/route-test", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          severity: "info",
+          repoFullName: "octo/app",
+        }),
+      });
+      expect(skipped.status).toBe(200);
+      const skippedBody = (await skipped.json()) as { matched: { kind: string }[] };
+      expect(skippedBody.matched.map((row) => row.kind)).toEqual(["siem"]);
+      expect(posts.some((row) => row.url === HOOK)).toBe(false);
+      expect(posts.some((row) => row.url === SIEM)).toBe(true);
+
+      posts.length = 0;
+      const notifier = createLogNotifier(store, {
+        fetch: slackFetch,
+        lookup: async () => [{ address: "1.1.1.1", family: 4 }],
+      });
+      await notifier.send({
+        installationId: 7,
+        repoId: 99,
+        repoFullName: "octo/app",
+        kind: "repo_created_public",
+        title: "octo/app was created public",
+        body: "A public create event. Values are not stored.",
+      });
+      expect(posts.some((row) => row.url === HOOK && row.body.includes("created public"))).toBe(true);
+      expect(posts.some((row) => row.url === SIEM && row.body.includes("created public"))).toBe(true);
+      const { rows: assigned } = await sql.query<{ assigned_to_login: string | null }>(
+        "SELECT assigned_to_login FROM alerts ORDER BY id DESC LIMIT 1",
+      );
+      expect(assigned[0]?.assigned_to_login).toBe("octo");
+
+      posts.length = 0;
+      await notifier.send({
+        installationId: 7,
+        repoId: 99,
+        repoFullName: "octo/app",
+        kind: "release_scan",
+        title: "octo/app 1.0.0 is allowed to ship",
+        body: "Clean packed artifact.",
+      });
+      expect(posts.some((row) => row.url === HOOK)).toBe(false);
+      expect(posts.some((row) => row.url === SIEM)).toBe(true);
+
+      const removed = await app.request(`/api/destinations/routes/${createdBody.route.id}`, {
+        method: "DELETE",
+        headers: { cookie },
+      });
+      expect(removed.status).toBe(200);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("blocks unpaid and Solo route writes", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "Organization",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "acme",
+        accountType: "Organization",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u1");
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 9`);
+      const slackFetch: typeof fetch = (async () => new Response("ok", { status: 200 })) as typeof fetch;
+      const app = appFor(store, slackFetch);
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = now() + interval '14 days', plan = 'trial' WHERE installation_id = 7`,
+      );
+      const trialHook = await app.request("/api/destinations/slack", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ webhookUrl: HOOK, installationId: 7 }),
+      });
+      const trialId = ((await trialHook.json()) as { destination: { id: number } }).destination.id;
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+
+      const unpaid = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          destinationId: trialId,
+          minSeverity: "all",
+        }),
+      });
+      expect(unpaid.status).toBe(402);
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'team' WHERE installation_id = 9`);
+      const teamHook = await app.request("/api/destinations/slack", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ webhookUrl: HOOK, installationId: 9 }),
+      });
+      const teamId = ((await teamHook.json()) as { destination: { id: number } }).destination.id;
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 9`);
+      const solo = await app.request("/api/destinations/routes", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 9,
+          destinationId: teamId,
+          minSeverity: "all",
+        }),
+      });
+      expect(solo.status).toBe(403);
     } finally {
       await sql.close();
     }

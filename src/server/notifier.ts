@@ -10,11 +10,19 @@ import {
   type WebhookHostLookup,
 } from "./siem.ts";
 import { postJiraIssue } from "./jira.ts";
+import {
+  alertSeverity,
+  destinationReceives,
+  routeMatches,
+  type RouteSample,
+} from "./routing.ts";
 import type { Store } from "./store.ts";
 
 export type AlertInput = {
   installationId: number;
   repoId?: number | null;
+  repoFullName?: string | null;
+  packageName?: string | null;
   kind: string;
   title: string;
   body: string;
@@ -130,6 +138,19 @@ export async function deliverJiraAlert(
   });
 }
 
+async function sampleForAlert(store: Store, alert: AlertInput): Promise<RouteSample> {
+  let repoFullName = alert.repoFullName ?? null;
+  if (!repoFullName && alert.repoId) {
+    const repo = await store.getRepo(alert.repoId);
+    repoFullName = repo?.full_name ?? null;
+  }
+  return {
+    severity: alertSeverity(alert),
+    repoFullName,
+    packageName: alert.packageName ?? null,
+  };
+}
+
 export function createLogNotifier(
   store: Store,
   opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
@@ -146,18 +167,26 @@ export function createLogNotifier(
         repoId: alert.repoId ?? null,
         findings: alert.findings?.length ?? 0,
       });
+      const routes = await store.listNotificationRoutesForInstallation(alert.installationId);
+      const sample = await sampleForAlert(store, alert);
+      const payload = {
+        installationId: alert.installationId,
+        alertId: id,
+        kind: alert.kind,
+        title: alert.title,
+        body: alert.body,
+      };
       try {
-        await deliverSlackAlert(
-          store,
-          {
-            installationId: alert.installationId,
-            alertId: id,
-            kind: alert.kind,
-            title: alert.title,
-            body: alert.body,
-          },
-          fetchImpl,
-        );
+        const dest = await store.getSlackWebhookForInstallation(alert.installationId);
+        if (
+          dest &&
+          destinationReceives(
+            routes.filter((row) => row.destinationId === dest.id),
+            sample,
+          )
+        ) {
+          await deliverSlackAlert(store, payload, fetchImpl);
+        }
       } catch (error) {
         logJson("error", "alert.slack_failed", {
           id,
@@ -166,17 +195,16 @@ export function createLogNotifier(
         });
       }
       try {
-        await deliverSiemAlert(
-          store,
-          {
-            installationId: alert.installationId,
-            alertId: id,
-            kind: alert.kind,
-            title: alert.title,
-            body: alert.body,
-          },
-          { fetch: fetchImpl, lookup: opts.lookup },
-        );
+        const dest = await store.getSiemWebhookForInstallation(alert.installationId);
+        if (
+          dest &&
+          destinationReceives(
+            routes.filter((row) => row.destinationId === dest.id),
+            sample,
+          )
+        ) {
+          await deliverSiemAlert(store, payload, { fetch: fetchImpl, lookup: opts.lookup });
+        }
       } catch (error) {
         logJson("error", "alert.siem_failed", {
           id,
@@ -185,23 +213,28 @@ export function createLogNotifier(
         });
       }
       try {
-        await deliverJiraAlert(
-          store,
-          {
-            installationId: alert.installationId,
-            alertId: id,
-            kind: alert.kind,
-            title: alert.title,
-            body: alert.body,
-          },
-          { fetch: fetchImpl, lookup: opts.lookup },
-        );
+        const dest = await store.getJiraAuthForInstallation(alert.installationId);
+        if (
+          dest &&
+          destinationReceives(
+            routes.filter((row) => row.destinationId === dest.id),
+            sample,
+          )
+        ) {
+          await deliverJiraAlert(store, payload, { fetch: fetchImpl, lookup: opts.lookup });
+        }
       } catch (error) {
         logJson("error", "alert.jira_failed", {
           id,
           installationId: alert.installationId,
           error: error instanceof Error ? error.message : "Jira delivery failed.",
         });
+      }
+      const assignee = routes.find(
+        (row) => row.teamLogin && routeMatches(row, sample),
+      )?.teamLogin;
+      if (assignee) {
+        await store.assignAlertFromRouting(id, alert.installationId, assignee);
       }
     },
   };

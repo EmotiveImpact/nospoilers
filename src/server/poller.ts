@@ -23,6 +23,7 @@ export async function runVisibilityPoll(deps: {
         await deps.notifier.send({
           installationId: repo.installation_id,
           repoId: repo.id,
+          repoFullName: fresh.full_name,
           kind: "repo_publicized",
           title: `${fresh.full_name} is public`,
           body: "Visibility poller: this repository was private last time we checked and is public now. A webhook may have been missed.",

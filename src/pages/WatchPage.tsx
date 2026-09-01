@@ -115,10 +115,27 @@ type NotificationDelivery = {
   createdAt: string;
 };
 
+type NotificationRoute = {
+  id: number;
+  installationId: number;
+  destinationId: number;
+  minSeverity: "all" | "warn" | "critical";
+  repoFullName: string | null;
+  packageName: string | null;
+  teamLogin: string | null;
+  createdAt: string;
+};
+
 function destinationKindLabel(kind: string): string {
   if (kind === "jira") return "Jira";
   if (kind === "siem") return "SIEM";
   return "Slack";
+}
+
+function routeMinSeverityLabel(value: string): string {
+  if (value === "critical") return "critical only";
+  if (value === "warn") return "warn and critical";
+  return "all severities";
 }
 
 type TeamMember = {
@@ -573,6 +590,7 @@ export function WatchPage({ search }: { search: string }) {
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
   const [destinations, setDestinations] = useState<NotificationDestination[]>([]);
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
+  const [routes, setRoutes] = useState<NotificationRoute[]>([]);
   const [slackWebhook, setSlackWebhook] = useState("");
   const [siemWebhook, setSiemWebhook] = useState("");
   const [jiraSite, setJiraSite] = useState("");
@@ -582,6 +600,17 @@ export function WatchPage({ search }: { search: string }) {
   const [savingSlack, setSavingSlack] = useState(false);
   const [savingSiem, setSavingSiem] = useState(false);
   const [savingJira, setSavingJira] = useState(false);
+  const [routeDestinationId, setRouteDestinationId] = useState("");
+  const [routeMinSeverity, setRouteMinSeverity] = useState<"all" | "warn" | "critical">("all");
+  const [routeRepo, setRouteRepo] = useState("");
+  const [routePackage, setRoutePackage] = useState("");
+  const [routeTeam, setRouteTeam] = useState("");
+  const [savingRoute, setSavingRoute] = useState(false);
+  const [removingRouteId, setRemovingRouteId] = useState<number | null>(null);
+  const [routeTestSeverity, setRouteTestSeverity] = useState<"info" | "warn" | "critical">("critical");
+  const [routeTestRepo, setRouteTestRepo] = useState("");
+  const [routeTestPackage, setRouteTestPackage] = useState("");
+  const [testingRoute, setTestingRoute] = useState(false);
   const [testingSlackId, setTestingSlackId] = useState<number | null>(null);
   const [removingSlackId, setRemovingSlackId] = useState<number | null>(null);
   const [slackError, setSlackError] = useState<string | null>(null);
@@ -652,7 +681,7 @@ export function WatchPage({ search }: { search: string }) {
     setTimeline({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, tokenBody, releaseBody, protectionBody, jobBody] =
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>(q("/api/repos")),
         loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
@@ -661,6 +690,7 @@ export function WatchPage({ search }: { search: string }) {
         loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
         loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
         loadJson<{ deliveries: NotificationDelivery[] }>(q("/api/destinations/deliveries")),
+        loadJson<{ routes: NotificationRoute[] }>(q("/api/destinations/routes")),
         loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
         loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
         loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
@@ -673,6 +703,7 @@ export function WatchPage({ search }: { search: string }) {
       setRegistries(registryBody.registries);
       setDestinations(destinationBody.destinations);
       setDeliveries(deliveryBody.deliveries);
+      setRoutes(routeBody.routes);
       setScanTokens(tokenBody.tokens);
       setReleases(releaseBody.releases);
       setProtections(protectionBody.protections);
@@ -761,6 +792,7 @@ export function WatchPage({ search }: { search: string }) {
           setRegistries([]);
           setDestinations([]);
           setDeliveries([]);
+          setRoutes([]);
           setScanTokens([]);
           setReleases([]);
           setProtections([]);
@@ -1348,7 +1380,8 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
           change roles and remove people. The last admin stays. GitHub suspend does not block this.
-          Email invite is not built. An install admin also saves Slack, SIEM, Jira, registries, scan
+          Email invite is not built. An install admin also saves Slack, SIEM, Jira, routes,
+          registries, scan
           tokens, allowlists, and baselines, and opens setup or remediation PRs.
         </p>
         {previewing ? (
@@ -1631,11 +1664,14 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, and Jira
           Cloud. Secrets are encrypted and never shown again. A delivery test talks to the
-          destination and never creates a Watch alert. Jira tests never open a ticket.
+          destination and never creates a Watch alert. Jira tests never open a ticket. Routes send
+          a real alert or a routed test to matching destinations by severity, repository, package,
+          and teammate.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot send Slack, SIEM, or Jira. No invented incident.
+            Preview cannot send Slack, SIEM, or Jira. Preview cannot route a test. No invented
+            incident.
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
@@ -1949,6 +1985,278 @@ export function WatchPage({ search }: { search: string }) {
                   }
                 >
                   {savingJira ? "Saving…" : "Save Jira"}
+                </Button>
+              </form>
+            )}
+            {routes.length === 0 ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">
+                No routes yet. Destinations without a route still receive every Watch alert.
+              </p>
+            ) : (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {routes.map((route) => {
+                  const destination = destinations.find((row) => row.id === route.destinationId);
+                  return (
+                    <li key={route.id} className="py-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-snow">
+                          {destination
+                            ? `${destinationKindLabel(destination.kind)} · ${destination.host}`
+                            : "Destination"}
+                          {` · ${routeMinSeverityLabel(route.minSeverity)}`}
+                          {route.repoFullName ? ` · ${route.repoFullName}` : ""}
+                          {route.packageName ? ` · ${route.packageName}` : ""}
+                          {route.teamLogin ? ` · assign ${route.teamLogin}` : ""}
+                        </p>
+                        {installAdmin ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={removingRouteId === route.id}
+                            onClick={() => {
+                              setSlackError(null);
+                              setRemovingRouteId(route.id);
+                              void (async () => {
+                                try {
+                                  const response = await fetch(`/api/destinations/routes/${route.id}`, {
+                                    method: "DELETE",
+                                    credentials: "include",
+                                  });
+                                  const body = (await response.json()) as { error?: string };
+                                  if (!response.ok) throw new Error(body.error ?? "Could not remove that route.");
+                                  await refreshSignedIn(selectedInstallId);
+                                } catch (error) {
+                                  setSlackError(
+                                    error instanceof Error ? error.message : "Could not remove that route.",
+                                  );
+                                } finally {
+                                  setRemovingRouteId(null);
+                                }
+                              })();
+                            }}
+                          >
+                            {removingRouteId === route.id ? "Removing…" : "Remove"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!ended && installAdmin && destinations.length > 0 && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (savingRoute || !activeInstallId) return;
+                  const destinationId = Number(routeDestinationId || destinations[0]?.id);
+                  if (!Number.isFinite(destinationId) || destinationId <= 0) return;
+                  setSlackError(null);
+                  setSavingRoute(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/routes", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          installationId: activeInstallId,
+                          destinationId,
+                          minSeverity: routeMinSeverity,
+                          repoFullName: routeRepo,
+                          packageName: routePackage,
+                          teamLogin: routeTeam,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save that route.");
+                      setRouteRepo("");
+                      setRoutePackage("");
+                      setRouteTeam("");
+                      setRouteMinSeverity("all");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(error instanceof Error ? error.message : "Could not save that route.");
+                    } finally {
+                      setSavingRoute(false);
+                    }
+                  })();
+                }}
+              >
+                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Route</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Destination</span>
+                    <select
+                      value={routeDestinationId || String(destinations[0]?.id ?? "")}
+                      onChange={(event) => setRouteDestinationId(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      {destinations.map((destination) => (
+                        <option key={destination.id} value={destination.id}>
+                          {destinationKindLabel(destination.kind)} · {destination.host}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Minimum severity</span>
+                    <select
+                      value={routeMinSeverity}
+                      onChange={(event) =>
+                        setRouteMinSeverity(event.target.value as "all" | "warn" | "critical")
+                      }
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="all">All severities</option>
+                      <option value="warn">Warn and critical</option>
+                      <option value="critical">Critical only</option>
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Repository</span>
+                    <select
+                      value={routeRepo}
+                      onChange={(event) => setRouteRepo(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="">Any repository</option>
+                      {deskRepos.map((repo) => (
+                        <option key={repo.id} value={repo.full_name}>
+                          {repo.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package</span>
+                    <select
+                      value={routePackage}
+                      onChange={(event) => setRoutePackage(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="">Any package</option>
+                      {deskPackages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.package_name}>
+                          {pkg.package_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="min-w-0 sm:col-span-2">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      Assign teammate
+                    </span>
+                    <select
+                      value={routeTeam}
+                      onChange={(event) => setRouteTeam(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="">No auto-assign</option>
+                      {members.map((member) => (
+                        <option key={member.userId} value={member.login}>
+                          {member.login}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <Button type="submit" size="sm" disabled={savingRoute}>
+                  {savingRoute ? "Saving…" : "Save route"}
+                </Button>
+              </form>
+            )}
+            {!ended && destinations.length > 0 && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (testingRoute || !activeInstallId) return;
+                  setSlackError(null);
+                  setTestingRoute(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/route-test", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          installationId: activeInstallId,
+                          severity: routeTestSeverity,
+                          repoFullName: routeTestRepo,
+                          packageName: routeTestPackage,
+                        }),
+                      });
+                      const body = (await response.json()) as {
+                        error?: string;
+                        inventedIncident?: boolean;
+                        detail?: string;
+                      };
+                      if (!response.ok || body.inventedIncident) {
+                        throw new Error(body.error ?? body.detail ?? "Could not test routing.");
+                      }
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(
+                        error instanceof Error ? error.message : "Could not test routing.",
+                      );
+                    } finally {
+                      setTestingRoute(false);
+                    }
+                  })();
+                }}
+              >
+                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Routed test</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Severity</span>
+                    <select
+                      value={routeTestSeverity}
+                      onChange={(event) =>
+                        setRouteTestSeverity(event.target.value as "info" | "warn" | "critical")
+                      }
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="warn">Warn</option>
+                      <option value="info">Info</option>
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Repository</span>
+                    <select
+                      value={routeTestRepo}
+                      onChange={(event) => setRouteTestRepo(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="">Any</option>
+                      {deskRepos.map((repo) => (
+                        <option key={`test-${repo.id}`} value={repo.full_name}>
+                          {repo.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package</span>
+                    <select
+                      value={routeTestPackage}
+                      onChange={(event) => setRouteTestPackage(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                    >
+                      <option value="">Any</option>
+                      {deskPackages.map((pkg) => (
+                        <option key={`test-pkg-${pkg.id}`} value={pkg.package_name}>
+                          {pkg.package_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <Button type="submit" size="sm" variant="outline" disabled={testingRoute}>
+                  {testingRoute ? "Testing…" : "Test routed delivery"}
                 </Button>
               </form>
             )}

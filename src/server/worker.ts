@@ -130,6 +130,7 @@ export async function handleJob(
   const alertBase = {
     installationId,
     repoId: repo?.id ?? null,
+    repoFullName: repo?.fullName ?? null,
     githubDeliveryId: deliveryId,
   };
 
@@ -328,6 +329,7 @@ export async function handleJob(
       kind: job.kind,
       title: `npm dist-tags changed on ${packageName || "a package"}`,
       body: `latest is ${String(tags.latest ?? "unset")}. Tag-only changes do not download a tarball.`,
+      packageName: packageName || null,
     });
     return;
   }
@@ -348,6 +350,7 @@ export async function handleJob(
           kind: job.kind,
           title: `Missing registry token for ${packageName || "a package"}`,
           body: "Save an encrypted private-registry token on Watch, then check the package again. The token is not stored on the job.",
+          packageName: packageName || null,
         });
         return;
       }
@@ -411,6 +414,7 @@ export async function handleJob(
         ),
         body: notes.join(" "),
         findings: report.findings,
+        packageName: packageName || null,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -439,6 +443,7 @@ export async function handleJob(
           kind: job.kind,
           title: `Inconclusive scan of npm ${packageName}@${version}`,
           body: `${message} This is not a clean bill of health.`,
+          packageName: packageName || null,
         });
         return;
       }

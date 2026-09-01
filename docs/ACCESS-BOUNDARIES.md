@@ -74,7 +74,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   revision, stored CI run URL). Historical rows cannot be edited or deleted.
 - List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
   tokens are never returned). Jira lists the project key. A delivery test talks to the
-  destination and never inserts an alert. A Jira test never creates a ticket.
+  destination and never inserts an alert. A Jira test never creates a ticket. List routing
+  rules for those destinations. A routed test talks to matching destinations and never
+  inserts an alert.
 - Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
@@ -85,7 +87,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- Change roles, remove members, save or delete Slack/SIEM/Jira destinations, save or delete private
+- Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, or open
   setup or remediation PRs. Those writes need an install admin.
 - See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
@@ -112,6 +114,9 @@ suspend does not block role changes. Email invite is not built.
   metadata, and Slack hosts are rejected for SIEM, and DNS must resolve to a public address
   before POST. Jira tests GET `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never
   POST `/issue`.
+- Save and delete alert routes (min severity, repository, package, teammate assign, destination)
+  on a trial or Team install. Destinations without a route still receive every Watch alert.
+  A routed test never inserts an alert and never auto-assigns.
 - Save encrypted private npm registry tokens (never returned after save).
 - Mint and revoke hashed scan API tokens. The secret is shown once and never stored.
 - Manage expiring allowlist exceptions and approve scan baselines.
@@ -248,10 +253,14 @@ POST JSON with `inventedIncident: false`.
 The same file proves Jira Cloud destinations encrypt email+token, never return them, reject
 non-`*.atlassian.net` hosts, skip fetch when DNS resolves private, test with GET myself+project
 (never POST `/issue`, never insert an alert), and real alerts POST `/rest/api/3/issue`.
+The same file proves Team routing rules are tenant-scoped, unpaid saves return 402, Solo paid
+returns 403, a routed test never inserts an alert, destinations without a route still receive
+every alert, critical-only routes skip info scans, and a matching teammate is assigned on a
+real alert.
 `tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
 90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
-members can watch and test but cannot save Slack/SIEM/Jira, registries, scan tokens, allowlists,
+members can watch and test but cannot save Slack/SIEM/Jira, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 Keep those

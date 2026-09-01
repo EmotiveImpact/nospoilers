@@ -425,6 +425,32 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "017_jira_destinations",
   ]);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS notification_routes (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
+      min_severity TEXT NOT NULL DEFAULT 'all' CHECK (min_severity IN ('all', 'warn', 'critical')),
+      repo_full_name TEXT,
+      package_name TEXT,
+      team_login TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS notification_routes_install_idx
+      ON notification_routes (installation_id, destination_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS notification_routes_uniq
+      ON notification_routes (
+        installation_id,
+        destination_id,
+        min_severity,
+        COALESCE(lower(repo_full_name), ''),
+        COALESCE(package_name, ''),
+        COALESCE(lower(team_login), '')
+      );
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "018_notification_routes",
+  ]);
 }
 
 export function num(value: unknown): number {

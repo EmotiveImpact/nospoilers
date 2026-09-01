@@ -18,6 +18,7 @@ import {
   type InstallationRole,
 } from "./roles.ts";
 import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
+import type { NotificationRouteRow, RouteMinSeverity } from "./routing.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -370,6 +371,33 @@ function destinationRow(row: {
     lastDeliveryStatus: row.last_delivery_status,
     lastDeliveryError: row.last_delivery_error,
     updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function asRouteMinSeverity(value: string): RouteMinSeverity {
+  if (value === "warn" || value === "critical") return value;
+  return "all";
+}
+
+function routeRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  destination_id: unknown;
+  min_severity: string;
+  repo_full_name: string | null;
+  package_name: string | null;
+  team_login: string | null;
+  created_at: string | Date;
+}): NotificationRouteRow {
+  return {
+    id: num(row.id),
+    installationId: num(row.installation_id),
+    destinationId: num(row.destination_id),
+    minSeverity: asRouteMinSeverity(row.min_severity),
+    repoFullName: row.repo_full_name,
+    packageName: row.package_name,
+    teamLogin: row.team_login,
+    createdAt: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
 
@@ -2418,6 +2446,199 @@ export function createStore(
         error: row.error,
         createdAt: iso(row.created_at) ?? new Date().toISOString(),
       }));
+    },
+
+    async installationHasRepoFullName(installationId: number, fullName: string): Promise<boolean> {
+      const { rows } = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n
+         FROM repos
+         WHERE installation_id = $1 AND lower(full_name) = lower($2)`,
+        [installationId, fullName],
+      );
+      return Number(rows[0]?.n ?? 0) > 0;
+    },
+
+    async installationHasWatchedPackage(installationId: number, packageName: string): Promise<boolean> {
+      const { rows } = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n
+         FROM watched_packages
+         WHERE installation_id = $1 AND package_name = $2`,
+        [installationId, packageName],
+      );
+      return Number(rows[0]?.n ?? 0) > 0;
+    },
+
+    async listNotificationRoutesForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<NotificationRouteRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        destination_id: unknown;
+        min_severity: string;
+        repo_full_name: string | null;
+        package_name: string | null;
+        team_login: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT r.id, r.installation_id, r.destination_id, r.min_severity, r.repo_full_name,
+                r.package_name, r.team_login, r.created_at
+         FROM notification_routes r
+         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR r.installation_id = $2)
+         ORDER BY r.id`,
+        [userId, scoped],
+      );
+      return rows.map(routeRow);
+    },
+
+    async listNotificationRoutesForInstallation(
+      installationId: number,
+    ): Promise<NotificationRouteRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        destination_id: unknown;
+        min_severity: string;
+        repo_full_name: string | null;
+        package_name: string | null;
+        team_login: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT id, installation_id, destination_id, min_severity, repo_full_name,
+                package_name, team_login, created_at
+         FROM notification_routes
+         WHERE installation_id = $1
+         ORDER BY id`,
+        [installationId],
+      );
+      return rows.map(routeRow);
+    },
+
+    async countNotificationRoutes(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM notification_routes WHERE installation_id = $1`,
+        [installationId],
+      );
+      return Number(rows[0]?.n ?? 0);
+    },
+
+    async insertNotificationRoute(input: {
+      installationId: number;
+      destinationId: number;
+      minSeverity: RouteMinSeverity;
+      repoFullName: string | null;
+      packageName: string | null;
+      teamLogin: string | null;
+    }): Promise<NotificationRouteRow> {
+      try {
+        const { rows } = await sql.query<{
+          id: unknown;
+          installation_id: unknown;
+          destination_id: unknown;
+          min_severity: string;
+          repo_full_name: string | null;
+          package_name: string | null;
+          team_login: string | null;
+          created_at: string | Date;
+        }>(
+          `INSERT INTO notification_routes (
+             installation_id, destination_id, min_severity, repo_full_name, package_name, team_login
+           )
+           SELECT $1, d.id, $3, $4, $5, $6
+           FROM notification_destinations d
+           WHERE d.id = $2 AND d.installation_id = $1
+           RETURNING id, installation_id, destination_id, min_severity, repo_full_name,
+                     package_name, team_login, created_at`,
+          [
+            input.installationId,
+            input.destinationId,
+            input.minSeverity,
+            input.repoFullName,
+            input.packageName,
+            input.teamLogin,
+          ],
+        );
+        const row = rows[0];
+        if (!row) {
+          throw Object.assign(new Error("Unknown destination."), { status: 404 });
+        }
+        return routeRow(row);
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          (error as { code: string }).code === "23505"
+        ) {
+          throw Object.assign(new Error("That route already exists."), { status: 409 });
+        }
+        throw error;
+      }
+    },
+
+    async deleteNotificationRouteForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM notification_routes r
+         USING installation_users iu
+         WHERE r.id = $1
+           AND r.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING r.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async getNotificationRouteForUser(
+      id: number,
+      userId: string,
+    ): Promise<NotificationRouteRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        destination_id: unknown;
+        min_severity: string;
+        repo_full_name: string | null;
+        package_name: string | null;
+        team_login: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT r.id, r.installation_id, r.destination_id, r.min_severity, r.repo_full_name,
+                r.package_name, r.team_login, r.created_at
+         FROM notification_routes r
+         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         WHERE r.id = $1 AND iu.user_id = $2`,
+        [id, userId],
+      );
+      const row = rows[0];
+      return row ? routeRow(row) : null;
+    },
+
+    async assignAlertFromRouting(
+      alertId: number,
+      installationId: number,
+      assigneeLogin: string,
+    ): Promise<void> {
+      const members = await this.listInstallationMemberLogins(installationId);
+      const match = members.find((row) => row.toLowerCase() === assigneeLogin.toLowerCase());
+      if (!match) return;
+      await sql.transaction(async (tx) => {
+        const { rows } = await tx.query<{ assigned_to_login: string | null }>(
+          `SELECT assigned_to_login FROM alerts WHERE id = $1 AND installation_id = $2`,
+          [alertId, installationId],
+        );
+        if (!rows[0] || rows[0].assigned_to_login) return;
+        await tx.query(`UPDATE alerts SET assigned_to_login = $2 WHERE id = $1`, [alertId, match]);
+        await tx.query(
+          `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
+           VALUES ($1, $2, 'nospoilers', 'assigned', $3)`,
+          [alertId, installationId, match],
+        );
+      });
     },
 
     async listTimelineForUser(

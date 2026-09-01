@@ -26,12 +26,12 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-one product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-two product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
-  `016_installation_roles`, and `017_jira_destinations` are applied.
+  `016_installation_roles`, `017_jira_destinations`, and `018_notification_routes` are applied.
   Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -114,14 +114,17 @@ Read in this order:
   after they are stored. Watch **Test delivery** talks to Slack, SIEM, or Jira and never
   inserts an alert. A Jira test GETs myself+project and never creates a ticket. Solo paid does
   not get Slack, SIEM, or Jira. Email still needs Resend. SIEM hosts cannot be private, local,
-  metadata, or hooks.slack.com. Jira is `*.atlassian.net` only.
+  metadata, or hooks.slack.com. Jira is `*.atlassian.net` only. Trial and Team installs can
+  save routing rules (min severity, repository, package, teammate assign) per destination.
+  Destinations without a route still receive every Watch alert. A routed test talks to matching
+  destinations and never inserts an alert.
 - Trial and Team installs get a Watch **90-day timeline** of this install’s alerts,
   acknowledgement activity, and notification deliveries. Solo 403. Unpaid 402. No invented
   rows.
 - Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
-  delivery tests. Admins save Slack/SIEM/Jira, registries, scan tokens, allowlists, baselines,
+  delivery tests. Admins save Slack/SIEM/Jira, routes, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Email invite is not built.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
@@ -173,9 +176,11 @@ Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never 
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
 Jira Cloud tickets are in (trial/Team, `*.atlassian.net` only, encrypted email+token, test never
 creates an issue or Watch alert).
+Team alert routing is in (trial/Team, severity/repo/package/teammate/destination, routed test never
+invents an incident, destinations without a route still receive every alert).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
-GitHub suspend does not block; members cannot save Slack/SIEM/Jira/registries/tokens/allowlists/PRs).
+GitHub suspend does not block; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
