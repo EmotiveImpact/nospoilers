@@ -6,7 +6,7 @@ branding:
   color: red
 inputs:
   path:
-    description: Directory, npm tarball, zip, Docker/OCI image, APK/IPA, or Electron asar to scan
+    description: Directory, npm tarball, zip, Docker/OCI image, APK/IPA, Lambda zip, or Electron asar to scan
     required: true
   strict:
     description: Also fail on warnings (TypeScript source packed, size spikes, etc.)

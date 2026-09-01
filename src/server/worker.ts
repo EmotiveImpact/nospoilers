@@ -244,7 +244,7 @@ export async function handleJob(
         ...alertBase,
         kind: job.kind,
         title: `Release ${tag} has no pack we can scan`,
-        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .tar, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .gem, .apk, .aab, .ipa). Docker save and OCI archives are tar layouts (manifest.json or oci-layout). APK/AAB/IPA are ZIP layouts (AndroidManifest, BundleConfig, or Payload/*.app). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt. Encrypted image layers and zip entries are not decrypted. Image, APK, and Apple signatures are not verified. DEX, native libraries, and Mach-O are never executed.",
+        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .tar, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .gem, .apk, .aab, .ipa). Docker save and OCI archives are tar layouts (manifest.json or oci-layout). APK/AAB/IPA are ZIP layouts (AndroidManifest, BundleConfig, or Payload/*.app). Serverless bundles are ZIP layouts (host.json, serverless.yml, .aws-sam, netlify/functions, or .vercel/output). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt. Encrypted image layers and zip entries are not decrypted. Image, APK, and Apple signatures are not verified. DEX, native libraries, Mach-O, and serverless handlers are never executed.",
       });
       return;
     }

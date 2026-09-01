@@ -16,7 +16,7 @@ Owner: Creative Director (Emotive Impact). GitHub login: `EmotiveImpact`.
 
 NoSpoilers watches three doors so source maps, secrets, and “this was private” surprises do not ship:
 
-1. **Packed bytes** — the npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, or Electron `app.asar` about to go to customers. Same class of leak as Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer.
+1. **Packed bytes** — the npm tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, serverless zip, or Electron `app.asar` about to go to customers. Same class of leak as Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer.
 2. **GitHub visibility** — private → public, created public, transfer, collaborator added, fork.
 3. **Deployed web assets** — the HTTPS page customers load, plus same-origin JavaScript, CSS, maps, and a bounded probe of exposed files, credentials, and internal paths. Scripts are not executed.
 
@@ -32,7 +32,7 @@ Single package, **local only**. Not a hosted platform.
 
 | Piece | Where |
 | --- | --- |
-| Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, `.whl`, `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, Electron `.asar`; npm/pnpm/Yarn/Bun workspace listing |
+| Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, `.whl`, `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, serverless zip, Electron `.asar`; npm/pnpm/Yarn/Bun workspace listing |
 | CLI | `src/cli.ts` — `npx tsx src/cli.ts scan <path> [--strict] [--json] [--sarif file]` |
 | GitHub Action | `action.yml` |
 | Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
@@ -261,7 +261,7 @@ Rejected: RepoRadar, Hatchdoor, RepoLarm, Leakwake, LeakRadar.
 Build NoSpoilers hosted v1 in this repo. Read docs/PRODUCT.md first. Do not buy a domain, Fly, Railway, Resend, or Stripe. Do not add Google Cloud. Do not rewrite the existing scanner.
 
 ## Already in the repo — reuse it
-- Scanner kernel: src/scanner/ (dir, tgz, zip, vsix, crx, xpi, whl, jar, nupkg, gem, docker/oci, apk/aab/ipa, asar; MAP-*, SEC-*, GIT-*, SRC-*, SIZE-*)
+- Scanner kernel: src/scanner/ (dir, tgz, zip, vsix, crx, xpi, whl, jar, nupkg, gem, docker/oci, apk/aab/ipa, serverless zip, asar; MAP-*, SEC-*, GIT-*, SRC-*, SIZE-*)
 - CLI: src/cli.ts  |  Action: action.yml  |  Local drop-zone UI: Vite + src/plugin.ts
 - Keep CLI + Action working. Keep npm run dev for local pack drop-zone or fold it into the new app without dropping that path.
 
@@ -271,7 +271,7 @@ A person can:
 2. Install the NoSpoilers GitHub App on a user or org, all repos or selected repos.
 3. See installed repos in the dashboard (name, private/public, last check).
 4. When a watched repo is publicized, created public, or transferred, an alert appears in the dashboard within ~1 minute. Same for collaborator added / fork if those events are subscribed.
-5. When a release is published, download the release asset(s) that are packed artifacts (.tgz/.tar.gz/.tar/.zip/.asar/.vsix/.crx/.xpi/.whl/.jar/.war/.nupkg/.gem/.apk/.aab/.ipa) (skip huge/irrelevant files with a size cap), run the EXISTING scanner, show findings. Never keep the unpacked bytes after the scan — store finding rows only.
+5. When a release is published, download the release asset(s) that are packed artifacts (.tgz/.tar.gz/.tar/.zip/.asar/.vsix/.crx/.xpi/.whl/.jar/.war/.nupkg/.gem/.apk/.aab/.ipa/.lambda.zip) (skip huge/irrelevant files with a size cap), run the EXISTING scanner, show findings. Never keep the unpacked bytes after the scan — store finding rows only.
 6. Empty, loading, and error states on every screen. Real copy. Desktop + mobile.
 7. Webhook handler: verify HMAC, insert job, HTTP 200 in under 1 second. NO scan/clone/email in the request.
 8. Postgres job queue with SKIP LOCKED. Two priorities: light (visibility/member/fork) high concurrency; heavy (download+unpack) cap 2–8 concurrent globally. Idempotent on GitHub delivery_id.

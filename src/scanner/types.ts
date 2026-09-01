@@ -25,7 +25,8 @@ export type ScanTargetKind =
   | "oci"
   | "apk"
   | "aab"
-  | "ipa";
+  | "ipa"
+  | "serverless";
 
 export type ScanStatus = "passed" | "failed-policy" | "inconclusive";
 

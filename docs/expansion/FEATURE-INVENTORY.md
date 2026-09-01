@@ -36,7 +36,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Directory, `.tar`, tgz/tar.gz, ZIP, asar, VSIX, CRX, XPI, wheel, JAR/WAR, nupkg, gem, Docker/OCI image, APK/AAB/IPA and single-file scanning | Built | NoSpoilers |
+| Directory, `.tar`, tgz/tar.gz, ZIP, asar, VSIX, CRX, XPI, wheel, JAR/WAR, nupkg, gem, Docker/OCI image, APK/AAB/IPA, serverless zip and single-file scanning | Built | NoSpoilers |
 | Source maps, embedded source and map URL rules | Built | NoSpoilers |
 | Environment, private key and high-confidence token rules | Built | NoSpoilers |
 | Credential config, AI context, internal location, debug rules | Built | NoSpoilers |
@@ -60,7 +60,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | `.nospoilers.yml` policy file | Built: CLI/Action + hosted DB exceptions | NoSpoilers |
 | Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
-| Nested archive scanning | Built: unpack nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem, image layers, and apk/aab/ipa up to 3 levels, never execute | NoSpoilers |
+| Nested archive scanning | Built: unpack nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem, image layers, apk/aab/ipa, and serverless zips up to 3 levels, never execute | NoSpoilers |
 | Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
 | Escaping archive entry paths | Built: ARC-002 on zip/tar `..` and absolute names; zip-slip entries are not unpacked for content | NoSpoilers |
 | Source archives and backup files | Built: BAK-001 | NoSpoilers |
@@ -123,7 +123,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | NuGet `.nupkg` and `.snupkg` | Built: ZIP magic | NoSpoilers |
 | Ruby gems | Built: tar + nested `data.tar.gz`, never executed | NoSpoilers |
 | Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive | NoSpoilers |
-| Serverless deployment bundles | Built: ZIP family, same zip scanner | NoSpoilers |
+| Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
 | Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified | NoSpoilers |
 | iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified | NoSpoilers |
 | Electron DMG | Deferred isolated worker | NoSpoilers |

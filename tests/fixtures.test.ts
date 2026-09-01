@@ -103,6 +103,23 @@ describe("packed fixtures", () => {
     expect(report.findings).toEqual([]);
   });
 
+  it("fails a Lambda zip that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.lambda.zip"));
+    expect(report.kind).toBe("serverless");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.lambda.zip", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
+  it("lets a clean Lambda zip ship", async () => {
+    const report = await scan(path.join(fixtures, "clean.lambda.zip"));
+    expect(report.kind).toBe("serverless");
+    expect(report.ok).toBe(true);
+    expect(report.status).toBe("passed");
+    expect(report.findings).toEqual([]);
+  });
+
   it("fails a tarball that contains a .env", async () => {
     const report = await scan(path.join(fixtures, "dotenv.tgz"));
     expect(report.ok).toBe(false);

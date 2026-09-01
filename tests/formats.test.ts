@@ -132,8 +132,11 @@ describe("extra packed formats", () => {
     expect(packFormatFromName("app.apk")).toBe("apk");
     expect(packFormatFromName("app.aab")).toBe("aab");
     expect(packFormatFromName("app.ipa")).toBe("ipa");
+    expect(packFormatFromName("fn.lambda.zip")).toBe("serverless");
+    expect(packFormatFromName("fn.serverless.zip")).toBe("serverless");
     expect(isPackAssetName("dist/app.vsix")).toBe(true);
     expect(isPackAssetName("dist/app.apk")).toBe(true);
+    expect(isPackAssetName("dist/fn.lambda.zip")).toBe(true);
     expect(isPackAssetName("README.md")).toBe(false);
   });
 

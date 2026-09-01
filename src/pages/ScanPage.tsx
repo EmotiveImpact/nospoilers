@@ -52,6 +52,11 @@ const EXAMPLES = [
     hint: "ZIP magic. DEX is not executed.",
   },
   {
+    path: "fixtures/sourcemap.lambda.zip",
+    label: "Lambda zip with a source map",
+    hint: "Handlers are not executed.",
+  },
+  {
     path: "fixtures/dotenv.tgz",
     label: "Pack with a .env",
     hint: "Should fail",
@@ -166,7 +171,7 @@ export function ScanPage({ search }: { search: string }) {
       <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
         {locked
           ? "Logged in, trial over. We still show the drop zone so you remember what you lost. We do not unpack on our machines until a plan is active. Run the CLI at home if you want; that was never the bill."
-          : "Drop the tarball, zip, Docker/OCI image, APK/IPA, or Electron asar customers download. Secret scanners read git. This reads the packed bytes."}
+          : "Drop the tarball, zip, Docker/OCI image, APK/IPA, Lambda zip, or Electron asar customers download. Secret scanners read git. This reads the packed bytes."}
         {(session || previewing) && coverage?.status === "trial" ? " Hosted scan is on for this trial." : null}
       </p>
       {!session && !queryCoverage && (
@@ -211,14 +216,14 @@ export function ScanPage({ search }: { search: string }) {
                 <Upload className="h-5 w-5 text-mute" aria-hidden />
                 <p className="font-display text-lg text-snow">Drop a pack here</p>
                 <Description className="text-sm text-dim">
-                  tarball, zip, vsix, docker save, apk, or asar — or click to choose
+                  tarball, zip, vsix, docker save, apk, lambda zip, or asar — or click to choose
                 </Description>
                 {!locked && (
                   <input
                     id={inputId}
                     type="file"
                     className="sr-only"
-                    accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk"
+                    accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip"
                     onChange={(event) => onFiles(event.target.files)}
                   />
                 )}

@@ -133,6 +133,11 @@ Read in this order:
   is inconclusive. APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not
   verified. FairPlay-encrypted Mach-O is not decrypted. DEX, native libraries, and Mach-O are never
   executed. Scan lists an APK fixture example. Not a Pricing extras change.
+- Packed scans also cover serverless deployment zips (AWS Lambda, Azure Functions, Netlify
+  Functions, Vercel output). Layout sniff uses `host.json`, `serverless.yml`, `.aws-sam`,
+  `netlify/functions`, or `.vercel/output`, or a `.lambda.zip` name. ZIP magic, not the extension
+  alone. Encrypted zip is inconclusive. Handlers, bootstraps, and native binaries are never
+  executed. Scan lists a Lambda zip fixture example. Not a Pricing extras change.
 - Covered installs can watch HTTPS production websites (same-origin JS/CSS/maps plus bounded
   probes for exposed files, credentials, and linked internal paths, SSRF-blocked, never
   executed). Admins can connect Sentry or Bugsnag map custody. Tokens are encrypted and
@@ -198,7 +203,7 @@ Public npm package watching (latest tarball) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
-Nested tgz/zip/asar/docker/oci/apk/ipa layers are unpacked for inspection (never executed).
+Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
@@ -236,6 +241,9 @@ docker-save example). Not advertised as a Pricing change.
 APK/AAB/IPA are in (ZIP magic; AndroidManifest/BundleConfig/Payload layout; DEX/Mach-O never
 executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK
 example). Not advertised as a Pricing change.
+Serverless deployment bundles are in (ZIP magic; host.json / serverless.yml / .aws-sam /
+netlify/functions / .vercel/output layout or `.lambda.zip` name; handlers never executed;
+encrypted zip inconclusive; Scan Lambda zip example). Not advertised as a Pricing change.
 Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
 exposed files, credentials, and linked internal paths, SSRF-blocked, never executed, event-driven
 enqueue, hourly poller enqueues only). Not advertised as a Pricing change.

@@ -153,6 +153,17 @@ async function main(): Promise<void> {
       "Payload/Spoiler.app/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "Payload/Spoiler.app/www/index.js.map": sourceMap,
     });
+    await writeZipPack(path.join(fixtures, "clean.lambda.zip"), {
+      "host.json": '{"version":"2.0"}',
+      "index.js": minified,
+      "package.json": '{"name":"clean-fn"}',
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.lambda.zip"), {
+      "host.json": '{"version":"2.0"}',
+      "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "index.js.map": sourceMap,
+      "package.json": '{"name":"spoiler-fn"}',
+    });
   } finally {
     await rm(cleanDir, { recursive: true, force: true });
     await rm(dirtyDir, { recursive: true, force: true });

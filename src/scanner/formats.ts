@@ -15,6 +15,7 @@ const ZIP_KINDS = new Set<ScanTargetKind>([
   "apk",
   "aab",
   "ipa",
+  "serverless",
 ]);
 
 const NAMED_ZIP_KINDS = new Set<ScanTargetKind>(["vsix", "crx", "xpi", "wheel", "jar", "nupkg"]);
@@ -42,6 +43,7 @@ export function packFormatFromName(name: string): ScanTargetKind | null {
   if (lower.endsWith(".apk") || lower.endsWith(".xapk")) return "apk";
   if (lower.endsWith(".aab")) return "aab";
   if (lower.endsWith(".ipa")) return "ipa";
+  if (lower.endsWith(".lambda.zip") || lower.endsWith(".serverless.zip")) return "serverless";
   if (lower.endsWith(".oci.tar") || lower.endsWith(".oci")) return "oci";
   if (lower.endsWith(".docker.tar")) return "docker";
   if (lower.endsWith(".zip")) return "zip";
@@ -198,6 +200,21 @@ export function archivePathEscapes(name: string): boolean {
   return n.split("/").includes("..");
 }
 
+export function sniffServerlessLayout(paths: string[]): boolean {
+  const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
+  return names.some((n) => {
+    const base = path.posix.basename(n);
+    if (/^host\.json$/i.test(base)) return true;
+    if (/^serverless\.ya?ml$/i.test(base)) return true;
+    if (/^samconfig\.toml$/i.test(base)) return true;
+    if (/^function\.json$/i.test(base)) return true;
+    if (/(?:^|\/)\.aws-sam(?:\/|$)/i.test(n)) return true;
+    if (/(?:^|\/)\.vercel\/output(?:\/|$)/i.test(n)) return true;
+    if (/(?:^|\/)netlify\/functions(?:\/|$)/i.test(n)) return true;
+    return false;
+  });
+}
+
 export function sniffMobileLayout(paths: string[]): "apk" | "aab" | "ipa" | null {
   const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
   if (names.some((n) => /(?:^|\/)Payload\/[^/]+\.app\//i.test(n) || n === "iTunesMetadata.plist")) {
@@ -233,8 +250,10 @@ export function sniffPackFormat(bytes: Buffer, filename = ""): ScanTargetKind | 
   if (isZipMagic(bytes)) {
     if (fromName === "crx") return "crx";
     if (fromName && NAMED_ZIP_KINDS.has(fromName)) return fromName;
-    const mobile = sniffMobileLayout(listZipEntryNames(bytes));
+    const zipNames = listZipEntryNames(bytes);
+    const mobile = sniffMobileLayout(zipNames);
     if (mobile) return mobile;
+    if (fromName === "serverless" || sniffServerlessLayout(zipNames)) return "serverless";
     if (fromName && ZIP_KINDS.has(fromName)) return fromName;
     return "zip";
   }
@@ -257,6 +276,9 @@ export const IMAGE_ENCRYPTION_INCONCLUSIVE =
 
 export const MOBILE_SIGNING_NOTE =
   "APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not verified. FairPlay-encrypted Mach-O and other encrypted payloads are not decrypted. DEX, native libraries, and Mach-O are never executed.";
+
+export const SERVERLESS_NOTE =
+  "Lambda, Azure Functions, Netlify, and Vercel handlers are never executed. Runtimes, bootstraps, and native binaries inside the zip are not run. Encrypted zip entries are not decrypted. Cloud provider signatures are not verified.";
 
 function posixArchivePath(rel: string): string {
   return rel.replace(/\\/g, "/").replace(/^\.\//, "");

@@ -9,14 +9,14 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Proven locally
 
-- Scanner: directories, npm tarballs, ZIP, VSIX, CRX, XPI, wheels, JAR/WAR, NuGet packs, Ruby gems, Docker/OCI image archives, APK/AAB/IPA, and Electron `app.asar`.
+- Scanner: directories, npm tarballs, ZIP, VSIX, CRX, XPI, wheels, JAR/WAR, NuGet packs, Ruby gems, Docker/OCI image archives, APK/AAB/IPA, serverless Lambda/Azure/Netlify/Vercel zips, and Electron `app.asar`.
 - Critical detection: maps, embedded source, map URLs, environment files, private keys, and
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
   TypeScript/JSX, abnormal size, nested packs, backups, internal docs, and build caches.
 - Additional critical paths: database dumps, crash dumps/minidumps/ELF cores, and escaping
   symlinks and archive entry paths (ARC-002). Nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem
-  and Docker/OCI layers, APK/AAB, and IPA are unpacked for inspection (never executed) up to three
+  and Docker/OCI layers, APK/AAB, IPA, and serverless zips are unpacked for inspection (never executed) up to three
   levels. Encrypted zip, CRX wrappers without a ZIP payload, and encrypted image layers are
   inconclusive. Overlay whiteouts are not applied. APK and Apple signatures are not verified.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
@@ -92,6 +92,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   libraries, and Mach-O are never executed. APK/Apple signatures are not verified. Encrypted zip
   is inconclusive. FairPlay-encrypted Mach-O is not decrypted. Scan includes an APK fixture example.
   Not a Pricing change.
+- Serverless deployment bundles: ZIP magic plus `host.json`, `serverless.yml`, `.aws-sam`,
+  `netlify/functions`, or `.vercel/output` layout, or a `.lambda.zip` name. Handlers, bootstraps,
+  and native binaries are never executed. Encrypted zip is inconclusive. Scan includes a Lambda
+  zip fixture example. Not a Pricing change.
 - Production website crawls: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
   exposed files, credentials, and linked internal paths, private/local/metadata hosts blocked,
   never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.

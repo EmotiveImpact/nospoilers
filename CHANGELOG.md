@@ -42,6 +42,7 @@
 - Extra packed formats: VSIX, CRX, XPI, Python wheels, JAR/WAR, NuGet nupkg/snupkg, and Ruby gems. ZIP/tar magic, not extension alone. Encrypted zip and CRX without a ZIP payload are inconclusive. Zip-slip names flag ARC-002 and are not unpacked for content. Not advertised as a Pricing change.
 - Docker/OCI image layers: docker save and OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive. Not advertised as a Pricing change.
 - APK/AAB/IPA: ZIP magic, AndroidManifest/BundleConfig/Payload layout, DEX/Mach-O never executed, signatures not verified, FairPlay not decrypted. Not advertised as a Pricing change.
+- Serverless deployment bundles: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name. Handlers never executed. Encrypted zip inconclusive. Not advertised as a Pricing change.
 - Production website crawls: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
   exposed files, credentials, and linked internal paths, SSRF blocked, never executed. SPA
   catch-all HTML is not a secret file. Event-driven enqueue. Not advertised as a Pricing change.
