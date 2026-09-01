@@ -26,6 +26,7 @@ export type AppDeps = {
   store: Store;
   github: GithubPort;
   scan?: typeof scan;
+  wakeWorker?: () => void;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -122,6 +123,7 @@ export function createApp(deps: AppDeps): Hono {
         deps.config.githubDiscoveryToken,
         deps.config.maxAssetBytes,
       );
+      if (result.queued > 0) deps.wakeWorker?.();
       return c.json(result);
     } catch (error) {
       return c.json(
@@ -136,14 +138,14 @@ export function createApp(deps: AppDeps): Hono {
       const body = jsonObj(await c.req.json());
       const repository = typeof body.repository === "string" ? body.repository : "";
       if (!repository) return c.json({ error: "Provide owner/repo or a GitHub URL." }, 400);
-      return c.json(
-        await inspectAndQueueRepository(
-          deps.store,
-          repository,
-          deps.config.githubDiscoveryToken,
-          deps.config.maxAssetBytes,
-        ),
+      const result = await inspectAndQueueRepository(
+        deps.store,
+        repository,
+        deps.config.githubDiscoveryToken,
+        deps.config.maxAssetBytes,
       );
+      if (result.queued > 0) deps.wakeWorker?.();
+      return c.json(result);
     } catch (error) {
       return c.json(
         { error: error instanceof Error ? error.message : "Repository inspection failed." },
@@ -163,6 +165,7 @@ export function createApp(deps: AppDeps): Hono {
       kind: "prospect_scan",
       payload: { prospectId: id },
     });
+    if (job.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, jobId: job.id });
   });
 
@@ -240,6 +243,7 @@ export function createApp(deps: AppDeps): Hono {
     }
     try {
       const result = await enqueueFromWebhook(deps.store, event, deliveryId, payload);
+      if (result.queued) deps.wakeWorker?.();
       return c.json({ ok: true, ...result });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Webhook enqueue failed.";
@@ -376,6 +380,7 @@ export function createApp(deps: AppDeps): Hono {
         },
       },
     });
+    if (result.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.inserted, jobId: result.id });
   });
 

@@ -221,6 +221,8 @@ export function createWorker(opts: {
   let prospectRunning = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   let stopped = false;
+  let ticking = false;
+  let tickRequested = false;
 
   async function runClaimed(job: JobRow): Promise<void> {
     const inc = job.priority === "heavy" ? () => (heavyRunning += 1) : () => (lightRunning += 1);
@@ -245,25 +247,39 @@ export function createWorker(opts: {
     } finally {
       if (job.kind === "prospect_scan") prospectRunning -= 1;
       dec();
+      void tick();
     }
   }
 
   async function tick(): Promise<void> {
     if (stopped) return;
-    while (lightRunning < opts.lightConcurrency) {
-      const job = await opts.store.claimJob("light", opts.lightConcurrency, workerId);
-      if (!job) break;
-      void runClaimed(job);
+    if (ticking) {
+      tickRequested = true;
+      return;
     }
-    while (heavyRunning < opts.heavyConcurrency) {
-      const job = await opts.store.claimJob(
-        "heavy",
-        opts.heavyConcurrency,
-        workerId,
-        prospectRunning < 1,
-      );
-      if (!job) break;
-      void runClaimed(job);
+    ticking = true;
+    try {
+      do {
+        tickRequested = false;
+        while (lightRunning < opts.lightConcurrency) {
+          const job = await opts.store.claimJob("light", opts.lightConcurrency, workerId);
+          if (!job) break;
+          void runClaimed(job);
+        }
+        while (heavyRunning < opts.heavyConcurrency) {
+          const job = await opts.store.claimJob(
+            "heavy",
+            opts.heavyConcurrency,
+            workerId,
+            prospectRunning < 1,
+          );
+          if (!job) break;
+          void runClaimed(job);
+        }
+      } while (tickRequested && !stopped);
+    } finally {
+      ticking = false;
+      if (tickRequested && !stopped) void tick();
     }
   }
 

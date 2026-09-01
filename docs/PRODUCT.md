@@ -164,6 +164,10 @@ Invariants:
 5. Cloud spend cap so a retry bug cannot run overnight.
 6. Secrets (PEM, webhook secret, Stripe, Resend) never in git.
 
+Queue pickup is event-driven inside the API process: a successful enqueue wakes the worker
+immediately. A 15-minute timer is recovery only. Do not return to sub-second empty-queue polling;
+it keeps serverless Postgres awake without improving webhook latency.
+
 **v1 ops:** Fly.io (or Railway if Fly fights us) + Neon Postgres + Cloudflare DNS + Stripe + GitHub App + Resend. Queue **inside Postgres** first. Not Inngest ($99) until revenue. Not Vercel/Cloudflare Workers for unpack. Not GCP/AWS day one.
 
 **Do not buy domain / Fly / Resend / Stripe until the loop works on a throwaway repo** (see phases).

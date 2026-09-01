@@ -15,7 +15,6 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const store = createStore(sql);
   const github = githubAppConfigured(config) ? createGithubPort(config) : stubGithub();
   const notifier = createLogNotifier(store);
-  const app = createApp({ config, store, github });
   const worker = createWorker({
     store,
     github,
@@ -24,6 +23,14 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     lightConcurrency: config.lightConcurrency,
     maxAssetBytes: config.maxAssetBytes,
     intervalMs: config.workerIntervalMs,
+  });
+  const app = createApp({
+    config,
+    store,
+    github,
+    wakeWorker: () => {
+      void worker.tick();
+    },
   });
   const poller = startPoller({ store, github, notifier }, config.pollIntervalMs);
   return {

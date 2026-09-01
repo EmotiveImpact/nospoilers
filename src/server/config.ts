@@ -81,7 +81,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     lightConcurrency: light,
     maxAssetBytes: envInt("MAX_ASSET_BYTES", 80 * 1024 * 1024),
     pollIntervalMs: envInt("POLL_INTERVAL_MS", 60 * 60 * 1000),
-    workerIntervalMs: envInt("WORKER_INTERVAL_MS", 500),
+    workerIntervalMs: envInt("WORKER_INTERVAL_MS", 15 * 60 * 1000),
   };
   return { ...base, ...overrides };
 }

@@ -40,7 +40,11 @@ async function withStore(
   }
 }
 
-function appFor(store: Store, github: GithubPort = mockGithub()) {
+function appFor(
+  store: Store,
+  github: GithubPort = mockGithub(),
+  wakeWorker?: () => void,
+) {
   const scans: string[] = [];
   const config = loadConfig({
     githubWebhookSecret: SECRET,
@@ -54,6 +58,7 @@ function appFor(store: Store, github: GithubPort = mockGithub()) {
     config,
     store,
     github,
+    wakeWorker,
     scan: async (target: string) => {
       scans.push(target);
       return scan(target);
@@ -121,6 +126,23 @@ describe("GitHub webhooks", () => {
         "SELECT kind, priority, status FROM jobs",
       );
       expect(rows).toEqual([{ kind: "release_scan", priority: "heavy", status: "queued" }]);
+    });
+  });
+
+  it("wakes the worker immediately when a webhook queues work", async () => {
+    await withStore(async ({ store }) => {
+      let wakes = 0;
+      const { app } = appFor(store, mockGithub(), () => {
+        wakes += 1;
+      });
+      const res = await postWebhook(app, "release", "d-rel-wake", {
+        action: "published",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 56, tag_name: "v1.0.1", name: "v1.0.1" },
+      });
+      expect(res.status).toBe(200);
+      expect(wakes).toBe(1);
     });
   });
 
@@ -246,6 +268,36 @@ describe("job concurrency", () => {
       expect(maxProspects).toBeLessThanOrEqual(1);
       await new Promise((resolve) => setTimeout(resolve, 120));
       worker.stop();
+    });
+  });
+
+  it("drains queued work when a running job frees a slot", async () => {
+    await withStore(async ({ store }) => {
+      for (let i = 0; i < 3; i += 1) {
+        await store.enqueueJob({
+          priority: "heavy",
+          kind: "release_scan",
+          payload: { i },
+        });
+      }
+      const handled: number[] = [];
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 1000,
+        intervalMs: 60_000,
+        onJob: async (job) => {
+          handled.push(job.id);
+          await new Promise((resolve) => setTimeout(resolve, 15));
+        },
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      worker.stop();
+      expect(handled).toHaveLength(3);
     });
   });
 });

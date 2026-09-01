@@ -42,6 +42,16 @@ Prospect scans run one at a time and customer release jobs stay ahead of them in
 
 Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
 
+PGlite is PostgreSQL compiled to run inside this Node process; its files live under `data/`. It is
+for local development, not the production database. Production uses normal Postgres (Neon is the
+current managed option) for users, sessions, GitHub installations, jobs, alerts, prospects, and
+billing metadata. Packed artifacts are never stored there.
+
+Queue processing is event-driven: webhook, dashboard, and internal discovery routes wake the worker
+as soon as they insert a job. `WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
+behind by a crash; it is not the normal pickup path. `POLL_INTERVAL_MS` is different—the hourly
+GitHub visibility backstop that catches a missed webhook.
+
 ```bash
 docker compose up -d
 # DATABASE_URL=postgres://nospoilers:nospoilers@127.0.0.1:5433/nospoilers
