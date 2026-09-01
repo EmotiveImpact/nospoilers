@@ -97,7 +97,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Bearer token unpacks a packed artifact, applies the installation allowlist, mints a
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
-  revision, stored CI run URL). Historical rows cannot be edited or deleted.
+  revision, stored CI run URL). Historical rows cannot be edited or deleted. Download the
+  linked signed receipt JSON (`GET /api/receipts/:id`). Unpaid still allowed. Another tenant
+  is 404. Pack bytes are not included.
 - List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
   tokens are never returned). Jira lists the project key. A delivery test talks to the
   destination and never inserts an alert. A Jira test never creates a ticket. List routing
@@ -292,7 +294,8 @@ tarballs enqueue as `npm_scan` while custom dist-tags stay tag-only. `tests/scan
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
-SSRF CI URLs, and keep older HMAC receipts verifiable. `tests/package-identity.test.ts`
+SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt JSON for
+a sealed release even after coverage ends (another tenant is 404). `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape alerts never store emails or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid

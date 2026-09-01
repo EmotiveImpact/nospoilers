@@ -155,6 +155,7 @@ describe("release ledger", () => {
         receipt: { channel?: string; sourceRevision?: string; ciRunUrl?: string; signature: string };
         release: {
           id: number;
+          receiptId: number;
           channel: string;
           mismatch: boolean;
           artifactSha256: string;
@@ -164,6 +165,7 @@ describe("release ledger", () => {
       };
       expect(firstBody.release.channel).toBe("stable");
       expect(firstBody.release.mismatch).toBe(false);
+      expect(firstBody.release.receiptId).toBeGreaterThan(0);
       expect(firstBody.release.sourceRevision).toBe("v1.0.0");
       expect(firstBody.release.ciRunUrl).toBe("https://github.com/octo/app/actions/runs/99");
       expect(firstBody.receipt.channel).toBe("stable");
@@ -223,9 +225,32 @@ describe("release ledger", () => {
       expect(mismatch?.body).toMatch(/not a compromise claim/);
 
       const listed = await app.request("/api/releases", { headers: { cookie } });
-      const listedBody = (await listed.json()) as { releases: { id: number; mismatch: boolean }[] };
+      const listedBody = (await listed.json()) as {
+        releases: { id: number; receiptId: number; mismatch: boolean }[];
+      };
       expect(listedBody.releases.length).toBeGreaterThanOrEqual(4);
       expect(listedBody.releases.some((row) => row.mismatch)).toBe(true);
+      expect(listedBody.releases.every((row) => row.receiptId > 0)).toBe(true);
+
+      const downloaded = await app.request(`/api/receipts/${firstBody.release.receiptId}`, {
+        headers: { cookie },
+      });
+      expect(downloaded.status).toBe(200);
+      const downloadedBody = (await downloaded.json()) as {
+        receipt: { signature: string; coordinate: string; artifactSha256: string };
+      };
+      expect(downloadedBody.receipt.signature).toMatch(/^[a-f0-9]{64}$/);
+      expect(
+        verifyReceipt(
+          JSON.stringify(downloadedBody.receipt),
+          SECRET,
+          firstBody.release.artifactSha256,
+        ).ok,
+      ).toBe(true);
+      const stolenReceipt = await app.request(`/api/receipts/${firstBody.release.receiptId}`, {
+        headers: { cookie: otherCookie },
+      });
+      expect(stolenReceipt.status).toBe(404);
 
       const otherList = await app.request("/api/releases", { headers: { cookie: otherCookie } });
       const otherBody = (await otherList.json()) as { releases: unknown[] };
@@ -283,6 +308,12 @@ describe("release ledger", () => {
         body: bytes,
       });
       expect(unpaid.status).toBe(402);
+      const unpaidReceipt = await app.request(`/api/receipts/${firstBody.release.receiptId}`, {
+        headers: { cookie },
+      });
+      expect(unpaidReceipt.status).toBe(200);
+      const unpaidReleases = await app.request("/api/releases", { headers: { cookie } });
+      expect(unpaidReleases.status).toBe(200);
     } finally {
       await sql.close();
     }

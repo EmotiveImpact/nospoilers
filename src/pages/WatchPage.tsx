@@ -316,6 +316,7 @@ type ScanApiToken = {
 
 type ReleaseRevision = {
   id: number;
+  receiptId: number;
   channel: "stable" | "beta" | "canary";
   coordinate: string;
   artifactSha256: string;
@@ -805,6 +806,8 @@ export function WatchPage({ search }: { search: string }) {
   const [slackError, setSlackError] = useState<string | null>(null);
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
   const [protections, setProtections] = useState<PackageProtection[]>([]);
   const [jobs, setJobs] = useState<TenantJob[]>([]);
   const [jobSummary, setJobSummary] = useState<JobSummary>({
@@ -3789,13 +3792,16 @@ export function WatchPage({ search }: { search: string }) {
         )}
       </section>
 
-      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+      <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Releases</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
           canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
-          and never fetched.
+          and never fetched. Download the signed receipt JSON and check it on Scan or with{" "}
+          <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
+          . That check is not hosted unpack. Coverage ended still allows the download.
         </p>
+        {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
         ) : releases.length === 0 ? (
@@ -3813,13 +3819,50 @@ export function WatchPage({ search }: { search: string }) {
                     {release.createdAt ? ` · ${release.createdAt.slice(0, 10)}` : ""}
                   </p>
                 </div>
-                {release.mismatch ? (
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
-                    digest changed
-                  </span>
-                ) : (
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
-                )}
+                <div className="flex flex-wrap items-center gap-3">
+                  {release.mismatch ? (
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                      digest changed
+                    </span>
+                  ) : (
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={downloadingReceiptId === release.receiptId}
+                    onClick={() => {
+                      setReceiptError(null);
+                      setDownloadingReceiptId(release.receiptId);
+                      void (async () => {
+                        try {
+                          const body = await loadJson<{ receipt: unknown; id: number }>(
+                            `/api/receipts/${release.receiptId}`,
+                          );
+                          const blob = new Blob([`${JSON.stringify(body.receipt, null, 2)}\n`], {
+                            type: "application/json",
+                          });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          const safe = release.coordinate.replace(/[^a-zA-Z0-9._@+-]+/g, "-").slice(0, 80);
+                          link.download = `nospoilers-receipt-${safe || "artifact"}-${body.id}.json`;
+                          link.click();
+                          URL.revokeObjectURL(url);
+                        } catch (error) {
+                          setReceiptError(
+                            error instanceof Error ? error.message : "Could not download that receipt.",
+                          );
+                        } finally {
+                          setDownloadingReceiptId(null);
+                        }
+                      })();
+                    }}
+                  >
+                    {downloadingReceiptId === release.receiptId ? "Saving…" : "Receipt JSON"}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

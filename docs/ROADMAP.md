@@ -107,7 +107,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   Not a Pricing change.
 - APK/AAB/IPA: ZIP magic plus AndroidManifest/BundleConfig/`Payload/*.app` layout. DEX, native
   libraries, and Mach-O are never executed. APK/Apple signatures are not verified. Encrypted zip
-  is inconclusive. FairPlay-encrypted Mach-O is not decrypted. Scan includes an APK fixture example.
+  is inconclusive. FairPlay-encrypted Mach-O is not decrypted. Scan includes APK and IPA fixture examples.
   Not a Pricing change.
 - Serverless deployment bundles: ZIP magic plus `host.json`, `serverless.yml`, `.aws-sam`,
   `netlify/functions`, or `.vercel/output` layout, or a `.lambda.zip` name. Handlers, bootstraps,

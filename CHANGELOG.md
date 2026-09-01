@@ -20,6 +20,8 @@
 - Rate-limit GitHub OAuth and owner discovery per address, with Retry-After. Hosted scan, latest-release, npm check, and website check share the scan budget. Receipt checks use a separate verify budget. GitHub webhooks are not limited.
 - GitHub `installation_target` renamed updates the Watch account login in place. No job. HMAC required. Unpaid still updates.
 - Scan page checks a signed receipt JSON without unpacking. Optional pack SHA-256 is hashed in the browser and not uploaded. Authentic failed-policy or inconclusive is not clean. Coverage ended still allows the check.
+- Watch downloads the signed receipt JSON for a sealed release. Unpaid still allowed. Another tenant is 404.
+- Scan lists the iOS IPA fixture next to APK. Mach-O is not executed.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.

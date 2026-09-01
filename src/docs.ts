@@ -37,7 +37,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     heading: "Packed scans",
     paragraphs: [
       "Drop a pack on Scan, publish a GitHub Release asset, watch an npm package, crawl an HTTPS origin, or POST /api/v1/scan with a hashed token. Classification uses magic bytes, not the extension alone. Nested archives unpack for inspection up to three levels. Encrypted zip, CRX without a ZIP payload, and encrypted image layers are inconclusive, never a passing receipt.",
-      "Check a signed receipt JSON on Scan without unpacking. The optional pack is hashed in the browser; those bytes are not uploaded. An authentic failed-policy or inconclusive receipt is not a clean bill of health. The CLI is `npx nospoilers verify ./package.tgz --receipt receipt.json`. Coverage ended still allows this check.",
+      "Check a signed receipt JSON on Scan without unpacking. The optional pack is hashed in the browser; those bytes are not uploaded. Watch downloads the signed JSON for a sealed release. An authentic failed-policy or inconclusive receipt is not a clean bill of health. The CLI is `npx nospoilers verify ./package.tgz --receipt receipt.json`. Coverage ended still allows this check.",
       "Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB per file, 90 seconds. Hitting a limit is inconclusive. Bytes are deleted when the job finishes. Hosted scans from one address are rate-limited. Sign-in and internal discovery are rate-limited too. GitHub webhooks are not; they must stay 200 so deliveries retry.",
     ],
   },

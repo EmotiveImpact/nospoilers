@@ -259,7 +259,7 @@ overlay whiteouts not applied; encrypted layers inconclusive; signatures not ver
 docker-save example). Not advertised as a Pricing change.
 APK/AAB/IPA are in (ZIP magic; AndroidManifest/BundleConfig/Payload layout; DEX/Mach-O never
 executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK
-example). Not advertised as a Pricing change.
+and IPA examples). Not advertised as a Pricing change.
 Serverless deployment bundles are in (ZIP magic; host.json / serverless.yml / .aws-sam /
 netlify/functions / .vercel/output layout or `.lambda.zip` name; handlers never executed;
 encrypted zip inconclusive; Scan Lambda zip example). Not advertised as a Pricing change.
@@ -297,7 +297,8 @@ job. HMAC required. Unpaid still updates. Subscribe the App to Installation targ
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
-still allows that check. Authentic failed-policy/inconclusive is not clean.
+still allows that check. Authentic failed-policy/inconclusive is not clean. Watch downloads the
+signed receipt JSON for a sealed release; unpaid still allowed.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

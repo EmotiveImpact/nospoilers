@@ -22,6 +22,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/Administration/);
     expect(text).toMatch(/signed receipt/i);
     expect(text).toMatch(/hashed in the browser/i);
+    expect(text).toMatch(/Watch downloads the signed JSON/i);
     expect(text).toMatch(/failed-policy/i);
     expect(text).toMatch(/renamed/i);
     expect(text).toContain(SUPPORT_EMAIL);

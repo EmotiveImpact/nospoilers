@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -93,6 +94,13 @@ describe("packed fixtures", () => {
     expect(rules("sourcemap.ipa", report)).toEqual(
       expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
     );
+  });
+
+  it("lists the IPA fixture on Scan next to APK", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/sourcemap.ipa"/);
+    expect(page).toMatch(/Mach-O is not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
   });
 
   it("lets a clean APK ship", async () => {

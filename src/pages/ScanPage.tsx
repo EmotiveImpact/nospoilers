@@ -52,6 +52,11 @@ const EXAMPLES = [
     hint: "ZIP magic. DEX is not executed.",
   },
   {
+    path: "fixtures/sourcemap.ipa",
+    label: "iOS IPA with a source map",
+    hint: "ZIP magic. Mach-O is not executed.",
+  },
+  {
     path: "fixtures/sourcemap.lambda.zip",
     label: "Lambda zip with a source map",
     hint: "Handlers are not executed.",
