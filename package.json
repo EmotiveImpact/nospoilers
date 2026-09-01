@@ -15,6 +15,7 @@
     "scan": "tsx src/cli.ts scan",
     "fixtures": "tsx scripts/build-fixtures.ts",
     "test": "vitest run",
+    "typecheck": "tsc -b",
     "lint": "oxlint src tests scripts"
   },
   "engines": {

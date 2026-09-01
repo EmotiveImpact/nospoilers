@@ -8,6 +8,7 @@ import { coverageFrom } from "../coverage.ts";
 import { scan } from "../scanner/index.ts";
 import type { AppConfig } from "./config.ts";
 import { githubAppConfigured } from "./config.ts";
+import { describeDatabaseUrl } from "./sql.ts";
 import type { GithubPort } from "./github.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import {
@@ -86,13 +87,29 @@ export function createApp(deps: AppDeps): Hono {
     await next();
   });
 
-  app.get("/api/health", (c) =>
-    c.json({
+  app.get("/api/health", async (c) => {
+    const described = describeDatabaseUrl(deps.config.databaseUrl);
+    const { rows } = await deps.store.sql.query<{
+      current_database: string;
+      current_user: string;
+    }>("SELECT current_database() AS current_database, current_user AS current_user");
+    const live = rows[0];
+    return c.json({
       ok: true,
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
-    }),
-  );
+      database: {
+        driver: described.driver,
+        host: described.host,
+        name: live?.current_database ?? described.database,
+        user: live?.current_user ?? null,
+      },
+      worker: {
+        recoveryIntervalMs: deps.config.workerIntervalMs,
+        visibilityPollIntervalMs: deps.config.pollIntervalMs,
+      },
+    });
+  });
 
   app.get("/api/internal/prospects", async (c) => {
     const limit = Number(c.req.query("limit") ?? 100);

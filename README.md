@@ -7,6 +7,7 @@ Secret scanners read git. NoSpoilers reads the **packed artifact** — the npm t
 That is the class of leak that shipped Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer. GitHub secret scanning does not catch packed maps. Making the git repo private does not catch an installer on a CDN.
 
 Product decisions (pricing, queue, what to buy later) live in **[docs/PRODUCT.md](docs/PRODUCT.md)**.
+Roadmap, current handoff, and changelog: **[docs/ROADMAP.md](docs/ROADMAP.md)**, **[docs/HANDOFF.md](docs/HANDOFF.md)**, **[CHANGELOG.md](CHANGELOG.md)**.
 
 ## Run locally
 
@@ -17,7 +18,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open **http://127.0.0.1:4347** (port **4347**).
+Open **http://127.0.0.1:4347** (port **4347**). `GET /api/health` reports whether the process is on Neon or PGlite.
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
 - **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops.
@@ -40,22 +41,25 @@ The desk deliberately supports only public `.tgz`, `.tar.gz`, `.zip`, and `.asar
 GitHub and npm. Use findings for private, responsible disclosure—never public prospect lists.
 Prospect scans run one at a time and customer release jobs stay ahead of them in the heavy queue.
 
-Default database is embedded Postgres (`pglite://./data/nospoilers`). Optional Docker Postgres:
+### Database
 
-PGlite is PostgreSQL compiled to run inside this Node process; its files live under `data/`. It is
-for local development, not the production database. Production uses normal Postgres (Neon is the
-current managed option) for users, sessions, GitHub installations, jobs, alerts, prospects, and
-billing metadata. Packed artifacts are never stored there.
+The hosted app uses **Neon** (project **NoSpoilers**, branch **production**, database **neondb**).
+Set `DATABASE_URL` to that connection string. A Cursor runtime secret named `DATABASE_URL` overrides
+`.env`. Do **not** copy local PGlite files from `data/` into Neon. Neon Auth stays off; GitHub App
+OAuth is the login.
 
-Queue processing is event-driven: webhook, dashboard, and internal discovery routes wake the worker
-as soon as they insert a job. `WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
-behind by a crash; it is not the normal pickup path. `POLL_INTERVAL_MS` is different—the hourly
-GitHub visibility backstop that catches a missed webhook.
+PGlite (`pglite://./data/nospoilers`) is a laptop fallback when Neon is not configured. Optional
+Docker Postgres:
 
 ```bash
 docker compose up -d
 # DATABASE_URL=postgres://nospoilers:nospoilers@127.0.0.1:5433/nospoilers
 ```
+
+Queue processing is event-driven: webhook, dashboard, and internal discovery routes wake the worker
+as soon as they insert a job. `WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
+behind by a crash; it is not the normal pickup path. Do not poll the empty queue every 500ms.
+`POLL_INTERVAL_MS` is different—the hourly GitHub visibility backstop that catches a missed webhook.
 
 CLI and Action still work without the GitHub App:
 

@@ -87,6 +87,57 @@ function wrapPool(pool: pg.Pool): SqlClient {
   };
 }
 
+export type DatabaseDriver = "pglite" | "neon" | "postgres";
+
+export type DatabaseIdentity = {
+  driver: DatabaseDriver;
+  host: string | null;
+  database: string | null;
+};
+
+export function describeDatabaseUrl(databaseUrl: string): DatabaseIdentity {
+  if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
+    const loc = databaseUrl.replace(/^pglite:\/\//, "") || "./data/nospoilers";
+    return { driver: "pglite", host: loc, database: null };
+  }
+  try {
+    const parsed = new URL(databaseUrl);
+    const host = parsed.hostname || null;
+    const database = decodeURIComponent(parsed.pathname.replace(/^\//, "")) || null;
+    const driver: DatabaseDriver = (host ?? "").includes("neon.tech") ? "neon" : "postgres";
+    return { driver, host, database };
+  } catch {
+    return { driver: "postgres", host: null, database: null };
+  }
+}
+
+export function splitSql(script: string): string[] {
+  return script
+    .split(";")
+    .map((part) =>
+      part
+        .split("\n")
+        .map((line) => (line.trimStart().startsWith("--") ? "" : line))
+        .join("\n")
+        .trim(),
+    )
+    .filter((statement) => statement.length > 0);
+}
+
+function postgresPoolConfig(databaseUrl: string): pg.PoolConfig {
+  const identity = describeDatabaseUrl(databaseUrl);
+  return {
+    connectionString: databaseUrl,
+    max: 8,
+    ssl:
+      identity.driver === "neon"
+        ? {
+            rejectUnauthorized: true,
+          }
+        : undefined,
+  };
+}
+
 export async function openSql(databaseUrl: string): Promise<SqlClient> {
   if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
     const loc = databaseUrl.replace(/^pglite:\/\//, "") || "./data/nospoilers";
@@ -101,7 +152,7 @@ export async function openSql(databaseUrl: string): Promise<SqlClient> {
     await db.waitReady;
     return wrapPglite(db);
   }
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = new pg.Pool(postgresPoolConfig(databaseUrl));
   return wrapPool(pool);
 }
 
@@ -109,11 +160,11 @@ export async function migrate(sql: SqlClient): Promise<void> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const schemaPath = path.join(here, "schema.sql");
   const schema = await readFile(schemaPath, "utf8");
-  await sql.exec(schema);
-  await sql.exec(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT;
-  `);
+  for (const statement of splitSql(schema)) {
+    await sql.exec(statement);
+  }
+  await sql.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ");
+  await sql.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT");
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "001_init",
   ]);

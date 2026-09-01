@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort, GithubRepo } from "../src/server/github.ts";
 import { githubSignature } from "../src/server/hmac.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
-import { runVisibilityPoll } from "../src/server/poller.ts";
-import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
-import { createStore, type Store } from "../src/server/store.ts";
+import { runVisibilityPoll, startPoller } from "../src/server/poller.ts";
+import { migrate, openSql, describeDatabaseUrl, splitSql, type SqlClient } from "../src/server/sql.ts";
+import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
 
@@ -53,6 +53,9 @@ function appFor(
     githubClientId: "c",
     githubClientSecret: "s",
     sessionSecret: "sess",
+    databaseUrl: "pglite://:memory:",
+    workerIntervalMs: 15 * 60 * 1000,
+    pollIntervalMs: 60 * 60 * 1000,
   });
   const app = createApp({
     config,
@@ -343,5 +346,166 @@ describe("visibility poller", () => {
       expect(rows[0]?.kind).toBe("repo_publicized");
       expect(rows[0]?.title).toContain("octo/throwaway");
     });
+  });
+});
+
+describe("database identity", () => {
+  it("classifies PGlite, Neon, and generic Postgres URLs without leaking secrets", () => {
+    expect(describeDatabaseUrl("pglite://./data/nospoilers")).toEqual({
+      driver: "pglite",
+      host: "./data/nospoilers",
+      database: null,
+    });
+    expect(
+      describeDatabaseUrl(
+        "postgresql://neondb_owner:secret@ep-example-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require",
+      ),
+    ).toEqual({
+      driver: "neon",
+      host: "ep-example-pooler.c-4.us-east-2.aws.neon.tech",
+      database: "neondb",
+    });
+    expect(describeDatabaseUrl("postgres://nospoilers:nospoilers@127.0.0.1:5433/nospoilers")).toEqual({
+      driver: "postgres",
+      host: "127.0.0.1",
+      database: "nospoilers",
+    });
+  });
+
+  it("splits schema SQL so Neon pooler can apply statements one at a time", () => {
+    const statements = splitSql(`
+      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY);
+      -- comment
+      CREATE TABLE IF NOT EXISTS jobs (id BIGSERIAL PRIMARY KEY);
+    `);
+    expect(statements).toHaveLength(2);
+    expect(statements[0]).toContain("users");
+    expect(statements[1]).toContain("jobs");
+  });
+});
+
+describe("health", () => {
+  it("reports the live database driver and worker intervals", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await app.request("/api/health");
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        ok: boolean;
+        database: { driver: string; name: string };
+        worker: { recoveryIntervalMs: number; visibilityPollIntervalMs: number };
+      };
+      expect(body.ok).toBe(true);
+      expect(body.database.driver).toBe("pglite");
+      expect(body.database.name).toBeTruthy();
+      expect(body.worker.recoveryIntervalMs).toBe(15 * 60 * 1000);
+      expect(body.worker.visibilityPollIntervalMs).toBe(60 * 60 * 1000);
+    });
+  });
+});
+
+describe("queue pickup", () => {
+  it("wakes the worker immediately when scan-latest-release enqueues a job", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: true,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      await store.linkUserInstallation(7, "u1");
+      const sessionId = await store.createSession("u1");
+      let wakes = 0;
+      const { app } = appFor(store, mockGithub(), () => {
+        wakes += 1;
+      });
+      const res = await app.request("/api/repos/99/scan-latest-release", {
+        method: "POST",
+        headers: { cookie: `ns_session=${signSession("sess", sessionId)}` },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { queued: boolean };
+      expect(body.queued).toBe(true);
+      expect(wakes).toBe(1);
+    });
+  });
+
+  it("schedules a 15-minute recovery check instead of polling every 500ms", async () => {
+    await withStore(async ({ store }) => {
+      const intervals: number[] = [];
+      const original = globalThis.setInterval.bind(globalThis);
+      const spy = vi.spyOn(globalThis, "setInterval").mockImplementation((handler, timeout) => {
+        if (typeof timeout === "number") intervals.push(timeout);
+        return original(handler as never, timeout as never);
+      });
+      try {
+        const worker = createWorker({
+          store,
+          github: mockGithub(),
+          notifier: createLogNotifier(store),
+          heavyConcurrency: 2,
+          lightConcurrency: 2,
+          maxAssetBytes: 1000,
+          intervalMs: 15 * 60 * 1000,
+        });
+        worker.start();
+        expect(intervals).toEqual([15 * 60 * 1000]);
+        expect(intervals).not.toContain(500);
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        await worker.stop();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
+  it("defaults recovery to 15 minutes and the visibility backstop to one hour", () => {
+    const previousWorker = process.env.WORKER_INTERVAL_MS;
+    const previousPoll = process.env.POLL_INTERVAL_MS;
+    delete process.env.WORKER_INTERVAL_MS;
+    delete process.env.POLL_INTERVAL_MS;
+    try {
+      const config = loadConfig({ databaseUrl: "pglite://:memory:" });
+      expect(config.workerIntervalMs).toBe(15 * 60 * 1000);
+      expect(config.pollIntervalMs).toBe(60 * 60 * 1000);
+    } finally {
+      if (previousWorker === undefined) delete process.env.WORKER_INTERVAL_MS;
+      else process.env.WORKER_INTERVAL_MS = previousWorker;
+      if (previousPoll === undefined) delete process.env.POLL_INTERVAL_MS;
+      else process.env.POLL_INTERVAL_MS = previousPoll;
+    }
+  });
+
+  it("registers the hourly visibility poller on the configured interval", () => {
+    const intervals: number[] = [];
+    const original = globalThis.setInterval.bind(globalThis);
+    const spy = vi.spyOn(globalThis, "setInterval").mockImplementation((handler, timeout) => {
+      if (typeof timeout === "number") intervals.push(timeout);
+      return original(handler as never, timeout as never);
+    });
+    try {
+      const poller = startPoller(
+        {
+          store: {} as never,
+          github: mockGithub(),
+          notifier: { send: async () => undefined },
+        },
+        60 * 60 * 1000,
+      );
+      expect(intervals).toEqual([60 * 60 * 1000]);
+      poller.stop();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
