@@ -9,7 +9,7 @@ import {
   signReceipt,
   verifyReceipt,
 } from "../src/receipt.ts";
-import { diffManifests } from "../src/release-diff.ts";
+import { diffManifests, SIZE_JUMP_BYTES } from "../src/release-diff.ts";
 import { scan, type ScanReport } from "../src/scanner/index.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
@@ -17,6 +17,7 @@ import type { GithubPort } from "../src/server/github.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { allowedNpmTarballUrl, type NpmPack, type NpmPort } from "../src/server/npm.ts";
+import { persistHostedReceipt } from "../src/server/receipts.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
@@ -139,7 +140,33 @@ describe("release diff", () => {
     expect(diff.removed.map((row) => row.path)).toEqual(["gone.js"]);
     expect(diff.changed.map((row) => row.path)).toEqual(["a.js"]);
     expect(diff.sizeDelta).toBe(6);
+    expect(diff.previousBytes).toBe(14);
+    expect(diff.nextBytes).toBe(20);
     expect(diff.unexpectedSizeJump).toBe(false);
+  });
+
+  it("flags a 2× unpacked jump or a 5 MiB increase, not a shrink", () => {
+    const doubled = diffManifests(
+      [{ path: "a.js", size: 100, sha256: "a" }],
+      [{ path: "a.js", size: 201, sha256: "b" }],
+    );
+    expect(doubled.unexpectedSizeJump).toBe(true);
+    expect(doubled.previousBytes).toBe(100);
+    expect(doubled.nextBytes).toBe(201);
+
+    const fiveMib = diffManifests(
+      [{ path: "a.js", size: 100, sha256: "a" }],
+      [{ path: "a.js", size: 100 + SIZE_JUMP_BYTES, sha256: "b" }],
+    );
+    expect(fiveMib.unexpectedSizeJump).toBe(true);
+    expect(fiveMib.sizeDelta).toBe(SIZE_JUMP_BYTES);
+
+    const shrink = diffManifests(
+      [{ path: "a.js", size: 10_000, sha256: "a" }],
+      [{ path: "a.js", size: 100, sha256: "b" }],
+    );
+    expect(shrink.unexpectedSizeJump).toBe(false);
+    expect(shrink.sizeDelta).toBe(-9900);
   });
 });
 
@@ -381,6 +408,289 @@ describe("hosted receipts", () => {
         "SELECT status FROM scan_receipts",
       );
       expect(receipts[0]?.status).toBe("inconclusive");
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("mints SIZE-003 on a 2× unpacked jump and skips the first receipt", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const pkg = await store.insertWatchedPackage(7, "demo-pack");
+      if (!pkg) throw new Error("expected watched package");
+      const first = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        packageId: pkg.id,
+        coordinate: "npm:demo-pack@1.0.0",
+        report: passedReport({
+          target: "demo-pack-1.0.0.tgz",
+          artifactSha256: "11".repeat(32),
+          manifest: [{ path: "package/a.js", size: 1000, sha256: "a1".repeat(32) }],
+        }),
+      });
+      expect(first.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(false);
+      expect(first.receipt.findingRuleIds).not.toContain("SIZE-003");
+
+      const second = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        packageId: pkg.id,
+        coordinate: "npm:demo-pack@1.1.0",
+        report: passedReport({
+          target: "demo-pack-1.1.0.tgz",
+          artifactSha256: "22".repeat(32),
+          manifest: [
+            { path: "package/a.js", size: 1000, sha256: "a1".repeat(32) },
+            { path: "package/extra.bin", size: 2000, sha256: "a2".repeat(32) },
+          ],
+        }),
+      });
+      expect(second.comparedTo).toBe("previous");
+      expect(second.diff?.unexpectedSizeJump).toBe(true);
+      expect(second.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(true);
+      expect(second.receipt.findingRuleIds).toContain("SIZE-003");
+      expect(second.receipt.status).toBe("passed");
+      expect(JSON.stringify(second.report.findings)).not.toMatch(/sk_live|plot-twist|https?:\/\//i);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("mints SIZE-003 across GitHub release tags of the same asset name", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: false,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        repoId: 99,
+        coordinate: "github:octo/throwaway@v1.0.0#app.tgz",
+        report: passedReport({
+          target: "app.tgz",
+          artifactSha256: "11".repeat(32),
+          manifest: [{ path: "package/a.js", size: 1000, sha256: "a1".repeat(32) }],
+        }),
+      });
+      const otherAsset = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        repoId: 99,
+        coordinate: "github:octo/throwaway@v1.0.0#debug.zip",
+        report: passedReport({
+          target: "debug.zip",
+          artifactSha256: "aa".repeat(32),
+          manifest: [{ path: "package/debug.js", size: 50_000, sha256: "aa".repeat(32) }],
+        }),
+      });
+      expect(otherAsset.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(false);
+
+      const nextTag = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        repoId: 99,
+        coordinate: "github:octo/throwaway@v1.1.0#app.tgz",
+        report: passedReport({
+          target: "app.tgz",
+          artifactSha256: "22".repeat(32),
+          manifest: [{ path: "package/a.js", size: 4000, sha256: "a2".repeat(32) }],
+        }),
+      });
+      expect(nextTag.comparedTo).toBe("previous");
+      expect(nextTag.diff?.unexpectedSizeJump).toBe(true);
+      expect(nextTag.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(true);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("suppresses SIZE-003 with an expiring allowlist and never adds it to inconclusive scans", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const pkg = await store.insertWatchedPackage(7, "demo-pack");
+      if (!pkg) throw new Error("expected watched package");
+      await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        packageId: pkg.id,
+        coordinate: "npm:demo-pack@1.0.0",
+        report: passedReport({
+          target: "demo-pack-1.0.0.tgz",
+          artifactSha256: "11".repeat(32),
+          manifest: [{ path: "package/a.js", size: 1000, sha256: "a1".repeat(32) }],
+        }),
+      });
+      await store.insertPolicyException({
+        installationId: 7,
+        packageId: pkg.id,
+        rule: "SIZE-003",
+        pathPattern: null,
+        reason: "Known unpack growth on this pack.",
+        actorUserId: "u1",
+        actorLogin: "octo",
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+      const allowed = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        packageId: pkg.id,
+        coordinate: "npm:demo-pack@1.1.0",
+        report: passedReport({
+          target: "demo-pack-1.1.0.tgz",
+          artifactSha256: "22".repeat(32),
+          manifest: [{ path: "package/a.js", size: 4000, sha256: "a2".repeat(32) }],
+        }),
+      });
+      expect(allowed.diff?.unexpectedSizeJump).toBe(true);
+      expect(allowed.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(false);
+      expect(allowed.receipt.findingRuleIds).not.toContain("SIZE-003");
+      expect(allowed.report.suppressed.some((row) => row.finding.rule === "SIZE-003")).toBe(true);
+
+      const inconclusive = await persistHostedReceipt({
+        store,
+        secret: SECRET,
+        installationId: 7,
+        packageId: pkg.id,
+        coordinate: "npm:demo-pack@1.2.0",
+        report: {
+          ...passedReport({
+            target: "demo-pack-1.2.0.tgz",
+            artifactSha256: "33".repeat(32),
+            manifest: [{ path: "package/a.js", size: 20_000, sha256: "a3".repeat(32) }],
+          }),
+          ok: false,
+          status: "inconclusive",
+          inconclusiveReason: "Packed file is larger than the scan limit.",
+        },
+      });
+      expect(inconclusive.diff?.unexpectedSizeJump).toBe(true);
+      expect(inconclusive.report.findings.some((finding) => finding.rule === "SIZE-003")).toBe(false);
+      expect(inconclusive.receipt.status).toBe("inconclusive");
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("puts SIZE-003 on the Watch alert when a later npm pack jumps 2×", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const pkg = await store.insertWatchedPackage(7, "demo-pack");
+      if (!pkg) throw new Error("expected watched package");
+      let scans = 0;
+      const npm: NpmPort = {
+        getPack: async () => {
+          throw new Error("getPack should not run");
+        },
+        downloadTarball: async () => Buffer.from("pack"),
+      };
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        npm,
+        notifier: createLogNotifier(store),
+        scan: async () => {
+          scans += 1;
+          return passedReport({
+            target: "demo-pack.tgz",
+            artifactSha256: scans === 1 ? "11".repeat(32) : "22".repeat(32),
+            artifactSha512: scans === 1 ? "cc".repeat(64) : "dd".repeat(64),
+            manifest:
+              scans === 1
+                ? [{ path: "package/a.js", size: 1000, sha256: "a1".repeat(32) }]
+                : [
+                    { path: "package/a.js", size: 1000, sha256: "a1".repeat(32) },
+                    { path: "package/extra.bin", size: 2000, sha256: "a2".repeat(32) },
+                  ],
+          });
+        },
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        receiptSecret: SECRET,
+      });
+      let expectedReceipts = 0;
+      for (const version of ["1.0.0", "1.1.0"]) {
+        await store.enqueueJob({
+          priority: "heavy",
+          kind: "npm_scan",
+          payload: {
+            installationId: 7,
+            packageId: pkg.id,
+            packageName: "demo-pack",
+            version,
+            tarballUrl: `https://registry.npmjs.org/demo-pack/-/demo-pack-${version}.tgz`,
+          },
+        });
+        expectedReceipts += 1;
+        await worker.tick();
+        await waitUntil(async () => {
+          const { rows } = await sql.query<{ n: string }>("SELECT count(*)::text AS n FROM scan_receipts");
+          return Number(rows[0]?.n) >= expectedReceipts;
+        }, `receipt ${version}`);
+      }
+      await worker.stop();
+      const { rows } = await sql.query<{ title: string; findings: unknown }>(
+        "SELECT title, findings FROM alerts ORDER BY id",
+      );
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.title).toMatch(/allowed to ship/);
+      expect(JSON.stringify(rows[0]?.findings ?? [])).not.toContain("SIZE-003");
+      expect(rows[1]?.title).toMatch(/allowed to ship/);
+      expect(JSON.stringify(rows[1]?.findings)).toContain("SIZE-003");
+      const { rows: bodies } = await sql.query<{ body: string }>(
+        "SELECT body FROM alerts ORDER BY id DESC LIMIT 1",
+      );
+      expect(bodies[0]?.body).toMatch(/SIZE-003/);
+      expect(JSON.stringify(rows)).not.toMatch(/sk_live|plot-twist/i);
     } finally {
       await sql.close();
     }

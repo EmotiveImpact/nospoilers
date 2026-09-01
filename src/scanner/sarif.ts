@@ -29,6 +29,7 @@ const RULES: Record<
   "SRC-001": { name: "original-source", shortDescription: "TypeScript or JSX source packed into the artifact" },
   "SIZE-001": { name: "oversized-file", shortDescription: "Packed file is far over a normal baseline" },
   "SIZE-002": { name: "oversized-artifact", shortDescription: "Packed artifact is far over a normal baseline" },
+  "SIZE-003": { name: "unexpected-size-jump", shortDescription: "Unpacked size jumped 2× or by 5 MiB versus the previous or approved scan" },
   "ARC-001": { name: "nested-archive", shortDescription: "Nested packed artifact inside the scan target" },
   "ARC-002": { name: "escaping-archive-path", shortDescription: "Archive entry path escapes the pack" },
   "BAK-001": { name: "backup-copy", shortDescription: "Backup copy packed into the artifact" },

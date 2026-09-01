@@ -367,6 +367,8 @@ type ReleaseDiffView = {
     added: { path: string }[];
     removed: { path: string }[];
     changed: { path: string }[];
+    previousBytes: number;
+    nextBytes: number;
     sizeDelta: number;
     unexpectedSizeJump: boolean;
     newFindings: string[];
@@ -3149,10 +3151,12 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>. Public
           packs use registry.npmjs.org. Private registries need an encrypted token (never shown
-          again). Tarball hosts must match the saved registry. Source is not kept. Protect identity
-          only after the npm scope or GitHub repository field matches this install. Trial and Team
-          installs then generate bounded lookalike names and watch dormant resurrection and release
-          bursts. That is not a malware verdict.
+          again). Tarball hosts must match the saved registry. Source is not kept. A later pack that
+          is twice as large, or at least 5 MiB larger unpacked, raises SIZE-003 against the approved
+          baseline or the previous receipt. Protect identity only after the npm scope or GitHub
+          repository field matches this install. Trial and Team installs then generate bounded
+          lookalike names and watch dormant resurrection and release bursts. That is not a malware
+          verdict.
         </p>
         {previewing ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -3624,8 +3628,15 @@ export function WatchPage({ search }: { search: string }) {
                           <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
                             {diffState.versus === "baseline" ? "vs baseline · " : ""}
                             {diffState.previous.coordinate} → {diffState.current.coordinate}
-                            {diffState.diff.unexpectedSizeJump ? " · unexpected size jump" : ""}
                           </p>
+                          {diffState.diff.unexpectedSizeJump ? (
+                            <p className="mt-2 text-sm text-snow">
+                              SIZE-003 · unpacked {diffState.diff.nextBytes} bytes versus{" "}
+                              {diffState.diff.previousBytes} on the{" "}
+                              {diffState.versus === "baseline" ? "approved baseline" : "previous scan"}{" "}
+                              (2× or 5 MiB jump).
+                            </p>
+                          ) : null}
                           <p className="mt-2 text-xs text-dim">
                             +{diffState.diff.added.length} −{diffState.diff.removed.length} ~
                             {diffState.diff.changed.length} · {diffState.diff.sizeDelta >= 0 ? "+" : ""}

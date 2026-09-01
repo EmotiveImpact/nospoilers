@@ -1640,7 +1640,7 @@ export function createApp(deps: AppDeps): Hono {
         ...releaseMeta,
       });
       return c.json({
-        report,
+        report: persisted.report,
         receipt: persisted.receipt,
         receiptId: persisted.row.id,
         release: publicRelease(persisted.revision),
@@ -1665,7 +1665,7 @@ export function createApp(deps: AppDeps): Hono {
         ...releaseMeta,
       });
       return c.json({
-        report,
+        report: persisted.report,
         receipt: persisted.receipt,
         receiptId: persisted.row.id,
         release: publicRelease(persisted.revision),

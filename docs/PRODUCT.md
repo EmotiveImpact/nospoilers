@@ -40,7 +40,7 @@ Single package, **local only**. Not a hosted platform.
 | Tests | `tests/scanner.test.ts`, `tests/fixtures.test.ts` |
 
 **Rules:** MAP-001/002/003, SEC-001/002/003/004, AI-001, NET-001, DBG-001, CRASH-001,
-GIT-001, SRC-001, SIZE-001/002. Credential values never appear in reports.
+GIT-001, SRC-001, SIZE-001/002/003. Credential values never appear in reports.
 
 **Scanner safety:** default hard limits are 80 MiB input, 500 MiB unpacked, 25,000 files,
 25 MiB per file, and 90 seconds. `.dmg`, `.exe`, `.msi`, and `.AppImage` are future isolated-job

@@ -13,14 +13,17 @@ export type ReleaseDiff = {
   added: ManifestChange[];
   removed: ManifestChange[];
   changed: ManifestChange[];
+  previousBytes: number;
+  nextBytes: number;
   sizeDelta: number;
   unexpectedSizeJump: boolean;
   newFindings: string[];
   resolvedFindings: string[];
 };
 
-const SIZE_JUMP_RATIO = 2;
-const SIZE_JUMP_BYTES = 5 * 1024 * 1024;
+export const SIZE_JUMP_RATIO = 2;
+export const SIZE_JUMP_BYTES = 5 * 1024 * 1024;
+export const SIZE_JUMP_RULE = "SIZE-003";
 
 export function diffManifests(previous: ManifestEntry[], next: ManifestEntry[]): ReleaseDiff {
   const prevMap = new Map(previous.map((entry) => [entry.path, entry]));
@@ -79,10 +82,30 @@ export function diffManifests(previous: ManifestEntry[], next: ManifestEntry[]):
     added,
     removed,
     changed,
+    previousBytes,
+    nextBytes,
     sizeDelta,
     unexpectedSizeJump,
     newFindings: [],
     resolvedFindings: [],
+  };
+}
+
+export function sizeJumpFinding(input: {
+  previousBytes: number;
+  nextBytes: number;
+  sizeDelta: number;
+  comparedTo: "baseline" | "previous";
+  path: string;
+}): Finding {
+  const label = input.comparedTo === "baseline" ? "approved baseline" : "previous scan";
+  const delta = `${input.sizeDelta >= 0 ? "+" : ""}${input.sizeDelta}`;
+  return {
+    rule: SIZE_JUMP_RULE,
+    severity: "warn",
+    path: input.path,
+    title: "Unpacked size jumped versus the last approved or previous scan",
+    detail: `Unpacked payload is ${input.nextBytes} bytes versus ${input.previousBytes} on the ${label} (${delta} bytes). A 2× or 5 MiB jump is how a source map ships.`,
   };
 }
 

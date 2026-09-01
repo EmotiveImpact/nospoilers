@@ -78,7 +78,10 @@ Read in this order:
   the hourly poller and Watch “Check now” enqueue new versions, mutated tarballs, and dist-tag moves.
   Private HTTPS registries (GitHub Packages, GitLab, Verdaccio, …) take an encrypted read token;
   tarball hosts must match the saved origin. Tokens are never returned and never written onto jobs.
-  Covered npm and GitHub release scans persist a signed receipt and can diff the last two. The
+  Covered npm and GitHub release scans persist a signed receipt and can diff the last two. A later
+  pack that is twice as large, or at least 5 MiB larger unpacked, mints SIZE-003 against the
+  approved baseline or the previous receipt. First scans do not. The finding is a warning,
+  allowlistable, and appears on Watch alerts and GitHub Checks. Source is not stored. The
   15-minute worker timer is still recovery only — enqueue wakes the worker.
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
   and approve a packed receipt as the shipping baseline. Hosted scans apply those exceptions
@@ -258,6 +261,8 @@ Fair-use hosted unpacks are in (Solo 1 concurrent heavy job per install; Team/tr
 heavy cap still applies; no scan-credit meter). Not advertised as a Pricing change.
 Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; customer vs prospect;
 stale locks; no payloads). Not a customer page.
+SIZE-003 unexpected unpacked growth is in (2× or ≥5 MiB versus previous receipt or approved
+baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a Pricing change.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

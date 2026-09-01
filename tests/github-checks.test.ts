@@ -28,6 +28,17 @@ describe("GitHub Checks mapping", () => {
     expect(nested[0]?.start_line).toBe(1);
     expect(nested[0]?.annotation_level).toBe("failure");
 
+    const jump = annotationsForFindings([
+      finding({
+        rule: "SIZE-003",
+        severity: "warn",
+        title: "Unpacked size jumped versus the last approved or previous scan",
+        path: "artifact",
+      }),
+    ]);
+    expect(jump[0]?.annotation_level).toBe("warning");
+    expect(jump[0]?.title).toBe("SIZE-003");
+
     const many = annotationsForFindings(
       Array.from({ length: 60 }, (_, i) => finding({ path: `package/${i}.map` })),
     );

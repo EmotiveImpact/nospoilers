@@ -13,6 +13,7 @@
 - Refuse weak `SESSION_SECRET` / webhook secrets on Neon or https; add `/api/ready` and JSON logs.
 - Watch public npm packages: scan `latest` on connect, then new versions, mutated tarballs, and dist-tags.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
+- SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.
 - Flag nested packs, backup copies, database dumps, internal docs, and escaping symlinks.
 - Unpack nested tgz/zip/asar for inspection (never execute) up to three levels.
 - Load `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approve a scan baseline.

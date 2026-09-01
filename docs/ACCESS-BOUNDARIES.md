@@ -64,7 +64,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Read the packed-artifact setup workflow YAML and the remediation file bundle on those
   repositories. Opening the reviewable PRs is an install admin action.
 - Read signed scan receipts for those installations and diff against an approved baseline
-  (or the last two receipts if none is approved).
+  (or the last two receipts if none is approved). SIZE-003 is a warning on a 2× or ≥5 MiB
+  unpacked jump versus that comparison; it stores byte counts, not source.
 - View their own coverage status.
 - See GitHub App suspend, unsuspend, permission-change, and repository add/remove
   alerts on installations they belong to. Uninstall drops the tenant; there is no
@@ -259,7 +260,8 @@ These are never customer features:
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue`, and that owner queue JSON is
 counts only (no payloads, URLs, or credential values). `tests/receipts.test.ts` proves customers cannot read another
-tenant’s receipts and that receipts cannot be patched. `tests/policy.test.ts` proves
+tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unpacked jump
+(not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,

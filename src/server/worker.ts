@@ -275,12 +275,6 @@ export async function handleJob(
           await rm(dir, { recursive: true, force: true });
         }
       }
-      statuses.push(report.status);
-      allFindings.push(...report.findings);
-      notes.push(noteForAsset(asset.name, report));
-      if (report.suppressed.length > 0) {
-        notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
-      }
       if (deps.receiptSecret) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -292,9 +286,23 @@ export async function handleJob(
           channel: inferReleaseChannel(tag),
           sourceRevision: tag,
         });
+        report = persisted.report;
+        statuses.push(report.status);
+        allFindings.push(...report.findings);
+        notes.push(noteForAsset(asset.name, report));
+        if (report.suppressed.length > 0) {
+          notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
+        }
         const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
         if (report.artifactSha256) notes.push(`sha256 ${report.artifactSha256}`);
+      } else {
+        statuses.push(report.status);
+        allFindings.push(...report.findings);
+        notes.push(noteForAsset(asset.name, report));
+        if (report.suppressed.length > 0) {
+          notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
+        }
       }
     }
 
@@ -374,12 +382,27 @@ export async function handleJob(
       const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes, auth);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
-      const report = await applyHostedPolicy(
+      let report = await applyHostedPolicy(
         deps.store,
         await deps.scan(dest),
         installationId,
         Number.isFinite(packageId) && packageId > 0 ? packageId : null,
       );
+      let diffNote = "";
+      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.receiptSecret,
+          installationId,
+          packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+          coordinate: `npm:${packageName}@${version}`,
+          report,
+          channel: inferReleaseChannel(version),
+          sourceRevision: version,
+        });
+        report = persisted.report;
+        diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
+      }
       const status = report.status;
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
       if (Number.isFinite(packageId) && packageId > 0) {
@@ -411,20 +434,7 @@ export async function handleJob(
       }
       const workspaceNote = summarizeWorkspaces(report.workspaces);
       if (workspaceNote) notes.push(workspaceNote);
-      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.receiptSecret,
-          installationId,
-          packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
-          coordinate: `npm:${packageName}@${version}`,
-          report,
-          channel: inferReleaseChannel(version),
-          sourceRevision: version,
-        });
-        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
-        if (diffNote) notes.push(diffNote);
-      }
+      if (diffNote) notes.push(diffNote);
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
@@ -532,16 +542,7 @@ export async function handleJob(
         installationId,
         `origin:${origin.id}:${crawled.sha256.slice(0, 12)}`,
       );
-      const critical = report.findings.filter((finding) => finding.severity === "critical").length;
-      const notes = [
-        report.status === "inconclusive"
-          ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
-          : critical > 0
-            ? `${critical} critical finding(s).`
-            : "No critical findings.",
-        `sha256 ${crawled.sha256}`,
-        `${crawled.files.length} file(s) from ${origin.host}. Source was deleted after the scan.`,
-      ];
+      let diffNote = "";
       if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -552,9 +553,20 @@ export async function handleJob(
           channel: "stable",
           sourceRevision: crawled.sha256.slice(0, 12),
         });
-        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
-        if (diffNote) notes.push(diffNote);
+        report = persisted.report;
+        diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
       }
+      const critical = report.findings.filter((finding) => finding.severity === "critical").length;
+      const notes = [
+        report.status === "inconclusive"
+          ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
+          : critical > 0
+            ? `${critical} critical finding(s).`
+            : "No critical findings.",
+        `sha256 ${crawled.sha256}`,
+        `${crawled.files.length} file(s) from ${origin.host}. Source was deleted after the scan.`,
+      ];
+      if (diffNote) notes.push(diffNote);
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,

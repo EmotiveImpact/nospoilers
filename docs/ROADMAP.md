@@ -32,6 +32,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Private npm registries: encrypted per-install tokens, same-host tarball downloads only.
 - Release manifests (path/size/SHA-256), signed HMAC scan receipts, explicit inconclusive
   status, and Release Diff of the last two receipts on a watched package.
+- SIZE-003: a later hosted pack that is twice as large, or at least 5 MiB larger unpacked,
+  versus the previous receipt or approved baseline. First scans stay SIZE-001/002 only.
+  Warn, not a failed receipt. Allowlistable. GitHub Checks get a warning annotation.
 - `.nospoilers.yml` / hosted allowlists (exact rule, expiry, reason) and approved scan baselines.
 - App-generated setup PR (reviewable, never merged) and hosted GitHub Checks on release scans.
   Live GitHub writes skip with copy-paste YAML / no Check until the App is granted Contents write,

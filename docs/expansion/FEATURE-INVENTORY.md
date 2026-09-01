@@ -58,7 +58,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Baseline approval | Built: attributable `scan_baselines`, supersedes the previous | NoSpoilers |
 | Path/rule allowlist with expiry and reason | Built: exact-rule, expiring, never silent DELETE | NoSpoilers |
 | `.nospoilers.yml` policy file | Built: CLI/Action + hosted DB exceptions | NoSpoilers |
-| Unexpected package-size increase | Partial: Release Diff flags a 2× or ≥5 MiB unpacked jump | NoSpoilers |
+| Unexpected package-size increase | Built: SIZE-003 on hosted receipts vs previous or approved baseline (2× or ≥5 MiB unpacked); Watch Diff; Checks warning; allowlist | NoSpoilers |
 | Files newly absent/present vs approved release | Built: added/removed/changed paths only | NoSpoilers |
 | Nested archive scanning | Built: unpack nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem, image layers, apk/aab/ipa, and serverless zips up to 3 levels, never execute | NoSpoilers |
 | Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
