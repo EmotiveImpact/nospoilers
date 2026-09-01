@@ -12,7 +12,9 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
   const sql = await openSql(config.databaseUrl);
   await migrate(sql);
-  const store = createStore(sql);
+  const store = createStore(sql, {
+    jobMaxAttempts: config.jobMaxAttempts,
+  });
   const github = githubAppConfigured(config) ? createGithubPort(config) : stubGithub();
   const notifier = createLogNotifier(store);
   const worker = createWorker({
@@ -23,6 +25,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     lightConcurrency: config.lightConcurrency,
     maxAssetBytes: config.maxAssetBytes,
     intervalMs: config.workerIntervalMs,
+    staleAfterMs: config.jobStaleMs,
   });
   const app = createApp({
     config,

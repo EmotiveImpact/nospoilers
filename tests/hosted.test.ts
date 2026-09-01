@@ -31,11 +31,12 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
 
 async function withStore(
   run: (ctx: { sql: SqlClient; store: Store }) => Promise<void>,
+  storeOpts?: { jobMaxAttempts?: number; jobRetryBaseMs?: number },
 ): Promise<void> {
   const sql = await openSql("pglite://:memory:");
   try {
     await migrate(sql);
-    await run({ sql, store: createStore(sql) });
+    await run({ sql, store: createStore(sql, storeOpts) });
   } finally {
     await sql.close();
   }
@@ -536,6 +537,140 @@ describe("visibility poller", () => {
       });
       expect(n).toBe(0);
       expect(fetched).toBe(0);
+    });
+  });
+});
+
+describe("installation lifecycle", () => {
+  it("deletes an uninstalled GitHub App so no billing or repos remain", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "installation", "d-install", {
+        action: "created",
+        installation: {
+          id: 7,
+          account: { login: "octo", type: "User", id: 1 },
+        },
+        repositories: [{ id: 99, full_name: "octo/throwaway", private: true }],
+      });
+      const removed = await postWebhook(app, "installation", "d-uninstall", {
+        action: "deleted",
+        installation: {
+          id: 7,
+          account: { login: "octo", type: "User", id: 1 },
+        },
+      });
+      expect(removed.status).toBe(200);
+      const { rows: installs } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM installations",
+      );
+      const { rows: billing } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM billing_accounts",
+      );
+      expect(Number(installs[0]?.n)).toBe(0);
+      expect(Number(billing[0]?.n)).toBe(0);
+    });
+  });
+
+  it("stops hosted work after the App is suspended", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      await postWebhook(app, "installation", "d-up", {
+        action: "created",
+        installation: {
+          id: 7,
+          account: { login: "octo", type: "User", id: 1 },
+        },
+      });
+      const suspended = await postWebhook(app, "installation", "d-suspend", {
+        action: "suspend",
+        installation: {
+          id: 7,
+          account: { login: "octo", type: "User", id: 1 },
+          suspended: true,
+        },
+      });
+      expect(suspended.status).toBe(200);
+      expect(await store.installationWorkAllowed(7)).toBe(false);
+      const publicized = await postWebhook(app, "repository", "d-pub-suspended", {
+        action: "publicized",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: { ...sampleRepo, private: false },
+      });
+      const body = (await publicized.json()) as { queued: boolean; skipped?: string };
+      expect(publicized.status).toBe(200);
+      expect(body.queued).toBe(false);
+      expect(body.skipped).toBe("uncovered");
+    });
+  });
+});
+
+describe("job retry and stale locks", () => {
+  it("requeues a failed job until the attempt cap, then marks it failed", async () => {
+    await withStore(
+      async ({ store }) => {
+        await store.enqueueJob({ priority: "light", kind: "fork", payload: { n: 1 } });
+        let throws = 0;
+        const worker = createWorker({
+          store,
+          github: mockGithub(),
+          notifier: createLogNotifier(store),
+          heavyConcurrency: 1,
+          lightConcurrency: 1,
+          maxAssetBytes: 1000,
+          intervalMs: 10_000,
+          onJob: async () => {
+            throws += 1;
+            throw new Error("boom");
+          },
+        });
+        await worker.tick();
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        await worker.tick();
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        await worker.stop();
+        const { rows } = await store.sql.query<{ status: string; attempts: string }>(
+          "SELECT status, attempts::text FROM jobs",
+        );
+        expect(throws).toBe(2);
+        expect(rows[0]?.status).toBe("failed");
+        expect(Number(rows[0]?.attempts)).toBe(2);
+      },
+      { jobMaxAttempts: 2, jobRetryBaseMs: 0 },
+    );
+  });
+
+  it("recovers a crashed running job on the next tick", async () => {
+    await withStore(async ({ store }) => {
+      const inserted = await store.enqueueJob({
+        priority: "light",
+        kind: "fork",
+        payload: { n: 1 },
+      });
+      await store.sql.query(
+        `UPDATE jobs SET status = 'running', locked_at = now() - interval '10 minutes', locked_by = 'dead' WHERE id = $1`,
+        [inserted.id],
+      );
+      const kinds: string[] = [];
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+        staleAfterMs: 1_000,
+        onJob: async (job) => {
+          kinds.push(job.kind);
+        },
+      });
+      await worker.tick();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      await worker.stop();
+      expect(kinds).toEqual(["fork"]);
+      const { rows } = await store.sql.query<{ status: string }>("SELECT status FROM jobs");
+      expect(rows[0]?.status).toBe("done");
     });
   });
 });

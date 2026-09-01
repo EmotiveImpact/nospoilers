@@ -37,6 +37,7 @@ Read in this order:
 
 - Without `DATABASE_URL`, development uses PGlite under `data/nospoilers`.
 - API routes wake the worker immediately after enqueue. The 15-minute timer is recovery only.
+  Failed jobs retry with backoff; stale running locks are requeued.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.

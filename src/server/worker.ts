@@ -218,6 +218,7 @@ export function createWorker(opts: {
   lightConcurrency: number;
   maxAssetBytes: number;
   intervalMs: number;
+  staleAfterMs?: number;
   onJob?: (job: JobRow) => Promise<void>;
 }) {
   const scanFn = opts.scan ?? scan;
@@ -275,6 +276,7 @@ export function createWorker(opts: {
     }
     ticking = true;
     try {
+      await opts.store.recoverStaleJobs(opts.staleAfterMs ?? 5 * 60 * 1000);
       do {
         tickRequested = false;
         while (lightRunning < opts.lightConcurrency) {

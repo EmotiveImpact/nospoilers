@@ -23,8 +23,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Railway web/API and worker deployment | Planned | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
 | Resend email delivery | Planned | NoSpoilers |
-| Job retry/backoff | Planned | NoSpoilers |
-| Stale-lock recovery/dead-letter visibility | Planned | NoSpoilers |
+| Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
+| Stale-lock recovery/dead-letter visibility | Partial: stale running jobs requeued; no dead-letter UI | NoSpoilers |
 | Upload/API rate limiting | Planned | NoSpoilers |
 | Readiness/health checks and structured logs | Planned | NoSpoilers |
 | Secure cookies and strong secret validation | Planned | NoSpoilers |

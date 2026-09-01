@@ -20,6 +20,8 @@ export type AppConfig = {
   maxAssetBytes: number;
   pollIntervalMs: number;
   workerIntervalMs: number;
+  jobMaxAttempts: number;
+  jobStaleMs: number;
 };
 
 function loadDotEnv(): void {
@@ -96,6 +98,8 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     maxAssetBytes: envInt("MAX_ASSET_BYTES", 80 * 1024 * 1024),
     pollIntervalMs: envInt("POLL_INTERVAL_MS", 60 * 60 * 1000),
     workerIntervalMs: envInt("WORKER_INTERVAL_MS", 15 * 60 * 1000),
+    jobMaxAttempts: Math.min(20, Math.max(1, envInt("JOB_MAX_ATTEMPTS", 5))),
+    jobStaleMs: Math.max(30_000, envInt("JOB_STALE_MS", 5 * 60 * 1000)),
   };
   return { ...base, ...overrides };
 }

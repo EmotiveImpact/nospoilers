@@ -7,6 +7,7 @@
 - Allowed the Cloudflare tunnel host so GitHub can reach `/api/webhooks/github`.
 - Verify GitHub App setup only links installs the signed-in user actually owns.
 - Attach billing accounts to GitHub installation IDs; skip hosted work when coverage has ended.
+- Retry failed jobs with backoff and requeue stale locks after a worker crash.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

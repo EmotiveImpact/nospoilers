@@ -60,8 +60,9 @@ billing metadata. Packed artifacts are never stored there.
 
 Queue processing is event-driven: webhook, dashboard, and internal discovery routes wake the worker
 as soon as they insert a job. `WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
-behind by a crash; it is not the normal pickup path. `POLL_INTERVAL_MS` is different—the hourly
-GitHub visibility backstop that catches a missed webhook.
+behind by a crash; it is not the normal pickup path. Failed jobs retry with backoff (default 5
+attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
+visibility backstop that catches a missed webhook.
 
 ```bash
 docker compose up -d

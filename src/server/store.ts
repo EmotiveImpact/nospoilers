@@ -94,7 +94,12 @@ function prospectRow(row: ProspectRow): ProspectRow {
   };
 }
 
-export function createStore(sql: SqlClient) {
+export function createStore(
+  sql: SqlClient,
+  opts: { jobMaxAttempts?: number; jobRetryBaseMs?: number } = {},
+) {
+  const jobMaxAttempts = opts.jobMaxAttempts ?? 5;
+  const jobRetryBaseMs = opts.jobRetryBaseMs ?? 15_000;
   return {
     sql,
 
@@ -178,13 +183,19 @@ export function createStore(sql: SqlClient) {
     }): Promise<void> {
       await sql.query(
         `INSERT INTO installations (id, account_login, account_type, account_id, suspended)
-         VALUES ($1, $2, $3, $4, $5)
+         VALUES ($1, $2, $3, $4, COALESCE($5, false))
          ON CONFLICT (id) DO UPDATE SET
            account_login = excluded.account_login,
            account_type = excluded.account_type,
            account_id = excluded.account_id,
-           suspended = excluded.suspended`,
-        [input.id, input.accountLogin, input.accountType, input.accountId, input.suspended ?? false],
+           suspended = COALESCE($5, installations.suspended)`,
+        [
+          input.id,
+          input.accountLogin,
+          input.accountType,
+          input.accountId,
+          input.suspended ?? null,
+        ],
       );
       await sql.query(
         `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan)
@@ -386,17 +397,47 @@ export function createStore(sql: SqlClient) {
     },
 
     async finishJob(id: number, error?: string): Promise<void> {
-      if (error) {
+      if (!error) {
+        await sql.query(
+          `UPDATE jobs SET status = 'done', error = NULL, locked_at = NULL, locked_by = NULL WHERE id = $1`,
+          [id],
+        );
+        return;
+      }
+      const { rows } = await sql.query<{ attempts: unknown }>(
+        `SELECT attempts FROM jobs WHERE id = $1`,
+        [id],
+      );
+      const attempts = num(rows[0]?.attempts ?? 0);
+      if (attempts >= jobMaxAttempts) {
         await sql.query(
           `UPDATE jobs SET status = 'failed', error = $2, locked_at = NULL, locked_by = NULL WHERE id = $1`,
           [id, error],
         );
         return;
       }
+      const delayMs = Math.min(900_000, jobRetryBaseMs * 2 ** Math.max(attempts - 1, 0));
+      const runAfter = new Date(Date.now() + delayMs).toISOString();
       await sql.query(
-        `UPDATE jobs SET status = 'done', error = NULL, locked_at = NULL, locked_by = NULL WHERE id = $1`,
-        [id],
+        `UPDATE jobs SET status = 'queued', error = $2, run_after = $3::timestamptz, locked_at = NULL, locked_by = NULL WHERE id = $1`,
+        [id, error, runAfter],
       );
+    },
+
+    async recoverStaleJobs(staleAfterMs: number): Promise<number> {
+      const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
+      const { rows } = await sql.query<{ n: unknown }>(
+        `WITH recovered AS (
+           UPDATE jobs
+           SET status = 'queued', locked_at = NULL, locked_by = NULL,
+               error = COALESCE(error, 'stale lock recovered')
+           WHERE status = 'running' AND locked_at < $1::timestamptz
+           RETURNING id
+         )
+         SELECT count(*)::int AS n FROM recovered`,
+        [cutoff],
+      );
+      return num(rows[0]?.n ?? 0);
     },
 
     async insertAlert(input: {

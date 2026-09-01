@@ -19,6 +19,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
   release scans, alerts, and Watch desk.
 - Event-driven worker wake-up with a 15-minute recovery check.
+- Failed-job retry with backoff and stale-lock recovery after a worker crash.
 - Installation billing accounts and unpaid hosted-work enforcement.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
@@ -33,7 +34,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 - Fixture release-asset scan on `EmotiveImpact/nospoilers-throwaway` (attach `fixtures/sourcemap.tgz`).
 - Stripe checkout/subscription webhooks and card-on-file trial.
-- Production deployment, email delivery, retries, stale-job recovery, rate limits, and monitoring.
+- Production deployment, email delivery, rate limits, and monitoring.
 - Secure production cookies, encrypted OAuth tokens, legal/support pages.
 
 ## Milestone 0 — prove Neon runtime

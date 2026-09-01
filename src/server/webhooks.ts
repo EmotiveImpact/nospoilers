@@ -58,7 +58,6 @@ async function ensureInstallation(store: Store, payload: Json): Promise<number |
     accountLogin: str(account.login) || str(owner.login) || "unknown",
     accountType: str(account.type) || "User",
     accountId: num(account.id) || 0,
-    suspended: bool(installation.suspended),
   });
   return id;
 }
