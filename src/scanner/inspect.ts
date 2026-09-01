@@ -103,10 +103,7 @@ function aiContextFile(rel: string, base: string): boolean {
     lower.includes("/.cursor/") ||
     lower.startsWith(".cursor/") ||
     lower.includes("/.windsurf/") ||
-    lower.startsWith(".windsurf/") ||
-    lower.includes("/prompts/") ||
-    lower.includes("/memory/") ||
-    /(?:^|\/)(?:chat-)?transcripts?\//.test(lower)
+    lower.startsWith(".windsurf/")
   );
 }
 
@@ -160,6 +157,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
   }
 
   const text = likelyText(buf) ? asText(buf) : "";
+  const isCredentialConfig = credentialConfig(rel, base);
   if (
     /\.(pem|key)$/i.test(base) ||
     PRIVATE_KEY.test(text) ||
@@ -176,7 +174,10 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (text && (HIGH_CONFIDENCE_TOKEN.test(text) || hasAssignedCredential(text))) {
+  if (
+    text &&
+    (HIGH_CONFIDENCE_TOKEN.test(text) || (isCredentialConfig && hasAssignedCredential(text)))
+  ) {
     findings.push({
       rule: "SEC-003",
       severity: "critical",
@@ -187,7 +188,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (credentialConfig(rel, base)) {
+  if (isCredentialConfig) {
     findings.push({
       rule: "SEC-004",
       severity: "warn",
