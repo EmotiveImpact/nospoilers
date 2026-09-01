@@ -9,6 +9,14 @@ import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
 import type { PermissionTestResult } from "./install-test.ts";
 import { TIMELINE_LIMIT } from "./timeline.ts";
+import {
+  ADMIN_REQUIRED_ERROR,
+  LAST_ADMIN_ERROR,
+  UNKNOWN_MEMBER_ERROR,
+  asInstallationRole,
+  type InstallationMember,
+  type InstallationRole,
+} from "./roles.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -829,8 +837,17 @@ export function createStore(
 
     async linkUserInstallation(installationId: number, userId: string): Promise<void> {
       await sql.query(
-        `INSERT INTO installation_users (installation_id, user_id)
-         VALUES ($1, $2)
+        `INSERT INTO installation_users (installation_id, user_id, role)
+         VALUES (
+           $1,
+           $2,
+           CASE
+             WHEN EXISTS (
+               SELECT 1 FROM installation_users WHERE installation_id = $1
+             ) THEN 'member'
+             ELSE 'admin'
+           END
+         )
          ON CONFLICT DO NOTHING`,
         [installationId, userId],
       );
@@ -838,8 +855,16 @@ export function createStore(
 
     async linkUserToAccountInstallations(userId: string, githubUserId: number): Promise<void> {
       await sql.query(
-        `INSERT INTO installation_users (installation_id, user_id)
-         SELECT id, $1 FROM installations
+        `INSERT INTO installation_users (installation_id, user_id, role)
+         SELECT i.id,
+                $1,
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM installation_users iu WHERE iu.installation_id = i.id
+                  ) THEN 'member'
+                  ELSE 'admin'
+                END
+         FROM installations i
          WHERE account_type = 'User' AND account_id = $2
          ON CONFLICT DO NOTHING`,
         [userId, githubUserId],
@@ -1559,6 +1584,7 @@ export function createStore(
         suspended: boolean;
         trialEndsAt: string | null;
         plan: string | null;
+        role: InstallationRole;
         lastPermissionTestAt: string | null;
         lastPermissionTest: PermissionTestResult | null;
       }[]
@@ -1570,12 +1596,13 @@ export function createStore(
         suspended: boolean;
         trial_ends_at: string | Date | null;
         plan: string | null;
+        role: string;
         last_permission_test_at: string | Date | null;
         last_permission_test: unknown;
       }>(
         `SELECT i.id, i.account_login, i.account_type, i.suspended,
                 i.last_permission_test_at, i.last_permission_test,
-                b.trial_ends_at, b.plan
+                b.trial_ends_at, b.plan, iu.role
          FROM installations i
          JOIN installation_users iu ON iu.installation_id = i.id
          LEFT JOIN billing_accounts b ON b.installation_id = i.id
@@ -1590,6 +1617,7 @@ export function createStore(
         suspended: Boolean(row.suspended),
         trialEndsAt: iso(row.trial_ends_at),
         plan: row.plan,
+        role: asInstallationRole(row.role),
         lastPermissionTestAt: iso(row.last_permission_test_at),
         lastPermissionTest: permissionTestFromDb(row.last_permission_test),
       }));
@@ -1602,6 +1630,171 @@ export function createStore(
         [userId, installationId],
       );
       return num(rows[0]?.n ?? 0) > 0;
+    },
+
+    async getInstallationRole(
+      userId: string,
+      installationId: number,
+    ): Promise<InstallationRole | null> {
+      const { rows } = await sql.query<{ role: string }>(
+        `SELECT role FROM installation_users
+         WHERE user_id = $1 AND installation_id = $2`,
+        [userId, installationId],
+      );
+      const row = rows[0];
+      return row ? asInstallationRole(row.role) : null;
+    },
+
+    async listInstallationMembersForUser(
+      userId: string,
+      installationId: number,
+    ): Promise<InstallationMember[]> {
+      const { rows } = await sql.query<{
+        user_id: string;
+        login: string;
+        avatar_url: string | null;
+        role: string;
+      }>(
+        `SELECT u.id AS user_id, u.login, u.avatar_url, iu.role
+         FROM installation_users iu
+         JOIN users u ON u.id = iu.user_id
+         WHERE iu.installation_id = $1
+           AND EXISTS (
+             SELECT 1 FROM installation_users mine
+             WHERE mine.installation_id = $1 AND mine.user_id = $2
+           )
+         ORDER BY u.login`,
+        [installationId, userId],
+      );
+      return rows.map((row) => ({
+        userId: row.user_id,
+        login: row.login,
+        avatarUrl: row.avatar_url,
+        role: asInstallationRole(row.role),
+      }));
+    },
+
+    async setInstallationRoleForUser(input: {
+      actorUserId: string;
+      installationId: number;
+      targetUserId: string;
+      role: InstallationRole;
+    }): Promise<InstallationMember> {
+      return await sql.transaction(async (tx) => {
+        const { rows: actorRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.actorUserId],
+        );
+        const actor = actorRows[0];
+        if (!actor) {
+          throw Object.assign(new Error("That GitHub installation is not on your account."), {
+            status: 403,
+          });
+        }
+        if (asInstallationRole(actor.role) !== "admin") {
+          throw Object.assign(new Error(ADMIN_REQUIRED_ERROR), { status: 403 });
+        }
+        const { rows: targetRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.targetUserId],
+        );
+        const target = targetRows[0];
+        if (!target) {
+          throw Object.assign(new Error(UNKNOWN_MEMBER_ERROR), { status: 404 });
+        }
+        if (asInstallationRole(target.role) === "admin" && input.role === "member") {
+          const { rows: adminRows } = await tx.query<{ n: unknown }>(
+            `SELECT count(*)::int AS n FROM installation_users
+             WHERE installation_id = $1 AND role = 'admin'`,
+            [input.installationId],
+          );
+          if (num(adminRows[0]?.n ?? 0) <= 1) {
+            throw Object.assign(new Error(LAST_ADMIN_ERROR), { status: 409 });
+          }
+        }
+        await tx.query(
+          `UPDATE installation_users SET role = $3
+           WHERE installation_id = $1 AND user_id = $2`,
+          [input.installationId, input.targetUserId, input.role],
+        );
+        const { rows: memberRows } = await tx.query<{
+          user_id: string;
+          login: string;
+          avatar_url: string | null;
+          role: string;
+        }>(
+          `SELECT u.id AS user_id, u.login, u.avatar_url, iu.role
+           FROM installation_users iu
+           JOIN users u ON u.id = iu.user_id
+           WHERE iu.installation_id = $1 AND iu.user_id = $2`,
+          [input.installationId, input.targetUserId],
+        );
+        const member = memberRows[0];
+        if (!member) {
+          throw Object.assign(new Error(UNKNOWN_MEMBER_ERROR), { status: 404 });
+        }
+        return {
+          userId: member.user_id,
+          login: member.login,
+          avatarUrl: member.avatar_url,
+          role: asInstallationRole(member.role),
+        };
+      });
+    },
+
+    async removeInstallationMemberForUser(input: {
+      actorUserId: string;
+      installationId: number;
+      targetUserId: string;
+    }): Promise<boolean> {
+      return await sql.transaction(async (tx) => {
+        const { rows: actorRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.actorUserId],
+        );
+        const actor = actorRows[0];
+        if (!actor) {
+          throw Object.assign(new Error("That GitHub installation is not on your account."), {
+            status: 403,
+          });
+        }
+        if (asInstallationRole(actor.role) !== "admin") {
+          throw Object.assign(new Error(ADMIN_REQUIRED_ERROR), { status: 403 });
+        }
+        const { rows: targetRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.targetUserId],
+        );
+        const target = targetRows[0];
+        if (!target) {
+          throw Object.assign(new Error(UNKNOWN_MEMBER_ERROR), { status: 404 });
+        }
+        if (asInstallationRole(target.role) === "admin") {
+          const { rows: adminRows } = await tx.query<{ n: unknown }>(
+            `SELECT count(*)::int AS n FROM installation_users
+             WHERE installation_id = $1 AND role = 'admin'`,
+            [input.installationId],
+          );
+          if (num(adminRows[0]?.n ?? 0) <= 1) {
+            throw Object.assign(new Error(LAST_ADMIN_ERROR), { status: 409 });
+          }
+        }
+        const { rows: deleted } = await tx.query<{ user_id: string }>(
+          `DELETE FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           RETURNING user_id`,
+          [input.installationId, input.targetUserId],
+        );
+        return Boolean(deleted[0]);
+      });
     },
 
     async listWatchedPackagesForUser(

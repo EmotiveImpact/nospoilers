@@ -30,7 +30,8 @@ Read in this order:
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
-  `013_incident_response`, `014_notification_destinations`, and `015_siem_destinations` are applied.
+  `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`, and
+  `016_installation_roles` are applied.
   Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -39,7 +40,8 @@ Read in this order:
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks
   and SIEM HTTPS webhooks are the same ciphertext and are never returned after save. Notification deliveries are
   append-only. Scan API tokens are SHA-256
-  hashes (`nsp_` secrets shown once). Alert acknowledgement, assignment, resolution notes, and
+  hashes (`nsp_` secrets shown once). `installation_users.role` is `admin` or `member`
+  (first linked user is admin). Alert acknowledgement, assignment, resolution notes, and
   reopen append `alert_events` (append-only). Live permission tests store JSON on the installation,
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
   liveness from `/api/health`. Development receipts use `RECEIPT_SECRET`
@@ -114,6 +116,11 @@ Read in this order:
 - Trial and Team installs get a Watch **90-day timeline** of this install’s alerts,
   acknowledgement activity, and notification deliveries. Solo 403. Unpaid 402. No invented
   rows.
+- Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
+  admin; later users are members. Admins can promote, demote, and remove. The last admin
+  stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
+  delivery tests. Admins save Slack/SIEM, registries, scan tokens, allowlists, baselines,
+  and open setup/remediation PRs. Email invite is not built.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -163,6 +170,8 @@ Public `/status` is in (health liveness only).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
+Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
+GitHub suspend does not block; members cannot save Slack/SIEM/registries/tokens/allowlists/PRs).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

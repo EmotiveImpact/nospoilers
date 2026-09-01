@@ -45,22 +45,13 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
   repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
-- Save encrypted private npm registry tokens for those installations (token values are never
-  returned after save) and watch packs from those HTTPS hosts while coverage is active.
+- Watch packs from private HTTPS registries already saved on those installations. Token
+  values are never returned.
 - Trigger a latest-release scan on those repositories while coverage is active.
-- Open a reviewable setup PR (or copy the packed-artifact workflow YAML) on those repositories
-  while coverage is active. The App never merges that PR.
-- Open a reviewable remediation PR (or copy ignore rules, empty `.nospoilers.yml`, bundler
-  hints, a `package.json` `files` snippet, and the packed-artifact workflow) on those
-  repositories while coverage is active. Required Contents write and Pull requests write
-  are shown before the button. Existing customer ignore/policy/workflow files are not
-  overwritten. The App never merges that PR. This is not make-private, asset deletion, or
-  workflow disable.
+- Read the packed-artifact setup workflow YAML and the remediation file bundle on those
+  repositories. Opening the reviewable PRs is an install admin action.
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved).
-- Manage expiring allowlist exceptions and approve scan baselines on those installations.
-  Until Team roles ship, every signed-in customer is treated as a Member who can do this
-  on installations they belong to.
 - View their own coverage status.
 - See GitHub App suspend, unsuspend, permission-change, and repository add/remove
   alerts on installations they belong to. Uninstall drops the tenant; there is no
@@ -76,30 +67,26 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.
   They may export that same activity as JSON for their installs.
-- Mint and revoke hashed scan API tokens for those installations while coverage is active.
-  The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
-  unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
-  deletes the bytes.
+- Use a scan API token an install admin already minted. `POST /api/v1/scan` with that
+  Bearer token unpacks a packed artifact, applies the installation allowlist, mints a
+  receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
   revision, stored CI run URL). Historical rows cannot be edited or deleted.
-- Save an encrypted Slack incoming webhook on a trial or Team install. The URL is never
-  returned after save. A delivery test talks to Slack and never inserts an alert. Real
-  Watch alerts POST to that webhook after they are stored. Solo paid installs do not
-  get Slack. Email still waits on Resend.
-- Save an encrypted SIEM HTTPS webhook on a trial or Team install. The URL is never
-  returned after save. Private, local, metadata, and Slack hosts are rejected, and DNS
-  must resolve to a public address before POST. A delivery test talks to the SIEM and
-  never inserts an alert. Real Watch alerts POST JSON after they are stored. Solo paid
-  installs do not get SIEM.
+- List Slack and SIEM destination hosts on a trial or Team install (URLs are never
+  returned). A delivery test talks to the destination and never inserts an alert.
 - Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
   are not included.
+- List people on this install (GitHub login and admin/member role). Other tenants are empty.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
+- Change roles, remove members, save or delete Slack/SIEM webhooks, save or delete private
+  registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, or open
+  setup or remediation PRs. Those writes need an install admin.
 - See other tenants’ registry tokens, Slack or SIEM webhooks, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, or alert events. Receipts, revisions, and alert events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
@@ -110,19 +97,29 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 ### Customer Administrator
 
 A member who can manage the customer’s GitHub installation membership and product settings
-(Team plan). **Planned.** Until Team roles ship, treat every signed-in customer as a Member.
+on a trial or Team install. The first GitHub user to connect an install is admin; later
+users become members. Solo paid returns 403 for role changes. Unpaid returns 402. GitHub
+suspend does not block role changes. Email invite is not built.
 
-**May (when built)**
+**May**
 
-- Invite/remove members on their billing account.
-- Configure routing destinations they pay for (email now; Slack/Jira/SIEM on Team).
-  Until Team roles ship, every signed-in member on a trial or Team install may save
-  the Slack incoming webhook.
-- Restrict who may manage `.nospoilers.yml`, baselines, and allowlists (Members do this today).
+- Promote, demote, and remove people on that install. The last admin cannot be demoted
+  or removed (409).
+- Save and delete encrypted Slack incoming webhooks and SIEM HTTPS webhooks on a trial
+  or Team install. URLs are never returned after save. Private, local, metadata, and Slack
+  hosts are rejected for SIEM, and DNS must resolve to a public address before POST.
+- Save encrypted private npm registry tokens (never returned after save).
+- Mint and revoke hashed scan API tokens. The secret is shown once and never stored.
+- Manage expiring allowlist exceptions and approve scan baselines.
+- Open a reviewable setup PR or remediation PR while coverage is active. The App never
+  merges those PRs. Required Contents write and Pull requests write are shown before the
+  button. Existing customer ignore/policy/workflow files are not overwritten. This is not
+  make-private, asset deletion, or workflow disable.
 
 **Must not**
 
 - Anything on the internal operator list below.
+- Demote or remove the last admin.
 
 ### Billing Administrator
 
@@ -246,5 +243,9 @@ hosts, skip fetch when DNS resolves private, never return the URL or query token
 POST JSON with `inventedIncident: false`.
 `tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
 90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
+`tests/roles.test.ts` proves the first linked user is admin and later users are members,
+members can watch and test but cannot save Slack/SIEM, registries, scan tokens, allowlists,
+or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
+GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 Keep those
 tests green when adding internal routes.

@@ -63,6 +63,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   blocked, DNS-resolved SSRF check, event-driven JSON POST, test that never invents an incident.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for 90 days. Solo 403. Unpaid 402. No invented rows.
+- Team members and roles: first GitHub user on an install is admin; later users are members.
+  Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
+  block. Members keep Watch/ack/test. Admins save Slack/SIEM, registries, tokens, allowlists,
+  baselines, and open setup/remediation PRs.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.
   Customer files are not overwritten. 409 copy-paste until Contents write and Pull requests

@@ -166,7 +166,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Severity and repository routing rules | Planned | NoSpoilers Team |
 | 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for 90 days; trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Planned | NoSpoilers |
-| Team members and roles | Planned | NoSpoilers Team |
+| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Partial: tenant JSON of alerts and append-only events; Team audit log still planned | NoSpoilers |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |

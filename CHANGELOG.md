@@ -33,6 +33,7 @@
 - Slack incoming webhooks on trial/Team installs: encrypted URL, event-driven alert POST, delivery test that never invents an incident.
 - SIEM/custom HTTPS webhooks on trial/Team installs: encrypted URL, private/local/metadata/Slack hosts blocked, DNS-resolved SSRF check, event-driven JSON POST, delivery test that never invents an incident.
 - 90-day Team timeline: Watch lists this install’s alerts, acknowledgement activity, and notification deliveries for 90 days. Solo 403, unpaid 402, other tenants empty. No invented rows.
+- Team members and roles: first GitHub user on an install is admin; later users are members. Trial/Team can promote, demote, and remove. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not block. Members keep Watch, ack, and delivery tests. Admins save Slack/SIEM, registries, scan tokens, allowlists, baselines, and open setup/remediation PRs.
 - Automatic remediation PRs: Watch opens a reviewable PR with ignore rules, empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files` snippet, and packed-artifact CI if missing. Never merged. 409 copy-paste when Contents+PR write is missing. Customer ignore/policy/workflow files are not overwritten.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.

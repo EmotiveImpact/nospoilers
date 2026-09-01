@@ -77,6 +77,11 @@ import {
   timelinePlanDeniedFromBilling,
   timelineWindow,
 } from "./timeline.ts";
+import {
+  ADMIN_REQUIRED_ERROR,
+  parseInstallationRole,
+  rolesPlanDeniedFromBilling,
+} from "./roles.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -244,6 +249,17 @@ export function createApp(deps: AppDeps): Hono {
     if (raw == null || raw === "") return null;
     const id = Number(raw);
     return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
+  async function requireInstallAdmin(userId: string, installationId: number) {
+    const role = await deps.store.getInstallationRole(userId, installationId);
+    if (!role) {
+      return { error: "That GitHub installation is not on your account.", status: 403 as const };
+    }
+    if (role !== "admin") {
+      return { error: ADMIN_REQUIRED_ERROR, status: 403 as const };
+    }
+    return null;
   }
 
   async function hostedCoverageForUser(user: {
@@ -816,6 +832,80 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ ok: true, inventedIncident: false, test });
   });
 
+  app.get("/api/installations/:id/members", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    const members = await deps.store.listInstallationMembersForUser(user.userId, installationId);
+    return c.json({ members });
+  });
+
+  app.post("/api/installations/:id/members", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const role = parseInstallationRole(body.role);
+    if (!role) return c.json({ error: "Role must be admin or member." }, 400);
+    const targetUserId = typeof body.userId === "string" ? body.userId.trim() : "";
+    if (!targetUserId) return c.json({ error: "Choose a member on this install." }, 400);
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    try {
+      const member = await deps.store.setInstallationRoleForUser({
+        actorUserId: user.userId,
+        installationId,
+        targetUserId,
+        role,
+      });
+      return c.json({ ok: true, member });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not change that role." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/installations/:id/members/:userId", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    const targetUserId = c.req.param("userId")?.trim() ?? "";
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    if (!targetUserId) return c.json({ error: "Choose a member on this install." }, 400);
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    try {
+      const removed = await deps.store.removeInstallationMemberForUser({
+        actorUserId: user.userId,
+        installationId,
+        targetUserId,
+      });
+      if (!removed) return c.json({ error: "Unknown member." }, 404);
+      return c.json({ ok: true });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not remove that member." },
+        errorStatus(error),
+      );
+    }
+  });
+
   app.get("/api/jobs", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -885,6 +975,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const denied = await hostedWorkDenied(
       deps.store,
       repo.installation_id,
@@ -949,6 +1041,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const denied = await hostedWorkDenied(
       deps.store,
       repo.installation_id,
@@ -1011,6 +1105,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const registryDenied = await hostedWorkDenied(
       deps.store,
       installationId,
@@ -1062,6 +1158,10 @@ export function createApp(deps: AppDeps): Hono {
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown registry." }, 404);
+    const registry = (await deps.store.listNpmRegistriesForUser(user.userId)).find((row) => row.id === id);
+    if (!registry) return c.json({ error: "Unknown registry." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, registry.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const removed = await deps.store.deleteNpmRegistryForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown registry." }, 404);
     return c.json({ ok: true });
@@ -1092,6 +1192,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const tokenDenied = await hostedWorkDenied(
       deps.store,
       installationId,
@@ -1120,6 +1222,10 @@ export function createApp(deps: AppDeps): Hono {
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown scan token." }, 404);
+    const token = (await deps.store.listScanApiTokensForUser(user.userId)).find((row) => row.id === id);
+    if (!token) return c.json({ error: "Unknown scan token." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, token.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const revoked = await deps.store.revokeScanApiTokenForUser(id, user.userId);
     if (!revoked) return c.json({ error: "Unknown scan token." }, 404);
     return c.json({ ok: true });
@@ -1467,6 +1573,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
       return c.json({ error: "Unknown package." }, 404);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, pkg.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const baselineDenied = await hostedWorkDenied(
       deps.store,
       pkg.installation_id,
@@ -1550,6 +1658,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const allowDenied = await hostedWorkDenied(
       deps.store,
       installationId,
@@ -1600,6 +1710,8 @@ export function createApp(deps: AppDeps): Hono {
       await deps.store.listExceptionsForUser(user.userId)
     ).find((row) => row.id === id);
     if (!existing) return c.json({ error: "Unknown allowlist entry." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, existing.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const revokeDenied = await hostedWorkDenied(
       deps.store,
       existing.installation_id,
@@ -1735,6 +1847,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const billing = await deps.store.installationBilling(installationId);
     const planDenied = slackPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
@@ -1780,6 +1894,8 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const billing = await deps.store.installationBilling(installationId);
     const planDenied = siemPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
@@ -1813,6 +1929,10 @@ export function createApp(deps: AppDeps): Hono {
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown destination." }, 404);
+    const destination = await deps.store.getNotificationDestinationForUser(id, user.userId);
+    if (!destination) return c.json({ error: "Unknown destination." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, destination.installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const removed = await deps.store.deleteNotificationDestinationForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown destination." }, 404);
     return c.json({ ok: true });

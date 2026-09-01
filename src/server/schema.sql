@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS installations (
 CREATE TABLE IF NOT EXISTS installation_users (
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'admin',
+  CONSTRAINT installation_users_role_check CHECK (role IN ('member', 'admin')),
   PRIMARY KEY (installation_id, user_id)
 );
 

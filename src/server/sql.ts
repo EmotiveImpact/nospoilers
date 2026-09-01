@@ -404,6 +404,15 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "015_siem_destinations",
   ]);
+  await sql.exec(`
+    ALTER TABLE installation_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin';
+    ALTER TABLE installation_users DROP CONSTRAINT IF EXISTS installation_users_role_check;
+    ALTER TABLE installation_users ADD CONSTRAINT installation_users_role_check
+      CHECK (role IN ('member', 'admin'));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "016_installation_roles",
+  ]);
 }
 
 export function num(value: unknown): number {

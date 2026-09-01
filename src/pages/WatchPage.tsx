@@ -31,6 +31,7 @@ type Me = {
     suspended?: boolean;
     trialEndsAt?: string | null;
     plan?: string | null;
+    role?: "admin" | "member";
     lastPermissionTestAt?: string | null;
     lastPermissionTest?: PermissionTest | null;
   }[];
@@ -111,6 +112,13 @@ type NotificationDelivery = {
   inventedIncident: false;
   error: string | null;
   createdAt: string;
+};
+
+type TeamMember = {
+  userId: string;
+  login: string;
+  avatarUrl: string | null;
+  role: "admin" | "member";
 };
 
 type TimelineEntry = {
@@ -620,6 +628,9 @@ export function WatchPage({ search }: { search: string }) {
   const [testError, setTestError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [memberBusyId, setMemberBusyId] = useState<string | null>(null);
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
 
   const refreshSignedIn = useCallback(async (installationId: number | null) => {
@@ -655,6 +666,25 @@ export function WatchPage({ search }: { search: string }) {
       setProtections(protectionBody.protections);
       setJobs(jobBody.jobs);
       setJobSummary(jobBody.summary);
+      if (installationId) {
+        const membersResponse = await fetch(`/api/installations/${installationId}/members`, {
+          credentials: "include",
+        });
+        const membersBody = (await membersResponse.json()) as {
+          error?: string;
+          members?: TeamMember[];
+        };
+        if (!membersResponse.ok) {
+          setMembers([]);
+          setMembersError(membersBody.error ?? "Could not load members.");
+        } else {
+          setMembers(membersBody.members ?? []);
+          setMembersError(null);
+        }
+      } else {
+        setMembers([]);
+        setMembersError(null);
+      }
       const timelineResponse = await fetch(q("/api/timeline"), { credentials: "include" });
       const timelineBody = (await timelineResponse.json()) as {
         error?: string;
@@ -689,6 +719,8 @@ export function WatchPage({ search }: { search: string }) {
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
       setTimeline({ status: "error", message });
+      setMembers([]);
+      setMembersError(message);
     }
   }, []);
 
@@ -722,6 +754,8 @@ export function WatchPage({ search }: { search: string }) {
           setProtections([]);
           setJobs([]);
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
+          setMembers([]);
+          setMembersError(null);
           setRevealedScanToken(null);
           setAlertNotes({});
           setAlertAssignees({});
@@ -815,6 +849,10 @@ export function WatchPage({ search }: { search: string }) {
   const ended = deskCoverage?.status === "ended";
   const githubPaused = Boolean(selectedLiveInstall?.suspended);
   const locked = ended || githubPaused;
+  const installAdmin = selectedLiveInstall?.role === "admin";
+  const canManageRoles =
+    Boolean(installAdmin) && (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
   const watching = selectedInstall ? [selectedInstall.account_login] : [];
   const activeInstallId = selectedLiveInstall?.id ?? null;
@@ -854,6 +892,9 @@ export function WatchPage({ search }: { search: string }) {
               }
             >
               {deskCoverage.label}
+              {!previewing && selectedLiveInstall?.role
+                ? ` · ${selectedLiveInstall.role === "admin" ? "admin" : "member"}`
+                : ""}
             </span>
           )}
           {!previewing && installations.length > 1 && (
@@ -968,6 +1009,8 @@ export function WatchPage({ search }: { search: string }) {
                     >
                       {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
                     </Button>
+                    {previewing || installAdmin ? (
+                    <>
                     <Button
                       type="button"
                       size="sm"
@@ -1102,6 +1145,8 @@ export function WatchPage({ search }: { search: string }) {
                     >
                       {remediatingId === repo.id ? "Opening…" : "Remediation PR"}
                     </Button>
+                    </>
+                    ) : null}
                   </div>
                   {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
                   {remediateByRepo[repo.id] ? (
@@ -1279,6 +1324,152 @@ export function WatchPage({ search }: { search: string }) {
                 </div>
                 {entry.fullName ? (
                   <p className="mt-1 font-mono text-xs text-dim">{entry.fullName}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          The first GitHub user to connect this install is admin. Later users become members. Admins
+          change roles and remove people. The last admin stays. GitHub suspend does not block this.
+          Email invite is not built. An install admin also saves Slack, SIEM, registries, scan
+          tokens, allowlists, and baselines, and opens setup or remediation PRs.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot manage Team roles. No invented incident.
+          </p>
+        ) : deskCoverage?.plan === "solo" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Team roles are on trial and Team.
+          </p>
+        ) : ended ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to Team to keep managing roles.
+          </p>
+        ) : null}
+        {previewing ? null : membersError ? (
+          <p className="mt-6 text-sm text-danger">{membersError}</p>
+        ) : members.length === 0 ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">Nobody linked on this install yet.</p>
+        ) : (
+          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+            {members.map((member) => (
+              <li key={member.userId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm text-snow">{member.login}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
+                </div>
+                {canManageRoles ? (
+                  <div className="flex flex-wrap gap-2">
+                    {member.role === "member" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={memberBusyId === member.userId}
+                        onClick={() => {
+                          setMembersError(null);
+                          setMemberBusyId(member.userId);
+                          void (async () => {
+                            try {
+                              const response = await fetch(
+                                `/api/installations/${activeInstallId}/members`,
+                                {
+                                  method: "POST",
+                                  credentials: "include",
+                                  headers: { "content-type": "application/json" },
+                                  body: JSON.stringify({ userId: member.userId, role: "admin" }),
+                                },
+                              );
+                              const body = (await response.json()) as { error?: string };
+                              if (!response.ok) throw new Error(body.error ?? "Could not change that role.");
+                              await refreshSignedIn(selectedInstallId);
+                            } catch (error) {
+                              setMembersError(
+                                error instanceof Error ? error.message : "Could not change that role.",
+                              );
+                            } finally {
+                              setMemberBusyId(null);
+                            }
+                          })();
+                        }}
+                      >
+                        {memberBusyId === member.userId ? "Saving…" : "Make admin"}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={memberBusyId === member.userId || adminCount <= 1}
+                        onClick={() => {
+                          setMembersError(null);
+                          setMemberBusyId(member.userId);
+                          void (async () => {
+                            try {
+                              const response = await fetch(
+                                `/api/installations/${activeInstallId}/members`,
+                                {
+                                  method: "POST",
+                                  credentials: "include",
+                                  headers: { "content-type": "application/json" },
+                                  body: JSON.stringify({ userId: member.userId, role: "member" }),
+                                },
+                              );
+                              const body = (await response.json()) as { error?: string };
+                              if (!response.ok) throw new Error(body.error ?? "Could not change that role.");
+                              await refreshSignedIn(selectedInstallId);
+                            } catch (error) {
+                              setMembersError(
+                                error instanceof Error ? error.message : "Could not change that role.",
+                              );
+                            } finally {
+                              setMemberBusyId(null);
+                            }
+                          })();
+                        }}
+                      >
+                        {memberBusyId === member.userId ? "Saving…" : "Make member"}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={memberBusyId === member.userId || (member.role === "admin" && adminCount <= 1)}
+                      onClick={() => {
+                        setMembersError(null);
+                        setMemberBusyId(member.userId);
+                        void (async () => {
+                          try {
+                            const response = await fetch(
+                              `/api/installations/${activeInstallId}/members/${member.userId}`,
+                              {
+                                method: "DELETE",
+                                credentials: "include",
+                              },
+                            );
+                            const body = (await response.json()) as { error?: string };
+                            if (!response.ok) throw new Error(body.error ?? "Could not remove that member.");
+                            await refreshSignedIn(selectedInstallId);
+                          } catch (error) {
+                            setMembersError(
+                              error instanceof Error ? error.message : "Could not remove that member.",
+                            );
+                          } finally {
+                            setMemberBusyId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {memberBusyId === member.userId ? "Removing…" : "Remove"}
+                    </Button>
+                  </div>
                 ) : null}
               </li>
             ))}
@@ -1488,6 +1679,7 @@ export function WatchPage({ search }: { search: string }) {
                         >
                           {testingSlackId === destination.id ? "Testing…" : "Test delivery"}
                         </Button>
+                        {installAdmin ? (
                         <Button
                           type="button"
                           size="sm"
@@ -1517,6 +1709,7 @@ export function WatchPage({ search }: { search: string }) {
                         >
                           {removingSlackId === destination.id ? "Removing…" : "Remove"}
                         </Button>
+                        ) : null}
                       </div>
                     </div>
                     <p className="mt-2 text-xs text-dim">
@@ -1533,7 +1726,7 @@ export function WatchPage({ search }: { search: string }) {
                 ))}
               </ul>
             )}
-            {!ended && (
+            {!ended && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
@@ -1582,7 +1775,7 @@ export function WatchPage({ search }: { search: string }) {
                 </Button>
               </form>
             )}
-            {!ended && (
+            {!ended && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
@@ -1661,7 +1854,7 @@ export function WatchPage({ search }: { search: string }) {
         {!previewing && packages.status === "error" && (
           <p className="mt-6 text-sm text-danger">{packages.message}</p>
         )}
-        {!previewing && user && installations.length > 0 && (
+        {!previewing && user && installations.length > 0 && installAdmin && (
           <form
             className="mt-6 flex max-w-xl flex-col gap-3"
             onSubmit={(event) => {
@@ -1732,6 +1925,7 @@ export function WatchPage({ search }: { search: string }) {
             {registries.map((registry) => (
               <li key={registry.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <p className="font-mono text-xs text-mute">{registry.origin}</p>
+                {installAdmin ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1760,6 +1954,7 @@ export function WatchPage({ search }: { search: string }) {
                 >
                   {removingRegistryId === registry.id ? "Removing…" : "Remove"}
                 </Button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -1957,6 +2152,7 @@ export function WatchPage({ search }: { search: string }) {
                       >
                         {diffingId === pkg.id ? "Diffing…" : "Diff"}
                       </Button>
+                      {installAdmin ? (
                       <Button
                         type="button"
                         size="sm"
@@ -1990,6 +2186,7 @@ export function WatchPage({ search }: { search: string }) {
                       >
                         {approvingId === pkg.id ? "Approving…" : "Approve baseline"}
                       </Button>
+                      ) : null}
                       <Button
                         type="button"
                         size="sm"
@@ -2076,7 +2273,7 @@ export function WatchPage({ search }: { search: string }) {
           <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
         ) : (
           <>
-            {user && installations.length > 0 && (
+            {user && installations.length > 0 && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
@@ -2148,6 +2345,7 @@ export function WatchPage({ search }: { search: string }) {
                       <p className="text-sm text-snow">{token.name}</p>
                       <p className="mt-0.5 font-mono text-xs text-dim">{token.token_prefix}…</p>
                     </div>
+                    {installAdmin ? (
                     <Button
                       type="button"
                       size="sm"
@@ -2179,6 +2377,7 @@ export function WatchPage({ search }: { search: string }) {
                     >
                       {revokingScanTokenId === token.id ? "Revoking…" : "Revoke"}
                     </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -2231,7 +2430,7 @@ export function WatchPage({ search }: { search: string }) {
           rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
           instead of whichever scan happened last.
         </p>
-        {!previewing && (
+        {!previewing && installAdmin && (
           <label className="mt-6 block max-w-xl">
             <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Baseline reason</span>
             <input
@@ -2242,7 +2441,7 @@ export function WatchPage({ search }: { search: string }) {
             />
           </label>
         )}
-        {!previewing && (
+        {!previewing && installAdmin && (
           <form
             className="mt-6 grid gap-4 md:grid-cols-[7rem_1fr_1fr_8rem_auto] md:items-end"
             onSubmit={(event) => {
@@ -2347,6 +2546,7 @@ export function WatchPage({ search }: { search: string }) {
                     {entry.active ? "" : " · expired"}
                   </p>
                 </div>
+                {installAdmin ? (
                 <Button
                   type="button"
                   size="sm"
@@ -2374,6 +2574,7 @@ export function WatchPage({ search }: { search: string }) {
                 >
                   {revokingId === entry.id ? "Revoking…" : "Revoke"}
                 </Button>
+                ) : null}
               </li>
             ))}
           </ul>
