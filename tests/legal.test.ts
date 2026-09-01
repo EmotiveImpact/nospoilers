@@ -31,6 +31,7 @@ describe("legal pages", () => {
     const privacy = textOf("privacy");
     expect(privacy).toMatch(/never retain customer source/i);
     expect(privacy).toMatch(/never store credential values/i);
+    expect(privacy).toMatch(/encrypted Sentry or Bugsnag token/i);
     expect(privacy).toContain(SUPPORT_EMAIL);
 
     const terms = textOf("terms");
@@ -45,6 +46,7 @@ describe("legal pages", () => {
     expect(retention).toMatch(/not an archive of customer source/i);
     expect(retention).toMatch(/append-only evidence/i);
     expect(retention).toMatch(/90 days/);
+    expect(retention).toMatch(/Map custody stores encrypted Sentry/i);
 
     const disclosure = textOf("disclosure");
     expect(disclosure).toMatch(/do not automatically email maintainers/i);

@@ -28,6 +28,14 @@ import { createNpmPort, type NpmPort } from "./npm.ts";
 import { checkWatchedPackage, connectWatchedPackage, protectWatchedPackage } from "./npm-watch.ts";
 import { checkWatchedOrigin, connectWatchedOrigin } from "./web-watch.ts";
 import {
+  parseMapDestination,
+  validateMapToken,
+} from "./map-custody.ts";
+import {
+  checkMapDestination,
+  enqueueMapCustodyAfterConnect,
+} from "./map-watch.ts";
+import {
   isPublicNpmOrigin,
   MAX_NPM_REGISTRIES,
   parseRegistryOrigin,
@@ -1779,6 +1787,9 @@ export function createApp(deps: AppDeps): Hono {
         last_checked_at: row.last_checked_at,
         last_scanned_at: row.last_scanned_at,
         last_scan_status: row.last_scan_status,
+        last_debug_ids: row.last_debug_ids,
+        last_release: row.last_release,
+        last_public_map: row.last_public_map,
       })),
     });
   });
@@ -1855,6 +1866,171 @@ export function createApp(deps: AppDeps): Hono {
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
     const result = await checkWatchedOrigin(deps.store, origin, notifier);
+    if (result.queued) deps.wakeWorker?.();
+    return c.json({ ok: true, queued: result.queued });
+  });
+
+  function publicMapDestination(row: {
+    id: number;
+    installation_id: number;
+    kind: "sentry" | "bugsnag";
+    host: string;
+    org_slug: string | null;
+    project_slug: string;
+    last_checked_at: string | null;
+    last_status: string | null;
+    last_error: string | null;
+    created_at: string;
+    updated_at: string;
+  }) {
+    return {
+      id: row.id,
+      installationId: row.installation_id,
+      kind: row.kind,
+      host: row.host,
+      orgSlug: row.org_slug,
+      projectSlug: row.project_slug,
+      lastCheckedAt: row.last_checked_at,
+      lastStatus: row.last_status,
+      lastError: row.last_error,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  app.get("/api/map-destinations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const destinations = await deps.store.listMapDestinationsForUser(
+      user.userId,
+      queryInstallationId(c),
+    );
+    return c.json({ destinations: destinations.map(publicMapDestination) });
+  });
+
+  app.post("/api/map-destinations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId = Number.isFinite(requested) && requested > 0
+      ? requested
+      : installations.length === 1
+        ? installations[0].id
+        : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach map custody to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const denied = await hostedWorkDenied(
+      deps.store,
+      installationId,
+      "Coverage ended. Subscribe to keep map custody.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const parsed = parseMapDestination({
+      kind: String(body.kind ?? ""),
+      host: typeof body.host === "string" ? body.host : "",
+      org: typeof body.org === "string" ? body.org : typeof body.orgSlug === "string" ? body.orgSlug : "",
+      project: String(body.project ?? body.projectSlug ?? ""),
+    });
+    if (!parsed) {
+      return c.json(
+        {
+          error:
+            "Use Sentry (org + project) or Bugsnag (project id) on a public HTTPS host. Local, private, and metadata hosts are blocked.",
+        },
+        400,
+      );
+    }
+    const token = validateMapToken(String(body.token ?? ""));
+    if (!token) {
+      return c.json({ error: "A map destination token is required and is never returned." }, 400);
+    }
+    try {
+      const destination = await deps.store.upsertMapDestination({
+        installationId,
+        kind: parsed.kind,
+        host: parsed.host,
+        orgSlug: parsed.orgSlug,
+        projectSlug: parsed.projectSlug,
+        token,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "map_destination.save",
+        summary: `Saved ${parsed.kind} map custody on ${parsed.host}`,
+        targetKind: "map_destination",
+        targetId: parsed.host,
+      });
+      const queued = await enqueueMapCustodyAfterConnect(deps.store, destination);
+      if (queued.queued) deps.wakeWorker?.();
+      return c.json(
+        { ok: true, queued: queued.queued, destination: publicMapDestination(destination) },
+        201,
+      );
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that map destination." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/map-destinations/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown map destination." }, 404);
+    const destination = await deps.store.getMapDestination(id);
+    if (
+      !destination ||
+      !(await deps.store.userOwnsInstallation(user.userId, destination.installation_id))
+    ) {
+      return c.json({ error: "Unknown map destination." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, destination.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, destination.host);
+    if (confirmError) return c.json(confirmError, 400);
+    const removed = await deps.store.deleteMapDestinationForUser(id, user.userId);
+    if (!removed) return c.json({ error: "Unknown map destination." }, 404);
+    await recordAudit({
+      installationId: destination.installation_id,
+      actorLogin: user.login,
+      action: "map_destination.delete",
+      summary: `Removed ${destination.kind} map custody on ${destination.host}`,
+      targetKind: "map_destination",
+      targetId: destination.host,
+    });
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/map-destinations/:id/check", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const destination = await deps.store.getMapDestination(id);
+    if (
+      !destination ||
+      !(await deps.store.userOwnsInstallation(user.userId, destination.installation_id))
+    ) {
+      return c.json({ error: "Unknown map destination." }, 404);
+    }
+    const checkDenied = await hostedWorkDenied(
+      deps.store,
+      destination.installation_id,
+      "Coverage ended. Subscribe to keep checking map custody.",
+    );
+    if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const result = await checkMapDestination(deps.store, destination);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued });
   });

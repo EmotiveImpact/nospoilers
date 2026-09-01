@@ -87,6 +87,10 @@ export type ScanReport = {
   policyHash: string | null;
   /** Present on every current scan; omitted on older in-memory helpers. */
   workspaces?: WorkspaceDiscovery[];
+  /** Debug IDs found in JS/maps. Identifiers only, never source. */
+  debugIds?: string[];
+  /** Release/version hints from maps or package.json. Never source. */
+  releaseHints?: string[];
 };
 
 export type ScanOptions = {

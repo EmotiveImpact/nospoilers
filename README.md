@@ -32,7 +32,7 @@ Neon, generic Postgres, or PGlite and never includes the connection string. `GET
 the database and returns 503 if it cannot.
 
 - **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
-- **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops. Connect a public npm package to scan the `latest` tarball automatically.
+- **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops. Connect a public npm package to scan the `latest` tarball automatically. Connect an HTTPS origin to crawl same-origin JS/CSS/maps. Admins can connect Sentry or Bugsnag map custody.
 - **Scan** (`/scan`) — drop a tarball, zip, VSIX, wheel, JAR, gem, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
 - **Legal** — `/privacy`, `/terms`, `/retention`, `/disclosure`, `/support`, `/refunds`.

@@ -46,6 +46,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   active. The crawler fetches the named page, then same-origin JavaScript, CSS, and maps.
   Local, private, and metadata hosts are blocked. JavaScript is not executed. Unwatch requires
   typing the origin URL. Unpaid returns 402. Another tenant’s origin is 404 or empty.
+- List Sentry/Bugsnag map custody hosts on a covered install (tokens are never returned). Check
+  now enqueues a lookup of stored debug IDs or release names. Solo paid is allowed. Unpaid
+  returns 402. Another tenant’s destination is empty. Bugsnag matches a release version; it
+  cannot look up a debug ID.
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
   repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
@@ -107,11 +111,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, change the retention window, or open setup or remediation PRs. Those writes need an install admin.
+  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, or open setup or remediation PRs. Those writes need an install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
-- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
 - Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -141,6 +145,10 @@ suspend does not block role changes. Email invite is not built.
   the destination host.
 - Save encrypted private npm registry tokens (never returned after save). Registry deletes
   require typing the origin.
+- Save and delete encrypted Sentry or Bugsnag map custody on a covered install. Tokens are
+  never returned. Deletes require typing the destination host. Solo paid is allowed. Unpaid
+  returns 402. Custom hosts are DNS-checked for SSRF before lookup. The worker never
+  downloads map `sourcesContent`.
 - Mint and revoke hashed scan API tokens. The secret is shown once and never stored. Revoke
   requires typing the token name.
 - Manage expiring allowlist exceptions and approve scan baselines. Revoke requires typing
@@ -301,8 +309,13 @@ returns 402 when unpaid, returns 403 for members and other tenants, and that app
 typed confirmation is required for destructive deletes, export never includes webhook URLs
 or alert bodies, members can read/export, and `audit_events` cannot be updated or deleted.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
-members can watch and test but cannot save Slack/SIEM/Jira, routes, registries, scan tokens, allowlists,
+members can watch and test but cannot save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
-Keep those
+`tests/web-origin.test.ts` proves website watches are tenant-scoped, unpaid POST returns 402,
+SSRF skips fetch, and unwatch audit stores the host only.
+`tests/map-custody.test.ts` proves Sentry/Bugsnag tokens are encrypted, never returned, never
+written onto jobs, tenant-scoped, unpaid saves return 402, members cannot save, Solo paid may
+save, private DNS skips fetch, missing private artifacts flag MAP-011, public maps flag MAP-012,
+and Bugsnag without a release is inconclusive (debug ID lookup is not available). Keep those
 tests green when adding internal routes.

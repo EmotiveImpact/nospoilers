@@ -659,6 +659,76 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "022_watched_origins",
   ]);
+  await sql.exec(`
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS last_debug_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await sql.exec(`
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS last_release TEXT;
+  `);
+  await sql.exec(`
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS last_public_map BOOLEAN NOT NULL DEFAULT false;
+  `);
+  await sql.exec(`
+    ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS last_debug_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await sql.exec(`
+    ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS last_release TEXT;
+  `);
+  await sql.exec(`
+    ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS last_public_map BOOLEAN NOT NULL DEFAULT false;
+  `);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS map_destinations (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('sentry', 'bugsnag')),
+      host TEXT NOT NULL,
+      org_slug TEXT,
+      project_slug TEXT NOT NULL,
+      token_ciphertext TEXT NOT NULL,
+      last_checked_at TIMESTAMPTZ,
+      last_status TEXT,
+      last_error TEXT,
+      last_fingerprint TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (installation_id, kind)
+    );
+  `);
+  await sql.exec(`
+    CREATE INDEX IF NOT EXISTS map_destinations_install_idx
+      ON map_destinations (installation_id);
+  `);
+  await sql.exec(`
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'origin.unwatch',
+      'map_destination.save',
+      'map_destination.delete',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "023_map_destinations",
+  ]);
 }
 
 export function num(value: unknown): number {

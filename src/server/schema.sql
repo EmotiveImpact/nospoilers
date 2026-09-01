@@ -183,6 +183,9 @@ CREATE TABLE IF NOT EXISTS watched_packages (
   last_checked_at TIMESTAMPTZ,
   last_scanned_at TIMESTAMPTZ,
   last_scan_status TEXT,
+  last_debug_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  last_release TEXT,
+  last_public_map BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (installation_id, package_name, registry_origin)
 );
@@ -199,12 +202,35 @@ CREATE TABLE IF NOT EXISTS watched_origins (
   last_checked_at TIMESTAMPTZ,
   last_scanned_at TIMESTAMPTZ,
   last_scan_status TEXT,
+  last_debug_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  last_release TEXT,
+  last_public_map BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (installation_id, origin_url)
 );
 
 CREATE INDEX IF NOT EXISTS watched_origins_install_idx
   ON watched_origins (installation_id, origin_url);
+
+CREATE TABLE IF NOT EXISTS map_destinations (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('sentry', 'bugsnag')),
+  host TEXT NOT NULL,
+  org_slug TEXT,
+  project_slug TEXT NOT NULL,
+  token_ciphertext TEXT NOT NULL,
+  last_checked_at TIMESTAMPTZ,
+  last_status TEXT,
+  last_error TEXT,
+  last_fingerprint TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (installation_id, kind)
+);
+
+CREATE INDEX IF NOT EXISTS map_destinations_install_idx
+  ON map_destinations (installation_id);
 
 CREATE TABLE IF NOT EXISTS npm_registries (
   id BIGSERIAL PRIMARY KEY,
@@ -519,6 +545,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'remediation_pr.create',
     'package.unwatch',
     'origin.unwatch',
+    'map_destination.save',
+    'map_destination.delete',
     'identity.allowlist',
     'identity.revoke_allowlist',
     'retention.save'

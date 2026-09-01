@@ -41,6 +41,7 @@
 - Configurable data retention: 90/180/365 days or keep while this install exists. Lists hide older rows at query time. Append-only evidence is not deleted. Typed confirmation. Solo allowed. Unpaid 402.
 - Extra packed formats: VSIX, CRX, XPI, Python wheels, JAR/WAR, NuGet nupkg/snupkg, and Ruby gems. ZIP/tar magic, not extension alone. Encrypted zip and CRX without a ZIP payload are inconclusive. Zip-slip names flag ARC-002 and are not unpacked for content. Not advertised as a Pricing change.
 - Production website crawls: HTTPS origin, same-origin JS/CSS/maps, SSRF blocked, never executed. Event-driven enqueue. Not advertised as a Pricing change.
+- Sentry/Bugsnag map custody: matching debug ID or release, private lookup, public map absent. Encrypted tokens never returned. Event-driven. Not advertised as a Pricing change. Bugsnag cannot look up a debug ID.
 - Automatic remediation PRs: Watch opens a reviewable PR with ignore rules, empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files` snippet, and packed-artifact CI if missing. Never merged. 409 copy-paste when Contents+PR write is missing. Customer ignore/policy/workflow files are not overwritten.
 - DOC-001 expanded to architecture/design/rfc/spec/product/month1/feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.

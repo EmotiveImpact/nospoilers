@@ -301,6 +301,20 @@ describe("installation roles", () => {
       });
       expect(memberDelete.status).toBe(403);
 
+      const memberMap = await app.request("/api/map-destinations", {
+        method: "POST",
+        headers: { cookie: memberCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          kind: "sentry",
+          org: "acme",
+          project: "web",
+          token: "sntrys_member-should-not-save",
+        }),
+      });
+      expect(memberMap.status).toBe(403);
+      expect(((await memberMap.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
+
       const testDelivery = await app.request(`/api/destinations/${slackBody.destination.id}/test`, {
         method: "POST",
         headers: { cookie: memberCookie },

@@ -107,6 +107,9 @@ export type WatchedPackageRow = {
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+  last_debug_ids: string[];
+  last_release: string | null;
+  last_public_map: boolean;
 };
 
 export type WatchedOriginRow = {
@@ -118,6 +121,35 @@ export type WatchedOriginRow = {
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+  last_debug_ids: string[];
+  last_release: string | null;
+  last_public_map: boolean;
+};
+
+export type MapDestinationKind = "sentry" | "bugsnag";
+
+export type MapDestinationRow = {
+  id: number;
+  installation_id: number;
+  kind: MapDestinationKind;
+  host: string;
+  org_slug: string | null;
+  project_slug: string;
+  last_checked_at: string | null;
+  last_status: string | null;
+  last_error: string | null;
+  last_fingerprint: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MapIdentityRow = {
+  source: "origin" | "package";
+  id: number;
+  label: string;
+  debugIds: string[];
+  release: string | null;
+  publicMap: boolean;
 };
 
 export type NpmRegistryRow = {
@@ -653,6 +685,24 @@ function scanReceiptRow(row: {
   };
 }
 
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      return parseStringArray(JSON.parse(value) as unknown);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function asMapKind(value: string): MapDestinationKind {
+  return value === "bugsnag" ? "bugsnag" : "sentry";
+}
+
 function parseDistTags(value: unknown): Record<string, string> | null {
   const raw = parsePayload(value);
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -676,6 +726,9 @@ function watchedPackageRow(row: {
   last_checked_at: string | Date | null;
   last_scanned_at: string | Date | null;
   last_scan_status: string | null;
+  last_debug_ids?: unknown;
+  last_release?: string | null;
+  last_public_map?: boolean | null;
 }): WatchedPackageRow {
   return {
     id: num(row.id),
@@ -690,6 +743,9 @@ function watchedPackageRow(row: {
     last_checked_at: iso(row.last_checked_at),
     last_scanned_at: iso(row.last_scanned_at),
     last_scan_status: row.last_scan_status,
+    last_debug_ids: parseStringArray(row.last_debug_ids),
+    last_release: row.last_release ?? null,
+    last_public_map: Boolean(row.last_public_map),
   };
 }
 
@@ -702,6 +758,9 @@ function watchedOriginRow(row: {
   last_checked_at: string | Date | null;
   last_scanned_at: string | Date | null;
   last_scan_status: string | null;
+  last_debug_ids?: unknown;
+  last_release?: string | null;
+  last_public_map?: boolean | null;
 }): WatchedOriginRow {
   return {
     id: num(row.id),
@@ -712,6 +771,39 @@ function watchedOriginRow(row: {
     last_checked_at: iso(row.last_checked_at),
     last_scanned_at: iso(row.last_scanned_at),
     last_scan_status: row.last_scan_status,
+    last_debug_ids: parseStringArray(row.last_debug_ids),
+    last_release: row.last_release ?? null,
+    last_public_map: Boolean(row.last_public_map),
+  };
+}
+
+function mapDestinationRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  kind: string;
+  host: string;
+  org_slug: string | null;
+  project_slug: string;
+  last_checked_at: string | Date | null;
+  last_status: string | null;
+  last_error: string | null;
+  last_fingerprint: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): MapDestinationRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    kind: asMapKind(row.kind),
+    host: row.host,
+    org_slug: row.org_slug,
+    project_slug: row.project_slug,
+    last_checked_at: iso(row.last_checked_at),
+    last_status: row.last_status,
+    last_error: row.last_error,
+    last_fingerprint: row.last_fingerprint,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
@@ -2504,6 +2596,81 @@ export function createStore(
       );
     },
 
+    async recordOriginMapIdentity(
+      id: number,
+      input: { debugIds: string[]; release: string | null; publicMap: boolean },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE watched_origins SET
+           last_debug_ids = $2::jsonb,
+           last_release = $3,
+           last_public_map = $4
+         WHERE id = $1`,
+        [id, JSON.stringify(input.debugIds), input.release, input.publicMap],
+      );
+    },
+
+    async recordPackageMapIdentity(
+      id: number,
+      input: { debugIds: string[]; release: string | null; publicMap: boolean },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE watched_packages SET
+           last_debug_ids = $2::jsonb,
+           last_release = $3,
+           last_public_map = $4
+         WHERE id = $1`,
+        [id, JSON.stringify(input.debugIds), input.release, input.publicMap],
+      );
+    },
+
+    async listMapIdentities(installationId: number): Promise<MapIdentityRow[]> {
+      const { rows: origins } = await sql.query<{
+        id: unknown;
+        host: string;
+        last_debug_ids: unknown;
+        last_release: string | null;
+        last_public_map: boolean | null;
+      }>(
+        `SELECT id, host, last_debug_ids, last_release, last_public_map
+         FROM watched_origins
+         WHERE installation_id = $1
+         ORDER BY id`,
+        [installationId],
+      );
+      const { rows: packages } = await sql.query<{
+        id: unknown;
+        package_name: string;
+        last_debug_ids: unknown;
+        last_release: string | null;
+        last_public_map: boolean | null;
+      }>(
+        `SELECT id, package_name, last_debug_ids, last_release, last_public_map
+         FROM watched_packages
+         WHERE installation_id = $1
+         ORDER BY id`,
+        [installationId],
+      );
+      return [
+        ...origins.map((row) => ({
+          source: "origin" as const,
+          id: num(row.id),
+          label: row.host,
+          debugIds: parseStringArray(row.last_debug_ids),
+          release: row.last_release,
+          publicMap: Boolean(row.last_public_map),
+        })),
+        ...packages.map((row) => ({
+          source: "package" as const,
+          id: num(row.id),
+          label: row.package_name,
+          debugIds: parseStringArray(row.last_debug_ids),
+          release: row.last_release,
+          publicMap: Boolean(row.last_public_map),
+        })),
+      ];
+    },
+
     async countNpmRegistries(installationId: number): Promise<number> {
       const { rows } = await sql.query<{ n: unknown }>(
         `SELECT count(*)::int AS n FROM npm_registries WHERE installation_id = $1`,
@@ -2608,6 +2775,217 @@ export function createStore(
         host: row.host,
         token: decryptSecret(row.token_ciphertext, tokenSecret),
       };
+    },
+
+    async listMapDestinationsForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<MapDestinationRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        org_slug: string | null;
+        project_slug: string;
+        last_checked_at: string | Date | null;
+        last_status: string | null;
+        last_error: string | null;
+        last_fingerprint: string | null;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `SELECT d.id, d.installation_id, d.kind, d.host, d.org_slug, d.project_slug,
+                d.last_checked_at, d.last_status, d.last_error, d.last_fingerprint,
+                d.created_at, d.updated_at
+         FROM map_destinations d
+         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR d.installation_id = $2)
+         ORDER BY d.kind`,
+        [userId, scoped],
+      );
+      return rows.map(mapDestinationRow);
+    },
+
+    async listMapDestinationsForInstall(installationId: number): Promise<MapDestinationRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        org_slug: string | null;
+        project_slug: string;
+        last_checked_at: string | Date | null;
+        last_status: string | null;
+        last_error: string | null;
+        last_fingerprint: string | null;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `SELECT id, installation_id, kind, host, org_slug, project_slug,
+                last_checked_at, last_status, last_error, last_fingerprint,
+                created_at, updated_at
+         FROM map_destinations
+         WHERE installation_id = $1
+         ORDER BY kind`,
+        [installationId],
+      );
+      return rows.map(mapDestinationRow);
+    },
+
+    async listAllMapDestinations(): Promise<MapDestinationRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        org_slug: string | null;
+        project_slug: string;
+        last_checked_at: string | Date | null;
+        last_status: string | null;
+        last_error: string | null;
+        last_fingerprint: string | null;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `SELECT id, installation_id, kind, host, org_slug, project_slug,
+                last_checked_at, last_status, last_error, last_fingerprint,
+                created_at, updated_at
+         FROM map_destinations
+         ORDER BY id`,
+      );
+      return rows.map(mapDestinationRow);
+    },
+
+    async getMapDestination(id: number): Promise<MapDestinationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        org_slug: string | null;
+        project_slug: string;
+        last_checked_at: string | Date | null;
+        last_status: string | null;
+        last_error: string | null;
+        last_fingerprint: string | null;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `SELECT id, installation_id, kind, host, org_slug, project_slug,
+                last_checked_at, last_status, last_error, last_fingerprint,
+                created_at, updated_at
+         FROM map_destinations
+         WHERE id = $1`,
+        [id],
+      );
+      return rows[0] ? mapDestinationRow(rows[0]) : null;
+    },
+
+    async upsertMapDestination(input: {
+      installationId: number;
+      kind: MapDestinationKind;
+      host: string;
+      orgSlug: string | null;
+      projectSlug: string;
+      token: string;
+    }): Promise<MapDestinationRow> {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("This instance cannot encrypt map destination tokens."), {
+          status: 400,
+        });
+      }
+      const ciphertext = encryptSecret(input.token, tokenSecret);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        host: string;
+        org_slug: string | null;
+        project_slug: string;
+        last_checked_at: string | Date | null;
+        last_status: string | null;
+        last_error: string | null;
+        last_fingerprint: string | null;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `INSERT INTO map_destinations (
+           installation_id, kind, host, org_slug, project_slug, token_ciphertext
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (installation_id, kind) DO UPDATE SET
+           host = excluded.host,
+           org_slug = excluded.org_slug,
+           project_slug = excluded.project_slug,
+           token_ciphertext = excluded.token_ciphertext,
+           updated_at = now()
+         RETURNING id, installation_id, kind, host, org_slug, project_slug,
+                   last_checked_at, last_status, last_error, last_fingerprint,
+                   created_at, updated_at`,
+        [
+          input.installationId,
+          input.kind,
+          input.host,
+          input.orgSlug,
+          input.projectSlug,
+          ciphertext,
+        ],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not save the map destination.");
+      return mapDestinationRow(row);
+    },
+
+    async deleteMapDestinationForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM map_destinations d
+         USING installation_users iu
+         WHERE d.id = $1
+           AND d.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING d.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async getMapDestinationAuth(
+      id: number,
+    ): Promise<{ id: number; kind: MapDestinationKind; token: string } | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        kind: string;
+        token_ciphertext: string;
+      }>(
+        `SELECT id, kind, token_ciphertext FROM map_destinations WHERE id = $1`,
+        [id],
+      );
+      const row = rows[0];
+      if (!row || !tokenSecret) return null;
+      return {
+        id: num(row.id),
+        kind: asMapKind(row.kind),
+        token: decryptSecret(row.token_ciphertext, tokenSecret),
+      };
+    },
+
+    async recordMapDestinationCheck(
+      id: number,
+      input: { status: string; error: string | null; fingerprint: string },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE map_destinations SET
+           last_checked_at = now(),
+           last_status = $2,
+           last_error = $3,
+           last_fingerprint = $4,
+           updated_at = now()
+         WHERE id = $1`,
+        [id, input.status, input.error, input.fingerprint],
+      );
     },
 
     async listNotificationDestinationsForUser(

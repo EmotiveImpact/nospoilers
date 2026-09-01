@@ -95,6 +95,23 @@ type WatchedOrigin = {
   last_checked_at: string | null;
   last_scanned_at: string | null;
   last_scan_status: string | null;
+  last_debug_ids?: string[];
+  last_release?: string | null;
+  last_public_map?: boolean;
+};
+
+type MapCustodyDestination = {
+  id: number;
+  installationId: number;
+  kind: "sentry" | "bugsnag";
+  host: string;
+  orgSlug: string | null;
+  projectSlug: string;
+  lastCheckedAt: string | null;
+  lastStatus: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type NpmRegistry = {
@@ -247,6 +264,7 @@ type Confirming =
   | { kind: "registry"; id: number; expected: string }
   | { kind: "package"; id: number; expected: string }
   | { kind: "origin"; id: number; expected: string }
+  | { kind: "map-destination"; id: number; expected: string }
   | { kind: "token"; id: number; expected: string }
   | { kind: "exception"; id: number; expected: string }
   | { kind: "identity-allowlist"; packageId: number; id: number; expected: string; reason: string }
@@ -267,6 +285,8 @@ function confirmActionLabel(row: Confirming): string {
       return "stop watching this package";
     case "origin":
       return "stop watching this website";
+    case "map-destination":
+      return "remove this map destination";
     case "token":
       return "revoke this scan token";
     case "exception":
@@ -810,6 +830,15 @@ export function WatchPage({ search }: { search: string }) {
   const [watchingOrigin, setWatchingOrigin] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
   const [checkingOriginId, setCheckingOriginId] = useState<number | null>(null);
+  const [mapDestinations, setMapDestinations] = useState<MapCustodyDestination[]>([]);
+  const [mapKind, setMapKind] = useState<"sentry" | "bugsnag">("sentry");
+  const [mapHost, setMapHost] = useState("");
+  const [mapOrg, setMapOrg] = useState("");
+  const [mapProject, setMapProject] = useState("");
+  const [mapToken, setMapToken] = useState("");
+  const [savingMap, setSavingMap] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [checkingMapId, setCheckingMapId] = useState<number | null>(null);
   const [checkingId, setCheckingId] = useState<number | null>(null);
   const [diffingId, setDiffingId] = useState<number | null>(null);
   const [diffByPackage, setDiffByPackage] = useState<Record<number, ReleaseDiffView | { error: string }>>(
@@ -861,7 +890,7 @@ export function WatchPage({ search }: { search: string }) {
     setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
-      const [repoBody, alertBody, packageBody, originBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody] =
+      const [repoBody, alertBody, packageBody, originBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody, mapBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>(q("/api/repos")),
         loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
@@ -876,6 +905,7 @@ export function WatchPage({ search }: { search: string }) {
         loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
         loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
         loadJson<{ jobs: TenantJob[]; summary: JobSummary }>(q("/api/jobs")),
+        loadJson<{ destinations: MapCustodyDestination[] }>(q("/api/map-destinations")),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
@@ -891,6 +921,7 @@ export function WatchPage({ search }: { search: string }) {
       setProtections(protectionBody.protections);
       setJobs(jobBody.jobs);
       setJobSummary(jobBody.summary);
+      setMapDestinations(mapBody.destinations);
       if (installationId) {
         const membersResponse = await fetch(`/api/installations/${installationId}/members`, {
           credentials: "include",
@@ -1002,6 +1033,7 @@ export function WatchPage({ search }: { search: string }) {
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
       setOrigins({ status: "error", message });
+      setMapDestinations([]);
       setTimeline({ status: "error", message });
       setAudit({ status: "error", message });
       setRetention({ status: "error", message });
@@ -1057,6 +1089,13 @@ export function WatchPage({ search }: { search: string }) {
           });
         } else if (confirming.kind === "origin") {
           response = await fetch(`/api/origins/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "map-destination") {
+          response = await fetch(`/api/map-destinations/${confirming.id}`, {
             method: "DELETE",
             credentials: "include",
             headers,
@@ -2892,6 +2931,212 @@ export function WatchPage({ search }: { search: string }) {
                   </div>
                 </div>
                 {confirmForm(confirming?.kind === "origin" && confirming.id === row.id)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Map custody</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Prove Sentry has the debug ID, or Bugsnag has the release version, and that the public
+          site or pack does not serve the map. Tokens are encrypted and never returned. We do not
+          download map source. This is not advertised as a Pricing extra. Bugsnag matches a release
+          version; it cannot look up a debug ID.
+        </p>
+        {previewing ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Preview cannot connect map custody. No invented incident.
+          </p>
+        ) : ended ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+            Subscribe to keep checking private map uploads.
+          </p>
+        ) : null}
+        {!previewing && user && installations.length > 0 && installAdmin && (
+          <form
+            className="mt-6 flex max-w-xl flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (locked || savingMap) return;
+              setMapError(null);
+              setSavingMap(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/map-destinations", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      installationId: activeInstallId,
+                      kind: mapKind,
+                      host: mapHost,
+                      org: mapOrg,
+                      project: mapProject,
+                      token: mapToken,
+                    }),
+                  });
+                  const body = (await response.json()) as { error?: string };
+                  if (!response.ok) throw new Error(body.error ?? "Could not save map custody.");
+                  setMapToken("");
+                  await refreshSignedIn(selectedInstallId);
+                } catch (error) {
+                  setMapError(error instanceof Error ? error.message : "Could not save map custody.");
+                } finally {
+                  setSavingMap(false);
+                }
+              })();
+            }}
+          >
+            <div>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Destination</span>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mapKind === "sentry" ? "default" : "outline"}
+                  disabled={locked}
+                  onClick={() => setMapKind("sentry")}
+                >
+                  Sentry
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mapKind === "bugsnag" ? "default" : "outline"}
+                  disabled={locked}
+                  onClick={() => setMapKind("bugsnag")}
+                >
+                  Bugsnag
+                </Button>
+              </div>
+            </div>
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Host (optional)</span>
+              <input
+                value={mapHost}
+                onChange={(event) => setMapHost(event.target.value)}
+                placeholder={mapKind === "sentry" ? "sentry.io" : "api.bugsnag.com"}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={locked}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            {mapKind === "sentry" ? (
+              <label>
+                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Organization slug</span>
+                <input
+                  value={mapOrg}
+                  onChange={(event) => setMapOrg(event.target.value)}
+                  placeholder="acme"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={locked}
+                  className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                />
+              </label>
+            ) : null}
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                {mapKind === "sentry" ? "Project slug" : "Project id"}
+              </span>
+              <input
+                value={mapProject}
+                onChange={(event) => setMapProject(event.target.value)}
+                placeholder={mapKind === "sentry" ? "web" : "project-id"}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={locked}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <label>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Auth token</span>
+              <input
+                type="password"
+                value={mapToken}
+                onChange={(event) => setMapToken(event.target.value)}
+                placeholder="never shown again"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={locked}
+                className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <Button type="submit" disabled={locked || savingMap || !mapProject.trim() || !mapToken.trim()}>
+              {savingMap ? "Saving…" : "Save map custody"}
+            </Button>
+          </form>
+        )}
+        {mapError ? <p className="mt-4 text-sm text-danger">{mapError}</p> : null}
+        {!previewing && mapDestinations.length > 0 && (
+          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+            {mapDestinations.map((row) => (
+              <li key={row.id} className="py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-mono text-xs text-snow">
+                      {row.kind} · {row.host}
+                      {row.orgSlug ? ` · ${row.orgSlug}/${row.projectSlug}` : ` · ${row.projectSlug}`}
+                    </p>
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                      {row.lastStatus ?? "queued"}
+                      {row.lastCheckedAt ? ` · ${new Date(row.lastCheckedAt).toLocaleString()}` : ""}
+                    </p>
+                    {row.lastError ? <p className="mt-1 text-xs text-mute">{row.lastError}</p> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={locked || checkingMapId === row.id}
+                      onClick={() => {
+                        setCheckingMapId(row.id);
+                        setMapError(null);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/map-destinations/${row.id}/check`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as { error?: string };
+                            if (!response.ok) throw new Error(body.error ?? "Could not check map custody.");
+                            await refreshSignedIn(selectedInstallId);
+                          } catch (error) {
+                            setMapError(
+                              error instanceof Error ? error.message : "Could not check map custody.",
+                            );
+                          } finally {
+                            setCheckingMapId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {checkingMapId === row.id ? "Checking…" : "Check now"}
+                    </Button>
+                    {installAdmin ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={previewing || locked || confirmBusy}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "map-destination",
+                            id: row.id,
+                            expected: row.host,
+                          })
+                        }
+                      >
+                        Disconnect
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                {confirmForm(confirming?.kind === "map-destination" && confirming.id === row.id)}
               </li>
             ))}
           </ul>

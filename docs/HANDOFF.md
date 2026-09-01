@@ -26,14 +26,14 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-five product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-six product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
-  `019_audit_events`, `020_identity_signals`, `021_retention_policies`, and
-  `022_watched_origins` are applied. Hosted
+  `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
+  `022_watched_origins`, and `023_map_destinations` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -51,6 +51,9 @@ Read in this order:
   including the last customer job kind/status/time, and never insert an alert. `/status` is public
   liveness from `/api/health`. Watched production websites are HTTPS origins; the crawler fetches
   HTML plus same-origin JS/CSS/maps, never executes JavaScript, and deletes bytes after the scan.
+  Map custody stores encrypted Sentry/Bugsnag tokens (never returned) and looks up debug IDs or
+  release names after a website or npm scan. The worker does not download map source. Bugsnag
+  matches a release version; it cannot look up a debug ID.
   Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
   move to KMS. Policy exceptions are
@@ -119,6 +122,11 @@ Read in this order:
   entry names flag ARC-002 and are not unpacked for content. GitHub Release asset matching
   includes those extensions. Scan lists a VSIX fixture example. These formats are not a
   Pricing extras change.
+- Covered installs can watch HTTPS production websites (same-origin JS/CSS/maps, SSRF-blocked,
+  never executed). Admins can connect Sentry or Bugsnag map custody. Tokens are encrypted and
+  never returned. After a website or npm scan the worker looks up debug IDs (Sentry) or release
+  versions (Bugsnag) and alerts if the private upload is missing or a public map is still
+  served. Bugsnag cannot look up a debug ID. Not a Pricing extras change.
 - Watch **Test install** runs a live GitHub permission/read probe. It never creates an
   alert. Watch alerts can be acknowledged, assigned to an install member, resolved with a
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
@@ -143,7 +151,7 @@ Read in this order:
 - Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
-  delivery tests. Admins save Slack/SIEM/Jira, routes, registries, scan tokens, allowlists, baselines,
+  delivery tests. Admins save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Email invite is not built.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
@@ -212,6 +220,9 @@ content; GitHub Release `isPackAssetName` extended; Scan VSIX example). Not adve
 Pricing change.
 Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps, SSRF-blocked, never
 executed, event-driven enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
+Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
+encrypted tokens never returned or written onto jobs, event-driven). Not advertised as a Pricing
+change. Bugsnag matches a release version; it cannot look up a debug ID.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

@@ -19,6 +19,12 @@ import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 import type { WebhookHostLookup } from "./siem.ts";
 import { crawlOrigin, WebCrawlError, type WebCrawlOpts } from "./web-origin.ts";
+import { publicMapFromFindings } from "../scanner/debug-id.ts";
+import {
+  custodyFingerprint,
+  runMapCustodyCheck,
+} from "./map-custody.ts";
+import { enqueueMapCustodyChecks } from "./map-watch.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
 
@@ -76,6 +82,8 @@ function inconclusiveReport(reason: string, extra: Partial<ScanReport> = {}): Sc
     suppressed: extra.suppressed ?? [],
     policyHash: extra.policyHash ?? null,
     workspaces: extra.workspaces ?? [],
+    debugIds: extra.debugIds ?? [],
+    releaseHints: extra.releaseHints ?? [],
   };
 }
 
@@ -379,6 +387,16 @@ export async function handleJob(
           sha256: report.artifactSha256 ?? sha256,
           status,
         });
+        await deps.store.recordPackageMapIdentity(packageId, {
+          debugIds: report.debugIds ?? [],
+          release: version || report.releaseHints?.[0] || null,
+          publicMap: publicMapFromFindings(report.findings),
+        });
+        await enqueueMapCustodyChecks(
+          deps.store,
+          installationId,
+          `pkg:${packageId}:${version || "latest"}`,
+        );
       }
       const notes = [
         status === "inconclusive"
@@ -504,6 +522,16 @@ export async function handleJob(
         sha256: crawled.sha256,
         status: report.status,
       });
+      await deps.store.recordOriginMapIdentity(origin.id, {
+        debugIds: report.debugIds ?? [],
+        release: report.releaseHints?.[0] ?? null,
+        publicMap: publicMapFromFindings(report.findings),
+      });
+      await enqueueMapCustodyChecks(
+        deps.store,
+        installationId,
+        `origin:${origin.id}:${crawled.sha256.slice(0, 12)}`,
+      );
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
       const notes = [
         report.status === "inconclusive"
@@ -571,6 +599,66 @@ export async function handleJob(
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  }
+
+  if (job.kind === "map_custody_check") {
+    const destinationId = Number(payload.destinationId);
+    const destination =
+      Number.isFinite(destinationId) && destinationId > 0
+        ? await deps.store.getMapDestination(destinationId)
+        : null;
+    if (!destination || destination.installation_id !== installationId) return;
+    const auth = await deps.store.getMapDestinationAuth(destination.id);
+    if (!auth) {
+      await deps.store.recordMapDestinationCheck(destination.id, {
+        status: "inconclusive",
+        error: "Map destination token is missing on this instance.",
+        fingerprint: "missing-token",
+      });
+      return;
+    }
+    const identities = await deps.store.listMapIdentities(installationId);
+    const verdict = await runMapCustodyCheck({
+      kind: destination.kind,
+      host: destination.host,
+      origin: `https://${destination.host}`,
+      orgSlug: destination.org_slug,
+      projectSlug: destination.project_slug,
+      token: auth.token,
+      identities,
+      fetch: deps.webFetch,
+      lookup: deps.webLookup,
+    });
+    const fingerprint = custodyFingerprint(verdict);
+    const previous = destination.last_fingerprint;
+    await deps.store.recordMapDestinationCheck(destination.id, {
+      status: verdict.status,
+      error: verdict.inconclusiveReason,
+      fingerprint,
+    });
+    if (previous === fingerprint) return;
+    if (verdict.status === "passed" && verdict.findings.length === 0) return;
+    const label = destination.kind === "sentry" ? "Sentry" : "Bugsnag";
+    const notes = [
+      verdict.inconclusiveReason
+        ? `${verdict.inconclusiveReason} This is not a clean bill of health.`
+        : verdict.findings.length > 0
+          ? `${verdict.findings.length} map-custody finding(s).`
+          : "No map-custody findings.",
+      `Checked ${label} on ${destination.host}. Tokens and source were not stored.`,
+    ];
+    await deps.notifier.send({
+      ...alertBase,
+      kind: job.kind,
+      title: titleForScan(
+        verdict.status,
+        `${label} map custody on ${destination.host} is allowed`,
+        `Map custody failed on ${destination.host}`,
+        `Inconclusive map custody check on ${destination.host}`,
+      ),
+      body: notes.join(" "),
+      findings: verdict.findings,
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import type { GithubPort } from "./github.ts";
 import type { NpmPort } from "./npm.ts";
 import { runNpmWatchPoll } from "./npm-watch.ts";
 import { runWebOriginPoll } from "./web-watch.ts";
+import { runMapCustodyPoll } from "./map-watch.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
@@ -52,7 +53,8 @@ export function startPoller(
       await runVisibilityPoll(deps);
       const npm = await runNpmWatchPoll(deps);
       const web = await runWebOriginPoll(deps);
-      if (npm.queued + web.queued > 0) deps.wakeWorker?.();
+      const maps = await runMapCustodyPoll(deps);
+      if (npm.queued + web.queued + maps.queued > 0) deps.wakeWorker?.();
     })().catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "poller.failed", { message });

@@ -14,6 +14,8 @@ const RULES: Record<
   "MAP-001": { name: "source-map-file", shortDescription: "Source map file packed into the artifact" },
   "MAP-002": { name: "embedded-sources", shortDescription: "Source map embeds original source" },
   "MAP-003": { name: "source-mapping-url", shortDescription: "sourceMappingURL comment in a production file" },
+  "MAP-011": { name: "private-map-missing", shortDescription: "Private Sentry or Bugsnag has no matching map" },
+  "MAP-012": { name: "public-map-with-custody", shortDescription: "Public map is still served while private custody is connected" },
   "SEC-001": { name: "dotenv-file", shortDescription: "Environment file packed into the artifact" },
   "SEC-002": { name: "private-key", shortDescription: "Private key packed into the artifact" },
   "SEC-003": { name: "access-token", shortDescription: "Credential or access token packed into the artifact" },

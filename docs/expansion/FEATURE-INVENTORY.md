@@ -114,8 +114,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub Release assets | Built/partial real proof | NoSpoilers |
 | npm registry packages | Partial: customer watch of public `latest` tarball | NoSpoilers |
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps, SSRF blocked, never executed | NoSpoilers |
-| Sentry source-map custody | Planned | NoSpoilers |
-| Bugsnag source-map custody | Planned | NoSpoilers |
+| Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
+| Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, hostile fixture, GitHub Release asset, Scan example | NoSpoilers |
 | Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP | NoSpoilers |
 | Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path | NoSpoilers |
@@ -167,7 +167,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Severity and repository routing rules | Built: trial/Team routes by min severity, repository, package, teammate assign, and destination; empty destination still gets every alert; routed test never invents an incident | NoSpoilers Team |
 | 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for the install list window (default 90 days); trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Built: query-time list window (90 default; 180/365/keep while this install exists); append-only evidence is never deleted; typed confirm; Solo allowed; unpaid 402; members may read | NoSpoilers |
-| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
+| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, map custody, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |

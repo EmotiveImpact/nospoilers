@@ -59,6 +59,8 @@ describe("Team audit log", () => {
     expect(auditPlanDenied(coverageFrom("2000-01-01T00:00:00Z", null))?.status).toBe(402);
     expect(auditPlanDenied(coverageFrom(new Date(Date.now() + 86400000).toISOString(), "trial"))).toBeNull();
     expect(AUDIT_ACTIONS).toContain("destination.delete");
+    expect(AUDIT_ACTIONS).toContain("map_destination.save");
+    expect(AUDIT_ACTIONS).toContain("map_destination.delete");
   });
 
   it("records admin writes, requires typed confirmation, exports titles only, and hides other tenants", async () => {
