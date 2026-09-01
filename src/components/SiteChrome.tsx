@@ -81,10 +81,6 @@ export function SiteChrome({
   const signedIn = Boolean(login)
   const previewing = Boolean(coverage) && !signedIn
 
-  if (signedIn && path === "/watch") {
-    return <>{children}</>
-  }
-
   return (
     <div className="flex min-h-svh flex-col bg-ink">
       <header className="sticky top-0 z-20 border-b border-white/5 bg-ink/80 backdrop-blur-md">

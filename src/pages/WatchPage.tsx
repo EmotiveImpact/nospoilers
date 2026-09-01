@@ -1,6 +1,4 @@
-import { AppShell } from "@/components/app-shell";
 import { CoverageLock } from "@/components/CoverageLock.tsx";
-import { Dashboard } from "@/components/dashboard";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFromQuery, type Coverage } from "@/coverage.ts";
@@ -137,7 +135,7 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const { user, githubApp, coverage: sessionCoverage } = me.data;
+  const { user, githubApp, installUrl, installations, coverage: sessionCoverage } = me.data;
   const queryCoverage = coverageFromQuery(search);
   const previewing = !user;
   const coverage: Coverage | undefined = user
@@ -177,19 +175,13 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  if (user) {
-    return (
-      <AppShell>
-        <Dashboard />
-      </AppShell>
-    );
-  }
-
   const ended = coverage?.status === "ended";
-  const login = PREVIEW_LOGIN;
-  const watching = PREVIEW_INSTALLATIONS.map((row) => row.account_login);
-  const deskRepos = previewRepos();
-  const deskAlerts = previewAlerts();
+  const login = user?.login ?? PREVIEW_LOGIN;
+  const watching = user
+    ? installations.map((row) => row.account_login)
+    : PREVIEW_INSTALLATIONS.map((row) => row.account_login);
+  const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
+  const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
 
   return (
     <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
@@ -218,6 +210,11 @@ export function WatchPage({ search }: { search: string }) {
             >
               {coverage.label}
             </span>
+          )}
+          {installUrl && githubApp && user && (
+            <Button as="a" href={installUrl}>
+              Install on GitHub
+            </Button>
           )}
           {ended && (
             <Button type="button" onClick={() => navigate("/pricing")}>

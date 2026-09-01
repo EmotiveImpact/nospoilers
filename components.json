@@ -13,10 +13,6 @@
     "components": "@/components",
     "utils": "@/lib/utils",
     "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "registries": {
-    "@efferd": "https://efferd.com/r/{style}/{name}.json"
+    "lib": "@/lib"
   }
 }

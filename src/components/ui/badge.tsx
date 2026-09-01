@@ -1,52 +1,30 @@
-import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
-
+import type * as React from "react"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-oklch(0.922 0 0) border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-oklch(0.708 0 0) focus-visible:ring-[3px] focus-visible:ring-oklch(0.708 0 0)/50 aria-invalid:border-oklch(0.577 0.245 27.325) aria-invalid:ring-oklch(0.577 0.245 27.325)/20 dark:aria-invalid:ring-oklch(0.577 0.245 27.325)/40 [&>svg]:pointer-events-none [&>svg]:size-3 dark:border-oklch(1 0 0 / 10%) dark:focus-visible:border-oklch(0.556 0 0) dark:focus-visible:ring-oklch(0.556 0 0)/50 dark:aria-invalid:border-oklch(0.704 0.191 22.216) dark:aria-invalid:ring-oklch(0.704 0.191 22.216)/20 dark:dark:aria-invalid:ring-oklch(0.704 0.191 22.216)/40",
+  "inline-flex items-center text-[11px] font-medium uppercase tracking-[0.16em]",
   {
     variants: {
       variant: {
-        default: "bg-oklch(0.205 0 0) text-oklch(0.985 0 0) [a&]:hover:bg-oklch(0.205 0 0)/90 dark:bg-oklch(0.922 0 0) dark:text-oklch(0.205 0 0) dark:[a&]:hover:bg-oklch(0.922 0 0)/90",
-        secondary:
-          "bg-oklch(0.97 0 0) text-oklch(0.205 0 0) [a&]:hover:bg-oklch(0.97 0 0)/90 dark:bg-oklch(0.269 0 0) dark:text-oklch(0.985 0 0) dark:[a&]:hover:bg-oklch(0.269 0 0)/90",
-        destructive:
-          "bg-oklch(0.577 0.245 27.325) text-white focus-visible:ring-oklch(0.577 0.245 27.325)/20 dark:bg-oklch(0.577 0.245 27.325)/60 dark:focus-visible:ring-oklch(0.577 0.245 27.325)/40 [a&]:hover:bg-oklch(0.577 0.245 27.325)/90 dark:bg-oklch(0.704 0.191 22.216) dark:focus-visible:ring-oklch(0.704 0.191 22.216)/20 dark:dark:bg-oklch(0.704 0.191 22.216)/60 dark:dark:focus-visible:ring-oklch(0.704 0.191 22.216)/40 dark:[a&]:hover:bg-oklch(0.704 0.191 22.216)/90",
-        outline:
-          "border-oklch(0.922 0 0) text-oklch(0.145 0 0) [a&]:hover:bg-oklch(0.97 0 0) [a&]:hover:text-oklch(0.205 0 0) dark:border-oklch(1 0 0 / 10%) dark:text-oklch(0.985 0 0) dark:[a&]:hover:bg-oklch(0.269 0 0) dark:[a&]:hover:text-oklch(0.985 0 0)",
-        ghost: "[a&]:hover:bg-oklch(0.97 0 0) [a&]:hover:text-oklch(0.205 0 0) dark:[a&]:hover:bg-oklch(0.269 0 0) dark:[a&]:hover:text-oklch(0.985 0 0)",
-        link: "text-oklch(0.205 0 0) underline-offset-4 [a&]:hover:underline dark:text-oklch(0.922 0 0)",
-        critical: "border-transparent bg-transparent text-danger uppercase tracking-[0.16em]",
-        warn: "border-transparent bg-transparent text-mute uppercase tracking-[0.16em]",
-        clean: "border-transparent bg-transparent text-snow uppercase tracking-[0.16em]",
-        muted: "border-transparent bg-transparent text-dim uppercase tracking-[0.16em]",
+        critical: "text-danger",
+        warn: "text-mute",
+        clean: "text-snow",
+        muted: "text-dim",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "muted",
     },
-  }
+  },
 )
 
 function Badge({
   className,
-  variant = "default",
-  asChild = false,
+  variant,
   ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "span"
-
-  return (
-    <Comp
-      data-slot="badge"
-      data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
-      {...props}
-    />
-  )
+}: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+  return <span className={cn(badgeVariants({ variant }), className)} {...props} />
 }
 
 export { Badge, badgeVariants }
