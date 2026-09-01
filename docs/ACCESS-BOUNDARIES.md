@@ -212,7 +212,9 @@ The product owner (GitHub login `EmotiveImpact` unless `ADMIN_GITHUB_LOGIN` is c
 
 - Everything an Operator may do.
 - Hold `ADMIN_TOKEN`, GitHub App PEM, Neon, Stripe, and infrastructure secrets.
-- See global queue depth, failed jobs, and cost controls when those exist.
+- See global queue depth and failed-job counts at `GET /api/internal/queue` (shown on Artifact
+  Leads). Counts only: no payloads, tenant names, or credential values. Cost controls are not
+  built.
 - Change production configuration.
 
 **Must not**
@@ -230,7 +232,7 @@ These are never customer features:
 | Disclosure Desk | future internal routes extending Artifact Leads |
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records and campaigns | not built; will be internal-only |
-| Global job/queue operations | worker internals, not a customer page |
+| Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
 
@@ -255,7 +257,8 @@ These are never customer features:
 ## Tests
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
-mutate Artifact Leads. `tests/receipts.test.ts` proves customers cannot read another
+mutate Artifact Leads, cannot read `/api/internal/queue`, and that owner queue JSON is
+counts only (no payloads, URLs, or credential values). `tests/receipts.test.ts` proves customers cannot read another
 tenant’s receipts and that receipts cannot be patched. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.

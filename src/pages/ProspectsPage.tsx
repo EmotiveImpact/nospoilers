@@ -40,6 +40,22 @@ type ProspectData = {
   }
 }
 
+type OwnerQueueHealth = {
+  customer: { queued: number; running: number; failed: number }
+  prospect: { queued: number; running: number; failed: number }
+  heavyQueued: number
+  lightQueued: number
+  staleRunning: number
+  oldestQueuedAgeMs: number | null
+}
+
+function formatQueueAge(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "none"
+  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s`
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`
+  return `${Math.round(ms / 3_600_000)}h`
+}
+
 type LoadState =
   | { status: "loading" }
   | { status: "unauthorized"; login?: string; tokenConfigured?: boolean }
@@ -63,6 +79,7 @@ export function ProspectsPage() {
   const [repository, setRepository] = useState("")
   const [working, setWorking] = useState<"discover" | "repository" | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
 
   const request = useCallback(
     async <T,>(url: string, options: RequestInit = {}): Promise<T> => {
@@ -98,6 +115,11 @@ export function ProspectsPage() {
     try {
       const data = await request<ProspectData>("/api/internal/prospects")
       setState({ status: "ready", data })
+      try {
+        setQueue(await request<OwnerQueueHealth>("/api/internal/queue"))
+      } catch {
+        setQueue(null)
+      }
     } catch (error) {
       setState((current) =>
         current.status === "unauthorized"
@@ -284,6 +306,33 @@ export function ProspectsPage() {
           </div>
         ))}
       </dl>
+
+      {queue ? (
+        <section className="mt-10 rounded-lg border border-white/10 p-5">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Global queue</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
+            Counts only. Payloads, tenant names, and credential values are not listed. Prospect
+            scans stay behind customer unpacks.
+          </p>
+          <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-white/8 sm:grid-cols-4">
+            {[
+              ["Customer queued", queue.customer.queued],
+              ["Customer running", queue.customer.running],
+              ["Customer failed", queue.customer.failed],
+              ["Oldest wait", formatQueueAge(queue.oldestQueuedAgeMs)],
+              ["Prospect queued", queue.prospect.queued],
+              ["Prospect running", queue.prospect.running],
+              ["Heavy waiting", queue.heavyQueued],
+              ["Stale locks", queue.staleRunning],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-panel px-4 py-5">
+                <dt className="text-[11px] uppercase tracking-[0.18em] text-dim">{label}</dt>
+                <dd className="mt-2 font-display text-2xl text-snow">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
 
       <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <form

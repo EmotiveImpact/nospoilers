@@ -490,6 +490,11 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
 
+  app.get("/api/internal/queue", async (c) => {
+    const health = await deps.store.ownerQueueHealth(deps.config.jobStaleMs);
+    return c.json(health);
+  });
+
   app.post("/api/internal/prospects/discover", async (c) => {
     try {
       const body = jsonObj(await c.req.json());

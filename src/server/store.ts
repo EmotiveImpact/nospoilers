@@ -52,6 +52,15 @@ export type JobSummary = {
   failed: number;
 };
 
+export type OwnerQueueHealth = {
+  customer: { queued: number; running: number; failed: number };
+  prospect: { queued: number; running: number; failed: number };
+  heavyQueued: number;
+  lightQueued: number;
+  staleRunning: number;
+  oldestQueuedAgeMs: number | null;
+};
+
 export type RepoRow = {
   id: number;
   installation_id: number;
@@ -1365,6 +1374,57 @@ export function createStore(
         [cutoff],
       );
       return num(rows[0]?.n ?? 0);
+    },
+
+    async ownerQueueHealth(staleAfterMs: number): Promise<OwnerQueueHealth> {
+      const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
+      const { rows } = await sql.query<{
+        customer_queued: unknown;
+        customer_running: unknown;
+        customer_failed: unknown;
+        prospect_queued: unknown;
+        prospect_running: unknown;
+        prospect_failed: unknown;
+        heavy_queued: unknown;
+        light_queued: unknown;
+        stale_running: unknown;
+        oldest_queued_age_ms: unknown;
+      }>(
+        `SELECT
+           count(*) FILTER (WHERE kind <> 'prospect_scan' AND status = 'queued')::int AS customer_queued,
+           count(*) FILTER (WHERE kind <> 'prospect_scan' AND status = 'running')::int AS customer_running,
+           count(*) FILTER (WHERE kind <> 'prospect_scan' AND status = 'failed')::int AS customer_failed,
+           count(*) FILTER (WHERE kind = 'prospect_scan' AND status = 'queued')::int AS prospect_queued,
+           count(*) FILTER (WHERE kind = 'prospect_scan' AND status = 'running')::int AS prospect_running,
+           count(*) FILTER (WHERE kind = 'prospect_scan' AND status = 'failed')::int AS prospect_failed,
+           count(*) FILTER (WHERE status = 'queued' AND priority = 'heavy')::int AS heavy_queued,
+           count(*) FILTER (WHERE status = 'queued' AND priority = 'light')::int AS light_queued,
+           count(*) FILTER (
+             WHERE status = 'running' AND locked_at IS NOT NULL AND locked_at < $1::timestamptz
+           )::int AS stale_running,
+           (EXTRACT(EPOCH FROM (now() - min(created_at) FILTER (WHERE status = 'queued'))) * 1000)::bigint
+             AS oldest_queued_age_ms
+         FROM jobs`,
+        [cutoff],
+      );
+      const row = rows[0];
+      const age = row?.oldest_queued_age_ms == null ? null : num(row.oldest_queued_age_ms);
+      return {
+        customer: {
+          queued: num(row?.customer_queued ?? 0),
+          running: num(row?.customer_running ?? 0),
+          failed: num(row?.customer_failed ?? 0),
+        },
+        prospect: {
+          queued: num(row?.prospect_queued ?? 0),
+          running: num(row?.prospect_running ?? 0),
+          failed: num(row?.prospect_failed ?? 0),
+        },
+        heavyQueued: num(row?.heavy_queued ?? 0),
+        lightQueued: num(row?.light_queued ?? 0),
+        staleRunning: num(row?.stale_running ?? 0),
+        oldestQueuedAgeMs: Number.isFinite(age) ? age : null,
+      };
     },
 
     async insertAlert(input: {

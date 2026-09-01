@@ -24,7 +24,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
 | Resend email delivery | Planned | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
-| Stale-lock recovery/dead-letter visibility | Partial: stale running jobs requeued; tenant failed jobs listed on Watch; no owner global UI | NoSpoilers |
+| Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
 | Upload/API rate limiting | Built: hosted `/api/scan` per address | NoSpoilers |
 | Readiness/health checks and structured logs | Built: `/api/health` liveness, `/api/ready` DB ping, JSON logs | NoSpoilers |
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
@@ -170,7 +170,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, map custody, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
-| Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
+| Queue and usage health | Built: tenant-scoped job list and counts; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack per install, Team/trial 3; global heavy cap still applies; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one Slack, one SIEM, and one Jira Cloud destination per install | NoSpoilers Team |

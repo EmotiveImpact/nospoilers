@@ -256,6 +256,8 @@ DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Fair-use hosted unpacks are in (Solo 1 concurrent heavy job per install; Team/trial 3; global
 heavy cap still applies; no scan-credit meter). Not advertised as a Pricing change.
+Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; customer vs prospect;
+stale locks; no payloads). Not a customer page.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

@@ -177,4 +177,80 @@ describe("Artifact Leads persistence", () => {
       await sql.close();
     }
   });
+
+  it("lets the owner read queue counts and hides them from customers", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "acme",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: {
+          installationId: 7,
+          url: "https://github.com/acme/secret",
+          token: "sk_live_exampletokenvalue12",
+        },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "prospect_scan",
+        payload: { prospectId: 1, artifactUrl: "https://registry.npmjs.org/prettier/-/x.tgz" },
+      });
+      await store.enqueueJob({
+        priority: "light",
+        kind: "repo_publicized",
+        payload: { installationId: 7 },
+      });
+      await sql.query(
+        `UPDATE jobs SET status = 'failed', error = 'https://evil.example/hook?token=ghu_secret' WHERE kind = 'release_scan'`,
+      );
+      await store.upsertUser({ id: "customer-1", login: "acme-founder" });
+      await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "owner-only-token",
+          adminGithubLogin: "EmotiveImpact",
+          sessionSecret: "test-session",
+        }),
+        store,
+        github: unusedGithub(),
+      });
+      const customer = `ns_session=${signSession("test-session", await store.createSession("customer-1"))}`;
+      const owner = `ns_session=${signSession("test-session", await store.createSession("owner-1"))}`;
+
+      const denied = await app.request("/api/internal/queue", { headers: { cookie: customer } });
+      expect(denied.status).toBe(401);
+      expect(JSON.stringify(await denied.json())).not.toMatch(/queued/);
+
+      const allowed = await app.request("/api/internal/queue", { headers: { cookie: owner } });
+      expect(allowed.status).toBe(200);
+      const body = (await allowed.json()) as {
+        customer: { queued: number; running: number; failed: number };
+        prospect: { queued: number; running: number; failed: number };
+        heavyQueued: number;
+        lightQueued: number;
+        staleRunning: number;
+        oldestQueuedAgeMs: number | null;
+      };
+      expect(body.customer.failed).toBe(1);
+      expect(body.prospect.queued).toBe(1);
+      expect(body.lightQueued).toBe(1);
+      expect(body.heavyQueued).toBe(1);
+      const raw = JSON.stringify(body);
+      expect(raw).not.toMatch(/sk_live_exampletokenvalue12/);
+      expect(raw).not.toMatch(/ghu_secret/);
+      expect(raw).not.toMatch(/github\.com\/acme/);
+      expect(raw).not.toMatch(/prettier/);
+      expect(body).not.toHaveProperty("jobs");
+    } finally {
+      await sql.close();
+    }
+  });
 });

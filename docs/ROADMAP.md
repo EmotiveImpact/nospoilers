@@ -56,6 +56,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
 - Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
+- Owner queue health: Artifact Leads shows customer vs prospect queue counts, stale locks, and
+  oldest wait. Payloads are not listed. Not a customer page.
 - Incident response: live GitHub permission test without inventing an incident; Watch
   acknowledgement, assignment to install members, resolution notes, reopen, exposure
   duration, and a credential/source-map rotation checklist. `alert_events` are append-only.
