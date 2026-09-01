@@ -4,6 +4,7 @@ import path from "node:path";
 import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { x as tarExtract } from "tar";
+import type { ReadEntry } from "tar";
 import { INSPECT_BYTES, inspectEntry, TOTAL_WARN_BYTES } from "./inspect.ts";
 import type { Finding, ScanOptions, ScanReport, ScanTargetKind } from "./types.ts";
 
@@ -28,8 +29,11 @@ type ScanLimits = {
 class ScanBudget {
   files = 0;
   bytes = 0;
+  private readonly limits: ScanLimits;
 
-  constructor(private readonly limits: ScanLimits) {}
+  constructor(limits: ScanLimits) {
+    this.limits = limits;
+  }
 
   checkTime(): void {
     if (Date.now() > this.limits.deadline) {
@@ -127,7 +131,7 @@ async function scanTarball(archive: string, limits: ScanLimits): Promise<ScanChu
     await tarExtract({
       file: archive,
       cwd: dir,
-      filter(_entryPath, entry) {
+      filter(_entryPath: string, entry: ReadEntry) {
         const file =
           entry.type === "File" ||
           entry.type === "OldFile" ||
