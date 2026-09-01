@@ -91,6 +91,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   must resolve to a public address before POST. A delivery test talks to the SIEM and
   never inserts an alert. Real Watch alerts POST JSON after they are stored. Solo paid
   installs do not get SIEM.
+- Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
+  deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
+  Another tenant’s installation is empty. Titles only; webhook URLs and secret values
+  are not included.
 
 **Must not**
 
@@ -240,5 +244,7 @@ an alert, real alerts POST after insert, and `notification_deliveries` are appen
 The same file proves SIEM HTTPS webhooks follow those rules, reject private/local/Slack
 hosts, skip fetch when DNS resolves private, never return the URL or query token, and
 POST JSON with `inventedIncident: false`.
+`tests/timeline.test.ts` proves the 90-day timeline is tenant-scoped, drops rows older than
+90 days, returns 403 for Solo and 402 when unpaid, and does not invent incidents.
 Keep those
 tests green when adding internal routes.

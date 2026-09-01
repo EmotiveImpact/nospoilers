@@ -8,6 +8,7 @@ import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
 import type { PermissionTestResult } from "./install-test.ts";
+import { TIMELINE_LIMIT } from "./timeline.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -129,6 +130,19 @@ export type NotificationDeliveryRow = {
   inventedIncident: false;
   error: string | null;
   createdAt: string;
+};
+
+export type TimelineEntry = {
+  at: string;
+  type: "alert" | "alert_event" | "delivery";
+  alertId: number | null;
+  kind: string | null;
+  title: string | null;
+  fullName: string | null;
+  action: string | null;
+  actorLogin: string | null;
+  deliveryStatus: "sent" | "failed" | null;
+  inventedIncident: false | null;
 };
 
 export type ScanApiTokenRow = {
@@ -2155,6 +2169,94 @@ export function createStore(
         inventedIncident: false,
         error: row.error,
         createdAt: iso(row.created_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async listTimelineForUser(
+      userId: string,
+      installationId: number,
+      sinceIso: string,
+    ): Promise<TimelineEntry[]> {
+      if (!optionalInstallId(installationId)) return [];
+      const { rows } = await sql.query<{
+        at: string | Date;
+        type: "alert" | "alert_event" | "delivery";
+        alert_id: unknown;
+        kind: string | null;
+        title: string | null;
+        full_name: string | null;
+        action: string | null;
+        actor_login: string | null;
+        delivery_status: "sent" | "failed" | null;
+        invented_incident: boolean | null;
+      }>(
+        `SELECT * FROM (
+           SELECT a.created_at AS at,
+                  'alert'::text AS type,
+                  a.id AS alert_id,
+                  a.kind,
+                  a.title,
+                  r.full_name,
+                  NULL::text AS action,
+                  NULL::text AS actor_login,
+                  NULL::text AS delivery_status,
+                  NULL::boolean AS invented_incident
+           FROM alerts a
+           LEFT JOIN repos r ON r.id = a.repo_id
+           JOIN installation_users iu ON iu.installation_id = a.installation_id
+           WHERE iu.user_id = $1
+             AND a.installation_id = $2
+             AND a.created_at >= $3::timestamptz
+           UNION ALL
+           SELECT e.created_at AS at,
+                  'alert_event'::text AS type,
+                  e.alert_id,
+                  a.kind,
+                  a.title,
+                  r.full_name,
+                  e.action,
+                  e.actor_login,
+                  NULL::text AS delivery_status,
+                  NULL::boolean AS invented_incident
+           FROM alert_events e
+           JOIN alerts a ON a.id = e.alert_id
+           LEFT JOIN repos r ON r.id = a.repo_id
+           JOIN installation_users iu ON iu.installation_id = e.installation_id
+           WHERE iu.user_id = $1
+             AND e.installation_id = $2
+             AND e.created_at >= $3::timestamptz
+           UNION ALL
+           SELECT d.created_at AS at,
+                  'delivery'::text AS type,
+                  d.alert_id,
+                  d.kind,
+                  NULL::text AS title,
+                  NULL::text AS full_name,
+                  NULL::text AS action,
+                  NULL::text AS actor_login,
+                  d.status AS delivery_status,
+                  false AS invented_incident
+           FROM notification_deliveries d
+           JOIN installation_users iu ON iu.installation_id = d.installation_id
+           WHERE iu.user_id = $1
+             AND d.installation_id = $2
+             AND d.created_at >= $3::timestamptz
+         ) timeline
+         ORDER BY at DESC
+         LIMIT $4`,
+        [userId, installationId, sinceIso, TIMELINE_LIMIT],
+      );
+      return rows.map((row) => ({
+        at: iso(row.at) ?? new Date().toISOString(),
+        type: row.type,
+        alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
+        kind: row.kind,
+        title: row.title,
+        fullName: row.full_name,
+        action: row.action,
+        actorLogin: row.actor_login,
+        deliveryStatus: row.delivery_status,
+        inventedIncident: row.invented_incident === false ? false : null,
       }));
     },
 

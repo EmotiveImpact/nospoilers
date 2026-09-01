@@ -111,6 +111,9 @@ Read in this order:
   stored. Watch **Test delivery** talks to Slack or SIEM and never inserts an alert. Solo
   paid does not get Slack or SIEM. Email still needs Resend. SIEM hosts cannot be private,
   local, metadata, or hooks.slack.com.
+- Trial and Team installs get a Watch **90-day timeline** of this install’s alerts,
+  acknowledgement activity, and notification deliveries. Solo 403. Unpaid 402. No invented
+  rows.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -159,6 +162,7 @@ writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
+90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

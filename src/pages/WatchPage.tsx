@@ -113,6 +113,26 @@ type NotificationDelivery = {
   createdAt: string;
 };
 
+type TimelineEntry = {
+  at: string;
+  type: "alert" | "alert_event" | "delivery";
+  alertId: number | null;
+  kind: string | null;
+  title: string | null;
+  fullName: string | null;
+  action: string | null;
+  actorLogin: string | null;
+  deliveryStatus: "sent" | "failed" | null;
+  inventedIncident: false | null;
+};
+
+type TimelineView =
+  | { status: "loading" }
+  | { status: "ready"; entries: TimelineEntry[]; days: number }
+  | { status: "solo" }
+  | { status: "ended" }
+  | { status: "error"; message: string };
+
 type ScanApiToken = {
   id: number;
   installation_id: number;
@@ -599,12 +619,14 @@ export function WatchPage({ search }: { search: string }) {
   const [testingInstallId, setTestingInstallId] = useState<number | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
 
   const refreshSignedIn = useCallback(async (installationId: number | null) => {
     setRepos({ status: "loading" });
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
+    setTimeline({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
       const [repoBody, alertBody, packageBody, exceptionBody, registryBody, destinationBody, deliveryBody, tokenBody, releaseBody, protectionBody, jobBody] =
@@ -633,6 +655,25 @@ export function WatchPage({ search }: { search: string }) {
       setProtections(protectionBody.protections);
       setJobs(jobBody.jobs);
       setJobSummary(jobBody.summary);
+      const timelineResponse = await fetch(q("/api/timeline"), { credentials: "include" });
+      const timelineBody = (await timelineResponse.json()) as {
+        error?: string;
+        days?: number;
+        entries?: TimelineEntry[];
+      };
+      if (timelineResponse.status === 402) {
+        setTimeline({ status: "ended" });
+      } else if (timelineResponse.status === 403) {
+        setTimeline({ status: "solo" });
+      } else if (!timelineResponse.ok) {
+        setTimeline({ status: "error", message: timelineBody.error ?? "Could not load the timeline." });
+      } else {
+        setTimeline({
+          status: "ready",
+          days: timelineBody.days ?? 90,
+          entries: timelineBody.entries ?? [],
+        });
+      }
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -647,6 +688,7 @@ export function WatchPage({ search }: { search: string }) {
       setRepos({ status: "error", message });
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
+      setTimeline({ status: "error", message });
     }
   }, []);
 
@@ -1193,6 +1235,56 @@ export function WatchPage({ search }: { search: string }) {
           )}
         </section>
       </div>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">90-day timeline</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Team and trial installs see this install’s alerts, acknowledgement activity, and
+          notification deliveries for 90 days. Titles only — no secret values, webhook URLs, or
+          other tenants.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot show a live 90-day timeline. No invented incident.
+          </p>
+        ) : timeline.status === "solo" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            The 90-day timeline is on Team. Email for Solo waits on Resend.
+          </p>
+        ) : timeline.status === "ended" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to Team to keep the 90-day timeline.
+          </p>
+        ) : timeline.status === "error" ? (
+          <p className="mt-6 text-sm text-danger">{timeline.message}</p>
+        ) : timeline.status === "loading" ? (
+          <p className="mt-6 text-sm text-dim">Loading…</p>
+        ) : timeline.entries.length === 0 ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">Nothing in the last 90 days on this install.</p>
+        ) : (
+          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+            {timeline.entries.map((entry, index) => (
+              <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm text-snow">
+                    {entry.type === "delivery"
+                      ? `${entry.kind === "siem" ? "SIEM" : "Slack"} ${entry.deliveryStatus ?? "delivery"}`
+                      : entry.type === "alert_event"
+                        ? `${entry.action ?? "activity"}${entry.actorLogin ? ` · ${entry.actorLogin}` : ""}`
+                        : entry.title ?? entry.kind ?? "Alert"}
+                  </p>
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    {new Date(entry.at).toLocaleString()}
+                  </span>
+                </div>
+                {entry.fullName ? (
+                  <p className="mt-1 font-mono text-xs text-dim">{entry.fullName}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>

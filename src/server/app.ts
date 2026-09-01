@@ -72,6 +72,11 @@ import {
   validateScanTokenName,
 } from "./scan-api.ts";
 import { httpErrorForWorkBlock } from "./install-health.ts";
+import {
+  TIMELINE_DAYS,
+  timelinePlanDeniedFromBilling,
+  timelineWindow,
+} from "./timeline.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -632,6 +637,52 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({
       exportedAt: new Date().toISOString(),
       alerts: activity,
+    });
+  });
+
+  app.get("/api/timeline", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    const window = timelineWindow();
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the 90-day timeline." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({
+        days: TIMELINE_DAYS,
+        since: window.since,
+        until: window.until,
+        entries: [],
+      });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = timelinePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const entries = await deps.store.listTimelineForUser(user.userId, installationId, window.since);
+    return c.json({
+      days: TIMELINE_DAYS,
+      since: window.since,
+      until: window.until,
+      entries: entries.map((row) => ({
+        at: row.at,
+        type: row.type,
+        alertId: row.alertId,
+        kind: row.kind,
+        title: row.title,
+        fullName: row.fullName,
+        action: row.action,
+        actorLogin: row.actorLogin,
+        deliveryStatus: row.deliveryStatus,
+        inventedIncident: row.inventedIncident,
+      })),
     });
   });
 

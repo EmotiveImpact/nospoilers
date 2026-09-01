@@ -164,7 +164,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | SIEM/custom webhooks | Built: encrypted HTTPS webhook on trial/Team; private/local/metadata/Slack hosts blocked; DNS-resolved SSRF check; test never invents an incident | NoSpoilers Team |
 | PagerDuty/incident routing | Planned, later | NoSpoilers Team |
 | Severity and repository routing rules | Planned | NoSpoilers Team |
-| 90-day timeline | Planned | NoSpoilers Team |
+| 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for 90 days; trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Planned | NoSpoilers |
 | Team members and roles | Planned | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |

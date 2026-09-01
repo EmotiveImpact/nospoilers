@@ -61,6 +61,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   never invents an incident. Email still waits on Resend.
 - SIEM HTTPS webhooks for trial/Team: encrypted URL, private/local/metadata/Slack hosts
   blocked, DNS-resolved SSRF check, event-driven JSON POST, test that never invents an incident.
+- 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
+  deliveries for 90 days. Solo 403. Unpaid 402. No invented rows.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.
   Customer files are not overwritten. 409 copy-paste until Contents write and Pull requests
