@@ -177,6 +177,25 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "008_npm_registries",
   ]);
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS scan_api_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      token_prefix TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_by_login TEXT NOT NULL,
+      last_used_at TIMESTAMPTZ,
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS scan_api_tokens_install_idx
+      ON scan_api_tokens (installation_id)
+      WHERE revoked_at IS NULL;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "009_scan_api_tokens",
+  ]);
 }
 
 export function num(value: unknown): number {

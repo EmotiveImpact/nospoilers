@@ -4,6 +4,7 @@ import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
+import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
 
 export type JobPriority = "light" | "heavy";
@@ -64,6 +65,16 @@ export type NpmRegistryRow = {
   origin: string;
   host: string;
   updated_at: string;
+};
+
+export type ScanApiTokenRow = {
+  id: number;
+  installation_id: number;
+  name: string;
+  token_prefix: string;
+  created_by_login: string;
+  last_used_at: string | null;
+  created_at: string;
 };
 
 export type ScanReceiptRow = {
@@ -1154,6 +1165,118 @@ export function createStore(
         host: row.host,
         token: decryptSecret(row.token_ciphertext, tokenSecret),
       };
+    },
+
+    async countScanApiTokens(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM scan_api_tokens
+         WHERE installation_id = $1 AND revoked_at IS NULL`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async listScanApiTokensForUser(userId: string): Promise<ScanApiTokenRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        name: string;
+        token_prefix: string;
+        created_by_login: string;
+        last_used_at: string | Date | null;
+        created_at: string | Date;
+      }>(
+        `SELECT t.id, t.installation_id, t.name, t.token_prefix, t.created_by_login,
+                t.last_used_at, t.created_at
+         FROM scan_api_tokens t
+         JOIN installation_users iu ON iu.installation_id = t.installation_id
+         WHERE iu.user_id = $1 AND t.revoked_at IS NULL
+         ORDER BY t.created_at DESC`,
+        [userId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+        name: row.name,
+        token_prefix: row.token_prefix,
+        created_by_login: row.created_by_login,
+        last_used_at: iso(row.last_used_at),
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async insertScanApiToken(input: {
+      installationId: number;
+      name: string;
+      createdByLogin: string;
+    }): Promise<ScanApiTokenRow & { token: string }> {
+      const minted = mintScanToken();
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        name: string;
+        token_prefix: string;
+        created_by_login: string;
+        last_used_at: string | Date | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO scan_api_tokens (
+           installation_id, name, token_prefix, token_hash, created_by_login
+         )
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, installation_id, name, token_prefix, created_by_login, last_used_at, created_at`,
+        [input.installationId, input.name, minted.tokenPrefix, minted.tokenHash, input.createdByLogin],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not mint a scan API token.");
+      return {
+        id: num(row.id),
+        installation_id: num(row.installation_id),
+        name: row.name,
+        token_prefix: row.token_prefix,
+        created_by_login: row.created_by_login,
+        last_used_at: iso(row.last_used_at),
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+        token: minted.token,
+      };
+    },
+
+    async revokeScanApiTokenForUser(id: number, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `UPDATE scan_api_tokens t
+         SET revoked_at = now()
+         FROM installation_users iu
+         WHERE t.id = $1
+           AND t.revoked_at IS NULL
+           AND t.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING t.id`,
+        [id, userId],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async authenticateScanToken(
+      token: string,
+    ): Promise<{ id: number; installationId: number } | null> {
+      const hash = hashScanToken(token);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        token_hash: string;
+      }>(
+        `SELECT id, installation_id, token_hash
+         FROM scan_api_tokens
+         WHERE token_hash = $1 AND revoked_at IS NULL`,
+        [hash],
+      );
+      const row = rows[0];
+      if (!row || !hashesMatch(row.token_hash, hash)) return null;
+      return { id: num(row.id), installationId: num(row.installation_id) };
+    },
+
+    async touchScanApiToken(id: number): Promise<void> {
+      await sql.query(`UPDATE scan_api_tokens SET last_used_at = now() WHERE id = $1`, [id]);
     },
 
     async touchWatchedPackage(

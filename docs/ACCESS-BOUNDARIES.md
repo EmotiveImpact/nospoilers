@@ -26,6 +26,8 @@ Unauthenticated browser traffic.
 - Read another customer’s repositories, alerts, jobs, billing, or scan receipts.
 - Open Artifact Leads, Disclosure Desk, prospect records, global queues, or cost data.
 - Start unbounded hosted unpack work.
+- Call `POST /api/v1/scan` without a valid, unrevoked scan API token for an installation
+  that still has coverage.
 
 ### Customer Member
 
@@ -46,13 +48,16 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Until Team roles ship, every signed-in customer is treated as a Member who can do this
   on installations they belong to.
 - View their own coverage status.
-- Use Scan under the same coverage rules as the rest of the hosted product.
+- Mint and revoke hashed scan API tokens for those installations while coverage is active.
+  The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
+  unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
+  deletes the bytes.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- See other tenants’ registry tokens, ciphertext, alerts, repos, jobs, artifacts, or scan receipts.
+- See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, or scan receipts.
 - Edit or delete scan receipts. Receipts are append-only.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
@@ -135,9 +140,10 @@ These are never customer features:
 | Cross-tenant support views | not built; will be owner-only |
 
 - Arbitrary installation-ID linking is rejected unless GitHub says that user owns this App install.
-- Hosted jobs, alerts, release scans, and the visibility poller run only while that
-  installation’s billing account is on trial or a paid plan. Unpaid installs still get
-  webhook HTTP 200. Anonymous `POST /api/scan` stays a size-limited acquisition surface.
+- Hosted jobs, alerts, release scans, the visibility poller, scan-token minting, and
+  `POST /api/v1/scan` run only while that installation’s billing account is on trial or a
+  paid plan. Unpaid installs still get webhook HTTP 200. Anonymous `POST /api/scan`
+  stays a size-limited acquisition surface.
 
 ## How access is checked today
 
@@ -156,5 +162,6 @@ the row, unrelated rules stay unsuppressed, and Release Diff uses the approved b
 `tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
 permission skips return copy-paste YAML instead of failing the worker, and the merge API
 is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
-never returned, blocked off-tenant, and never written onto jobs. Keep those tests green
-when adding internal routes.
+never returned, blocked off-tenant, and never written onto jobs. `tests/scan-api.test.ts`
+proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
+and revoked tokens cannot unpack. Keep those tests green when adding internal routes.

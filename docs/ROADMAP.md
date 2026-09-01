@@ -35,6 +35,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   Pull requests write, and Checks write. Do not grant Administration.
 - Packed npm/pnpm/Yarn/Bun workspace discovery: list roots and members from package.json /
   pnpm-workspace.yaml / lockfile presence. Never execute. Never auto-watch discovered names.
+- Hosted scan API: hashed `nsp_` tokens per install; `POST /api/v1/scan` returns a signed receipt
+  and deletes the upload. Unpaid mint/scan return 402. Local Action remains the default CI path.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

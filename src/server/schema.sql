@@ -227,3 +227,19 @@ CREATE INDEX IF NOT EXISTS scan_baselines_package_idx
   ON scan_baselines (package_id, created_at DESC)
   WHERE package_id IS NOT NULL AND superseded_at IS NULL;
 
+CREATE TABLE IF NOT EXISTS scan_api_tokens (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  token_prefix TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  created_by_login TEXT NOT NULL,
+  last_used_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS scan_api_tokens_install_idx
+  ON scan_api_tokens (installation_id)
+  WHERE revoked_at IS NULL;
+

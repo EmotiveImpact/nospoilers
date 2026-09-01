@@ -26,12 +26,13 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Fourteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Fifteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
-  `007_policy_exceptions`, and `008_npm_registries` are applied. Hosted coverage belongs to the
-  GitHub installation billing account, not the user row. Scan receipts are append-only HMAC JSON;
-  they store manifests and hashes, never source. Private registry tokens are AES-GCM ciphertext
-  (`ns1.` prefix) and are never returned after save. Development receipts use `RECEIPT_SECRET`
+  `007_policy_exceptions`, `008_npm_registries`, and `009_scan_api_tokens` are applied. Hosted
+  coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
+  append-only HMAC JSON; they store manifests and hashes, never source. Private registry tokens are
+  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Scan API tokens are SHA-256
+  hashes (`nsp_` secrets shown once). Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`). Production signing should move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
   package.
@@ -68,6 +69,9 @@ Read in this order:
   watched packages.
 - Crash dumps, Windows minidumps, and ELF `ET_CORE` files fail as CRASH-001 (never executed).
   Extra DWARF/gcov/breakpad symbols stay DBG-001 warnings.
+- Covered installs can mint hashed scan API tokens (shown once). `POST /api/v1/scan` unpacks a
+  packed artifact, applies the allowlist, mints a receipt, and deletes the bytes. Unpaid mint/scan
+  return 402. The local GitHub Action stays the default CI path.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -104,6 +108,7 @@ Nested tgz/zip/asar are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
+Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

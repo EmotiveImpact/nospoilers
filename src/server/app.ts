@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Hono, type Context } from "hono";
@@ -35,6 +35,13 @@ import type { Store } from "./store.ts";
 import type { PolicyExceptionRow, ProspectStatus } from "./store.ts";
 import { readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
+import { applyHostedPolicy } from "./hosted-policy.ts";
+import { persistHostedReceipt } from "./receipts.ts";
+import {
+  MAX_SCAN_TOKENS,
+  parseScanBearer,
+  validateScanTokenName,
+} from "./scan-api.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -654,6 +661,139 @@ export function createApp(deps: AppDeps): Hono {
     const removed = await deps.store.deleteNpmRegistryForUser(id, user.userId);
     if (!removed) return c.json({ error: "Unknown registry." }, 404);
     return c.json({ ok: true });
+  });
+
+  app.get("/api/scan-tokens", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const tokens = await deps.store.listScanApiTokensForUser(user.userId);
+    return c.json({ tokens });
+  });
+
+  app.post("/api/scan-tokens", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to mint this token for." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    if (!(await deps.store.installationWorkAllowed(installationId))) {
+      return c.json({ error: "Coverage ended. Subscribe to mint a scan API token." }, 402);
+    }
+    const name = validateScanTokenName(String(body.name ?? "CI"));
+    if (!name) {
+      return c.json({ error: "Token name must be 1–64 characters with no line breaks." }, 400);
+    }
+    const count = await deps.store.countScanApiTokens(installationId);
+    if (count >= MAX_SCAN_TOKENS) {
+      return c.json({ error: `This install already has ${MAX_SCAN_TOKENS} scan API tokens.` }, 400);
+    }
+    const created = await deps.store.insertScanApiToken({
+      installationId,
+      name,
+      createdByLogin: user.login,
+    });
+    const { token, ...publicToken } = created;
+    return c.json({ ok: true, token, scanToken: publicToken }, 201);
+  });
+
+  app.delete("/api/scan-tokens/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown scan token." }, 404);
+    const revoked = await deps.store.revokeScanApiTokenForUser(id, user.userId);
+    if (!revoked) return c.json({ error: "Unknown scan token." }, 404);
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/v1/scan", async (c) => {
+    const presented = parseScanBearer(c.req.header("authorization"));
+    if (!presented) return c.json({ error: "Provide a scan API token as a Bearer credential." }, 401);
+    const auth = await deps.store.authenticateScanToken(presented);
+    if (!auth) return c.json({ error: "Invalid or revoked scan API token." }, 401);
+    if (!(await deps.store.installationWorkAllowed(auth.installationId))) {
+      return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
+    }
+    const ip = clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
+    if (!scanLimiter.allow(`v1:${auth.id}:${ip}`)) {
+      return c.json({ error: "Too many hosted scans from this token. Wait and try again." }, 429);
+    }
+    const filenameHeader = c.req.header("x-filename");
+    const filename =
+      filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
+    const buf = Buffer.from(await c.req.arrayBuffer());
+    if (buf.length === 0) return c.json({ error: "Upload a packed artifact." }, 400);
+    await deps.store.touchScanApiToken(auth.id);
+    if (buf.length > MAX_UPLOAD) {
+      const report = {
+        target: filename,
+        kind: "file" as const,
+        fileCount: 0,
+        findings: [],
+        ok: false,
+        status: "inconclusive" as const,
+        inconclusiveReason: "Upload is larger than 80 MB.",
+        manifest: [],
+        engineVersion: ENGINE_VERSION,
+        artifactSha256: createHash("sha256").update(buf).digest("hex"),
+        artifactSha512: createHash("sha512").update(buf).digest("hex"),
+        artifactBytes: buf.length,
+        scannedAt: new Date().toISOString(),
+        suppressed: [],
+        policyHash: null,
+        workspaces: [],
+      };
+      const persisted = await persistHostedReceipt({
+        store: deps.store,
+        secret: deps.config.receiptSecret,
+        installationId: auth.installationId,
+        coordinate: `api:${auth.installationId}#${filename}`,
+        report,
+      });
+      return c.json({
+        report,
+        receipt: persisted.receipt,
+        receiptId: persisted.row.id,
+      });
+    }
+    const dir = path.join(os.tmpdir(), "nospoilers-api-scan");
+    await mkdir(dir, { recursive: true });
+    const dest = path.join(dir, `${Date.now()}-${filename.replace(/[^\w.-]+/g, "_")}`);
+    try {
+      await writeFile(dest, buf);
+      const report = await applyHostedPolicy(
+        deps.store,
+        await scanFn(dest),
+        auth.installationId,
+      );
+      const persisted = await persistHostedReceipt({
+        store: deps.store,
+        secret: deps.config.receiptSecret,
+        installationId: auth.installationId,
+        coordinate: `api:${auth.installationId}#${filename}`,
+        report,
+      });
+      return c.json({
+        report,
+        receipt: persisted.receipt,
+        receiptId: persisted.row.id,
+      });
+    } finally {
+      await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
+      await unlink(dest).catch(() => undefined);
+    }
   });
 
   app.get("/api/packages", async (c) => {

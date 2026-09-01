@@ -1,12 +1,44 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
 import { loadPolicyFile } from "./policy.ts";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
 import { receiptSecretFromEnv, verifyReceipt } from "./receipt.ts";
+import type { ScanReport } from "./scanner/types.ts";
+
+async function scanViaHostedApi(
+  target: string,
+  apiUrl: string,
+  token: string,
+): Promise<{ report: ScanReport; receiptId?: number }> {
+  const info = statSync(target);
+  if (info.isDirectory()) {
+    throw new Error("Hosted scan API accepts a packed file, not a directory.");
+  }
+  const bytes = await readFile(target);
+  const origin = apiUrl.replace(/\/$/, "");
+  const response = await fetch(`${origin}/api/v1/scan`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-Filename": path.basename(target),
+      "Content-Type": "application/octet-stream",
+    },
+    body: bytes,
+  });
+  const body = (await response.json()) as {
+    error?: string;
+    report?: ScanReport;
+    receiptId?: number;
+  };
+  if (!response.ok || !body.report) {
+    throw new Error(body.error ?? `Hosted scan failed (${response.status}).`);
+  }
+  return { report: body.report, receiptId: body.receiptId };
+}
 
 const program = new Command();
 
@@ -23,23 +55,52 @@ program
   .option("--sarif <file>", "Write a SARIF 2.1 report to this path")
   .option("--policy <file>", "Load a .nospoilers.yml or JSON policy file")
   .option("--no-policy", "Do not load .nospoilers.yml from the current directory")
+  .option("--api-url <url>", "POST the packed file to a hosted NoSpoilers scan API")
+  .option("--api-token <token>", "Scan API token from Watch (nsp_…). Prefer NOSPOILERS_API_TOKEN.")
   .action(
     async (
       target: string,
-      opts: { strict?: boolean; json?: boolean; sarif?: string; policy?: string | boolean },
+      opts: {
+        strict?: boolean;
+        json?: boolean;
+        sarif?: string;
+        policy?: string | boolean;
+        apiUrl?: string;
+        apiToken?: string;
+      },
     ) => {
       try {
-        let policyPath: string | null = null;
-        if (opts.policy === false) {
-          policyPath = null;
-        } else if (typeof opts.policy === "string" && opts.policy.length > 0) {
-          policyPath = opts.policy;
-        } else {
-          const auto = path.join(process.cwd(), ".nospoilers.yml");
-          if (existsSync(auto)) policyPath = auto;
+        const apiUrl = (opts.apiUrl || process.env.NOSPOILERS_API_URL || "").trim();
+        const apiToken = (opts.apiToken || process.env.NOSPOILERS_API_TOKEN || "").trim();
+        if (Boolean(apiUrl) !== Boolean(apiToken)) {
+          process.stderr.write(
+            "Hosted scan needs both --api-url and --api-token (or NOSPOILERS_API_URL / NOSPOILERS_API_TOKEN).\n",
+          );
+          process.exitCode = 2;
+          return;
         }
-        const policy = policyPath ? await loadPolicyFile(policyPath) : null;
-        const report = await scan(target, { strict: Boolean(opts.strict), policy });
+        let report: ScanReport;
+        if (apiUrl && apiToken) {
+          if (opts.policy) {
+            process.stderr.write(
+              "Hosted scan uses the installation allowlist, not a local policy file.\n",
+            );
+          }
+          const hosted = await scanViaHostedApi(path.resolve(target), apiUrl, apiToken);
+          report = hosted.report;
+        } else {
+          let policyPath: string | null = null;
+          if (opts.policy === false) {
+            policyPath = null;
+          } else if (typeof opts.policy === "string" && opts.policy.length > 0) {
+            policyPath = opts.policy;
+          } else {
+            const auto = path.join(process.cwd(), ".nospoilers.yml");
+            if (existsSync(auto)) policyPath = auto;
+          }
+          const policy = policyPath ? await loadPolicyFile(policyPath) : null;
+          report = await scan(target, { strict: Boolean(opts.strict), policy });
+        }
         if (opts.sarif) {
           await writeFile(opts.sarif, `${JSON.stringify(toSarif(report), null, 2)}\n`);
         }

@@ -71,7 +71,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
 | Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |
-| External scanning API | Planned | NoSpoilers |
+| External scanning API | Built: hashed per-install `nsp_` tokens; `POST /api/v1/scan` mints a receipt and deletes bytes | NoSpoilers |
 
 ## Release Ledger module
 

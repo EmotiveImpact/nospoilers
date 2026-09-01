@@ -13,13 +13,21 @@ inputs:
     required: false
     default: "false"
   policy:
-    description: Path to .nospoilers.yml or JSON policy. Empty uses workspace .nospoilers.yml if present.
+    description: Path to .nospoilers.yml or JSON policy. Empty uses workspace .nospoilers.yml if present. Ignored when api-token is set.
     required: false
     default: ""
   sarif:
     description: Workspace-relative path to write a SARIF 2.1 report. Empty skips the file.
     required: false
     default: "nospoilers.sarif"
+  api-url:
+    description: Hosted NoSpoilers origin for POST /api/v1/scan. Empty keeps the local CLI scan.
+    required: false
+    default: ""
+  api-token:
+    description: Scan API token from Watch. Empty keeps the local CLI scan. Store as a GitHub Actions secret.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -34,6 +42,9 @@ runs:
     - name: Scan packed artifact
       shell: bash
       working-directory: ${{ github.action_path }}
+      env:
+        NOSPOILERS_API_URL: ${{ inputs.api-url }}
+        NOSPOILERS_API_TOKEN: ${{ inputs.api-token }}
       run: |
         EXTRA=""
         if [ "${{ inputs.strict }}" = "true" ]; then
@@ -44,6 +55,15 @@ runs:
           /*) ;;
           *) TARGET="${GITHUB_WORKSPACE}/${TARGET}" ;;
         esac
+        if [ -n "$NOSPOILERS_API_TOKEN" ]; then
+          API_URL="${NOSPOILERS_API_URL:-}"
+          if [ -z "$API_URL" ]; then
+            echo "api-token requires api-url (your NoSpoilers origin)." >&2
+            exit 2
+          fi
+          npx tsx src/cli.ts scan "$TARGET" $EXTRA --api-url "$API_URL"
+          exit $?
+        fi
         SARIF_ARGS=""
         if [ -n "${{ inputs.sarif }}" ]; then
           SARIF_PATH="${{ inputs.sarif }}"

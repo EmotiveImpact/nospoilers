@@ -34,7 +34,7 @@ Single package, **local only**. Not a hosted platform.
 | Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, Electron `.asar`; npm/pnpm/Yarn/Bun workspace listing |
 | CLI | `src/cli.ts` — `npx tsx src/cli.ts scan <path> [--strict] [--json] [--sarif file]` |
 | GitHub Action | `action.yml` |
-| Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347** |
+| Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
 | Fixtures | `fixtures/` + `scripts/build-fixtures.ts` |
 | Tests | `tests/scanner.test.ts`, `tests/fixtures.test.ts` |
 

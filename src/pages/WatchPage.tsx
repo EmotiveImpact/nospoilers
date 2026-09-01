@@ -53,6 +53,16 @@ type NpmRegistry = {
   updated_at: string;
 };
 
+type ScanApiToken = {
+  id: number;
+  installation_id: number;
+  name: string;
+  token_prefix: string;
+  created_by_login: string;
+  last_used_at: string | null;
+  created_at: string;
+};
+
 type ReleaseDiffView = {
   versus?: "baseline" | "previous" | null;
   baseline?: {
@@ -188,6 +198,12 @@ export function WatchPage({ search }: { search: string }) {
     status: "loading",
   });
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
+  const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
+  const [scanTokenName, setScanTokenName] = useState("CI");
+  const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
+  const [mintingScanToken, setMintingScanToken] = useState(false);
+  const [scanTokenError, setScanTokenError] = useState<string | null>(null);
+  const [revokingScanTokenId, setRevokingScanTokenId] = useState<number | null>(null);
   const [registryOriginInput, setRegistryOriginInput] = useState("");
   const [registryToken, setRegistryToken] = useState("");
   const [savingRegistry, setSavingRegistry] = useState(false);
@@ -222,18 +238,20 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody] = await Promise.all([
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody] = await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
         loadJson<{ packages: WatchedPackage[] }>("/api/packages"),
         loadJson<{ exceptions: PolicyExceptionView[] }>("/api/exceptions"),
         loadJson<{ registries: NpmRegistry[] }>("/api/registries"),
+        loadJson<{ tokens: ScanApiToken[] }>("/api/scan-tokens"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
       setPackages({ status: "ready", data: packageBody });
       setExceptions(exceptionBody.exceptions);
       setRegistries(registryBody.registries);
+      setScanTokens(tokenBody.tokens);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -266,6 +284,8 @@ export function WatchPage({ search }: { search: string }) {
           setExceptions([]);
           setBaselineByPackage({});
           setRegistries([]);
+          setScanTokens([]);
+          setRevealedScanToken(null);
         }
       } catch (error) {
         if (cancelled) return;
@@ -940,6 +960,128 @@ export function WatchPage({ search }: { search: string }) {
               );
             })}
           </ul>
+        )}
+      </section>
+
+      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Scan API</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
+          <code className="text-snow">/api/v1/scan</code>. We hash the secret, show it once, and
+          delete the bytes after the scan. Local CI can keep using the Action without a token.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
+        ) : (
+          <>
+            {user && installations.length > 0 && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (ended || mintingScanToken) return;
+                  setScanTokenError(null);
+                  setRevealedScanToken(null);
+                  setMintingScanToken(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/scan-tokens", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          name: scanTokenName,
+                          installationId: installations[0]?.id,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string; token?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not mint token.");
+                      if (body.token) setRevealedScanToken(body.token);
+                      await refreshSignedIn();
+                    } catch (error) {
+                      setScanTokenError(
+                        error instanceof Error ? error.message : "Could not mint token.",
+                      );
+                    } finally {
+                      setMintingScanToken(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Name</span>
+                  <input
+                    value={scanTokenName}
+                    onChange={(event) => setScanTokenName(event.target.value)}
+                    placeholder="CI"
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={ended}
+                    className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" disabled={ended || mintingScanToken}>
+                  {mintingScanToken ? "Minting…" : "Mint token"}
+                </Button>
+              </form>
+            )}
+            {scanTokenError && <p className="mt-4 text-sm text-danger">{scanTokenError}</p>}
+            {revealedScanToken ? (
+              <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  Copy now. We will not show this again.
+                </p>
+                <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+                  {revealedScanToken}
+                </pre>
+              </div>
+            ) : null}
+            {scanTokens.length === 0 ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
+            ) : (
+              <ul className="mt-4 max-w-xl divide-y divide-white/5">
+                {scanTokens.map((token) => (
+                  <li key={token.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-snow">{token.name}</p>
+                      <p className="mt-0.5 font-mono text-xs text-dim">{token.token_prefix}…</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={ended || revokingScanTokenId === token.id}
+                      onClick={() => {
+                        setRevokingScanTokenId(token.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/scan-tokens/${token.id}`, {
+                              method: "DELETE",
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as { error?: string };
+                            if (!response.ok) throw new Error(body.error ?? "Could not revoke token.");
+                            if (revealedScanToken?.startsWith(token.token_prefix)) {
+                              setRevealedScanToken(null);
+                            }
+                            await refreshSignedIn();
+                          } catch (error) {
+                            setScanTokenError(
+                              error instanceof Error ? error.message : "Could not revoke token.",
+                            );
+                          } finally {
+                            setRevokingScanTokenId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {revokingScanTokenId === token.id ? "Revoking…" : "Revoke"}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 

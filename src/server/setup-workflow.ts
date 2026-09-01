@@ -64,6 +64,9 @@ export function setupPullRequestBody(): string {
     "",
     "The hosted GitHub App still scans **Release assets** on our servers. This workflow is the",
     "pre-publish CI gate on yours.",
+    "",
+    "Optional: mint a scan API token on Watch and set `api-url` / `api-token` on the Action to",
+    "POST the pack to `/api/v1/scan` instead of scanning locally.",
   ].join("\n");
 }
 

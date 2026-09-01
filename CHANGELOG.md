@@ -21,6 +21,7 @@
 - Watch private npm registries: encrypted per-install tokens, same-host HTTPS tarballs, SSRF blocked.
 - Discover npm/pnpm/Yarn/Bun workspaces in packed artifacts (members listed, never executed, never auto-watched).
 - Flag crash dumps and ELF cores as CRASH-001; extra debug symbols stay DBG-001.
+- Hosted scan API: hashed per-install tokens, `POST /api/v1/scan`, signed receipt, bytes deleted.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk
