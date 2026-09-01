@@ -178,13 +178,14 @@ These are never customer features:
 | Cross-tenant support views | not built; will be owner-only |
 
 - Arbitrary installation-ID linking is rejected unless GitHub says that user owns this App install.
-- Hosted jobs, alerts, release scans, the visibility poller, scan-token minting, and
-  `POST /api/v1/scan` run only while that installation’s billing account is on trial or a
-  paid plan **and** GitHub has not suspended the App. Unpaid installs still get webhook
-  HTTP 200. GitHub suspend is not a billing change: coverage stays on the trial/plan,
-  Watch shows the suspend, and GitHub-backed unpack work returns 409 until unsuspend.
-  Live permission tests and alert acknowledgement/assignment/resolution are not unpack
-  work and stay available. Anonymous `POST /api/scan` stays a size-limited acquisition surface.
+- Hosted jobs, alerts, release scans, the visibility poller, scan-token minting, setup and
+  remediation PRs, and `POST /api/v1/scan` run only while that installation’s billing account
+  is on trial or a paid plan **and** GitHub has not suspended the App. Unpaid installs still
+  get webhook HTTP 200. GitHub suspend is not a billing change: coverage stays on the
+  trial/plan, Watch shows the suspend, and GitHub-backed unpack and PR writes return 409
+  until unsuspend. Live permission tests and alert acknowledgement/assignment/resolution
+  are not unpack work and stay available. Anonymous `POST /api/scan` stays a size-limited
+  acquisition surface.
 
 ## How access is checked today
 
