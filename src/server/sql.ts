@@ -561,9 +561,13 @@ export async function migrate(sql: SqlClient): Promise<void> {
   ]);
   await sql.exec(`
     ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS retention_days INTEGER NOT NULL DEFAULT 90;
+  `);
+  await sql.exec(`
     ALTER TABLE billing_accounts DROP CONSTRAINT IF EXISTS billing_accounts_retention_days_check;
     ALTER TABLE billing_accounts ADD CONSTRAINT billing_accounts_retention_days_check
       CHECK (retention_days IN (0, 90, 180, 365));
+  `);
+  await sql.exec(`
     CREATE OR REPLACE FUNCTION row_within_retention(install_id BIGINT, created TIMESTAMPTZ)
     RETURNS BOOLEAN
     LANGUAGE sql
@@ -581,6 +585,8 @@ export async function migrate(sql: SqlClient): Promise<void> {
         $2 >= now() - INTERVAL '90 days'
       );
     $$;
+  `);
+  await sql.exec(`
     ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
     ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
       'destination.save',

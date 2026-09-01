@@ -47,24 +47,6 @@ CREATE TABLE IF NOT EXISTS billing_accounts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE OR REPLACE FUNCTION row_within_retention(install_id BIGINT, created TIMESTAMPTZ)
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT COALESCE(
-    (
-      SELECT CASE
-        WHEN b.retention_days = 0 THEN TRUE
-        ELSE $2 >= now() - (b.retention_days * INTERVAL '1 day')
-      END
-      FROM billing_accounts b
-      WHERE b.installation_id = $1
-    ),
-    $2 >= now() - INTERVAL '90 days'
-  );
-$$;
-
 CREATE TABLE IF NOT EXISTS repos (
   id BIGINT PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
