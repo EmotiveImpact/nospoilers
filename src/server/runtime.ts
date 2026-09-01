@@ -43,7 +43,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       worker.start();
     },
     async close() {
-      worker.stop();
+      await worker.stop();
       poller.stop();
       await sql.close();
     },

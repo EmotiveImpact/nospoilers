@@ -194,7 +194,7 @@ describe("job concurrency", () => {
       expect(maxHeavy).toBeLessThanOrEqual(3);
       expect(maxHeavy).toBeGreaterThan(0);
       await new Promise((resolve) => setTimeout(resolve, 200));
-      worker.stop();
+      await worker.stop();
     });
   });
 
@@ -224,7 +224,7 @@ describe("job concurrency", () => {
       expect(worker.running.heavy).toBe(1);
       expect(worker.running.light).toBeGreaterThan(0);
       await new Promise((resolve) => setTimeout(resolve, 120));
-      worker.stop();
+      await worker.stop();
       expect(kinds.some((k) => k === "repo_publicized" || k === "fork")).toBe(true);
     });
   });
@@ -267,7 +267,7 @@ describe("job concurrency", () => {
       expect(started[0]).toBe("release_scan");
       expect(maxProspects).toBeLessThanOrEqual(1);
       await new Promise((resolve) => setTimeout(resolve, 120));
-      worker.stop();
+      await worker.stop();
     });
   });
 
@@ -296,7 +296,7 @@ describe("job concurrency", () => {
       });
       await worker.tick();
       await new Promise((resolve) => setTimeout(resolve, 100));
-      worker.stop();
+      await worker.stop();
       expect(handled).toHaveLength(3);
     });
   });

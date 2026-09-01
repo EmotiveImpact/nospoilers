@@ -223,6 +223,16 @@ export function createWorker(opts: {
   let stopped = false;
   let ticking = false;
   let tickRequested = false;
+  const activeJobs = new Set<Promise<void>>();
+
+  function launch(job: JobRow): void {
+    const task = runClaimed(job);
+    activeJobs.add(task);
+    void task.then(
+      () => activeJobs.delete(task),
+      () => activeJobs.delete(task),
+    );
+  }
 
   async function runClaimed(job: JobRow): Promise<void> {
     const inc = job.priority === "heavy" ? () => (heavyRunning += 1) : () => (lightRunning += 1);
@@ -264,7 +274,7 @@ export function createWorker(opts: {
         while (lightRunning < opts.lightConcurrency) {
           const job = await opts.store.claimJob("light", opts.lightConcurrency, workerId);
           if (!job) break;
-          void runClaimed(job);
+          launch(job);
         }
         while (heavyRunning < opts.heavyConcurrency) {
           const job = await opts.store.claimJob(
@@ -274,7 +284,7 @@ export function createWorker(opts: {
             prospectRunning < 1,
           );
           if (!job) break;
-          void runClaimed(job);
+          launch(job);
         }
       } while (tickRequested && !stopped);
     } finally {
@@ -295,10 +305,11 @@ export function createWorker(opts: {
       }, opts.intervalMs);
       void tick();
     },
-    stop() {
+    async stop() {
       stopped = true;
       if (timer) clearInterval(timer);
       timer = undefined;
+      await Promise.allSettled([...activeJobs]);
     },
   };
 }
