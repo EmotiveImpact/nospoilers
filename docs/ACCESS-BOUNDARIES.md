@@ -52,6 +52,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Until Team roles ship, every signed-in customer is treated as a Member who can do this
   on installations they belong to.
 - View their own coverage status.
+- See GitHub App suspend, unsuspend, permission-change, and repository add/remove
+  alerts on installations they belong to. Uninstall drops the tenant; there is no
+  Watch surface left for an uninstall notice.
+- List recent jobs for those installations (kind, status, attempts, error, timestamps).
+  Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
+  or deleted by customers.
 - Mint and revoke hashed scan API tokens for those installations while coverage is active.
   The secret is shown once and never stored. `POST /api/v1/scan` with that Bearer token
   unpacks a packed artifact, applies the installation allowlist, mints a receipt, and
@@ -64,7 +70,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
 - See other tenants’ registry tokens, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
-- Edit or delete scan receipts or release revisions. Both are append-only.
+- Edit or delete scan receipts, release revisions, or jobs. Receipts and revisions are append-only; the customer job list is read-only.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
 
@@ -148,8 +154,10 @@ These are never customer features:
 - Arbitrary installation-ID linking is rejected unless GitHub says that user owns this App install.
 - Hosted jobs, alerts, release scans, the visibility poller, scan-token minting, and
   `POST /api/v1/scan` run only while that installation’s billing account is on trial or a
-  paid plan. Unpaid installs still get webhook HTTP 200. Anonymous `POST /api/scan`
-  stays a size-limited acquisition surface.
+  paid plan **and** GitHub has not suspended the App. Unpaid installs still get webhook
+  HTTP 200. GitHub suspend is not a billing change: coverage stays on the trial/plan,
+  Watch shows the suspend, and GitHub-backed work returns 409 until unsuspend.
+  Anonymous `POST /api/scan` stays a size-limited acquisition surface.
 
 ## How access is checked today
 
@@ -174,5 +182,9 @@ and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release 
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
 SSRF CI URLs, and keep older HMAC receipts verifiable. `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only, and
-maintainer/repository/shape alerts never store emails or issue a malware verdict. Keep those
+maintainer/repository/shape alerts never store emails or issue a malware verdict.
+`tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
+alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
+never returns payloads or prospect scans, and other tenants cannot read those jobs.
+Keep those
 tests green when adding internal routes.

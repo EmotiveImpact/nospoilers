@@ -1,5 +1,10 @@
 import type { Store } from "./store.ts";
 import { cheapSensitivePaths, pathsFromPushPayload } from "./paths.ts";
+import {
+  describeInstallHealth,
+  namesFromRepoList,
+  type InstallHealthKind,
+} from "./install-health.ts";
 
 type Json = Record<string, unknown>;
 
@@ -76,6 +81,31 @@ async function rememberRepo(store: Store, installationId: number, payload: Json)
   });
 }
 
+async function recordInstallHealth(
+  store: Store,
+  input: {
+    installationId: number;
+    deliveryId: string;
+    kind: InstallHealthKind;
+    accountLogin: string;
+    repos?: string[];
+  },
+): Promise<void> {
+  if (!(await store.installationHasCoverage(input.installationId))) return;
+  const described = describeInstallHealth({
+    kind: input.kind,
+    accountLogin: input.accountLogin,
+    repos: input.repos,
+  });
+  await store.insertAlert({
+    installationId: input.installationId,
+    kind: input.kind,
+    title: described.title,
+    body: described.body,
+    githubDeliveryId: `${input.deliveryId}:${input.kind}`,
+  });
+}
+
 async function enqueueCovered(
   store: Store,
   installationId: number,
@@ -108,22 +138,30 @@ export async function enqueueFromWebhook(
     const installation = obj(payload.installation);
     const account = obj(installation.account);
     const id = num(installation.id);
-    if (action === "deleted" || action === "suspend") {
-      if (action === "deleted") await store.deleteInstallation(id);
-      else {
-        await store.upsertInstallation({
-          id,
-          accountLogin: str(account.login),
-          accountType: str(account.type) || "User",
-          accountId: num(account.id),
-          suspended: true,
-        });
-      }
+    const accountLogin = str(account.login) || "unknown";
+    if (action === "deleted") {
+      await store.deleteInstallation(id);
+      return { queued: false, kind: event };
+    }
+    if (action === "suspend") {
+      await store.upsertInstallation({
+        id,
+        accountLogin,
+        accountType: str(account.type) || "User",
+        accountId: num(account.id),
+        suspended: true,
+      });
+      await recordInstallHealth(store, {
+        installationId: id,
+        deliveryId,
+        kind: "app_suspended",
+        accountLogin,
+      });
       return { queued: false, kind: event };
     }
     await store.upsertInstallation({
       id,
-      accountLogin: str(account.login),
+      accountLogin,
       accountType: str(account.type) || "User",
       accountId: num(account.id),
       suspended: action === "unsuspend" ? false : bool(installation.suspended),
@@ -141,6 +179,21 @@ export async function enqueueFromWebhook(
         fullName,
         private: bool(row.private),
         htmlUrl: str(row.html_url) || `https://github.com/${fullName}`,
+      });
+    }
+    if (action === "unsuspend") {
+      await recordInstallHealth(store, {
+        installationId: id,
+        deliveryId,
+        kind: "app_unsuspended",
+        accountLogin,
+      });
+    } else if (action === "new_permissions_accepted") {
+      await recordInstallHealth(store, {
+        installationId: id,
+        deliveryId,
+        kind: "app_permissions_updated",
+        accountLogin,
       });
     }
     return { queued: false, kind: event };
@@ -167,6 +220,28 @@ export async function enqueueFromWebhook(
     }
     for (const raw of removed) {
       await store.removeRepo(num(obj(raw).id));
+    }
+    const account = obj(obj(payload.installation).account);
+    const accountLogin = str(account.login) || "unknown";
+    const addedNames = namesFromRepoList(added);
+    const removedNames = namesFromRepoList(removed);
+    if (addedNames.length > 0) {
+      await recordInstallHealth(store, {
+        installationId: id,
+        deliveryId,
+        kind: "repos_added",
+        accountLogin,
+        repos: addedNames,
+      });
+    }
+    if (removedNames.length > 0) {
+      await recordInstallHealth(store, {
+        installationId: id,
+        deliveryId,
+        kind: "repos_removed",
+        accountLogin,
+        repos: removedNames,
+      });
     }
     return { queued: false, kind: event };
   }

@@ -20,6 +20,25 @@ export type JobRow = {
   attempts: number;
 };
 
+export type TenantJobRow = {
+  id: number;
+  installationId: number;
+  kind: string;
+  status: string;
+  priority: string;
+  attempts: number;
+  error: string | null;
+  createdAt: string;
+  runAfter: string;
+};
+
+export type JobSummary = {
+  queued: number;
+  running: number;
+  done: number;
+  failed: number;
+};
+
 export type RepoRow = {
   id: number;
   installation_id: number;
@@ -243,6 +262,14 @@ function parsePayload(value: unknown): unknown {
     }
   }
   return value;
+}
+
+function installationIdFromPayload(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const raw = (payload as { installationId?: unknown }).installationId;
+  const id = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return id;
 }
 
 function iso(value: string | Date | null | undefined): string | null {
@@ -580,7 +607,9 @@ export function createStore(
       );
     },
 
-    async installationWorkAllowed(installationId: number): Promise<boolean> {
+    async installationWorkBlock(
+      installationId: number,
+    ): Promise<{ reason: "suspended" | "unpaid" } | null> {
       const { rows } = await sql.query<{
         suspended: boolean;
         trial_ends_at: string | Date | null;
@@ -593,11 +622,34 @@ export function createStore(
         [installationId],
       );
       const row = rows[0];
-      if (!row || row.suspended) return false;
+      if (!row) return { reason: "unpaid" };
+      if (row.suspended) return { reason: "suspended" };
+      if (!coverageIsOn(coverageFrom(iso(row.trial_ends_at), row.plan))) return { reason: "unpaid" };
+      return null;
+    },
+
+    async installationWorkAllowed(installationId: number): Promise<boolean> {
+      return (await this.installationWorkBlock(installationId)) === null;
+    },
+
+    async installationHasCoverage(installationId: number): Promise<boolean> {
+      const { rows } = await sql.query<{
+        trial_ends_at: string | Date | null;
+        plan: string | null;
+      }>(
+        `SELECT b.trial_ends_at, b.plan
+         FROM installations i
+         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         WHERE i.id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return false;
       return coverageIsOn(coverageFrom(iso(row.trial_ends_at), row.plan));
     },
 
     async deleteInstallation(id: number): Promise<void> {
+      await sql.query(`DELETE FROM jobs WHERE installation_id = $1`, [id]);
       await sql.query(`DELETE FROM installations WHERE id = $1`, [id]);
     },
 
@@ -738,10 +790,20 @@ export function createStore(
       priority: JobPriority;
       kind: string;
       payload: unknown;
+      installationId?: number | null;
     }): Promise<{ id: number | null; inserted: boolean }> {
+      const installationId = input.installationId ?? installationIdFromPayload(input.payload);
       const { rows } = await sql.query<{ id: unknown }>(
-        `INSERT INTO jobs (delivery_id, priority, kind, payload)
-         VALUES ($1, $2, $3, $4::jsonb)
+        `INSERT INTO jobs (delivery_id, installation_id, priority, kind, payload)
+         VALUES (
+           $1,
+           CASE
+             WHEN $5::bigint IS NULL THEN NULL
+             WHEN EXISTS (SELECT 1 FROM installations WHERE id = $5::bigint) THEN $5::bigint
+             ELSE NULL
+           END,
+           $2, $3, $4::jsonb
+         )
          ON CONFLICT (delivery_id) WHERE delivery_id IS NOT NULL DO NOTHING
          RETURNING id`,
         [
@@ -749,6 +811,7 @@ export function createStore(
           input.priority,
           input.kind,
           JSON.stringify(input.payload),
+          installationId,
         ],
       );
       const id = rows[0] ? num(rows[0].id) : null;
@@ -858,21 +921,39 @@ export function createStore(
       findings?: unknown;
       githubDeliveryId?: string | null;
     }): Promise<number> {
-      const inserted = await sql.query<{ id: unknown }>(
-        `INSERT INTO alerts (installation_id, repo_id, kind, title, body, findings, github_delivery_id)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
-         RETURNING id`,
-        [
-          input.installationId,
-          input.repoId ?? null,
-          input.kind,
-          input.title,
-          input.body,
-          input.findings ? JSON.stringify(input.findings) : null,
-          input.githubDeliveryId ?? null,
-        ],
-      );
-      return num(inserted.rows[0]?.id);
+      if (input.githubDeliveryId) {
+        const { rows: existing } = await sql.query<{ id: unknown }>(
+          `SELECT id FROM alerts WHERE github_delivery_id = $1 LIMIT 1`,
+          [input.githubDeliveryId],
+        );
+        if (existing[0]) return num(existing[0].id);
+      }
+      try {
+        const inserted = await sql.query<{ id: unknown }>(
+          `INSERT INTO alerts (installation_id, repo_id, kind, title, body, findings, github_delivery_id)
+           VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+           RETURNING id`,
+          [
+            input.installationId,
+            input.repoId ?? null,
+            input.kind,
+            input.title,
+            input.body,
+            input.findings ? JSON.stringify(input.findings) : null,
+            input.githubDeliveryId ?? null,
+          ],
+        );
+        return num(inserted.rows[0]?.id);
+      } catch (error) {
+        if (input.githubDeliveryId) {
+          const { rows: again } = await sql.query<{ id: unknown }>(
+            `SELECT id FROM alerts WHERE github_delivery_id = $1 LIMIT 1`,
+            [input.githubDeliveryId],
+          );
+          if (again[0]) return num(again[0].id);
+        }
+        throw error;
+      }
     },
 
     async listAlertsForUser(userId: string): Promise<AlertRow[]> {
@@ -894,6 +975,59 @@ export function createStore(
         repo_id: row.repo_id === null ? null : num(row.repo_id),
         findings: parsePayload(row.findings),
       }));
+    },
+
+    async listJobsForUser(
+      userId: string,
+    ): Promise<{ jobs: TenantJobRow[]; summary: JobSummary }> {
+      const tenant = `SELECT installation_id FROM installation_users WHERE user_id = $1`;
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        kind: string;
+        status: string;
+        priority: string;
+        attempts: unknown;
+        error: string | null;
+        created_at: string | Date;
+        run_after: string | Date;
+      }>(
+        `SELECT id, installation_id, kind, status, priority, attempts, error, created_at, run_after
+         FROM jobs
+         WHERE installation_id IN (${tenant})
+           AND kind <> 'prospect_scan'
+         ORDER BY created_at DESC, id DESC
+         LIMIT 50`,
+        [userId],
+      );
+      const { rows: counts } = await sql.query<{ status: string; n: unknown }>(
+        `SELECT status, count(*)::int AS n
+         FROM jobs
+         WHERE installation_id IN (${tenant})
+           AND kind <> 'prospect_scan'
+         GROUP BY status`,
+        [userId],
+      );
+      const summary: JobSummary = { queued: 0, running: 0, done: 0, failed: 0 };
+      for (const row of counts) {
+        if (row.status === "queued" || row.status === "running" || row.status === "done" || row.status === "failed") {
+          summary[row.status] = num(row.n);
+        }
+      }
+      return {
+        jobs: rows.map((row) => ({
+          id: num(row.id),
+          installationId: num(row.installation_id),
+          kind: row.kind,
+          status: row.status,
+          priority: row.priority,
+          attempts: num(row.attempts),
+          error: row.error,
+          createdAt: iso(row.created_at) ?? new Date().toISOString(),
+          runAfter: iso(row.run_after) ?? new Date().toISOString(),
+        })),
+        summary,
+      };
     },
 
     async hasRecentAlert(repoId: number, kind: string, sinceIso: string): Promise<boolean> {

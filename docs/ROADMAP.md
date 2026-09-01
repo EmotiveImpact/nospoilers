@@ -13,7 +13,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Critical detection: maps, embedded source, map URLs, environment files, private keys, and
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
-  TypeScript/JSX, abnormal size, nested packs, backups, and internal docs.
+  TypeScript/JSX, abnormal size, nested packs, backups, internal docs, and build caches.
 - Additional critical paths: database dumps, crash dumps/minidumps/ELF cores, and escaping
   symlinks. Nested tgz/zip/asar are unpacked for inspection (never executed) up to three levels.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
@@ -45,6 +45,12 @@ the immediate operational sequence. The exhaustive expansion plan is
   GitHub repository field matches this install. Append-only identity snapshots record maintainers
   (names only), repository, homepage, bin names, and install lifecycle scripts. Changes alert
   with before/after facts and never a malware verdict.
+- Install health: covered installs get Watch alerts for GitHub App suspend, unsuspend,
+  permission changes, and repository add/remove. Uninstall still drops the tenant. Watch
+  lists this install's recent jobs (no payloads, no prospect scans). GitHub suspend is not
+  treated as unpaid coverage.
+- Extra inspect: Azure/GCP service-account documents, PKCS12, terraform state, build caches
+  (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

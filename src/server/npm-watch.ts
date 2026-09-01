@@ -13,6 +13,7 @@ import {
   type PackageIdentityFacts,
 } from "./package-identity.ts";
 import type { PackageIdentitySnapshotRow, PackageProtectionRow, Store, WatchedPackageRow } from "./store.ts";
+import { httpErrorForWorkBlock } from "./install-health.ts";
 
 export const MAX_WATCHED_PACKAGES = 25;
 
@@ -89,16 +90,27 @@ export async function syncProtectedIdentity(
   return { snapshot: true, alerts };
 }
 
+async function requireHostedWork(
+  store: Store,
+  installationId: number,
+  unpaidMessage: string,
+): Promise<void> {
+  const block = await store.installationWorkBlock(installationId);
+  if (!block) return;
+  const denied = httpErrorForWorkBlock(block, unpaidMessage);
+  throw Object.assign(new Error(denied.message), { status: denied.status });
+}
+
 export async function protectWatchedPackage(
   store: Store,
   npm: NpmPort,
   pkg: WatchedPackageRow,
 ): Promise<{ protection: PackageProtectionRow; snapshot: boolean }> {
-  if (!(await store.installationWorkAllowed(pkg.installation_id))) {
-    throw Object.assign(new Error("Coverage ended. Subscribe to protect package identity."), {
-      status: 402,
-    });
-  }
+  await requireHostedWork(
+    store,
+    pkg.installation_id,
+    "Coverage ended. Subscribe to protect package identity.",
+  );
   const existing = await store.getPackageProtection(pkg.id);
   if (existing) {
     throw Object.assign(new Error("That package is already protected on this install."), {
@@ -225,11 +237,11 @@ export async function connectWatchedPackage(
   if (!parsed) {
     throw Object.assign(new Error("That registry origin is not allowed."), { status: 400 });
   }
-  if (!(await store.installationWorkAllowed(input.installationId))) {
-    throw Object.assign(new Error("Coverage ended. Subscribe to keep watching npm packages."), {
-      status: 402,
-    });
-  }
+  await requireHostedWork(
+    store,
+    input.installationId,
+    "Coverage ended. Subscribe to keep watching npm packages.",
+  );
   const count = await store.countWatchedPackages(input.installationId);
   if (count >= MAX_WATCHED_PACKAGES) {
     throw Object.assign(

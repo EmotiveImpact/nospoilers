@@ -54,7 +54,7 @@ const PRIVATE_KEY =
   /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/;
 
 const HIGH_CONFIDENCE_TOKEN =
-  /(?:github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{36,255}|npm_[A-Za-z0-9]{36}|(?:sk|rk)_live_[A-Za-z0-9]{20,}|sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|glpat-[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35})/;
+  /(?:github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{36,255}|npm_[A-Za-z0-9]{36}|(?:sk|rk)_live_[A-Za-z0-9]{20,}|sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|glpat-[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35}|DefaultEndpointsProtocol=https;AccountName=[^;\s]+;AccountKey=)/;
 
 const CREDENTIAL_ASSIGNMENT =
   /(?:_authToken|api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token|password)\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{12,})/gi;
@@ -83,14 +83,24 @@ function hasAssignedCredential(text: string): boolean {
 
 function credentialConfig(rel: string, base: string): boolean {
   const lower = rel.toLowerCase();
+  const name = base.toLowerCase();
   return (
     [".npmrc", ".pypirc", ".netrc", "credentials.json", "service-account.json",
-      "service_account.json", "application_default_credentials.json"].includes(base.toLowerCase()) ||
+      "service_account.json", "serviceaccount.json", "application_default_credentials.json"].includes(name) ||
+    name.endsWith(".tfstate") ||
     lower.endsWith("/.aws/credentials") ||
     lower.endsWith("/.docker/config.json") ||
     lower.endsWith("/.kube/config") ||
     lower.includes("/.ssh/") ||
-    lower.startsWith(".ssh/")
+    lower.startsWith(".ssh/") ||
+    lower.includes("/.azure/") ||
+    lower.startsWith(".azure/") ||
+    lower.includes("/.config/gcloud/") ||
+    lower.startsWith(".config/gcloud/") ||
+    lower.includes("/.cloudflared/") ||
+    lower.startsWith(".cloudflared/") ||
+    lower.includes("/.pulumi/") ||
+    lower.startsWith(".pulumi/")
   );
 }
 
@@ -99,13 +109,54 @@ function aiContextFile(rel: string, base: string): boolean {
   const name = base.toLowerCase();
   return (
     ["claude.md", "claude.local.md", "agents.md", ".mcp.json", "mcp.json",
-      "copilot-instructions.md"].includes(name) ||
+      "mcp_config.json", "claude_desktop_config.json", "aiconfig.json", ".aiconfig.json",
+      "copilot-instructions.md", "memory.md", "memory.json", "system-prompt.md"].includes(name) ||
+    /\.prompt\.md$/i.test(name) ||
+    /\.transcript\.(?:json|md|txt)$/i.test(name) ||
     lower.includes("/.claude/") ||
     lower.startsWith(".claude/") ||
     lower.includes("/.cursor/") ||
     lower.startsWith(".cursor/") ||
     lower.includes("/.windsurf/") ||
-    lower.startsWith(".windsurf/")
+    lower.startsWith(".windsurf/") ||
+    lower.includes("/.continue/") ||
+    lower.startsWith(".continue/") ||
+    lower.includes("/.codex/") ||
+    lower.startsWith(".codex/") ||
+    lower.includes("/.gemini/") ||
+    lower.startsWith(".gemini/") ||
+    lower.includes("/.specstory/") ||
+    lower.startsWith(".specstory/") ||
+    lower.includes("/.aider") ||
+    lower.startsWith(".aider")
+  );
+}
+
+function buildCachePath(rel: string, base: string): boolean {
+  const lower = posixPath(rel).toLowerCase();
+  const name = base.toLowerCase();
+  const parts = lower.split("/");
+  if (
+    parts.includes(".turbo") ||
+    parts.includes(".parcel-cache") ||
+    parts.includes(".nyc_output") ||
+    parts.includes(".rpt2_cache")
+  ) {
+    return true;
+  }
+  if (name === ".eslintcache" || name.endsWith(".eslintcache")) return true;
+  if (lower.includes("node_modules/.cache/") || lower.startsWith("node_modules/.cache/")) {
+    return true;
+  }
+  if (lower.includes("/.next/cache/") || lower.startsWith(".next/cache/")) return true;
+  if (lower.includes("/.cache/") || lower.startsWith(".cache/")) return true;
+  return false;
+}
+
+function cloudCredentialDocument(text: string): boolean {
+  return (
+    /"type"\s*:\s*"service_account"/.test(text) ||
+    /DefaultEndpointsProtocol=https;AccountName=[^;\s]+;AccountKey=/i.test(text)
   );
 }
 
@@ -229,12 +280,9 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
   const text = likelyText(buf) ? asText(buf) : "";
   const isCredentialConfig = credentialConfig(rel, base);
   if (
-    /\.(pem|key)$/i.test(base) ||
+    /\.(pem|key|p12|pfx)$/i.test(base) ||
     PRIVATE_KEY.test(text) ||
-    base === "id_rsa" ||
-    base === "id_ed25519" ||
-    base === "id_dsa" ||
-    base === "id_ecdsa"
+    /^(?:id_rsa|id_ed25519|id_dsa|id_ecdsa)(?:_sk)?$/i.test(base)
   ) {
     findings.push({
       rule: "SEC-002",
@@ -247,7 +295,9 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
 
   if (
     text &&
-    (HIGH_CONFIDENCE_TOKEN.test(text) || (isCredentialConfig && hasAssignedCredential(text)))
+    (HIGH_CONFIDENCE_TOKEN.test(text) ||
+      cloudCredentialDocument(text) ||
+      (isCredentialConfig && hasAssignedCredential(text)))
   ) {
     findings.push({
       rule: "SEC-003",
@@ -341,6 +391,17 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
       title: "Debug or build metadata shipped",
       detail:
         "Debug symbols, build statistics, logs, and compiler state can expose implementation details.",
+    });
+  }
+
+  if (buildCachePath(rel, base)) {
+    findings.push({
+      rule: "CACHE-001",
+      severity: "warn",
+      path: rel,
+      title: "Build cache shipped",
+      detail:
+        "Compiler and bundler caches do not belong in a public package. They are not executed.",
     });
   }
 

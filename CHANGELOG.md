@@ -24,6 +24,8 @@
 - Hosted scan API: hashed per-install tokens, `POST /api/v1/scan`, signed receipt, bytes deleted.
 - Release Ledger foundations: append-only revisions, channels, source revision, stored CI URL.
 - Package Identity foundations: verified protect, maintainer snapshots, repo/homepage/shape alerts.
+- Install health: GitHub suspend/unsuspend/permission/repo-change alerts; tenant job list on Watch.
+- Extra inspect: cloud/service-account, PKCS12, build caches (CACHE-001), broader AI/MCP pack.
 - Proved the GitHub loop on `EmotiveImpact/nospoilers-throwaway`: webhook → job → Created public alert.
 - Added the exhaustive NoSpoilers Ultimate expansion PRD and feature inventory.
 - Added NoSpoilers module PRDs for Release Ledger and Package Identity, an internal Disclosure Desk

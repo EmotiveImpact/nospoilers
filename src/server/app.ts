@@ -47,6 +47,7 @@ import {
   parseScanBearer,
   validateScanTokenName,
 } from "./scan-api.ts";
+import { httpErrorForWorkBlock } from "./install-health.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -122,6 +123,17 @@ function publicRelease(row: ReleaseRevisionRow) {
   };
 }
 
+async function hostedWorkDenied(
+  store: Store,
+  installationId: number,
+  unpaidMessage: string,
+): Promise<{ error: string; status: 402 | 409 } | null> {
+  const block = await store.installationWorkBlock(installationId);
+  if (!block) return null;
+  const denied = httpErrorForWorkBlock(block, unpaidMessage);
+  return { error: denied.message, status: denied.status };
+}
+
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const scanFn = deps.scan ?? scan;
@@ -147,9 +159,7 @@ export function createApp(deps: AppDeps): Hono {
     const installations = await deps.store.listInstallationsForUser(user.userId);
     if (installations.length === 0) return coverageFrom(user.trialEndsAt, user.plan);
     return bestCoverage(
-      installations.map((row) =>
-        row.suspended ? coverageFrom(null, null) : coverageFrom(row.trialEndsAt, row.plan),
-      ),
+      installations.map((row) => coverageFrom(row.trialEndsAt, row.plan)),
     );
   }
 
@@ -518,6 +528,13 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ alerts });
   });
 
+  app.get("/api/jobs", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const { jobs, summary } = await deps.store.listJobsForUser(user.userId);
+    return c.json({ jobs, summary });
+  });
+
   app.post("/api/repos/:id/scan-latest-release", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -528,9 +545,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
-    if (!(await deps.store.installationWorkAllowed(repo.installation_id))) {
-      return c.json({ error: "Coverage ended. Subscribe to keep scanning releases." }, 402);
-    }
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to keep scanning releases.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
     const result = await deps.store.enqueueJob({
       priority: "heavy",
       kind: "scan_latest_release",
@@ -577,9 +597,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
-    if (!(await deps.store.installationWorkAllowed(repo.installation_id))) {
-      return c.json({ error: "Coverage ended. Subscribe to open a setup PR." }, 402);
-    }
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to open a setup PR.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
     const result = await deps.github.createSetupPullRequest(
       repo.installation_id,
       repo.owner,
@@ -634,9 +657,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
-    if (!(await deps.store.installationWorkAllowed(installationId))) {
-      return c.json({ error: "Coverage ended. Subscribe to save a private registry." }, 402);
-    }
+    const registryDenied = await hostedWorkDenied(
+      deps.store,
+      installationId,
+      "Coverage ended. Subscribe to save a private registry.",
+    );
+    if (registryDenied) return c.json({ error: registryDenied.error }, registryDenied.status);
     const parsed = parseRegistryOrigin(String(body.origin ?? ""));
     if (!parsed) {
       return c.json(
@@ -712,9 +738,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
-    if (!(await deps.store.installationWorkAllowed(installationId))) {
-      return c.json({ error: "Coverage ended. Subscribe to mint a scan API token." }, 402);
-    }
+    const tokenDenied = await hostedWorkDenied(
+      deps.store,
+      installationId,
+      "Coverage ended. Subscribe to mint a scan API token.",
+    );
+    if (tokenDenied) return c.json({ error: tokenDenied.error }, tokenDenied.status);
     const name = validateScanTokenName(String(body.name ?? "CI"));
     if (!name) {
       return c.json({ error: "Token name must be 1–64 characters with no line breaks." }, 400);
@@ -747,9 +776,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!presented) return c.json({ error: "Provide a scan API token as a Bearer credential." }, 401);
     const auth = await deps.store.authenticateScanToken(presented);
     if (!auth) return c.json({ error: "Invalid or revoked scan API token." }, 401);
-    if (!(await deps.store.installationWorkAllowed(auth.installationId))) {
-      return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
-    }
+    const scanDenied = await hostedWorkDenied(
+      deps.store,
+      auth.installationId,
+      "Coverage ended. Subscribe to unpack on our servers.",
+    );
+    if (scanDenied) return c.json({ error: scanDenied.error }, scanDenied.status);
     const ip = clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
     if (!scanLimiter.allow(`v1:${auth.id}:${ip}`)) {
       return c.json({ error: "Too many hosted scans from this token. Wait and try again." }, 429);
@@ -915,9 +947,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
       return c.json({ error: "Unknown package." }, 404);
     }
-    if (!(await deps.store.installationWorkAllowed(pkg.installation_id))) {
-      return c.json({ error: "Coverage ended. Subscribe to keep watching npm packages." }, 402);
-    }
+    const checkDenied = await hostedWorkDenied(
+      deps.store,
+      pkg.installation_id,
+      "Coverage ended. Subscribe to keep watching npm packages.",
+    );
+    if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
     const result = await checkWatchedPackage(deps.store, npm, pkg);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued, deltas: result.deltas });
@@ -1075,9 +1110,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
       return c.json({ error: "Unknown package." }, 404);
     }
-    if (!(await deps.store.installationWorkAllowed(pkg.installation_id))) {
-      return c.json({ error: "Coverage ended. Subscribe to approve baselines." }, 402);
-    }
+    const baselineDenied = await hostedWorkDenied(
+      deps.store,
+      pkg.installation_id,
+      "Coverage ended. Subscribe to approve baselines.",
+    );
+    if (baselineDenied) return c.json({ error: baselineDenied.error }, baselineDenied.status);
     const body = jsonObj(await c.req.json().catch(() => ({})));
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     if (reason.length < 8) {
@@ -1155,9 +1193,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
       return c.json({ error: "That GitHub installation is not on your account." }, 403);
     }
-    if (!(await deps.store.installationWorkAllowed(installationId))) {
-      return c.json({ error: "Coverage ended. Subscribe to manage allowlists." }, 402);
-    }
+    const allowDenied = await hostedWorkDenied(
+      deps.store,
+      installationId,
+      "Coverage ended. Subscribe to manage allowlists.",
+    );
+    if (allowDenied) return c.json({ error: allowDenied.error }, allowDenied.status);
     const packageIdRaw = Number(body.packageId);
     const packageId = Number.isFinite(packageIdRaw) && packageIdRaw > 0 ? packageIdRaw : null;
     if (packageId) {
@@ -1202,9 +1243,12 @@ export function createApp(deps: AppDeps): Hono {
       await deps.store.listExceptionsForUser(user.userId)
     ).find((row) => row.id === id);
     if (!existing) return c.json({ error: "Unknown allowlist entry." }, 404);
-    if (!(await deps.store.installationWorkAllowed(existing.installation_id))) {
-      return c.json({ error: "Coverage ended. Subscribe to manage allowlists." }, 402);
-    }
+    const revokeDenied = await hostedWorkDenied(
+      deps.store,
+      existing.installation_id,
+      "Coverage ended. Subscribe to manage allowlists.",
+    );
+    if (revokeDenied) return c.json({ error: revokeDenied.error }, revokeDenied.status);
     const row = await deps.store.revokePolicyExceptionForUser(id, user.userId, user.login);
     if (!row) return c.json({ error: "Unknown allowlist entry." }, 404);
     return c.json({ ok: true, exception: publicException(row) });

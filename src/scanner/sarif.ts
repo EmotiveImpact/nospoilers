@@ -21,6 +21,7 @@ const RULES: Record<
   "AI-001": { name: "ai-context", shortDescription: "AI agent instructions, prompts, or memory packed into the artifact" },
   "NET-001": { name: "internal-location", shortDescription: "Internal endpoint or developer path packed into the artifact" },
   "DBG-001": { name: "debug-artifact", shortDescription: "Debug or build metadata packed into the artifact" },
+  "CACHE-001": { name: "build-cache", shortDescription: "Compiler or bundler cache packed into the artifact" },
   "CRASH-001": { name: "crash-dump", shortDescription: "Crash dump or core file packed into the artifact" },
   "GIT-001": { name: "git-directory", shortDescription: "Git directory packed into the artifact" },
   "SRC-001": { name: "original-source", shortDescription: "TypeScript or JSX source packed into the artifact" },

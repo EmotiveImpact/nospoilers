@@ -279,6 +279,35 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "011_package_identities",
   ]);
+  await sql.exec(`
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS installation_id BIGINT;
+    CREATE INDEX IF NOT EXISTS jobs_install_feed_idx
+      ON jobs (installation_id, created_at DESC, id DESC)
+      WHERE installation_id IS NOT NULL;
+    UPDATE jobs
+       SET installation_id = (payload->>'installationId')::bigint
+     WHERE installation_id IS NULL
+       AND (payload->>'installationId') ~ '^[0-9]+$'
+       AND EXISTS (
+         SELECT 1 FROM installations i
+         WHERE i.id = (payload->>'installationId')::bigint
+       );
+    CREATE UNIQUE INDEX IF NOT EXISTS alerts_delivery_uidx
+      ON alerts (github_delivery_id)
+      WHERE github_delivery_id IS NOT NULL;
+  `);
+  try {
+    await sql.exec(`
+      ALTER TABLE jobs
+        ADD CONSTRAINT jobs_installation_id_fkey
+        FOREIGN KEY (installation_id) REFERENCES installations (id) ON DELETE CASCADE
+    `);
+  } catch {
+    // Fresh schema.sql already has the FK; existing databases keep the column.
+  }
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "012_install_health",
+  ]);
 }
 
 export function num(value: unknown): number {

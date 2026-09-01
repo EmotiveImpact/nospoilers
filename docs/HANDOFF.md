@@ -29,7 +29,7 @@ Read in this order:
 - Eighteen product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
-  `010_release_revisions`, and `011_package_identities` are applied. Hosted
+  `010_release_revisions`, `011_package_identities`, and `012_install_health` are applied. Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -80,6 +80,13 @@ Read in this order:
   return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
   revisions; preview invents none. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata.
+- Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
+  permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
+  **Install health** lists this install's jobs (no payloads, no prospect scans). GitHub
+  suspend is not treated as unpaid coverage; GitHub-backed writes return 409.
+- Packed scans flag Azure/GCP service-account documents, PKCS12, terraform state, build
+  caches (CACHE-001), and additional AI/MCP agent files. Credential values are not copied
+  into reports.
 - The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
   Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
   grant Administration on all repositories.
@@ -119,6 +126,8 @@ Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; ne
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape).
+Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
+Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

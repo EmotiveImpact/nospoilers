@@ -1,4 +1,4 @@
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -84,6 +84,43 @@ describe("scan", () => {
         );
       },
     );
+  });
+
+  it("flags cloud credentials, PKCS bundles, build caches, and extra AI/MCP files", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-inspect-"));
+    try {
+      await writeFile(
+        path.join(dir, "sa.json"),
+        JSON.stringify({ type: "service_account", project_id: "demo" }),
+      );
+      await writeFile(
+        path.join(dir, "azure.env"),
+        "DefaultEndpointsProtocol=https;AccountName=examplestorage;AccountKey=not-a-real-key\n",
+      );
+      await writeFile(path.join(dir, "client.pfx"), "pkcs12-bytes");
+      await writeFile(path.join(dir, "terraform.tfstate"), '{"version":4}');
+      await writeFile(path.join(dir, "claude_desktop_config.json"), '{"mcpServers":{}}');
+      await mkdir(path.join(dir, ".turbo"), { recursive: true });
+      await writeFile(path.join(dir, ".turbo", "cache.json"), "{}");
+      await mkdir(path.join(dir, ".continue"), { recursive: true });
+      await writeFile(path.join(dir, ".continue", "config.json"), "{}");
+      const report = await scan(dir);
+      const rules = report.findings.map((row) => `${row.rule}:${row.path}`);
+      expect(rules).toEqual(
+        expect.arrayContaining([
+          "SEC-003:sa.json",
+          "SEC-003:azure.env",
+          "SEC-002:client.pfx",
+          "SEC-004:terraform.tfstate",
+          "AI-001:claude_desktop_config.json",
+          "AI-001:.continue/config.json",
+          "CACHE-001:.turbo/cache.json",
+        ]),
+      );
+      expect(JSON.stringify(report.findings)).not.toContain("not-a-real-key");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("warns on AI context, internal locations, and debug artifacts", async () => {

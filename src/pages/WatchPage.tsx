@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 type Me = {
   user: { id: string; login: string; avatarUrl: string | null } | null;
   coverage?: Coverage;
-  installations: { id: number; account_login: string; account_type: string }[];
+  installations: { id: number; account_login: string; account_type: string; suspended?: boolean }[];
   githubApp: boolean;
   installUrl?: string;
 };
@@ -80,6 +80,25 @@ type PackageProtection = {
   verifiedVia: "scope_match" | "github_repository";
   githubRepo: string | null;
   createdAt: string;
+};
+
+type TenantJob = {
+  id: number;
+  installationId: number;
+  kind: string;
+  status: string;
+  priority: string;
+  attempts: number;
+  error: string | null;
+  createdAt: string;
+  runAfter: string;
+};
+
+type JobSummary = {
+  queued: number;
+  running: number;
+  done: number;
+  failed: number;
 };
 
 type ReleaseDiffView = {
@@ -160,6 +179,16 @@ function kindLabel(kind: string): string {
       return "npm pack";
     case "npm_dist_tag":
       return "npm dist-tag";
+    case "app_suspended":
+      return "App suspended";
+    case "app_unsuspended":
+      return "App unsuspended";
+    case "app_permissions_updated":
+      return "App permissions";
+    case "repos_added":
+      return "Repos added";
+    case "repos_removed":
+      return "Repos removed";
     default:
       return kind;
   }
@@ -220,6 +249,13 @@ export function WatchPage({ search }: { search: string }) {
   const [scanTokens, setScanTokens] = useState<ScanApiToken[]>([]);
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
   const [protections, setProtections] = useState<PackageProtection[]>([]);
+  const [jobs, setJobs] = useState<TenantJob[]>([]);
+  const [jobSummary, setJobSummary] = useState<JobSummary>({
+    queued: 0,
+    running: 0,
+    done: 0,
+    failed: 0,
+  });
   const [protectingId, setProtectingId] = useState<number | null>(null);
   const [scanTokenName, setScanTokenName] = useState("CI");
   const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
@@ -260,7 +296,7 @@ export function WatchPage({ search }: { search: string }) {
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     try {
-      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody, protectionBody] =
+      const [repoBody, alertBody, packageBody, exceptionBody, registryBody, tokenBody, releaseBody, protectionBody, jobBody] =
         await Promise.all([
         loadJson<{ repos: Repo[] }>("/api/repos"),
         loadJson<{ alerts: Alert[] }>("/api/alerts"),
@@ -270,6 +306,7 @@ export function WatchPage({ search }: { search: string }) {
         loadJson<{ tokens: ScanApiToken[] }>("/api/scan-tokens"),
         loadJson<{ releases: ReleaseRevision[] }>("/api/releases"),
         loadJson<{ protections: PackageProtection[] }>("/api/protections"),
+        loadJson<{ jobs: TenantJob[]; summary: JobSummary }>("/api/jobs"),
       ]);
       setRepos({ status: "ready", data: repoBody });
       setAlerts({ status: "ready", data: alertBody });
@@ -279,6 +316,8 @@ export function WatchPage({ search }: { search: string }) {
       setScanTokens(tokenBody.tokens);
       setReleases(releaseBody.releases);
       setProtections(protectionBody.protections);
+      setJobs(jobBody.jobs);
+      setJobSummary(jobBody.summary);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -314,6 +353,8 @@ export function WatchPage({ search }: { search: string }) {
           setScanTokens([]);
           setReleases([]);
           setProtections([]);
+          setJobs([]);
+          setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setRevealedScanToken(null);
         }
       } catch (error) {
@@ -387,6 +428,10 @@ export function WatchPage({ search }: { search: string }) {
   }
 
   const ended = coverage?.status === "ended";
+  const githubPaused = Boolean(
+    !previewing && installations.some((row) => row.suspended),
+  );
+  const locked = ended || githubPaused;
   const login = user?.login ?? PREVIEW_LOGIN;
   const watching = user
     ? installations.map((row) => row.account_login)
@@ -410,7 +455,9 @@ export function WatchPage({ search }: { search: string }) {
           <p className="mt-2 max-w-xl text-sm text-mute">
             {ended
               ? "Coverage ended. The bot is quiet until you subscribe."
-              : watching.length > 0
+              : githubPaused
+                ? "GitHub suspended the NoSpoilers App. Repositories stay listed. We do not scan until GitHub unsuspends it."
+                : watching.length > 0
                 ? `Watching ${watching.join(", ")}. Hosted pack scans are on${coverage?.status === "trial" ? " for this trial" : ""}.`
                 : "No installs linked yet"}
           </p>
@@ -479,7 +526,7 @@ export function WatchPage({ search }: { search: string }) {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={previewing || scanningId === repo.id || ended}
+                      disabled={previewing || scanningId === repo.id || locked}
                       onClick={() => {
                         if (previewing) return;
                         setScanError(null);
@@ -507,7 +554,7 @@ export function WatchPage({ search }: { search: string }) {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={previewing || setuppingId === repo.id || ended}
+                      disabled={previewing || setuppingId === repo.id || locked}
                       onClick={() => {
                         if (previewing) return;
                         setSetuppingId(repo.id);
@@ -614,6 +661,63 @@ export function WatchPage({ search }: { search: string }) {
         </section>
       </div>
 
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          This install’s recent jobs. Failed rows stay listed until they succeed or hit the retry
+          cap. Global queues stay owner-only.
+        </p>
+        {githubPaused ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">
+            GitHub suspended the NoSpoilers App
+            {installations
+              .filter((row) => row.suspended)
+              .map((row) => ` on ${row.account_login}`)
+              .join("")}
+            . This is not a billing change.
+          </p>
+        ) : null}
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No recent jobs.</p>
+        ) : jobs.length === 0 ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">No recent jobs.</p>
+        ) : (
+          <>
+            <p className="mt-6 text-xs text-dim">
+              {jobSummary.queued} queued · {jobSummary.running} running · {jobSummary.done} done ·{" "}
+              <span className={jobSummary.failed > 0 ? "text-danger" : undefined}>
+                {jobSummary.failed} failed
+              </span>
+            </p>
+            <ul className="mt-4 max-w-xl divide-y divide-white/5">
+              {jobs.map((job) => (
+                <li key={job.id} className="py-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-mono text-sm text-snow">{kindLabel(job.kind)}</p>
+                    <span
+                      className={
+                        job.status === "failed"
+                          ? "text-[11px] uppercase tracking-[0.16em] text-danger"
+                          : "text-[11px] uppercase tracking-[0.16em] text-dim"
+                      }
+                    >
+                      {job.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-dim">
+                    {job.createdAt ? new Date(job.createdAt).toLocaleString() : ""}
+                    {job.attempts > 1 ? ` · attempt ${job.attempts}` : ""}
+                  </p>
+                  {job.error ? (
+                    <p className="mt-1 text-xs leading-relaxed text-mute">{job.error}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
       <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -631,7 +735,7 @@ export function WatchPage({ search }: { search: string }) {
             className="mt-6 flex max-w-xl flex-col gap-3"
             onSubmit={(event) => {
               event.preventDefault();
-              if (ended || savingRegistry) return;
+              if (locked || savingRegistry) return;
               setRegistryError(null);
               setSavingRegistry(true);
               void (async () => {
@@ -669,7 +773,7 @@ export function WatchPage({ search }: { search: string }) {
                   placeholder="https://npm.pkg.github.com"
                   autoComplete="off"
                   spellCheck={false}
-                  disabled={ended}
+                  disabled={locked}
                   className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
                 />
               </label>
@@ -681,11 +785,11 @@ export function WatchPage({ search }: { search: string }) {
                   onChange={(event) => setRegistryToken(event.target.value)}
                   placeholder="read-only token"
                   autoComplete="new-password"
-                  disabled={ended}
+                  disabled={locked}
                   className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
                 />
               </label>
-              <Button type="submit" disabled={ended || savingRegistry || !registryOriginInput.trim() || !registryToken.trim()}>
+              <Button type="submit" disabled={locked || savingRegistry || !registryOriginInput.trim() || !registryToken.trim()}>
                 {savingRegistry ? "Saving…" : "Save token"}
               </Button>
             </div>
@@ -701,7 +805,7 @@ export function WatchPage({ search }: { search: string }) {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  disabled={ended || removingRegistryId === registry.id}
+                  disabled={locked || removingRegistryId === registry.id}
                   onClick={() => {
                     setRemovingRegistryId(registry.id);
                     void (async () => {
@@ -734,7 +838,7 @@ export function WatchPage({ search }: { search: string }) {
             className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
-              if (ended || watchingPackage) return;
+              if (locked || watchingPackage) return;
               setPackageError(null);
               setWatchingPackage(true);
               void (async () => {
@@ -769,7 +873,7 @@ export function WatchPage({ search }: { search: string }) {
                 placeholder="@scope/name"
                 autoComplete="off"
                 spellCheck={false}
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
               />
             </label>
@@ -778,7 +882,7 @@ export function WatchPage({ search }: { search: string }) {
               <select
                 value={watchRegistryOrigin}
                 onChange={(event) => setWatchRegistryOrigin(event.target.value)}
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
               >
                 <option value="https://registry.npmjs.org">registry.npmjs.org</option>
@@ -789,7 +893,7 @@ export function WatchPage({ search }: { search: string }) {
                 ))}
               </select>
             </label>
-            <Button type="submit" disabled={ended || watchingPackage || !packageName.trim()}>
+            <Button type="submit" disabled={locked || watchingPackage || !packageName.trim()}>
               {watchingPackage ? "Connecting…" : "Watch package"}
             </Button>
           </form>
@@ -834,7 +938,7 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={previewing || ended || checkingId === pkg.id}
+                        disabled={previewing || locked || checkingId === pkg.id}
                         onClick={() => {
                           setPackageError(null);
                           setCheckingId(pkg.id);
@@ -864,7 +968,7 @@ export function WatchPage({ search }: { search: string }) {
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={previewing || ended || protectingId === pkg.id}
+                          disabled={previewing || locked || protectingId === pkg.id}
                           onClick={() => {
                             setPackageError(null);
                             setProtectingId(pkg.id);
@@ -896,7 +1000,7 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={previewing || ended || diffingId === pkg.id}
+                        disabled={previewing || locked || diffingId === pkg.id}
                         onClick={() => {
                           setPackageError(null);
                           setDiffingId(pkg.id);
@@ -926,7 +1030,7 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={previewing || ended || approvingId === pkg.id}
+                        disabled={previewing || locked || approvingId === pkg.id}
                         onClick={() => {
                           setPackageError(null);
                           setApprovingId(pkg.id);
@@ -959,7 +1063,7 @@ export function WatchPage({ search }: { search: string }) {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        disabled={previewing || ended}
+                        disabled={previewing || locked}
                         onClick={() => {
                           setPackageError(null);
                           void (async () => {
@@ -1046,7 +1150,7 @@ export function WatchPage({ search }: { search: string }) {
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (ended || mintingScanToken) return;
+                  if (locked || mintingScanToken) return;
                   setScanTokenError(null);
                   setRevealedScanToken(null);
                   setMintingScanToken(true);
@@ -1083,11 +1187,11 @@ export function WatchPage({ search }: { search: string }) {
                     placeholder="CI"
                     autoComplete="off"
                     spellCheck={false}
-                    disabled={ended}
+                    disabled={locked}
                     className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
                   />
                 </label>
-                <Button type="submit" disabled={ended || mintingScanToken}>
+                <Button type="submit" disabled={locked || mintingScanToken}>
                   {mintingScanToken ? "Minting…" : "Mint token"}
                 </Button>
               </form>
@@ -1117,7 +1221,7 @@ export function WatchPage({ search }: { search: string }) {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      disabled={ended || revokingScanTokenId === token.id}
+                      disabled={locked || revokingScanTokenId === token.id}
                       onClick={() => {
                         setRevokingScanTokenId(token.id);
                         void (async () => {
@@ -1202,7 +1306,7 @@ export function WatchPage({ search }: { search: string }) {
             <input
               value={baselineReason}
               onChange={(event) => setBaselineReason(event.target.value)}
-              disabled={ended}
+              disabled={locked}
               className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
             />
           </label>
@@ -1212,7 +1316,7 @@ export function WatchPage({ search }: { search: string }) {
             className="mt-6 grid gap-4 md:grid-cols-[7rem_1fr_1fr_8rem_auto] md:items-end"
             onSubmit={(event) => {
               event.preventDefault();
-              if (ended || savingAllow) return;
+              if (locked || savingAllow) return;
               setPackageError(null);
               setSavingAllow(true);
               void (async () => {
@@ -1251,7 +1355,7 @@ export function WatchPage({ search }: { search: string }) {
                 value={allowRule}
                 onChange={(event) => setAllowRule(event.target.value)}
                 placeholder="SRC-001"
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
               />
             </label>
@@ -1261,7 +1365,7 @@ export function WatchPage({ search }: { search: string }) {
                 value={allowPath}
                 onChange={(event) => setAllowPath(event.target.value)}
                 placeholder="**/*.d.ts"
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
               />
             </label>
@@ -1271,7 +1375,7 @@ export function WatchPage({ search }: { search: string }) {
                 value={allowReason}
                 onChange={(event) => setAllowReason(event.target.value)}
                 placeholder="Published TypeScript types"
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
               />
             </label>
@@ -1281,11 +1385,11 @@ export function WatchPage({ search }: { search: string }) {
                 type="date"
                 value={allowExpires}
                 onChange={(event) => setAllowExpires(event.target.value)}
-                disabled={ended}
+                disabled={locked}
                 className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none focus:border-white/40"
               />
             </label>
-            <Button type="submit" disabled={ended || savingAllow || !allowRule.trim() || !allowReason.trim()}>
+            <Button type="submit" disabled={locked || savingAllow || !allowRule.trim() || !allowReason.trim()}>
               {savingAllow ? "Saving…" : "Allow"}
             </Button>
           </form>
@@ -1316,7 +1420,7 @@ export function WatchPage({ search }: { search: string }) {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  disabled={ended || revokingId === entry.id}
+                  disabled={locked || revokingId === entry.id}
                   onClick={() => {
                     setPackageError(null);
                     setRevokingId(entry.id);

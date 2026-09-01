@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS repos (
 CREATE TABLE IF NOT EXISTS jobs (
   id BIGSERIAL PRIMARY KEY,
   delivery_id TEXT,
+  installation_id BIGINT REFERENCES installations (id) ON DELETE CASCADE,
   priority TEXT NOT NULL CHECK (priority IN ('light', 'heavy')),
   kind TEXT NOT NULL,
   payload JSONB NOT NULL,
@@ -92,6 +93,10 @@ CREATE TABLE IF NOT EXISTS alerts (
 
 CREATE INDEX IF NOT EXISTS alerts_feed_idx
   ON alerts (installation_id, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS alerts_delivery_uidx
+  ON alerts (github_delivery_id)
+  WHERE github_delivery_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS prospects (
   id BIGSERIAL PRIMARY KEY,

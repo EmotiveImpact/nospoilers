@@ -24,7 +24,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
 | Resend email delivery | Planned | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
-| Stale-lock recovery/dead-letter visibility | Partial: stale running jobs requeued; no dead-letter UI | NoSpoilers |
+| Stale-lock recovery/dead-letter visibility | Partial: stale running jobs requeued; tenant failed jobs listed on Watch; no owner global UI | NoSpoilers |
 | Upload/API rate limiting | Built: hosted `/api/scan` per address | NoSpoilers |
 | Readiness/health checks and structured logs | Built: `/api/health` liveness, `/api/ready` DB ping, JSON logs | NoSpoilers |
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
@@ -64,11 +64,11 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Escaping/suspicious symlink detection | Built: absolute and `..` targets, not followed | NoSpoilers |
 | Source archives and backup files | Built: BAK-001 | NoSpoilers |
 | Database exports/dumps | Built: DB-001 | NoSpoilers |
-| SSH/cloud/service-account configuration | Partial: `.ssh/`, kube, AWS, Docker, service-account files | NoSpoilers |
+| SSH/cloud/service-account configuration | Built: `.ssh/`, kube, AWS, Azure, GCP, Docker, tfstate, PKCS12, service-account JSON | NoSpoilers |
 | Crash dumps and additional debug symbols | Built: CRASH-001 for cores/minidumps (never executed); DBG-001 for extra symbols/crash logs | NoSpoilers |
-| Build caches/compiler metadata | Partial | NoSpoilers |
+| Build caches/compiler metadata | Built: CACHE-001 for turbo/parcel/nyc/eslint/next/node_modules caches; DBG-001 for symbols | NoSpoilers |
 | Internal documentation and roadmaps | Partial: ROADMAP/HANDOFF/TODO/PRD filenames | NoSpoilers |
-| AI prompts, memory, transcripts and MCP policy pack | Partial | NoSpoilers |
+| AI prompts, memory, transcripts and MCP policy pack | Built: AI-001 for agent dirs, MCP configs, prompts, memory, transcripts | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
 | Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |
 | External scanning API | Built: hashed per-install `nsp_` tokens; `POST /api/v1/scan` mints a receipt and deletes bytes | NoSpoilers |
@@ -140,7 +140,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Collaborator added | Built/needs real proof | NoSpoilers |
 | Fork event | Built/needs real proof | NoSpoilers |
 | Cheap sensitive-path push event | Built/needs real proof | NoSpoilers |
-| App permission, suspension, repository-add/remove and uninstall health | Planned | NoSpoilers |
+| App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | Hourly missed-webhook visibility check | Built | NoSpoilers |
 | Event acknowledgement and assignment | Planned | NoSpoilers |
 | Resolution notes/evidence | Planned | NoSpoilers |
@@ -169,7 +169,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Team members and roles | Planned | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Planned | NoSpoilers Team |
-| Queue and usage health | Planned | NoSpoilers |
+| Queue and usage health | Partial: tenant-scoped job list and counts; global queues stay owner-only | NoSpoilers |
 | Public status page | Planned | Operations |
 | Scan concurrency/fair-use controls without credits | Planned | NoSpoilers |
 | Multiple notification destinations | Planned | NoSpoilers Team |
