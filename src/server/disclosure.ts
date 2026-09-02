@@ -32,6 +32,7 @@ export type DisclosureChecklist = Record<ChecklistKey, boolean>;
 export const DEFAULT_NOTES_TTL_DAYS = 90;
 export const MAX_NOTES_TTL_DAYS = 365;
 export const MAX_NOTES_CHARS = 8000;
+export const MAX_REPRO_STEPS_CHARS = 2000;
 export const ACK_NOTE_MIN = 8;
 export const ACK_NOTE_MAX = 2000;
 
@@ -45,6 +46,10 @@ export const DISCLOSURE_VERIFIED_ERROR =
   "Complete every verification check before marking verified.";
 export const DISCLOSURE_HASH_ERROR =
   "A lead cannot be marked verified without a repeatable artifact hash.";
+export const DISCLOSURE_REPRODUCED_ERROR =
+  "Record reproducibility steps before marking the finding reproduced.";
+export const DISCLOSURE_STEPS_ERROR =
+  "A lead cannot be marked verified without reproducibility steps.";
 export const DISCLOSURE_CHECK_CONTACT_ERROR =
   "Record a security contact or https policy URL before that check.";
 export const DISCLOSURE_CHECK_FINGERPRINT_ERROR =
@@ -160,6 +165,7 @@ export type DisclosureCaseRow = {
   checklist_fingerprints_recorded: boolean;
   checklist_no_secret_values: boolean;
   checklist_contact_or_policy: boolean;
+  reproducibility_steps: string | null;
   fingerprints: string[];
   finding_category: FindingCategory | null;
   security_contact: string | null;
@@ -267,6 +273,7 @@ export type DisclosureCaseView = {
   fingerprints: string[];
   findingCategory: FindingCategory;
   artifact: ArtifactEvidence;
+  reproducibilitySteps: string | null;
   securityContact: string | null;
   policyUrl: string | null;
   notes: string | null;
@@ -338,6 +345,7 @@ export type DisclosureReport = {
   coordinate: string;
   packageName: string | null;
   artifact: ArtifactEvidence;
+  reproducibilitySteps: string | null;
   state: DisclosureState;
   fingerprints: string[];
   findingCategory: FindingCategory;
@@ -373,6 +381,7 @@ export type DisclosureCaseSummary = {
   fingerprintCount: number;
   findingCategory: FindingCategory;
   artifactSha256: string | null;
+  hasReproducibilitySteps: boolean;
   vendorChannel: VendorChannel | null;
   assignee: string | null;
   reviewState: DisclosureReviewState;
@@ -454,6 +463,39 @@ export function assertVerifiedArtifactHash(
   if (current === "verified") return;
   if (!isRepeatableArtifactHash(sha256)) {
     throw new DisclosureError(DISCLOSURE_HASH_ERROR, 400);
+  }
+}
+
+export function hasReproducibilitySteps(value: string | null | undefined): boolean {
+  return Boolean(value && value.trim().length > 0);
+}
+
+export function parseReproducibilitySteps(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw == null) return null;
+  if (typeof raw !== "string") {
+    throw new DisclosureError("Reproducibility steps must be text.", 400);
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > MAX_REPRO_STEPS_CHARS) {
+    throw new DisclosureError(
+      `Reproducibility steps must be at most ${MAX_REPRO_STEPS_CHARS} characters.`,
+      400,
+    );
+  }
+  return trimmed;
+}
+
+export function assertVerifiedReproducibilitySteps(
+  next: DisclosureState,
+  current: DisclosureState,
+  steps: string | null | undefined,
+): void {
+  if (next !== "verified") return;
+  if (current === "verified") return;
+  if (!hasReproducibilitySteps(steps)) {
+    throw new DisclosureError(DISCLOSURE_STEPS_ERROR, 400);
   }
 }
 
@@ -1090,12 +1132,17 @@ export function assertChecklistAllowed(
   fingerprints: string[],
   securityContact: string | null,
   policyUrl: string | null,
+  steps: string | null = null,
+  previousReproduced = false,
 ): void {
   if (checklist.fingerprints_recorded && fingerprints.length === 0) {
     throw new DisclosureError(DISCLOSURE_CHECK_FINGERPRINT_ERROR, 400);
   }
   if (checklist.contact_or_policy && !securityContact && !policyUrl) {
     throw new DisclosureError(DISCLOSURE_CHECK_CONTACT_ERROR, 400);
+  }
+  if (checklist.reproduced && !hasReproducibilitySteps(steps) && !previousReproduced) {
+    throw new DisclosureError(DISCLOSURE_REPRODUCED_ERROR, 400);
   }
 }
 
@@ -1233,6 +1280,7 @@ export function toDisclosureView(
     fingerprints: row.fingerprints,
     findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
     artifact,
+    reproducibilitySteps: row.reproducibility_steps,
     securityContact: row.security_contact,
     policyUrl: row.policy_url,
     notes: notes.notes,
@@ -1289,6 +1337,7 @@ export function toDisclosureSummary(
     fingerprintCount: row.fingerprints.length,
     findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
     artifactSha256,
+    hasReproducibilitySteps: hasReproducibilitySteps(row.reproducibility_steps),
     vendorChannel: row.vendor_channel,
     assignee: row.assignee,
     reviewState: row.review_state,
@@ -1466,6 +1515,7 @@ export async function updateDisclosureCase(
     outcomeCve?: unknown;
     outcomeNotes?: unknown;
     findingCategory?: unknown;
+    reproducibilitySteps?: unknown;
   },
 ): Promise<DisclosureCaseView> {
   const current = await store.getDisclosureCaseByProspect(input.prospectId);
@@ -1480,7 +1530,17 @@ export async function updateDisclosureCase(
       : current.security_contact;
   const policyUrl =
     input.policyUrl !== undefined ? parsePolicyUrl(input.policyUrl) : current.policy_url;
-  assertChecklistAllowed(checklist, current.fingerprints, securityContact, policyUrl);
+  const parsedSteps = parseReproducibilitySteps(input.reproducibilitySteps);
+  const reproducibilitySteps =
+    parsedSteps === undefined ? current.reproducibility_steps : parsedSteps;
+  assertChecklistAllowed(
+    checklist,
+    current.fingerprints,
+    securityContact,
+    policyUrl,
+    reproducibilitySteps,
+    current.checklist_reproduced,
+  );
   const explicit = input.state !== undefined ? parseDisclosureState(input.state) : undefined;
   const state = resolveDisclosureState({ current: current.state, checklist, explicit });
   const notes = parseOperatorNotes(input.notes);
@@ -1520,6 +1580,7 @@ export async function updateDisclosureCase(
       : (current.finding_category ?? categoryFromFingerprints(current.fingerprints));
   const prospect = await requireProspect(store, input.prospectId);
   assertVerifiedArtifactHash(state, current.state, prospect?.artifact_sha256);
+  assertVerifiedReproducibilitySteps(state, current.state, reproducibilitySteps);
   const row = await store.updateDisclosureCase({
     prospectId: input.prospectId,
     actor: input.actor,
@@ -1539,6 +1600,7 @@ export async function updateDisclosureCase(
     outcomeCve,
     outcomeNotes,
     findingCategory,
+    reproducibilitySteps,
     summary: summarizeUpdate(current, {
       state,
       checklist,
@@ -1552,6 +1614,7 @@ export async function updateDisclosureCase(
       outcomeCve,
       outcomeNotes,
       findingCategory,
+      reproducibilitySteps,
     }),
   });
   if (prospect) {
@@ -1580,10 +1643,14 @@ function summarizeUpdate(
     outcomeCve: string | null;
     outcomeNotes: string | null;
     findingCategory: FindingCategory;
+    reproducibilitySteps: string | null;
   },
 ): string {
   if (next.state !== current.state) return `Set case state to ${next.state}.`;
   if (next.notes !== undefined) return "Stored encrypted operator notes.";
+  if (next.reproducibilitySteps !== (current.reproducibility_steps ?? null)) {
+    return "Recorded reproducibility steps.";
+  }
   if (
     next.securityContact !== current.security_contact ||
     next.policyUrl !== current.policy_url
@@ -2047,6 +2114,7 @@ export async function buildDisclosureReport(
     coordinate: `${prospect.owner}/${prospect.repo}`,
     packageName: prospect.package_name,
     artifact: view.artifact,
+    reproducibilitySteps: view.reproducibilitySteps,
     state: view.state,
     fingerprints: view.fingerprints,
     findingCategory: view.findingCategory,

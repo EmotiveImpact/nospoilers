@@ -980,6 +980,7 @@ function disclosureCaseRow(row: {
   checklist_fingerprints_recorded: boolean;
   checklist_no_secret_values: boolean;
   checklist_contact_or_policy: boolean;
+  reproducibility_steps?: string | null;
   fingerprints: unknown;
   finding_category?: string | null;
   security_contact: string | null;
@@ -1017,6 +1018,7 @@ function disclosureCaseRow(row: {
     checklist_fingerprints_recorded: Boolean(row.checklist_fingerprints_recorded),
     checklist_no_secret_values: Boolean(row.checklist_no_secret_values),
     checklist_contact_or_policy: Boolean(row.checklist_contact_or_policy),
+    reproducibility_steps: row.reproducibility_steps ?? null,
     fingerprints: asStringArray(row.fingerprints),
     finding_category: asFindingCategory(row.finding_category),
     security_contact: row.security_contact,
@@ -3132,6 +3134,7 @@ export function createStore(
       outcomeCve?: string | null;
       outcomeNotes?: string | null;
       findingCategory?: FindingCategory | null;
+      reproducibilitySteps?: string | null;
       summary: string;
     }): Promise<DisclosureCaseRow> {
       return await sql.transaction(async (tx) => {
@@ -3180,6 +3183,7 @@ export function createStore(
                outcome_cve = $19,
                outcome_notes = $20,
                finding_category = $21,
+               reproducibility_steps = $22,
                verified_at = CASE
                  WHEN $2 = 'verified' THEN COALESCE(verified_at, now())
                  ELSE verified_at
@@ -3211,6 +3215,9 @@ export function createStore(
             input.findingCategory !== undefined
               ? input.findingCategory
               : existing.finding_category,
+            input.reproducibilitySteps !== undefined
+              ? input.reproducibilitySteps
+              : existing.reproducibility_steps,
           ],
         );
         const row = updated.rows[0];

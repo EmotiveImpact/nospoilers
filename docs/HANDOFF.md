@@ -99,7 +99,12 @@ Read in this order:
   from a completed scan. A new Disclosure Desk `verified` state requires
   the SHA-256. Historical verified rows without a hash stay verified.
   Live Neon: `053` applied; prettier and left-pad hashes stay null (no
-  rescan). Next unused id is `054_*`.
+  rescan).
+  `054_disclosure_reproducibility_steps` stores operator-written
+  reproducibility steps on each Disclosure Desk case. A new `reproduced`
+  check and a new `verified` state require that text. Historical verified
+  rows without steps stay verified. Live Neon: `054` applied; prettier and
+  left-pad steps stay null (no case rewrite). Next unused id is `055_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -533,6 +538,8 @@ checklist, finding category (derived from fingerprints; operator can
 override; live Neon prettier verified case is `credential` from SEC-003),
 repeatable artifact SHA-256/SHA-512 on the lead (new `verified` requires
 the hash; historical verified prettier stays verified with a null hash),
+operator-written reproducibility steps (new `reproduced`/`verified`
+require the text; historical prettier steps stay null),
 duplicate warning (owner/repo, GitHub owner, vendor domain,
 package, fingerprints; live Neon prettier vs left-pad still no match),
 encrypted expiring notes, stored (never fetched)

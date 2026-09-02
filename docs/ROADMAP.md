@@ -205,7 +205,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   workflow (verification, finding category from fingerprints — live Neon
   prettier verified case is `credential` from SEC-003 — repeatable artifact
   hash on the lead (new `verified` requires SHA-256; historical prettier hash
-  stays null) — duplicates including GitHub owner and vendor domain
+  stays null) — operator-written reproducibility steps (new
+  `reproduced`/`verified` require the text; historical prettier steps stay
+  null) — duplicates including GitHub owner and vendor domain
   on create and before `contacted` (live Neon prettier vs left-pad still no
   match; left-pad `contacted` 409 verify; prettier stays `fixed`) —
   live Neon prettier vs left-pad still no match,

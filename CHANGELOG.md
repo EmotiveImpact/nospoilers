@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- Disclosure Desk reproducibility steps: a case stores operator-written steps
+  for how the public artifact finding was reproduced. A new `reproduced`
+  checklist item and a new `verified` state require that text. Historical
+  verified cases without steps stay verified. Reports include the steps and
+  still omit notes and attachment bytes. Customer sessions stay 401. No
+  worker wake. Nothing is mailed. Live Neon: `054` applied; unauth and
+  `not-admin` 401; owner desk 200; prettier and left-pad steps stay null
+  (no case rewrite); leftover grants 0; leftover destinations 0; no open
+  jobs; campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk artifact hash: a completed prospect scan stores SHA-256 and
   SHA-512 of the scanned bytes. Cases, redacted reports, drafts, and destination
   payloads show the URL/version/hash. A new `verified` state requires a

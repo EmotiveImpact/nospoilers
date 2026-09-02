@@ -12,7 +12,11 @@ import {
   DISCLOSURE_SENT_ERROR,
   DISCLOSURE_VERIFIED_ERROR,
   DISCLOSURE_HASH_ERROR,
+  DISCLOSURE_REPRODUCED_ERROR,
+  DISCLOSURE_STEPS_ERROR,
+  assertChecklistAllowed,
   assertVerifiedArtifactHash,
+  assertVerifiedReproducibilitySteps,
   isRepeatableArtifactHash,
   categoryFromFingerprints,
   categoryFromRule,
@@ -33,6 +37,8 @@ import { createStore, signSession } from "../src/server/store.ts";
 
 const SOURCEMAP_BYTES = readFileSync(path.resolve("fixtures/sourcemap.tgz"));
 const SOURCEMAP_DIGESTS = hashArtifactBytes(SOURCEMAP_BYTES);
+const REPRO_STEPS =
+  "Downloaded the public npm tarball and confirmed the packed source map path from the scan fingerprints.";
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk-admin-token", ...json };
@@ -226,6 +232,45 @@ describe("Disclosure Desk helpers", () => {
       assertVerifiedArtifactHash("verified", "signal", SOURCEMAP_DIGESTS.sha256),
     ).not.toThrow();
     expect(() => assertVerifiedArtifactHash("verified", "verified", null)).not.toThrow();
+    expect(() =>
+      assertChecklistAllowed(
+        {
+          public_artifact: false,
+          reproduced: true,
+          fingerprints_recorded: false,
+          no_secret_values: false,
+          contact_or_policy: false,
+        },
+        [],
+        null,
+        null,
+        null,
+        false,
+      ),
+    ).toThrow(DISCLOSURE_REPRODUCED_ERROR);
+    expect(() =>
+      assertChecklistAllowed(
+        {
+          public_artifact: false,
+          reproduced: true,
+          fingerprints_recorded: false,
+          no_secret_values: false,
+          contact_or_policy: false,
+        },
+        [],
+        null,
+        null,
+        null,
+        true,
+      ),
+    ).not.toThrow();
+    expect(() => assertVerifiedReproducibilitySteps("verified", "signal", null)).toThrow(
+      DISCLOSURE_STEPS_ERROR,
+    );
+    expect(() =>
+      assertVerifiedReproducibilitySteps("verified", "signal", REPRO_STEPS),
+    ).not.toThrow();
+    expect(() => assertVerifiedReproducibilitySteps("verified", "verified", null)).not.toThrow();
     const hashedDraft = previewDisclosureDraft(
       {
         owner: "prettier",
@@ -415,6 +460,7 @@ describe("Disclosure Desk Phase 1", () => {
           policyUrl: "https://prettier.io/security?token=secret",
           notes: "Operator reproduction notes. No secret values.",
           notesExpiresInDays: 30,
+          reproducibilitySteps: REPRO_STEPS,
           checklist: {
             public_artifact: true,
             reproduced: true,
@@ -432,9 +478,11 @@ describe("Disclosure Desk Phase 1", () => {
           notes: string | null;
           sent: boolean;
           artifact: { sha256: string | null; version: string | null };
+          reproducibilitySteps: string | null;
         };
       };
       expect(saved.case.state).toBe("verified");
+      expect(saved.case.reproducibilitySteps).toBe(REPRO_STEPS);
       expect(saved.case.artifact.sha256).toBe(SOURCEMAP_DIGESTS.sha256);
       expect(saved.case.artifact.version).toBe("3.9.6");
       expect(saved.case.policyUrl).toBe("https://prettier.io/security");
@@ -770,6 +818,7 @@ describe("Disclosure Desk organization and domain matching", () => {
         headers: admin,
         body: JSON.stringify({
           securityContact: "security@prettier.io",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: {
             public_artifact: true,
             reproduced: true,
@@ -795,6 +844,7 @@ describe("Disclosure Desk organization and domain matching", () => {
         headers: admin,
         body: JSON.stringify({
           securityContact: "security@prettier.io",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: {
             public_artifact: true,
             reproduced: true,
@@ -833,6 +883,128 @@ describe("Disclosure Desk organization and domain matching", () => {
       });
       expect(reverify.status).toBe(400);
       expect(((await reverify.json()) as { error: string }).error).toBe(DISCLOSURE_HASH_ERROR);
+      expect(wakes).toBe(0);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("blocks a new reproduced check without steps and keeps a historical verified case", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "desk-steps-session" });
+      const id = await seedProspect(store, {
+        owner: "prettier",
+        repo: "prettier",
+        packageName: "prettier",
+        artifactUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      let wakes = 0;
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "desk-admin-token",
+          adminGithubLogin: "EmotiveImpact",
+          sessionSecret: "desk-steps-session",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {
+          wakes += 1;
+        },
+      });
+      const opened = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(opened.status).toBe(201);
+      const blocked = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ checklist: { reproduced: true } }),
+      });
+      expect(blocked.status).toBe(400);
+      expect(((await blocked.json()) as { error: string }).error).toBe(DISCLOSURE_REPRODUCED_ERROR);
+
+      const saved = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ reproducibilitySteps: REPRO_STEPS }),
+      });
+      expect(saved.status).toBe(200);
+      expect(
+        ((await saved.json()) as { case: { reproducibilitySteps: string } }).case.reproducibilitySteps,
+      ).toBe(REPRO_STEPS);
+
+      const reproduced = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ checklist: { reproduced: true } }),
+      });
+      expect(reproduced.status).toBe(200);
+
+      await sql.query(`UPDATE disclosure_cases SET reproducibility_steps = NULL WHERE prospect_id = $1`, [
+        id,
+      ]);
+      const category = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ findingCategory: "other" }),
+      });
+      expect(category.status).toBe(200);
+      expect(
+        ((await category.json()) as { case: { reproducibilitySteps: string | null } }).case
+          .reproducibilitySteps,
+      ).toBeNull();
+
+      const verifiedTooSoon = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({
+          state: "verified",
+          securityContact: "security@prettier.io",
+          checklist: {
+            public_artifact: true,
+            reproduced: true,
+            fingerprints_recorded: true,
+            no_secret_values: true,
+            contact_or_policy: true,
+          },
+        }),
+      });
+      expect(verifiedTooSoon.status).toBe(400);
+      expect(((await verifiedTooSoon.json()) as { error: string }).error).toBe(DISCLOSURE_STEPS_ERROR);
+
+      const verified = await app.request(`/api/internal/prospects/${id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({
+          state: "verified",
+          securityContact: "security@prettier.io",
+          reproducibilitySteps: REPRO_STEPS,
+          checklist: {
+            public_artifact: true,
+            reproduced: true,
+            fingerprints_recorded: true,
+            no_secret_values: true,
+            contact_or_policy: true,
+          },
+        }),
+      });
+      expect(verified.status).toBe(200);
+      const report = await app.request(
+        `/api/internal/prospects/${id}/disclosure/report?format=json`,
+        { headers: admin },
+      );
+      expect(report.status).toBe(200);
+      const reportBody = (await report.json()) as {
+        sent: boolean;
+        report: { reproducibilitySteps: string | null; notesIncluded: boolean };
+      };
+      expect(reportBody.sent).toBe(false);
+      expect(reportBody.report.notesIncluded).toBe(false);
+      expect(reportBody.report.reproducibilitySteps).toBe(REPRO_STEPS);
       expect(wakes).toBe(0);
     } finally {
       await sql.close();

@@ -65,6 +65,7 @@ export type DisclosureSummary = {
   fingerprintCount: number
   findingCategory?: FindingCategory
   artifactSha256?: string | null
+  hasReproducibilitySteps?: boolean
   vendorChannel?: VendorChannel | null
   assignee?: string | null
   reviewState?: DisclosureReviewState
@@ -120,6 +121,7 @@ type DisclosureCase = {
     sha256: string | null
     sha512: string | null
   }
+  reproducibilitySteps: string | null
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -207,6 +209,7 @@ export function DisclosureCasePanel({
   const [contact, setContact] = useState("")
   const [policyUrl, setPolicyUrl] = useState("")
   const [notes, setNotes] = useState("")
+  const [reproSteps, setReproSteps] = useState("")
   const [ackNote, setAckNote] = useState("")
   const [fixVersion, setFixVersion] = useState("")
   const [deadline, setDeadline] = useState("")
@@ -242,6 +245,7 @@ export function DisclosureCasePanel({
       setContact(body.case.securityContact ?? "")
       setPolicyUrl(body.case.policyUrl ?? "")
       setNotes(body.case.notes ?? "")
+      setReproSteps(body.case.reproducibilitySteps ?? "")
       setAckNote(body.case.acknowledgementNote ?? "")
       setFixVersion(body.case.fixVersion ?? "")
       setDeadline(body.case.deadlineAt ? body.case.deadlineAt.slice(0, 16) : "")
@@ -541,6 +545,7 @@ export function DisclosureCasePanel({
           {summary?.artifactSha256 ? (
             <Badge variant="muted">{summary.artifactSha256.slice(0, 12)}</Badge>
           ) : null}
+          {summary?.hasReproducibilitySteps ? <Badge variant="muted">steps</Badge> : null}
           {summary?.conversion && summary.conversion !== "none" ? (
             <Badge variant="muted">{summary.conversion}</Badge>
           ) : null}
@@ -555,10 +560,11 @@ export function DisclosureCasePanel({
             Private verification only. Drafts are never sent. Policy URLs are stored, not fetched.
             Fingerprints are rule|severity|path|title. Finding category is a closed
             label from those rules. A new verified state needs a repeatable artifact
-            hash from the scanned bytes. Finding values stay off this desk.
+            hash and reproducibility steps. Finding values stay off this desk.
             Do-not-contact always blocks outreach. Missed deadlines stay internal.
-            Vendor replies and attachments stay on this desk. Reports omit notes and
-            attachment bytes. Outreach still requires review approval. Nothing is mailed.
+            Vendor replies and attachments stay on this desk. Reports include
+            reproducibility steps and omit notes and attachment bytes. Outreach still
+            requires review approval. Nothing is mailed.
           </p>
           {!desk ? (
             <div className="flex flex-wrap gap-2">
@@ -599,7 +605,10 @@ export function DisclosureCasePanel({
                         checked={desk.checklist[item.key]}
                         disabled={Boolean(busy)}
                         onChange={(event) =>
-                          void patch({ checklist: { [item.key]: event.target.checked } })
+                          void patch({
+                            checklist: { [item.key]: event.target.checked },
+                            reproducibilitySteps: reproSteps,
+                          })
                         }
                         className="size-3.5 accent-snow"
                       />
@@ -608,6 +617,30 @@ export function DisclosureCasePanel({
                   </li>
                 ))}
               </ul>
+              <Field>
+                <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                  Reproducibility steps
+                </Label>
+                <Textarea
+                  value={reproSteps}
+                  onChange={(event) => setReproSteps(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm text-snow outline-none data-focus:border-white/40"
+                />
+                <p className="mt-1 text-xs text-dim">
+                  How you reproduced the public artifact finding. No secret values. Reports
+                  include this text.
+                </p>
+              </Field>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={Boolean(busy)}
+                onClick={() => void patch({ reproducibilitySteps: reproSteps })}
+              >
+                Save steps
+              </Button>
               <p className="font-mono text-xs text-dim">
                 {desk.artifact.name}
                 {desk.artifact.version ? ` · ${desk.artifact.version}` : ""}

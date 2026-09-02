@@ -17,6 +17,8 @@ import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
 const SOURCEMAP_DIGESTS = hashArtifactBytes(readFileSync(path.resolve("fixtures/sourcemap.tgz")));
+const REPRO_STEPS =
+  "Downloaded the public npm tarball and confirmed the packed source map path from the scan fingerprints.";
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk2-admin-token", ...json };
@@ -223,6 +225,7 @@ describe("Disclosure Desk Phase 2 minus send", () => {
           outcomeCredit: "Hall of thanks",
           outcomeCve: "pending",
           outcomeNotes: "No bounty. Credit only if they want it.",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: CHECKLIST,
         }),
       });
@@ -348,6 +351,7 @@ describe("Disclosure Desk Phase 2 minus send", () => {
         body: JSON.stringify({
           securityContact: "security@example.com",
           policyUrl: "https://github.com/once/once#security",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: CHECKLIST,
         }),
       });

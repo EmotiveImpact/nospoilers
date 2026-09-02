@@ -1254,6 +1254,7 @@ export function createApp(deps: AppDeps): Hono {
         outcomeCve: body.outcomeCve,
         outcomeNotes: body.outcomeNotes,
         findingCategory: body.findingCategory,
+        reproducibilitySteps: body.reproducibilitySteps,
       });
       return c.json({ case: view });
     } catch (error) {

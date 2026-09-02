@@ -98,6 +98,7 @@ export function disclosureDestinationPayload(report: DisclosureReport): Record<s
       version: report.artifact.version,
       sha256: report.artifact.sha256,
     },
+    reproducibilitySteps: report.reproducibilitySteps,
     state: report.state,
     fingerprints: report.fingerprints,
     findingCategory: report.findingCategory,

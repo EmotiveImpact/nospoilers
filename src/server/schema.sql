@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS disclosure_cases (
   checklist_fingerprints_recorded BOOLEAN NOT NULL DEFAULT FALSE,
   checklist_no_secret_values BOOLEAN NOT NULL DEFAULT FALSE,
   checklist_contact_or_policy BOOLEAN NOT NULL DEFAULT FALSE,
+  reproducibility_steps TEXT,
   fingerprints JSONB NOT NULL DEFAULT '[]'::jsonb,
   finding_category TEXT
     CHECK (finding_category IS NULL OR finding_category IN (

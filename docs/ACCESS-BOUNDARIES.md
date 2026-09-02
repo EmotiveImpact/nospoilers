@@ -342,7 +342,10 @@ Internal staff running acquisition and disclosure work.
 - Open a Disclosure Desk case on an Artifact Lead: verification checklist, finding
   category (derived from fingerprints; operator can override), artifact
   URL/version/hash from the scanned lead (a new `verified` state requires the
-  SHA-256; historical verified cases without a hash stay verified), duplicate
+  SHA-256; historical verified cases without a hash stay verified),
+  operator-written reproducibility steps (a new `reproduced` check and a new
+  `verified` state require the text; historical verified cases without steps
+  stay verified), duplicate
   warning, encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
@@ -464,11 +467,13 @@ owner-only notification with rule ids and fingerprints only, a second verify is
 idempotent, mark-read works, and customer sessions stay 401.
 `tests/disclosure.test.ts` proves Disclosure Desk is owner-only, a signal cannot be marked
 verified without the checklist, a new verified state also requires a repeatable
-artifact SHA-256, a historical verified case without a hash can stay verified,
+artifact SHA-256 and reproducibility steps, a historical verified case without a
+hash or steps can stay verified,
 a new case derives finding category from fingerprints
-and rejects an unknown category. Live Neon: `053` applied; unauth and
-`not-admin` 401; prettier and left-pad hashes stay null (no rescan);
-prettier stays `fixed`/`verified`; leftover grants 0; no open jobs; tunnel matched.
+and rejects an unknown category. Live Neon: `054` applied; unauth and
+`not-admin` 401; prettier and left-pad hashes and steps stay null (no
+rescan/rewrite); prettier stays `fixed`/`verified`; leftover grants 0; no
+open jobs; tunnel matched.
 `PATCH /api/internal/prospects/:id` cannot record
 `contacted` before a verified case or `fixed` before a fix-version rescan, and
 `contacted` also warns on a possible duplicate unless `confirmDuplicate` is sent.

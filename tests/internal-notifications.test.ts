@@ -14,6 +14,8 @@ import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
 const SOURCEMAP_DIGESTS = hashArtifactBytes(readFileSync(path.resolve("fixtures/sourcemap.tgz")));
+const REPRO_STEPS =
+  "Downloaded the public npm tarball and confirmed the packed source map path from the scan fingerprints.";
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer notice-admin-token", ...json };
@@ -171,6 +173,7 @@ describe("verified-critical internal notifications", () => {
         body: JSON.stringify({
           securityContact: "security@example.com",
           policyUrl: "https://github.com/once/once#security",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: CHECKLIST,
         }),
       });
@@ -191,6 +194,7 @@ describe("verified-critical internal notifications", () => {
           securityContact: "security@prettier.io",
           policyUrl: "https://prettier.io/security",
           notes: "Do not copy SECRET_VALUE=AKIAIOSFODNN7EXAMPLE",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: CHECKLIST,
         }),
       });
@@ -230,7 +234,11 @@ describe("verified-critical internal notifications", () => {
       await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
         method: "PATCH",
         headers: admin,
-        body: JSON.stringify({ state: "verified", checklist: CHECKLIST }),
+        body: JSON.stringify({
+          state: "verified",
+          reproducibilitySteps: REPRO_STEPS,
+          checklist: CHECKLIST,
+        }),
       });
       const stillOne = await app.request("/api/internal/notifications", { headers: admin });
       expect(((await stillOne.json()) as { notifications: unknown[] }).notifications).toHaveLength(

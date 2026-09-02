@@ -17,6 +17,8 @@ import { createStore, signSession } from "../src/server/store.ts";
 
 const SOURCEMAP_BYTES = readFileSync(path.resolve("fixtures/sourcemap.tgz"));
 const SOURCEMAP_DIGESTS = hashArtifactBytes(SOURCEMAP_BYTES);
+const REPRO_STEPS =
+  "Downloaded the public npm tarball and confirmed the packed source map path from the scan fingerprints.";
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk3-admin-token", ...json };
@@ -199,6 +201,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         body: JSON.stringify({
           securityContact: "security@prettier.io",
           policyUrl: "https://github.com/prettier/prettier#security",
+          reproducibilitySteps: REPRO_STEPS,
           checklist: CHECKLIST,
           notes: "Operator reproduction notes must not appear in reports.",
         }),
@@ -303,6 +306,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
           coordinate: string;
           findingCategory: string;
           artifact: { sha256: string | null };
+          reproducibilitySteps: string | null;
           assignee: string;
           reviewState: string;
           replies: { summary: string }[];
@@ -315,6 +319,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       expect(reportBody.report.coordinate).toBe("prettier/prettier");
       expect(reportBody.report.findingCategory).toBe("sourcemap");
       expect(reportBody.report.artifact.sha256).toBe(SOURCEMAP_DIGESTS.sha256);
+      expect(reportBody.report.reproducibilitySteps).toBe(REPRO_STEPS);
       expect(reportBody.report.assignee).toBe("EmotiveImpact");
       expect(reportBody.report.reviewState).toBe("approved");
       expect(reportBody.report.replies[0]?.summary).toContain("3.9.7");
@@ -332,6 +337,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       expect(htmlText).toContain("prettier/prettier");
       expect(htmlText).toContain("sourcemap");
       expect(htmlText).toContain(SOURCEMAP_DIGESTS.sha256);
+      expect(htmlText).toContain(REPRO_STEPS);
       expect(htmlText).not.toContain("Operator reproduction notes");
 
       const pdf = await app.request(
