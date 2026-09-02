@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Artifact Leads inspect discovers public npm workspace members from a repository’s
+  workspace config (`packages/*` or a literal path, cap 8) and queues those packs
+  behind customer jobs. A completed prospect scan stores member names from the packed
+  workspace (cap 40). Members are not auto-watched. Owner-only. Not a Pricing change.
+
 - Watch records `package_publisher_changed` when a protected pack’s npm `_npmUser`
   name or trusted-publisher id changes. First snapshot and empty previous publisher
   are baseline. Email and OIDC config ids are not stored. Solo allowed. Unpaid skips.

@@ -79,6 +79,16 @@ export function expandBraces(pattern: string): string[] {
   return out.length > 0 ? out : [pattern];
 }
 
+export function workspaceGlobsFromManifests(
+  packageJsonText: string,
+  pnpmWorkspaceText?: string | null,
+): string[] {
+  const pkg = parseJsonObject(packageJsonText);
+  const fromPkg = pkg ? workspaceGlobsFromPkg(pkg) : [];
+  const fromPnpm = pnpmWorkspaceText ? parsePnpmWorkspacePackages(pnpmWorkspaceText) : [];
+  return [...fromPkg, ...fromPnpm].map((glob) => glob.trim()).filter(Boolean);
+}
+
 export function parsePnpmWorkspacePackages(text: string): string[] {
   const trimmed = text.replace(/^\uFEFF/, "").trim();
   if (trimmed.startsWith("{")) {
@@ -132,7 +142,7 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
   return null;
 }
 
-function workspaceGlobsFromPkg(pkg: Record<string, unknown>): string[] {
+export function workspaceGlobsFromPkg(pkg: Record<string, unknown>): string[] {
   const workspaces = pkg.workspaces;
   if (Array.isArray(workspaces)) {
     return workspaces.filter((row): row is string => typeof row === "string").map((row) => row.trim());

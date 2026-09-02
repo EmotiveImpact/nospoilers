@@ -757,6 +757,13 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "031_identity_publisher",
   ]);
+  await sql.exec(`
+    ALTER TABLE prospects
+      ADD COLUMN IF NOT EXISTS workspace_members JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "032_prospect_workspaces",
+  ]);
 }
 
 export function num(value: unknown): number {

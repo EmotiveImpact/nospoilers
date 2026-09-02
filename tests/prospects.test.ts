@@ -3,7 +3,13 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
-import { parseGithubRepository } from "../src/server/prospects.ts";
+import {
+  MAX_PROSPECT_WORKSPACE_PACKS,
+  nestedNpmArtifactsFromGithub,
+  parseGithubRepository,
+  workspaceMemberNamesFromReport,
+  workspaceParentDirs,
+} from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
@@ -79,9 +85,99 @@ describe("Artifact Leads persistence", () => {
       expect(row?.findings).toEqual([
         expect.objectContaining({ rule: "MAP-001", path: "package/dist/app.js.map" }),
       ]);
+      expect(row?.workspace_members).toEqual([]);
+
+      await store.completeProspectScan(first.id, {
+        fileCount: 3,
+        findings: [],
+        workspaceMembers: ["@octo/cli", "@octo/core"],
+      });
+      expect((await store.getProspect(first.id))?.workspace_members).toEqual([
+        "@octo/cli",
+        "@octo/core",
+      ]);
     } finally {
       await sql.close();
     }
+  });
+
+  it("lists public workspace member packs from repo workspace config, without auto-watching", async () => {
+    expect(workspaceParentDirs(["packages/*", "!packages/test", "apps/web", "packages/**"])).toEqual([
+      "apps/web",
+      "packages",
+    ]);
+    expect(
+      workspaceMemberNamesFromReport([
+        {
+          kind: "npm",
+          root: ".",
+          configPath: "package.json",
+          globs: ["packages/*"],
+          members: [
+            { name: "@octo/core", path: "packages/core", private: false },
+            { name: "@octo/cli", path: "packages/cli", private: false },
+          ],
+        },
+      ]),
+    ).toEqual(["@octo/cli", "@octo/core"]);
+
+    const files: Record<string, string> = {
+      "package.json": JSON.stringify({ name: "@octo/root", workspaces: ["packages/*"] }),
+      "packages/core/package.json": JSON.stringify({ name: "@octo/core" }),
+      "packages/cli/package.json": JSON.stringify({ name: "@octo/cli" }),
+      "packages/secret/package.json": JSON.stringify({ name: "@octo/secret", private: true }),
+    };
+    const npm: Record<string, { version: string; tarball: string }> = {
+      "@octo/core": {
+        version: "1.0.0",
+        tarball: "https://registry.npmjs.org/@octo/core/-/core-1.0.0.tgz",
+      },
+      "@octo/cli": {
+        version: "2.0.0",
+        tarball: "https://registry.npmjs.org/@octo/cli/-/cli-2.0.0.tgz",
+      },
+    };
+    const artifacts = await nestedNpmArtifactsFromGithub({
+      owner: "octo",
+      repo: "app",
+      repositoryUrl: "https://github.com/octo/app",
+      rootPackageName: "@octo/root",
+      readFile: async (filePath) => files[filePath] ?? null,
+      listDir: async (dirPath) => {
+        if (dirPath !== "packages") return [];
+        return [
+          { name: "core", type: "dir" },
+          { name: "cli", type: "dir" },
+          { name: "secret", type: "dir" },
+        ];
+      },
+      npmLatest: async (packageName) => npm[packageName] ?? null,
+    });
+    expect(artifacts.map((row) => row.packageName).sort()).toEqual(["@octo/cli", "@octo/core"]);
+    expect(artifacts.every((row) => row.source === "npm")).toBe(true);
+    expect(artifacts).toHaveLength(2);
+
+    const manyFiles: Record<string, string> = {
+      "package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+    };
+    const manyNpm: Record<string, { version: string; tarball: string }> = {};
+    for (let i = 0; i < 12; i += 1) {
+      manyFiles[`packages/pkg-${i}/package.json`] = JSON.stringify({ name: `@octo/pkg-${i}` });
+      manyNpm[`@octo/pkg-${i}`] = {
+        version: "1.0.0",
+        tarball: `https://registry.npmjs.org/@octo/pkg-${i}/-/pkg-${i}-1.0.0.tgz`,
+      };
+    }
+    const capped = await nestedNpmArtifactsFromGithub({
+      owner: "octo",
+      repo: "app",
+      repositoryUrl: "https://github.com/octo/app",
+      readFile: async (filePath) => manyFiles[filePath] ?? null,
+      listDir: async () =>
+        Array.from({ length: 12 }, (_, i) => ({ name: `pkg-${i}`, type: "dir" as const })),
+      npmLatest: async (packageName) => manyNpm[packageName] ?? null,
+    });
+    expect(capped).toHaveLength(MAX_PROSPECT_WORKSPACE_PACKS);
   });
 
   it("requires an admin session or token for internal APIs", async () => {

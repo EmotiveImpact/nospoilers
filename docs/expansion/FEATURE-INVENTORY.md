@@ -196,7 +196,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | One-at-a-time prospect scans behind customer jobs | Built | Internal NoSpoilers |
 | Scheduled discovery | Planned | Internal NoSpoilers |
 | Continuous npm version feed | Planned | Internal NoSpoilers |
-| Nested workspace package discovery | Planned | Internal NoSpoilers |
+| Nested workspace package discovery | Built: Artifact Leads inspect lists public npm names from package.json / pnpm-workspace globs (`packages/*` or a literal path, cap 8 queued packs); scanned packs store member names (cap 40); never auto-watched; never executed; owner-only | Internal NoSpoilers |
 | Critical-only internal notifications | Planned | Internal NoSpoilers |
 | Human finding verification | Planned | Internal NoSpoilers |
 | Responsible-disclosure draft generation | Planned | Internal NoSpoilers |

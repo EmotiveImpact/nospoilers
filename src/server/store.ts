@@ -401,6 +401,7 @@ export type ProspectRow = {
   critical_count: number | null;
   warning_count: number | null;
   findings: unknown;
+  workspace_members: string[];
   error: string | null;
   discovered_at: string;
   scanned_at: string | null;
@@ -701,7 +702,7 @@ async function applyPendingInvite(
   });
 }
 
-function prospectRow(row: ProspectRow): ProspectRow {
+function prospectRow(row: ProspectRow & { workspace_members?: unknown }): ProspectRow {
   return {
     ...row,
     id: num(row.id),
@@ -710,6 +711,7 @@ function prospectRow(row: ProspectRow): ProspectRow {
     critical_count: row.critical_count === null ? null : num(row.critical_count),
     warning_count: row.warning_count === null ? null : num(row.warning_count),
     findings: parsePayload(row.findings),
+    workspace_members: asStringArray(row.workspace_members),
   };
 }
 
@@ -2169,7 +2171,7 @@ export function createStore(
 
     async completeProspectScan(
       id: number,
-      report: { fileCount: number; findings: unknown[] },
+      report: { fileCount: number; findings: unknown[]; workspaceMembers?: string[] },
     ): Promise<void> {
       const critical = report.findings.filter(
         (finding) =>
@@ -2186,11 +2188,19 @@ export function createStore(
              critical_count = $3,
              warning_count = $4,
              findings = $5::jsonb,
+             workspace_members = $6::jsonb,
              error = NULL,
              scanned_at = now(),
              updated_at = now()
          WHERE id = $1`,
-        [id, report.fileCount, critical, warnings, JSON.stringify(report.findings)],
+        [
+          id,
+          report.fileCount,
+          critical,
+          warnings,
+          JSON.stringify(report.findings),
+          JSON.stringify(report.workspaceMembers ?? []),
+        ],
       );
     },
 

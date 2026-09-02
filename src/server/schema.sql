@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS prospects (
   critical_count INTEGER,
   warning_count INTEGER,
   findings JSONB,
+  workspace_members JSONB NOT NULL DEFAULT '[]'::jsonb,
   error TEXT,
   discovered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   scanned_at TIMESTAMPTZ,

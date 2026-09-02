@@ -25,6 +25,7 @@ type Prospect = {
   critical_count: number | null
   warning_count: number | null
   findings: Finding[] | null
+  workspace_members: string[]
   error: string | null
   discovered_at: string
   scanned_at: string | null
@@ -288,8 +289,9 @@ export function ProspectsPage() {
         <div>
           <h1 className="font-display text-4xl tracking-tight text-snow md:text-5xl">Artifact Leads</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-            Find public release packs with real findings. No source or secret values are retained.
-            Nothing contacts or publicly names a maintainer for you.
+            Find public release packs with real findings. Inspect also lists public npm workspace
+            members from the repo workspace config (cap 8) and never auto-watches them. No source
+            or secret values are retained. Nothing contacts or publicly names a maintainer for you.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -395,7 +397,9 @@ export function ProspectsPage() {
             />
           </Field>
           <div className="mt-4 flex items-center justify-between gap-4">
-            <p className="text-xs text-dim">Release packs plus its root npm package.</p>
+            <p className="text-xs text-dim">
+              Release packs, the root npm package, and up to eight public workspace members.
+            </p>
             <Button type="submit" variant="outline" disabled={!repository.trim() || Boolean(working)}>
               {working === "repository" ? "Checking…" : "Inspect repo"}
             </Button>
@@ -454,6 +458,12 @@ export function ProspectsPage() {
                         {prospect.release_tag ? ` · ${prospect.release_tag}` : ""}
                         {prospect.artifact_bytes ? ` · ${formatBytes(prospect.artifact_bytes)}` : ""}
                       </p>
+                      {prospect.workspace_members?.length ? (
+                        <p className="mt-2 font-mono text-xs text-dim">
+                          Workspace members · {prospect.workspace_members.join(", ")} · not
+                          auto-watched
+                        </p>
+                      ) : null}
                       {prospect.error && <p className="mt-3 text-sm text-danger">{prospect.error}</p>}
                       {findings.length > 0 && (
                         <ul className="mt-4 flex max-w-2xl flex-col gap-1.5">

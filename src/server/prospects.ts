@@ -3,8 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ScanReport } from "../scanner/index.ts";
+import { workspaceGlobsFromManifests } from "../scanner/workspaces.ts";
 import { isPackAssetName } from "./paths.ts";
 import type { Store } from "./store.ts";
+
+export const MAX_PROSPECT_WORKSPACE_PACKS = 8;
+export const MAX_PROSPECT_WORKSPACE_NAMES = 40;
 
 export const DEFAULT_PROSPECT_QUERY =
   "topic:electron fork:false archived:false stars:10..5000 pushed:>2026-01-01";
@@ -77,6 +81,106 @@ async function npmJson<T>(packageName: string): Promise<T | null> {
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`npm registry returned ${response.status}.`);
   return (await response.json()) as T;
+}
+
+export function workspaceParentDirs(globs: string[]): string[] {
+  const dirs = new Set<string>();
+  for (const raw of globs) {
+    const glob = raw.trim();
+    if (!glob || glob.startsWith("!")) continue;
+    const cleaned = glob.replace(/\/+$/, "");
+    if (!cleaned || cleaned.includes("..") || cleaned.includes("**")) continue;
+    if (cleaned.endsWith("/*") && !cleaned.slice(0, -2).includes("*")) {
+      const parent = cleaned.slice(0, -2);
+      if (parent) dirs.add(parent);
+      continue;
+    }
+    if (!cleaned.includes("*")) dirs.add(cleaned);
+  }
+  return [...dirs].sort().slice(0, MAX_PROSPECT_WORKSPACE_PACKS);
+}
+
+export function workspaceMemberNamesFromReport(
+  workspaces: ScanReport["workspaces"],
+  cap = MAX_PROSPECT_WORKSPACE_NAMES,
+): string[] {
+  const names = new Set<string>();
+  for (const workspace of workspaces ?? []) {
+    for (const member of workspace.members ?? []) {
+      const name = typeof member.name === "string" ? member.name.trim() : "";
+      if (name) names.add(name);
+      if (names.size >= cap) return [...names].sort();
+    }
+  }
+  return [...names].sort();
+}
+
+export async function nestedNpmArtifactsFromGithub(input: {
+  owner: string;
+  repo: string;
+  repositoryUrl: string;
+  rootPackageName?: string | null;
+  readFile: (filePath: string) => Promise<string | null>;
+  listDir: (dirPath: string) => Promise<Array<{ name: string; type: string }>>;
+  npmLatest: (packageName: string) => Promise<{ version: string; tarball: string } | null>;
+}): Promise<PublicArtifact[]> {
+  const rootJson = await input.readFile("package.json");
+  if (!rootJson) return [];
+  const pnpm =
+    (await input.readFile("pnpm-workspace.yaml")) ?? (await input.readFile("pnpm-workspace.yml"));
+  const globs = workspaceGlobsFromManifests(rootJson, pnpm);
+  const parents = workspaceParentDirs(globs);
+  const artifacts: PublicArtifact[] = [];
+  const seen = new Set<string>();
+  const rootName = input.rootPackageName?.trim();
+  if (rootName) seen.add(rootName);
+
+  for (const parent of parents) {
+    if (artifacts.length >= MAX_PROSPECT_WORKSPACE_PACKS) break;
+    const exact = globs.some((glob) => glob.replace(/\/+$/, "") === parent && !glob.includes("*"));
+    const dirs = exact
+      ? [parent]
+      : (await input.listDir(parent))
+          .filter((row) => row.type === "dir" && row.name && !row.name.includes(".."))
+          .map((row) => `${parent}/${row.name}`);
+    for (const dir of dirs) {
+      if (artifacts.length >= MAX_PROSPECT_WORKSPACE_PACKS) break;
+      if (dir.includes("..")) continue;
+      const memberJson = await input.readFile(`${dir}/package.json`);
+      if (!memberJson) continue;
+      let manifest: { name?: unknown; private?: unknown };
+      try {
+        manifest = JSON.parse(memberJson) as { name?: unknown; private?: unknown };
+      } catch {
+        continue;
+      }
+      if (manifest.private === true || typeof manifest.name !== "string") continue;
+      const packageName = manifest.name.trim();
+      if (!packageName || seen.has(packageName)) continue;
+      const latest = await input.npmLatest(packageName);
+      if (!latest) continue;
+      seen.add(packageName);
+      artifacts.push({
+        source: "npm",
+        owner: input.owner,
+        repo: input.repo,
+        repositoryUrl: input.repositoryUrl,
+        packageName,
+        releaseTag: latest.version,
+        artifactName: `${packageName.replace(/[^A-Za-z0-9_.-]+/g, "-")}-${latest.version}.tgz`,
+        artifactUrl: latest.tarball,
+      });
+    }
+  }
+  return artifacts;
+}
+
+function githubContentsPath(filePath: string): string {
+  return filePath
+    .split("/")
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
 }
 
 export function parseGithubRepository(value: string): { owner: string; repo: string } | null {
@@ -182,6 +286,45 @@ export async function inspectGithubRepository(
 
   const npm = await packageArtifact(repo, parsed.owner, parsed.repo, token);
   if (npm) artifacts.push(npm);
+  const nested = await nestedNpmArtifactsFromGithub({
+    owner: parsed.owner,
+    repo: parsed.repo,
+    repositoryUrl: repo.html_url,
+    rootPackageName: npm?.packageName ?? null,
+    readFile: async (filePath) => {
+      const content = await githubJson<GithubContent | unknown[]>(
+        `/repos/${owner}/${name}/contents/${githubContentsPath(filePath)}?ref=${encodeURIComponent(repo.default_branch)}`,
+        token,
+        { allow404: true },
+      );
+      if (!content || Array.isArray(content) || content.encoding !== "base64" || !content.content) {
+        return null;
+      }
+      return Buffer.from(content.content.replace(/\n/g, ""), "base64").toString("utf8");
+    },
+    listDir: async (dirPath) => {
+      const listing = await githubJson<Array<{ name?: string; type?: string }> | GithubContent>(
+        `/repos/${owner}/${name}/contents/${githubContentsPath(dirPath)}?ref=${encodeURIComponent(repo.default_branch)}`,
+        token,
+        { allow404: true },
+      );
+      if (!Array.isArray(listing)) return [];
+      return listing
+        .map((row) => ({ name: row.name ?? "", type: row.type ?? "" }))
+        .filter((row) => row.name);
+    },
+    npmLatest: async (packageName) => {
+      const metadata = await npmJson<{
+        "dist-tags"?: { latest?: string };
+        versions?: Record<string, { dist?: { tarball?: string } }>;
+      }>(packageName);
+      const version = metadata?.["dist-tags"]?.latest;
+      const tarball = version ? metadata?.versions?.[version]?.dist?.tarball : null;
+      if (!version || !tarball) return null;
+      return { version, tarball };
+    },
+  });
+  artifacts.push(...nested);
   return artifacts;
 }
 
@@ -323,7 +466,11 @@ export async function scanProspectArtifact(
     const bytes = await downloadArtifact(prospect.artifact_url, deps.maxAssetBytes);
     await writeFile(target, bytes, { flag: "wx" });
     const report = await deps.scan(target);
-    await deps.store.completeProspectScan(prospect.id, report);
+    await deps.store.completeProspectScan(prospect.id, {
+      fileCount: report.fileCount,
+      findings: report.findings,
+      workspaceMembers: workspaceMemberNamesFromReport(report.workspaces),
+    });
   } catch (error) {
     await deps.store.failProspectScan(
       prospect.id,

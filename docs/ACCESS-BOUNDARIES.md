@@ -250,6 +250,9 @@ Internal staff running acquisition and disclosure work.
 
 - Use Artifact Leads / Disclosure Desk for **public** artifacts only.
 - Queue one prospect scan at a time, behind customer jobs.
+- See nested public npm workspace member names discovered from a repo workspace
+  config or a scanned pack (cap 8 queued packs / 40 listed names). Members are
+  not auto-watched as customer packages.
 - Record outreach state. Never send mail without a later human-confirm step.
 
 **Must not**
@@ -326,9 +329,10 @@ These are never customer features:
 ## Tests
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
-mutate Artifact Leads, cannot read `/api/internal/queue`, and that owner queue JSON is
+mutate Artifact Leads, cannot read `/api/internal/queue`, that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
-unpack aggregates. `tests/receipts.test.ts` proves customers cannot read another
+unpack aggregates, and that nested workspace member discovery is metadata-only (private
+members skipped, cap 8, root name not duplicated, listed names stored after scan). `tests/receipts.test.ts` proves customers cannot read another
 tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unpacked jump
 (not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE

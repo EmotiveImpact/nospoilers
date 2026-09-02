@@ -161,7 +161,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   write. Do not grant Administration.
 - Internal docs (DOC-001): architecture/design/rfc/spec/product/month1/feature-inventory/
   electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
-- Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, manual outreach state.
+- Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, nested
+  public workspace member packs (cap 8 queued / 40 listed names, never auto-watched),
+  manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth

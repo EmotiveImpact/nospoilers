@@ -36,13 +36,14 @@ Read in this order:
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
   `025_hosted_usage`, `026_github_response`,   `027_team_invites`,
   `028_identity_dependencies`, `029_identity_unpacked_bytes`,
-  `030_identity_provenance`, and `031_identity_publisher` are applied. `026_github_response` only
+  `030_identity_provenance`, `031_identity_publisher`, and `032_prospect_workspaces` are applied. `026_github_response` only
   extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
   `installation_invites`. `028_identity_dependencies` adds
   `package_identity_snapshots.dependency_names`. `029_identity_unpacked_bytes` adds
   `package_identity_snapshots.unpacked_bytes`. `030_identity_provenance` adds
   `has_attestations`, `attestation_predicate`, and `signature_keyids` on identity snapshots.
   `031_identity_publisher` adds `publisher_name` and `trusted_publisher`.
+  `032_prospect_workspaces` adds `prospects.workspace_members`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -241,7 +242,9 @@ Read in this order:
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
-- Prospecting scans public GitHub Release assets and root npm packages. It does not clone source,
+- Prospecting scans public GitHub Release assets, the root npm package, and up to eight
+  public workspace member packs named from the repo workspace config. Scanned packs store
+  member names (not source). Members are not auto-watched. It does not clone source,
   retain bytes, auto-contact maintainers, or scan Electron installers over the limit.
 
 ## Critical truth
