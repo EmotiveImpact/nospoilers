@@ -122,13 +122,28 @@
         flex-wrap: wrap;
       }
 
-      /* command palette */
+      /* command palette — toggled by the checkbox at the top of <body>, no script needed */
+      .pal-toggle {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .scrim,
+      .palette {
+        display: none;
+      }
+      .pal-toggle:checked ~ .scrim {
+        display: block;
+      }
+      .pal-toggle:checked ~ .palette {
+        display: block;
+      }
       .scrim {
         position: fixed;
         inset: 0;
         z-index: 40;
-        background: rgba(4, 4, 5, 0.66);
-        backdrop-filter: blur(3px);
+        background: rgba(4, 4, 5, 0.55);
+        backdrop-filter: blur(2px);
       }
       .palette {
         position: fixed;
@@ -194,13 +209,14 @@
     </style>
   </head>
   <body>
+    <input type="checkbox" id="pal" class="pal-toggle" aria-label="Show the command palette" />
     <div class="app">
       <header class="topbar">
         <span class="logo">NoSpoilers</span>
         <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
         <div class="grow"></div>
         <span class="pill">Trial · 11 days</span>
-        <button class="btn sm outline">⌘K</button>
+        <label class="btn sm outline" for="pal">⌘K</label>
         <button class="btn sm">Subscribe</button>
       </header>
 
@@ -213,6 +229,14 @@
               One feed of what changed. Repos, packs, deliveries, policy edits. Anything you
               configure lives behind <span class="kbd">⌘K</span> — the page never becomes a
               settings wall.
+            </p>
+            <p class="small dim" style="margin-top: 10px">
+              <label
+                for="pal"
+                style="cursor: pointer; color: var(--snow); border-bottom: 1px solid var(--line-strong)"
+                >Open the palette</label
+              >
+              to see what it hides.
             </p>
           </div>
         </div>
@@ -344,7 +368,7 @@
       </div>
     </div>
 
-    <div class="scrim"></div>
+    <label class="scrim" for="pal" aria-label="Close the command palette"></label>
     <div class="palette">
       <input value="scan" aria-label="Command" />
       <div class="pgroup">
@@ -363,7 +387,7 @@
       <div class="pfoot">
         <span><span class="kbd">↑↓</span> navigate</span>
         <span><span class="kbd">↵</span> run</span>
-        <span><span class="kbd">esc</span> close</span>
+        <label for="pal" style="cursor: pointer"><span class="kbd">esc</span> close</label>
         <span style="margin-left: auto">Every setting is reachable here</span>
       </div>
     </div>
