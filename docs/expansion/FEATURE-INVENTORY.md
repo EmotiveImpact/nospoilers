@@ -120,12 +120,12 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | VS Code `.vsix` | Built: ZIP magic, clean and dirty fixtures, GitHub Release asset, Scan example | NoSpoilers |
 | Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; clean and dirty Scan examples | NoSpoilers |
 | Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path; clean and dirty Scan examples | NoSpoilers |
-| Java JAR/WAR | Built: ZIP magic; clean and dirty Scan examples | NoSpoilers |
-| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; clean and dirty Scan examples | NoSpoilers |
+| Java JAR/WAR | Built: ZIP magic; clean and dirty JAR and WAR Scan examples | NoSpoilers |
+| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; clean and dirty nupkg and snupkg Scan examples | NoSpoilers |
 | Ruby gems | Built: tar + nested `data.tar.gz`, never executed; clean and dirty Scan examples | NoSpoilers |
 | Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; clean and dirty docker-save and OCI examples | NoSpoilers |
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
-| Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; clean and dirty Scan APK/AAB examples | NoSpoilers |
+| Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; clean and dirty Scan APK/AAB examples; XAPK is a nested APK zip | NoSpoilers |
 | iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; clean and dirty Scan IPA examples | NoSpoilers |
 | Electron DMG | Deferred isolated worker | NoSpoilers |
 | Electron EXE/NSIS | Deferred isolated worker | NoSpoilers |
@@ -158,7 +158,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Disable unsafe release workflow | Planned: needs GitHub App **Administration**. Not granted | NoSpoilers |
 | Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
-| Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; never invents an incident | NoSpoilers |
+| Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; reports Members read and optional Contents/PR/Checks write; Administration granted is a warning; never invents an incident | NoSpoilers |
 
 ## Alerts, team and trust
 

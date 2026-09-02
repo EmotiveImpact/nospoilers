@@ -1,6 +1,7 @@
 export type PermissionMap = Record<string, string>;
 
 export const REQUIRED_READS = ["contents", "metadata"] as const;
+export const OPTIONAL_READS = ["members"] as const;
 export const OPTIONAL_WRITES = ["contents", "pull_requests", "checks"] as const;
 
 export type RepoProbe = {
@@ -22,6 +23,7 @@ export type PermissionTestResult = {
   repositorySelection: string | null;
   permissions: PermissionMap;
   missingReads: string[];
+  optionalReads: { name: string; granted: boolean }[];
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
   repoProbe: RepoProbe | null;
@@ -56,6 +58,10 @@ export function summarizePermissionTest(input: {
 }): PermissionTestResult {
   const permissions = input.permissions ?? {};
   const missingReads = REQUIRED_READS.filter((name) => !hasRead(permissions, name));
+  const optionalReads = OPTIONAL_READS.map((name) => ({
+    name,
+    granted: hasRead(permissions, name),
+  }));
   const optionalWrites = OPTIONAL_WRITES.map((name) => ({
     name,
     granted: hasWrite(permissions, name),
@@ -72,11 +78,23 @@ export function summarizePermissionTest(input: {
   if (missingReads.length > 0) {
     bits.push(`Missing read: ${missingReads.join(", ")}.`);
   }
+  if (!hasRead(permissions, "members")) {
+    bits.push("Members read is off; collaborator-added Watch will miss GitHub member events.");
+  }
+  if (!hasWrite(permissions, "contents")) {
+    bits.push("Contents write is off; setup and remediation PRs stay copy-paste.");
+  }
+  if (!hasWrite(permissions, "pull_requests")) {
+    bits.push("Pull requests write is off; the App cannot open PRs.");
+  }
+  if (!hasWrite(permissions, "checks")) {
+    bits.push("Checks write is off; hosted release scans skip GitHub Checks.");
+  }
   if (repoProbe && !repoProbe.ok) {
     bits.push(`Could not read ${repoProbe.fullName}.`);
   }
   if (administrationGranted) {
-    bits.push("Administration is granted; NoSpoilers does not need it.");
+    bits.push("Administration is granted; NoSpoilers does not need it. Do not keep that permission.");
   }
   if (lastDelivery) {
     bits.push(`Last GitHub job: ${lastDelivery.kind} (${lastDelivery.status}).`);
@@ -94,6 +112,7 @@ export function summarizePermissionTest(input: {
     repositorySelection: input.repositorySelection ?? null,
     permissions,
     missingReads: [...missingReads],
+    optionalReads,
     optionalWrites,
     administrationGranted,
     repoProbe,

@@ -62,9 +62,19 @@ const EXAMPLES = [
     hint: "ZIP magic. Bytecode is not executed.",
   },
   {
+    path: "fixtures/sourcemap.war",
+    label: "WAR with a source map",
+    hint: "WEB-INF layout. Bytecode is not executed.",
+  },
+  {
     path: "fixtures/sourcemap.nupkg",
     label: "NuGet pack with a source map",
     hint: "ZIP magic. Install scripts are not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.snupkg",
+    label: "NuGet symbols pack with a source map",
+    hint: "ZIP magic. Symbols are not loaded.",
   },
   {
     path: "fixtures/sourcemap.gem",
@@ -85,6 +95,11 @@ const EXAMPLES = [
     path: "fixtures/sourcemap.apk",
     label: "Android APK with a source map",
     hint: "ZIP magic. DEX is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.xapk",
+    label: "Android XAPK with a source map",
+    hint: "Nested APK. DEX is not executed.",
   },
   {
     path: "fixtures/sourcemap.aab",

@@ -88,9 +88,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Alert, job, delivery, receipt, revision, audit, and Team timeline lists honor that
   window. Direct alert, receipt, and revision ids still load for incident work.
 - Run a live GitHub permission test on installations they belong to. The test never
-  inserts an alert and never claims a security incident. It reports the last customer
-  job (kind, status, time) for that install, or that none exist. It stays available
-  when coverage has ended or GitHub has suspended the App.
+  inserts an alert and never claims a security incident. It reports Contents/Metadata
+  reads, Members read (collaborator alerts), optional Contents/Pull requests/Checks write,
+  whether Administration was granted (it should not be), a repo probe, and the last
+  customer job (kind, status, time) for that install, or that none exist. Missing Members
+  read or optional writes do not fail the test. It stays available when coverage has ended
+  or GitHub has suspended the App.
 - Acknowledge, assign (to a GitHub login on that install), resolve with a note, and
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.

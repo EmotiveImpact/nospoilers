@@ -13,6 +13,7 @@ type PermissionTest = {
   accountLogin: string;
   suspended: boolean;
   missingReads: string[];
+  optionalReads: { name: string; granted: boolean }[];
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
   repoProbe: { fullName: string; ok: boolean } | null;
@@ -2109,9 +2110,11 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Live permission tests talk to GitHub. They never create a Watch alert. This install’s
-          recent jobs stay listed until they succeed or hit the retry cap. Global queues stay
-          owner-only.
+          Live permission tests talk to GitHub. They never create a Watch alert. Test install
+          reports Contents and Metadata reads, Members read (collaborator alerts), optional
+          Contents/Pull requests/Checks write, and whether Administration was granted — it should
+          not be. This install’s recent jobs stay listed until they succeed or hit the retry cap.
+          Global queues stay owner-only.
         </p>
         {githubPaused ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">

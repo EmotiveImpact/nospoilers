@@ -40,12 +40,16 @@ async function packTar(srcDir: string, dest: string): Promise<void> {
   await tarCreate({ gzip: true, file: dest, cwd: srcDir }, ["."]);
 }
 
-async function writeZipPack(dest: string, files: Record<string, string | Buffer>): Promise<void> {
+async function zipBuffer(files: Record<string, string | Buffer>): Promise<Buffer> {
   const zip = new JSZip();
   for (const [name, contents] of Object.entries(files)) {
     zip.file(name, contents);
   }
-  await writeFile(dest, await zip.generateAsync({ type: "nodebuffer" }));
+  return Buffer.from(await zip.generateAsync({ type: "nodebuffer" }));
+}
+
+async function writeZipPack(dest: string, files: Record<string, string | Buffer>): Promise<void> {
+  await writeFile(dest, await zipBuffer(files));
 }
 
 async function writeCrxPack(dest: string, files: Record<string, string | Buffer>): Promise<void> {
@@ -153,6 +157,17 @@ async function main(): Promise<void> {
       "App.nuspec": "<package></package>",
       ...dirtyJs,
     });
+    await writeZipPack(path.join(fixtures, "sourcemap.war"), {
+      "WEB-INF/web.xml": "<web-app></web-app>",
+      "WEB-INF/classes/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "WEB-INF/classes/index.js.map": sourceMap,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.snupkg"), {
+      "[Content_Types].xml": '<?xml version="1.0"?><Types></Types>',
+      "package.nuspec": "<package></package>",
+      "lib/net8.0/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "lib/net8.0/index.js.map": sourceMap,
+    });
     await writeGemPack(path.join(fixtures, "sourcemap.gem"), dirtyJs);
 
     const cleanJs = { "index.js": minified };
@@ -184,6 +199,15 @@ async function main(): Promise<void> {
       "[Content_Types].xml": '<?xml version="1.0"?><Types></Types>',
       "App.nuspec": "<package></package>",
       ...cleanJs,
+    });
+    await writeZipPack(path.join(fixtures, "clean.war"), {
+      "WEB-INF/web.xml": "<web-app></web-app>",
+      "WEB-INF/classes/index.js": minified,
+    });
+    await writeZipPack(path.join(fixtures, "clean.snupkg"), {
+      "[Content_Types].xml": '<?xml version="1.0"?><Types></Types>',
+      "package.nuspec": "<package></package>",
+      "lib/net8.0/index.js": minified,
     });
     await writeGemPack(path.join(fixtures, "clean.gem"), cleanJs, "clean");
 
@@ -233,12 +257,29 @@ async function main(): Promise<void> {
       "classes.dex": dexStub,
       "assets/www/index.js": minified,
     });
+    await writeZipPack(path.join(fixtures, "clean.xapk"), {
+      "manifest.json": '{"xapk_version":2,"package_name":"app.clean"}',
+      "app.apk": await zipBuffer({
+        "AndroidManifest.xml": '<?xml version="1.0"?><manifest package="app.clean"></manifest>',
+        "classes.dex": dexStub,
+        "assets/www/index.js": minified,
+      }),
+    });
     await writeZipPack(path.join(fixtures, "sourcemap.apk"), {
       "AndroidManifest.xml": '<?xml version="1.0"?><manifest package="app.spoiler"></manifest>',
       "classes.dex": dexStub,
       "META-INF/CERT.RSA": Buffer.from("not-a-real-signature"),
       "assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "assets/www/index.js.map": sourceMap,
+    });
+    await writeZipPack(path.join(fixtures, "sourcemap.xapk"), {
+      "manifest.json": '{"xapk_version":2,"package_name":"app.spoiler"}',
+      "app.apk": await zipBuffer({
+        "AndroidManifest.xml": '<?xml version="1.0"?><manifest package="app.spoiler"></manifest>',
+        "classes.dex": dexStub,
+        "assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+        "assets/www/index.js.map": sourceMap,
+      }),
     });
     await writeZipPack(path.join(fixtures, "clean.aab"), {
       "BundleConfig.pb": Buffer.from("pb"),

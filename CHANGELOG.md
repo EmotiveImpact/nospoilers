@@ -26,7 +26,8 @@
 - Scan lists the OCI image fixture next to docker save. Layers are not executed.
 - Scan lists CRX, XPI, wheel, JAR, nupkg, and gem fixtures next to VSIX. Payloads are not executed.
 - Authored disposable `throwaway/` content for `EmotiveImpact/nospoilers-throwaway` (hostile pack, `.env` cheap-push path, release workflow). `npm run phase1:throwaway` seeds those files and attaches `sourcemap.tgz` using Contents write, not Administration. The live repo is still empty until that write is granted.
-- Added clean VSIX, CRX, XPI, wheel, JAR, nupkg, gem, OCI, AAB, and IPA fixtures alongside the dirty ones. Payloads are not executed.
+- Watch Test install reports Members read (collaborator alerts), optional Contents/Pull requests/Checks write, and whether Administration was granted (it should not be). Missing optional grants do not fail the test and do not invent an incident.
+- Scan lists WAR, snupkg, and XAPK fixtures. Nested APKs are not executed.
 - Scan lists the Android AAB fixture next to APK. BundleConfig layout. DEX is not executed.
 - Watch Scan latest release queues a heavy job, unpacks that repo’s current GitHub Release pack (not the git tree), and is not the hourly poller. No release or no packed asset is an alert without a download. A packed asset writes a failed-policy receipt when spoilers are present and is not allowed to ship. Anonymous is 401, unknown repo 404, another tenant 403.
 - GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue light Watch jobs and the worker writes alerts. Other member actions and pushes without those paths do not. HMAC required. Unpaid still HTTP 200 with no job. The GitHub `public` event queues the same publicized job. `repository.privatized` updates the Watch row and does not enqueue. Real GitHub proof is still outstanding.

@@ -112,6 +112,13 @@ describe("packed fixtures", () => {
     );
   });
 
+  it("lists the XAPK fixture on Scan next to APK", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/sourcemap.xapk"/);
+    expect(page).toMatch(/Nested APK/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
+  });
+
   it("lists the AAB fixture on Scan next to APK", () => {
     const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
     expect(page).toMatch(/path: "fixtures\/sourcemap.aab"/);
@@ -133,18 +140,21 @@ describe("packed fixtures", () => {
       ["clean.xpi", "xpi"],
       ["clean.whl", "wheel"],
       ["clean.jar", "jar"],
+      ["clean.war", "jar"],
       ["clean.nupkg", "nupkg"],
+      ["clean.snupkg", "nupkg"],
       ["clean.gem", "gem"],
       ["clean.oci.tar", "oci"],
       ["clean.aab", "aab"],
       ["clean.ipa", "ipa"],
+      ["clean.xapk", "apk"],
     ] as const;
     for (const [file, kind] of cases) {
       const report = await scan(path.join(fixtures, file));
       expect(report.kind, file).toBe(kind);
       expect(report.ok, file).toBe(true);
       expect(report.status, file).toBe("passed");
-      if (file === "clean.gem") {
+      if (file === "clean.gem" || file === "clean.xapk") {
         expect(report.findings.map((row) => row.rule), file).toEqual(["ARC-001"]);
       } else {
         expect(report.findings, file).toEqual([]);
@@ -158,8 +168,11 @@ describe("packed fixtures", () => {
       ["sourcemap.xpi", "xpi"],
       ["sourcemap.whl", "wheel"],
       ["sourcemap.jar", "jar"],
+      ["sourcemap.war", "jar"],
       ["sourcemap.nupkg", "nupkg"],
+      ["sourcemap.snupkg", "nupkg"],
       ["sourcemap.gem", "gem"],
+      ["sourcemap.xapk", "apk"],
     ] as const;
     for (const [file, kind] of cases) {
       const report = await scan(path.join(fixtures, file));
@@ -179,7 +192,10 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/Python is not executed/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.jar"/);
     expect(page).toMatch(/Bytecode is not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.war"/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.nupkg"/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.snupkg"/);
+    expect(page).toMatch(/Symbols are not loaded/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.gem"/);
     expect(page).toMatch(/Ruby is not executed/);
   });

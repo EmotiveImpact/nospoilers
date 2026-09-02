@@ -130,12 +130,16 @@ describe("extra packed formats", () => {
     expect(packFormatFromName("App.1.0.0.snupkg")).toBe("nupkg");
     expect(packFormatFromName("spoiler-1.0.0.gem")).toBe("gem");
     expect(packFormatFromName("app.apk")).toBe("apk");
+    expect(packFormatFromName("app.xapk")).toBe("apk");
     expect(packFormatFromName("app.aab")).toBe("aab");
     expect(packFormatFromName("app.ipa")).toBe("ipa");
     expect(packFormatFromName("fn.lambda.zip")).toBe("serverless");
     expect(packFormatFromName("fn.serverless.zip")).toBe("serverless");
     expect(isPackAssetName("dist/app.vsix")).toBe(true);
     expect(isPackAssetName("dist/app.apk")).toBe(true);
+    expect(isPackAssetName("dist/app.xapk")).toBe(true);
+    expect(isPackAssetName("dist/app.war")).toBe(true);
+    expect(isPackAssetName("dist/App.1.0.0.snupkg")).toBe(true);
     expect(isPackAssetName("dist/fn.lambda.zip")).toBe(true);
     expect(isPackAssetName("README.md")).toBe(false);
   });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort, type GithubRepo } from "../src/server/github.ts";
@@ -64,6 +65,39 @@ describe("permission test copy", () => {
     expect(ok.lastDelivery).toBeNull();
     expect(ok.detail).toContain("No webhook jobs recorded yet.");
     expect(ok.detail.toLowerCase()).toContain("not a security incident");
+    expect(ok.detail).toMatch(/Members read is off/);
+    expect(ok.detail).toMatch(/Contents write is off/);
+    expect(ok.detail).toMatch(/Pull requests write is off/);
+    expect(ok.detail).toMatch(/Checks write is off/);
+    expect(ok.optionalReads).toEqual([{ name: "members", granted: false }]);
+    expect(ok.administrationGranted).toBe(false);
+
+    const full = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: {
+        contents: "write",
+        metadata: "read",
+        members: "read",
+        pull_requests: "write",
+        checks: "write",
+      },
+    });
+    expect(full.ok).toBe(true);
+    expect(full.optionalReads).toEqual([{ name: "members", granted: true }]);
+    expect(full.optionalWrites.every((row) => row.granted)).toBe(true);
+    expect(full.detail).not.toMatch(/Members read is off/);
+    expect(full.detail).not.toMatch(/Contents write is off/);
+
+    const admin = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: { contents: "read", metadata: "read", administration: "write" },
+    });
+    expect(admin.ok).toBe(true);
+    expect(admin.administrationGranted).toBe(true);
+    expect(admin.detail).toMatch(/Administration is granted/);
+    expect(admin.detail).toMatch(/Do not keep that permission/);
 
     const delivered = summarizePermissionTest({
       accountLogin: "octo",
@@ -84,6 +118,13 @@ describe("permission test copy", () => {
     expect(missing.missingReads).toEqual(["contents"]);
     expect(missing.inventedIncident).toBe(false);
     expect(missing.detail.toLowerCase()).toContain("not a security incident");
+  });
+
+  it("says Test install reports Members read and that Administration should not be granted", () => {
+    const page = readFileSync("src/pages/WatchPage.tsx", "utf8");
+    expect(page).toMatch(/Members read \(collaborator alerts\)/);
+    expect(page).toMatch(/Administration was granted/);
+    expect(page).toMatch(/it should\s+not be/);
   });
 
   it("builds rotation checklists without secret values and measures exposure", () => {

@@ -164,7 +164,9 @@ Read in this order:
   versions (Bugsnag) and alerts if the private upload is missing or a public map is still
   served. Bugsnag cannot look up a debug ID. Not a Pricing extras change.
 - Watch **Test install** runs a live GitHub permission/read probe. It never creates an
-  alert. Watch alerts can be acknowledged, assigned to an install member, resolved with a
+  alert. It reports Members read and optional Contents/Pull requests/Checks write, and
+  warns if Administration was granted. Missing optional grants do not fail the test.
+  Watch alerts can be acknowledged, assigned to an install member, resolved with a
   note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
   Watch can export that activity as JSON. Incident actions stay available when unpaid
   or GitHub-suspended.
@@ -310,8 +312,10 @@ Scan page checks a signed receipt without unpacking (pack hashed in-browser). Co
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
 Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save, OCI, VSIX,
-CRX, XPI, wheel, JAR, nupkg, gem, APK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
+CRX, XPI, wheel, JAR, WAR, nupkg, snupkg, gem, APK, XAPK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
 DEX, Mach-O, and extension payloads are not executed.
+Watch Test install reports Members read and optional Contents/PR/Checks write, and warns if
+Administration is granted. Missing optional grants do not fail the test.
 Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
 the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
 alerts without download, and a packed asset that fails policy and is not allowed to ship.
