@@ -35,6 +35,16 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
   };
 }
 
+async function heavyUsage(store: Store, installationId = 7): Promise<number> {
+  const { rows } = await store.sql.query<{ n: string }>(
+    `SELECT COALESCE(heavy_jobs, 0)::text AS n
+     FROM hosted_usage_days
+     WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
+    [installationId],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 async function withStore(
   run: (ctx: { sql: SqlClient; store: Store }) => Promise<void>,
   storeOpts?: { jobMaxAttempts?: number; jobRetryBaseMs?: number },
@@ -174,7 +184,7 @@ describe("GitHub webhooks", () => {
       const { rows } = await store.sql.query<{ kind: string; priority: string; status: string }>(
         "SELECT kind, priority, status FROM jobs",
       );
-      expect(rows).toEqual([{ kind: "release_scan", priority: "heavy", status: "queued" }]);
+      expect(rows).toEqual([{ kind: "release_scan", priority: "light", status: "queued" }]);
     });
   });
 
@@ -982,7 +992,8 @@ describe("GitHub webhooks", () => {
         payload: unknown;
       }>("SELECT kind, priority, delivery_id, payload FROM jobs ORDER BY id");
       expect(rows).toHaveLength(2);
-      expect(rows.every((row) => row.kind === "release_scan" && row.priority === "heavy")).toBe(true);
+      expect(rows.every((row) => row.kind === "release_scan")).toBe(true);
+      expect(rows.map((row) => row.priority)).toEqual(["heavy", "heavy"]);
       const firstFp = packAssetFingerprint([pack]);
       const secondFp = packAssetFingerprint([{ ...pack, id: 902, size: 24, digest: "sha256:def" }]);
       expect(rows.map((row) => row.delivery_id)).toEqual([
@@ -1031,6 +1042,11 @@ describe("GitHub webhooks", () => {
         "SELECT delivery_id FROM jobs ORDER BY id",
       );
       expect(rows).toEqual([{ delivery_id: releaseScanDeliveryId(7, 83, "empty") }]);
+      const { rows: priorities } = await store.sql.query<{ priority: string }>(
+        "SELECT priority FROM jobs",
+      );
+      expect(priorities).toEqual([{ priority: "light" }]);
+      expect(await heavyUsage(store)).toBe(0);
     });
   });
 
@@ -1085,6 +1101,10 @@ describe("GitHub webhooks", () => {
       expect(rows[1]?.delivery_id).toBe(
         releaseScanDeliveryId(7, 82, packAssetFingerprint([{ id: 910, name: "app.zip", size: 40 }])),
       );
+      const { rows: priorities } = await store.sql.query<{ priority: string }>(
+        "SELECT priority FROM jobs ORDER BY id",
+      );
+      expect(priorities.map((row) => row.priority)).toEqual(["light", "heavy"]);
     });
   });
 
@@ -1298,6 +1318,7 @@ describe("scan latest release", () => {
       expect(rows[0]?.title).toMatch(/No release on octo\/throwaway/);
       expect(rows[0]?.title).not.toMatch(/allowed to ship/);
       expect(downloads).toBe(0);
+      expect(await heavyUsage(store)).toBe(0);
     });
   });
 
@@ -1353,6 +1374,7 @@ describe("scan latest release", () => {
       expect(rows[0]?.title).toMatch(/no pack we can scan/i);
       expect(rows[0]?.body).toMatch(/Source trees are not scanned on push/);
       expect(downloads).toBe(0);
+      expect(await heavyUsage(store)).toBe(0);
     });
   });
 
@@ -1433,6 +1455,7 @@ describe("scan latest release", () => {
         "SELECT count(*)::text AS n FROM scan_receipts",
       );
       expect(Number(receipts[0]?.n)).toBe(0);
+      expect(await heavyUsage(store)).toBe(0);
     });
   });
 
@@ -1509,6 +1532,7 @@ describe("scan latest release", () => {
       );
       expect(receipts).toHaveLength(1);
       expect(receipts[0]?.coordinate).toMatch(/sourcemap\.tgz/);
+      expect(await heavyUsage(store)).toBe(1);
     });
   });
 

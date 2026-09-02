@@ -446,7 +446,7 @@ export async function enqueueFromWebhook(
 
     return await enqueueCovered(store, installationId, {
       deliveryId: releaseScanDeliveryId(installationId, releaseId, fingerprint),
-      priority: "heavy",
+      priority: fingerprint === "empty" ? "light" : "heavy",
       kind: "release_scan",
       payload: {
         installationId,

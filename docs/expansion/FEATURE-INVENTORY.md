@@ -31,7 +31,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
 | Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe/Electron not claimed live) | NoSpoilers |
-| Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; not a scan-credit meter; not a Pricing change | Infrastructure |
+| Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; a GitHub Release job that never downloads (no pack, Electron installer skip, or every pack over the size cap) refunds the slot; `release.published` with no scannable pack enqueues light; not a scan-credit meter; not a Pricing change | Infrastructure |
 
 ## Scanner and release automation
 

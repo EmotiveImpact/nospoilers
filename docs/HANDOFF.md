@@ -240,8 +240,9 @@ Read in this order:
   `scan-latest-release` on `EmotiveImpact/Echo` job 46 `done`; Watch alert 35
   is `Release v0.1.7 has Electron installer assets we do not scan` and names
   the Hearback mac.zip / AppImage assets; no new `v0.1.7` Hearback receipts;
-  open jobs 0. Historical alerts 33/34 stay the old inconclusive titles.
+  open jobs 0.   Historical alerts 33/34 stay the old inconclusive titles.
   Echo git tree was not written. That is not the isolated Electron worker.
+  A later no-download skip refunds the daily unpack slot.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
@@ -513,7 +514,9 @@ DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Fair-use hosted unpacks are in (Solo 1 concurrent heavy job and 8 per UTC day per install;
 Team/trial 3 concurrent and 24/day; global heavy cap still applies; Watch warning/pause copy;
-owner queue usage aggregates; no scan-credit meter). Not advertised as a Pricing change.
+owner queue usage aggregates; a GitHub Release job that never downloads refunds the
+slot; `release.published` with no scannable pack is light; no scan-credit meter).
+Not advertised as a Pricing change.
 Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; customer vs prospect;
 stale locks; daily unpack aggregates; no payloads). Not a customer page.
 SIZE-003 unexpected unpacked growth is in (2× or ≥5 MiB versus previous receipt or approved

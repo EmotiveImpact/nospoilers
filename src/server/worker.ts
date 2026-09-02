@@ -151,6 +151,12 @@ export async function handleJob(
   const installationId = Number(payload.installationId);
   const deliveryId = job.delivery_id;
 
+  async function refundUnusedHostedUnpack(): Promise<void> {
+    if (job.priority !== "heavy") return;
+    if (!Number.isFinite(installationId) || installationId <= 0) return;
+    await deps.store.refundHostedUnpack(installationId);
+  }
+
   const alertBase = {
     installationId,
     repoId: repo?.id ?? null,
@@ -239,6 +245,7 @@ export async function handleJob(
     if (!repo) throw new Error("scan_latest_release job missing repo");
     const latest = await deps.github.getLatestRelease(installationId, repo.owner, repo.name);
     if (!latest) {
+      await refundUnusedHostedUnpack();
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
@@ -267,6 +274,7 @@ export async function handleJob(
     const packs = assets.filter((asset) => isScannablePackAssetName(asset.name));
     const installers = assets.filter((asset) => isElectronInstallerName(asset.name));
     if (packs.length === 0 && installers.length > 0) {
+      await refundUnusedHostedUnpack();
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
@@ -276,6 +284,7 @@ export async function handleJob(
       return;
     }
     if (packs.length === 0) {
+      await refundUnusedHostedUnpack();
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
@@ -288,6 +297,7 @@ export async function handleJob(
     const allFindings: ScanReport["findings"] = [];
     const notes: string[] = [];
     const statuses: ScanStatus[] = [];
+    let unpacked = false;
     if (installers.length > 0) {
       notes.push(
         `Skipped ${installers.map((asset) => asset.name).join(", ")} (Electron installer; isolated worker).`,
@@ -312,6 +322,7 @@ export async function handleJob(
             await deps.scan(dest),
             installationId,
           );
+          unpacked = true;
         } finally {
           await rm(dir, { recursive: true, force: true });
         }
@@ -361,6 +372,7 @@ export async function handleJob(
         }
       }
     }
+    if (!unpacked) await refundUnusedHostedUnpack();
 
     const status = foldScanStatus(statuses);
     const title = titleForScan(

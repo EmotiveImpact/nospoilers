@@ -158,7 +158,12 @@ describe("daily hosted unpack cap", () => {
           html_url: "https://github.com/octo/throwaway",
           owner: { login: "octo" },
         },
-        release: { id: 55, tag_name: "v1.0.0", name: "v1.0.0" },
+        release: {
+          id: 55,
+          tag_name: "v1.0.0",
+          name: "v1.0.0",
+          assets: [{ id: 1, name: "app.tgz", size: 12 }],
+        },
       });
       expect(ninth.status).toBe(200);
       const ninthBody = (await ninth.json()) as {
@@ -184,7 +189,12 @@ describe("daily hosted unpack cap", () => {
           html_url: "https://github.com/octo/throwaway",
           owner: { login: "octo" },
         },
-        release: { id: 56, tag_name: "v1.0.1", name: "v1.0.1" },
+        release: {
+          id: 56,
+          tag_name: "v1.0.1",
+          name: "v1.0.1",
+          assets: [{ id: 2, name: "app.tgz", size: 12 }],
+        },
       });
       expect(tenth.status).toBe(200);
       expect(((await tenth.json()) as { skipped?: string }).skipped).toBe("fair_use");
@@ -225,6 +235,35 @@ describe("daily hosted unpack cap", () => {
         payload: { installationId: 9 },
       });
       expect(other.inserted).toBe(true);
+    });
+  });
+
+  it("still queues a no-pack published release as light after the daily unpack cap", async () => {
+    await withStore(async ({ sql, store }) => {
+      await seedSoloInstall(store, sql, { id: 7, login: "octo", userId: "u1", accountId: 1 });
+      await fillHeavyJobs(store, 7, SOLO_HEAVY_PER_UTC_DAY);
+      const app = appFor(store);
+      const empty = await postWebhook(app, "release", "d-empty-after-cap", {
+        action: "published",
+        installation: { id: 7, account: { login: "octo", type: "User", id: 1 } },
+        repository: {
+          id: 99,
+          name: "throwaway",
+          full_name: "octo/throwaway",
+          private: false,
+          html_url: "https://github.com/octo/throwaway",
+          owner: { login: "octo" },
+        },
+        release: { id: 57, tag_name: "v1.0.2", name: "v1.0.2" },
+      });
+      expect(empty.status).toBe(200);
+      expect(await empty.json()).toEqual({ ok: true, queued: true, kind: "release_scan" });
+      const { rows } = await sql.query<{ priority: string; kind: string }>(
+        `SELECT priority, kind FROM jobs WHERE delivery_id = 'release-scan:7:57:empty'`,
+      );
+      expect(rows).toEqual([{ priority: "light", kind: "release_scan" }]);
+      const status = await store.hostedUsageStatus(7);
+      expect(status.exhausted).toBe(true);
     });
   });
 

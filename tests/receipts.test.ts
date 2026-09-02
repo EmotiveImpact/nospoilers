@@ -410,6 +410,12 @@ describe("hosted receipts", () => {
         "SELECT status FROM scan_receipts",
       );
       expect(receipts[0]?.status).toBe("inconclusive");
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n
+         FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(0);
     } finally {
       await sql.close();
     }

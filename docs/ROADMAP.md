@@ -102,8 +102,10 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Extra inspect: Azure/GCP service-account documents, PKCS12, terraform state, build caches
   (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
 - Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
-  Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. Watch shows warning or
-  paused copy, not remaining credits. Owner queue lists aggregate usage counts.
+  Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. A GitHub Release job
+  that never downloads (no pack, Electron skip, or every pack over the size cap) refunds
+  the slot. `release.published` with no scannable pack enqueues light. Watch shows
+  warning or paused copy, not remaining credits. Owner queue lists aggregate usage counts.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
 - Watch one-click GitHub responses: make-private, delete latest Release pack assets, disable
   a workflow that is not `.github/workflows/nospoilers.yml`. Install admin, typed confirm.
