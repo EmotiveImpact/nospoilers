@@ -795,6 +795,7 @@ export function ProspectsPage() {
                         prospectId={prospect.id}
                         summary={prospect.disclosure}
                         request={request}
+                        token={token}
                         onChanged={load}
                       />
                       {findings.length > 0 && (

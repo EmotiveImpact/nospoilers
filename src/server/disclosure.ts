@@ -54,9 +54,38 @@ export const DISCLOSURE_DNC_CREATE_ERROR =
   "Do-not-contact is in force. Open a research-only case, or remove the entry.";
 export const DISCLOSURE_DNC_EXISTS_ERROR = "A matching do-not-contact entry already exists.";
 export const DISCLOSURE_TEMPLATE_ERROR = "Template name, subject, and body are required.";
+export const DISCLOSURE_REVIEW_ERROR =
+  "Approve the disclosure review before recording outreach.";
+export const DISCLOSURE_REPLY_ERROR = "Vendor reply channel and summary are required.";
+export const DISCLOSURE_ATTACHMENT_ERROR = "Attachment filename, type, and bytes are required.";
+export const DISCLOSURE_ATTACHMENT_KIND_ERROR =
+  "Attach a short text, PDF, or image. Archives and packages are not stored.";
+export const DISCLOSURE_ATTACHMENT_EXPIRED_ERROR = "That attachment has expired.";
+export const DISCLOSURE_ASSIGNEE_ERROR = "Use a GitHub login, or clear the assignee.";
 
 export const VENDOR_CHANNELS = ["security_email", "form", "security_txt", "platform"] as const;
 export type VendorChannel = (typeof VENDOR_CHANNELS)[number];
+
+export const VENDOR_REPLY_CHANNELS = [...VENDOR_CHANNELS, "other"] as const;
+export type VendorReplyChannel = (typeof VENDOR_REPLY_CHANNELS)[number];
+
+export const DISCLOSURE_REVIEW_STATES = ["none", "pending", "approved", "rejected"] as const;
+export type DisclosureReviewState = (typeof DISCLOSURE_REVIEW_STATES)[number];
+
+export const MAX_VENDOR_REPLY = 2000;
+export const MIN_VENDOR_REPLY = 8;
+export const MAX_VENDOR_REPLIES = 40;
+export const MAX_ATTACHMENT_BYTES = 64 * 1024;
+export const MAX_ATTACHMENTS_PER_CASE = 8;
+export const ALLOWED_ATTACHMENT_TYPES = [
+  "text/plain",
+  "text/markdown",
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+] as const;
+export type AllowedAttachmentType = (typeof ALLOWED_ATTACHMENT_TYPES)[number];
+export const MAX_ASSIGNEE = 39;
 
 export const DNC_MATCH_REASONS = ["owner_repo", "package", "contact"] as const;
 export type DncReason = (typeof DNC_MATCH_REASONS)[number];
@@ -108,8 +137,36 @@ export type DisclosureCaseRow = {
   outcome_credit: string | null;
   outcome_cve: string | null;
   outcome_notes: string | null;
+  assignee: string | null;
+  review_state: DisclosureReviewState;
+  review_note: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  verified_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type DisclosureVendorReplyRow = {
+  id: number;
+  case_id: number;
+  channel: VendorReplyChannel;
+  summary: string;
+  received_at: string;
+  created_by: string;
+  created_at: string;
+};
+
+export type DisclosureAttachmentRow = {
+  id: number;
+  case_id: number;
+  filename: string;
+  media_type: string;
+  byte_length: number;
+  ciphertext: string;
+  expires_at: string;
+  created_by: string;
+  created_at: string;
 };
 
 export type DisclosureTemplateRow = {
@@ -176,8 +233,67 @@ export type DisclosureCaseView = {
   outcomeCredit: string | null;
   outcomeCve: string | null;
   outcomeNotes: string | null;
+  assignee: string | null;
+  reviewState: DisclosureReviewState;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  verifiedAt: string | null;
+  sla: DisclosureSla;
+  replies: DisclosureVendorReplyView[];
+  attachments: DisclosureAttachmentView[];
   createdAt: string;
   updatedAt: string;
+  events: DisclosureEventView[];
+};
+
+export type DisclosureVendorReplyView = {
+  id: number;
+  channel: VendorReplyChannel;
+  summary: string;
+  receivedAt: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type DisclosureAttachmentView = {
+  id: number;
+  filename: string;
+  mediaType: string;
+  byteLength: number;
+  expired: boolean;
+  expiresAt: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type DisclosureSla = {
+  openedAt: string;
+  verifiedAt: string | null;
+  acknowledgedAt: string | null;
+  deadlineAt: string | null;
+  deadlineMissed: boolean;
+  timeToVerifyMs: number | null;
+  timeToAckMs: number | null;
+};
+
+export type DisclosureReport = {
+  sent: false;
+  notesIncluded: false;
+  attachmentBytesIncluded: false;
+  coordinate: string;
+  packageName: string | null;
+  state: DisclosureState;
+  fingerprints: string[];
+  vendorChannel: VendorChannel | null;
+  securityContact: string | null;
+  policyUrl: string | null;
+  assignee: string | null;
+  reviewState: DisclosureReviewState;
+  sla: DisclosureSla;
+  outcomes: { credit: string | null; cve: string | null; notes: string | null };
+  replies: DisclosureVendorReplyView[];
+  attachments: DisclosureAttachmentView[];
   events: DisclosureEventView[];
 };
 
@@ -200,16 +316,18 @@ export type DisclosureCaseSummary = {
   lastRescanAt: string | null;
   fingerprintCount: number;
   vendorChannel: VendorChannel | null;
+  assignee: string | null;
+  reviewState: DisclosureReviewState;
 };
 
 export class DisclosureError extends Error {
-  status: 400 | 404 | 409;
+  status: 400 | 404 | 409 | 410;
   duplicates?: DuplicateMatch[];
   dnc?: DncMatch[];
 
   constructor(
     message: string,
-    status: 400 | 404 | 409,
+    status: 400 | 404 | 409 | 410,
     duplicates?: DuplicateMatch[],
     dnc?: DncMatch[],
   ) {
@@ -715,10 +833,59 @@ export function previewDisclosureDraft(
   };
 }
 
+export function toVendorReplyView(row: DisclosureVendorReplyRow): DisclosureVendorReplyView {
+  return {
+    id: row.id,
+    channel: row.channel,
+    summary: row.summary,
+    receivedAt: row.received_at,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  };
+}
+
+export function toAttachmentView(row: DisclosureAttachmentRow): DisclosureAttachmentView {
+  const expiresAt = row.expires_at;
+  const expired = Date.parse(expiresAt) <= Date.now();
+  return {
+    id: row.id,
+    filename: row.filename,
+    mediaType: row.media_type,
+    byteLength: row.byte_length,
+    expired,
+    expiresAt,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  };
+}
+
+export function disclosureSla(row: DisclosureCaseRow): DisclosureSla {
+  const opened = Date.parse(row.created_at);
+  const verified = row.verified_at ? Date.parse(row.verified_at) : Number.NaN;
+  const acknowledged = row.acknowledged_at ? Date.parse(row.acknowledged_at) : Number.NaN;
+  return {
+    openedAt: row.created_at,
+    verifiedAt: row.verified_at,
+    acknowledgedAt: row.acknowledged_at,
+    deadlineAt: row.deadline_at,
+    deadlineMissed: deadlineMissed(row.deadline_at, row.acknowledged_at),
+    timeToVerifyMs:
+      Number.isFinite(opened) && Number.isFinite(verified) && verified >= opened
+        ? verified - opened
+        : null,
+    timeToAckMs:
+      Number.isFinite(opened) && Number.isFinite(acknowledged) && acknowledged >= opened
+        ? acknowledged - opened
+        : null,
+  };
+}
+
 export function toDisclosureView(
   row: DisclosureCaseRow,
   notes: { notes: string | null; notesExpired: boolean },
   events: DisclosureEventRow[] = [],
+  replies: DisclosureVendorReplyRow[] = [],
+  attachments: DisclosureAttachmentRow[] = [],
 ): DisclosureCaseView {
   return {
     id: row.id,
@@ -745,6 +912,15 @@ export function toDisclosureView(
     outcomeCredit: row.outcome_credit,
     outcomeCve: row.outcome_cve,
     outcomeNotes: row.outcome_notes,
+    assignee: row.assignee,
+    reviewState: row.review_state,
+    reviewNote: row.review_note,
+    reviewedAt: row.reviewed_at,
+    reviewedBy: row.reviewed_by,
+    verifiedAt: row.verified_at,
+    sla: disclosureSla(row),
+    replies: replies.map(toVendorReplyView),
+    attachments: attachments.map(toAttachmentView),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map((event) => ({
@@ -769,6 +945,8 @@ export function toDisclosureSummary(row: DisclosureCaseRow): DisclosureCaseSumma
     lastRescanAt: row.last_rescan_at,
     fingerprintCount: row.fingerprints.length,
     vendorChannel: row.vendor_channel,
+    assignee: row.assignee,
+    reviewState: row.review_state,
   };
 }
 
@@ -898,8 +1076,12 @@ export async function createDisclosureCase(
 }
 
 async function loadedView(store: Store, row: DisclosureCaseRow): Promise<DisclosureCaseView> {
-  const events = await store.listDisclosureEvents(row.id);
-  return toDisclosureView(row, store.readDisclosureNotes(row), events);
+  const [events, replies, attachments] = await Promise.all([
+    store.listDisclosureEvents(row.id),
+    store.listDisclosureVendorReplies(row.id),
+    store.listDisclosureAttachments(row.id),
+  ]);
+  return toDisclosureView(row, store.readDisclosureNotes(row), events, replies, attachments);
 }
 
 export async function updateDisclosureCase(
@@ -1245,4 +1427,256 @@ export async function rescanDisclosureCase(
   });
   if (job.inserted) input.wakeWorker?.();
   return { case: await loadedView(store, row), jobId: job.id ?? 0 };
+}
+
+export function parseVendorReplyChannel(raw: unknown): VendorReplyChannel {
+  if (raw === "other") return "other";
+  const channel = typeof raw === "string" ? parseVendorChannel(raw) : null;
+  if (!channel) throw new DisclosureError(DISCLOSURE_REPLY_ERROR, 400);
+  return channel;
+}
+
+export function parseVendorReplySummary(raw: unknown): string {
+  if (typeof raw !== "string") throw new DisclosureError(DISCLOSURE_REPLY_ERROR, 400);
+  const summary = raw.trim();
+  if (summary.length < MIN_VENDOR_REPLY || summary.length > MAX_VENDOR_REPLY) {
+    throw new DisclosureError(
+      `Vendor reply summary must be ${MIN_VENDOR_REPLY} to ${MAX_VENDOR_REPLY} characters.`,
+      400,
+    );
+  }
+  return summary;
+}
+
+export function parseAssignee(raw: unknown): string | null {
+  if (raw === null || raw === "") return null;
+  if (typeof raw !== "string") throw new DisclosureError(DISCLOSURE_ASSIGNEE_ERROR, 400);
+  const login = raw.trim();
+  if (!login) return null;
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(login) || login.length > MAX_ASSIGNEE) {
+    throw new DisclosureError(DISCLOSURE_ASSIGNEE_ERROR, 400);
+  }
+  return login;
+}
+
+export function parseReviewDecision(raw: unknown): "approved" | "rejected" {
+  if (raw === "approve" || raw === "approved") return "approved";
+  if (raw === "reject" || raw === "rejected") return "rejected";
+  throw new DisclosureError("Review decision must be approve or reject.", 400);
+}
+
+export function attachmentExpired(expiresAt: string): boolean {
+  return Date.parse(expiresAt) <= Date.now();
+}
+
+export function sanitizeAttachmentFilename(raw: unknown): string {
+  if (typeof raw !== "string") throw new DisclosureError(DISCLOSURE_ATTACHMENT_ERROR, 400);
+  const name = raw.trim().split(/[/\\]/).pop() ?? "";
+  if (!name || name === "." || name.includes("..") || name.length > 80) {
+    throw new DisclosureError(DISCLOSURE_ATTACHMENT_ERROR, 400);
+  }
+  return name;
+}
+
+export function parseAttachmentMediaType(raw: unknown): AllowedAttachmentType {
+  if (typeof raw !== "string") throw new DisclosureError(DISCLOSURE_ATTACHMENT_ERROR, 400);
+  const type = raw.trim().toLowerCase();
+  if ((ALLOWED_ATTACHMENT_TYPES as readonly string[]).includes(type)) {
+    return type as AllowedAttachmentType;
+  }
+  throw new DisclosureError(DISCLOSURE_ATTACHMENT_KIND_ERROR, 400);
+}
+
+export function decodeAttachmentBytes(raw: unknown): Buffer {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new DisclosureError(DISCLOSURE_ATTACHMENT_ERROR, 400);
+  }
+  const bytes = Buffer.from(raw.trim(), "base64");
+  if (bytes.length === 0 || bytes.length > MAX_ATTACHMENT_BYTES) {
+    throw new DisclosureError(
+      `Attachment must be 1 to ${MAX_ATTACHMENT_BYTES} bytes after decoding.`,
+      400,
+    );
+  }
+  return bytes;
+}
+
+export function attachmentLooksPacked(bytes: Buffer): boolean {
+  if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05)) {
+    return true;
+  }
+  if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) return true;
+  if (bytes.length >= 262 && bytes.subarray(257, 262).toString("ascii") === "ustar") return true;
+  if (bytes.length >= 4 && bytes[0] === 0x7f && bytes.subarray(1, 4).toString("ascii") === "ELF") {
+    return true;
+  }
+  return false;
+}
+
+export async function recordVendorReply(
+  store: Store,
+  input: { prospectId: number; actor: string; channel: unknown; summary: unknown; receivedAt?: unknown },
+): Promise<DisclosureCaseView> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
+  const existing = await store.listDisclosureVendorReplies(current.id);
+  if (existing.length >= MAX_VENDOR_REPLIES) {
+    throw new DisclosureError(`This case already has ${MAX_VENDOR_REPLIES} vendor replies.`, 400);
+  }
+  const receivedAt =
+    typeof input.receivedAt === "string" && input.receivedAt.trim()
+      ? parseDeadlineAt(input.receivedAt)
+      : new Date().toISOString();
+  if (!receivedAt) throw new DisclosureError("Vendor reply time is invalid.", 400);
+  await store.insertDisclosureVendorReply({
+    caseId: current.id,
+    channel: parseVendorReplyChannel(input.channel),
+    summary: parseVendorReplySummary(input.summary),
+    receivedAt,
+    createdBy: input.actor,
+  });
+  await store.insertDisclosureEvent({
+    caseId: current.id,
+    actor: input.actor,
+    action: "vendor_reply",
+    summary: "Recorded a vendor reply. No message was sent.",
+  });
+  const row = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!row) throw new DisclosureError("No disclosure case yet.", 404);
+  return await loadedView(store, row);
+}
+
+export async function addDisclosureAttachment(
+  store: Store,
+  input: {
+    prospectId: number;
+    actor: string;
+    filename: unknown;
+    mediaType: unknown;
+    bytes: unknown;
+    expiresInDays?: unknown;
+  },
+): Promise<DisclosureCaseView> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
+  const existing = await store.listDisclosureAttachments(current.id);
+  if (existing.length >= MAX_ATTACHMENTS_PER_CASE) {
+    throw new DisclosureError(`This case already has ${MAX_ATTACHMENTS_PER_CASE} attachments.`, 400);
+  }
+  const filename = sanitizeAttachmentFilename(input.filename);
+  const mediaType = parseAttachmentMediaType(input.mediaType);
+  const bytes = decodeAttachmentBytes(input.bytes);
+  if (attachmentLooksPacked(bytes)) {
+    throw new DisclosureError(DISCLOSURE_ATTACHMENT_KIND_ERROR, 400);
+  }
+  const days = parseNotesTtlDays(input.expiresInDays ?? DEFAULT_NOTES_TTL_DAYS);
+  await store.insertDisclosureAttachment({
+    caseId: current.id,
+    filename,
+    mediaType,
+    bytes,
+    expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
+    createdBy: input.actor,
+  });
+  await store.insertDisclosureEvent({
+    caseId: current.id,
+    actor: input.actor,
+    action: "attachment.add",
+    summary: `Stored encrypted attachment ${filename} (${bytes.length} bytes).`,
+  });
+  const row = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!row) throw new DisclosureError("No disclosure case yet.", 404);
+  return await loadedView(store, row);
+}
+
+export async function readDisclosureAttachment(
+  store: Store,
+  input: { prospectId: number; attachmentId: number },
+): Promise<{ filename: string; mediaType: string; bytes: Buffer }> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
+  const row = await store.getDisclosureAttachment(input.attachmentId);
+  if (!row || row.case_id !== current.id) throw new DisclosureError("Unknown attachment.", 404);
+  if (attachmentExpired(row.expires_at)) {
+    throw new DisclosureError(DISCLOSURE_ATTACHMENT_EXPIRED_ERROR, 410);
+  }
+  const bytes = store.decryptDisclosureAttachment(row);
+  return { filename: row.filename, mediaType: row.media_type, bytes };
+}
+
+export async function assignDisclosureCase(
+  store: Store,
+  input: { prospectId: number; actor: string; assignee: unknown },
+): Promise<DisclosureCaseView> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
+  const assignee = parseAssignee(input.assignee);
+  const reviewState =
+    assignee && current.review_state === "none" ? "pending" : current.review_state;
+  const row = await store.assignDisclosureCase({
+    prospectId: input.prospectId,
+    assignee,
+    reviewState,
+    actor: input.actor,
+    summary: assignee
+      ? `Assigned the case to ${assignee}.`
+      : "Cleared the case assignee.",
+  });
+  return await loadedView(store, row);
+}
+
+export async function reviewDisclosureCase(
+  store: Store,
+  input: { prospectId: number; actor: string; decision: unknown; note: unknown },
+): Promise<DisclosureCaseView> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
+  const decision = parseReviewDecision(input.decision);
+  const note = parseAckNote(input.note);
+  const row = await store.reviewDisclosureCase({
+    prospectId: input.prospectId,
+    reviewState: decision,
+    reviewNote: note,
+    reviewedBy: input.actor,
+    actor: input.actor,
+    summary:
+      decision === "approved"
+        ? "Approved the case for outreach. No message was sent."
+        : "Rejected the case for outreach.",
+  });
+  return await loadedView(store, row);
+}
+
+export async function buildDisclosureReport(
+  store: Store,
+  prospectId: number,
+): Promise<DisclosureReport> {
+  const prospect = await requireProspect(store, prospectId);
+  if (!prospect) throw new DisclosureError("Prospect not found.", 404);
+  const row = await store.getDisclosureCaseByProspect(prospectId);
+  if (!row) throw new DisclosureError("No disclosure case yet.", 404);
+  const view = await loadedView(store, row);
+  return {
+    sent: false,
+    notesIncluded: false,
+    attachmentBytesIncluded: false,
+    coordinate: `${prospect.owner}/${prospect.repo}`,
+    packageName: prospect.package_name,
+    state: view.state,
+    fingerprints: view.fingerprints,
+    vendorChannel: view.vendorChannel,
+    securityContact: view.securityContact,
+    policyUrl: view.policyUrl,
+    assignee: view.assignee,
+    reviewState: view.reviewState,
+    sla: view.sla,
+    outcomes: {
+      credit: view.outcomeCredit,
+      cve: view.outcomeCve,
+      notes: view.outcomeNotes,
+    },
+    replies: view.replies,
+    attachments: view.attachments,
+    events: view.events,
+  };
 }

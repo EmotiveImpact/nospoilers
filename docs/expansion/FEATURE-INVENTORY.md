@@ -209,6 +209,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Disclosure outcomes | Built: credit / CVE / notes on the case; no bounty processor | Internal NoSpoilers |
 | Duplicate company/finding detection | Built: owner/repo, package name, or overlapping `rule\|severity\|path\|title` fingerprints; 409 unless `confirmDuplicate` | Internal NoSpoilers |
 | Contact history and disclosure deadlines | Built: stored security contact / https policy URL (never fetched); simulated acknowledgement; internal `deadlineMissed` flag only; no mail | Internal NoSpoilers |
+| Vendor replies and attachments | Built: owner-only append-only vendor replies; encrypted expiring attachments (text/PDF/PNG/JPEG, 64 KiB, archives rejected); bytes never appear on reports; customer 401; nothing mailed | Internal NoSpoilers |
+| Disclosure assignment and review | Built: owner-only assignee + approve/reject review; `contacted` requires review approval after verification and do-not-contact; SLA timestamps on the case and redacted report | Internal NoSpoilers |
+| Redacted disclosure reports | Built: owner-only JSON/HTML/PDF; fingerprints, SLA, replies, attachment metadata, events; notes and attachment bytes omitted; nothing sent | Internal NoSpoilers |
 | Fixed-version automatic rescan | Built: operator records a fix version and queues a prospect rescan; not a scheduled worker | Internal NoSpoilers |
 | Trial/paid conversion attribution | Built: `none` / `trial` / `paid` / `declined` on the case | Internal NoSpoilers |
 | Aggregate anonymized research | Planned | Internal NoSpoilers |

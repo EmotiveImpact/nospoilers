@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Disclosure Desk internal workflow: vendor replies, encrypted expiring
+  attachments (text/PDF/image only; archives rejected), assignment, review
+  approval before `contacted`, service-level timestamps, and redacted
+  JSON/HTML/PDF reports that omit operator notes and attachment bytes.
+  Customer sessions stay 401. Nothing is mailed. Client projects, billing,
+  and aggregate research stay out. Not a customer product and not a Pricing
+  change.
+
 - Package Identity batch import: `POST /api/protections/import` (cap 20) protects
   npm names this GitHub install owns. Registry metadata only — no tarball
   download and no `npm_scan` job. Unowned, missing, or invalid names are not

@@ -302,10 +302,13 @@ Internal staff running acquisition and disclosure work.
 - Open a Disclosure Desk case on an Artifact Lead: verification checklist, duplicate
   warning, encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
-  simulated acknowledgement, internal deadline flag, conversion attribution,
+  simulated acknowledgement, vendor replies, encrypted expiring attachments
+  (text/PDF/image only), assignment, review approval, redacted JSON/HTML/PDF
+  reports, internal deadline flag, conversion attribution,
   credit/CVE/outcome notes, and a fix-version rescan. `contacted` requires a verified
-  case and is blocked when a do-not-contact entry matches owner/repo, package, or
-  contact. `fixed` requires a recorded fix version and rescan. No message is sent.
+  case, an approved review, and is blocked when a do-not-contact entry matches
+  owner/repo, package, or contact. `fixed` requires a recorded fix version and rescan.
+  No message is sent. Reports omit operator notes and attachment bytes.
 - Maintain owner-only disclosure templates and do-not-contact entries
   (`/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
 - Read owner-only verified-critical and deadline-missed notifications on Artifact Leads
@@ -347,7 +350,7 @@ These are never customer features:
 | Surface | Route / data |
 | --- | --- |
 | Artifact Leads | `/internal/prospects`, `/api/internal/prospects*` |
-| Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` |
+| Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` including replies, attachments, assign, review, and report |
 | Disclosure templates | `/api/internal/disclosure/templates`; `disclosure_templates`; owner-only |
 | Do-not-contact | `/api/internal/disclosure/do-not-contact`; `disclosure_do_not_contact`; owner-only |
 | Prospect companies and artifacts | `prospects` table |
@@ -405,6 +408,10 @@ and still stay `sent: false`, do-not-contact blocks case create unless `research
 and always blocks `contacted`, vendor channel and credit/CVE/outcome notes persist,
 a missed deadline creates one `deadline_missed` internal notification, and customer
 sessions stay 401 on template and do-not-contact routes.
+`tests/disclosure-workflow.test.ts` proves vendor replies and encrypted attachments
+are owner-only, archives are rejected, replies and attachments are append-only,
+`contacted` waits for review approval, and JSON/HTML/PDF reports omit operator notes,
+attachment bytes, and finding values.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
 cannot open Disclosure Desk, template, do-not-contact, or notification routes,

@@ -6,6 +6,7 @@ import {
   DISCLOSURE_CONTACTED_ERROR,
   DISCLOSURE_DUPLICATE_ERROR,
   DISCLOSURE_FIXED_ERROR,
+  DISCLOSURE_REVIEW_ERROR,
   DISCLOSURE_SENT_ERROR,
   DISCLOSURE_VERIFIED_ERROR,
   fingerprintsFromFindings,
@@ -388,6 +389,21 @@ describe("Disclosure Desk Phase 1", () => {
       expect(rescanBody.sent).toBe(false);
       expect(rescanBody.case.fixVersion).toBe("3.9.7");
       expect(rescanBody.case.lastRescanAt).toBeTruthy();
+
+      const unreviewed = await app.request(`/api/internal/prospects/${prettierId}`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ status: "contacted" }),
+      });
+      expect(unreviewed.status).toBe(409);
+      expect(((await unreviewed.json()) as { error: string }).error).toBe(DISCLOSURE_REVIEW_ERROR);
+
+      const reviewed = await app.request(`/api/internal/prospects/${prettierId}/disclosure/review`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({ decision: "approve", note: "Public artifact verified for outreach." }),
+      });
+      expect(reviewed.status).toBe(200);
 
       const contacted = await app.request(`/api/internal/prospects/${prettierId}`, {
         method: "PATCH",

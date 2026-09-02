@@ -61,7 +61,10 @@ Read in this order:
   `039_internal_notifications` adds owner-only verified-critical notifications.
   `040_disclosure_phase2` adds vendor channel and outcome fields on
   `disclosure_cases`, `disclosure_templates`, `disclosure_do_not_contact`, and
-  `deadline_missed` on `internal_notifications`. Next unused id is `041_*`.
+  `deadline_missed` on `internal_notifications`.
+  `041_disclosure_workflow` adds assignee/review/verified_at on cases,
+  append-only `disclosure_vendor_replies` and encrypted expiring
+  `disclosure_attachments`. Next unused id is `042_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -447,7 +450,10 @@ policy URL, human-edited templates, preferred vendor channel, draft preview,
 simulated acknowledgement, internal deadline, conversion attribution,
 credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
 `contacted`/`fixed` are gated on the API. Do-not-contact always blocks
-`contacted`. A missed deadline creates an internal reminder only. Nothing is sent.
+`contacted`. `contacted` also requires an approved review. Vendor replies and
+encrypted expiring attachments are on the case. Redacted JSON/HTML/PDF reports
+omit notes and attachment bytes. A missed deadline creates an internal reminder
+only. Nothing is sent. Client projects, billing, and aggregate research stay out.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.

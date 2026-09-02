@@ -67,22 +67,30 @@ import {
 import { clientKey, createRateLimiter, retryAfterSeconds } from "./rate-limit.ts";
 import {
   acknowledgeDisclosureCase,
+  addDisclosureAttachment,
+  assignDisclosureCase,
+  buildDisclosureReport,
   createDisclosureCase,
   createDisclosureTemplate,
   createDoNotContactEntry,
   DisclosureError,
   DISCLOSURE_DNC_ERROR,
+  DISCLOSURE_REVIEW_ERROR,
   findDncMatches,
   loadDisclosureCase,
   outreachBlocked,
   previewDisclosureCase,
+  readDisclosureAttachment,
+  recordVendorReply,
   rescanDisclosureCase,
+  reviewDisclosureCase,
   toDisclosureSummary,
   toDncView,
   toTemplateView,
   updateDisclosureCase,
   updateDisclosureTemplate,
 } from "./disclosure.ts";
+import { renderDisclosureReportHtml, renderDisclosureReportPdf } from "./disclosure-report.ts";
 import { remindMissedDisclosureDeadlines, toNotificationView } from "./internal-notify.ts";
 import {
   discoverAndQueueProspects,
@@ -978,6 +986,123 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/internal/prospects/:id/disclosure/replies", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const view = await recordVendorReply(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        channel: body.channel,
+        summary: body.summary,
+        receivedAt: body.receivedAt,
+      });
+      return c.json({ case: view, sent: false }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/attachments", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const view = await addDisclosureAttachment(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        filename: body.filename,
+        mediaType: body.mediaType,
+        bytes: body.bytes,
+        expiresInDays: body.expiresInDays,
+      });
+      return c.json({ case: view, sent: false }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.get("/api/internal/prospects/:id/disclosure/attachments/:attachmentId", async (c) => {
+    const id = Number(c.req.param("id"));
+    const attachmentId = Number(c.req.param("attachmentId"));
+    if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(attachmentId) || attachmentId <= 0) {
+      return c.json({ error: "Invalid attachment." }, 400);
+    }
+    try {
+      const file = await readDisclosureAttachment(deps.store, { prospectId: id, attachmentId });
+      return new Response(Uint8Array.from(file.bytes), {
+        status: 200,
+        headers: {
+          "content-type": file.mediaType,
+          "content-disposition": `attachment; filename="${file.filename.replace(/"/g, "")}"`,
+          "cache-control": "no-store",
+        },
+      });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/assign", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const view = await assignDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        assignee: body.assignee,
+      });
+      return c.json({ case: view, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/review", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const view = await reviewDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        decision: body.decision,
+        note: body.note,
+      });
+      return c.json({ case: view, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.get("/api/internal/prospects/:id/disclosure/report", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const report = await buildDisclosureReport(deps.store, id);
+      const format = String(c.req.query("format") ?? "json").toLowerCase();
+      if (format === "html") {
+        return c.html(renderDisclosureReportHtml(report));
+      }
+      if (format === "pdf") {
+        const pdf = renderDisclosureReportPdf(report);
+        return new Response(Uint8Array.from(pdf), {
+          status: 200,
+          headers: {
+            "content-type": "application/pdf",
+            "content-disposition": `attachment; filename="disclosure-${id}.pdf"`,
+            "cache-control": "no-store",
+          },
+        });
+      }
+      return c.json({ report, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
   app.post("/api/internal/prospects/:id/disclosure/rescan", async (c) => {
     const limited = rateLimited(
       c,
@@ -1053,6 +1178,9 @@ export function createApp(deps: AppDeps): Hono {
       });
       if (dnc.length > 0) {
         return c.json({ error: DISCLOSURE_DNC_ERROR, dnc }, 409);
+      }
+      if (desk?.review_state !== "approved") {
+        return c.json({ error: DISCLOSURE_REVIEW_ERROR }, 409);
       }
     }
     const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);

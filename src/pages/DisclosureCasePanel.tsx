@@ -14,6 +14,10 @@ export type DisclosureConversion = "none" | "trial" | "paid" | "declined"
 
 export type VendorChannel = "security_email" | "form" | "security_txt" | "platform"
 
+export type VendorReplyChannel = VendorChannel | "other"
+
+export type DisclosureReviewState = "none" | "pending" | "approved" | "rejected"
+
 export type DisclosureSummary = {
   id: number
   prospectId: number
@@ -25,6 +29,8 @@ export type DisclosureSummary = {
   lastRescanAt: string | null
   fingerprintCount: number
   vendorChannel?: VendorChannel | null
+  assignee?: string | null
+  reviewState?: DisclosureReviewState
 }
 
 export type DuplicateMatch = {
@@ -87,6 +93,29 @@ type DisclosureCase = {
   outcomeCredit: string | null
   outcomeCve: string | null
   outcomeNotes: string | null
+  assignee: string | null
+  reviewState: DisclosureReviewState
+  reviewNote: string | null
+  sla: {
+    openedAt: string
+    verifiedAt: string | null
+    acknowledgedAt: string | null
+    timeToVerifyMs: number | null
+    timeToAckMs: number | null
+  }
+  replies: {
+    id: number
+    channel: VendorReplyChannel
+    summary: string
+    receivedAt: string
+  }[]
+  attachments: {
+    id: number
+    filename: string
+    mediaType: string
+    byteLength: number
+    expired: boolean
+  }[]
   events: { id: number; action: string; actor: string; summary: string; createdAt: string }[]
 }
 
@@ -102,10 +131,11 @@ type Props = {
   prospectId: number
   summary: DisclosureSummary | null
   request: <T>(url: string, options?: RequestInit) => Promise<T>
+  token?: string
   onChanged: () => Promise<void>
 }
 
-export function DisclosureCasePanel({ prospectId, summary, request, onChanged }: Props) {
+export function DisclosureCasePanel({ prospectId, summary, request, token, onChanged }: Props) {
   const [open, setOpen] = useState(false)
   const [desk, setDesk] = useState<DisclosureCase | null>(null)
   const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null)
@@ -128,6 +158,12 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dnc, setDnc] = useState<DncMatch[] | null>(null)
+  const [assignee, setAssignee] = useState("")
+  const [reviewNote, setReviewNote] = useState("")
+  const [replyChannel, setReplyChannel] = useState<VendorReplyChannel>("security_email")
+  const [replySummary, setReplySummary] = useState("")
+  const [attachmentName, setAttachmentName] = useState("vendor-note.txt")
+  const [attachmentBytes, setAttachmentBytes] = useState<string>("")
 
   const loadCase = useCallback(async () => {
     try {
@@ -146,6 +182,8 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
       setOutcomeCredit(body.case.outcomeCredit ?? "")
       setOutcomeCve(body.case.outcomeCve ?? "")
       setOutcomeNotes(body.case.outcomeNotes ?? "")
+      setAssignee(body.case.assignee ?? "")
+      setReviewNote(body.case.reviewNote ?? "")
       setDuplicates(null)
       setDnc(null)
     } catch (err) {
@@ -258,6 +296,121 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
     }
   }
 
+  async function assign() {
+    setBusy("assign")
+    setError(null)
+    try {
+      const updated = await request<{ case: DisclosureCase }>(
+        `/api/internal/prospects/${prospectId}/disclosure/assign`,
+        { method: "POST", body: JSON.stringify({ assignee }) },
+      )
+      setDesk(updated.case)
+      await onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not assign the case.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function review(decision: "approve" | "reject") {
+    setBusy("review")
+    setError(null)
+    try {
+      const updated = await request<{ case: DisclosureCase }>(
+        `/api/internal/prospects/${prospectId}/disclosure/review`,
+        { method: "POST", body: JSON.stringify({ decision, note: reviewNote }) },
+      )
+      setDesk(updated.case)
+      await onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record the review.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function addReply() {
+    setBusy("reply")
+    setError(null)
+    try {
+      const updated = await request<{ case: DisclosureCase }>(
+        `/api/internal/prospects/${prospectId}/disclosure/replies`,
+        { method: "POST", body: JSON.stringify({ channel: replyChannel, summary: replySummary }) },
+      )
+      setDesk(updated.case)
+      setReplySummary("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record the vendor reply.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function downloadReport(format: "json" | "html" | "pdf") {
+    setBusy("report")
+    setError(null)
+    try {
+      const response = await fetch(
+        `/api/internal/prospects/${prospectId}/disclosure/report?format=${format}`,
+        {
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      )
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Could not build the report.")
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `disclosure-${prospectId}.${format === "html" ? "html" : format}`
+      if (format === "html") link.target = "_blank"
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not build the report.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function addAttachment() {
+    if (!attachmentBytes) {
+      setError("Choose a short text, PDF, or image. Archives are not stored.")
+      return
+    }
+    setBusy("attach")
+    setError(null)
+    try {
+      const updated = await request<{ case: DisclosureCase }>(
+        `/api/internal/prospects/${prospectId}/disclosure/attachments`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            filename: attachmentName,
+            mediaType: attachmentName.endsWith(".pdf")
+              ? "application/pdf"
+              : attachmentName.endsWith(".png")
+                ? "image/png"
+                : attachmentName.endsWith(".jpg") || attachmentName.endsWith(".jpeg")
+                  ? "image/jpeg"
+                  : "text/plain",
+            bytes: attachmentBytes,
+          }),
+        },
+      )
+      setDesk(updated.case)
+      setAttachmentBytes("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not store the attachment.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function rescan() {
     setBusy("rescan")
     setError(null)
@@ -283,6 +436,11 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
           <Badge variant={summary?.state === "verified" ? "clean" : "muted"}>
             {summary?.state ?? "no case"}
           </Badge>
+          {summary?.reviewState && summary.reviewState !== "none" ? (
+            <Badge variant={summary.reviewState === "approved" ? "clean" : "muted"}>
+              {summary.reviewState}
+            </Badge>
+          ) : null}
           {summary?.deadlineMissed ? <Badge variant="critical">deadline missed</Badge> : null}
           {summary?.conversion && summary.conversion !== "none" ? (
             <Badge variant="muted">{summary.conversion}</Badge>
@@ -298,6 +456,8 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
             Private verification only. Drafts are never sent. Policy URLs are stored, not fetched.
             Fingerprints are rule|severity|path|title. Finding values stay off this desk.
             Do-not-contact always blocks outreach. Missed deadlines stay internal.
+            Vendor replies and attachments stay on this desk. Reports omit notes and
+            attachment bytes. Outreach still requires review approval. Nothing is mailed.
           </p>
           {!desk ? (
             <div className="flex flex-wrap gap-2">
@@ -500,6 +660,143 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
               >
                 Record acknowledgement
               </Button>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Assignee
+                  </Label>
+                  <Input
+                    value={assignee}
+                    onChange={(event) => setAssignee(event.target.value)}
+                    placeholder="GitHub login"
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Review note
+                  </Label>
+                  <Input
+                    value={reviewNote}
+                    onChange={(event) => setReviewNote(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => void assign()}>
+                  {busy === "assign" ? "Assigning…" : "Assign"}
+                </Button>
+                <Button type="button" size="sm" disabled={Boolean(busy)} onClick={() => void review("approve")}>
+                  Approve review
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={Boolean(busy)}
+                  onClick={() => void review("reject")}
+                >
+                  Reject review
+                </Button>
+                <p className="text-xs text-dim">
+                  {desk.reviewState} {desk.sla.verifiedAt ? `· verified ${desk.sla.verifiedAt.slice(0, 10)}` : ""}
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Vendor reply channel
+                  </Label>
+                  <select
+                    value={replyChannel}
+                    onChange={(event) => setReplyChannel(event.target.value as VendorReplyChannel)}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
+                  >
+                    <option value="security_email">security email</option>
+                    <option value="form">form</option>
+                    <option value="security_txt">security.txt</option>
+                    <option value="platform">platform</option>
+                    <option value="other">other</option>
+                  </select>
+                </Field>
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Vendor reply
+                  </Label>
+                  <Input
+                    value={replySummary}
+                    onChange={(event) => setReplySummary(event.target.value)}
+                    placeholder="Vendor acknowledged by email"
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+              </div>
+              <Button type="button" size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => void addReply()}>
+                {busy === "reply" ? "Saving…" : "Record vendor reply"}
+              </Button>
+              {desk.replies.length > 0 ? (
+                <ul className="font-mono text-xs text-dim">
+                  {desk.replies.map((row) => (
+                    <li key={row.id}>
+                      {row.channel} · {row.summary}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <Field>
+                <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                  Encrypted attachment
+                </Label>
+                <Input
+                  value={attachmentName}
+                  onChange={(event) => setAttachmentName(event.target.value)}
+                  className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none data-focus:border-white/40"
+                />
+                <input
+                  type="file"
+                  accept=".txt,.md,.pdf,.png,.jpg,.jpeg,text/plain,text/markdown,application/pdf,image/png,image/jpeg"
+                  className="mt-2 block text-xs text-dim"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) {
+                      setAttachmentBytes("")
+                      return
+                    }
+                    setAttachmentName(file.name)
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      const result = typeof reader.result === "string" ? reader.result : ""
+                      const comma = result.indexOf(",")
+                      setAttachmentBytes(comma >= 0 ? result.slice(comma + 1) : result)
+                    }
+                    reader.readAsDataURL(file)
+                  }}
+                />
+              </Field>
+              <Button type="button" size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => void addAttachment()}>
+                {busy === "attach" ? "Storing…" : "Store attachment"}
+              </Button>
+              {desk.attachments.length > 0 ? (
+                <ul className="font-mono text-xs text-dim">
+                  {desk.attachments.map((row) => (
+                    <li key={row.id}>
+                      {row.filename} · {row.byteLength} bytes{row.expired ? " · expired" : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void downloadReport("json")}>
+                  JSON report
+                </Button>
+                <Button type="button" size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void downloadReport("html")}>
+                  HTML report
+                </Button>
+                <Button type="button" size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void downloadReport("pdf")}>
+                  PDF report
+                </Button>
+              </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">

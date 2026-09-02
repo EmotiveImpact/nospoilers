@@ -784,6 +784,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureDesk(sql);
   await migrateInternalNotifications(sql);
   await migrateDisclosurePhase2(sql);
+  await migrateDisclosureWorkflow(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1147,6 +1148,85 @@ Please acknowledge and tell us the fixed version. We will not name this publicly
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "040_disclosure_phase2",
+  ]);
+}
+
+async function migrateDisclosureWorkflow(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS assignee TEXT;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS review_state TEXT NOT NULL DEFAULT 'none';
+    ALTER TABLE disclosure_cases
+      DROP CONSTRAINT IF EXISTS disclosure_cases_review_state_check;
+    ALTER TABLE disclosure_cases
+      ADD CONSTRAINT disclosure_cases_review_state_check
+      CHECK (review_state IN ('none', 'pending', 'approved', 'rejected'));
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS review_note TEXT;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+    CREATE TABLE IF NOT EXISTS disclosure_vendor_replies (
+      id BIGSERIAL PRIMARY KEY,
+      case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+      channel TEXT NOT NULL CHECK (channel IN (
+        'security_email', 'form', 'security_txt', 'platform', 'other'
+      )),
+      summary TEXT NOT NULL,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_vendor_replies_case_idx
+      ON disclosure_vendor_replies (case_id, id ASC);
+    CREATE OR REPLACE FUNCTION reject_disclosure_reply_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'disclosure_vendor_replies are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS disclosure_vendor_replies_no_update ON disclosure_vendor_replies;
+    CREATE TRIGGER disclosure_vendor_replies_no_update
+      BEFORE UPDATE ON disclosure_vendor_replies
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_reply_mutation();
+    DROP TRIGGER IF EXISTS disclosure_vendor_replies_no_delete ON disclosure_vendor_replies;
+    CREATE TRIGGER disclosure_vendor_replies_no_delete
+      BEFORE DELETE ON disclosure_vendor_replies
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_reply_mutation();
+    CREATE TABLE IF NOT EXISTS disclosure_attachments (
+      id BIGSERIAL PRIMARY KEY,
+      case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      media_type TEXT NOT NULL,
+      byte_length INTEGER NOT NULL,
+      ciphertext TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_attachments_case_idx
+      ON disclosure_attachments (case_id, id ASC);
+    CREATE OR REPLACE FUNCTION reject_disclosure_attachment_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'disclosure_attachments are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS disclosure_attachments_no_update ON disclosure_attachments;
+    CREATE TRIGGER disclosure_attachments_no_update
+      BEFORE UPDATE ON disclosure_attachments
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_attachment_mutation();
+    DROP TRIGGER IF EXISTS disclosure_attachments_no_delete ON disclosure_attachments;
+    CREATE TRIGGER disclosure_attachments_no_delete
+      BEFORE DELETE ON disclosure_attachments
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_attachment_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "041_disclosure_workflow",
   ]);
 }
 

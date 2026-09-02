@@ -4,14 +4,18 @@ import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
 import type {
+  DisclosureAttachmentRow,
   DisclosureCaseRow,
   DisclosureChecklist,
   DisclosureConversion,
   DisclosureEventRow,
+  DisclosureReviewState,
   DisclosureState,
   DisclosureTemplateRow,
+  DisclosureVendorReplyRow,
   DoNotContactRow,
   VendorChannel,
+  VendorReplyChannel,
 } from "./disclosure.ts";
 import type {
   InternalNotificationKind,
@@ -830,6 +834,12 @@ function disclosureCaseRow(row: {
   outcome_credit: string | null;
   outcome_cve: string | null;
   outcome_notes: string | null;
+  assignee?: string | null;
+  review_state?: string | null;
+  review_note?: string | null;
+  reviewed_at?: string | Date | null;
+  reviewed_by?: string | null;
+  verified_at?: string | Date | null;
   created_at: string | Date;
   updated_at: string | Date;
 }): DisclosureCaseRow {
@@ -860,9 +870,33 @@ function disclosureCaseRow(row: {
     outcome_credit: row.outcome_credit,
     outcome_cve: row.outcome_cve,
     outcome_notes: row.outcome_notes,
+    assignee: row.assignee ?? null,
+    review_state: asReviewState(row.review_state),
+    review_note: row.review_note ?? null,
+    reviewed_at: iso(row.reviewed_at),
+    reviewed_by: row.reviewed_by ?? null,
+    verified_at: iso(row.verified_at),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
     updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
+}
+
+function asReviewState(value: string | null | undefined): DisclosureReviewState {
+  if (value === "pending" || value === "approved" || value === "rejected") return value;
+  return "none";
+}
+
+function asReplyChannel(value: string): VendorReplyChannel {
+  if (
+    value === "security_email" ||
+    value === "form" ||
+    value === "security_txt" ||
+    value === "platform" ||
+    value === "other"
+  ) {
+    return value;
+  }
+  return "other";
 }
 
 function asVendorChannel(value: string | null | undefined): VendorChannel | null {
@@ -2794,6 +2828,10 @@ export function createStore(
                outcome_credit = $18,
                outcome_cve = $19,
                outcome_notes = $20,
+               verified_at = CASE
+                 WHEN $2 = 'verified' THEN COALESCE(verified_at, now())
+                 ELSE verified_at
+               END,
                updated_at = now()
            WHERE prospect_id = $1
            RETURNING *`,
@@ -3038,6 +3076,252 @@ export function createStore(
           `INSERT INTO disclosure_events (case_id, action, actor, summary)
            VALUES ($1, 'rescan', $2, $3)`,
           [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
+    },
+
+    async insertDisclosureEvent(input: {
+      caseId: number;
+      actor: string;
+      action: string;
+      summary: string;
+    }): Promise<void> {
+      await sql.query(
+        `INSERT INTO disclosure_events (case_id, action, actor, summary)
+         VALUES ($1, $2, $3, $4)`,
+        [input.caseId, input.action, input.actor, input.summary],
+      );
+    },
+
+    async listDisclosureVendorReplies(caseId: number): Promise<DisclosureVendorReplyRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        case_id: unknown;
+        channel: string;
+        summary: string;
+        received_at: string | Date;
+        created_by: string;
+        created_at: string | Date;
+      }>(
+        `SELECT * FROM disclosure_vendor_replies WHERE case_id = $1 ORDER BY id ASC`,
+        [caseId],
+      );
+      return rows.map((row) => ({
+        id: num(row.id),
+        case_id: num(row.case_id),
+        channel: asReplyChannel(row.channel),
+        summary: row.summary,
+        received_at: iso(row.received_at) ?? new Date().toISOString(),
+        created_by: row.created_by,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async insertDisclosureVendorReply(input: {
+      caseId: number;
+      channel: VendorReplyChannel;
+      summary: string;
+      receivedAt: string;
+      createdBy: string;
+    }): Promise<DisclosureVendorReplyRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        case_id: unknown;
+        channel: string;
+        summary: string;
+        received_at: string | Date;
+        created_by: string;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO disclosure_vendor_replies (case_id, channel, summary, received_at, created_by)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [input.caseId, input.channel, input.summary, input.receivedAt, input.createdBy],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Vendor reply was not recorded.");
+      return {
+        id: num(row.id),
+        case_id: num(row.case_id),
+        channel: asReplyChannel(row.channel),
+        summary: row.summary,
+        received_at: iso(row.received_at) ?? input.receivedAt,
+        created_by: row.created_by,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async listDisclosureAttachments(caseId: number): Promise<DisclosureAttachmentRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        case_id: unknown;
+        filename: string;
+        media_type: string;
+        byte_length: unknown;
+        ciphertext: string;
+        expires_at: string | Date;
+        created_by: string;
+        created_at: string | Date;
+      }>(`SELECT * FROM disclosure_attachments WHERE case_id = $1 ORDER BY id ASC`, [caseId]);
+      return rows.map((row) => ({
+        id: num(row.id),
+        case_id: num(row.case_id),
+        filename: row.filename,
+        media_type: row.media_type,
+        byte_length: num(row.byte_length),
+        ciphertext: row.ciphertext,
+        expires_at: iso(row.expires_at) ?? new Date().toISOString(),
+        created_by: row.created_by,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      }));
+    },
+
+    async getDisclosureAttachment(id: number): Promise<DisclosureAttachmentRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        case_id: unknown;
+        filename: string;
+        media_type: string;
+        byte_length: unknown;
+        ciphertext: string;
+        expires_at: string | Date;
+        created_by: string;
+        created_at: string | Date;
+      }>(`SELECT * FROM disclosure_attachments WHERE id = $1`, [id]);
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        id: num(row.id),
+        case_id: num(row.case_id),
+        filename: row.filename,
+        media_type: row.media_type,
+        byte_length: num(row.byte_length),
+        ciphertext: row.ciphertext,
+        expires_at: iso(row.expires_at) ?? new Date().toISOString(),
+        created_by: row.created_by,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async insertDisclosureAttachment(input: {
+      caseId: number;
+      filename: string;
+      mediaType: string;
+      bytes: Buffer;
+      expiresAt: string;
+      createdBy: string;
+    }): Promise<DisclosureAttachmentRow> {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("Session secret is required to store attachments."), {
+          status: 400,
+        });
+      }
+      const ciphertext = encryptSecret(input.bytes.toString("base64"), tokenSecret);
+      const { rows } = await sql.query<{
+        id: unknown;
+        case_id: unknown;
+        filename: string;
+        media_type: string;
+        byte_length: unknown;
+        ciphertext: string;
+        expires_at: string | Date;
+        created_by: string;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO disclosure_attachments (
+           case_id, filename, media_type, byte_length, ciphertext, expires_at, created_by
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          input.caseId,
+          input.filename,
+          input.mediaType,
+          input.bytes.length,
+          ciphertext,
+          input.expiresAt,
+          input.createdBy,
+        ],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Attachment was not stored.");
+      return {
+        id: num(row.id),
+        case_id: num(row.case_id),
+        filename: row.filename,
+        media_type: row.media_type,
+        byte_length: num(row.byte_length),
+        ciphertext: row.ciphertext,
+        expires_at: iso(row.expires_at) ?? input.expiresAt,
+        created_by: row.created_by,
+        created_at: iso(row.created_at) ?? new Date().toISOString(),
+      };
+    },
+
+    decryptDisclosureAttachment(row: DisclosureAttachmentRow): Buffer {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("Session secret is required to read attachments."), {
+          status: 400,
+        });
+      }
+      return Buffer.from(decryptSecret(row.ciphertext, tokenSecret), "base64");
+    },
+
+    async assignDisclosureCase(input: {
+      prospectId: number;
+      assignee: string | null;
+      reviewState: DisclosureReviewState;
+      actor: string;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const updated = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `UPDATE disclosure_cases
+           SET assignee = $2,
+               review_state = $3,
+               updated_at = now()
+           WHERE prospect_id = $1
+           RETURNING *`,
+          [input.prospectId, input.assignee, input.reviewState],
+        );
+        const row = updated.rows[0];
+        if (!row) throw new Error("Disclosure case was not updated.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, 'assigned', $2, $3)`,
+          [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
+    },
+
+    async reviewDisclosureCase(input: {
+      prospectId: number;
+      reviewState: "approved" | "rejected";
+      reviewNote: string;
+      reviewedBy: string;
+      actor: string;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const updated = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `UPDATE disclosure_cases
+           SET review_state = $2,
+               review_note = $3,
+               reviewed_by = $4,
+               reviewed_at = now(),
+               updated_at = now()
+           WHERE prospect_id = $1
+           RETURNING *`,
+          [input.prospectId, input.reviewState, input.reviewNote, input.reviewedBy],
+        );
+        const row = updated.rows[0];
+        if (!row) throw new Error("Disclosure case was not updated.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, $2, $3, $4)`,
+          [row.id, `review.${input.reviewState === "approved" ? "approve" : "reject"}`, input.actor, input.summary],
         );
         return disclosureCaseRow(row);
       });
