@@ -67,6 +67,12 @@ branch and open a pull request with a walkthrough.
 > triage pane. Build that combination for real in `src/`, wired to the existing API routes, with no
 > mock data. Split `WatchPage.tsx` into route-level components as you go.
 
+**To make them clickable (already done as 1F–1I):**
+
+> Build on 01 as the chassis and make mockups I can click through: sidebar routes that actually
+> switch screens, an alert inbox where Acknowledge and Resolve change the page, a first-session
+> walk, and a desk/settings split. Plain HTML/CSS only — radios and labels, no JavaScript.
+
 **To go deeper on one:**
 
 > Take mockup 05 and produce four more variations of just that direction — different opening

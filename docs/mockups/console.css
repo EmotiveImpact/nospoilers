@@ -67,25 +67,35 @@
   padding: 0 8px 7px;
   display: block;
 }
-.nav a {
+.nav a,
+.nav label {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 7px 9px;
   border-radius: var(--r-sm);
+  border: 0;
+  background: transparent;
   color: var(--mute);
+  font-family: inherit;
   font-size: 13px;
   line-height: 1.2;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
-.nav a:hover {
+.nav a:hover,
+.nav label:hover {
   background: rgba(255, 255, 255, 0.04);
   color: var(--snow);
 }
-.nav a[aria-current="page"] {
+.nav a[aria-current="page"],
+.nav label.is-on {
   background: rgba(255, 255, 255, 0.07);
   color: var(--snow);
 }
-.nav a .ico {
+.nav a .ico,
+.nav label .ico {
   width: 15px;
   flex: none;
   text-align: center;

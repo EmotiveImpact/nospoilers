@@ -4,16 +4,19 @@ Branch: `cursor/watch-desk-ux-mockups-71d1` · PR: EmotiveImpact/nospoilers#3
 
 ## State
 
-Ten static HTML mockups plus five `1x-` variants built on 01, `index.html` (gallery), `mockup.css`
-(tokens and the state system), `console.css` (the 01 shell plus every borrowed component),
-`README.md`, and `PROMPT.md` (the prompt that generates these).
+Ten static HTML mockups, five `1x-` static variants built on 01, and four click-through mockups
+(`1f`–`1i`) that you operate with radios and labels. Gallery is `index.html`. Styles:
+`mockup.css` (tokens and the state system), `console.css` (the 01 shell plus borrowed components),
+`click.css` (routes, alerts, overlays, scenes). `README.md` and `PROMPT.md` are the brief.
 
 All fifteen are wired for the five state presets. Nothing in `src/` is touched and nothing here
 ships in the app build — `docs/` is outside `public/`.
 
-The user picked **01** as the base. The `1a`–`1e` files compose it with parts of the others; `1e`
-is the composite and the current front-runner. Anything new built on 01 should link `console.css`
-rather than copying shell styles, and should tag borrowed pieces with
+The user picked **01** as the base, then asked for combinations that *function* so they can click
+through. `1e` is the static composite; **`1f` is that composite with every route and the alert
+lifecycle wired**. `1g` is the first hour, `1h` is acknowledge → resolve, `1i` is 07 as a working
+desk/settings split. New 01-based work should link `console.css` and `click.css` rather than
+copying shell or click-through styles. Tag borrowed pieces with
 `<span class="added">from 0X</span>` so the provenance stays visible.
 
 Do not add `<link>` tags to Google Fonts and do not add a Content-Security-Policy meta tag. Both
@@ -47,6 +50,17 @@ The markup contract:
 | `.team-only` | Hidden in the Solo preset |
 | `.hide-ended` | Hidden in the Ended preset, for content a dedicated `.s-ended` block replaces |
 | `.lockable` with a `.lockveil` child | The veil covers the panel in the Ended preset |
+
+Click-through extras in `click.css` (1F–1I only):
+
+| Control | Behaviour |
+| --- | --- |
+| `name="view"` `#v-*` | Sidebar routes. Alert saved views are `v-alerts`, `v-alerts-wait`, `v-alerts-mine`, `v-alerts-done` so they share a radio group with Overview and can actually navigate. |
+| `name="alert"` `#a-*` | Selected alert in the inbox |
+| `#ack-map` `#res-map` (checkboxes) | Acknowledge / resolve. Classes `.show-map-ack` `.hide-map-res` `.show-both-res` etc. |
+| `name="overlay"` `#ov-*` | Palette, plans, add-source, assign, install menu. Scrim is `label for="ov-none"`. |
+| `name="scene"` / `name="incident"` | Walkthrough steps on 1G / 1H |
+| `name="mode"` `#m-desk` `#m-settings` | 1I chrome switch |
 
 Rules to keep if you extend this:
 
@@ -102,8 +116,8 @@ fine for checking layout.
    twice and was caught by rendering, not by reading the markup.
 2. **Narrow widths are only spot-checked.** 01 and 09 were verified at 700px. The three-pane
    layout in 03 and the gantt in 08 are the likely problems.
-3. **No mockup shows the loading or per-section error states.** The real desk has both, and 03's
-   detail pane and 08's chart are where they would hurt most.
+3. **Loading exists only on 1G scene 3** (job queue + skeletons). Per-section error states are
+   still missing. 03's detail pane and 08's chart are where they would hurt most.
 4. **The gallery previews the Trial admin state only.** Showing each card in its Ended state would
    arguably sell the comparison better.
 

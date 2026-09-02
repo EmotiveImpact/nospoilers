@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1H · Clear an incident — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+    <link rel="stylesheet" href="click.css" />
+    <style>
+      .scene.flex-scene {
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      #hi-2:checked ~ .app .shell,
+      #hi-2:checked ~ .app .main,
+      #hi-3:checked ~ .app .shell,
+      #hi-3:checked ~ .app .main,
+      #hi-4:checked ~ .app .shell,
+      #hi-4:checked ~ .app .main,
+      #hi-5:checked ~ .app .shell,
+      #hi-5:checked ~ .app .main {
+        height: 100svh;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <input type="radio" name="incident" id="hi-1" class="sceneset" checked />
+    <input type="radio" name="incident" id="hi-2" class="sceneset" />
+    <input type="radio" name="incident" id="hi-3" class="sceneset" />
+    <input type="radio" name="incident" id="hi-4" class="sceneset" />
+    <input type="radio" name="incident" id="hi-5" class="sceneset" />
+    <input type="radio" name="incident" id="hi-6" class="sceneset" />
+
+    <div class="app shell">
+      <aside class="side">
+        <div class="side-head">
+          <span class="logo">NoSpoilers</span>
+          <button class="installer">
+            <span class="av"></span>
+            <span class="grow col">
+              <span class="small snow truncate">EmotiveImpact</span>
+              <span class="tiny dim">Team · 12 sources</span>
+            </span>
+          </button>
+        </div>
+        <nav class="nav scroll">
+          <div class="nav-group">
+            <label for="hi-1"><span class="ico">◉</span> Overview</label>
+            <label for="hi-2"
+              ><span class="ico">▲</span> Alerts <span class="count crit">2</span></label
+            >
+            <a href="1f-click-desk.html"><span class="ico">⌸</span> Sources <span class="count">12</span></a>
+          </div>
+        </nav>
+        <div class="side-foot">
+          <span class="tiny dim s-trial">Trial · 11 days left</span>
+          <span class="tiny dim s-solo">Solo</span>
+          <span class="tiny dim s-member">Team · member</span>
+          <span class="tiny bad s-ended">Coverage ended</span>
+          <span class="tiny dim s-empty">Trial · 14 days left</span>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <span class="small snow">Clear MAP-002</span>
+          <div class="grow"></div>
+          <span class="pill crit hide-ended"><span class="dot crit pulse"></span> 41m exposed</span>
+          <span class="av round"></span>
+        </header>
+
+        <div class="walk">
+          <span class="tiny dim">Do the job:</span>
+          <label for="hi-1">1 See it</label>
+          <label for="hi-2">2 Open it</label>
+          <label for="hi-3">3 Acknowledge</label>
+          <label for="hi-4">4 Rotate</label>
+          <label for="hi-5">5 Resolve</label>
+          <label for="hi-6">6 Quiet</label>
+        </div>
+
+        <!-- 1: overview -->
+        <div class="scene scene-1 body">
+          <h1>Two things are exposed right now.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 64ch">
+            Everything else is clean and checked within the last 4 minutes. Start with the critical
+            — it is still the <code>latest</code> tag.
+          </p>
+          <div class="verdict" style="margin-top: 20px">
+            <span class="mark">!</span>
+            <div class="grow">
+              <h2>A source map with original source shipped 41 minutes ago.</h2>
+              <p class="muted" style="margin-top: 7px; max-width: 62ch">
+                <code class="path">dist/cli.js.map</code> in
+                <code class="path">nospoilers@0.4.2</code> embeds <code>sourcesContent</code>.
+              </p>
+              <div class="row gap8 wrap" style="margin-top: 13px">
+                <label for="hi-2" class="btn sm">Open rotation checklist</label>
+                <label for="hi-3" class="btn sm outline">Acknowledge from here</label>
+              </div>
+            </div>
+            <span class="pill crit">MAP-002</span>
+          </div>
+          <div class="todo-item" style="margin-top: 10px">
+            <span class="num">2</span>
+            <div class="grow">
+              <strong class="snow">Decide whether internal docs belong in the desk release.</strong>
+              <p class="small muted" style="margin-top: 6px">
+                <code class="path">EmotiveImpact/desk</code> v2.1.0 packs
+                <code class="path">docs/internal/ROADMAP.md</code> · DOC-001 · warn
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2: open -->
+        <div class="scene scene-2 flex-scene">
+          <div class="panes" style="flex: 1; min-height: 0">
+            <section class="pane">
+              <div class="pane-head"><strong class="small">Needs triage</strong></div>
+              <div class="pane-body scroll">
+                <div class="item" aria-selected="true">
+                  <div class="row gap8">
+                    <span class="dot crit pulse"></span>
+                    <strong class="grow truncate">Original source in published pack</strong>
+                    <span class="tiny dim">41m</span>
+                  </div>
+                  <div class="sub">nospoilers@0.4.2 · MAP-002</div>
+                </div>
+                <div class="item">
+                  <div class="row gap8">
+                    <span class="dot warn"></span>
+                    <strong class="grow truncate">Internal docs in release asset</strong>
+                    <span class="tiny dim">3h</span>
+                  </div>
+                  <div class="sub">EmotiveImpact/desk · DOC-001</div>
+                </div>
+              </div>
+            </section>
+            <section class="pane">
+              <div class="actionbar">
+                <label for="hi-3" class="btn sm">Acknowledge</label>
+                <span class="btn sm outline disabled">Resolve…</span>
+                <div class="grow"></div>
+                <span class="tiny dim">Clock still running</span>
+              </div>
+              <div class="pane-body scroll">
+                <div class="detail">
+                  <div class="row gap8 wrap">
+                    <span class="pill crit">critical</span>
+                    <span class="pill">MAP-002</span>
+                    <span class="pill"><span class="dot crit"></span> open · 41 min</span>
+                  </div>
+                  <h1 style="margin-top: 12px"><code class="path" style="font-size: 22px">dist/cli.js.map</code> embeds original source</h1>
+                  <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                    Anyone who runs <code>npm pack nospoilers</code> can reconstruct the pre-build
+                    TypeScript. Credential values are never stored — paths and rule ids only.
+                  </p>
+                  <div class="card" style="margin-top: 16px">
+                    <div class="finding"><span class="rulecode" style="width: 66px">MAP-002</span><span class="grow path">dist/cli.js.map</span><span class="pill crit">critical</span></div>
+                    <div class="finding"><span class="rulecode" style="width: 66px">MAP-001</span><span class="grow path">dist/index.js.map</span><span class="pill crit">critical</span></div>
+                    <div class="finding"><span class="rulecode" style="width: 66px">MAP-003</span><span class="grow path">dist/index.js</span><span class="pill warn">sourceMappingURL</span></div>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 14px">Acknowledge first so the rest of the team stops double-handling it.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 3: acknowledged -->
+        <div class="scene scene-3 flex-scene">
+          <div class="panes" style="flex: 1; min-height: 0">
+            <section class="pane">
+              <div class="pane-head"><strong class="small">Waiting on rotation</strong></div>
+              <div class="pane-body scroll">
+                <div class="item" aria-selected="true">
+                  <div class="row gap8">
+                    <span class="dot crit"></span>
+                    <strong class="grow truncate">Original source in published pack</strong>
+                    <span class="pill">ack</span>
+                  </div>
+                  <div class="sub">Moved here when you acknowledged</div>
+                </div>
+              </div>
+            </section>
+            <section class="pane">
+              <div class="actionbar">
+                <span class="btn sm disabled">Acknowledged</span>
+                <label for="hi-4" class="btn sm">Work the checklist</label>
+                <div class="grow"></div>
+                <span class="tiny dim">Still exposed · 41m</span>
+              </div>
+              <div class="pane-body scroll">
+                <div class="detail">
+                  <div class="row gap8 wrap">
+                    <span class="pill crit">critical</span>
+                    <span class="pill ok">acknowledged</span>
+                    <span class="pill">MAP-002</span>
+                  </div>
+                  <h1 style="margin-top: 12px">You own this now.</h1>
+                  <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                    Slack already delivered to <code>#sec-alerts</code>. The clock does not stop
+                    until the pack is off <code>latest</code> and you resolve.
+                  </p>
+                  <div class="thread" style="margin-top: 16px">
+                    <span class="av round"></span>
+                    <div><span class="snow">You</span> acknowledged this <span class="dim">· just now</span></div>
+                  </div>
+                  <div class="thread team-only">
+                    <span class="av round"></span>
+                    <div><span class="snow">Slack</span> delivered to <code>#sec-alerts</code> <span class="dim">· 09:14</span></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 4: checklist -->
+        <div class="scene scene-4 flex-scene">
+          <div class="panes" style="flex: 1; min-height: 0">
+            <section class="pane">
+              <div class="pane-head"><strong class="small">Waiting on rotation</strong></div>
+              <div class="pane-body scroll">
+                <div class="item" aria-selected="true">
+                  <div class="row gap8">
+                    <span class="dot crit"></span>
+                    <strong class="grow truncate">Original source in published pack</strong>
+                  </div>
+                  <div class="sub">3 of 4 checklist items</div>
+                </div>
+              </div>
+            </section>
+            <section class="pane">
+              <div class="actionbar">
+                <label for="hi-5" class="btn sm">Resolve…</label>
+                <div class="grow"></div>
+                <span class="tiny dim">Tick the boxes — they stay ticked</span>
+              </div>
+              <div class="pane-body scroll">
+                <div class="detail">
+                  <span class="kicker">Rotation checklist</span>
+                  <h1 style="margin-top: 8px">Ship 0.4.3, then deprecate 0.4.2.</h1>
+                  <div style="margin-top: 12px">
+                    <label class="task"><input type="checkbox" checked /><span><s class="dim">Confirm the pack is still on the latest tag</s></span></label>
+                    <label class="task"><input type="checkbox" checked /><span><s class="dim">Publish 0.4.3 built with <code>hidden-source-map</code></s></span></label>
+                    <label class="task"><input type="checkbox" checked /><span><s class="dim"><code>npm deprecate nospoilers@0.4.2</code></s></span></label>
+                    <label class="task"><input type="checkbox" /><span>Upload maps to Sentry instead of packing them</span></label>
+                    <label class="task"><input type="checkbox" /><span>Add the CI gate so the next release fails closed</span></label>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 14px">
+                    The last two can wait. Resolve once <code>latest</code> no longer serves the map.
+                    Remaining setup lives on the Setup route, not on this alert.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 5: resolve confirm -->
+        <div class="scene scene-5 flex-scene">
+          <div class="body narrow">
+            <span class="kicker">Resolve MAP-002</span>
+            <h1 style="margin-top: 10px">Stop the exposure clock.</h1>
+            <p class="muted" style="margin-top: 10px; max-width: 60ch">
+              This does not unpublish anything. It records that the pack is no longer reachable as
+              <code>latest</code> and closes the alert. Receipt for 0.4.2 stays downloadable.
+            </p>
+            <div class="card card-pad" style="margin-top: 18px">
+              <label class="small dim" for="note">Resolution note</label>
+              <input class="field" id="note" value="0.4.3 on latest. 0.4.2 deprecated." style="margin-top: 8px" />
+              <div class="row gap8" style="margin-top: 14px">
+                <label for="hi-6" class="btn">Resolve alert</label>
+                <label for="hi-4" class="btn outline">Back to checklist</label>
+              </div>
+            </div>
+            <div class="gate s-ended" style="margin-top: 16px">
+              <span class="tagword">Ended</span>
+              <span>Coverage ended, so no new jobs run. Alerts already open can still be acknowledged and resolved.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6: quiet -->
+        <div class="scene scene-6 body">
+          <h1>One thing is still exposed — and it is a warn.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 64ch">
+            MAP-002 is closed. Reachable for 41 minutes. Median detect 38 seconds. DOC-001 is still
+            open on <code class="path">EmotiveImpact/desk</code> v2.1.0.
+          </p>
+          <div class="stats" style="margin-top: 20px">
+            <div class="stat"><span class="kicker">Open alerts</span><div class="n warnc">1</div><span class="tiny dim">DOC-001</span></div>
+            <div class="stat"><span class="kicker">Last incident</span><div class="n">41m</div><span class="tiny dim">MAP-002 · closed</span></div>
+            <div class="stat"><span class="kicker">Detected in</span><div class="n">38s</div><span class="tiny dim">webhook to alert</span></div>
+            <div class="stat"><span class="kicker">Closed this week</span><div class="n okc">5</div><span class="tiny dim">including just now</span></div>
+          </div>
+          <div class="card card-pad" style="margin-top: 18px">
+            <div class="row gap8 wrap">
+              <span class="pill ok">resolved</span>
+              <span class="pill">MAP-002</span>
+            </div>
+            <h2 style="margin-top: 10px">Exposure clock stopped.</h2>
+            <p class="small muted" style="margin-top: 7px">
+              Activity: opened 09:14 · acknowledged by you · resolved with “0.4.3 on latest. 0.4.2
+              deprecated.”
+            </p>
+          </div>
+          <div class="todo-item" style="margin-top: 12px">
+            <span class="num">1</span>
+            <div class="grow">
+              <strong class="snow">Decide whether internal docs belong in the desk release.</strong>
+              <p class="small muted" style="margin-top: 6px">DOC-001 · 3 hours exposed · warn</p>
+              <a href="1f-click-desk.html" class="btn sm outline" style="margin-top: 10px">Open it on the full desk</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>1H</b> Clear an incident
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="1g-first-session.html">1G first session</a>
+      <a href="1f-click-desk.html">1F desk</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

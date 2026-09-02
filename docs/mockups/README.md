@@ -9,12 +9,11 @@ The prompt that generated these, and the follow-up prompts for narrowing down, a
 ## View them
 
 ```bash
-npx serve docs/mockups -l 3000
-# then open http://localhost:3000/
+node scripts/serve-mockups.mjs   # http://localhost:3000/
 ```
 
-Or open `docs/mockups/index.html` directly in a browser. The gallery previews each mockup in an
-iframe; over `file://` some browsers block those frames, in which case use the server above.
+Use that script, not `npx serve` — Cursor's in-IDE preview needs the dual-stack bind. Or open
+`docs/mockups/index.html` directly. Start with [1F](1f-click-desk.html).
 
 ## State presets
 
@@ -53,12 +52,23 @@ Every panel opens with a paragraph before any data. An active critical leak and 
 dropdown have the same visual weight. Plan gating and admin-only controls are scattered across all
 of it, and members see panels with the controls silently removed.
 
+## Click through (start here)
+
+Four mockups you can actually operate. Still no JavaScript — radios and labels, same as the state
+switcher. Shared behaviour lives in `click.css`.
+
+| # | Variant | What you can do |
+| --- | --- | --- |
+| [1F](1f-click-desk.html) | Click-through desk | Every sidebar route opens a screen. Select alerts, acknowledge, resolve (they move to Resolved and the count drops). ⌘K, See plans, Add a source, Assign, install switcher. Source chips filter. Setup “Watch” adds acme-ui. |
+| [1G](1g-first-session.html) | First session | Six scenes: empty → pick repos → loading/job queue → first clean → watch npm → MAP-002 lands |
+| [1H](1h-clear-incident.html) | Clear an incident | Six scenes: verdict → open → acknowledge (clock still running) → checklist → resolve → quieter desk |
+| [1I](1i-desk-settings.html) | Desk / Settings split | Top switch flips the chrome. Desk is work (overview / alerts / sources). Settings is eight pages with a sticky save bar |
+
 ## Built on 01
 
-Five variants keep 01's sidebar console as the chassis and bolt on the strongest part of each other
-direction. Borrowed pieces carry a dashed `from 0X` tag in place, so you can see what came from
-where. They share `console.css`, which is the 01 shell plus every borrowed component, so these are
-real compositions rather than copies.
+Five earlier static variants keep 01's sidebar console as the chassis and bolt on the strongest
+part of each other direction. Borrowed pieces carry a dashed `from 0X` tag in place. They share
+`console.css`. They do not switch routes — use 1F for that.
 
 | # | Variant | Borrows | Best if |
 | --- | --- | --- | --- |
