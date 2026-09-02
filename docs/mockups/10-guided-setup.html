@@ -192,19 +192,28 @@
         <span class="logo">NoSpoilers</span>
         <div class="grow"></div>
         <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
-        <span class="pill">Trial · day 3 of 14</span>
+        <span class="pill s-trial">Trial · day 3 of 14</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · day 1 of 14</span>
         <button class="btn sm ghost">Skip setup</button>
       </header>
 
       <div class="body">
         <span class="kicker">Getting covered</span>
-        <h1 style="margin-top: 9px">You are watching GitHub. Two gaps left.</h1>
-        <p class="muted" style="margin-top: 10px; max-width: 60ch">
+        <h1 class="has-data" style="margin-top: 9px">You are watching GitHub. Two gaps left.</h1>
+        <h1 class="s-empty" style="margin-top: 9px">Five leak paths. None covered yet.</h1>
+        <p class="muted has-data" style="margin-top: 10px; max-width: 60ch">
           The desk only shows what you have connected. Nothing you have not set up is on this page,
           so it never becomes a wall of empty panels.
         </p>
+        <p class="muted s-empty" style="margin-top: 10px; max-width: 60ch">
+          Start with the first one. Each step you finish adds a section to the desk — and until you
+          finish it, that section does not exist rather than sitting there empty.
+        </p>
 
-        <div class="progress">
+        <div class="progress has-data">
           <div class="ring" style="--p: 60"><span>3/5</span></div>
           <div class="grow">
             <strong class="small">3 of 5 leak paths covered</strong>
@@ -216,7 +225,35 @@
           <button class="btn sm">Finish setup</button>
         </div>
 
-        <div class="stepcard done">
+        <div class="progress s-empty">
+          <div class="ring" style="--p: 0"><span>0/5</span></div>
+          <div class="grow">
+            <strong class="small">Nothing connected yet</strong>
+            <p class="tiny dim" style="margin-top: 4px">
+              Step 1 takes about a minute and needs no token.
+            </p>
+          </div>
+          <button class="btn sm">Start</button>
+        </div>
+
+        <div
+          class="progress s-ended"
+          style="border-color: rgba(226, 69, 58, 0.32); background: rgba(226, 69, 58, 0.05)"
+        >
+          <div class="ring" style="--p: 60; background: conic-gradient(var(--danger) 60%, rgba(255,255,255,0.09) 0)">
+            <span>3/5</span>
+          </div>
+          <div class="grow">
+            <strong class="small">Coverage ended — the three you finished are paused</strong>
+            <p class="tiny dim" style="margin-top: 4px">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Your
+              setup is kept exactly as it is and restarts the moment you subscribe.
+            </p>
+          </div>
+          <button class="btn sm">See plans</button>
+        </div>
+
+        <div class="stepcard done has-data">
           <div class="stephead">
             <span class="mark done">✓</span>
             <div class="grow">
@@ -229,7 +266,37 @@
           </div>
         </div>
 
-        <div class="stepcard done">
+        <div class="stepcard active s-empty">
+          <div class="stephead">
+            <span class="mark now">1</span>
+            <div class="grow">
+              <strong class="small">Watch GitHub visibility</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                Private going public, created public, transferred, forked, collaborator added. The
+                doorbell answers in under a second.
+              </p>
+            </div>
+          </div>
+          <div class="stepbody">
+            <div class="option">
+              <span class="glyph">⌥</span>
+              <div class="grow">
+                <strong class="small">Install the GitHub App</strong>
+                <p class="tiny dim" style="margin-top: 2px">
+                  Pick one private throwaway repo first. Read-only Metadata is the only required
+                  permission.
+                </p>
+              </div>
+              <span class="btn sm">Install</span>
+            </div>
+            <p class="tiny dim" style="margin-top: 10px">
+              Steps 2 to 5 unlock as soon as this one is done. Nothing below is shown until it has
+              something to say.
+            </p>
+          </div>
+        </div>
+
+        <div class="stepcard done has-data">
           <div class="stephead">
             <span class="mark done">✓</span>
             <div class="grow">
@@ -242,7 +309,7 @@
           </div>
         </div>
 
-        <div class="stepcard done">
+        <div class="stepcard done has-data">
           <div class="stephead">
             <span class="mark done">✓</span>
             <div class="grow">
@@ -251,11 +318,12 @@
                 <code class="path">nospoilers.yml</code> merged on 5 of 6 repos
               </p>
             </div>
-            <button class="btn sm ghost">Open PR on relay-worker</button>
+            <button class="btn sm ghost admin-only">Open PR on relay-worker</button>
+            <span class="tiny dim s-member">admin opens PRs</span>
           </div>
         </div>
 
-        <div class="stepcard active">
+        <div class="stepcard active has-data">
           <div class="stephead">
             <span class="mark now">4</span>
             <div class="grow">
@@ -292,7 +360,7 @@
           </div>
         </div>
 
-        <div class="stepcard">
+        <div class="stepcard has-data">
           <div class="stephead">
             <span class="mark">5</span>
             <div class="grow">
@@ -311,35 +379,71 @@
             None of this is on the desk until you turn it on. Each one appears as its own section
             only after it has something to report.
           </p>
-          <div class="later">
+          <div class="later team-only">
             <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">✉</span>
             <strong class="grow">Send alerts to Slack, Jira, or a SIEM webhook</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later s-solo">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">✉</span>
+            <strong class="grow">Send alerts to Slack, Jira, or a SIEM webhook</strong>
+            <span class="pill">Team</span>
+            <button class="btn sm ghost">Compare plans</button>
+          </div>
+          <div class="later team-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◷</span>
+            <strong class="grow">Keep an install timeline and an exportable audit log</strong>
             <button class="btn sm ghost">Set up</button>
+          </div>
+          <div class="later s-solo">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◷</span>
+            <strong class="grow">Keep an install timeline and an exportable audit log</strong>
+            <span class="pill">Team</span>
+            <button class="btn sm ghost">Compare plans</button>
           </div>
           <div class="later">
             <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⎔</span>
             <strong class="grow">Verify maps really reached Sentry or Bugsnag</strong>
-            <button class="btn sm ghost">Set up</button>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
           </div>
-          <div class="later">
+          <div class="later admin-only">
             <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◍</span>
             <strong class="grow">Mint a Scan API token for another CI system</strong>
+            <button class="btn sm ghost">Set up</button>
+          </div>
+          <div class="later admin-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">▤</span>
+            <strong class="grow">Save a private registry token</strong>
             <button class="btn sm ghost">Set up</button>
           </div>
           <div class="later">
             <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⚖</span>
             <strong class="grow">Write policy exceptions with an expiry</strong>
-            <button class="btn sm ghost">Set up</button>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⧗</span>
+            <strong class="grow">Choose how long list data stays visible</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
           </div>
           <div class="later">
             <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">☗</span>
             <strong class="grow">Invite teammates and set roles</strong>
             <span class="pill">Team plan</span>
-            <button class="btn sm ghost">Set up</button>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
           </div>
+          <p class="tiny dim s-member" style="margin-top: 14px">
+            Six of these are admin-only, so they are listed without a Set up button rather than
+            hidden — you can see what your install has, and who to ask.
+          </p>
         </div>
 
-        <div class="live">
+        <div class="live has-data">
           <div class="live-head">
             <span class="dot crit pulse"></span>
             <strong class="small">Live from what you already connected</strong>
