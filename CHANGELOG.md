@@ -6,8 +6,11 @@
   attachments (text/PDF/image only; archives rejected), assignment, review
   approval before `contacted`, service-level timestamps, and redacted
   JSON/HTML/PDF reports that omit operator notes and attachment bytes.
-  Customer sessions stay 401. Nothing is mailed. Client projects, billing,
-  and aggregate research stay out. Not a customer product and not a Pricing
+  Customer sessions stay 401. Nothing is mailed. Live on the public prettier
+  case: vendor reply recorded, `vendor-note.txt` stored, `.tgz` and zip magic
+  rejected, assigned to EmotiveImpact, review approved, JSON/HTML/PDF reports
+  omitted notes and bytes, customer 401. Client projects, billing, and
+  aggregate research stay out. Not a customer product and not a Pricing
   change.
 
 - Package Identity batch import: `POST /api/protections/import` (cap 20) protects
