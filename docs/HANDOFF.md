@@ -72,6 +72,9 @@ Read in this order:
   `044_pagerduty_destinations` extends destination and delivery kind checks
   with `pagerduty`.
   Next unused id is `045_*`.
+  Older delivery/governance/public-page migrations no longer rewrite a stale
+  `audit_events.action` CHECK on every boot. `migrate()` applies the current
+  full list once at the end so `release.publish_verify` rows stay valid.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are

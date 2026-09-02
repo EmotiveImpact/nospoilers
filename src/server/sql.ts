@@ -788,6 +788,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureSlaBackfill(sql);
   await migrateReleasePublicPages(sql);
   await migratePagerDutyDestinations(sql);
+  await applyAuditEventsActionCheck(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -840,37 +841,6 @@ async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
     CREATE TRIGGER release_delivery_verifications_no_delete
       BEFORE DELETE ON release_delivery_verifications
       FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'invite.create',
-      'invite.revoke',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'map_destination.save',
-      'map_destination.delete',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save',
-      'repo.make_private',
-      'repo.delete_pack_assets',
-      'repo.disable_workflow',
-      'delivery_location.save'
-    ));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "034_delivery_verify",
@@ -959,41 +929,6 @@ async function migrateReleaseGovernance(sql: SqlClient): Promise<void> {
     CREATE TRIGGER release_legal_holds_no_delete
       BEFORE DELETE ON release_legal_holds
       FOR EACH ROW EXECUTE PROCEDURE reject_release_legal_hold_mutation();
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'invite.create',
-      'invite.revoke',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'map_destination.save',
-      'map_destination.delete',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save',
-      'repo.make_private',
-      'repo.delete_pack_assets',
-      'repo.disable_workflow',
-      'delivery_location.save',
-      'release.approve',
-      'release.reject',
-      'release.hold',
-      'release.release_hold'
-    ));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "037_release_governance",
@@ -1270,6 +1205,14 @@ async function migrateReleasePublicPages(sql: SqlClient): Promise<void> {
       ON release_public_pages (public_token);
     CREATE INDEX IF NOT EXISTS release_public_pages_install_idx
       ON release_public_pages (installation_id, enabled, id DESC);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "043_release_public_pages",
+  ]);
+}
+
+async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
+  await sql.exec(`
     ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
     ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
       'destination.save',
@@ -1308,9 +1251,6 @@ async function migrateReleasePublicPages(sql: SqlClient): Promise<void> {
       'release.unpublish_verify'
     ));
   `);
-  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-    "043_release_public_pages",
-  ]);
 }
 
 async function migratePagerDutyDestinations(sql: SqlClient): Promise<void> {

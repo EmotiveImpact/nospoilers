@@ -285,4 +285,34 @@ describe("Team audit log", () => {
       await sql.close();
     }
   });
+
+  it("remigrates after a publish_verify row without rewriting a stale action list", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "Organization",
+        accountId: 1,
+      });
+      await store.insertAuditEvent({
+        installationId: 7,
+        actorLogin: "octo",
+        action: "release.publish_verify",
+        summary: "Published verification for owner/name@tag#file",
+        targetKind: "release",
+        targetId: "owner/name@tag#file",
+      });
+      await migrate(sql);
+      const { rows } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM audit_events WHERE action = 'release.publish_verify'",
+      );
+      expect(rows[0]?.n).toBe("1");
+    } finally {
+      await sql.close();
+    }
+  });
 });
