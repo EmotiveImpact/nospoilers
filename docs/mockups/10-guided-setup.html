@@ -182,6 +182,11 @@
     </style>
   </head>
   <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
     <div class="app">
       <header class="topbar">
         <span class="logo">NoSpoilers</span>
@@ -359,8 +364,16 @@
       </div>
     </div>
 
-    <div class="mock-tag">
-      <b>10</b> Guided setup <a href="index.html">gallery ↗</a>
+    <div class="mock-bar">
+      <b>10</b> Guided setup
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
     </div>
   </body>
 </html>

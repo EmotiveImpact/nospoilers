@@ -242,6 +242,11 @@
     </style>
   </head>
   <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
     <div class="app shell">
       <aside class="side">
         <div class="side-head">
@@ -259,41 +264,82 @@
         <nav class="nav scroll">
           <div class="nav-group">
             <a href="#" aria-current="page"><span class="ico">◉</span> Overview</a>
-            <a href="#"><span class="ico">▲</span> Alerts <span class="count crit">2</span></a>
-            <a href="#"><span class="ico">◷</span> Timeline</a>
+            <a href="#"
+              ><span class="ico">▲</span> Alerts <span class="count crit has-data">2</span></a
+            >
+            <a href="#" class="team-only"><span class="ico">◷</span> Timeline</a>
           </div>
 
           <div class="nav-group">
             <span class="kicker">Watched</span>
-            <a href="#"><span class="ico">⌥</span> Repositories <span class="count">6</span></a>
-            <a href="#"><span class="ico">▣</span> npm packages <span class="count">3</span></a>
-            <a href="#"><span class="ico">⬡</span> Websites <span class="count">2</span></a>
-            <a href="#"><span class="ico">⎔</span> Map custody <span class="count">1</span></a>
+            <a href="#"
+              ><span class="ico">⌥</span> Repositories <span class="count has-data">6</span></a
+            >
+            <a href="#"
+              ><span class="ico">▣</span> npm packages <span class="count has-data">3</span></a
+            >
+            <a href="#"><span class="ico">⬡</span> Websites <span class="count has-data">2</span></a>
+            <a href="#"
+              ><span class="ico">⎔</span> Map custody <span class="count has-data">1</span></a
+            >
           </div>
 
           <div class="nav-group">
             <span class="kicker">Evidence</span>
             <a href="#"><span class="ico">✓</span> Releases</a>
-            <a href="#"><span class="ico">⎙</span> Audit log</a>
+            <a href="#" class="team-only"><span class="ico">⎙</span> Audit log</a>
           </div>
 
           <div class="nav-group">
             <span class="kicker">Settings</span>
             <a href="#"><span class="ico">✉</span> Notifications</a>
             <a href="#"><span class="ico">⚖</span> Policy &amp; allowlist</a>
-            <a href="#"><span class="ico">◍</span> Scan API tokens</a>
+            <a href="#" class="admin-only"><span class="ico">◍</span> Scan API tokens</a>
             <a href="#"><span class="ico">☗</span> Team &amp; roles</a>
             <a href="#"><span class="ico">⧗</span> Retention</a>
             <a href="#"><span class="ico">✱</span> Install health</a>
           </div>
+
+          <p class="tiny dim s-solo" style="padding: 4px 18px 0">
+            Timeline and Audit log are on Team. They come back the moment you upgrade.
+          </p>
+          <p class="tiny dim s-member" style="padding: 4px 18px 0">
+            You are a member. Scan API tokens are admin-only, and the settings you can open are
+            read-only.
+          </p>
         </nav>
 
         <div class="side-foot">
-          <div class="between">
-            <span class="tiny dim">Trial · 11 days left</span>
-            <a href="#" class="tiny snow">Subscribe</a>
+          <div class="s-trial">
+            <div class="between">
+              <span class="tiny dim">Trial · 11 days left</span>
+              <a href="#" class="tiny snow">Subscribe</a>
+            </div>
+            <div class="bar" style="margin-top: 8px"><span style="width: 21%"></span></div>
           </div>
-          <div class="bar" style="margin-top: 8px"><span style="width: 21%"></span></div>
+          <div class="s-solo between">
+            <span class="tiny dim">Solo · $29 a month</span>
+            <a href="#" class="tiny snow">Upgrade to Team</a>
+          </div>
+          <div class="s-member between">
+            <span class="tiny dim">Team · you are a member</span>
+          </div>
+          <div class="s-ended">
+            <div class="between">
+              <span class="tiny bad">Coverage ended</span>
+              <a href="#" class="tiny snow">See plans</a>
+            </div>
+            <p class="tiny dim" style="margin-top: 7px">
+              Repos stay listed. New jobs and scans are stopped.
+            </p>
+          </div>
+          <div class="s-empty">
+            <div class="between">
+              <span class="tiny dim">Trial · 14 days left</span>
+              <a href="#" class="tiny snow">Subscribe</a>
+            </div>
+            <div class="bar" style="margin-top: 8px"><span style="width: 3%"></span></div>
+          </div>
         </div>
       </aside>
 
@@ -304,7 +350,11 @@
             <span class="kbd">⌘K</span>
           </button>
           <div class="grow"></div>
-          <span class="pill ok"><span class="dot ok"></span> Watching</span>
+          <span class="pill ok s-trial"><span class="dot ok"></span> Trial · 11 days left</span>
+          <span class="pill ok s-solo"><span class="dot ok"></span> Solo</span>
+          <span class="pill ok s-member"><span class="dot ok"></span> Team · member</span>
+          <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+          <span class="pill ok s-empty"><span class="dot ok"></span> Trial · 14 days left</span>
           <a href="#" class="btn sm outline">Install on GitHub</a>
           <span class="av" title="ryan@emotiveimpact"></span>
         </header>
@@ -313,15 +363,20 @@
           <div class="between" style="margin-bottom: 18px">
             <div>
               <span class="kicker">Overview</span>
-              <h1 style="margin-top: 8px">Two things need you.</h1>
+              <h1 class="has-data" style="margin-top: 8px">Two things need you.</h1>
+              <h1 class="s-empty" style="margin-top: 8px">Nothing on this install yet.</h1>
             </div>
             <div class="row">
-              <button class="btn outline sm">Export activity</button>
-              <button class="btn sm">Scan latest release</button>
+              <button class="btn outline sm team-only has-data">Export activity</button>
+              <button class="btn sm has-data s-trial">Scan latest release</button>
+              <button class="btn sm has-data s-solo">Scan latest release</button>
+              <button class="btn sm has-data s-member">Scan latest release</button>
+              <button class="btn sm has-data s-ended disabled">Scan latest release</button>
+              <button class="btn sm s-empty">Install on a repo</button>
             </div>
           </div>
 
-          <div class="verdict">
+          <div class="verdict has-data">
             <span class="mark">!</span>
             <div class="grow">
               <h2>A source map with original source shipped 41 minutes ago.</h2>
@@ -334,13 +389,30 @@
               <div class="row gap8" style="margin-top: 14px">
                 <button class="btn sm">Open rotation checklist</button>
                 <button class="btn sm outline">Acknowledge</button>
-                <button class="btn sm ghost">Assign teammate</button>
+                <button class="btn sm ghost team-only">Assign teammate</button>
               </div>
+              <p class="tiny dim s-ended" style="margin-top: 11px">
+                Coverage ended, so no new jobs run. Alerts already open can still be acknowledged
+                and resolved.
+              </p>
             </div>
             <span class="pill crit">MAP-002 · critical</span>
           </div>
 
-          <div class="stats">
+          <div class="card card-pad s-empty">
+            <h2>Install NoSpoilers on a repository to start.</h2>
+            <p class="muted" style="margin-top: 8px; max-width: 60ch">
+              Pick a private throwaway repo first. Within about a minute of flipping it public the
+              desk shows <strong class="snow">Went public</strong> — that is the fastest way to see
+              the loop work before you point it at anything real.
+            </p>
+            <div class="row gap8" style="margin-top: 14px">
+              <button class="btn sm">Install on GitHub</button>
+              <button class="btn sm outline">Scan a pack from my machine</button>
+            </div>
+          </div>
+
+          <div class="stats has-data">
             <div class="stat">
               <span class="kicker">Repos watched</span>
               <div class="n">6</div>
@@ -368,7 +440,13 @@
               <h2>Open alerts</h2>
               <a href="#" class="small dim">All alerts →</a>
             </div>
-            <div class="card">
+            <div class="card s-empty">
+              <p class="empty">
+                <strong>No alerts.</strong>
+                Nothing on this install yet.
+              </p>
+            </div>
+            <div class="card has-data">
               <div class="alert">
                 <span class="dot crit pulse" style="margin-top: 7px"></span>
                 <div class="grow">
@@ -412,7 +490,25 @@
               <h2>Repositories</h2>
               <a href="#" class="small dim">Manage on GitHub →</a>
             </div>
-            <div class="card">
+            <div class="card s-empty">
+              <p class="empty">
+                <strong>No repositories.</strong>
+                Nothing on this install yet. Install NoSpoilers on a private throwaway repo.
+              </p>
+            </div>
+            <div class="card has-data lockable">
+              <div class="lockveil">
+                <span class="kicker">Hosted coverage is off</span>
+                <h2>Subscribe to keep watching.</h2>
+                <p class="small muted" style="max-width: 46ch">
+                  Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active.
+                  Repos stay listed. Existing alerts can still be acknowledged and resolved.
+                </p>
+                <div class="row gap8" style="margin-top: 4px">
+                  <button class="btn sm">See plans</button>
+                  <button class="btn sm outline">Locked scan</button>
+                </div>
+              </div>
               <div class="repo">
                 <span class="dot ok"></span>
                 <span class="grow path">EmotiveImpact/nospoilers</span>
@@ -432,16 +528,42 @@
                 <span class="grow path">EmotiveImpact/relay-worker</span>
                 <span class="pill info">no workflow</span>
                 <span class="tiny dim">checked 4m ago</span>
-                <button class="btn sm outline">Open setup PR</button>
+                <button class="btn sm outline admin-only">Open setup PR</button>
+                <span class="tiny dim s-member">admin opens PRs</span>
               </div>
+            </div>
+
+            <div class="gate s-solo has-data" style="margin-top: 12px">
+              <span class="tagword">Solo</span>
+              <span
+                >The install timeline and audit log are on Team. Watch, packs, and alerts are all
+                included here — only the history surfaces are gated.
+                <a href="#" class="snow">Compare plans →</a></span
+              >
+            </div>
+            <div class="gate s-member has-data" style="margin-top: 12px">
+              <span class="tagword">Member</span>
+              <span
+                >The first GitHub user to connect this install is admin; later users become
+                members. You can triage alerts and read every setting. Changing retention,
+                notifications, registries, tokens, and roles is admin-only.</span
+              >
             </div>
           </section>
         </div>
       </div>
     </div>
 
-    <div class="mock-tag">
-      <b>01</b> Console sidebar <a href="index.html">gallery ↗</a>
+    <div class="mock-bar">
+      <b>01</b> Console sidebar
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
     </div>
   </body>
 </html>

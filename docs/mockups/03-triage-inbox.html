@@ -199,6 +199,11 @@
     </style>
   </head>
   <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
     <div class="app">
       <header class="topbar">
         <span class="logo">NoSpoilers</span>
@@ -209,18 +214,42 @@
           <a href="#">Settings</a>
         </nav>
         <div class="grow"></div>
-        <span class="pill"><span class="dot ok"></span> Watching 6 repos</span>
-        <span class="pill">Trial · 11 days</span>
+        <span class="pill has-data"><span class="dot ok"></span> Watching 6 repos</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
         <button class="btn sm">Subscribe</button>
       </header>
+
+      <div
+        class="s-ended row gap12"
+        style="
+          padding: 10px 18px;
+          border-bottom: 1px solid rgba(226, 69, 58, 0.3);
+          background: rgba(226, 69, 58, 0.07);
+        "
+      >
+        <span class="dot crit"></span>
+        <span class="small"
+          ><strong class="snow">Coverage ended.</strong> No new jobs or scans run, so nothing new
+          arrives in this inbox. The four alerts already open can still be acknowledged and
+          resolved.</span
+        >
+        <div class="grow"></div>
+        <button class="btn sm">See plans</button>
+      </div>
 
       <div class="panes">
         <aside class="pane rail">
           <div class="rail-group">
-            <div class="view" aria-current="true">▲ Needs triage <span class="n">2</span></div>
-            <div class="view">◷ Waiting on rotation <span class="n">1</span></div>
-            <div class="view">☺ Assigned to me <span class="n">1</span></div>
-            <div class="view">✓ Resolved <span class="n">37</span></div>
+            <div class="view" aria-current="true">
+              ▲ Needs triage <span class="n has-data">2</span>
+            </div>
+            <div class="view">◷ Waiting on rotation <span class="n has-data">1</span></div>
+            <div class="view team-only">☺ Assigned to me <span class="n has-data">1</span></div>
+            <div class="view">✓ Resolved <span class="n has-data">37</span></div>
           </div>
           <hr class="hr" />
           <div class="rail-group">
@@ -239,7 +268,17 @@
           </div>
           <div class="grow"></div>
           <div style="padding: 14px 18px; border-top: 1px solid var(--line)">
-            <p class="tiny dim">Configuration moved to Settings. This pane is only work.</p>
+            <p class="tiny dim">
+              Configuration moved to Settings. This pane is only work. The other twelve sections —
+              retention, audit, team, health, notifications, websites, map custody, npm packages,
+              registries, scan tokens, releases, policy — live behind the Settings tab.
+            </p>
+            <p class="tiny dim s-solo" style="margin-top: 9px">
+              “Assigned to me” needs Team. On Solo every alert lands in one shared queue.
+            </p>
+            <p class="tiny dim s-member" style="margin-top: 9px">
+              As a member you can triage everything here. Settings opens read-only.
+            </p>
           </div>
         </aside>
 
@@ -412,8 +451,16 @@
       </div>
     </div>
 
-    <div class="mock-tag">
-      <b>03</b> Triage inbox <a href="index.html">gallery ↗</a>
+    <div class="mock-bar">
+      <b>03</b> Triage inbox
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
     </div>
   </body>
 </html>

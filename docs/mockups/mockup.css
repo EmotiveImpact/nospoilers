@@ -471,36 +471,161 @@ table.tbl tbody tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* ---------- state presets ----------
+   Radio inputs sit before .app in every mockup. Each preset exercises one of the
+   states the real desk has to handle, so a layout can be judged on the hard cases
+   and not just the happy path. Pure CSS, no script. */
+
+.stateset {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#p-trial:checked ~ .app :is(.s-solo, .s-member, .s-ended, .s-empty),
+#p-solo:checked ~ .app :is(.s-trial, .s-member, .s-ended, .s-empty),
+#p-member:checked ~ .app :is(.s-trial, .s-solo, .s-ended, .s-empty),
+#p-ended:checked ~ .app :is(.s-trial, .s-solo, .s-member, .s-empty),
+#p-empty:checked ~ .app :is(.s-trial, .s-solo, .s-member, .s-ended) {
+  display: none !important;
+}
+
+/* Controls an install admin has and a member does not. */
+#p-member:checked ~ .app .admin-only {
+  display: none !important;
+}
+/* Features the Solo plan does not include. */
+#p-solo:checked ~ .app .team-only {
+  display: none !important;
+}
+/* Anything that only exists once something is connected. */
+#p-empty:checked ~ .app .has-data {
+  display: none !important;
+}
+
+/* Mirrors CoverageLock.tsx: it covers the panel rather than dimming it. */
+.lockable {
+  position: relative;
+}
+.lockveil {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  flex-direction: column;
+  justify-content: center;
+  gap: 11px;
+  padding: 24px;
+  background: rgba(9, 9, 11, 0.92);
+  backdrop-filter: blur(1px);
+  border-radius: inherit;
+}
+#p-ended:checked ~ .app .lockveil {
+  display: flex;
+}
+.lockveil .kicker {
+  color: var(--danger);
+}
+
+.gate {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.gate .tagword {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-top: 2px;
+}
+
+.empty {
+  padding: 26px 18px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 13px;
+}
+.empty strong {
+  display: block;
+  color: var(--mute);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
 /* ---------- mockup framing (not part of the proposed product UI) ---------- */
 
-.mock-tag {
+.mock-bar {
   position: fixed;
   z-index: 60;
-  right: 14px;
+  left: 50%;
   bottom: 14px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 7px 9px 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
-  background: rgba(9, 9, 11, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgba(9, 9, 11, 0.94);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   font-size: 11px;
   color: var(--mute);
-  letter-spacing: 0.04em;
+  max-width: calc(100vw - 20px);
+  overflow: auto;
+  scrollbar-width: none;
 }
-.mock-tag b {
+.mock-bar::-webkit-scrollbar {
+  display: none;
+}
+.mock-bar b {
   color: var(--snow);
   font-weight: 500;
+  letter-spacing: 0.04em;
 }
-.mock-tag a {
+.mock-bar .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  flex: none;
+}
+.mock-bar label {
+  padding: 4px 9px;
+  border-radius: 999px;
   color: var(--dim);
-  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
 }
-.mock-tag a:hover {
+.mock-bar label:hover {
   color: var(--snow);
-  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+.mock-bar a {
+  color: var(--dim);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.mock-bar a:hover {
+  color: var(--snow);
+}
+
+#p-trial:checked ~ .mock-bar label[for="p-trial"],
+#p-solo:checked ~ .mock-bar label[for="p-solo"],
+#p-member:checked ~ .mock-bar label[for="p-member"],
+#p-ended:checked ~ .mock-bar label[for="p-ended"],
+#p-empty:checked ~ .mock-bar label[for="p-empty"] {
+  background: var(--snow);
+  color: var(--ink);
 }
 
 .logo {
