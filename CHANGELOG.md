@@ -7,8 +7,12 @@
   download and no `npm_scan` job. Unowned, missing, or invalid names are not
   added to the watch list. Already protected names stay as they are. Watch cap
   is 25. Solo allowed. Unpaid 402. Another tenant 403. Watch has a matte-black
-  import list. Other registries, takedown evidence, and a consumer advisory
-  page stay out. Not a Pricing change.
+  import list. Live on install `158159401`: `prettier` / `left-pad` /
+  `nospoilers-import-missing-zzzz` / `NOT A NAME!!!` returned `not_owned` /
+  `not_owned` / `not_found` / `invalid`, `queued: false`, no watches added, no
+  `npm_scan` job; anonymous 401; Cloudflare tunnel matched. No EmotiveImpact-owned
+  npm pack exists to prove `protected` on Neon. Other registries, takedown
+  evidence, and a consumer advisory page stay out. Not a Pricing change.
 
 - Disclosure Desk Phase 2 minus send: human-edited templates, preferred vendor
   channel, do-not-contact (create is research-only unless confirmed; `contacted`

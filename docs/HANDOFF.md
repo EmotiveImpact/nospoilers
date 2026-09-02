@@ -339,6 +339,9 @@ publishing identity / trusted publisher).
 Package Identity batch import is in (`POST /api/protections/import`, cap 20, metadata only,
 ownership required, never download, never enqueue `npm_scan`). Unowned or missing names
 are not watched. Solo allowed. Unpaid 402. Other registries stay out.
+Live import on install `158159401` refused prettier / left-pad / a missing name / an
+invalid token and did not add watches. Tunnel matched. There is no EmotiveImpact-owned
+npm pack to protect.
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
@@ -488,6 +491,11 @@ requested). Optional next grants: Members read (collaborator Watch), Pull reques
 write (reviewable Setup/remediation PRs, never merged), Checks write (hosted
 Checks). Do not grant Administration. Do not request Workflows write.
 The GitHub connector is the product-repo user token; it 403s writing nospoilers-throwaway.
+Package Identity batch import is live: `POST /api/protections/import` on install
+`158159401` returned `not_owned` / `not_owned` / `not_found` / `invalid` for
+prettier, left-pad, a missing name, and an invalid token. `queued` was false.
+No watches were added. Anonymous 401. Cloudflare tunnel matched. There is no
+EmotiveImpact-owned npm pack to protect. Other registries stay out.
 Stripe and Resend are benched. Do not start the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
