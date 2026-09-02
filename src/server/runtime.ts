@@ -54,6 +54,10 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       wakeWorker: () => {
         void worker.tick();
       },
+      prospectDiscovery: config.githubDiscoveryToken
+        ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
+        : undefined,
+      staleAfterMs: config.jobStaleMs,
     },
     config.pollIntervalMs,
   );

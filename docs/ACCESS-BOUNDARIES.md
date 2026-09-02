@@ -172,7 +172,8 @@ suspend does not block role changes or GitHub-login invites. Email invite waits 
 
 This is not GitHub App **Administration**. That GitHub permission is repo-admin (make the
 repository private, delete Release assets, disable workflows, change settings). It is not
-granted. Contents write is enough to seed the throwaway fixture and open reviewable PRs.
+granted. Contents write seeds the throwaway fixture (not Actions YAML). Opening a
+reviewable setup or remediation PR also needs Pull requests write. The App never merges.
 
 **May**
 
@@ -253,6 +254,8 @@ Internal staff running acquisition and disclosure work.
 - See nested public npm workspace member names discovered from a repo workspace
   config or a scanned pack (cap 8 queued packs / 40 listed names). Members are
   not auto-watched as customer packages.
+- Run the npm version feed and scheduled three-repo discover. Both skip when
+  customer jobs are queued/running. The hourly poller uses the same rules.
 - Record outreach state. Never send mail without a later human-confirm step.
 
 **Must not**
@@ -329,10 +332,13 @@ These are never customer features:
 ## Tests
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
-mutate Artifact Leads, cannot read `/api/internal/queue`, that owner queue JSON is
+mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
+that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
-unpack aggregates, and that nested workspace member discovery is metadata-only (private
-members skipped, cap 8, root name not duplicated, listed names stored after scan). `tests/receipts.test.ts` proves customers cannot read another
+unpack aggregates, that nested workspace member discovery is metadata-only (private
+members skipped, cap 8, root name not duplicated, listed names stored after scan),
+and that the npm version feed queues a new latest, skips same-version/404/ignored/fixed,
+and yields when customer jobs are out or the prospect queue is at three. `tests/receipts.test.ts` proves customers cannot read another
 tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unpacked jump
 (not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE

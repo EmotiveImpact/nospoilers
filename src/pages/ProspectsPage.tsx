@@ -83,7 +83,7 @@ export function ProspectsPage() {
   const [state, setState] = useState<LoadState>({ status: "loading" })
   const [query, setQuery] = useState(DEFAULT_QUERY)
   const [repository, setRepository] = useState("")
-  const [working, setWorking] = useState<"discover" | "repository" | null>(null)
+  const [working, setWorking] = useState<"discover" | "repository" | "feed" | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
 
@@ -169,6 +169,30 @@ export function ProspectsPage() {
       await load()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Discovery failed.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function checkNpmFeed() {
+    setWorking("feed")
+    setNotice(null)
+    try {
+      const result = await request<{
+        checked: number
+        queued: number
+        skipped?: "customer_busy" | "prospect_queue"
+      }>("/api/internal/prospects/feed", { method: "POST" })
+      if (result.skipped === "customer_busy") {
+        setNotice("Skipped npm feed. Customer jobs are running or queued.")
+      } else if (result.skipped === "prospect_queue") {
+        setNotice("Skipped npm feed. Prospect queue is already at the cap.")
+      } else {
+        setNotice(`Checked ${result.checked} npm leads · queued ${result.queued} new versions.`)
+      }
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "npm feed failed.")
     } finally {
       setWorking(null)
     }
@@ -290,7 +314,9 @@ export function ProspectsPage() {
           <h1 className="font-display text-4xl tracking-tight text-snow md:text-5xl">Artifact Leads</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
             Find public release packs with real findings. Inspect also lists public npm workspace
-            members from the repo workspace config (cap 8) and never auto-watches them. No source
+            members from the repo workspace config (cap 8) and never auto-watches them. The hourly
+            poller, after customer work, checks known npm leads for a new latest and can run a
+            three-repo discover when a discovery token is set. Customer jobs stay first. No source
             or secret values are retained. Nothing contacts or publicly names a maintainer for you.
           </p>
         </div>
@@ -406,6 +432,22 @@ export function ProspectsPage() {
           </div>
         </form>
       </section>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={Boolean(working)}
+          onClick={() => void checkNpmFeed()}
+        >
+          {working === "feed" ? "Checking…" : "Check npm versions"}
+        </Button>
+        <p className="text-xs text-dim">
+          Metadata only. New latest tarballs queue behind customer jobs. Ignored and fixed leads
+          are skipped.
+        </p>
+      </div>
 
       {notice && <p className="mt-4 text-sm text-mute">{notice}</p>}
 

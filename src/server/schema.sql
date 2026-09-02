@@ -186,6 +186,7 @@ CREATE TABLE IF NOT EXISTS prospects (
   discovered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   scanned_at TIMESTAMPTZ,
   contacted_at TIMESTAMPTZ,
+  feed_checked_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

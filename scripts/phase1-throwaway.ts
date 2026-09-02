@@ -44,7 +44,11 @@ async function walk(dir: string, prefix = ""): Promise<{ path: string; bytes: Bu
     const abs = path.join(dir, name);
     const st = await stat(abs);
     if (st.isDirectory()) out.push(...(await walk(abs, rel)));
-    else out.push({ path: rel, bytes: await readFile(abs) });
+    else if (rel.startsWith(".github/workflows/")) {
+      // Contents write cannot create GitHub Actions YAML. That needs a separate
+      // Workflows permission. Do not request it. The API release below is enough.
+      continue;
+    } else out.push({ path: rel, bytes: await readFile(abs) });
   }
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }

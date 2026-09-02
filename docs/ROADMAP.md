@@ -163,6 +163,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, nested
   public workspace member packs (cap 8 queued / 40 listed names, never auto-watched),
+  hourly npm version feed and three-repo scheduled discover behind customer jobs,
   manual outreach state.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
@@ -177,12 +178,11 @@ the immediate operational sequence. The exhaustive expansion plan is
 ### Connected but not loop-proven
 
 - Neon Auth remains disabled on purpose.
-- Throwaway repo Watch alert is proven (`repo_created_public`). Fixture release scan is not.
+- Throwaway repo Watch alerts are proven (`repo_created_public`, cheap `.env`/`.map` push,
+  and fixture `release_scan`).
 
 ### Missing before launch
 
-- Seed `throwaway/` onto `EmotiveImpact/nospoilers-throwaway` and attach `fixtures/sourcemap.tgz`
-  (needs Contents write, not Administration). Live GitHub repo is still empty.
 - Stripe checkout/subscription webhooks and card-on-file trial (benched).
 - Production deployment, email delivery (Resend, benched), and monitoring.
 
@@ -194,12 +194,14 @@ empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARI
 
 ## Milestone 1 — prove the GitHub loop
 
-In progress. OAuth user, App install, HMAC webhook 200s, and a real Watch alert are proven.
-`EmotiveImpact/nospoilers-throwaway` was created public. GitHub delivered `repository.created`
-(HTTP 200) → job `repo_created_public` → alert **Created public**. The GitHub repo is still
-empty. Fixture git files are in `throwaway/` in this repository. Missing: Contents write so
-`npm run phase1:throwaway` can seed those files and attach `sourcemap.tgz`. Do not grant
-Administration. Do not publicize a product repository. Stripe and Resend are benched.
+Done for the hosted GitHub loop. OAuth user, App install, HMAC webhook 200s, and real Watch
+alerts are proven. `EmotiveImpact/nospoilers-throwaway` was created public, then seeded with
+`throwaway/` (workflow YAML skipped — that needs a Workflows permission we will not request)
+and `fixtures/sourcemap.tgz` on tag `phase1-fixture`. GitHub delivered `release.published`
+(HTTP 200) → job `release_scan` done → alert **Spoilers in EmotiveImpact/nospoilers-throwaway
+phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Contents write is live on
+this install only. Do not grant Administration. Do not publicize a product repository.
+Stripe and Resend are benched.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.
@@ -209,7 +211,8 @@ Administration. Do not publicize a product repository. Stripe and Resend are ben
 6. Verify bad HMAC, duplicate delivery, suspend/uninstall, and poller fallback.
 
 Exit: OAuth → webhook → queue → worker → alert works without manual SQL. Visibility alert
-is done (`repo_created_public`). Fixture release scan is not.
+(`repo_created_public`) and fixture release scan (`release_scan` + failed-policy receipt)
+are done.
 
 ## Milestone 2 — make coverage commercially correct
 

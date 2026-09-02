@@ -764,6 +764,13 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "032_prospect_workspaces",
   ]);
+  await sql.exec(`
+    ALTER TABLE prospects
+      ADD COLUMN IF NOT EXISTS feed_checked_at TIMESTAMPTZ;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "033_prospect_npm_feed",
+  ]);
 }
 
 export function num(value: unknown): number {

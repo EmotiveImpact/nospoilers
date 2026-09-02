@@ -3,6 +3,13 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
+import { emptyPackageIdentity } from "../src/server/package-identity.ts";
+import type { NpmPack, NpmPort } from "../src/server/npm.ts";
+import {
+  MAX_PROSPECT_FEED_QUEUE,
+  runProspectNpmFeed,
+  runScheduledProspectDiscovery,
+} from "../src/server/prospect-feed.ts";
 import {
   MAX_PROSPECT_WORKSPACE_PACKS,
   nestedNpmArtifactsFromGithub,
@@ -11,7 +18,7 @@ import {
   workspaceParentDirs,
 } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
-import { createStore, signSession } from "../src/server/store.ts";
+import { createStore, signSession, type Store } from "../src/server/store.ts";
 
 function unusedGithub(): GithubPort {
   const unused = async (): Promise<never> => {
@@ -260,6 +267,12 @@ describe("Artifact Leads persistence", () => {
       });
       expect(discover.status).toBe(401);
 
+      const feed = await app.request("/api/internal/prospects/feed", {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(feed.status).toBe(401);
+
       await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
       const ownerSession = await store.createSession("owner-1");
       const allowed = await app.request("/api/internal/prospects", {
@@ -361,6 +374,331 @@ describe("Artifact Leads persistence", () => {
       expect(raw).not.toMatch(/prettier/);
       expect(raw).not.toMatch(/credit/i);
       expect(body).not.toHaveProperty("jobs");
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+function feedPack(overrides: Partial<NpmPack> = {}): NpmPack {
+  return {
+    name: "prettier",
+    version: "3.9.6",
+    distTags: { latest: "3.9.6" },
+    tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+    shasum: "abc123",
+    integrity: null,
+    bytes: 100,
+    identity: emptyPackageIdentity(),
+    ...overrides,
+  };
+}
+
+function stubFeedNpm(input: {
+  packs?: Record<string, NpmPack | null>;
+  error?: Error;
+  names?: string[];
+}): NpmPort {
+  return {
+    getPack: async (name) => {
+      input.names?.push(name);
+      if (input.error) throw input.error;
+      if (input.packs && name in input.packs) return input.packs[name] ?? null;
+      return null;
+    },
+    downloadTarball: async () => {
+      throw new Error("Feed must not download a tarball.");
+    },
+  };
+}
+
+async function seedCompleteNpmProspect(
+  store: Store,
+  input: {
+    packageName: string;
+    version: string;
+    tarballUrl: string;
+    status?: "new" | "contacted" | "fixed" | "ignored";
+  },
+): Promise<number> {
+  const row = await store.upsertProspect({
+    source: "npm",
+    owner: "prettier",
+    repo: "prettier",
+    repositoryUrl: "https://github.com/prettier/prettier",
+    packageName: input.packageName,
+    releaseTag: input.version,
+    artifactName: `${input.packageName}-${input.version}.tgz`,
+    artifactUrl: input.tarballUrl,
+  });
+  await store.completeProspectScan(row.id, { fileCount: 1, findings: [] });
+  if (input.status && input.status !== "new") {
+    await store.updateProspectStatus(row.id, input.status);
+  }
+  return row.id;
+}
+
+describe("Artifact Leads npm feed", () => {
+  it("queues a new latest tarball and leaves the same version untouched", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const firstId = await seedCompleteNpmProspect(store, {
+        packageName: "prettier",
+        version: "3.9.6",
+        tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      const names: string[] = [];
+      const first = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({
+          names,
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              distTags: { latest: "3.9.7" },
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      expect(first).toEqual({ checked: 1, queued: 1 });
+      expect(names).toEqual(["prettier"]);
+      const afterNew = await store.listProspects();
+      expect(afterNew).toHaveLength(2);
+      expect(afterNew.some((row) => row.artifact_url.endsWith("prettier-3.9.7.tgz"))).toBe(true);
+      expect((await store.getProspect(firstId))?.feed_checked_at).toBeTruthy();
+      expect((await store.ownerQueueHealth(60_000)).prospect.queued).toBe(1);
+
+      const same = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              distTags: { latest: "3.9.7" },
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      expect(same).toEqual({ checked: 1, queued: 0 });
+      expect(await store.listProspects()).toHaveLength(2);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("treats a registry 404 or network error as a touch, not an unpublish", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await seedCompleteNpmProspect(store, {
+        packageName: "prettier",
+        version: "3.9.6",
+        tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      const missing = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({ packs: { prettier: null } }),
+      });
+      expect(missing).toEqual({ checked: 1, queued: 0 });
+      expect(await store.listProspects()).toHaveLength(1);
+      expect((await store.ownerQueueHealth(60_000)).prospect.queued).toBe(0);
+
+      await seedCompleteNpmProspect(store, {
+        packageName: "left-pad",
+        version: "1.3.0",
+        tarballUrl: "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+      });
+      const failed = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({ error: new Error("registry unreachable") }),
+      });
+      expect(failed).toEqual({ checked: 2, queued: 0 });
+      expect(await store.listProspects()).toHaveLength(2);
+      expect((await store.listProspects()).every((row) => row.status === "new")).toBe(true);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("skips ignored and fixed leads", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await seedCompleteNpmProspect(store, {
+        packageName: "prettier",
+        version: "3.9.6",
+        tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      await seedCompleteNpmProspect(store, {
+        packageName: "left-pad",
+        version: "1.3.0",
+        tarballUrl: "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+        status: "ignored",
+      });
+      await seedCompleteNpmProspect(store, {
+        packageName: "once",
+        version: "1.4.0",
+        tarballUrl: "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
+        status: "fixed",
+      });
+      const names: string[] = [];
+      const result = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({
+          names,
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              distTags: { latest: "3.9.7" },
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      expect(result).toEqual({ checked: 1, queued: 1 });
+      expect(names).toEqual(["prettier"]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("yields when customer jobs are out or the prospect queue is at the cap", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "acme",
+        accountType: "User",
+        accountId: 1,
+      });
+      await seedCompleteNpmProspect(store, {
+        packageName: "prettier",
+        version: "3.9.6",
+        tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: { installationId: 7 },
+      });
+      const names: string[] = [];
+      const busy = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({
+          names,
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      expect(busy).toEqual({ checked: 0, queued: 0, skipped: "customer_busy" });
+      expect(names).toEqual([]);
+
+      await sql.query(`UPDATE jobs SET status = 'done' WHERE kind = 'release_scan'`);
+      for (let i = 0; i < MAX_PROSPECT_FEED_QUEUE; i += 1) {
+        await store.enqueueJob({
+          priority: "heavy",
+          kind: "prospect_scan",
+          payload: { prospectId: i + 1 },
+        });
+      }
+      const saturated = await runProspectNpmFeed({
+        store,
+        npm: stubFeedNpm({
+          names,
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      expect(saturated).toEqual({ checked: 0, queued: 0, skipped: "prospect_queue" });
+      expect(names).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("does not search GitHub when scheduled discovery has no token", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const result = await runScheduledProspectDiscovery({
+        store,
+        maxAssetBytes: 1024,
+      });
+      expect(result).toEqual({
+        repositories: 0,
+        found: 0,
+        queued: 0,
+        existing: 0,
+        errors: [],
+        skipped: "no_token",
+      });
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("lets the owner POST the feed and rejects a customer session", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await seedCompleteNpmProspect(store, {
+        packageName: "prettier",
+        version: "3.9.6",
+        tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      await store.upsertUser({ id: "customer-1", login: "acme-founder" });
+      await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "owner-only-token",
+          adminGithubLogin: "EmotiveImpact",
+          sessionSecret: "test-session",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubFeedNpm({
+          packs: {
+            prettier: feedPack({
+              version: "3.9.7",
+              distTags: { latest: "3.9.7" },
+              tarballUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.7.tgz",
+            }),
+          },
+        }),
+      });
+      const customer = `ns_session=${signSession("test-session", await store.createSession("customer-1"))}`;
+      const owner = `ns_session=${signSession("test-session", await store.createSession("owner-1"))}`;
+
+      const denied = await app.request("/api/internal/prospects/feed", {
+        method: "POST",
+        headers: { cookie: customer },
+      });
+      expect(denied.status).toBe(401);
+
+      const allowed = await app.request("/api/internal/prospects/feed", {
+        method: "POST",
+        headers: { cookie: owner },
+      });
+      expect(allowed.status).toBe(200);
+      expect(await allowed.json()).toEqual({ checked: 1, queued: 1 });
     } finally {
       await sql.close();
     }

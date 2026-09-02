@@ -13,10 +13,10 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub OAuth login | Built: real GitHub user session on Neon; `github_app_authorization` revoked drops that user’s sessions and stored OAuth token | NoSpoilers |
 | GitHub App installation | Built: live App install and HMAC webhooks; `installation_target` renamed updates the stored account login in place | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
-| Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert. Git content authored in `throwaway/`. Live seed/release still needs Contents write (not Administration); the GitHub repo is still empty | NoSpoilers |
+| Real throwaway-repository proof | Built: created-public + cheap `.env`/`.map` push + `release.published` → `release_scan` done → Watch “Spoilers in … phase1-fixture” + `failed-policy` receipt (MAP-001/002/003) on `EmotiveImpact/nospoilers-throwaway`. Contents write on this install only; Workflows write not requested; Administration not granted | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
 | Complete unpaid webhook/worker/poller/scan enforcement | Built: webhook 200, work skipped | NoSpoilers |
-| Stripe monthly/yearly checkout | Planned, benched until throwaway Release scan is live | NoSpoilers |
+| Stripe monthly/yearly checkout | Planned, benched | NoSpoilers |
 | Card-on-file 14-day trial | Planned, benched | NoSpoilers |
 | Stripe lifecycle webhooks | Planned, benched | NoSpoilers |
 | Billing portal | Planned, benched | NoSpoilers |
@@ -194,8 +194,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Manual repository inspection | Built | Internal NoSpoilers |
 | Search campaign discovery | Built/manual | Internal NoSpoilers |
 | One-at-a-time prospect scans behind customer jobs | Built | Internal NoSpoilers |
-| Scheduled discovery | Planned | Internal NoSpoilers |
-| Continuous npm version feed | Planned | Internal NoSpoilers |
+| Scheduled discovery | Built: hourly poller, after customer visibility/npm/web/map work, runs a 3-repo GitHub search when `GITHUB_DISCOVERY_TOKEN` is set; skips if customer jobs are queued/running or 3+ prospect jobs are already out; owner-only; no seeded companies | Internal NoSpoilers |
+| Continuous npm version feed | Built: hourly poller plus owner `POST /api/internal/prospects/feed`; metadata `getPack` on up to 8 known npm leads (`new`/`contacted`); new latest tarball becomes a new prospect row and queues behind customer jobs; 404/network is not an unpublish; ignored/fixed skipped; owner-only | Internal NoSpoilers |
 | Nested workspace package discovery | Built: Artifact Leads inspect lists public npm names from package.json / pnpm-workspace globs (`packages/*` or a literal path, cap 8 queued packs); scanned packs store member names (cap 40); never auto-watched; never executed; owner-only | Internal NoSpoilers |
 | Critical-only internal notifications | Planned | Internal NoSpoilers |
 | Human finding verification | Planned | Internal NoSpoilers |

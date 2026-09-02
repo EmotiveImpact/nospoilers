@@ -4,6 +4,7 @@ import type { NpmPort } from "./npm.ts";
 import { runNpmWatchPoll } from "./npm-watch.ts";
 import { runWebOriginPoll } from "./web-watch.ts";
 import { runMapCustodyPoll } from "./map-watch.ts";
+import { runProspectAcquisitionPoll } from "./prospect-feed.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
@@ -45,6 +46,8 @@ export function startPoller(
     notifier: AlertNotifier;
     npm: NpmPort;
     wakeWorker?: () => void;
+    prospectDiscovery?: { token: string; maxAssetBytes: number };
+    staleAfterMs?: number;
   },
   intervalMs: number,
 ): { stop: () => void } {
@@ -54,7 +57,15 @@ export function startPoller(
       const npm = await runNpmWatchPoll(deps);
       const web = await runWebOriginPoll(deps);
       const maps = await runMapCustodyPoll(deps);
-      if (npm.queued + web.queued + maps.queued > 0) deps.wakeWorker?.();
+      const prospects = await runProspectAcquisitionPoll({
+        store: deps.store,
+        npm: deps.npm,
+        discovery: deps.prospectDiscovery,
+        staleAfterMs: deps.staleAfterMs,
+      });
+      if (npm.queued + web.queued + maps.queued + prospects.feedQueued + prospects.discoveryQueued > 0) {
+        deps.wakeWorker?.();
+      }
     })().catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "poller.failed", { message });

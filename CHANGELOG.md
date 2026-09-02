@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- Milestone 1 GitHub loop is proven on `EmotiveImpact/nospoilers-throwaway`: Contents
+  write accepted on install `158159401` (this account only), `throwaway/` seeded
+  (Actions YAML skipped — Workflows write is not requested), `phase1-fixture` Release
+  attached `sourcemap.tgz`, `release.published` → `release_scan` done → Watch
+  “Spoilers in … phase1-fixture” and a `failed-policy` receipt (MAP-001/002/003).
+  Cheap `.env` / `.map` push also alerted. Administration is not granted. Stripe and
+  Resend stay benched.
+
+- Artifact Leads hourly poller, after customer work, checks up to eight known npm
+  leads for a new latest and can run a three-repo GitHub discover when a discovery
+  token is set. Both skip if customer jobs are queued/running or the prospect queue
+  is already at three. Owner “Check npm versions” is the same feed. Metadata only.
+  No seeded companies. Not a Pricing change.
+
 - Artifact Leads inspect discovers public npm workspace members from a repository’s
   workspace config (`packages/*` or a literal path, cap 8) and queues those packs
   behind customer jobs. A completed prospect scan stores member names from the packed

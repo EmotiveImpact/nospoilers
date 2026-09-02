@@ -406,6 +406,7 @@ export type ProspectRow = {
   discovered_at: string;
   scanned_at: string | null;
   contacted_at: string | null;
+  feed_checked_at: string | null;
   updated_at: string;
 };
 
@@ -702,7 +703,7 @@ async function applyPendingInvite(
   });
 }
 
-function prospectRow(row: ProspectRow & { workspace_members?: unknown }): ProspectRow {
+function prospectRow(row: ProspectRow & { workspace_members?: unknown; feed_checked_at?: string | Date | null }): ProspectRow {
   return {
     ...row,
     id: num(row.id),
@@ -712,6 +713,7 @@ function prospectRow(row: ProspectRow & { workspace_members?: unknown }): Prospe
     warning_count: row.warning_count === null ? null : num(row.warning_count),
     findings: parsePayload(row.findings),
     workspace_members: asStringArray(row.workspace_members),
+    feed_checked_at: iso(row.feed_checked_at ?? null),
   };
 }
 
@@ -2104,6 +2106,28 @@ export function createStore(
     async getProspect(id: number): Promise<ProspectRow | null> {
       const { rows } = await sql.query<ProspectRow>(`SELECT * FROM prospects WHERE id = $1`, [id]);
       return rows[0] ? prospectRow(rows[0]) : null;
+    },
+
+    async listNpmProspectsForFeed(limit = 32): Promise<ProspectRow[]> {
+      const { rows } = await sql.query<ProspectRow>(
+        `SELECT * FROM prospects
+         WHERE source = 'npm'
+           AND package_name IS NOT NULL
+           AND package_name <> ''
+           AND scan_status IN ('complete', 'failed')
+           AND status IN ('new', 'contacted')
+         ORDER BY COALESCE(feed_checked_at, '1970-01-01') ASC, id ASC
+         LIMIT $1`,
+        [Math.min(100, Math.max(1, limit))],
+      );
+      return rows.map((row) => prospectRow(row));
+    },
+
+    async touchProspectFeedCheck(id: number): Promise<void> {
+      await sql.query(
+        `UPDATE prospects SET feed_checked_at = now(), updated_at = now() WHERE id = $1`,
+        [id],
+      );
     },
 
     async listProspects(limit = 100): Promise<ProspectRow[]> {

@@ -36,7 +36,8 @@ Read in this order:
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
   `025_hosted_usage`, `026_github_response`,   `027_team_invites`,
   `028_identity_dependencies`, `029_identity_unpacked_bytes`,
-  `030_identity_provenance`, `031_identity_publisher`, and `032_prospect_workspaces` are applied. `026_github_response` only
+  `030_identity_provenance`, `031_identity_publisher`, `032_prospect_workspaces`, and
+  `033_prospect_npm_feed` are applied. `026_github_response` only
   extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
   `installation_invites`. `028_identity_dependencies` adds
   `package_identity_snapshots.dependency_names`. `029_identity_unpacked_bytes` adds
@@ -44,6 +45,7 @@ Read in this order:
   `has_attestations`, `attestation_predicate`, and `signature_keyids` on identity snapshots.
   `031_identity_publisher` adds `publisher_name` and `trusted_publisher`.
   `032_prospect_workspaces` adds `prospects.workspace_members`.
+  `033_prospect_npm_feed` adds `prospects.feed_checked_at`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -233,29 +235,33 @@ Read in this order:
   confirm, unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not
   granted). Contents write is not enough. Success writes audit plus a Watch alert that is a
   confirmed response, not a discovered incident. Do **not** grant Administration.
-- The GitHub App today is Contents/Metadata **read** (Members read is listed on the App
-  checklist but the live install token currently reports contents+metadata only). Grant
-  optional Contents write, Pull requests write, and Checks write on the App to seed the
-  throwaway fixture, upload Release packs, and make live PRs/Checks work. Do **not**
-  grant Administration. Administration is GitHub repo-admin. Watch already exposes the
-  three response actions as 409 copy until that later grant.
+- The GitHub App (`nospoilers-dev`) requests Contents write, Members read, and Metadata
+  read. Live install `158159401` on `EmotiveImpact` (`repository_selection: all`) has
+  Contents write and Metadata read. Members read is still requested on the App and not
+  accepted on the install. Pull requests write and Checks write are not requested.
+  Administration is not granted. Do **not** grant Administration. Do **not** request
+  Workflows write (Actions YAML). Watch one-click responses stay 409 until Administration,
+  which we will not take. Setup/remediation PRs stay copy-paste until Pull requests write.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
 - Prospecting scans public GitHub Release assets, the root npm package, and up to eight
   public workspace member packs named from the repo workspace config. Scanned packs store
-  member names (not source). Members are not auto-watched. It does not clone source,
+  member names (not source). Members are not auto-watched. The hourly poller, after
+  customer work, checks known npm leads for a new latest and can run a three-repo
+  discover when `GITHUB_DISCOVERY_TOKEN` is set. It does not clone source,
   retain bytes, auto-contact maintainers, or scan Electron installers over the limit.
 
 ## Critical truth
 
 The scanner, UI, and Neon runtime work. The commercial hosted product is not launch-ready:
 
-- `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
-  (HTTP 200) → job `repo_created_public` done → “was created public”. The GitHub repo is still
-  empty. Fixture files live in this repository under `throwaway/`. `npm run phase1:throwaway`
-  seeds them and attaches `fixtures/sourcemap.tgz` once Contents write exists. Stripe and
-  Resend are benched.
+- `EmotiveImpact/nospoilers-throwaway` produced real Watch alerts: `repository.created` →
+  `repo_created_public`, cheap `.env`/`.map` push, and `release.published` → `release_scan`
+  done → “Spoilers in EmotiveImpact/nospoilers-throwaway phase1-fixture” plus receipt
+  `github:EmotiveImpact/nospoilers-throwaway@phase1-fixture#sourcemap.tgz` (`failed-policy`,
+  MAP-001/002/003). `npm run phase1:throwaway` is idempotent and skips Actions YAML.
+  Stripe and Resend are benched.
 - Production deployment does not exist. Slack, SIEM, and Jira destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
@@ -380,6 +386,11 @@ address. Receipt verify is a separate budget. GitHub webhooks are not.
 Artifact Leads inspect also queues up to eight public npm workspace member packs named
 from the repo workspace config. Scanned packs store member names. Members are not
 auto-watched. Owner-only.
+The hourly poller, after customer work, checks up to eight known npm leads for a new
+latest and can run a three-repo discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
+if customer jobs are out or three prospect jobs are already queued/running. Owner
+POST /api/internal/prospects/feed is the same feed. 404 is not an unpublish. Ignored
+and fixed leads are skipped. No seeded companies.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
@@ -395,13 +406,13 @@ the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release 
 alerts without download, and a packed asset that fails policy and is not allowed to ship.
 Watch one-click GitHub responses are in (make-private / delete latest pack assets / disable a
 workflow other than nospoilers.yml). Typed confirm. 409 until Administration (not granted).
-Grant Contents write on the GitHub App so `npm run phase1:throwaway` can seed
-`throwaway/` onto EmotiveImpact/nospoilers-throwaway and attach sourcemap.tgz.
-Also grant Pull requests write and Checks write for live PRs/Checks.
-Do not grant Administration (make-private / delete assets / disable workflows).
+Contents write is live on install 158159401 (EmotiveImpact only). Milestone 1
+visibility + fixture release scan are proven on EmotiveImpact/nospoilers-throwaway.
+`npm run phase1:throwaway` skips `.github/workflows/` (Workflows write is not
+requested). Optional next grants: Members read (collaborator Watch), Pull requests
+write (reviewable Setup/remediation PRs, never merged), Checks write (hosted
+Checks). Do not grant Administration. Do not request Workflows write.
 The GitHub connector is the product-repo user token; it 403s writing nospoilers-throwaway.
-Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
-The GitHub repo is still empty; content is authored here in `throwaway/`.
 Stripe and Resend are benched. Do not start the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```

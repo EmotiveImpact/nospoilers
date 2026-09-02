@@ -99,10 +99,12 @@ stored and never fetched.
    hand. Publishing with no pack yet, then uploading the asset, still scans (`release.edited`).
    Watch **Scan latest release** unpacks that pack, not the git tree.
 
-The GitHub App today is **Contents: read**. That can download a Release. It cannot create
-commits or Release assets. Grant **Contents: write** on the App (not Administration), then
-re-run `npm run phase1:throwaway`. Optional **Pull requests write** and **Checks write** open
-setup/remediation PRs and hosted Checks.
+The GitHub App install on `EmotiveImpact` now has **Contents: write**. That can create
+commits and Release assets on repos this install covers. `npm run phase1:throwaway` is
+idempotent and skips `.github/workflows/` (that needs a Workflows permission we do not
+request). Optional **Pull requests write** and **Checks write** open setup/remediation PRs
+and hosted Checks. Members read is still requested on the App and not accepted on the
+install.
 
 **Administration** is a different GitHub permission. It is repo-admin: make a repository
 private, delete Release assets, disable workflows, change settings. Watch can confirm those

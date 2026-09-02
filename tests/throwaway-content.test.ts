@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -18,16 +19,9 @@ describe("throwaway fixture content", () => {
       (await listThrowawayFiles()).map((file) => [file.path, file.bytes.toString("utf8")]),
     );
     expect(Object.keys(files).sort()).toEqual(
-      [
-        ".env",
-        ".github/workflows/phase1-fixture-release.yml",
-        ".gitignore",
-        "README.md",
-        "pack/index.js",
-        "pack/index.js.map",
-        "pack/package.json",
-      ].sort(),
+      [".env", ".gitignore", "README.md", "pack/index.js", "pack/index.js.map", "pack/package.json"].sort(),
     );
+    expect(Object.keys(files).some((rel) => rel.startsWith(".github/workflows/"))).toBe(false);
     const listing = execFileSync("tar", ["-tzf", path.join(root, "fixtures", THROWAWAY_ASSET)], {
       encoding: "utf8",
     });
@@ -41,8 +35,12 @@ describe("throwaway fixture content", () => {
       }),
     );
     expect(files[".env"]).toMatch(/NOSPOILERS_FIXTURE/);
-    expect(files[".github/workflows/phase1-fixture-release.yml"]).toMatch(/contents: write/);
-    expect(files[".github/workflows/phase1-fixture-release.yml"]).not.toMatch(/administration:/i);
+    const workflow = await readFile(
+      path.join(root, "throwaway", ".github/workflows/phase1-fixture-release.yml"),
+      "utf8",
+    );
+    expect(workflow).toMatch(/contents: write/);
+    expect(workflow).not.toMatch(/administration:/i);
     expect(files["README.md"]).toMatch(/safe to publicize/i);
     expect(files["README.md"]).toMatch(/Administration/);
   });

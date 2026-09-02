@@ -62,6 +62,7 @@ import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
 } from "./prospects.ts";
+import { runProspectNpmFeed } from "./prospect-feed.ts";
 import type { Store } from "./store.ts";
 import type { AlertEventRow, AlertRow, IdentityCandidateRow, PolicyExceptionRow, ProspectStatus, ReleaseRevisionRow } from "./store.ts";
 import {
@@ -603,6 +604,24 @@ export function createApp(deps: AppDeps): Hono {
         400,
       );
     }
+  });
+
+  app.post("/api/internal/prospects/feed", async (c) => {
+    const limited = rateLimited(
+      c,
+      discoveryLimiter,
+      `feed:${requestIp(c)}`,
+      deps.config.discoveryRateWindowMs,
+      "Too many discovery requests. Wait and try again.",
+    );
+    if (limited) return limited;
+    const result = await runProspectNpmFeed({
+      store: deps.store,
+      npm,
+      staleAfterMs: deps.config.jobStaleMs,
+    });
+    if (result.queued > 0) deps.wakeWorker?.();
+    return c.json(result);
   });
 
   app.post("/api/internal/prospects/:id/rescan", async (c) => {
