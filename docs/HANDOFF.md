@@ -386,7 +386,8 @@ Never sends to npm or GitHub. Never a malware verdict. Other registries stay out
 Package Identity namespace watchlists are in (`POST /api/namespaces`). Trial/Team
 admin. Scope must match this GitHub login. Public search only. First snapshot
 baseline. Later new names alert without download or auto-watch. Solo 403.
-Unpaid 402. Members may read/check. Other registries stay out.
+Unpaid 402. Members may read/check. Other registries stay out. Live
+`@emotiveimpact` write/check/delete on install `158159401` is proven.
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
@@ -557,9 +558,12 @@ tunnel matched. There is no EmotiveImpact-owned npm pack to assemble. Do
 not watch or protect prettier or left-pad on that install. Auto-send and
 other registries stay out.
 Package Identity namespace watchlists are in (`POST /api/namespaces`). Live
-Neon gates on install `158159401`: unauth GET/POST 401, `@prettier` 403,
-missing confirm 400. Cloudflare tunnel matched. Do not watch prettier or
-left-pad. Other registries stay out.
+on install `158159401`: unauth GET/POST 401, `@prettier` 403, missing
+confirm 400, then owned `@emotiveimpact` POST 201 queued light
+`namespace_check` job 41 `done` with an empty baseline snapshot and no
+`identity_namespace_new` alert, no `npm_scan`, and no prettier/left-pad
+watches. Typed DELETE left `protected_namespaces` 0. Cloudflare tunnel
+matched. Do not watch prettier or left-pad. Other registries stay out.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
 `GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`

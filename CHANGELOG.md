@@ -9,7 +9,12 @@
   tarball or enqueueing `npm_scan`. One scope per install. Members may
   read and check. Solo 403. Unpaid 402. Typed scope confirm. Another
   tenant is 403 or empty. Never a malware verdict. Other registries stay
-  out. Not a Pricing change.
+  out. Live on install `158159401`: unauth GET/POST 401, `@prettier` 403,
+  missing confirm 400, then owned `@emotiveimpact` POST 201 queued a light
+  `namespace_check` that finished with an empty baseline snapshot and no
+  `identity_namespace_new` alert, no `npm_scan`, and no prettier/left-pad
+  watches; typed DELETE left `protected_namespaces` 0; Cloudflare tunnel
+  matched. Not a Pricing change.
 
 - Package Identity human-reviewed evidence: trial and Team install admins
   assemble a frozen evidence pack for a protected npm name and may publish

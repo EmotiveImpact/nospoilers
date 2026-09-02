@@ -149,6 +149,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Package Identity namespace watchlists: trial/Team admin watches the npm scope
   that matches this GitHub login. Public search only. First snapshot is baseline.
   Later new names alert without download or auto-watch. Solo 403. Unpaid 402.
+  Live on `158159401`: `@emotiveimpact` POST 201 → empty baseline `namespace_check`
+  done, no `npm_scan`, typed DELETE left 0 rows.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for the install list window (default 90 days). Solo 403. Unpaid 402. No invented rows.
 - Configurable data retention: 90, 180, or 365 days, or keep while this install exists.

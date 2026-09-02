@@ -531,9 +531,11 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   login, typed confirm, and Team/trial; members may read/check; Solo 403; unpaid
   402; other tenant 403/empty; first snapshot does not alert; a later new name
   writes `identity_namespace_new` without download or `npm_scan`; remigrate keeps
-  `namespace.protect` rows. Live Neon gates: unauth GET/POST 401, unowned
-  `@prettier` 403, watch list empty unless the owner later watches
-  `@emotiveimpact`. Do not watch prettier or left-pad on that install.
+  `namespace.protect` rows. Live on install `158159401`: unauth GET/POST 401,
+  unowned `@prettier` 403, then owned `@emotiveimpact` POST 201 queued a
+  light `namespace_check` that finished with an empty baseline and no
+  namespace alert or `npm_scan`; typed DELETE left 0 rows; Cloudflare
+  tunnel matched. Do not watch prettier or left-pad on that install.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and
