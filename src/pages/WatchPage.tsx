@@ -4471,6 +4471,9 @@ export function WatchPage({ search }: { search: string }) {
           inconclusive are not clean and are not allowed to ship. Download the signed receipt JSON
           and check it on Scan or with{" "}
           <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
+          {" "}
+          or stream-hash a delivery URL with{" "}
+          <code className="text-snow">npx nospoilers verify --receipt receipt.json --url https://example.com/app.tgz</code>
           . That check is not hosted unpack. Coverage ended still allows the download. An install
           admin can attach an HTTPS delivery URL and verify it now. Public GitHub Release
           download URLs and public npm tarball URLs are attached when we seal the revision.

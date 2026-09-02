@@ -526,6 +526,8 @@ function ReceiptVerifyPanel() {
         SHA-256 it — pack bytes never leave the machine for this check. An authentic failed-policy or
         inconclusive receipt is not a clean bill of health. Coverage ended still allows this.
         Local: <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
+        . A delivery URL:{" "}
+        <code className="text-snow">npx nospoilers verify --receipt receipt.json --url https://example.com/app.tgz</code>
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">

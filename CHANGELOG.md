@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- `nospoilers verify` accepts `--url` so CI can stream-hash a delivery URL
+  against a signed receipt without uploading the pack. Same expected hops and
+  SSRF rules as Watch. Query strings are not printed. Bytes are not stored.
+  A local file is still optional. Failed-policy and inconclusive stay not
+  clean. Live-matched the throwaway `phase1-fixture` GitHub download
+  (`c74219d2…`, hop `github.com` → asset CDN, `x-cache:hit`) and still exited
+  1 because that pack is failed-policy. Not a Pricing change.
+
 - On-demand delivery verify stores hop hosts, a short cache token (`cf:hit`,
   `x-cache:hit`, `no-store`, `aged`), and a host-derived region (`us-east-1`,
   `r2`, `github`). Raw cache headers are not stored. Live-recorded the

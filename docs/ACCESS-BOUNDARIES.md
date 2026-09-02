@@ -17,7 +17,7 @@ Unauthenticated browser traffic.
 - View Product, Pricing, documentation (`/docs`), Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
-- Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. Coverage ended still allows this check. Authentic failed-policy or inconclusive is not a passing result.
+- Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. The CLI (`nospoilers verify --receipt`) can re-hash a local file or stream-hash a `--url` with the same hop/SSRF rules as Watch; that does not call Watch and does not need coverage. Coverage ended still allows the Scan check. Authentic failed-policy or inconclusive is not a passing result.
 - Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
 - Call GitHub App webhooks with a valid HMAC.
 
@@ -433,7 +433,9 @@ proves listed and fetched releases include linked receipt status from `scan_rece
 `ok` column), dirty packs are `failed-policy` not passed, unpaid GET still returns status, and
 another tenant is 404. `tests/receipts.test.ts` also
 proves anonymous `POST /api/receipts/verify` does not consume the hosted unpack budget, does
-not call a failed-policy receipt clean, and never requires a session.
+not call a failed-policy receipt clean, and never requires a session, and that
+`nospoilers verify --url` stream-hashes a delivery URL against a receipt without
+printing query strings or storing bytes.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
 never ask the customer to Accept Administration, name App-requested permissions the
 install has not accepted, alert acknowledgement/assignment/resolution is tenant-scoped,

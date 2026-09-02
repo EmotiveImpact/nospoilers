@@ -74,6 +74,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   URLs and public npm tarball URLs attach when the revision is sealed. Expected hops
   are GitHub’s asset CDN, same-bucket S3, and same-account R2; other hosts are not
   fetched. Each verify records hop hosts, a cache token, and a host-derived region.
+  `nospoilers verify --receipt` can stream-hash a `--url` the same way.
   Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or

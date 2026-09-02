@@ -84,7 +84,8 @@ Read in this order:
   Map custody stores encrypted Sentry/Bugsnag tokens (never returned) and looks up debug IDs or
   release names after a website or npm scan. The worker does not download map source. Bugsnag
   matches a release version; it cannot look up a debug ID.
-  Development receipts use `RECEIPT_SECRET`
+  `nospoilers verify --receipt` can stream-hash a `--url` with the same hop and
+  SSRF rules as Watch; bytes are not stored. Development receipts use `RECEIPT_SECRET`
   (falls back to `SESSION_SECRET`) behind the `dev-hmac` signer adapter. Production signing should
   move to KMS. Policy exceptions are
   revoked in place (no silent DELETE). Scan baselines supersede the previous active row for a
@@ -294,6 +295,7 @@ Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
 Release manifests, signed receipts, inconclusive status, and Release Diff are in.
+`nospoilers verify --receipt --url` stream-hashes a delivery URL against a receipt.
 Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.

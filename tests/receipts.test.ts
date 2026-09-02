@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { runCliVerify } from "../src/cli-verify.ts";
 import {
   buildUnsignedReceipt,
   signReceipt,
@@ -911,5 +912,110 @@ describe("cli verify", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  it("exits 2 when neither a file nor --url is given", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-verify-"));
+    try {
+      const report = await scan(CLEAN);
+      const signed = signReceipt(buildUnsignedReceipt(report, "npm:clean@1.0.0"), SECRET);
+      const receiptPath = path.join(dir, "receipt.json");
+      await writeFile(receiptPath, `${JSON.stringify(signed, null, 2)}\n`);
+      const result = await run(["verify", "--receipt", receiptPath], {
+        RECEIPT_SECRET: SECRET,
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toMatch(/packed file|--url/i);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli verify delivery URL", () => {
+  const publicLookup = async () => [{ address: "203.0.113.10", family: 4 }];
+
+  it("stream-hashes a URL against a passing receipt and refuses other hosts", async () => {
+    const report = await scan(CLEAN);
+    const signed = signReceipt(buildUnsignedReceipt(report, "npm:clean@1.0.0"), SECRET);
+    const bytes = await readFile(CLEAN);
+    const matched = await runCliVerify({
+      receiptRaw: JSON.stringify(signed),
+      secret: SECRET,
+      url: "https://cdn.example.com/app.tgz?token=secret",
+      fetch: (async () =>
+        new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/gzip", "cf-cache-status": "HIT" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(matched.exitCode).toBe(0);
+    expect(matched.stdout.join("\n")).toMatch(/Delivery SHA-256 matches a passing receipt/);
+    expect(matched.stdout.join("\n")).toMatch(/https:\/\/cdn\.example\.com\/app\.tgz/);
+    expect(matched.stdout.join("\n")).toMatch(/cache cf:hit/);
+    expect(matched.stdout.join("\n")).not.toContain("token=secret");
+
+    const mismatched = await runCliVerify({
+      receiptRaw: JSON.stringify(signed),
+      secret: SECRET,
+      url: "https://cdn.example.com/app.tgz",
+      fetch: (async () =>
+        new Response(await readFile(FIXTURE), {
+          status: 200,
+          headers: { "content-type": "application/gzip" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(mismatched.exitCode).toBe(1);
+    expect(mismatched.stdout.join("\n")).toMatch(/does not match this receipt/);
+
+    const redirected = await runCliVerify({
+      receiptRaw: JSON.stringify(signed),
+      secret: SECRET,
+      url: "https://cdn.example.com/app.tgz",
+      fetch: (async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://evil.example.net/app.tgz" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(redirected.exitCode).toBe(1);
+    expect(redirected.stdout.join("\n")).not.toContain("evil.example.net/app.tgz?");
+    expect(redirected.stdout.join("\n")).toMatch(/redirect/);
+  });
+
+  it("follows a GitHub Release hop and still reports a failed-policy receipt", async () => {
+    const report = await scan(FIXTURE);
+    const signed = signReceipt(buildUnsignedReceipt(report, "github:octo/app@v1#app.tgz"), SECRET);
+    const bytes = await readFile(FIXTURE);
+    const result = await runCliVerify({
+      receiptRaw: JSON.stringify(signed),
+      secret: SECRET,
+      url: "https://github.com/octo/app/releases/download/v1/app.tgz",
+      fetch: (async (input) => {
+        const href = String(input);
+        if (href.startsWith("https://github.com/")) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              location:
+                "https://release-assets.githubusercontent.com/github-production-release-asset/1/app.tgz?token=secret",
+            },
+          });
+        }
+        return new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/octet-stream" },
+        });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout.join("\n")).toMatch(/failed-policy/);
+    expect(result.stdout.join("\n")).toMatch(/github\.com → release-assets\.githubusercontent\.com/);
+    expect(result.stdout.join("\n")).toMatch(/matches this receipt/);
+    expect(result.stdout.join("\n")).not.toContain("token=secret");
   });
 });

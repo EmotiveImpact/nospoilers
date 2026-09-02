@@ -37,6 +37,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/same-account R2 hop/i);
     expect(text).toMatch(/cache token/i);
     expect(text).toMatch(/region when the host names one/i);
+    expect(text).toMatch(/verify --receipt receipt.json --url/i);
     expect(text).toMatch(/Watch Setup status probes/i);
     expect(text).toMatch(/Public GitHub Release download URLs and public npm tarball URLs/i);
     expect(text).toMatch(/Scan latest release unpacks that repository/i);
