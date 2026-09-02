@@ -645,6 +645,54 @@ type GithubResponseView =
   | { status: "copy"; reason: string }
   | { status: "error"; message: string };
 
+type SetupStatusFacts = {
+  inventedIncident: false;
+  defaultBranch: string;
+  setupBranch: string;
+  actionOnDefault: boolean;
+  actionOnSetup: boolean;
+  workflowOnDefault: boolean;
+  workflowOnSetup: boolean;
+  check: {
+    name: string;
+    conclusion: string | null;
+    htmlUrl: string | null;
+    ref: string;
+  } | null;
+  requiredCheck: "unknown";
+  detail: string;
+};
+
+type SetupStatusView =
+  | { status: "ready"; facts: SetupStatusFacts }
+  | { status: "error"; message: string };
+
+function SetupStatusResult({ view }: { view: SetupStatusView }) {
+  if (view.status === "error") {
+    return <p className="mt-3 text-sm text-danger">{view.message}</p>;
+  }
+  const facts = view.facts;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-sm leading-relaxed text-mute">{facts.detail}</p>
+      <p className="font-mono text-[11px] leading-relaxed text-dim">
+        Action {facts.actionOnDefault ? "on default" : facts.actionOnSetup ? `on ${facts.setupBranch}` : "missing"}
+        {" · "}
+        workflow{" "}
+        {facts.workflowOnDefault
+          ? "on default"
+          : facts.workflowOnSetup
+            ? `on ${facts.setupBranch}`
+            : "missing"}
+        {" · "}
+        check {facts.check ? facts.check.conclusion ?? "queued" : "none"}
+        {" · "}
+        required unknown
+      </p>
+    </div>
+  );
+}
+
 function SetupPrResult({ view }: { view: SetupPrView }) {
   if (view.status === "opened") {
     return (
@@ -996,6 +1044,8 @@ export function WatchPage({ search }: { search: string }) {
   const [scanningId, setScanningId] = useState<number | null>(null);
   const [setuppingId, setSetuppingId] = useState<number | null>(null);
   const [setupByRepo, setSetupByRepo] = useState<Record<number, SetupPrView>>({});
+  const [probingSetupId, setProbingSetupId] = useState<number | null>(null);
+  const [setupStatusByRepo, setSetupStatusByRepo] = useState<Record<number, SetupStatusView>>({});
   const [remediatingId, setRemediatingId] = useState<number | null>(null);
   const [remediateByRepo, setRemediateByRepo] = useState<Record<number, RemediationPrView>>({});
   const [githubByRepo, setGithubByRepo] = useState<Record<number, GithubResponseView>>({});
@@ -1706,9 +1756,11 @@ export function WatchPage({ search }: { search: string }) {
             commit the vendored Action; the workflow YAML stays copy-paste because the App does not
             request Workflows write. They
             are reviewable and never merged. They do not need Administration, and they do not make
-            the repository private or delete a Release asset. After you merge the setup PR, mark the
+            the repository private or delete a Release asset.             After you merge the setup PR, mark the
             NoSpoilers check required in branch protection if you want CI to block; the App does
-            not change branch protection. A GitHub Release is scanned when it
+            not change branch protection and cannot see whether a check is required. Setup status
+            probes the vendored Action, the workflow YAML, and whether a NoSpoilers check ran.
+            It never invents an alert. A GitHub Release is scanned when it
             is published, and again when pack assets are added or replaced. Scan latest release
             unpacks that repo’s current Release pack, not the git tree. The hourly poller does
             not download every latest release. Unpublishing or deleting
@@ -1721,7 +1773,8 @@ export function WatchPage({ search }: { search: string }) {
           </p>
           {previewing ? (
             <p className="mt-3 text-sm leading-relaxed text-mute">
-              Preview cannot open GitHub PRs or change GitHub visibility. No invented incident.
+              Preview cannot open GitHub PRs, probe setup files, or change GitHub visibility. No
+              invented incident.
             </p>
           ) : null}
           {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
@@ -1780,6 +1833,49 @@ export function WatchPage({ search }: { search: string }) {
                       }}
                     >
                       {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || probingSetupId === repo.id || locked}
+                      onClick={() => {
+                        if (previewing) return;
+                        setProbingSetupId(repo.id);
+                        void (async () => {
+                          try {
+                            const response = await fetch(`/api/repos/${repo.id}/setup-status`, {
+                              credentials: "include",
+                            });
+                            const body = (await response.json()) as {
+                              error?: string;
+                              status?: SetupStatusFacts;
+                            };
+                            if (!response.ok || !body.status) {
+                              throw new Error(body.error ?? "Could not probe setup files.");
+                            }
+                            setSetupStatusByRepo((current) => ({
+                              ...current,
+                              [repo.id]: { status: "ready", facts: body.status! },
+                            }));
+                          } catch (error) {
+                            setSetupStatusByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "error",
+                                message:
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not probe setup files.",
+                              },
+                            }));
+                          } finally {
+                            setProbingSetupId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {probingSetupId === repo.id ? "Probing…" : "Setup status"}
                     </Button>
                     {previewing || installAdmin ? (
                     <>
@@ -2060,6 +2156,9 @@ export function WatchPage({ search }: { search: string }) {
                   )}
                   {githubByRepo[repo.id] ? (
                     <GithubResponseResult view={githubByRepo[repo.id]!} />
+                  ) : null}
+                  {setupStatusByRepo[repo.id] ? (
+                    <SetupStatusResult view={setupStatusByRepo[repo.id]!} />
                   ) : null}
                   {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
                   {remediateByRepo[repo.id] ? (

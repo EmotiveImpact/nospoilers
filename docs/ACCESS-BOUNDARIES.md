@@ -82,6 +82,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   unpublishing or deleting a release is an alert only.
 - Read the packed-artifact setup workflow, vendored hosted-scan Action, and the remediation
   file bundle on those repositories. Opening the reviewable PRs is an install admin action.
+- Probe Setup status on those repositories: whether the vendored Action and workflow YAML
+  exist on the default branch or `nospoilers/setup`, and whether a NoSpoilers check ran on
+  the default SHA. Never invents an alert. Cannot see or set branch protection or a
+  required check. Unpaid still allowed. Another tenant is 403.
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved). SIZE-003 is a warning on a 2× or ≥5 MiB
   unpacked jump versus that comparison; it stores byte counts, not source.
@@ -354,7 +358,9 @@ tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unp
 (not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
-`tests/setup-pr.test.ts` proves setup-PR files are tenant-scoped, unpaid POST returns 402,
+`tests/setup-status.test.ts` proves Setup status is a signed-in Watch read (401/404/403),
+unpaid still 200, members may probe, it never inserts an alert, required-check stays
+unknown, and a missing GitHub file probe returns 503. `tests/setup-pr.test.ts` proves setup-PR files are tenant-scoped, unpaid POST returns 402,
 permission skips return copy-paste files plus any committed branch/paths instead of failing the worker, the merge API
 is never called, Contents write commits the vendored Action and skips `.github/workflows/`
 unless Workflows write is present (never requested), the generated workflow vendors `.github/actions/nospoilers` instead of

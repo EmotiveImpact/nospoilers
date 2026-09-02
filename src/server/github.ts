@@ -53,6 +53,12 @@ export type GithubCheckResult =
   | { skipped: "permission"; reason: string }
   | { id: number; htmlUrl: string | null };
 
+export type GithubCheckRunSummary = {
+  name: string;
+  conclusion: string | null;
+  htmlUrl: string | null;
+};
+
 export type GithubSetupPrResult =
   | {
       skipped: "permission";
@@ -109,6 +115,19 @@ export type GithubPort = {
     repo: string,
     ref: string,
   ) => Promise<string | null>;
+  pathExists?: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    path: string,
+    ref?: string,
+  ) => Promise<boolean>;
+  listCheckRuns?: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    ref: string,
+  ) => Promise<GithubCheckRunSummary[]>;
   createCheckRun: (
     installationId: number,
     owner: string,
@@ -393,6 +412,64 @@ export function createGithubPort(config: AppConfig): GithubPort {
       }
       const body = (await response.json()) as { sha?: string };
       return typeof body.sha === "string" ? body.sha : null;
+    },
+
+    async pathExists(installationId, owner, repo, filePath, ref) {
+      const token = await installationToken(installationId);
+      const encoded = filePath
+        .replace(/^\.\//, "")
+        .split("/")
+        .filter(Boolean)
+        .map(encodeURIComponent)
+        .join("/");
+      const url = new URL(`https://api.github.com/repos/${owner}/${repo}/contents/${encoded}`);
+      if (ref?.trim()) url.searchParams.set("ref", ref.trim());
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "nospoilers",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      if (response.status === 404) return false;
+      if (permissionDenied(response.status)) return false;
+      if (!response.ok) {
+        const text = await response.text();
+        throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
+      }
+      return true;
+    },
+
+    async listCheckRuns(installationId, owner, repo, ref) {
+      if (!ref.trim()) return [];
+      const token = await installationToken(installationId);
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/check-runs`,
+        {
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "nospoilers",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        },
+      );
+      if (response.status === 404 || permissionDenied(response.status)) return [];
+      if (!response.ok) {
+        const text = await response.text();
+        throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
+      }
+      const body = (await response.json()) as {
+        check_runs?: Array<{ name?: string; conclusion?: string | null; html_url?: string | null }>;
+      };
+      return (body.check_runs ?? [])
+        .filter((run) => typeof run.name === "string" && run.name.trim())
+        .map((run) => ({
+          name: run.name!.trim(),
+          conclusion: run.conclusion ?? null,
+          htmlUrl: run.html_url ?? null,
+        }));
     },
 
     async createCheckRun(installationId, owner, repo, input) {

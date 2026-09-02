@@ -294,6 +294,8 @@ Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
+Watch Setup status probes Action/workflow presence and a NoSpoilers check (never invents
+an alert; cannot see or set branch protection).
 Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing package.tgz and dist/ packs to hosted `/api/v1/scan`; fails closed if none. Watch shows the current hosted origin for `NOSPOILERS_API_URL` when signed in.
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
@@ -418,6 +420,9 @@ Watch Test install reports Members read and optional Contents/PR/Checks write, a
 Administration is granted. Missing optional grants do not fail the test. If the App requested
 a permission the install has not accepted, Test install names it and links to GitHub’s Accept
 page. It does not ask for Administration.
+Watch Setup status probes the vendored Action, workflow YAML, and a NoSpoilers check on the
+default SHA. Members may read it. Unpaid still allowed. It never invents an alert. The App
+cannot see or set whether that check is required.
 Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
 the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
 alerts without download, and a packed asset that fails policy and is not allowed to ship.

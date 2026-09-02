@@ -52,7 +52,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   Generated CI lists existing `package.tgz` and `dist/` packs (cap 8), vendors
   `.github/actions/nospoilers` to POST each pack to hosted `/api/v1/scan`, and fails closed
   if none exist. Source pushes are not unpacked. Watch and the setup PR body tell maintainers to
-  mark the NoSpoilers check required; the App does not set branch protection. Live GitHub writes
+  mark the NoSpoilers check required; the App does not set branch protection. Watch Setup
+  status probes Action/workflow presence and whether a NoSpoilers check ran; required stays
+  unknown. Live GitHub writes
   skip with copy-paste files /
   no Check until the App is granted Contents write, Pull requests write, and Checks write. Do not
   grant Administration.

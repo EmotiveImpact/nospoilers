@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Watch Setup status probes whether the vendored Action and workflow YAML exist on
+  the default branch or `nospoilers/setup`, and whether a NoSpoilers check ran on
+  the default SHA. Members may read it. Unpaid still allowed. It never invents an
+  alert and cannot see or set branch protection. Live-probed
+  `EmotiveImpact/nospoilers-throwaway`: Action on `nospoilers/setup`, workflow
+  missing, no NoSpoilers check. Not a Pricing change.
+
 - Public GitHub Release download URLs and public npm tarball URLs are attached
   when a hosted scan seals a revision. Private repos and private registries are
   not. Verify stays on-demand (not the hourly poller, not scheduled CDN).

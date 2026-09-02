@@ -39,6 +39,7 @@ import {
   setupFiles,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
+import { probeRepoSetupStatus } from "./setup-status.ts";
 import { hostedScanOrigin } from "./hosted-origin.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
@@ -1505,6 +1506,40 @@ export function createApp(deps: AppDeps): Hono {
     }
     if (result.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.inserted, jobId: result.id });
+  });
+
+  app.get("/api/repos/:id/setup-status", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    const limited = rateLimited(
+      c,
+      authLimiter,
+      `setup-status:${requestIp(c)}`,
+      deps.config.authRateWindowMs,
+      "Too many setup-status probes from this address. Wait and try again.",
+    );
+    if (limited) return limited;
+    if (!deps.github.pathExists || !deps.github.listCheckRuns) {
+      return c.json({ error: "This instance cannot probe GitHub setup files." }, 503);
+    }
+    try {
+      const status = await probeRepoSetupStatus(deps.github, {
+        installationId: repo.installation_id,
+        owner: repo.owner,
+        repo: repo.name,
+      });
+      return c.json({ status });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not probe that repository.";
+      return c.json({ error: message }, 409);
+    }
   });
 
   app.get("/api/repos/:id/setup-workflow", async (c) => {
