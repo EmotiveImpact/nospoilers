@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Artifact Leads discovery campaigns: owner saves GitHub search queries
+  (`GET`/`POST`/`PATCH`/`DELETE /api/internal/prospects/campaigns`). The
+  hourly poller rotates one enabled campaign (three public repos) after
+  customer work, or keeps the default search when none are saved. Cap 8.
+  Typed query confirm on create/delete. Customer sessions stay 401.
+  Saving a campaign does not enqueue work. No seeded companies. Not a
+  customer product and not a Pricing change.
+
 - Disclosure Desk expired-evidence sweep: hourly poller and owner desk
   reads zero expired attachment ciphertext and expired operator notes.
   Attachment rows stay append-only except that one post-expiry update.

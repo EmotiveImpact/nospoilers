@@ -196,6 +196,24 @@ CREATE INDEX IF NOT EXISTS prospects_queue_idx
 CREATE INDEX IF NOT EXISTS prospects_action_idx
   ON prospects (status, critical_count DESC, discovered_at DESC);
 
+CREATE TABLE IF NOT EXISTS discovery_campaigns (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  query TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by TEXT NOT NULL,
+  last_ran_at TIMESTAMPTZ,
+  last_repositories INTEGER,
+  last_queued INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS discovery_campaigns_query_uidx
+  ON discovery_campaigns (lower(query));
+CREATE INDEX IF NOT EXISTS discovery_campaigns_next_idx
+  ON discovery_campaigns (enabled, last_ran_at ASC NULLS FIRST, id ASC);
+
 CREATE TABLE IF NOT EXISTS disclosure_cases (
   id BIGSERIAL PRIMARY KEY,
   prospect_id BIGINT NOT NULL UNIQUE REFERENCES prospects (id) ON DELETE CASCADE,

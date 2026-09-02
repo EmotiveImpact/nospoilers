@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { scheduledDiscoveryQuery } from "./discovery-campaigns.ts";
 import type { NpmPort } from "./npm.ts";
 import { normalizePackageName } from "./npm.ts";
 import { discoverAndQueueProspects } from "./prospects.ts";
@@ -90,26 +91,57 @@ export async function runScheduledProspectDiscovery(input: {
   queued: number;
   existing: number;
   errors: string[];
+  campaignId: number | null;
   skipped?: "no_token" | "customer_busy" | "prospect_queue";
 }> {
   const staleAfterMs = input.staleAfterMs ?? 5 * 60 * 1000;
   if (!input.token?.trim()) {
-    return { repositories: 0, found: 0, queued: 0, existing: 0, errors: [], skipped: "no_token" };
+    return {
+      repositories: 0,
+      found: 0,
+      queued: 0,
+      existing: 0,
+      errors: [],
+      campaignId: null,
+      skipped: "no_token",
+    };
   }
   if (await prospectCustomerWorkBusy(input.store, staleAfterMs)) {
-    return { repositories: 0, found: 0, queued: 0, existing: 0, errors: [], skipped: "customer_busy" };
+    return {
+      repositories: 0,
+      found: 0,
+      queued: 0,
+      existing: 0,
+      errors: [],
+      campaignId: null,
+      skipped: "customer_busy",
+    };
   }
   if (await prospectQueueSaturated(input.store, staleAfterMs)) {
-    return { repositories: 0, found: 0, queued: 0, existing: 0, errors: [], skipped: "prospect_queue" };
+    return {
+      repositories: 0,
+      found: 0,
+      queued: 0,
+      existing: 0,
+      errors: [],
+      campaignId: null,
+      skipped: "prospect_queue",
+    };
   }
-  return {
-    ...(await discoverAndQueueProspects(
-      input.store,
-      { limit: MAX_SCHEDULED_DISCOVERY },
-      input.token,
-      input.maxAssetBytes,
-    )),
-  };
+  const scheduled = await scheduledDiscoveryQuery(input.store);
+  const result = await discoverAndQueueProspects(
+    input.store,
+    { query: scheduled.query, limit: MAX_SCHEDULED_DISCOVERY },
+    input.token,
+    input.maxAssetBytes,
+  );
+  if (scheduled.campaignId != null) {
+    await input.store.touchDiscoveryCampaign(scheduled.campaignId, {
+      repositories: result.repositories,
+      queued: result.queued,
+    });
+  }
+  return { ...result, campaignId: scheduled.campaignId };
 }
 
 export async function runProspectAcquisitionPoll(input: {

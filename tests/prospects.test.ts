@@ -260,6 +260,11 @@ describe("Artifact Leads persistence", () => {
       });
       expect(mutate.status).toBe(401);
 
+      const campaigns = await app.request("/api/internal/prospects/campaigns", {
+        headers: { cookie },
+      });
+      expect(campaigns.status).toBe(401);
+
       const discover = await app.request("/api/internal/prospects/discover", {
         method: "POST",
         headers: { cookie, "content-type": "application/json" },
@@ -679,6 +684,7 @@ describe("Artifact Leads npm feed", () => {
         queued: 0,
         existing: 0,
         errors: [],
+        campaignId: null,
         skipped: "no_token",
       });
     } finally {

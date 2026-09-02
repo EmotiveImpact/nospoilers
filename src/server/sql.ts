@@ -806,6 +806,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateIdentityEvidence(sql);
   await migrateProtectedNamespaces(sql);
   await migrateDisclosureEvidenceExpiry(sql);
+  await migrateDiscoveryCampaigns(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1443,6 +1444,30 @@ async function migrateDisclosureEvidenceExpiry(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "048_disclosure_evidence_expiry",
+  ]);
+}
+
+async function migrateDiscoveryCampaigns(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS discovery_campaigns (
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      query TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by TEXT NOT NULL,
+      last_ran_at TIMESTAMPTZ,
+      last_repositories INTEGER,
+      last_queued INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS discovery_campaigns_query_uidx
+      ON discovery_campaigns (lower(query));
+    CREATE INDEX IF NOT EXISTS discovery_campaigns_next_idx
+      ON discovery_campaigns (enabled, last_ran_at ASC NULLS FIRST, id ASC);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "049_discovery_campaigns",
   ]);
 }
 

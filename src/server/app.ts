@@ -108,6 +108,15 @@ import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
 } from "./prospects.ts";
+import {
+  CAMPAIGN_CAP_ERROR,
+  CAMPAIGN_EXISTS_ERROR,
+  CAMPAIGN_UNKNOWN_ERROR,
+  MAX_DISCOVERY_CAMPAIGNS,
+  parseCampaignName,
+  parseCampaignQuery,
+  publicDiscoveryCampaign,
+} from "./discovery-campaigns.ts";
 import { runProspectNpmFeed } from "./prospect-feed.ts";
 import type { Store } from "./store.ts";
 import type {
@@ -740,12 +749,13 @@ export function createApp(deps: AppDeps): Hono {
     await remindMissedDisclosureDeadlines(deps.store);
     await sweepExpiredDisclosureEvidence(deps.store);
     const limit = Number(c.req.query("limit") ?? 100);
-    const [prospects, stats, cases, notices, unread] = await Promise.all([
+    const [prospects, stats, cases, notices, unread, campaigns] = await Promise.all([
       deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
       deps.store.prospectStats(),
       deps.store.listDisclosureCases(),
       deps.store.listInternalNotifications(10),
       deps.store.unreadInternalNotificationCount(),
+      deps.store.listDiscoveryCampaigns(),
     ]);
     const byProspect = new Map(
       cases.map((row) => [row.prospect_id, toDisclosureSummary(row)] as const),
@@ -756,6 +766,7 @@ export function createApp(deps: AppDeps): Hono {
         disclosure: byProspect.get(prospect.id) ?? null,
       })),
       stats,
+      campaigns: campaigns.map(publicDiscoveryCampaign),
       notifications: {
         unread,
         items: notices.map(toNotificationView),
@@ -768,6 +779,7 @@ export function createApp(deps: AppDeps): Hono {
         criticalNotifyUnverified: false,
         doNotContactEnforced: true,
         deadlineRemindInternal: true,
+        campaignsConfigurable: true,
       },
     });
   });
@@ -865,6 +877,74 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/internal/queue", async (c) => {
     const health = await deps.store.ownerQueueHealth(deps.config.jobStaleMs);
     return c.json(health);
+  });
+
+  app.get("/api/internal/prospects/campaigns", async (c) => {
+    const rows = await deps.store.listDiscoveryCampaigns();
+    return c.json({ campaigns: rows.map(publicDiscoveryCampaign) });
+  });
+
+  app.post("/api/internal/prospects/campaigns", async (c) => {
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const name = parseCampaignName(body.name);
+      const query = parseCampaignQuery(body.query ?? body.confirm);
+      const confirmError = typedConfirm(body, query);
+      if (confirmError) return c.json(confirmError, 400);
+      if ((await deps.store.countDiscoveryCampaigns()) >= MAX_DISCOVERY_CAMPAIGNS) {
+        return c.json({ error: CAMPAIGN_CAP_ERROR }, 400);
+      }
+      const row = await deps.store.insertDiscoveryCampaign({
+        name,
+        query,
+        createdBy: await internalActor(c),
+      });
+      if (!row) return c.json({ error: CAMPAIGN_EXISTS_ERROR }, 409);
+      return c.json({ ok: true, campaign: publicDiscoveryCampaign(row) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : CAMPAIGN_UNKNOWN_ERROR },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.patch("/api/internal/prospects/campaigns/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+    const existing = await deps.store.getDiscoveryCampaign(id);
+    if (!existing) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const name = body.name !== undefined ? parseCampaignName(body.name) : existing.name;
+      const query = body.query !== undefined ? parseCampaignQuery(body.query) : existing.query;
+      const enabled = body.enabled !== undefined ? body.enabled === true : existing.enabled;
+      if (body.query !== undefined) {
+        const confirmError = typedConfirm(body, query);
+        if (confirmError) return c.json(confirmError, 400);
+      }
+      const row = await deps.store.updateDiscoveryCampaign({ id, name, query, enabled });
+      if (!row) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+      return c.json({ ok: true, campaign: publicDiscoveryCampaign(row) });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : CAMPAIGN_UNKNOWN_ERROR },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/internal/prospects/campaigns/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+    const existing = await deps.store.getDiscoveryCampaign(id);
+    if (!existing) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, existing.query);
+    if (confirmError) return c.json(confirmError, 400);
+    const removed = await deps.store.deleteDiscoveryCampaign(id);
+    if (!removed) return c.json({ error: CAMPAIGN_UNKNOWN_ERROR }, 404);
+    return c.json({ ok: true });
   });
 
   app.post("/api/internal/prospects/discover", async (c) => {

@@ -193,7 +193,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, nested
   public workspace member packs (cap 8 queued / 40 listed names, never auto-watched),
-  hourly npm version feed and three-repo scheduled discover behind customer jobs,
+  hourly npm version feed and one saved campaign (or the default search) for
+  a three-repo scheduled discover behind customer jobs,
   manual outreach state, Disclosure Desk Phase 2 minus send plus internal
   workflow (verification, duplicates, templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before

@@ -47,6 +47,14 @@ type InternalNotice = {
   readAt: string | null
 }
 
+type DeskCampaign = {
+  id: number
+  name: string
+  query: string
+  enabled: boolean
+  lastRanAt: string | null
+  lastQueued: number | null
+}
 type DeskTemplate = { id: number; name: string; subject: string; body: string }
 type DeskDnc = {
   id: number
@@ -60,6 +68,7 @@ type DeskDnc = {
 type ProspectData = {
   prospects: Prospect[]
   stats: { total: number; actionable: number; queued: number; contacted: number }
+  campaigns?: DeskCampaign[]
   notifications?: {
     unread: number
     items: InternalNotice[]
@@ -72,6 +81,7 @@ type ProspectData = {
     criticalNotifyUnverified: boolean
     doNotContactEnforced?: boolean
     deadlineRemindInternal?: boolean
+    campaignsConfigurable?: boolean
   }
 }
 
@@ -116,8 +126,9 @@ export function ProspectsPage() {
   const [draftToken, setDraftToken] = useState(token)
   const [state, setState] = useState<LoadState>({ status: "loading" })
   const [query, setQuery] = useState(DEFAULT_QUERY)
+  const [campaignName, setCampaignName] = useState("")
   const [repository, setRepository] = useState("")
-  const [working, setWorking] = useState<"discover" | "repository" | "feed" | null>(null)
+  const [working, setWorking] = useState<"discover" | "repository" | "feed" | "campaign" | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
   const [templates, setTemplates] = useState<DeskTemplate[]>([])
@@ -258,6 +269,57 @@ export function ProspectsPage() {
       await load()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "npm feed failed.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function saveCampaign() {
+    setWorking("campaign")
+    setNotice(null)
+    try {
+      await request("/api/internal/prospects/campaigns", {
+        method: "POST",
+        body: JSON.stringify({ name: campaignName, query, confirm: query }),
+      })
+      setCampaignName("")
+      setNotice("Saved a discovery campaign. The hourly poller rotates one enabled campaign after customer work.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save that campaign.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function setCampaignEnabled(campaign: DeskCampaign, enabled: boolean) {
+    setWorking("campaign")
+    setNotice(null)
+    try {
+      await request(`/api/internal/prospects/campaigns/${campaign.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled }),
+      })
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not update that campaign.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function removeCampaign(campaign: DeskCampaign) {
+    setWorking("campaign")
+    setNotice(null)
+    try {
+      await request(`/api/internal/prospects/campaigns/${campaign.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ confirm: campaign.query }),
+      })
+      setNotice("Removed that discovery campaign.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not remove that campaign.")
     } finally {
       setWorking(null)
     }
@@ -446,8 +508,9 @@ export function ProspectsPage() {
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
             Find public release packs with real findings. Inspect also lists public npm workspace
             members from the repo workspace config (cap 8) and never auto-watches them. The hourly
-            poller, after customer work, checks known npm leads for a new latest and can run a
-            three-repo discover when a discovery token is set. Customer jobs stay first. No source
+            poller, after customer work, checks known npm leads for a new latest and can run one
+            saved campaign (or the default search) for three public repos when a discovery token
+            is set. Customer jobs stay first. No source
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
             records a simulated acknowledgement, and enforces do-not-contact. Missed
             deadlines stay as internal reminders. Nothing is sent or publicly named.
@@ -567,13 +630,71 @@ export function ProspectsPage() {
               className="h-11 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none data-focus:border-white/40"
             />
           </Field>
-          <div className="mt-4 flex items-center justify-between gap-4">
-            <p className="text-xs text-dim">Checks five recently updated public repositories.</p>
-            <Button type="submit" disabled={Boolean(working)}>
-              <Search className="size-3.5" aria-hidden />
-              {working === "discover" ? "Checking…" : "Run discovery"}
-            </Button>
+          <Field className="mt-3">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">Save as campaign</Label>
+            <Input
+              value={campaignName}
+              onChange={(event) => setCampaignName(event.target.value)}
+              placeholder="name"
+              className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+          </Field>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+            <p className="text-xs text-dim">
+              Run now checks five public repos. Saving stores the query for the hourly three-repo
+              rotation. Type the query to confirm.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={Boolean(working) || !campaignName.trim() || !query.trim()}
+                onClick={() => void saveCampaign()}
+              >
+                {working === "campaign" ? "Saving…" : "Save campaign"}
+              </Button>
+              <Button type="submit" disabled={Boolean(working)}>
+                <Search className="size-3.5" aria-hidden />
+                {working === "discover" ? "Checking…" : "Run discovery"}
+              </Button>
+            </div>
           </div>
+          {(data.campaigns ?? []).length > 0 ? (
+            <ul className="mt-4 space-y-2 border-t border-white/8 pt-4">
+              {(data.campaigns ?? []).map((campaign) => (
+                <li key={campaign.id} className="flex items-start justify-between gap-3 text-xs text-mute">
+                  <span>
+                    <span className="text-snow">{campaign.name}</span>
+                    <span className="mt-1 block font-mono text-dim">{campaign.query}</span>
+                    <span className="mt-1 block text-dim">
+                      {campaign.enabled ? "enabled" : "paused"}
+                      {campaign.lastRanAt ? ` · last run queued ${campaign.lastQueued ?? 0}` : ""}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={Boolean(working)}
+                      onClick={() => void setCampaignEnabled(campaign, !campaign.enabled)}
+                    >
+                      {campaign.enabled ? "Pause" : "Enable"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={Boolean(working)}
+                      onClick={() => void removeCampaign(campaign)}
+                    >
+                      Remove
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </form>
 
         <form

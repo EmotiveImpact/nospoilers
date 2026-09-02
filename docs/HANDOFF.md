@@ -83,7 +83,9 @@ Read in this order:
   `namespace.protect` and `namespace.unprotect`.
   `048_disclosure_evidence_expiry` lets the scheduled/lazy sweep zero
   expired attachment ciphertext (row and metadata stay). Notes ciphertext
-  is nulled after `notes_expires_at`. Next unused id is `049_*`.
+  is nulled after `notes_expires_at`.
+  `049_discovery_campaigns` adds owner-only `discovery_campaigns` for
+  scheduled GitHub search queries. Next unused id is `050_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -523,9 +525,12 @@ do-not-contact blocked prettier `contacted` (entry removed after the proof),
 and `Disclosure deadline missed for stevemao/left-pad` as an internal
 reminder. No companies were seeded. Nothing was mailed.
 The hourly poller, after customer work, checks up to eight known npm leads for a new
-latest and can run a three-repo discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
+latest and can run one saved campaign (or the default search) for a three-repo
+discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
 if customer jobs are out or three prospect jobs are already queued/running. Owner
-POST /api/internal/prospects/feed is the same feed. 404 is not an unpublish. Ignored
+POST /api/internal/prospects/feed is the same feed. Owner
+`/api/internal/prospects/campaigns` saves GitHub search queries (cap 8, typed
+confirm). The poller rotates one enabled campaign. 404 is not an unpublish. Ignored
 and fixed leads are skipped. No seeded companies.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the

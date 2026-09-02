@@ -330,6 +330,7 @@ Internal staff running acquisition and disclosure work.
   not auto-watched as customer packages.
 - Run the npm version feed and scheduled three-repo discover. Both skip when
   customer jobs are queued/running. The hourly poller uses the same rules.
+  Save, pause, and delete GitHub search campaigns that the poller rotates.
 - Record outreach state. Never send mail without a later human-confirm step.
 - Open a Disclosure Desk case on an Artifact Lead: verification checklist, duplicate
   warning, encrypted expiring notes, stored (never fetched) security contact or https
@@ -451,6 +452,10 @@ cannot be cleared, DELETE stays rejected, remigrate keeps the empty ciphertext,
 download is 410, customer sessions stay 401, and no job is enqueued. Live Neon:
 `048` applied; unauth and non-admin desk GET 401; owner GET ran the sweep;
 unexpired attachment ciphertext was not cleared; tunnel matched.
+`tests/campaigns.test.ts` proves discovery campaigns are owner-only, typed
+confirm is required, duplicate queries 409, the eighth campaign is the cap,
+disabling falls back to the default scheduled query, delete leaves zero
+campaigns, remigrate keeps rows, and no prospect job is enqueued.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
 cannot open Disclosure Desk, template, do-not-contact, or notification routes,

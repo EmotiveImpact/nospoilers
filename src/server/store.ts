@@ -541,6 +541,45 @@ export type ProspectRow = {
   updated_at: string;
 };
 
+export type DiscoveryCampaignRow = {
+  id: number;
+  name: string;
+  query: string;
+  enabled: boolean;
+  created_by: string;
+  last_ran_at: string | null;
+  last_repositories: number | null;
+  last_queued: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function discoveryCampaignRow(row: {
+  id: unknown;
+  name: string;
+  query: string;
+  enabled: boolean;
+  created_by: string;
+  last_ran_at: string | Date | null;
+  last_repositories: unknown;
+  last_queued: unknown;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): DiscoveryCampaignRow {
+  return {
+    id: num(row.id),
+    name: row.name,
+    query: row.query,
+    enabled: row.enabled,
+    created_by: row.created_by,
+    last_ran_at: iso(row.last_ran_at),
+    last_repositories: row.last_repositories == null ? null : num(row.last_repositories),
+    last_queued: row.last_queued == null ? null : num(row.last_queued),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
 function packageProtectionRow(row: {
   id: unknown;
   installation_id: unknown;
@@ -2711,6 +2750,104 @@ export function createStore(
         [Math.min(500, Math.max(1, limit))],
       );
       return rows.map(prospectRow);
+    },
+
+    async listDiscoveryCampaigns(): Promise<DiscoveryCampaignRow[]> {
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `SELECT * FROM discovery_campaigns ORDER BY enabled DESC, name ASC, id ASC`,
+      );
+      return rows.map((row) => discoveryCampaignRow(row));
+    },
+
+    async getDiscoveryCampaign(id: number): Promise<DiscoveryCampaignRow | null> {
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `SELECT * FROM discovery_campaigns WHERE id = $1`,
+        [id],
+      );
+      return rows[0] ? discoveryCampaignRow(rows[0]) : null;
+    },
+
+    async countDiscoveryCampaigns(): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(`SELECT count(*)::int AS n FROM discovery_campaigns`);
+      return num(rows[0]?.n);
+    },
+
+    async insertDiscoveryCampaign(input: {
+      name: string;
+      query: string;
+      createdBy: string;
+    }): Promise<DiscoveryCampaignRow | null> {
+      const { rows: existing } = await sql.query<{ id: unknown }>(
+        `SELECT id FROM discovery_campaigns WHERE lower(query) = lower($1)`,
+        [input.query],
+      );
+      if (existing[0]) return null;
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `INSERT INTO discovery_campaigns (name, query, created_by)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [input.name, input.query, input.createdBy],
+      );
+      return rows[0] ? discoveryCampaignRow(rows[0]) : null;
+    },
+
+    async updateDiscoveryCampaign(input: {
+      id: number;
+      name?: string;
+      query?: string;
+      enabled?: boolean;
+    }): Promise<DiscoveryCampaignRow | null> {
+      const current = await this.getDiscoveryCampaign(input.id);
+      if (!current) return null;
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `UPDATE discovery_campaigns
+         SET name = $2,
+             query = $3,
+             enabled = $4,
+             updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          input.id,
+          input.name ?? current.name,
+          input.query ?? current.query,
+          input.enabled ?? current.enabled,
+        ],
+      );
+      return rows[0] ? discoveryCampaignRow(rows[0]) : null;
+    },
+
+    async deleteDiscoveryCampaign(id: number): Promise<DiscoveryCampaignRow | null> {
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `DELETE FROM discovery_campaigns WHERE id = $1 RETURNING *`,
+        [id],
+      );
+      return rows[0] ? discoveryCampaignRow(rows[0]) : null;
+    },
+
+    async nextEnabledDiscoveryCampaign(): Promise<DiscoveryCampaignRow | null> {
+      const { rows } = await sql.query<Parameters<typeof discoveryCampaignRow>[0]>(
+        `SELECT * FROM discovery_campaigns
+         WHERE enabled = TRUE
+         ORDER BY last_ran_at ASC NULLS FIRST, id ASC
+         LIMIT 1`,
+      );
+      return rows[0] ? discoveryCampaignRow(rows[0]) : null;
+    },
+
+    async touchDiscoveryCampaign(
+      id: number,
+      input: { repositories: number; queued: number },
+    ): Promise<void> {
+      await sql.query(
+        `UPDATE discovery_campaigns
+         SET last_ran_at = now(),
+             last_repositories = $2,
+             last_queued = $3,
+             updated_at = now()
+         WHERE id = $1`,
+        [id, input.repositories, input.queued],
+      );
     },
 
     async prospectStats(): Promise<{

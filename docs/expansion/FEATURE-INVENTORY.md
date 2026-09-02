@@ -196,7 +196,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | --- | --- | --- |
 | Public GitHub/npm Artifact Leads desk | Built | Internal NoSpoilers |
 | Manual repository inspection | Built | Internal NoSpoilers |
-| Search campaign discovery | Built/manual | Internal NoSpoilers |
+| Search campaign discovery | Built: owner saves GitHub search queries (cap 8); hourly poller rotates one enabled campaign for three public repos after customer work, or uses the default search; typed confirm; customer 401; no seeded companies | Internal NoSpoilers |
 | One-at-a-time prospect scans behind customer jobs | Built | Internal NoSpoilers |
 | Scheduled discovery | Built: hourly poller, after customer visibility/npm/web/map work, runs a 3-repo GitHub search when `GITHUB_DISCOVERY_TOKEN` is set; skips if customer jobs are queued/running or 3+ prospect jobs are already out; owner-only; no seeded companies | Internal NoSpoilers |
 | Continuous npm version feed | Built: hourly poller plus owner `POST /api/internal/prospects/feed`; metadata `getPack` on up to 8 known npm leads (`new`/`contacted`); new latest tarball becomes a new prospect row and queues behind customer jobs; 404/network is not an unpublish; ignored/fixed skipped; owner-only | Internal NoSpoilers |
