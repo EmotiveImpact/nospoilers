@@ -58,7 +58,7 @@ function permissionRank(level: string): number {
 }
 
 /** Permissions we never ask a customer to Accept, even if the App requested them. */
-const NEVER_REQUEST_ACCEPT = new Set(["administration"]);
+const NEVER_REQUEST_ACCEPT = new Set(["administration", "workflows"]);
 
 export function pendingAccepts(
   appPermissions: PermissionMap | null | undefined,

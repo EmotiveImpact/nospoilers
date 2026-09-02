@@ -16,8 +16,10 @@ import {
   SETUP_ACTION_PATH,
   SETUP_PACK_GLOBS,
   SETUP_WORKFLOW_PATH,
+  isGithubActionsWorkflowPath,
   setupActionScanPython,
   setupActionYaml,
+  setupCommitFiles,
   setupFiles,
   setupPullRequestBody,
   setupWorkflowYaml,
@@ -202,6 +204,14 @@ describe("generated setup workflow", () => {
     }
     const files = setupFiles();
     expect(files.map((file) => file.path)).toEqual([SETUP_WORKFLOW_PATH, SETUP_ACTION_PATH]);
+    expect(isGithubActionsWorkflowPath(SETUP_WORKFLOW_PATH)).toBe(true);
+    expect(isGithubActionsWorkflowPath(SETUP_ACTION_PATH)).toBe(false);
+    expect(isGithubActionsWorkflowPath(".github/workflows/nested/dir.yml")).toBe(false);
+    expect(setupCommitFiles(false).map((file) => file.path)).toEqual([SETUP_ACTION_PATH]);
+    expect(setupCommitFiles(true).map((file) => file.path)).toEqual([
+      SETUP_WORKFLOW_PATH,
+      SETUP_ACTION_PATH,
+    ]);
     expect(setupActionYaml()).toContain("python3 - <<'PY'");
     expect(setupActionYaml()).not.toContain("npm ci");
     expect(setupActionYaml()).not.toContain("npx tsx");
@@ -212,6 +222,7 @@ describe("generated setup workflow", () => {
     expect(body).toContain("packed");
     expect(body).toContain("fails closed");
     expect(body).toContain("Do **not** grant Administration");
+    expect(body).toContain("does not request Workflows write");
     expect(body).toContain("Optionally mark the **NoSpoilers** check as required");
     expect(body).toContain("NOSPOILERS_API_URL");
     expect(body).toContain("NOSPOILERS_API_TOKEN");

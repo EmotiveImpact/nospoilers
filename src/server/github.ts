@@ -7,12 +7,13 @@ import {
   remediationCommitMessage,
   remediationPullRequestBody,
   remediationPullRequestTitle,
-  remediationWrites,
+  remediationCommitWrites,
 } from "./remediation.ts";
 import {
   SETUP_BRANCH,
+  isGithubActionsWorkflowPath,
+  setupCommitFiles,
   setupCommitMessage,
-  setupFiles,
   setupPullRequestBody,
   setupPullRequestTitle,
 } from "./setup-workflow.ts";
@@ -154,7 +155,7 @@ export function skippedGithubWrites(): Pick<
   | "disableWorkflow"
 > {
   const reason =
-    "Grant Contents write and Pull requests write to open a setup or remediation PR. Grant Checks write to report release scans. Do not grant Administration.";
+    "Grant Contents write and Pull requests write to open a setup or remediation PR. The App does not write GitHub Actions workflow YAML (Workflows write is not requested). Grant Checks write to report release scans. Do not grant Administration.";
   const adminReason = ADMINISTRATION_DENIED;
   return {
     getRefSha: async () => null,
@@ -425,8 +426,10 @@ export function createGithubPort(config: AppConfig): GithubPort {
 
     async createSetupPullRequest(installationId, owner, repo) {
       const token = await installationToken(installationId);
+      const install = await this.getInstallation(installationId);
+      const canWriteWorkflows = hasWrite(install.permissions ?? {}, "workflows");
       const reason =
-        "Grant Contents write and Pull requests write to open a setup PR. Do not grant Administration.";
+        "Grant Contents write and Pull requests write to open a setup PR. The App does not write GitHub Actions workflow YAML (Workflows write is not requested). Do not grant Administration.";
       try {
         const repoInfo = await githubJson<{ default_branch?: string }>(
           `https://api.github.com/repos/${owner}/${repo}`,
@@ -454,7 +457,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
           throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
         }
 
-        for (const file of setupFiles()) {
+        for (const file of setupCommitFiles(canWriteWorkflows)) {
           await putGithubFile(
             token,
             owner,
@@ -500,8 +503,10 @@ export function createGithubPort(config: AppConfig): GithubPort {
 
     async createRemediationPullRequest(installationId, owner, repo) {
       const token = await installationToken(installationId);
+      const install = await this.getInstallation(installationId);
+      const canWriteWorkflows = hasWrite(install.permissions ?? {}, "workflows");
       const reason =
-        "Grant Contents write and Pull requests write to open a remediation PR. Do not grant Administration.";
+        "Grant Contents write and Pull requests write to open a remediation PR. The App does not write GitHub Actions workflow YAML (Workflows write is not requested). Do not grant Administration.";
       try {
         const repoInfo = await githubJson<{ default_branch?: string }>(
           `https://api.github.com/repos/${owner}/${repo}`,
@@ -536,7 +541,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
             existingOnDefault.push(file.path);
           }
         }
-        const writes = remediationWrites(existingOnDefault);
+        const writes = remediationCommitWrites(existingOnDefault, canWriteWorkflows);
         for (const file of writes) {
           await putGithubFile(
             token,
@@ -739,14 +744,25 @@ async function putGithubFile(
     );
   }
 
-  await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, token, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message,
-      content: Buffer.from(content, "utf8").toString("base64"),
-      branch,
-      ...(fileSha ? { sha: fileSha } : {}),
-    }),
-  });
+  try {
+    await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, token, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        content: Buffer.from(content, "utf8").toString("base64"),
+        branch,
+        ...(fileSha ? { sha: fileSha } : {}),
+      }),
+    });
+  } catch (error) {
+    if (
+      isGithubActionsWorkflowPath(filePath) &&
+      error instanceof GithubApiError &&
+      permissionDenied(error.status)
+    ) {
+      return;
+    }
+    throw error;
+  }
 }

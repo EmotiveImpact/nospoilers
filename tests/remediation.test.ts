@@ -9,6 +9,7 @@ import {
   REMEDIATION_BRANCH,
   REMEDIATION_PERMISSIONS,
   remediationBundle,
+  remediationCommitWrites,
   remediationPackageFilesSnippet,
   remediationPolicyYaml,
   remediationPullRequestBody,
@@ -93,7 +94,13 @@ describe("generated remediation files", () => {
     expect(body).toContain("**not** merged automatically");
     expect(body).toContain("Do **not** grant Administration");
     expect(body).toContain("does **not** make the repository private");
+    expect(body).toContain("does not request Workflows write");
     expect(body).toContain("empty");
+    expect(remediationCommitWrites([], false).map((file) => file.path)).not.toContain(
+      SETUP_WORKFLOW_PATH,
+    );
+    expect(remediationCommitWrites([], false).map((file) => file.path)).toContain(SETUP_ACTION_PATH);
+    expect(remediationCommitWrites([], true).map((file) => file.path)).toContain(SETUP_WORKFLOW_PATH);
   });
 
   it("does not overwrite customer ignore, policy, or workflow files", () => {

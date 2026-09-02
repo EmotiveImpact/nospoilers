@@ -28,10 +28,19 @@ export const SETUP_PACK_GLOBS = [
 ] as const;
 
 export const SETUP_PERMISSIONS = [
-  "Contents: Read and write (create the workflow branch; not Administration)",
+  "Contents: Read and write (commit the vendored Action on a branch; not Administration)",
   "Pull requests: Read and write (open a reviewable PR; never merge it)",
   "Checks: Read and write (optional; report release-scan results on the tag SHA)",
 ] as const;
+
+export function isGithubActionsWorkflowPath(filePath: string): boolean {
+  return /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(filePath.replace(/^\.\//, ""));
+}
+
+export function setupCommitFiles(canWriteWorkflows: boolean): SetupFile[] {
+  if (canWriteWorkflows) return setupFiles();
+  return setupFiles().filter((file) => !isGithubActionsWorkflowPath(file.path));
+}
 
 export type SetupFile = {
   path: string;
@@ -329,7 +338,8 @@ export function setupPullRequestBody(): string {
     "4. Put the file you publish at `package.tgz` or under `dist/`, or dispatch the workflow with a path.",
     "5. Optionally mark the **NoSpoilers** check as required in branch protection.",
     "6. Keep Contents write and Pull requests write if you want NoSpoilers to open later setup PRs.",
-    "7. Do **not** grant Administration on all repositories.",
+    "7. Paste `.github/workflows/nospoilers.yml` from Watch if it is not in this PR. The App does not request Workflows write, so it cannot create GitHub Actions YAML.",
+    "8. Do **not** grant Administration on all repositories.",
     "",
     "The hosted GitHub App still scans **Release assets** on our servers. This workflow is the",
     "pre-publish CI gate on yours. Unpaid hosted scans return 402. Inconclusive is exit 2, not a passing receipt.",

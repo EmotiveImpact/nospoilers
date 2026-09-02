@@ -135,8 +135,9 @@ Read in this order:
 - Watch **Remediation PR** opens a reviewable PR on `nospoilers/remediate` with ignore rules,
   an empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files`
   snippet, and the packed-artifact workflow plus vendored hosted-scan Action if missing. Existing
-  customer ignore/policy/workflow/Action files are not overwritten. Required Contents write and
-  Pull requests write are shown before
+  customer ignore/policy/workflow/Action files are not overwritten. Contents write commits
+  non-workflow files. GitHub Actions YAML stays copy-paste; Workflows write is not requested.
+  Pull requests write is shown before
   the button. 409 returns the file bundle for copy-paste. The App never merges it. This is not
   make-private or asset deletion.
 - Packed scans discover npm/pnpm/Yarn/Bun workspaces (package.json `workspaces`,
@@ -332,7 +333,7 @@ Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, 
 encrypted tokens never returned or written onto jobs, event-driven). Not advertised as a Pricing
 change. Bugsnag matches a release version; it cannot look up a debug ID.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
-ignore/policy/workflow/Action files; 409 copy-paste until Contents+PR write).
+ignore/policy/workflow/Action files; workflow YAML stays copy-paste; 409 until Pull requests write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Fair-use hosted unpacks are in (Solo 1 concurrent heavy job and 8 per UTC day per install;

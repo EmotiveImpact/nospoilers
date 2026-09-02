@@ -51,8 +51,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
-| Pre-publish CI gate | Partial: this repo’s GitHub Actions rebuilds fixtures, fail-closes every dirty pack, treats `inconclusive.*` as CLI exit 2 (not a passing receipt), and passes every clean pack plus workspace.tgz; dogfoods `uses: ./` on clean.tgz (pass) and sourcemap.tgz (fail closed); generated customer workflow vendors `.github/actions/nospoilers` and POSTs each existing `package.tgz` and `dist/` pack (cap 8) to hosted `/api/v1/scan`; fails closed if none; source pushes are not unpacked; Watch shows the current HTTPS origin for `NOSPOILERS_API_URL` when GitHub-hosted runners can reach it; live customer PRs wait on Contents+PR write and a Watch token | NoSpoilers |
-| App-generated setup PR | Partial: reviewable PR, never merged; writes workflow plus vendored hosted-scan Action; 409 returns both files for copy-paste until Contents+PR write | NoSpoilers |
+| Pre-publish CI gate | Partial: this repo’s GitHub Actions rebuilds fixtures, fail-closes every dirty pack, treats `inconclusive.*` as CLI exit 2 (not a passing receipt), and passes every clean pack plus workspace.tgz; dogfoods `uses: ./` on clean.tgz (pass) and sourcemap.tgz (fail closed); generated customer workflow vendors `.github/actions/nospoilers` and POSTs each existing `package.tgz` and `dist/` pack (cap 8) to hosted `/api/v1/scan`; fails closed if none; source pushes are not unpacked; Watch shows the current HTTPS origin for `NOSPOILERS_API_URL` when GitHub-hosted runners can reach it; Contents write can commit the Action; workflow YAML stays copy-paste; live PRs wait on Pull requests write and a Watch token | NoSpoilers |
+| App-generated setup PR | Partial: reviewable PR, never merged; Contents write commits the vendored Action (proven on `EmotiveImpact/nospoilers-throwaway` `nospoilers/setup`); `.github/workflows/nospoilers.yml` stays copy-paste (Workflows write is not requested; 404 on that path); 409 until Pull requests write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
 | Required-check setup guidance | Partial: setup PR body and Watch copy tell maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
 | Release manifest: path, size, hash | Built: per-file path/size/SHA-256 on every scan | NoSpoilers |
@@ -117,7 +117,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Surface | Status | Home |
 | --- | --- | --- |
-| GitHub Release assets | Built: published plus edited/prereleased/released when pack assets change; unpublished/deleted are light alerts with no download. Watch Scan latest release queues a heavy unpack of the current Release pack (not git) and is not the hourly poller. Real throwaway fixture scan is still unproven | NoSpoilers |
+| GitHub Release assets | Built: published plus edited/prereleased/released when pack assets change; unpublished/deleted are light alerts with no download. Watch Scan latest release queues a heavy unpack of the current Release pack (not git) and is not the hourly poller. Throwaway `phase1-fixture` `sourcemap.tgz` produced `release_scan` + `failed-policy` MAP-001/002/003 | NoSpoilers |
 | npm registry packages | Built: customer watch of public `latest` plus prerelease-channel tarballs | NoSpoilers |
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for exposed files, credentials, and linked internal paths, SSRF blocked, never executed | NoSpoilers |
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
@@ -142,14 +142,14 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | Private → public alert | Built/needs real proof: `repository.publicized` and the GitHub `public` event enqueue the same light job | NoSpoilers |
-| Repository created public | Built/needs real proof | NoSpoilers |
+| Repository created public | Built: `EmotiveImpact/nospoilers-throwaway` `repository.created` → `repo_created_public` | NoSpoilers |
 | Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
 | Repository made private | Built: Watch updates the private flag in place; no extra job | NoSpoilers |
 | Repository deleted | Built: row is removed; deleted webhooks do not resurrect it | NoSpoilers |
 | Repository transfer | Built/needs real proof | NoSpoilers |
 | Collaborator added | Built: `member` / `added` enqueues a light `member_added` job and the worker writes a Watch alert; other member actions do not; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
 | Fork event | Built: `fork` enqueues a light job with the forkee full name and the worker writes a Watch alert; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
-| Cheap sensitive-path push event | Built: `push` cheap-checks `*.map` / `.env` / `.env.*` only, enqueues a light job on hits, and the worker writes a Watch alert without unpacking the git tree; HMAC required; unpaid is HTTP 200 with no job. Still needs real GitHub proof | NoSpoilers |
+| Cheap sensitive-path push event | Built: `push` cheap-checks `*.map` / `.env` / `.env.*` only, enqueues a light job on hits, and the worker writes a Watch alert without unpacking the git tree; HMAC required; unpaid is HTTP 200 with no job. Proven on `EmotiveImpact/nospoilers-throwaway` (`.env` and `*.map`) | NoSpoilers |
 | GitHub Release unpublished or deleted | Built: light Watch alert; gone assets are not downloaded | NoSpoilers |
 | App permission, suspension, repository-add/remove and uninstall health | Built: Watch alerts while the install remains; uninstall drops the tenant | NoSpoilers |
 | GitHub App authorization revoke | Built: HMAC webhook drops that user’s sessions and stored OAuth token; the installation stays; coverage does not gate this | NoSpoilers |
@@ -161,7 +161,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | One-click make repository private | Built: install admin, typed `owner/repo`, unpaid 402, GitHub suspend 409, members 403. 409 until GitHub App **Administration** (not granted). Contents write is not enough. Success writes audit plus a Watch alert that is a confirmed response, not a discovered incident | NoSpoilers |
 | Remove/suspend bad GitHub Release asset | Built: deletes packed assets on the latest Release only (`isPackAssetName`); source trees are not touched. Same Administration 409/typed-confirm gates as make-private | NoSpoilers |
 | Disable unsafe release workflow | Built: path under `.github/workflows/`; cannot disable `.github/workflows/nospoilers.yml`. Same Administration 409/typed-confirm gates as make-private | NoSpoilers |
-| Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
+| Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; Contents write commits non-workflow files; workflow YAML stays copy-paste; 409 until Pull requests write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
 | Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; reports Members read and optional Contents/PR/Checks write; names App-requested permissions the install has not accepted and links to GitHub Accept; Administration granted is a warning (never asked); never invents an incident | NoSpoilers |
 

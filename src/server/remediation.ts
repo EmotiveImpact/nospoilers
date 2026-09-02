@@ -1,6 +1,7 @@
 import {
   SETUP_ACTION_PATH,
   SETUP_WORKFLOW_PATH,
+  isGithubActionsWorkflowPath,
   setupActionYaml,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
@@ -125,6 +126,14 @@ export function remediationWrites(existingPaths: string[]): RemediationFile[] {
   return writes;
 }
 
+export function remediationCommitWrites(
+  existingPaths: string[],
+  canWriteWorkflows: boolean,
+): RemediationFile[] {
+  if (canWriteWorkflows) return remediationWrites(existingPaths);
+  return remediationWrites(existingPaths).filter((file) => !isGithubActionsWorkflowPath(file.path));
+}
+
 export function remediationPullRequestTitle(): string {
   return "Keep maps and env files out of the packed artifact";
 }
@@ -146,7 +155,8 @@ export function remediationPullRequestBody(): string {
     "- Contents: Read and write (not Administration)",
     "- Pull requests: Read and write (never merge)",
     "",
-    "Do **not** grant Administration on all repositories.",
+    "The App does not request Workflows write. Paste `.github/workflows/nospoilers.yml`",
+    "from Watch if it is missing. Do **not** grant Administration on all repositories.",
     "",
     "After you merge:",
     "",

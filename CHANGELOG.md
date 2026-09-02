@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Setup and remediation PRs commit the vendored Action with Contents write and leave
+  `.github/workflows/nospoilers.yml` as copy-paste. GitHub needs a Workflows permission
+  to create Actions YAML; the App does not request it and Watch Test install never asks
+  a customer to Accept it. Pull requests write is still required to open the PR. The App
+  never merges. Not a Pricing change.
+
 - Milestone 1 GitHub loop is proven on `EmotiveImpact/nospoilers-throwaway`: Contents
   write accepted on install `158159401` (this account only), `throwaway/` seeded
   (Actions YAML skipped — Workflows write is not requested), `phase1-fixture` Release

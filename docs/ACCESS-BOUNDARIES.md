@@ -207,9 +207,10 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
 - Manage expiring allowlist exceptions and approve scan baselines. Revoke requires typing
   the rule. Unwatch requires typing the package name.
 - Open a reviewable setup PR or remediation PR while coverage is active. The App never
-  merges those PRs. Required Contents write and Pull requests write are shown before the
-  button. Existing customer ignore/policy/workflow/Action files are not overwritten. Those PRs are
-  not make-private, asset deletion, or workflow disable.
+  merges those PRs. Contents write commits the vendored Action. GitHub Actions workflow
+  YAML stays copy-paste; the App does not request Workflows write. Required permissions
+  are shown before the button. Existing customer ignore/policy/workflow/Action files are
+  not overwritten. Those PRs are not make-private, asset deletion, or workflow disable.
 - Confirm one-click make-private (type `owner/repo`), delete packed assets on the latest
   GitHub Release (type `delete pack assets on owner/repo`), or disable a workflow under
   `.github/workflows/` (type that path; not `.github/workflows/nospoilers.yml`). Unpaid
@@ -345,7 +346,8 @@ allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not D
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR files are tenant-scoped, unpaid POST returns 402,
 permission skips return copy-paste files instead of failing the worker, the merge API
-is never called, the generated workflow vendors `.github/actions/nospoilers` instead of
+is never called, Contents write commits the vendored Action and skips `.github/workflows/`
+unless Workflows write is present (never requested), the generated workflow vendors `.github/actions/nospoilers` instead of
 `uses:` on this private repository, and the workflow lists only existing `package.tgz` / `dist/` packs
 (skips source-tree tarballs and symlinks, caps at 8, fails closed when none exist).
 `tests/hosted-origin.test.ts` proves signed-in `/api/me` and setup-workflow return `APP_BASE_URL`

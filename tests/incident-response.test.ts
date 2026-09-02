@@ -130,6 +130,17 @@ describe("permission test copy", () => {
         { contents: "read", metadata: "read" },
       ),
     ).toEqual(["members"]);
+    expect(
+      pendingAccepts(
+        {
+          contents: "write",
+          metadata: "read",
+          workflows: "write",
+          administration: "write",
+        },
+        { contents: "write", metadata: "read" },
+      ),
+    ).toEqual([]);
 
     const pending = summarizePermissionTest({
       accountLogin: "octo",

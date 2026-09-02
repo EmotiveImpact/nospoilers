@@ -1632,6 +1632,8 @@ export function WatchPage({ search }: { search: string }) {
             fails closed. Remediation PR adds ignore
             rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
             workflow if it is missing. Both PRs need Contents write and Pull requests write. They
+            commit the vendored Action; the workflow YAML stays copy-paste because the App does not
+            request Workflows write. They
             are reviewable and never merged. They do not need Administration, and they do not make
             the repository private or delete a Release asset. After you merge the setup PR, mark the
             NoSpoilers check required in branch protection if you want CI to block; the App does
