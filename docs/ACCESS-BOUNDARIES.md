@@ -463,7 +463,10 @@ sessions stay 401 on template and do-not-contact routes.
 owner-only, secrets never return, private/Slack URLs 400, tests never invent an
 incident or create a Jira issue, unverified notify is 409, a verified prettier
 case files a redacted payload without notes or secret values, remigrate keeps
-the table, and no worker wake. Customer sessions stay 401.
+the table, and no worker wake. Customer sessions stay 401. Live Neon: `050`
+applied; unauth and `not-admin` 401; owner list empty; localhost webhook 400;
+evil Jira host 400; leftover destinations 0; no open jobs; campaigns 0;
+watches 0; tunnel matched.
 `tests/disclosure-workflow.test.ts` proves vendor replies and encrypted attachments
 are owner-only, archives are rejected, replies and attachments are append-only,
 `contacted` waits for review approval, JSON/HTML/PDF reports omit operator notes,

@@ -209,10 +209,13 @@ the immediate operational sequence. The exhaustive expansion plan is
   schedule; nothing sent), and
   owner-only notifications for verified critical findings and missed deadlines
   (never mailed), owner-only researcher workload as case counts per
-  assignee (no time tracking), and owner-only webhook/Jira destinations
+  assignee (no time tracking), and   owner-only webhook/Jira destinations
   that file a redacted verified case after typed confirm (test never
-  invents an incident). Live Neon: unauth/`not-admin` 401; owner
-  200 counted the prettier and left-pad cases; tunnel matched.
+  invents an incident). Live destination gates: `050` applied;
+  unauth/`not-admin` 401; owner list empty; localhost webhook 400;
+  evil Jira host 400; leftover destinations 0; no open jobs; tunnel
+  matched. Live workload: unauth/`not-admin` 401; owner 200 counted
+  the prettier and left-pad cases; tunnel matched.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth

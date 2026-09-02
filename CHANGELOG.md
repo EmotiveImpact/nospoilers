@@ -8,7 +8,10 @@
   or creates a Jira issue. Filing a verified case
   (`POST /api/internal/prospects/:id/disclosure/notify`) posts a redacted
   report after typed coordinate confirm. Unverified cases stay 409. Customer
-  sessions stay 401. No worker wake. Nothing is mailed. Not a customer
+  sessions stay 401. No worker wake. Nothing is mailed. Live Neon: `050`
+  applied; unauth and `not-admin` 401; owner list empty; localhost webhook
+  400; evil Jira host 400; leftover destinations 0; no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
   product and not a Pricing change.
 
 - Disclosure Desk researcher workload: owner Artifact Leads shows case counts

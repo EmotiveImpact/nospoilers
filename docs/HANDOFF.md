@@ -545,6 +545,9 @@ Owner-only Disclosure Desk destinations are in (one HTTPS webhook and one
 Jira Cloud project). Secrets never return. Tests never invent an incident
 or create a Jira issue. Filing a verified case posts a redacted report
 after typed confirm. Unverified stays 409. Customer 401. Nothing mailed.
+Live Neon: `050` applied; unauth and `not-admin` 401; owner list empty;
+localhost webhook 400; evil Jira host 400; leftover destinations 0; no
+open jobs; campaigns 0; watches 0; Cloudflare tunnel matched.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.
