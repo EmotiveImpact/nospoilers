@@ -11,11 +11,18 @@ import {
   workflowIsNoSpoilersScan,
 } from "@/github-response-copy.ts";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
+import { WatchAlertInbox } from "@/components/WatchAlertInbox.tsx";
+import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
+import { WatchOverview } from "@/components/WatchOverview.tsx";
+import { WatchShell } from "@/components/WatchShell.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { navigate } from "@/nav.ts";
 import { PREVIEW_INSTALLATIONS, PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
 import type { Finding } from "@/report-types";
+import { formatExposure, kindLabel } from "@/watch/format.ts";
+import { parseWatchRoute, watchHref, watchPath } from "@/watch/routes.ts";
+import { filterDeskAlerts, isOpenAlert, type DeskSource } from "@/watch/verdict.ts";
 import { useCallback, useEffect, useState } from "react";
 
 type PermissionTest = {
@@ -542,72 +549,6 @@ function installIdFromSearch(search: string): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-function formatExposure(ms: number | undefined, createdAt: string, resolvedAt: string | null | undefined): string {
-  const start = Date.parse(createdAt);
-  const value =
-    typeof ms === "number" && Number.isFinite(ms)
-      ? ms
-      : Number.isFinite(start)
-        ? Math.max(0, (resolvedAt ? Date.parse(resolvedAt) : Date.now()) - start)
-        : 0;
-  if (value < 60_000) return "under a minute";
-  const minutes = Math.floor(value / 60_000);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 48) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
-function kindLabel(kind: string): string {
-  switch (kind) {
-    case "repo_publicized":
-      return "Went public";
-    case "repo_created_public":
-      return "Created public";
-    case "repo_transferred":
-      return "Transferred";
-    case "member_added":
-      return "Collaborator";
-    case "fork":
-      return "Fork";
-    case "release_scan":
-    case "scan_latest_release":
-      return "Release pack";
-    case "release_unpublished":
-      return "Release unpublished";
-    case "release_deleted":
-      return "Release deleted";
-    case "push_sensitive_path":
-      return "Path watch";
-    case "npm_scan":
-      return "npm pack";
-    case "npm_dist_tag":
-      return "npm dist-tag";
-    case "web_origin_scan":
-      return "Website";
-    case "app_suspended":
-      return "App suspended";
-    case "app_unsuspended":
-      return "App unsuspended";
-    case "app_permissions_updated":
-      return "App permissions";
-    case "repos_added":
-      return "Repos added";
-    case "repos_removed":
-      return "Repos removed";
-    case "fair_use_budget":
-      return "Fair use";
-    case "repo_made_private":
-      return "Made private";
-    case "release_assets_removed":
-      return "Pack assets removed";
-    case "workflow_disabled":
-      return "Workflow disabled";
-    default:
-      return kind;
-  }
-}
-
 function defaultExpiryDate(): string {
   const when = new Date();
   when.setUTCDate(when.getUTCDate() + 90);
@@ -929,7 +870,9 @@ function AlertDeskItem({
   );
 }
 
-export function WatchPage({ search }: { search: string }) {
+export function WatchPage({ path, search }: { path: string; search: string }) {
+  const route = parseWatchRoute(path, search);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
@@ -1451,7 +1394,7 @@ export function WatchPage({ search }: { search: string }) {
           const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
           setSelectedInstallId(pick);
           if (pick && wanted !== pick) {
-            navigate(`/watch?install=${pick}`);
+            navigate(watchHref(path.startsWith("/watch") ? path : "/watch", search, { install: pick }));
           }
           await refreshSignedIn(pick);
         } else {
@@ -1497,7 +1440,18 @@ export function WatchPage({ search }: { search: string }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshSignedIn, search]);
+  }, [path, refreshSignedIn, search]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((current) => !current);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (me.status === "loading") {
     return (
@@ -1578,7 +1532,6 @@ export function WatchPage({ search }: { search: string }) {
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
-  const watching = selectedInstall ? [selectedInstall.account_login] : [];
   const activeInstallId = selectedLiveInstall?.id ?? null;
   const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
   const deskAlerts = previewing ? previewAlerts() : alerts.status === "ready" ? alerts.data.alerts : [];
@@ -1587,6 +1540,56 @@ export function WatchPage({ search }: { search: string }) {
     : packages.status === "ready"
       ? packages.data.packages
       : [];
+  const deskOrigins = previewing
+    ? []
+    : origins.status === "ready"
+      ? origins.data.origins
+      : [];
+  const deskSources: DeskSource[] = [
+    ...deskRepos.map((repo) => ({
+      key: `repo-${repo.id}`,
+      kind: "repo" as const,
+      name: repo.full_name,
+      meta: `${repo.private ? "private" : "public"} GitHub · last check ${
+        repo.last_checked_at ? new Date(repo.last_checked_at).toLocaleString() : "not yet"
+      }`,
+      href: repo.html_url,
+    })),
+    ...deskPackages.map((pkg) => ({
+      key: `npm-${pkg.id}`,
+      kind: "npm" as const,
+      name: pkg.package_name,
+      meta: `npm${pkg.last_version ? ` · ${pkg.last_version}` : ""}${
+        pkg.last_checked_at ? ` · ${new Date(pkg.last_checked_at).toLocaleString()}` : ""
+      }`,
+      href: null,
+    })),
+    ...deskOrigins.map((origin) => ({
+      key: `origin-${origin.id}`,
+      kind: "origin" as const,
+      name: origin.host || origin.origin_url,
+      meta: `website${origin.last_checked_at ? ` · ${new Date(origin.last_checked_at).toLocaleString()}` : ""}`,
+      href: origin.origin_url,
+    })),
+    ...mapDestinations.map((row) => ({
+      key: `map-${row.id}`,
+      kind: "map" as const,
+      name: `${row.kind} · ${row.projectSlug}`,
+      meta: row.host,
+      href: null,
+    })),
+  ];
+  const inboxAlerts = filterDeskAlerts(deskAlerts, route.tab, login);
+  const selectedAlertId = route.alertId ?? inboxAlerts[0]?.id ?? null;
+  const selectedAlert = deskAlerts.find((row) => row.id === selectedAlertId) ?? null;
+  const openAlertCount = deskAlerts.filter(isOpenAlert).length;
+  const deskBusy = !previewing && (repos.status === "loading" || alerts.status === "loading");
+  const deskError =
+    !previewing && repos.status === "error"
+      ? repos.message
+      : !previewing && alerts.status === "error"
+        ? alerts.message
+        : null;
   const confirmForm = (match: boolean) =>
     confirming && match ? (
       <TypeToConfirm
@@ -1606,75 +1609,169 @@ export function WatchPage({ search }: { search: string }) {
     ) : null;
 
   return (
-    <main className="fade-up mx-auto max-w-5xl px-5 py-12 md:py-16">
+    <>
+    <WatchCommandPalette
+      open={paletteOpen}
+      onClose={() => setPaletteOpen(false)}
+      search={search}
+      alerts={deskAlerts}
+      sources={deskSources}
+    />
+    <WatchShell
+      route={route}
+      search={search}
+      account={selectedInstall?.account_login ?? login}
+      coverageLabel={deskCoverage?.label ?? null}
+      coverageEnded={ended}
+      role={!previewing && selectedLiveInstall?.role ? selectedLiveInstall.role : null}
+      installations={installations}
+      activeInstallId={activeInstallId}
+      installUrl={installUrl && githubApp && user ? installUrl : undefined}
+      openAlertCount={openAlertCount}
+      sourceCount={deskSources.length}
+      showSetup={deskSources.length === 0 || !deskRepos.length}
+      onInstallChange={(id) => {
+        setSelectedInstallId(id);
+        navigate(watchHref(watchPath(route.view), search, { install: id }));
+        void refreshSignedIn(id);
+      }}
+      onOpenPalette={() => setPaletteOpen(true)}
+    >
       {previewing ? <LoggedInLook current={ended ? "ended" : "trial"} /> : null}
 
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-dim">{login}</p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-snow md:text-4xl">Watch desk</h1>
-          <p className="mt-2 max-w-xl text-sm text-mute">
-            {ended
-              ? "Coverage ended. The bot is quiet until you subscribe."
-              : githubPaused
-                ? "GitHub suspended the NoSpoilers App. Repositories stay listed. We do not scan until GitHub unsuspends it."
-                : watching.length > 0
-                ? `Watching ${watching.join(", ")}. Hosted pack scans are on${deskCoverage?.status === "trial" ? " for this trial" : ""}.`
-                : "No installs linked yet"}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {deskCoverage && (
-            <span
-              className={
-                ended
-                  ? "text-[11px] uppercase tracking-[0.16em] text-danger"
-                  : "text-[11px] uppercase tracking-[0.16em] text-dim"
-              }
-            >
-              {deskCoverage.label}
-              {!previewing && selectedLiveInstall?.role
-                ? ` · ${selectedLiveInstall.role === "admin" ? "admin" : "member"}`
-                : ""}
-            </span>
-          )}
-          {!previewing && installations.length > 1 && (
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">GitHub install</span>
-              <select
-                value={activeInstallId ?? ""}
-                onChange={(event) => {
-                  const id = Number(event.target.value);
-                  if (!Number.isFinite(id) || id <= 0) return;
-                  setSelectedInstallId(id);
-                  navigate(`/watch?install=${id}`);
-                  void refreshSignedIn(id);
-                }}
-                className="h-10 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
-              >
-                {installations.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.account_login}
-                    {row.suspended ? " (suspended)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {installUrl && githubApp && user && (
-            <Button as="a" href={installUrl}>
-              Install on GitHub
-            </Button>
-          )}
-          {ended && (
-            <Button type="button" onClick={() => navigate("/pricing")}>
-              Subscribe
-            </Button>
-          )}
-        </div>
-      </div>
+      {route.view === "overview" || route.view === "setup" ? (
+        <WatchOverview
+          search={search}
+          ended={ended}
+          githubPaused={githubPaused}
+          loading={deskBusy}
+          error={deskError}
+          alerts={deskAlerts}
+          sources={deskSources}
+          releaseCount={releases.length}
+          queued={jobSummary.queued}
+          running={jobSummary.running}
+          failed={jobSummary.failed}
+          installUrl={installUrl && githubApp && user ? installUrl : undefined}
+          hasInstall={Boolean(selectedInstall)}
+          hasRepo={deskRepos.length > 0}
+          hasPackage={deskPackages.length > 0}
+          hasOrigin={deskOrigins.length > 0}
+          hasRoute={routes.length > 0}
+          forceSetup={route.view === "setup"}
+        />
+      ) : null}
 
-      <div className="mt-14 grid min-h-72 gap-16 lg:grid-cols-[0.95fr_1.05fr]">
+      {route.view === "alerts" ? (
+        <WatchAlertInbox
+          search={search}
+          tab={route.tab}
+          selectedId={selectedAlert?.id ?? null}
+          alerts={deskAlerts}
+          login={login}
+          previewing={previewing}
+          loading={!previewing && alerts.status === "loading"}
+          error={!previewing && alerts.status === "error" ? alerts.message : null}
+          exportError={exportError}
+          onExport={() => {
+            setExportError(null);
+            void (async () => {
+              try {
+                const body = await loadJson<{ exportedAt: string; alerts: Alert[] }>(
+                  scopedApi("/api/alerts/export", activeInstallId),
+                );
+                const blob = new Blob([JSON.stringify(body, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `nospoilers-alerts-${body.exportedAt.slice(0, 10)}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              } catch (error) {
+                setExportError(error instanceof Error ? error.message : "Could not export alerts.");
+              }
+            })();
+          }}
+        >
+          {selectedAlert ? (
+            <ul className="divide-y divide-white/5 rounded-lg border border-white/10 px-5">
+              <AlertDeskItem
+                alert={selectedAlert}
+                previewing={previewing}
+                events={alertEvents[selectedAlert.id] ?? []}
+                busy={alertBusyId === selectedAlert.id}
+                note={alertNotes[selectedAlert.id] ?? ""}
+                assignee={alertAssignees[selectedAlert.id] ?? ""}
+                error={alertErrorById[selectedAlert.id] ?? null}
+                onNote={(value) =>
+                  setAlertNotes((current) => ({ ...current, [selectedAlert.id]: value }))
+                }
+                onAssignee={(value) =>
+                  setAlertAssignees((current) => ({ ...current, [selectedAlert.id]: value }))
+                }
+                onAction={(action) => {
+                  if (previewing) return;
+                  const alert = selectedAlert;
+                  setAlertErrorById((current) => {
+                    const next = { ...current };
+                    delete next[alert.id];
+                    return next;
+                  });
+                  setAlertBusyId(alert.id);
+                  void (async () => {
+                    try {
+                      const payload =
+                        action === "assign"
+                          ? { login: (alertAssignees[alert.id] ?? "").trim() }
+                          : action === "resolve"
+                            ? { note: (alertNotes[alert.id] ?? "").trim() }
+                            : undefined;
+                      const response = await fetch(`/api/alerts/${alert.id}/${action}`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: payload ? { "content-type": "application/json" } : undefined,
+                        body: payload ? JSON.stringify(payload) : undefined,
+                      });
+                      const body = (await response.json()) as { error?: string; alert?: Alert };
+                      if (!response.ok || !body.alert) {
+                        throw new Error(body.error ?? "Could not update that alert.");
+                      }
+                      setAlerts((current) => {
+                        if (current.status !== "ready") return current;
+                        return {
+                          status: "ready",
+                          data: {
+                            alerts: current.data.alerts.map((row) =>
+                              row.id === body.alert!.id ? { ...row, ...body.alert } : row,
+                            ),
+                          },
+                        };
+                      });
+                      const eventBody = await loadJson<{ events: AlertEvent[] }>(
+                        `/api/alerts/${alert.id}/events`,
+                      );
+                      setAlertEvents((current) => ({ ...current, [alert.id]: eventBody.events }));
+                    } catch (error) {
+                      setAlertErrorById((current) => ({
+                        ...current,
+                        [alert.id]:
+                          error instanceof Error ? error.message : "Could not update that alert.",
+                      }));
+                    } finally {
+                      setAlertBusyId(null);
+                    }
+                  })();
+                }}
+              />
+            </ul>
+          ) : null}
+        </WatchAlertInbox>
+      ) : null}
+
+      {route.view === "sources" ? (
+      <div className="mx-auto max-w-3xl space-y-16">
         <section className="relative min-h-72">
           {ended ? (
             <CoverageLock variant="watch" title="Subscribe to keep watching." />
@@ -2073,128 +2170,11 @@ export function WatchPage({ search }: { search: string }) {
           </div>
         </section>
 
-        <section>
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Alerts</h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-            Acknowledge, assign, and resolve stay available when coverage has ended or GitHub has
-            suspended the App. New scans still wait for coverage and an unsuspended install.
-          </p>
-          {!previewing && (
-            <div className="mt-4">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setExportError(null);
-                  void (async () => {
-                    try {
-                      const body = await loadJson<{ exportedAt: string; alerts: Alert[] }>(
-                        scopedApi("/api/alerts/export", activeInstallId),
-                      );
-                      const blob = new Blob([JSON.stringify(body, null, 2)], {
-                        type: "application/json",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `nospoilers-alerts-${body.exportedAt.slice(0, 10)}.json`;
-                      link.click();
-                      URL.revokeObjectURL(url);
-                    } catch (error) {
-                      setExportError(
-                        error instanceof Error ? error.message : "Could not export alerts.",
-                      );
-                    }
-                  })();
-                }}
-              >
-                Export activity
-              </Button>
-              {exportError ? <p className="mt-2 text-sm text-danger">{exportError}</p> : null}
-            </div>
-          )}
-          {!previewing && alerts.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
-          {!previewing && alerts.status === "error" && <p className="mt-6 text-sm text-danger">{alerts.message}</p>}
-          {deskAlerts.length === 0 && (previewing || alerts.status === "ready") && (
-            <p className="mt-6 text-sm leading-relaxed text-mute">
-              Quiet so far. That is the good state — until a repo goes public or a release ships a map.
-            </p>
-          )}
-          {deskAlerts.length > 0 && (
-            <ul className="mt-4 max-h-[40rem] divide-y divide-white/5 overflow-auto">
-              {deskAlerts.map((alert) => (
-                <AlertDeskItem
-                  key={alert.id}
-                  alert={alert}
-                  previewing={previewing}
-                  events={alertEvents[alert.id] ?? []}
-                  busy={alertBusyId === alert.id}
-                  note={alertNotes[alert.id] ?? ""}
-                  assignee={alertAssignees[alert.id] ?? ""}
-                  error={alertErrorById[alert.id] ?? null}
-                  onNote={(value) => setAlertNotes((current) => ({ ...current, [alert.id]: value }))}
-                  onAssignee={(value) => setAlertAssignees((current) => ({ ...current, [alert.id]: value }))}
-                  onAction={(action) => {
-                    if (previewing) return;
-                    setAlertErrorById((current) => {
-                      const next = { ...current };
-                      delete next[alert.id];
-                      return next;
-                    });
-                    setAlertBusyId(alert.id);
-                    void (async () => {
-                      try {
-                        const payload =
-                          action === "assign"
-                            ? { login: (alertAssignees[alert.id] ?? "").trim() }
-                            : action === "resolve"
-                              ? { note: (alertNotes[alert.id] ?? "").trim() }
-                              : undefined;
-                        const response = await fetch(`/api/alerts/${alert.id}/${action}`, {
-                          method: "POST",
-                          credentials: "include",
-                          headers: payload ? { "content-type": "application/json" } : undefined,
-                          body: payload ? JSON.stringify(payload) : undefined,
-                        });
-                        const body = (await response.json()) as { error?: string; alert?: Alert };
-                        if (!response.ok || !body.alert) {
-                          throw new Error(body.error ?? "Could not update that alert.");
-                        }
-                        setAlerts((current) => {
-                          if (current.status !== "ready") return current;
-                          return {
-                            status: "ready",
-                            data: {
-                              alerts: current.data.alerts.map((row) =>
-                                row.id === body.alert!.id ? { ...row, ...body.alert } : row,
-                              ),
-                            },
-                          };
-                        });
-                        const eventBody = await loadJson<{ events: AlertEvent[] }>(
-                          `/api/alerts/${alert.id}/events`,
-                        );
-                        setAlertEvents((current) => ({ ...current, [alert.id]: eventBody.events }));
-                      } catch (error) {
-                        setAlertErrorById((current) => ({
-                          ...current,
-                          [alert.id]:
-                            error instanceof Error ? error.message : "Could not update that alert.",
-                        }));
-                      } finally {
-                        setAlertBusyId(null);
-                      }
-                    })();
-                  }}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "timeline" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">
           {timeline.status === "ready" ? timelineHeading(timeline.days) : "Timeline"}
         </h2>
@@ -2253,8 +2233,10 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "retention" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Retention</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
@@ -2319,8 +2301,10 @@ export function WatchPage({ search }: { search: string }) {
           </div>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "audit" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Audit log</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs can export this install’s admin writes, notification deliveries,
@@ -2400,8 +2384,10 @@ export function WatchPage({ search }: { search: string }) {
           </>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "team" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
@@ -2589,8 +2575,10 @@ export function WatchPage({ search }: { search: string }) {
           </>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "health" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
@@ -2749,8 +2737,10 @@ export function WatchPage({ search }: { search: string }) {
           </>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "notifications" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, and Jira
@@ -3344,8 +3334,10 @@ export function WatchPage({ search }: { search: string }) {
           </>
         )}
       </section>
+      ) : null}
 
-      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+      {route.view === "sources" ? (
+      <section className={`mx-auto max-w-3xl ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Production websites</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the HTTPS page you name, then same-origin JavaScript, CSS, maps, and a bounded
@@ -3482,8 +3474,10 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+      {route.view === "sources" ? (
+      <section className={`mx-auto max-w-3xl ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Map custody</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Prove Sentry has the debug ID, or Bugsnag has the release version, and that the public
@@ -3688,8 +3682,10 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+      {route.view === "sources" || route.view === "registries" ? (
+      <section className={`mx-auto max-w-3xl ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>, and
@@ -4217,8 +4213,10 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section className={`mt-16 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+      {route.view === "tokens" ? (
+      <section className={`mx-auto max-w-3xl ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Scan API</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
@@ -4359,8 +4357,10 @@ export function WatchPage({ search }: { search: string }) {
           </>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "releases" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Releases</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
@@ -4562,8 +4562,10 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section className="mt-16">
+      {route.view === "policy" ? (
+      <section className="mx-auto max-w-3xl">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
           Exceptions are exact-rule, attributable, and they expire. They never suppress a different
@@ -4711,6 +4713,8 @@ export function WatchPage({ search }: { search: string }) {
           </ul>
         )}
       </section>
-    </main>
+      ) : null}
+    </WatchShell>
+    </>
   );
 }
