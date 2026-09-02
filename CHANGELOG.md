@@ -7,7 +7,10 @@
   does not claim jobs. `NOSPOILERS_ROLE=worker` claims jobs and does not bind
   HTTP. A successful enqueue `NOTIFY`s `nospoilers_jobs` so a split worker
   wakes immediately. Recovery stays 15 minutes. `/api/health` reports `role`
-  and `ui`. This host is not on Railway. Not a purchase.
+  and `ui`. Live on this host: health `role: all`, `ui: true` after `npm run
+  build`, `stripe: false`, `resend: false`, `database.mode: neon`. Built
+  `dist/` serves `/watch` and `/docs` as HTML while `/api` stays JSON.
+  Status shows those flags. This host is not on Railway. Not a purchase.
 
 - Watch email destinations are wired through Resend. A covered install admin
   can save one address (encrypted). The API returns the domain and a redacted

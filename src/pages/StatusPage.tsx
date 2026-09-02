@@ -4,6 +4,10 @@ type Health = {
   ok: boolean;
   name?: string;
   githubApp: boolean;
+  stripe?: boolean;
+  resend?: boolean;
+  role?: "all" | "web" | "worker";
+  ui?: boolean;
   database: { mode: string };
   worker: { recoveryIntervalMs: number; visibilityPollIntervalMs: number };
 };
@@ -51,6 +55,22 @@ export function StatusPage() {
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-dim">GitHub App</p>
             <p className="text-sm text-snow">{health.githubApp ? "configured" : "not configured"}</p>
+          </li>
+          <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Stripe</p>
+            <p className="text-sm text-snow">{health.stripe ? "configured" : "not configured"}</p>
+          </li>
+          <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Resend</p>
+            <p className="text-sm text-snow">{health.resend ? "configured" : "not configured"}</p>
+          </li>
+          <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Process role</p>
+            <p className="text-sm text-snow">{health.role ?? "all"}</p>
+          </li>
+          <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Built UI</p>
+            <p className="text-sm text-snow">{health.ui ? "on disk" : "not on disk"}</p>
           </li>
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Database</p>

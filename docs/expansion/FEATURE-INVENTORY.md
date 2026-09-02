@@ -187,7 +187,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
-| Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
+| Public status page | Built: `/status` from `/api/health` (no tenant data, no URL); shows GitHub App, Stripe, Resend, process role, built UI on disk, Neon mode | Operations |
 | Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; map custody is light; website crawls are light until they scan; no-download GitHub/npm jobs refund; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one email (covered installs), one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers |
 
