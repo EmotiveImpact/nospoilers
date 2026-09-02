@@ -35,7 +35,7 @@ and Action still run locally. Stripe, Resend, and production deploy are not live
 | --- | --- |
 | Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, Chrome extension ZIP, `.whl`, Python sdist (PKG-INFO), `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, serverless zip, Electron `.asar`; npm/pnpm/Yarn/Bun workspace listing |
 | CLI | `src/cli.ts` — `npx tsx src/cli.ts scan <path> [--strict] [--json] [--sarif file]` |
-| GitHub Action | `action.yml` |
+| GitHub Action | `action.yml` (this repo, `uses: ./`). Customer Setup PR vendors `.github/actions/nospoilers`, which POSTs packed bytes to `/api/v1/scan`. |
 | Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
 | Fixtures | `fixtures/` + `scripts/build-fixtures.ts` |
 | Tests | `tests/scanner.test.ts`, `tests/fixtures.test.ts` |

@@ -1,4 +1,9 @@
-import { SETUP_WORKFLOW_PATH, setupWorkflowYaml } from "./setup-workflow.ts";
+import {
+  SETUP_ACTION_PATH,
+  SETUP_WORKFLOW_PATH,
+  setupActionYaml,
+  setupWorkflowYaml,
+} from "./setup-workflow.ts";
 
 export const REMEDIATION_BRANCH = "nospoilers/remediate";
 
@@ -17,6 +22,7 @@ const CUSTOMER_OWNED_PATHS = new Set([
   ".npmignore",
   ".nospoilers.yml",
   SETUP_WORKFLOW_PATH,
+  SETUP_ACTION_PATH,
 ]);
 
 export function remediationGitignore(): string {
@@ -93,6 +99,7 @@ export function remediationBundle(): RemediationFile[] {
     { path: ".nospoilers/bundler-hints.md", content: remediationBundlerHints() },
     { path: ".nospoilers/package-files.snippet.json", content: remediationPackageFilesSnippet() },
     { path: SETUP_WORKFLOW_PATH, content: setupWorkflowYaml() },
+    { path: SETUP_ACTION_PATH, content: setupActionYaml() },
   ];
 }
 
@@ -127,8 +134,9 @@ export function remediationPullRequestBody(): string {
     "This pull request is from NoSpoilers. It is **not** merged automatically.",
     "",
     "It adds **ignore rules**, an **empty** `.nospoilers.yml` (no silent allowlist), bundler",
-    "hints, a `package.json` `files` snippet, and the packed-artifact CI workflow if it is missing.",
-    "Existing customer `.gitignore`, `.npmignore`, `.nospoilers.yml`, and workflow files are not overwritten.",
+    "hints, a `package.json` `files` snippet, and the packed-artifact CI workflow plus vendored",
+    "hosted-scan Action if they are missing.",
+    "Existing customer `.gitignore`, `.npmignore`, `.nospoilers.yml`, workflow, and Action files are not overwritten.",
     "",
     "This is not a destructive action. It does **not** make the repository private, delete a",
     "Release asset, or disable a workflow. Those stay opt-in and confirmed later.",

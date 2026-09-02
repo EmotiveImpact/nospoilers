@@ -34,6 +34,8 @@ import {
 } from "./remediation.ts";
 import {
   SETUP_PERMISSIONS,
+  SETUP_WORKFLOW_PATH,
+  setupFiles,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
@@ -1360,8 +1362,9 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
     return c.json({
-      path: ".github/workflows/nospoilers.yml",
+      path: SETUP_WORKFLOW_PATH,
       workflow: setupWorkflowYaml(),
+      files: setupFiles(),
       permissions: SETUP_PERMISSIONS,
     });
   });
@@ -1396,6 +1399,7 @@ export function createApp(deps: AppDeps): Hono {
           skipped: result.skipped,
           reason: result.reason,
           workflow: setupWorkflowYaml(),
+          files: setupFiles(),
           permissions: SETUP_PERMISSIONS,
         },
         409,

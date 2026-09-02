@@ -100,12 +100,14 @@ Read in this order:
 - Customers can add expiring, attributable allowlist exceptions (exact rule + optional path glob)
   and approve a packed receipt as the shipping baseline. Hosted scans apply those exceptions
   before minting a receipt. CLI and the GitHub Action load `.nospoilers.yml` when present.
-- Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml`. That
-  workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each with the Action, and
-  fails closed if none exist. Source pushes are not unpacked. The App never merges the PR. Watch
-  and the PR body tell maintainers to mark the NoSpoilers check required; the App does not set
-  branch protection. If GitHub
-  returns 403/404, the API returns 409 plus copy-paste YAML. Hosted `release_scan` jobs post a
+- Watch **Setup PR** opens a reviewable PR that adds `.github/workflows/nospoilers.yml` and a
+  vendored `.github/actions/nospoilers` composite Action. That workflow lists existing
+  `package.tgz` and `dist/` packs (cap 8), POSTs each to hosted `/api/v1/scan`, and fails closed
+  if none exist. Source pushes are not unpacked. Customer CI cannot `uses:` this private product
+  repo. After merge, set repository variable `NOSPOILERS_API_URL` and secret `NOSPOILERS_API_TOKEN`
+  from a Watch-minted token. The App never merges the PR. Watch and the PR body tell maintainers
+  to mark the NoSpoilers check required; the App does not set branch protection. If GitHub
+  returns 403/404, the API returns 409 plus copy-paste files. Hosted `release_scan` jobs post a
   **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
   still completes.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
@@ -113,11 +115,13 @@ Read in this order:
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
   receipt). An unclassified fixture fails the gate. The same job then runs the GitHub
   Action (`uses: ./`) on `fixtures/clean.tgz` (must pass) and `fixtures/sourcemap.tgz`
-  (must fail closed). The generated customer Action is unchanged.
+  (must fail closed). Generated customer CI vendors a hosted-scan Action instead of `uses:` on
+  this private repository.
 - Watch **Remediation PR** opens a reviewable PR on `nospoilers/remediate` with ignore rules,
   an empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files`
-  snippet, and the packed-artifact workflow if missing. Existing customer ignore/policy/workflow
-  files are not overwritten. Required Contents write and Pull requests write are shown before
+  snippet, and the packed-artifact workflow plus vendored hosted-scan Action if missing. Existing
+  customer ignore/policy/workflow/Action files are not overwritten. Required Contents write and
+  Pull requests write are shown before
   the button. 409 returns the file bundle for copy-paste. The App never merges it. This is not
   make-private or asset deletion.
 - Packed scans discover npm/pnpm/Yarn/Bun workspaces (package.json `workspaces`,
@@ -131,7 +135,8 @@ Read in this order:
   deletes the bytes. Optional headers: `X-NoSpoilers-Channel`, `X-NoSpoilers-Source-Revision`,
   `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
   return 402. Exhausted daily fair use returns 429 with Retry-After until 00:00 UTC, not a
-  remaining-credit balance. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
+  remaining-credit balance. This repository’s GitHub Action stays `uses: ./`. Customer Setup CI
+  vendors a hosted-scan Action and needs a Watch token. Watch **Releases** lists sealed
   revisions with the linked receipt status; preview invents none. Unpaid still allows the list
   and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
@@ -249,7 +254,7 @@ Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
-Generated setup CI lists existing package.tgz and dist/ packs, scans each, and fails closed if none.
+Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing package.tgz and dist/ packs to hosted `/api/v1/scan`; fails closed if none.
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
@@ -295,7 +300,7 @@ Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, 
 encrypted tokens never returned or written onto jobs, event-driven). Not advertised as a Pricing
 change. Bugsnag matches a release version; it cannot look up a debug ID.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
-ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
+ignore/policy/workflow/Action files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
 Fair-use hosted unpacks are in (Solo 1 concurrent heavy job and 8 per UTC day per install;
@@ -311,7 +316,8 @@ Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.
-Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails
+Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), vendors
+`.github/actions/nospoilers` to POST each pack to hosted `/api/v1/scan`, and fails
 closed if none exist. Source pushes are not unpacked. Reviewable, never merged.
 This repository’s GitHub Actions fail-closes every dirty fixture pack, treats inconclusive
 encryption fixtures as CLI exit 2, and passes every clean pack after rebuild

@@ -67,8 +67,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   visibility poller. Anonymous is 401, unknown repo 404, another tenant 403, unpaid 402.
   GitHub `release.published` and later pack-asset edits enqueue the same hosted unpack;
   unpublishing or deleting a release is an alert only.
-- Read the packed-artifact setup workflow YAML and the remediation file bundle on those
-  repositories. Opening the reviewable PRs is an install admin action.
+- Read the packed-artifact setup workflow, vendored hosted-scan Action, and the remediation
+  file bundle on those repositories. Opening the reviewable PRs is an install admin action.
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved). SIZE-003 is a warning on a 2× or ≥5 MiB
   unpacked jump versus that comparison; it stores byte counts, not source.
@@ -183,7 +183,7 @@ granted. Contents write is enough to seed the throwaway fixture and open reviewa
   the rule. Unwatch requires typing the package name.
 - Open a reviewable setup PR or remediation PR while coverage is active. The App never
   merges those PRs. Required Contents write and Pull requests write are shown before the
-  button. Existing customer ignore/policy/workflow files are not overwritten. Those PRs are
+  button. Existing customer ignore/policy/workflow/Action files are not overwritten. Those PRs are
   not make-private, asset deletion, or workflow disable.
 - Confirm one-click make-private (type `owner/repo`), delete packed assets on the latest
   GitHub Release (type `delete pack assets on owner/repo`), or disable a workflow under
@@ -308,9 +308,10 @@ tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unp
 (not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
-`tests/setup-pr.test.ts` proves setup-PR YAML is tenant-scoped, unpaid POST returns 402,
-permission skips return copy-paste YAML instead of failing the worker, the merge API
-is never called, and the generated workflow lists only existing `package.tgz` / `dist/` packs
+`tests/setup-pr.test.ts` proves setup-PR files are tenant-scoped, unpaid POST returns 402,
+permission skips return copy-paste files instead of failing the worker, the merge API
+is never called, the generated workflow vendors `.github/actions/nospoilers` instead of
+`uses:` on this private repository, and the workflow lists only existing `package.tgz` / `dist/` packs
 (skips source-tree tarballs and symlinks, caps at 8, fails closed when none exist). `tests/remediation.test.ts` proves remediation files are tenant-scoped,
 unpaid POST returns 402, GitHub-suspended POST returns 409, permission skips return
 copy-paste files, required permissions are listed before write, customer ignore/policy

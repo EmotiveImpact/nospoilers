@@ -14,7 +14,7 @@ import {
   remediationPullRequestBody,
   remediationWrites,
 } from "../src/server/remediation.ts";
-import { SETUP_WORKFLOW_PATH } from "../src/server/setup-workflow.ts";
+import { SETUP_ACTION_PATH, SETUP_WORKFLOW_PATH } from "../src/server/setup-workflow.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 
@@ -71,6 +71,7 @@ describe("generated remediation files", () => {
     expect(paths).toContain(".nospoilers/bundler-hints.md");
     expect(paths).toContain(".nospoilers/package-files.snippet.json");
     expect(paths).toContain(SETUP_WORKFLOW_PATH);
+    expect(paths).toContain(SETUP_ACTION_PATH);
 
     const gitignore = files.find((file) => file.path === ".gitignore")?.content ?? "";
     expect(gitignore).toContain("never merged automatically");
@@ -101,12 +102,14 @@ describe("generated remediation files", () => {
       ".npmignore",
       ".nospoilers.yml",
       SETUP_WORKFLOW_PATH,
+      SETUP_ACTION_PATH,
     ]);
     const paths = writes.map((file) => file.path);
     expect(paths).not.toContain(".gitignore");
     expect(paths).not.toContain(".npmignore");
     expect(paths).not.toContain(".nospoilers.yml");
     expect(paths).not.toContain(SETUP_WORKFLOW_PATH);
+    expect(paths).not.toContain(SETUP_ACTION_PATH);
     expect(paths).toContain(".nospoilers/gitignore.append");
     expect(paths).toContain(".nospoilers/npmignore.append");
     expect(paths).toContain(".nospoilers/bundler-hints.md");

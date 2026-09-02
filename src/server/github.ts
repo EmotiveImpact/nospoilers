@@ -11,11 +11,10 @@ import {
 } from "./remediation.ts";
 import {
   SETUP_BRANCH,
-  SETUP_WORKFLOW_PATH,
   setupCommitMessage,
+  setupFiles,
   setupPullRequestBody,
   setupPullRequestTitle,
-  setupWorkflowYaml,
 } from "./setup-workflow.ts";
 import { ADMINISTRATION_DENIED } from "./github-response.ts";
 import { hasWrite } from "./install-test.ts";
@@ -455,39 +454,17 @@ export function createGithubPort(config: AppConfig): GithubPort {
           throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
         }
 
-        let fileSha: string | undefined;
-        const existingFile = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${SETUP_WORKFLOW_PATH}?ref=${encodeURIComponent(SETUP_BRANCH)}`,
-          {
-            headers: {
-              Accept: "application/vnd.github+json",
-              Authorization: `Bearer ${token}`,
-              "User-Agent": "nospoilers",
-              "X-GitHub-Api-Version": "2022-11-28",
-            },
-          },
-        );
-        if (existingFile.ok) {
-          const fileBody = (await existingFile.json()) as { sha?: string };
-          if (typeof fileBody.sha === "string") fileSha = fileBody.sha;
-        } else if (existingFile.status !== 404) {
-          const text = await existingFile.text();
-          throw new GithubApiError(
-            existingFile.status,
-            `GitHub ${existingFile.status}: ${text.slice(0, 400)}`,
+        for (const file of setupFiles()) {
+          await putGithubFile(
+            token,
+            owner,
+            repo,
+            file.path,
+            file.content,
+            SETUP_BRANCH,
+            setupCommitMessage(),
           );
         }
-
-        await githubJson(`https://api.github.com/repos/${owner}/${repo}/contents/${SETUP_WORKFLOW_PATH}`, token, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: setupCommitMessage(),
-            content: Buffer.from(setupWorkflowYaml(), "utf8").toString("base64"),
-            branch: SETUP_BRANCH,
-            ...(fileSha ? { sha: fileSha } : {}),
-          }),
-        });
 
         const open = await githubJson<{ html_url: string; number: number }[]>(
           `https://api.github.com/repos/${owner}/${repo}/pulls?head=${encodeURIComponent(`${owner}:${SETUP_BRANCH}`)}&state=open`,

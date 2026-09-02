@@ -1,9 +1,11 @@
+import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { getRequestListener } from "@hono/node-server";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
@@ -11,7 +13,12 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import {
   MAX_SETUP_PACKS,
+  SETUP_ACTION_PATH,
   SETUP_PACK_GLOBS,
+  SETUP_WORKFLOW_PATH,
+  setupActionScanPython,
+  setupActionYaml,
+  setupFiles,
   setupPullRequestBody,
   setupWorkflowYaml,
 } from "../src/server/setup-workflow.ts";
@@ -33,6 +40,70 @@ function workflowListPython(): string {
   const lines = match[1].split("\n");
   const indent = lines[0]?.match(/^ */)?.[0].length ?? 0;
   return lines.map((line) => line.slice(indent)).join("\n");
+}
+
+function actionScanPythonFromYaml(): string {
+  const yaml = setupActionYaml();
+  const match = yaml.match(/python3 - <<'PY'\n([\s\S]*?)\n\s*PY\n/);
+  if (!match?.[1]) throw new Error("generated action is missing hosted-scan python");
+  const lines = match[1].split("\n");
+  const indent = lines[0]?.match(/^ */)?.[0].length ?? 0;
+  return lines.map((line) => line.slice(indent)).join("\n");
+}
+
+async function runScanPython(
+  extraEnv: Record<string, string>,
+  cwd: string,
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  const script = path.join(
+    os.tmpdir(),
+    `ns-setup-scan-${Date.now()}-${Math.random().toString(16).slice(2)}.py`,
+  );
+  await writeFile(script, setupActionScanPython());
+  try {
+    const { stdout, stderr } = await execFileAsync("python3", [script], {
+      cwd,
+      env: { PATH: process.env.PATH, ...extraEnv },
+    });
+    return { code: 0, stdout, stderr };
+  } catch (error) {
+    const err = error as { code?: number; stdout?: string; stderr?: string };
+    return {
+      code: typeof err.code === "number" ? err.code : 1,
+      stdout: err.stdout ?? "",
+      stderr: err.stderr ?? "",
+    };
+  }
+}
+
+async function listenJson(
+  handler: (
+    req: { url?: string; headers: Record<string, string | string[] | undefined> },
+    body: Buffer,
+  ) => { status: number; json: unknown },
+): Promise<{ origin: string; close: () => Promise<void> }> {
+  const server = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    req.on("end", () => {
+      const result = handler(req, Buffer.concat(chunks));
+      const payload = Buffer.from(JSON.stringify(result.json));
+      res.writeHead(result.status, { "Content-Type": "application/json" });
+      res.end(payload);
+    });
+  });
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+  const addr = server.address();
+  if (!addr || typeof addr === "string") throw new Error("server had no port");
+  return {
+    origin: `http://127.0.0.1:${addr.port}`,
+    close: () =>
+      new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      }),
+  };
 }
 
 function packsFromGithubOutput(text: string): unknown {
@@ -120,17 +191,32 @@ describe("generated setup workflow", () => {
     expect(yaml).toContain("fromJSON(needs.list-packs.outputs.packs)");
     expect(yaml).toContain("No packed artifact found");
     expect(yaml).toContain("matrix.pack");
+    expect(yaml).toContain("uses: ./.github/actions/nospoilers");
+    expect(yaml).toContain("vars.NOSPOILERS_API_URL");
+    expect(yaml).toContain("secrets.NOSPOILERS_API_TOKEN");
+    expect(yaml).not.toContain("EmotiveImpact/nospoilers@main");
     expect(yaml).not.toContain("github.event.inputs.path || 'package.tgz'");
     expect(yaml).not.toMatch(/on:\s*\n\s*push:\s*\n\s*branches/);
     for (const glob of SETUP_PACK_GLOBS) {
       expect(yaml).toContain(`- ${glob}`);
     }
+    const files = setupFiles();
+    expect(files.map((file) => file.path)).toEqual([SETUP_WORKFLOW_PATH, SETUP_ACTION_PATH]);
+    expect(setupActionYaml()).toContain("python3 - <<'PY'");
+    expect(setupActionYaml()).not.toContain("npm ci");
+    expect(setupActionYaml()).not.toContain("npx tsx");
+    expect(setupActionYaml()).not.toContain("EmotiveImpact/nospoilers");
+    expect(actionScanPythonFromYaml().trim()).toBe(setupActionScanPython().trim());
     const body = setupPullRequestBody();
     expect(body).toContain("**not** merged automatically");
     expect(body).toContain("packed");
     expect(body).toContain("fails closed");
     expect(body).toContain("Do **not** grant Administration");
     expect(body).toContain("Optionally mark the **NoSpoilers** check as required");
+    expect(body).toContain("NOSPOILERS_API_URL");
+    expect(body).toContain("NOSPOILERS_API_TOKEN");
+    expect(body).toContain("Mint a scan API token on Watch");
+    expect(body).not.toContain("EmotiveImpact/nospoilers@main");
   });
 
   it("never calls the GitHub merge API", async () => {
@@ -185,6 +271,110 @@ describe("generated setup workflow", () => {
     const listed = await runWorkflowList(many, python, { GITHUB_EVENT_NAME: "push" });
     expect(listed).toHaveLength(MAX_SETUP_PACKS);
   });
+
+  it("exits 1 on failed-policy JSON and 2 when env is missing", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-setup-scan-"));
+    const pack = path.join(dir, "package.tgz");
+    await writeFile(pack, "pack-bytes");
+
+    const missing = await runScanPython({}, dir);
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toContain("NOSPOILERS_API_URL");
+    expect(missing.stderr).toContain("NOSPOILERS_API_TOKEN");
+    expect(missing.stderr).toContain("Do not grant Administration");
+    expect(missing.stderr).not.toContain("Grant Administration");
+
+    const captured: { url?: string; auth?: string; filename?: string; body: string }[] = [];
+    const server = await listenJson((req, body) => {
+      captured.push({
+        url: req.url,
+        auth: String(req.headers.authorization ?? ""),
+        filename: String(req.headers["x-filename"] ?? ""),
+        body: body.toString("utf8"),
+      });
+      if (req.url !== "/api/v1/scan") return { status: 404, json: { error: "not found" } };
+      if (String(req.headers.authorization) === "Bearer nsp_failed") {
+        return {
+          status: 200,
+          json: {
+            report: { ok: false, status: "failed-policy" },
+            receipt: { status: "failed-policy" },
+          },
+        };
+      }
+      if (String(req.headers.authorization) === "Bearer nsp_inconclusive") {
+        return {
+          status: 200,
+          json: {
+            report: { ok: false, status: "inconclusive", inconclusiveReason: "Encrypted zip." },
+            receipt: { status: "inconclusive" },
+          },
+        };
+      }
+      if (String(req.headers.authorization) === "Bearer nsp_passed") {
+        return {
+          status: 200,
+          json: {
+            report: { ok: true, status: "passed" },
+            receipt: { status: "passed" },
+          },
+        };
+      }
+      return { status: 500, json: { error: "boom" } };
+    });
+    try {
+      const failed = await runScanPython(
+        {
+          NOSPOILERS_API_URL: server.origin,
+          NOSPOILERS_API_TOKEN: "nsp_failed",
+          NOSPOILERS_PACK: "package.tgz",
+        },
+        dir,
+      );
+      expect(failed.code).toBe(1);
+      expect(failed.stdout).toContain("failed-policy");
+
+      const inconclusive = await runScanPython(
+        {
+          NOSPOILERS_API_URL: server.origin,
+          NOSPOILERS_API_TOKEN: "nsp_inconclusive",
+          NOSPOILERS_PACK: "package.tgz",
+        },
+        dir,
+      );
+      expect(inconclusive.code).toBe(2);
+      expect(inconclusive.stderr).toContain("Encrypted zip.");
+
+      const passed = await runScanPython(
+        {
+          NOSPOILERS_API_URL: server.origin,
+          NOSPOILERS_API_TOKEN: "nsp_passed",
+          NOSPOILERS_PACK: "package.tgz",
+        },
+        dir,
+      );
+      expect(passed.code).toBe(0);
+      expect(passed.stdout).toContain("passed");
+
+      const boom = await runScanPython(
+        {
+          NOSPOILERS_API_URL: server.origin,
+          NOSPOILERS_API_TOKEN: "nsp_boom",
+          NOSPOILERS_PACK: "package.tgz",
+        },
+        dir,
+      );
+      expect(boom.code).toBe(2);
+      expect(boom.stderr).toContain("Hosted scan failed (500)");
+    } finally {
+      await server.close();
+    }
+
+    expect(captured.some((row) => row.url === "/api/v1/scan")).toBe(true);
+    expect(captured.some((row) => row.filename === "package.tgz" && row.body === "pack-bytes")).toBe(
+      true,
+    );
+  });
 });
 
 describe("setup workflow and PR APIs", () => {
@@ -228,10 +418,18 @@ describe("setup workflow and PR APIs", () => {
       const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
       const owned = await app.request("/api/repos/99/setup-workflow", { headers: { cookie } });
       expect(owned.status).toBe(200);
-      const body = (await owned.json()) as { workflow: string; path: string };
-      expect(body.path).toBe(".github/workflows/nospoilers.yml");
+      const body = (await owned.json()) as {
+        workflow: string;
+        path: string;
+        files: { path: string; content: string }[];
+      };
+      expect(body.path).toBe(SETUP_WORKFLOW_PATH);
       expect(body.workflow).toContain("never merged automatically");
       expect(body.workflow).toContain("packed artifact");
+      expect(body.workflow).toContain("uses: ./.github/actions/nospoilers");
+      expect(body.workflow).not.toContain("EmotiveImpact/nospoilers@main");
+      expect(body.files.map((file) => file.path)).toEqual([SETUP_WORKFLOW_PATH, SETUP_ACTION_PATH]);
+      expect(body.files[1]?.content).toContain("/api/v1/scan");
     } finally {
       await sql.close();
     }
@@ -305,7 +503,7 @@ describe("setup workflow and PR APIs", () => {
     }
   });
 
-  it("returns 409 with copy-paste YAML when GitHub write is denied", async () => {
+  it("returns 409 with copy-paste files when GitHub write is denied", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
       await migrate(sql);
@@ -354,11 +552,17 @@ describe("setup workflow and PR APIs", () => {
         skipped: string;
         reason: string;
         workflow: string;
+        files: { path: string; content: string }[];
       };
       expect(body.skipped).toBe("permission");
       expect(body.reason).toContain("Do not grant Administration");
       expect(body.workflow).toContain("never merged automatically");
       expect(body.workflow).toContain("package.tgz");
+      expect(body.workflow).not.toContain("EmotiveImpact/nospoilers@main");
+      expect(body.files.map((file) => file.path)).toEqual([SETUP_WORKFLOW_PATH, SETUP_ACTION_PATH]);
+      expect(body.files.some((file) => file.content.includes("uses: ./.github/actions/nospoilers"))).toBe(
+        true,
+      );
     } finally {
       await sql.close();
     }
@@ -434,6 +638,90 @@ describe("setup workflow and PR APIs", () => {
       });
       expect(unpaid.status).toBe(402);
     } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("vendored hosted-scan Action against POST /api/v1/scan", () => {
+  it("maps real receipts to CLI exit 0/1/2 without executing the pack", async () => {
+    const sql = await openSql("pglite://:memory:");
+    let closeServer: (() => Promise<void>) | undefined;
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: mockGithub(),
+      });
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const minted = await app.request("/api/scan-tokens", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ name: "CI", installationId: 7 }),
+      });
+      expect(minted.status).toBe(201);
+      const mintedBody = (await minted.json()) as { token: string };
+      const server = createServer(getRequestListener(app.fetch));
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve());
+      });
+      const addr = server.address();
+      if (!addr || typeof addr === "string") throw new Error("server had no port");
+      const origin = `http://127.0.0.1:${addr.port}`;
+      closeServer = () =>
+        new Promise((resolve, reject) => {
+          server.close((error) => (error ? reject(error) : resolve()));
+        });
+
+      const dirty = await runScanPython(
+        {
+          NOSPOILERS_API_URL: origin,
+          NOSPOILERS_API_TOKEN: mintedBody.token,
+          NOSPOILERS_PACK: "fixtures/sourcemap.tgz",
+        },
+        root,
+      );
+      expect(dirty.code).toBe(1);
+
+      const clean = await runScanPython(
+        {
+          NOSPOILERS_API_URL: origin,
+          NOSPOILERS_API_TOKEN: mintedBody.token,
+          NOSPOILERS_PACK: "fixtures/clean.tgz",
+        },
+        root,
+      );
+      expect(clean.code).toBe(0);
+
+      const inconclusive = await runScanPython(
+        {
+          NOSPOILERS_API_URL: origin,
+          NOSPOILERS_API_TOKEN: mintedBody.token,
+          NOSPOILERS_PACK: "fixtures/inconclusive.encrypted.zip",
+        },
+        root,
+      );
+      expect(inconclusive.code).toBe(2);
+      expect(inconclusive.stderr.toLowerCase()).not.toContain("grant administration");
+    } finally {
+      await closeServer?.();
       await sql.close();
     }
   });

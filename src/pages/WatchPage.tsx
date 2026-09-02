@@ -586,12 +586,12 @@ function defaultExpiryDate(): string {
   return when.toISOString().slice(0, 10);
 }
 
+type RemediationFileView = { path: string; content: string };
+
 type SetupPrView =
   | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
-  | { status: "copy"; reason: string; workflow: string }
+  | { status: "copy"; reason: string; files: RemediationFileView[] }
   | { status: "error"; message: string };
-
-type RemediationFileView = { path: string; content: string };
 
 type RemediationPrView =
   | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
@@ -622,14 +622,20 @@ function SetupPrResult({ view }: { view: SetupPrView }) {
   }
   if (view.status === "copy") {
     return (
-      <div className="mt-3">
+      <div className="mt-3 space-y-4">
         <p className="text-sm leading-relaxed text-mute">{view.reason}</p>
         <p className="mt-2 text-xs leading-relaxed text-dim">
-          Paste this workflow yourself. It scans packed artifacts only and is never merged automatically.
+          Paste these files yourself. They scan packed artifacts only, POST bytes to hosted scan,
+          and are never merged automatically.
         </p>
-        <pre className="mt-3 max-h-64 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
-          {view.workflow}
-        </pre>
+        {view.files.map((file) => (
+          <div key={file.path}>
+            <p className="font-mono text-[11px] text-snow">{file.path}</p>
+            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
+              {file.content}
+            </pre>
+          </div>
+        ))}
       </div>
     );
   }
@@ -1561,7 +1567,11 @@ export function WatchPage({ search }: { search: string }) {
             Setup PR adds packed-artifact CI that scans each{" "}
             <code className="text-snow">package.tgz</code> or{" "}
             <code className="text-snow">dist/</code> pack that exists, not only a hardcoded
-            package.tgz. If none exist, that workflow fails closed. Remediation PR adds ignore
+            package.tgz. The workflow vendors{" "}
+            <code className="text-snow">.github/actions/nospoilers</code> and POSTs packed bytes
+            to hosted scan. It needs a Watch token plus repository variable{" "}
+            <code className="text-snow">NOSPOILERS_API_URL</code>. If none exist, that workflow
+            fails closed. Remediation PR adds ignore
             rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
             workflow if it is missing. Both PRs need Contents write and Pull requests write. They
             are reviewable and never merged. They do not need Administration, and they do not make
@@ -1660,18 +1670,28 @@ export function WatchPage({ search }: { search: string }) {
                               error?: string;
                               reason?: string;
                               workflow?: string;
+                              files?: { path: string; content: string }[];
                               htmlUrl?: string;
                               number?: number;
                               existing?: boolean;
                               skipped?: string;
                             };
-                            if (response.status === 409 && body.workflow) {
+                            if (response.status === 409 && (body.files?.length || body.workflow)) {
+                              const files =
+                                body.files && body.files.length > 0
+                                  ? body.files
+                                  : [
+                                      {
+                                        path: ".github/workflows/nospoilers.yml",
+                                        content: body.workflow ?? "",
+                                      },
+                                    ];
                               setSetupByRepo((current) => ({
                                 ...current,
                                 [repo.id]: {
                                   status: "copy",
                                   reason: body.reason ?? "GitHub App cannot open a pull request.",
-                                  workflow: body.workflow ?? "",
+                                  files,
                                 },
                               }));
                               return;
@@ -3963,7 +3983,10 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
           <code className="text-snow">/api/v1/scan</code>. We hash the secret, show it once, and
-          delete the bytes after the scan. Local CI can keep using the Action without a token.
+          delete the bytes after the scan. Generated Setup CI vendors a composite Action in your
+          repo and needs this token plus repository variable{" "}
+          <code className="text-snow">NOSPOILERS_API_URL</code>. This product repository still
+          scans locally with <code className="text-snow">uses: ./</code>.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>

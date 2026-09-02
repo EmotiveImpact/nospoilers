@@ -200,13 +200,21 @@ allow:
 
 ## GitHub Action
 
+This repository dogfoods the local Action (`uses: ./` in `.github/workflows/ci.yml`). Customer
+repositories cannot `uses:` this private repo. Watch Setup PR vendors
+`.github/actions/nospoilers`, which POSTs packed bytes to hosted `/api/v1/scan`:
+
 ```yaml
-- uses: EmotiveImpact/nospoilers@main
+- uses: ./.github/actions/nospoilers
   with:
     path: ./package.tgz
-    sarif: nospoilers.sarif
-    policy: .nospoilers.yml
+    api-url: ${{ vars.NOSPOILERS_API_URL }}
+    api-token: ${{ secrets.NOSPOILERS_API_TOKEN }}
 ```
+
+Mint the token on Watch. Set `NOSPOILERS_API_URL` to an HTTPS origin GitHub-hosted runners can
+reach. Exit codes: `0` passed, `1` failed-policy, `2` error or inconclusive. The Action does not
+execute the pack.
 
 On **push**, the hosted app only cheap-checks paths like `*.map` and `.env`. It does **not** unpack the git tree. Full unpack is for **release assets** (and the dashboard **Scan latest release** button).
 

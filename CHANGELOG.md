@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Customer Setup PR vendors `.github/actions/nospoilers` and POSTs packed bytes to hosted
+  `/api/v1/scan` instead of `uses:` on this private product repository. Missing origin/token is
+  CLI exit 2. Failed-policy is 1. Inconclusive or HTTP error is 2. 409 copy-paste returns both
+  files. This repo still dogfoods `uses: ./`. Not a Pricing change.
 - Inconclusive encryption fixtures (`inconclusive.encrypted.zip`, `inconclusive.crx`,
   `inconclusive.encrypted.oci.tar`) are first-class Scan examples. CLI exit 2 is not a
   passing receipt. Product CI classifies `inconclusive.*` as exit 2. This repo’s GitHub
