@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Disclosure Desk expired-evidence sweep: hourly poller and owner desk
+  reads zero expired attachment ciphertext and expired operator notes.
+  Attachment rows stay append-only except that one post-expiry update.
+  DELETE stays rejected. Download of an expired attachment is still 410.
+  Customer sessions stay 401. Nothing is mailed. Not a customer product
+  and not a Pricing change.
+
 - Package Identity namespace watchlists: trial and Team install admins
   watch the npm scope that matches this GitHub login (`POST /api/namespaces`).
   Public registry search only (cap 20 names). First check is a baseline.

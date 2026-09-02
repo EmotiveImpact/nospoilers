@@ -2816,10 +2816,10 @@ export function createStore(
     },
 
     readDisclosureNotes(row: DisclosureCaseRow): { notes: string | null; notesExpired: boolean } {
-      if (!row.notes_ciphertext) return { notes: null, notesExpired: false };
       if (row.notes_expires_at && Date.parse(row.notes_expires_at) <= Date.now()) {
         return { notes: null, notesExpired: true };
       }
+      if (!row.notes_ciphertext) return { notes: null, notesExpired: false };
       if (!tokenSecret) return { notes: null, notesExpired: false };
       try {
         return { notes: decryptSecret(row.notes_ciphertext, tokenSecret), notesExpired: false };
@@ -3402,7 +3402,50 @@ export function createStore(
           status: 400,
         });
       }
+      if (!row.ciphertext) {
+        throw Object.assign(new Error("Expired attachment ciphertext was deleted."), {
+          status: 410,
+        });
+      }
       return Buffer.from(decryptSecret(row.ciphertext, tokenSecret), "base64");
+    },
+
+    async sweepExpiredDisclosureEvidence(): Promise<{ attachments: number; notes: number }> {
+      return sql.transaction(async (tx) => {
+        const attachments = await tx.query<{
+          id: unknown;
+          case_id: unknown;
+          filename: string;
+        }>(
+          `UPDATE disclosure_attachments
+           SET ciphertext = ''
+           WHERE expires_at <= now() AND ciphertext <> ''
+           RETURNING id, case_id, filename`,
+        );
+        const notes = await tx.query<{ id: unknown }>(
+          `UPDATE disclosure_cases
+           SET notes_ciphertext = NULL
+           WHERE notes_expires_at IS NOT NULL
+             AND notes_expires_at <= now()
+             AND notes_ciphertext IS NOT NULL
+           RETURNING id`,
+        );
+        for (const row of attachments.rows) {
+          await tx.query(
+            `INSERT INTO disclosure_events (case_id, action, actor, summary)
+             VALUES ($1, 'attachment.expire', 'system', $2)`,
+            [num(row.case_id), `Deleted expired attachment ciphertext for ${row.filename}.`],
+          );
+        }
+        for (const row of notes.rows) {
+          await tx.query(
+            `INSERT INTO disclosure_events (case_id, action, actor, summary)
+             VALUES ($1, 'notes.expire', 'system', $2)`,
+            [num(row.id), "Deleted expired operator notes ciphertext."],
+          );
+        }
+        return { attachments: attachments.rows.length, notes: notes.rows.length };
+      });
     },
 
     async assignDisclosureCase(input: {

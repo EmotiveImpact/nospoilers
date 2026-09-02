@@ -315,10 +315,29 @@ CREATE TABLE IF NOT EXISTS disclosure_attachments (
 
 CREATE INDEX IF NOT EXISTS disclosure_attachments_case_idx
   ON disclosure_attachments (case_id, id ASC);
+CREATE INDEX IF NOT EXISTS disclosure_attachments_expiry_idx
+  ON disclosure_attachments (expires_at)
+  WHERE ciphertext <> '';
 
 CREATE OR REPLACE FUNCTION reject_disclosure_attachment_mutation()
 RETURNS trigger AS $$
 BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.ciphertext = ''
+      AND OLD.ciphertext <> ''
+      AND OLD.expires_at <= now()
+      AND NEW.id IS NOT DISTINCT FROM OLD.id
+      AND NEW.case_id IS NOT DISTINCT FROM OLD.case_id
+      AND NEW.filename IS NOT DISTINCT FROM OLD.filename
+      AND NEW.media_type IS NOT DISTINCT FROM OLD.media_type
+      AND NEW.byte_length IS NOT DISTINCT FROM OLD.byte_length
+      AND NEW.expires_at IS NOT DISTINCT FROM OLD.expires_at
+      AND NEW.created_by IS NOT DISTINCT FROM OLD.created_by
+      AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+    THEN
+      RETURN NEW;
+    END IF;
+  END IF;
   RAISE EXCEPTION 'disclosure_attachments are append-only';
 END;
 $$ LANGUAGE plpgsql;

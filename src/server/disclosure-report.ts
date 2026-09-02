@@ -22,7 +22,7 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
   const attachments = report.attachments
     .map(
       (row) =>
-        `<li>${escapeHtml(row.filename)} · ${escapeHtml(row.mediaType)} · ${row.byteLength} bytes${row.expired ? " · expired" : ""}</li>`,
+        `<li>${escapeHtml(row.filename)} · ${escapeHtml(row.mediaType)} · ${row.byteLength} bytes${row.expired ? " · expired" : ""}${row.ciphertextDeleted ? " · ciphertext deleted" : ""}</li>`,
     )
     .join("");
   const events = report.events

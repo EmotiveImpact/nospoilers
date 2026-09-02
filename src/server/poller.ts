@@ -6,6 +6,7 @@ import { runWebOriginPoll } from "./web-watch.ts";
 import { runMapCustodyPoll } from "./map-watch.ts";
 import { runProspectAcquisitionPoll } from "./prospect-feed.ts";
 import { runNamespaceWatchPoll } from "./namespace-watch.ts";
+import { sweepExpiredDisclosureEvidence } from "./disclosure.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
@@ -65,6 +66,10 @@ export function startPoller(
         discovery: deps.prospectDiscovery,
         staleAfterMs: deps.staleAfterMs,
       });
+      const expired = await sweepExpiredDisclosureEvidence(deps.store);
+      if (expired.attachments + expired.notes > 0) {
+        logJson("info", "disclosure.evidence_expired", expired);
+      }
       if (
         npm.queued +
           namespaces.queued +

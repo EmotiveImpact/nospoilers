@@ -262,6 +262,7 @@ export type DisclosureAttachmentView = {
   mediaType: string;
   byteLength: number;
   expired: boolean;
+  ciphertextDeleted: boolean;
   expiresAt: string;
   createdBy: string;
   createdAt: string;
@@ -853,10 +854,17 @@ export function toAttachmentView(row: DisclosureAttachmentRow): DisclosureAttach
     mediaType: row.media_type,
     byteLength: row.byte_length,
     expired,
+    ciphertextDeleted: row.ciphertext.length === 0,
     expiresAt,
     createdBy: row.created_by,
     createdAt: row.created_at,
   };
+}
+
+export async function sweepExpiredDisclosureEvidence(
+  store: Store,
+): Promise<{ attachments: number; notes: number }> {
+  return store.sweepExpiredDisclosureEvidence();
 }
 
 export function disclosureSla(row: DisclosureCaseRow): DisclosureSla {
@@ -1607,7 +1615,7 @@ export async function readDisclosureAttachment(
   if (!current) throw new DisclosureError("No disclosure case yet.", 404);
   const row = await store.getDisclosureAttachment(input.attachmentId);
   if (!row || row.case_id !== current.id) throw new DisclosureError("Unknown attachment.", 404);
-  if (attachmentExpired(row.expires_at)) {
+  if (attachmentExpired(row.expires_at) || !row.ciphertext) {
     throw new DisclosureError(DISCLOSURE_ATTACHMENT_EXPIRED_ERROR, 410);
   }
   const bytes = store.decryptDisclosureAttachment(row);

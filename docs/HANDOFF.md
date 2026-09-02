@@ -81,7 +81,9 @@ Read in this order:
   `047_protected_namespaces` adds `protected_namespaces` and append-only
   `namespace_name_snapshots`, and extends `audit_events.action` with
   `namespace.protect` and `namespace.unprotect`.
-  Next unused id is `048_*`.
+  `048_disclosure_evidence_expiry` lets the scheduled/lazy sweep zero
+  expired attachment ciphertext (row and metadata stay). Notes ciphertext
+  is nulled after `notes_expires_at`. Next unused id is `049_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -497,7 +499,9 @@ simulated acknowledgement, internal deadline, conversion attribution,
 credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
 `contacted`/`fixed` are gated on the API. Do-not-contact always blocks
 `contacted`. `contacted` also requires an approved review. Vendor replies and
-encrypted expiring attachments are on the case. Redacted JSON/HTML/PDF reports
+encrypted expiring attachments are on the case. Expired attachment ciphertext
+is zeroed on desk read and the hourly poller; the row stays. Expired notes
+ciphertext is nulled. Redacted JSON/HTML/PDF reports
 omit notes and attachment bytes. A missed deadline creates an internal reminder
 only. Nothing is sent. Client projects, billing, and aggregate research stay out.
 Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive

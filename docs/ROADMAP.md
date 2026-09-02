@@ -198,7 +198,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   workflow (verification, duplicates, templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before
   `contacted`, redacted reports, draft preview, simulated acknowledgement,
-  fix-version rescan; nothing sent), and
+  fix-version rescan; expired attachment and notes ciphertext is zeroed on
+  schedule; nothing sent), and
   owner-only notifications for verified critical findings and missed deadlines
   (never mailed).
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.

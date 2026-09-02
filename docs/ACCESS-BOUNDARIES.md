@@ -335,7 +335,8 @@ Internal staff running acquisition and disclosure work.
   warning, encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
-  (text/PDF/image only), assignment, review approval, redacted JSON/HTML/PDF
+  (text/PDF/image only; expired ciphertext is zeroed on desk read and the
+  hourly poller), assignment, review approval, redacted JSON/HTML/PDF
   reports, internal deadline flag, conversion attribution,
   credit/CVE/outcome notes, and a fix-version rescan. `contacted` requires a verified
   case, an approved review, and is blocked when a do-not-contact entry matches
@@ -444,6 +445,10 @@ sessions stay 401 on template and do-not-contact routes.
 are owner-only, archives are rejected, replies and attachments are append-only,
 `contacted` waits for review approval, and JSON/HTML/PDF reports omit operator notes,
 attachment bytes, and finding values.
+`tests/disclosure-expiry.test.ts` proves expired attachment ciphertext is zeroed
+and expired notes ciphertext is nulled, the row stays, unexpired ciphertext
+cannot be cleared, DELETE stays rejected, remigrate keeps the empty ciphertext,
+download is 410, customer sessions stay 401, and no job is enqueued.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
 cannot open Disclosure Desk, template, do-not-contact, or notification routes,

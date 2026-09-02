@@ -95,6 +95,7 @@ import {
   recordVendorReply,
   rescanDisclosureCase,
   reviewDisclosureCase,
+  sweepExpiredDisclosureEvidence,
   toDisclosureSummary,
   toDncView,
   toTemplateView,
@@ -737,6 +738,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/api/internal/prospects", async (c) => {
     await remindMissedDisclosureDeadlines(deps.store);
+    await sweepExpiredDisclosureEvidence(deps.store);
     const limit = Number(c.req.query("limit") ?? 100);
     const [prospects, stats, cases, notices, unread] = await Promise.all([
       deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
@@ -772,6 +774,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/api/internal/notifications", async (c) => {
     await remindMissedDisclosureDeadlines(deps.store);
+    await sweepExpiredDisclosureEvidence(deps.store);
     const [items, unread] = await Promise.all([
       deps.store.listInternalNotifications(50),
       deps.store.unreadInternalNotificationCount(),
@@ -945,6 +948,7 @@ export function createApp(deps: AppDeps): Hono {
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
     try {
+      await sweepExpiredDisclosureEvidence(deps.store);
       return c.json({ case: await loadDisclosureCase(deps.store, id) });
     } catch (error) {
       return disclosureFailed(c, error);

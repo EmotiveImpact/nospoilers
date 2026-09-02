@@ -805,6 +805,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDestinationDeleteKeepsDeliveries(sql);
   await migrateIdentityEvidence(sql);
   await migrateProtectedNamespaces(sql);
+  await migrateDisclosureEvidenceExpiry(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1166,9 +1167,28 @@ async function migrateDisclosureWorkflow(sql: SqlClient): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS disclosure_attachments_case_idx
       ON disclosure_attachments (case_id, id ASC);
+    CREATE INDEX IF NOT EXISTS disclosure_attachments_expiry_idx
+      ON disclosure_attachments (expires_at)
+      WHERE ciphertext <> '';
     CREATE OR REPLACE FUNCTION reject_disclosure_attachment_mutation()
     RETURNS trigger AS $$
     BEGIN
+      IF TG_OP = 'UPDATE' THEN
+        IF NEW.ciphertext = ''
+          AND OLD.ciphertext <> ''
+          AND OLD.expires_at <= now()
+          AND NEW.id IS NOT DISTINCT FROM OLD.id
+          AND NEW.case_id IS NOT DISTINCT FROM OLD.case_id
+          AND NEW.filename IS NOT DISTINCT FROM OLD.filename
+          AND NEW.media_type IS NOT DISTINCT FROM OLD.media_type
+          AND NEW.byte_length IS NOT DISTINCT FROM OLD.byte_length
+          AND NEW.expires_at IS NOT DISTINCT FROM OLD.expires_at
+          AND NEW.created_by IS NOT DISTINCT FROM OLD.created_by
+          AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+        THEN
+          RETURN NEW;
+        END IF;
+      END IF;
       RAISE EXCEPTION 'disclosure_attachments are append-only';
     END;
     $$ LANGUAGE plpgsql;
@@ -1390,6 +1410,39 @@ async function migrateProtectedNamespaces(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "047_protected_namespaces",
+  ]);
+}
+
+async function migrateDisclosureEvidenceExpiry(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE OR REPLACE FUNCTION reject_disclosure_attachment_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      IF TG_OP = 'UPDATE' THEN
+        IF NEW.ciphertext = ''
+          AND OLD.ciphertext <> ''
+          AND OLD.expires_at <= now()
+          AND NEW.id IS NOT DISTINCT FROM OLD.id
+          AND NEW.case_id IS NOT DISTINCT FROM OLD.case_id
+          AND NEW.filename IS NOT DISTINCT FROM OLD.filename
+          AND NEW.media_type IS NOT DISTINCT FROM OLD.media_type
+          AND NEW.byte_length IS NOT DISTINCT FROM OLD.byte_length
+          AND NEW.expires_at IS NOT DISTINCT FROM OLD.expires_at
+          AND NEW.created_by IS NOT DISTINCT FROM OLD.created_by
+          AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+        THEN
+          RETURN NEW;
+        END IF;
+      END IF;
+      RAISE EXCEPTION 'disclosure_attachments are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    CREATE INDEX IF NOT EXISTS disclosure_attachments_expiry_idx
+      ON disclosure_attachments (expires_at)
+      WHERE ciphertext <> '';
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "048_disclosure_evidence_expiry",
   ]);
 }
 
