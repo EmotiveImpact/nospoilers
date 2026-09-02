@@ -11,8 +11,16 @@ import type { Store } from "./store.ts";
 export const MAX_DELIVERY_LOCATIONS_PER_REVISION = 5;
 export const MAX_DELIVERY_LOCATIONS_PER_INSTALL = 20;
 export const MAX_DELIVERY_REDIRECTS = 3;
+export const MAX_DELIVERY_URL_CHARS = 4000;
 export const DELIVERY_FETCH_TIMEOUT_MS = 30_000;
 export const MAX_DELIVERY_BYTES = 80 * 1024 * 1024;
+
+const GITHUB_DOWNLOAD_HOSTS = new Set(["github.com", "www.github.com"]);
+const GITHUB_ASSET_HOSTS = new Set([
+  "objects.githubusercontent.com",
+  "release-assets.githubusercontent.com",
+  "github-releases.githubusercontent.com",
+]);
 
 const HOST_RE =
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
@@ -57,7 +65,7 @@ export class DeliveryVerifyError extends Error {
 
 export function parseDeliveryUrl(raw: string): DeliveryUrl | null {
   const trimmed = raw.trim();
-  if (!trimmed || trimmed.length > 2000) return null;
+  if (!trimmed || trimmed.length > MAX_DELIVERY_URL_CHARS) return null;
   if (trimmed.includes("\\")) return null;
   let url: URL;
   try {
@@ -91,6 +99,14 @@ export function parseDeliveryUrl(raw: string): DeliveryUrl | null {
 
 export function redactDeliveryUrl(url: string): string {
   return parseDeliveryUrl(url)?.redacted ?? "https://redacted.invalid/";
+}
+
+export function isExpectedGithubAssetRedirect(fromHost: string, toHost: string): boolean {
+  const from = fromHost.trim().toLowerCase();
+  const to = toHost.trim().toLowerCase();
+  if (!from || !to) return false;
+  if (from === to) return true;
+  return GITHUB_DOWNLOAD_HOSTS.has(from) && GITHUB_ASSET_HOSTS.has(to);
 }
 
 export function parseDeliveryMediaType(raw: string | undefined | null): string | null {
@@ -190,7 +206,7 @@ export async function verifyDeliveryUrl(input: {
       if (!next) {
         return emptyResult("blocked", "Redirect target host is not allowed.", host, redirects + 1);
       }
-      if (next.host !== host) {
+      if (next.host !== host && !isExpectedGithubAssetRedirect(host, next.host)) {
         return emptyResult(
           "redirect",
           `Delivery URL redirected from ${host} to ${next.host}. The other host was not fetched.`,

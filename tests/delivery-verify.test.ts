@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import {
+  isExpectedGithubAssetRedirect,
   parseDeliveryUrl,
   redactDeliveryUrl,
   runDeliveryVerifyJob,
@@ -111,6 +112,64 @@ describe("streaming verify", () => {
     expect(redirected.status).toBe("redirect");
     expect(redirected.finalHost).toBe("evil.example.net");
     expect(fetched).toEqual(["https://cdn.example.com/app.tgz"]);
+  });
+
+  it("follows a GitHub Release download hop to the asset CDN and still blocks other hosts", async () => {
+    expect(isExpectedGithubAssetRedirect("github.com", "release-assets.githubusercontent.com")).toBe(
+      true,
+    );
+    expect(isExpectedGithubAssetRedirect("github.com", "objects.githubusercontent.com")).toBe(true);
+    expect(isExpectedGithubAssetRedirect("cdn.example.com", "release-assets.githubusercontent.com")).toBe(
+      false,
+    );
+    expect(isExpectedGithubAssetRedirect("github.com", "evil.example.net")).toBe(false);
+
+    const bytes = await readFile(CLEAN);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const fetched: string[] = [];
+    const hop = await verifyDeliveryUrl({
+      url: "https://github.com/octo/app/releases/download/v1/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async (input) => {
+        const url = String(input);
+        fetched.push(url);
+        if (url.startsWith("https://github.com/")) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              location:
+                "https://release-assets.githubusercontent.com/github-production-release-asset/1/app.tgz?token=secret",
+            },
+          });
+        }
+        return new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/octet-stream" },
+        });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(hop.status).toBe("matched");
+    expect(hop.observedSha256).toBe(sha256);
+    expect(hop.redirectCount).toBe(1);
+    expect(hop.finalHost).toBe("release-assets.githubusercontent.com");
+    expect(fetched).toEqual([
+      "https://github.com/octo/app/releases/download/v1/app.tgz",
+      "https://release-assets.githubusercontent.com/github-production-release-asset/1/app.tgz?token=secret",
+    ]);
+
+    const offGithub = await verifyDeliveryUrl({
+      url: "https://cdn.example.com/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://release-assets.githubusercontent.com/app.tgz" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(offGithub.status).toBe("redirect");
+    expect(offGithub.finalHost).toBe("release-assets.githubusercontent.com");
   });
 });
 

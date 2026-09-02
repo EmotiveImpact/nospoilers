@@ -5,9 +5,14 @@
 - Watch Releases can attach an HTTPS delivery URL to a sealed revision and verify it
   now. The worker stream-hashes the bytes against the stored SHA-256, then deletes
   the download. Mismatch, disappearance, unexpected cross-host redirect, and
-  content-type change are Watch facts, not compromise claims. Query strings stay off
-  Watch, alerts, and audit. This is not the hourly poller and not scheduled CDN
-  verification. Unpaid 402. Members 403. Another tenant 404. Not a Pricing change.
+  content-type change are Watch facts, not compromise claims. A GitHub Release
+  download hop to `release-assets.githubusercontent.com` /
+  `objects.githubusercontent.com` is followed after a second DNS check; other
+  hosts are not. Live-matched the throwaway `phase1-fixture` `sourcemap.tgz`
+  (`c74219d2…`) after one hop to `release-assets.githubusercontent.com`. Query
+  strings stay off Watch, alerts, and audit. This is not the hourly poller and
+  not scheduled CDN verification. Unpaid 402. Members 403. Another tenant 404.
+  Not a Pricing change.
 
 - When Contents write commits setup or remediation files but Pull requests write is
   missing, the 409 names the branch and committed paths instead of pretending nothing

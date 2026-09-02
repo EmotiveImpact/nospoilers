@@ -57,7 +57,9 @@ Read in this order:
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Install admins can attach HTTPS delivery
   URLs to a sealed revision and verify them now (`delivery_verify` light job, enqueue wakes
-  the worker). The worker stream-hashes and deletes the download. This is not added to the
+  the worker). The worker stream-hashes and deletes the download. A GitHub Release
+  download URL may hop once to GitHub’s asset CDN after a second public-DNS check;
+  other cross-host redirects are not fetched. This is not added to the
   hourly poller. Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
@@ -294,7 +296,9 @@ Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing packa
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL,
-on-demand delivery URL verify against the sealed digest; not scheduled CDN).
+on-demand delivery URL verify against the sealed digest; GitHub Release
+download hops to the asset CDN; live-matched throwaway phase1-fixture
+sourcemap.tgz; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).

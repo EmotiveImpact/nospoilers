@@ -228,7 +228,8 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   never deleted.
 - Attach an HTTPS delivery URL to a sealed release and verify it now. The worker
   stream-hashes the bytes, compares them to the sealed digest, and deletes the download.
-  Cross-host redirects are not fetched. Query strings are stored only to fetch and are
+  Cross-host redirects are not fetched, except `github.com` to GitHub’s release-asset
+  CDN hosts (DNS is rechecked). Query strings are stored only to fetch and are
   redacted on Watch, alerts, and audit. Unpaid returns 402. Members return 403. Another
   tenant is 404. This is not the hourly poller and not scheduled CDN verification.
 
@@ -375,8 +376,9 @@ SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt
 a sealed release even after coverage ends (another tenant is 404).
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
-storing bytes, alerts on mismatch and disappearance, does not follow a cross-host
-redirect, rejects private DNS, and keeps the list after coverage ends. `tests/package-identity.test.ts`
+storing bytes, alerts on mismatch and disappearance, follows only the GitHub
+Release asset CDN hop, does not follow any other cross-host redirect, rejects
+private DNS, and keeps the list after coverage ends. `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape/publisher alerts never store emails, OIDC config ids, or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid
