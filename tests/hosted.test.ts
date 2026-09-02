@@ -1379,6 +1379,19 @@ describe("scan latest release", () => {
       );
       expect(receipts[0]?.status).toBe("failed-policy");
       expect(receipts[0]?.coordinate).toMatch(/sourcemap\.tgz/);
+      const { rows: locations } = await store.sql.query<{ url: string; created_by_login: string }>(
+        "SELECT url, created_by_login FROM release_delivery_locations",
+      );
+      expect(locations).toEqual([
+        {
+          url: "https://github.com/octo/throwaway/releases/download/phase1-fixture/sourcemap.tgz",
+          created_by_login: "nospoilers",
+        },
+      ]);
+      const { rows: verifyJobs } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'delivery_verify'",
+      );
+      expect(Number(verifyJobs[0]?.n)).toBe(0);
     });
   });
 

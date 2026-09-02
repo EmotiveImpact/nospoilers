@@ -5,8 +5,11 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import {
+  attachCanonicalDeliveryUrl,
   isExpectedGithubAssetRedirect,
+  isSealedArtifactDigest,
   parseDeliveryUrl,
+  publicGithubReleaseDownloadUrl,
   redactDeliveryUrl,
   runDeliveryVerifyJob,
   verifyDeliveryUrl,
@@ -15,6 +18,9 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
+import { createWorker } from "../src/server/worker.ts";
+import { scan } from "../src/scanner/index.ts";
+import type { NpmPort } from "../src/server/npm.ts";
 
 const CLEAN = path.resolve("fixtures/clean.tgz");
 const DIRTY = path.resolve("fixtures/sourcemap.tgz");
@@ -519,6 +525,204 @@ describe("hosted delivery verify", () => {
         releases: { locations: { url: string }[] }[];
       };
       expect(unpaidBody.releases[0]?.locations[0]?.url).toBe("https://cdn.example.com/app.tgz");
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("canonical delivery URLs", () => {
+  it("builds a public GitHub Release download URL and rejects junk", () => {
+    expect(
+      publicGithubReleaseDownloadUrl({
+        owner: "octo",
+        repo: "throwaway",
+        tag: "phase1-fixture",
+        name: "sourcemap.tgz",
+      }),
+    ).toBe("https://github.com/octo/throwaway/releases/download/phase1-fixture/sourcemap.tgz");
+    expect(
+      publicGithubReleaseDownloadUrl({
+        owner: "octo/evil",
+        repo: "throwaway",
+        tag: "v1",
+        name: "app.tgz",
+      }),
+    ).toBeNull();
+    expect(
+      publicGithubReleaseDownloadUrl({
+        owner: "octo",
+        repo: "throwaway",
+        tag: "../v1",
+        name: "app.tgz",
+      }),
+    ).toBeNull();
+    expect(isSealedArtifactDigest("c".repeat(64))).toBe(true);
+    expect(isSealedArtifactDigest("")).toBe(false);
+    expect(isSealedArtifactDigest("not-a-digest")).toBe(false);
+  });
+
+  it("attaches public GitHub and npm URLs on seal and skips private ones without a verify job", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: false,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      await store.upsertRepo({
+        id: 100,
+        installationId: 7,
+        owner: "octo",
+        name: "private-app",
+        fullName: "octo/private-app",
+        private: true,
+        htmlUrl: "https://github.com/octo/private-app",
+      });
+      const bytes = await readFile(DIRTY);
+      const tarballUrl = "https://registry.npmjs.org/demo-pack/-/demo-pack-1.0.0.tgz";
+      const privateTarball = "https://npm.pkg.github.com/download/@acme/pack/1.0.0/deadbeef";
+      const npm: NpmPort = {
+        getPack: async () => {
+          throw new Error("unused");
+        },
+        downloadTarball: async () => bytes,
+      };
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: {
+          installationId: 7,
+          releaseId: 55,
+          tag: "phase1-fixture",
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: {
+          installationId: 7,
+          releaseId: 56,
+          tag: "v1",
+          repo: {
+            id: 100,
+            owner: "octo",
+            name: "private-app",
+            fullName: "octo/private-app",
+            private: true,
+            htmlUrl: "https://github.com/octo/private-app",
+          },
+        },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "npm_scan",
+        payload: {
+          installationId: 7,
+          packageName: "demo-pack",
+          version: "1.0.0",
+          tarballUrl,
+          registryOrigin: "https://registry.npmjs.org",
+        },
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "npm_scan",
+        payload: {
+          installationId: 7,
+          packageName: "@acme/pack",
+          version: "1.0.0",
+          tarballUrl: privateTarball,
+          registryOrigin: "https://npm.pkg.github.com",
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: {
+          ...unusedGithub(),
+          listReleaseAssets: async () => [
+            {
+              id: 1,
+              name: "sourcemap.tgz",
+              size: bytes.length,
+              url: "https://api.github.com/repos/octo/app/releases/assets/1",
+            },
+          ],
+          downloadAsset: async () => bytes,
+          getRefSha: async () => null,
+        },
+        npm,
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 4,
+        lightConcurrency: 4,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        receiptSecret: "receipt-test-secret",
+      });
+      const started = Date.now();
+      while (Date.now() - started < 20_000) {
+        await worker.tick();
+        const { rows } = await sql.query<{ n: string }>(
+          "SELECT count(*)::text AS n FROM jobs WHERE status = 'done'",
+        );
+        if (Number(rows[0]?.n) >= 4) break;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await worker.stop();
+
+      const { rows: locations } = await sql.query<{ url: string; created_by_login: string }>(
+        "SELECT url, created_by_login FROM release_delivery_locations ORDER BY url ASC",
+      );
+      expect(locations).toEqual([
+        {
+          url: "https://github.com/octo/throwaway/releases/download/phase1-fixture/sourcemap.tgz",
+          created_by_login: "nospoilers",
+        },
+        {
+          url: tarballUrl,
+          created_by_login: "nospoilers",
+        },
+      ]);
+      const { rows: verifyJobs } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'delivery_verify'",
+      );
+      expect(Number(verifyJobs[0]?.n)).toBe(0);
+
+      const { rows: revisions } = await sql.query<{ id: unknown }>(
+        "SELECT id FROM release_revisions WHERE coordinate LIKE 'github:%throwaway%' LIMIT 1",
+      );
+      const revisionId = Number(revisions[0]?.id);
+      const again = await attachCanonicalDeliveryUrl(store, {
+        installationId: 7,
+        revisionId,
+        url: "https://github.com/octo/throwaway/releases/download/phase1-fixture/sourcemap.tgz",
+      });
+      expect(again?.id).toBeGreaterThan(0);
+      const { rows: after } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM release_delivery_locations",
+      );
+      expect(Number(after[0]?.n)).toBe(2);
     } finally {
       await sql.close();
     }

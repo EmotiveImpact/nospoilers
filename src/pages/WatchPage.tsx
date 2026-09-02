@@ -4370,10 +4370,12 @@ export function WatchPage({ search }: { search: string }) {
           and check it on Scan or with{" "}
           <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
           . That check is not hosted unpack. Coverage ended still allows the download. An install
-          admin can attach an HTTPS delivery URL and verify it now. We stream-hash the bytes,
-          compare them to the sealed digest, and drop the download. Cross-host redirects are not
-          followed, except the GitHub Release download hop to GitHub’s asset CDN. Query strings
-          never appear on Watch. This is not the hourly poller and not a hosted unpack.
+          admin can attach an HTTPS delivery URL and verify it now. Public GitHub Release
+          download URLs and public npm tarball URLs are attached when we seal the revision.
+          We stream-hash the bytes, compare them to the sealed digest, and drop the download.
+          Cross-host redirects are not followed, except the GitHub Release download hop to
+          GitHub’s asset CDN. Query strings never appear on Watch. This is not the hourly
+          poller and not a hosted unpack.
         </p>
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}

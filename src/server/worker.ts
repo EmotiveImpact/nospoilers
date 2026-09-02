@@ -15,7 +15,13 @@ import { applyHostedPolicy } from "./hosted-policy.ts";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { inferReleaseChannel } from "./release-ledger.ts";
-import { DELIVERY_VERIFY_KIND, runDeliveryVerifyJob } from "./delivery-verify.ts";
+import {
+  attachCanonicalDeliveryUrl,
+  DELIVERY_VERIFY_KIND,
+  isSealedArtifactDigest,
+  publicGithubReleaseDownloadUrl,
+  runDeliveryVerifyJob,
+} from "./delivery-verify.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 import type { WebhookHostLookup } from "./siem.ts";
@@ -311,6 +317,21 @@ export async function handleJob(
         const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (diffNote) notes.push(diffNote);
         if (report.artifactSha256) notes.push(`sha256 ${report.artifactSha256}`);
+        if (!repo.private && isSealedArtifactDigest(persisted.revision.artifact_sha256)) {
+          const downloadUrl = publicGithubReleaseDownloadUrl({
+            owner: repo.owner,
+            repo: repo.name,
+            tag,
+            name: asset.name,
+          });
+          if (downloadUrl) {
+            await attachCanonicalDeliveryUrl(deps.store, {
+              installationId,
+              revisionId: persisted.revision.id,
+              url: downloadUrl,
+            });
+          }
+        }
       } else {
         statuses.push(report.status);
         allFindings.push(...report.findings);
@@ -423,6 +444,16 @@ export async function handleJob(
         });
         report = persisted.report;
         diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
+        if (
+          isPublicNpmOrigin(registryOrigin) &&
+          isSealedArtifactDigest(persisted.revision.artifact_sha256)
+        ) {
+          await attachCanonicalDeliveryUrl(deps.store, {
+            installationId,
+            revisionId: persisted.revision.id,
+            url: tarballUrl,
+          });
+        }
       }
       const status = report.status;
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;

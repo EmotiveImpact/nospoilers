@@ -228,6 +228,8 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   never deleted.
 - Attach an HTTPS delivery URL to a sealed release and verify it now. The worker
   stream-hashes the bytes, compares them to the sealed digest, and deletes the download.
+  A public GitHub Release download URL and a public npm tarball URL are attached when
+  that revision is sealed (no verify job, not private repos or private registries).
   Cross-host redirects are not fetched, except `github.com` to GitHub’s release-asset
   CDN hosts (DNS is rechecked). Query strings are stored only to fetch and are
   redacted on Watch, alerts, and audit. Unpaid returns 402. Members return 403. Another
@@ -378,7 +380,9 @@ a sealed release even after coverage ends (another tenant is 404).
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub
 Release asset CDN hop, does not follow any other cross-host redirect, rejects
-private DNS, and keeps the list after coverage ends. `tests/package-identity.test.ts`
+private DNS, keeps the list after coverage ends, and attaches the public GitHub
+Release or public npm tarball URL when a revision is sealed without enqueueing
+verify (private repos and private registries stay unattached). `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape/publisher alerts never store emails, OIDC config ids, or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid

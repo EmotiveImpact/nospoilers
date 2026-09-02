@@ -124,6 +124,64 @@ export function normalizeMediaType(raw: string | null | undefined): string | nul
   return value || null;
 }
 
+export const CANONICAL_DELIVERY_ACTOR = "nospoilers";
+
+export function isSealedArtifactDigest(sha: string | null | undefined): boolean {
+  return Boolean(sha && /^[a-f0-9]{64}$/i.test(sha));
+}
+
+export function publicGithubReleaseDownloadUrl(input: {
+  owner: string;
+  repo: string;
+  tag: string;
+  name: string;
+}): string | null {
+  const owner = input.owner.trim();
+  const repo = input.repo.trim();
+  const tag = input.tag.trim();
+  const name = input.name.trim();
+  if (!owner || !repo || !tag || !name) return null;
+  if (/[\\/\s]/.test(owner) || /[\\/\s]/.test(repo)) return null;
+  if (tag.includes("\\") || name.includes("\\") || tag.includes("..") || name.includes("..")) {
+    return null;
+  }
+  const parsed = parseDeliveryUrl(
+    `https://github.com/${owner}/${repo}/releases/download/${tag}/${name}`,
+  );
+  if (!parsed || !GITHUB_DOWNLOAD_HOSTS.has(parsed.host) || parsed.url.includes("?")) {
+    return null;
+  }
+  return parsed.url;
+}
+
+export async function attachCanonicalDeliveryUrl(
+  store: Store,
+  input: {
+    installationId: number;
+    revisionId: number;
+    url: string;
+    createdByLogin?: string;
+  },
+): Promise<{ id: number } | null> {
+  const parsed = parseDeliveryUrl(input.url);
+  if (!parsed) return null;
+  const existing = await store.listDeliveryLocationsForRevisions([input.revisionId]);
+  const already = existing.find((row) => row.url === parsed.url);
+  if (already) return { id: already.id };
+  if (existing.length >= MAX_DELIVERY_LOCATIONS_PER_REVISION) return null;
+  const installCount = await store.countDeliveryLocations({
+    installationId: input.installationId,
+  });
+  if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) return null;
+  return store.insertDeliveryLocationIfAbsent({
+    installationId: input.installationId,
+    revisionId: input.revisionId,
+    url: parsed.url,
+    host: parsed.host,
+    createdByLogin: input.createdByLogin ?? CANONICAL_DELIVERY_ACTOR,
+  });
+}
+
 export function deliveryVerifyDeliveryId(locationId: number, atMs = Date.now()): string {
   return `delivery-verify:${locationId}:${Math.floor(atMs / 10_000)}`;
 }

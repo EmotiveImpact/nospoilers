@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Public GitHub Release download URLs and public npm tarball URLs are attached
+  when a hosted scan seals a revision. Private repos and private registries are
+  not. Verify stays on-demand (not the hourly poller, not scheduled CDN).
+  Not a Pricing change.
+
 - Watch Releases can attach an HTTPS delivery URL to a sealed revision and verify it
   now. The worker stream-hashes the bytes against the stored SHA-256, then deletes
   the download. Mismatch, disappearance, unexpected cross-host redirect, and

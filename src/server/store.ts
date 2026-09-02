@@ -4742,6 +4742,42 @@ export function createStore(
       return deliveryLocationRow(rows[0]);
     },
 
+    async insertDeliveryLocationIfAbsent(input: {
+      installationId: number;
+      revisionId: number;
+      url: string;
+      host: string;
+      expectedMediaType?: string | null;
+      createdByLogin: string;
+    }): Promise<DeliveryLocationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        revision_id: unknown;
+        url: string;
+        host: string;
+        expected_media_type: string | null;
+        created_by_login: string;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO release_delivery_locations (
+           installation_id, revision_id, url, host, expected_media_type, created_by_login
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (revision_id, url) DO NOTHING
+         RETURNING *`,
+        [
+          input.installationId,
+          input.revisionId,
+          input.url,
+          input.host,
+          input.expectedMediaType ?? null,
+          input.createdByLogin,
+        ],
+      );
+      return rows[0] ? deliveryLocationRow(rows[0]) : null;
+    },
+
     async getDeliveryLocation(id: number): Promise<DeliveryLocationRow | null> {
       const { rows } = await sql.query<{
         id: unknown;
