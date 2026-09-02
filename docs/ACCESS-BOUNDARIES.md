@@ -235,9 +235,12 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   A public GitHub Release download URL and a public npm tarball URL are attached when
   that revision is sealed (no verify job, not private repos or private registries).
   Cross-host redirects are not fetched, except `github.com` to GitHub’s release-asset
-  CDN hosts (DNS is rechecked). Query strings are stored only to fetch and are
-  redacted on Watch, alerts, and audit. Unpaid returns 402. Members return 403. Another
-  tenant is 404. This is not the hourly poller and not scheduled CDN verification.
+  CDN hosts, same-bucket S3 path-style ↔ virtual-hosted hops, and same-account R2
+  path-style ↔ virtual-hosted hops (DNS is rechecked). Arbitrary hosts, other
+  buckets, CloudFront, website, accelerate, and `r2.dev` are not fetched. Query
+  strings are stored only to fetch and are redacted on Watch, alerts, and audit.
+  Unpaid returns 402. Members return 403. Another tenant is 404. This is not the
+  hourly poller and not scheduled CDN verification.
 
 **Must not**
 
@@ -385,10 +388,12 @@ a sealed release even after coverage ends (another tenant is 404).
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub
-Release asset CDN hop, does not follow any other cross-host redirect, rejects
-private DNS, keeps the list after coverage ends, and attaches the public GitHub
-Release or public npm tarball URL when a revision is sealed without enqueueing
-verify (private repos and private registries stay unattached). `tests/package-identity.test.ts`
+Release asset CDN hop, same-bucket S3 hops, and same-account R2 hops, does not
+follow any other cross-host redirect (including CDN→S3, S3→CloudFront, and
+bucket mismatch), rejects private DNS, keeps the list after coverage ends, and
+attaches the public GitHub Release or public npm tarball URL when a revision is
+sealed without enqueueing verify (private repos and private registries stay
+unattached). `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape/publisher alerts never store emails, OIDC config ids, or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid

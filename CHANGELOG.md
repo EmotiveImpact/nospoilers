@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- On-demand delivery verify follows same-bucket S3 path-style ↔ virtual-hosted
+  hops and same-account R2 path-style ↔ virtual-hosted hops after a second DNS
+  check. Arbitrary hosts, other buckets, CloudFront, website, accelerate, and
+  `r2.dev` still are not fetched. GitHub Release → asset CDN hops stay expected.
+  This is not the hourly poller and not scheduled CDN verification. Not a Pricing
+  change.
+
 - Watch Setup status probes whether the vendored Action and workflow YAML exist on
   the default branch or `nospoilers/setup`, and whether a NoSpoilers check ran on
   the default SHA. Members may read it. Unpaid still allowed. It never invents an

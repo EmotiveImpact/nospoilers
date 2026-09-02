@@ -61,7 +61,8 @@ Read in this order:
   attached when that revision is sealed (no verify job). Private repos and private
   registries are not. The worker stream-hashes and deletes the download. A GitHub Release
   download URL may hop once to GitHub’s asset CDN after a second public-DNS check;
-  other cross-host redirects are not fetched. This is not added to the
+  same-bucket S3 and same-account R2 hops are followed the same way. Other
+  cross-host redirects are not fetched. This is not added to the
   hourly poller. Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
@@ -302,7 +303,8 @@ Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when 
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL,
 on-demand delivery URL verify against the sealed digest; public GitHub
 Release and public npm tarball URLs attach on seal; GitHub Release
-download hops to the asset CDN; live-matched throwaway phase1-fixture
+download hops to the asset CDN; same-bucket S3 and same-account R2 hops;
+live-matched throwaway phase1-fixture
 sourcemap.tgz; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).

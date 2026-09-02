@@ -33,6 +33,8 @@ describe("public documentation", () => {
     expect(text).toMatch(/verify it now/i);
     expect(text).toMatch(/not scheduled CDN verification/i);
     expect(text).toMatch(/GitHub Release download hop/i);
+    expect(text).toMatch(/same-bucket S3 hop/i);
+    expect(text).toMatch(/same-account R2 hop/i);
     expect(text).toMatch(/Watch Setup status probes/i);
     expect(text).toMatch(/Public GitHub Release download URLs and public npm tarball URLs/i);
     expect(text).toMatch(/Scan latest release unpacks that repository/i);

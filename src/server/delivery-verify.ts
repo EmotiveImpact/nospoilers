@@ -109,6 +109,89 @@ export function isExpectedGithubAssetRedirect(fromHost: string, toHost: string):
   return GITHUB_DOWNLOAD_HOSTS.has(from) && GITHUB_ASSET_HOSTS.has(to);
 }
 
+const S3_PATH_STYLE_HOST =
+  /^(?:s3\.amazonaws\.com|s3(?:\.dualstack)?\.[a-z0-9-]+\.amazonaws\.com)$/;
+const S3_VIRTUAL_HOST =
+  /^(.+)\.s3(?:\.dualstack)?(?:\.[a-z0-9-]+)?\.amazonaws\.com$/;
+const R2_API_SUFFIX = ".r2.cloudflarestorage.com";
+
+function firstUrlPathSegment(pathname: string): string | null {
+  const segment = pathname.split("/").filter(Boolean)[0];
+  if (!segment) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+function isObjectStoreBucketName(name: string): boolean {
+  if (name.length < 3 || name.length > 63) return false;
+  if (!/^[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])$/.test(name)) return false;
+  if (name.includes("..")) return false;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(name)) return false;
+  return true;
+}
+
+function isR2AccountId(name: string): boolean {
+  return /^[a-f0-9]{32}$/.test(name);
+}
+
+function parseS3Delivery(url: URL): { bucket: string } | null {
+  const host = url.hostname.toLowerCase();
+  if (S3_PATH_STYLE_HOST.test(host)) {
+    const bucket = firstUrlPathSegment(url.pathname);
+    return bucket && isObjectStoreBucketName(bucket) ? { bucket: bucket.toLowerCase() } : null;
+  }
+  const virtual = host.match(S3_VIRTUAL_HOST);
+  const bucket = virtual?.[1];
+  return bucket && isObjectStoreBucketName(bucket) ? { bucket: bucket.toLowerCase() } : null;
+}
+
+function parseR2Delivery(url: URL): { account: string; bucket: string } | null {
+  const host = url.hostname.toLowerCase();
+  if (!host.endsWith(R2_API_SUFFIX)) return null;
+  const rest = host.slice(0, -R2_API_SUFFIX.length);
+  if (!rest) return null;
+  const labels = rest.split(".");
+  if (labels.some((label) => !label)) return null;
+  if (labels.length === 1) {
+    const account = labels[0];
+    const bucket = firstUrlPathSegment(url.pathname);
+    if (!isR2AccountId(account) || !bucket || !isObjectStoreBucketName(bucket)) return null;
+    return { account, bucket: bucket.toLowerCase() };
+  }
+  const account = labels[labels.length - 1];
+  const bucket = labels.slice(0, -1).join(".");
+  if (!isR2AccountId(account) || !isObjectStoreBucketName(bucket)) return null;
+  return { account, bucket: bucket.toLowerCase() };
+}
+
+/** Same-bucket S3, same-account R2, or GitHub Release → asset CDN. Other hosts are not fetched. */
+export function isExpectedDeliveryRedirect(fromUrl: string, toUrl: string): boolean {
+  const from = parseDeliveryUrl(fromUrl);
+  const to = parseDeliveryUrl(toUrl);
+  if (!from || !to) return false;
+  if (from.host === to.host) return true;
+  if (isExpectedGithubAssetRedirect(from.host, to.host)) return true;
+  let fromParsed: URL;
+  let toParsed: URL;
+  try {
+    fromParsed = new URL(from.url);
+    toParsed = new URL(to.url);
+  } catch {
+    return false;
+  }
+  const fromS3 = parseS3Delivery(fromParsed);
+  const toS3 = parseS3Delivery(toParsed);
+  if (fromS3 && toS3 && fromS3.bucket === toS3.bucket) return true;
+  const fromR2 = parseR2Delivery(fromParsed);
+  const toR2 = parseR2Delivery(toParsed);
+  return Boolean(
+    fromR2 && toR2 && fromR2.account === toR2.account && fromR2.bucket === toR2.bucket,
+  );
+}
+
 export function parseDeliveryMediaType(raw: string | undefined | null): string | null {
   if (raw == null || !String(raw).trim()) return null;
   const value = normalizeMediaType(String(raw));
@@ -264,7 +347,7 @@ export async function verifyDeliveryUrl(input: {
       if (!next) {
         return emptyResult("blocked", "Redirect target host is not allowed.", host, redirects + 1);
       }
-      if (next.host !== host && !isExpectedGithubAssetRedirect(host, next.host)) {
+      if (next.host !== host && !isExpectedDeliveryRedirect(current, next.url)) {
         return emptyResult(
           "redirect",
           `Delivery URL redirected from ${host} to ${next.host}. The other host was not fetched.`,

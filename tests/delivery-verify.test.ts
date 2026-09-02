@@ -6,6 +6,7 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import {
   attachCanonicalDeliveryUrl,
+  isExpectedDeliveryRedirect,
   isExpectedGithubAssetRedirect,
   isSealedArtifactDigest,
   parseDeliveryUrl,
@@ -176,6 +177,170 @@ describe("streaming verify", () => {
     });
     expect(offGithub.status).toBe("redirect");
     expect(offGithub.finalHost).toBe("release-assets.githubusercontent.com");
+  });
+
+  it("follows same-bucket S3 and same-account R2 hops and still blocks other hosts", async () => {
+    const account = "0123456789abcdef0123456789abcdef";
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://s3.amazonaws.com/ship-bucket/app.tgz",
+        "https://ship-bucket.s3.us-east-1.amazonaws.com/app.tgz",
+      ),
+    ).toBe(true);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://ship-bucket.s3.amazonaws.com/app.tgz",
+        "https://s3.eu-west-1.amazonaws.com/ship-bucket/app.tgz",
+      ),
+    ).toBe(true);
+    expect(
+      isExpectedDeliveryRedirect(
+        `https://${account}.r2.cloudflarestorage.com/ship-bucket/app.tgz`,
+        `https://ship-bucket.${account}.r2.cloudflarestorage.com/app.tgz`,
+      ),
+    ).toBe(true);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://cdn.example.com/app.tgz",
+        "https://ship-bucket.s3.amazonaws.com/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://s3.amazonaws.com/ship-bucket/app.tgz",
+        "https://other-bucket.s3.amazonaws.com/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://s3.amazonaws.com/ship-bucket/app.tgz",
+        "https://d111111abcdef8.cloudfront.net/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        `https://${account}.r2.cloudflarestorage.com/ship-bucket/app.tgz`,
+        "https://ship-bucket.ffffffffffffffffffffffffffffffff.r2.cloudflarestorage.com/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        `https://${account}.r2.cloudflarestorage.com/ship-bucket/app.tgz`,
+        "https://pub-0123456789abcdef0123456789abcdef.r2.dev/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://s3.amazonaws.com/ship-bucket/app.tgz",
+        "https://ship-bucket.s3-website-us-east-1.amazonaws.com/app.tgz",
+      ),
+    ).toBe(false);
+    expect(
+      isExpectedDeliveryRedirect(
+        "https://s3.amazonaws.com/ship-bucket/app.tgz",
+        "https://ship-bucket.s3-accelerate.amazonaws.com/app.tgz",
+      ),
+    ).toBe(false);
+
+    const bytes = await readFile(CLEAN);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+
+    const s3Fetched: string[] = [];
+    const s3Hop = await verifyDeliveryUrl({
+      url: "https://s3.amazonaws.com/ship-bucket/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async (input) => {
+        const url = String(input);
+        s3Fetched.push(url);
+        if (url === "https://s3.amazonaws.com/ship-bucket/app.tgz") {
+          return new Response(null, {
+            status: 301,
+            headers: { location: "https://ship-bucket.s3.us-east-1.amazonaws.com/app.tgz" },
+          });
+        }
+        return new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/gzip" },
+        });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(s3Hop.status).toBe("matched");
+    expect(s3Hop.redirectCount).toBe(1);
+    expect(s3Hop.finalHost).toBe("ship-bucket.s3.us-east-1.amazonaws.com");
+    expect(s3Fetched).toEqual([
+      "https://s3.amazonaws.com/ship-bucket/app.tgz",
+      "https://ship-bucket.s3.us-east-1.amazonaws.com/app.tgz",
+    ]);
+
+    const r2Fetched: string[] = [];
+    const r2Hop = await verifyDeliveryUrl({
+      url: `https://${account}.r2.cloudflarestorage.com/ship-bucket/app.tgz`,
+      expectedSha256: sha256,
+      fetch: (async (input) => {
+        const url = String(input);
+        r2Fetched.push(url);
+        if (url.endsWith(".r2.cloudflarestorage.com/ship-bucket/app.tgz")) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              location: `https://ship-bucket.${account}.r2.cloudflarestorage.com/app.tgz`,
+            },
+          });
+        }
+        return new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/gzip" },
+        });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(r2Hop.status).toBe("matched");
+    expect(r2Hop.finalHost).toBe(`ship-bucket.${account}.r2.cloudflarestorage.com`);
+    expect(r2Fetched).toHaveLength(2);
+
+    const fromCdn = await verifyDeliveryUrl({
+      url: "https://cdn.example.com/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://ship-bucket.s3.amazonaws.com/app.tgz" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(fromCdn.status).toBe("redirect");
+    expect(fromCdn.finalHost).toBe("ship-bucket.s3.amazonaws.com");
+
+    const bucketSwapFetched: string[] = [];
+    const bucketSwap = await verifyDeliveryUrl({
+      url: "https://s3.amazonaws.com/ship-bucket/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async (input) => {
+        bucketSwapFetched.push(String(input));
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://other-bucket.s3.amazonaws.com/app.tgz" },
+        });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(bucketSwap.status).toBe("redirect");
+    expect(bucketSwap.finalHost).toBe("other-bucket.s3.amazonaws.com");
+    expect(bucketSwapFetched).toEqual(["https://s3.amazonaws.com/ship-bucket/app.tgz"]);
+
+    const toEvil = await verifyDeliveryUrl({
+      url: "https://ship-bucket.s3.amazonaws.com/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://evil.example.net/app.tgz" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(toEvil.status).toBe("redirect");
+    expect(toEvil.finalHost).toBe("evil.example.net");
   });
 });
 

@@ -4473,8 +4473,8 @@ export function WatchPage({ search }: { search: string }) {
           download URLs and public npm tarball URLs are attached when we seal the revision.
           We stream-hash the bytes, compare them to the sealed digest, and drop the download.
           Cross-host redirects are not followed, except the GitHub Release download hop to
-          GitHub’s asset CDN. Query strings never appear on Watch. This is not the hourly
-          poller and not a hosted unpack.
+          GitHub’s asset CDN, a same-bucket S3 hop, or a same-account R2 hop. Query strings
+          never appear on Watch. This is not the hourly poller and not a hosted unpack.
         </p>
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}

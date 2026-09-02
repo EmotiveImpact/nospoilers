@@ -71,7 +71,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   Failed-policy and inconclusive are not clean. Digest mismatch appends a new row and an
   explainable alert. An install admin can attach an HTTPS delivery URL and verify it now
   (stream-hash, no stored bytes, not the hourly poller). Public GitHub Release download
-  URLs and public npm tarball URLs attach when the revision is sealed. Development
+  URLs and public npm tarball URLs attach when the revision is sealed. Expected hops
+  are GitHub’s asset CDN, same-bucket S3, and same-account R2; other hosts are not
+  fetched. Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers
