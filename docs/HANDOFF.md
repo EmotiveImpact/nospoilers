@@ -581,7 +581,8 @@ is zeroed on desk read and the hourly poller; the row stays. Expired notes
 ciphertext is nulled. Live Neon: `048` applied; unauth and non-admin 401;
 owner desk GET ran the sweep; no rows were expired so ciphertext stayed.
 Redacted JSON/HTML/PDF reports
-omit notes and attachment bytes. A missed deadline creates an internal reminder
+omit notes and attachment bytes and include structured findings
+without values. Live prettier report has two SEC-003 rows. A missed deadline creates an internal reminder
 only. Nothing is sent. Researcher workload is owner-only case counts per
 assignee. Time spent is not tracked. The owner can grant a GitHub login
 operator access to the desk; queue counts stay owner-only. Live Neon:
