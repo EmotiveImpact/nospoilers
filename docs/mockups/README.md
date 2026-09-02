@@ -4,7 +4,7 @@ Ten static HTML directions for the logged-in desk, plus a gallery. Design comps 
 framework, no build step, nothing wired to data, and nothing here ships in the app build.
 
 The prompt that generated these, and the follow-up prompts for narrowing down, are in
-[PROMPT.md](PROMPT.md).
+[PROMPT.md](PROMPT.md). If you are an agent picking this up, start with [HANDOFF.md](HANDOFF.md).
 
 ## View them
 
@@ -15,6 +15,31 @@ npx serve docs/mockups -l 3000
 
 Or open `docs/mockups/index.html` directly in a browser. The gallery previews each mockup in an
 iframe; over `file://` some browsers block those frames, in which case use the server above.
+
+## State presets
+
+Every mockup carries a switcher in a bar at the bottom of the page with five presets:
+
+| Preset | What it exercises |
+| --- | --- |
+| Trial admin | Full coverage, install admin, one critical alert mid-triage |
+| Solo | Team-gated features replaced by upgrade copy, not silently dropped |
+| Member | Admin-only writes removed, with a note explaining who can do them |
+| Ended | `CoverageLock` over the panels that stop, alerts still resolvable |
+| Empty | A brand-new install with nothing connected |
+
+It is pure CSS — five radio inputs before `.app` and a handful of `:checked ~` rules in
+`mockup.css`. The markup contract is:
+
+- `.s-trial` / `.s-solo` / `.s-member` / `.s-ended` / `.s-empty` — show only in that preset
+- `.has-data` — hide in the Empty preset
+- `.admin-only` — hide in the Member preset
+- `.team-only` — hide in the Solo preset
+- `.lockable` + a `.lockveil` child — the veil covers the panel in the Ended preset
+
+A layout is easy to make look good with one critical alert and full coverage. These presets are
+where the layouts actually get judged. Copy for the locked and gated states comes from
+`CoverageLock.tsx` and `WatchPage.tsx` rather than being invented.
 
 ## What problem these are answering
 
