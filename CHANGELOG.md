@@ -6,7 +6,9 @@
   (`.tgz` / npm → `application/gzip`, zip-family → `application/zip`).
   Watch shows both. Canonical and attached delivery URLs inherit that type
   when none is sent. Delivery verify uses it for content-type drift.
-  Older rows stay null (append-only). Not a Pricing change.
+  Older rows stay null (append-only). Live-sealed throwaway
+  `phase1-fixture` as 401 bytes / `application/gzip` (`c74219d2…`,
+  failed-policy, no digest rewrite). Not a Pricing change.
 
 - `nospoilers verify` accepts `--url` so CI can stream-hash a delivery URL
   against a signed receipt without uploading the pack. Same expected hops and
