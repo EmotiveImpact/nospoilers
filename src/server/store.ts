@@ -9,6 +9,9 @@ import type {
   DisclosureConversion,
   DisclosureEventRow,
   DisclosureState,
+  DisclosureTemplateRow,
+  DoNotContactRow,
+  VendorChannel,
 } from "./disclosure.ts";
 import type {
   InternalNotificationKind,
@@ -823,6 +826,10 @@ function disclosureCaseRow(row: {
   conversion: string;
   fix_version: string | null;
   last_rescan_at: string | Date | null;
+  vendor_channel: string | null;
+  outcome_credit: string | null;
+  outcome_cve: string | null;
+  outcome_notes: string | null;
   created_at: string | Date;
   updated_at: string | Date;
 }): DisclosureCaseRow {
@@ -849,9 +856,25 @@ function disclosureCaseRow(row: {
     conversion: asDisclosureConversion(row.conversion),
     fix_version: row.fix_version,
     last_rescan_at: iso(row.last_rescan_at),
+    vendor_channel: asVendorChannel(row.vendor_channel),
+    outcome_credit: row.outcome_credit,
+    outcome_cve: row.outcome_cve,
+    outcome_notes: row.outcome_notes,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
     updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
+}
+
+function asVendorChannel(value: string | null | undefined): VendorChannel | null {
+  if (
+    value === "security_email" ||
+    value === "form" ||
+    value === "security_txt" ||
+    value === "platform"
+  ) {
+    return value;
+  }
+  return null;
 }
 
 function internalNotificationRow(row: {
@@ -867,13 +890,53 @@ function internalNotificationRow(row: {
 }): InternalNotificationRow {
   return {
     id: num(row.id),
-    kind: row.kind === "verified_critical" ? "verified_critical" : "verified_critical",
+    kind: row.kind === "deadline_missed" ? "deadline_missed" : "verified_critical",
     prospect_id: num(row.prospect_id),
     case_id: num(row.case_id),
     title: row.title,
     fingerprints: asStringArray(row.fingerprints),
     rules: asStringArray(row.rules),
     read_at: iso(row.read_at),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function disclosureTemplateRow(row: {
+  id: unknown;
+  name: string;
+  subject: string;
+  body: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): DisclosureTemplateRow {
+  return {
+    id: num(row.id),
+    name: row.name,
+    subject: row.subject,
+    body: row.body,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function doNotContactRow(row: {
+  id: unknown;
+  owner: string | null;
+  repo: string | null;
+  package_name: string | null;
+  contact: string | null;
+  reason: string;
+  created_by: string;
+  created_at: string | Date;
+}): DoNotContactRow {
+  return {
+    id: num(row.id),
+    owner: row.owner,
+    repo: row.repo,
+    package_name: row.package_name,
+    contact: row.contact,
+    reason: row.reason,
+    created_by: row.created_by,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -2680,6 +2743,10 @@ export function createStore(
       deadlineAt: string | null;
       conversion: DisclosureConversion;
       fixVersion: string | null;
+      vendorChannel?: VendorChannel | null;
+      outcomeCredit?: string | null;
+      outcomeCve?: string | null;
+      outcomeNotes?: string | null;
       summary: string;
     }): Promise<DisclosureCaseRow> {
       return await sql.transaction(async (tx) => {
@@ -2723,6 +2790,10 @@ export function createStore(
                deadline_at = $14,
                conversion = $15,
                fix_version = $16,
+               vendor_channel = $17,
+               outcome_credit = $18,
+               outcome_cve = $19,
+               outcome_notes = $20,
                updated_at = now()
            WHERE prospect_id = $1
            RETURNING *`,
@@ -2743,6 +2814,10 @@ export function createStore(
             input.deadlineAt,
             input.conversion,
             input.fixVersion,
+            input.vendorChannel !== undefined ? input.vendorChannel : existing.vendor_channel,
+            input.outcomeCredit !== undefined ? input.outcomeCredit : existing.outcome_credit,
+            input.outcomeCve !== undefined ? input.outcomeCve : existing.outcome_cve,
+            input.outcomeNotes !== undefined ? input.outcomeNotes : existing.outcome_notes,
           ],
         );
         const row = updated.rows[0];
@@ -2825,6 +2900,109 @@ export function createStore(
         `SELECT count(*)::int AS n FROM internal_notifications WHERE read_at IS NULL`,
       );
       return num(rows[0]?.n ?? 0);
+    },
+
+    async listMissedDeadlineCases(): Promise<
+      (DisclosureCaseRow & { owner: string; repo: string })[]
+    > {
+      const { rows } = await sql.query<
+        Parameters<typeof disclosureCaseRow>[0] & { owner: string; repo: string }
+      >(
+        `SELECT c.*, p.owner, p.repo
+         FROM disclosure_cases c
+         JOIN prospects p ON p.id = c.prospect_id
+         WHERE c.deadline_at IS NOT NULL
+           AND c.deadline_at < now()
+           AND c.acknowledged_at IS NULL
+         ORDER BY c.id ASC`,
+      );
+      return rows.map((row) => ({
+        ...disclosureCaseRow(row),
+        owner: row.owner,
+        repo: row.repo,
+      }));
+    },
+
+    async listDisclosureTemplates(): Promise<DisclosureTemplateRow[]> {
+      const { rows } = await sql.query<Parameters<typeof disclosureTemplateRow>[0]>(
+        `SELECT * FROM disclosure_templates ORDER BY name ASC`,
+      );
+      return rows.map((row) => disclosureTemplateRow(row));
+    },
+
+    async getDisclosureTemplate(id: number): Promise<DisclosureTemplateRow | null> {
+      const { rows } = await sql.query<Parameters<typeof disclosureTemplateRow>[0]>(
+        `SELECT * FROM disclosure_templates WHERE id = $1`,
+        [id],
+      );
+      return rows[0] ? disclosureTemplateRow(rows[0]) : null;
+    },
+
+    async insertDisclosureTemplate(input: {
+      name: string;
+      subject: string;
+      body: string;
+    }): Promise<DisclosureTemplateRow> {
+      const { rows } = await sql.query<Parameters<typeof disclosureTemplateRow>[0]>(
+        `INSERT INTO disclosure_templates (name, subject, body)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [input.name, input.subject, input.body],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Disclosure template was not created.");
+      return disclosureTemplateRow(row);
+    },
+
+    async updateDisclosureTemplate(input: {
+      id: number;
+      subject: string;
+      body: string;
+    }): Promise<DisclosureTemplateRow | null> {
+      const { rows } = await sql.query<Parameters<typeof disclosureTemplateRow>[0]>(
+        `UPDATE disclosure_templates
+         SET subject = $2, body = $3, updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [input.id, input.subject, input.body],
+      );
+      return rows[0] ? disclosureTemplateRow(rows[0]) : null;
+    },
+
+    async listDoNotContact(): Promise<DoNotContactRow[]> {
+      const { rows } = await sql.query<Parameters<typeof doNotContactRow>[0]>(
+        `SELECT * FROM disclosure_do_not_contact ORDER BY id ASC`,
+      );
+      return rows.map((row) => doNotContactRow(row));
+    },
+
+    async insertDoNotContact(input: {
+      owner: string | null;
+      repo: string | null;
+      packageName: string | null;
+      contact: string | null;
+      reason: string;
+      actor: string;
+    }): Promise<DoNotContactRow> {
+      const { rows } = await sql.query<Parameters<typeof doNotContactRow>[0]>(
+        `INSERT INTO disclosure_do_not_contact (
+           owner, repo, package_name, contact, reason, created_by
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [input.owner, input.repo, input.packageName, input.contact, input.reason, input.actor],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Do-not-contact entry was not created.");
+      return doNotContactRow(row);
+    },
+
+    async deleteDoNotContact(id: number): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM disclosure_do_not_contact WHERE id = $1 RETURNING id`,
+        [id],
+      );
+      return rows.length > 0;
     },
 
     async markInternalNotificationRead(id: number): Promise<InternalNotificationRow | null> {

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Disclosure Desk Phase 2 minus send: human-edited templates, preferred vendor
+  channel, do-not-contact (create is research-only unless confirmed; `contacted`
+  is always blocked), credit/CVE/outcome notes, and an internal
+  `deadline_missed` reminder. Preview still shows recipients, subject, and body
+  and never sends. Resend stays benched. Customer sessions stay 401. Not a
+  customer product and not a Pricing change.
+
 - Artifact Leads notifies the owner only after a Disclosure Desk case is
   verified and has critical fingerprints. Unverified scans and warn-only cases
   do not. One notification per case. Mark-read. Never mailed. Rule ids and

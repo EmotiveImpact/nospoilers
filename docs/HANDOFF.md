@@ -59,7 +59,9 @@ Read in this order:
   `release.hold`, and `release.release_hold`.   `038_disclosure_desk` adds
   `disclosure_cases` and append-only `disclosure_events`.
   `039_internal_notifications` adds owner-only verified-critical notifications.
-  Next unused id is `040_*`.
+  `040_disclosure_phase2` adds vendor channel and outcome fields on
+  `disclosure_cases`, `disclosure_templates`, `disclosure_do_not_contact`, and
+  `deadline_missed` on `internal_notifications`. Next unused id is `041_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -274,10 +276,11 @@ Read in this order:
   Workflows write (Actions YAML). Watch one-click responses stay 409 until Administration,
   which we will not take. Setup/remediation PRs stay copy-paste until Pull requests write.
 - The hourly GitHub visibility poller is separate and remains enabled.
-- Artifact Leads is `/internal/prospects`. Disclosure Desk Phase 1 lives on that
-  same page (`/api/internal/prospects/:id/disclosure*`). Create a new long random
-  `ADMIN_TOKEN`; do not reuse the prior temporary local token.
-  `GITHUB_DISCOVERY_TOKEN` is optional. No disclosure mail is sent.
+- Artifact Leads is `/internal/prospects`. Disclosure Desk Phase 2 minus send
+  lives on that same page (`/api/internal/prospects/:id/disclosure*`,
+  `/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
+  Create a new long random `ADMIN_TOKEN`; do not reuse the prior temporary local
+  token. `GITHUB_DISCOVERY_TOKEN` is optional. No disclosure mail is sent.
 - Prospecting scans public GitHub Release assets, the root npm package, and up to eight
   public workspace member packs named from the repo workspace config. Scanned packs store
   member names (not source). Members are not auto-watched. The hourly poller, after
@@ -432,10 +435,13 @@ address. Receipt verify is a separate budget. GitHub webhooks are not.
 Artifact Leads inspect also queues up to eight public npm workspace member packs named
 from the repo workspace config. Scanned packs store member names. Members are not
 auto-watched. Owner-only.
-Disclosure Desk Phase 1 is in on Artifact Leads: verification checklist, duplicate
-warning, encrypted expiring notes, stored (never fetched) policy URL, draft preview,
-simulated acknowledgement, internal deadline, conversion attribution, and a
-fix-version rescan. `contacted`/`fixed` are gated on the API. Nothing is sent.
+Disclosure Desk Phase 2 minus send is in on Artifact Leads: verification
+checklist, duplicate warning, encrypted expiring notes, stored (never fetched)
+policy URL, human-edited templates, preferred vendor channel, draft preview,
+simulated acknowledgement, internal deadline, conversion attribution,
+credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
+`contacted`/`fixed` are gated on the API. Do-not-contact always blocks
+`contacted`. A missed deadline creates an internal reminder only. Nothing is sent.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.

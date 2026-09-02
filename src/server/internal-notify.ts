@@ -3,9 +3,12 @@ import type { DisclosureCaseRow, DisclosureState } from "./disclosure.ts";
 import type { ProspectRow, Store } from "./store.ts";
 
 export const VERIFIED_CRITICAL_KIND = "verified_critical";
+export const DEADLINE_MISSED_KIND = "deadline_missed";
 export const MAX_NOTIFICATION_RULES = 12;
 
-export type InternalNotificationKind = typeof VERIFIED_CRITICAL_KIND;
+export type InternalNotificationKind =
+  | typeof VERIFIED_CRITICAL_KIND
+  | typeof DEADLINE_MISSED_KIND;
 
 export type InternalNotificationRow = {
   id: number;
@@ -54,6 +57,20 @@ export function notificationTitle(owner: string, repo: string): string {
   return `Verified critical findings in ${owner}/${repo}`.slice(0, 200);
 }
 
+export function deadlineMissedTitle(owner: string, repo: string): string {
+  return `Disclosure deadline missed for ${owner}/${repo}`.slice(0, 200);
+}
+
+function caseDeadlineMissed(
+  deadlineAt: string | null,
+  acknowledgedAt: string | null,
+  now = Date.now(),
+): boolean {
+  if (!deadlineAt || acknowledgedAt) return false;
+  const ms = Date.parse(deadlineAt);
+  return Number.isFinite(ms) && ms < now;
+}
+
 export function toNotificationView(row: InternalNotificationRow): InternalNotificationView {
   return {
     id: row.id,
@@ -95,4 +112,45 @@ export async function notifyVerifiedCritical(
     });
   }
   return inserted;
+}
+
+export async function notifyDeadlineMissed(
+  store: Store,
+  input: {
+    row: DisclosureCaseRow;
+    prospect: Pick<ProspectRow, "id" | "owner" | "repo">;
+    now?: number;
+  },
+): Promise<InternalNotificationRow | null> {
+  if (!caseDeadlineMissed(input.row.deadline_at, input.row.acknowledged_at, input.now)) {
+    return null;
+  }
+  const inserted = await store.insertInternalNotification({
+    kind: DEADLINE_MISSED_KIND,
+    prospectId: input.prospect.id,
+    caseId: input.row.id,
+    title: deadlineMissedTitle(input.prospect.owner, input.prospect.repo),
+    fingerprints: [],
+    rules: [],
+  });
+  if (inserted) {
+    logJson("info", "internal.deadline_missed", {
+      prospectId: input.prospect.id,
+      caseId: input.row.id,
+    });
+  }
+  return inserted;
+}
+
+export async function remindMissedDisclosureDeadlines(store: Store): Promise<number> {
+  const missed = await store.listMissedDeadlineCases();
+  let created = 0;
+  for (const row of missed) {
+    const inserted = await notifyDeadlineMissed(store, {
+      row,
+      prospect: { id: row.prospect_id, owner: row.owner, repo: row.repo },
+    });
+    if (inserted) created += 1;
+  }
+  return created;
 }

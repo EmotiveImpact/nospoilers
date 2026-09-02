@@ -12,6 +12,8 @@ export type DisclosureState =
 
 export type DisclosureConversion = "none" | "trial" | "paid" | "declined"
 
+export type VendorChannel = "security_email" | "form" | "security_txt" | "platform"
+
 export type DisclosureSummary = {
   id: number
   prospectId: number
@@ -22,6 +24,7 @@ export type DisclosureSummary = {
   fixVersion: string | null
   lastRescanAt: string | null
   fingerprintCount: number
+  vendorChannel?: VendorChannel | null
 }
 
 export type DuplicateMatch = {
@@ -32,6 +35,23 @@ export type DuplicateMatch = {
   packageName: string | null
   state: DisclosureState
   reasons: Array<"owner_repo" | "package" | "fingerprint">
+}
+
+export type DncMatch = {
+  id: number
+  reasons: Array<"owner_repo" | "package" | "contact">
+  owner: string | null
+  repo: string | null
+  packageName: string | null
+  contact: string | null
+  reason: string
+}
+
+type DisclosureTemplate = {
+  id: number
+  name: string
+  subject: string
+  body: string
 }
 
 type Checklist = {
@@ -63,6 +83,10 @@ type DisclosureCase = {
   conversion: DisclosureConversion
   fixVersion: string | null
   lastRescanAt: string | null
+  vendorChannel: VendorChannel | null
+  outcomeCredit: string | null
+  outcomeCve: string | null
+  outcomeNotes: string | null
   events: { id: number; action: string; actor: string; summary: string; createdAt: string }[]
 }
 
@@ -92,8 +116,18 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
   const [fixVersion, setFixVersion] = useState("")
   const [deadline, setDeadline] = useState("")
   const [conversion, setConversion] = useState<DisclosureConversion>("none")
+  const [vendorChannel, setVendorChannel] = useState<VendorChannel | "">("")
+  const [outcomeCredit, setOutcomeCredit] = useState("")
+  const [outcomeCve, setOutcomeCve] = useState("")
+  const [outcomeNotes, setOutcomeNotes] = useState("")
+  const [templates, setTemplates] = useState<DisclosureTemplate[]>([])
+  const [templateId, setTemplateId] = useState<number | "">("")
+  const [previewMeta, setPreviewMeta] = useState<{ recipients: string[]; channel: string | null } | null>(
+    null,
+  )
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [dnc, setDnc] = useState<DncMatch[] | null>(null)
 
   const loadCase = useCallback(async () => {
     try {
@@ -108,7 +142,12 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
       setFixVersion(body.case.fixVersion ?? "")
       setDeadline(body.case.deadlineAt ? body.case.deadlineAt.slice(0, 16) : "")
       setConversion(body.case.conversion)
+      setVendorChannel(body.case.vendorChannel ?? "")
+      setOutcomeCredit(body.case.outcomeCredit ?? "")
+      setOutcomeCve(body.case.outcomeCve ?? "")
+      setOutcomeNotes(body.case.outcomeNotes ?? "")
       setDuplicates(null)
+      setDnc(null)
     } catch (err) {
       if (err instanceof Error && err.message === "No disclosure case yet.") {
         setDesk(null)
@@ -124,25 +163,33 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
     if (!next) return
     try {
       await loadCase()
+      const listed = await request<{ templates: DisclosureTemplate[] }>(
+        "/api/internal/disclosure/templates",
+      )
+      setTemplates(listed.templates)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load the case.")
     }
   }
 
-  async function createCase(confirmDuplicate = false) {
+  async function createCase(confirmDuplicate = false, researchOnly = false) {
     setBusy("create")
     setError(null)
     try {
       const created = await request<{ case: DisclosureCase; error?: string; duplicates?: DuplicateMatch[] }>(
         `/api/internal/prospects/${prospectId}/disclosure`,
-        { method: "POST", body: JSON.stringify({ confirmDuplicate }) },
+        { method: "POST", body: JSON.stringify({ confirmDuplicate, researchOnly }) },
       )
       setDesk(created.case)
       setDuplicates(null)
+      setDnc(null)
       await onChanged()
     } catch (err) {
-      const failed = err as Error & { duplicates?: DuplicateMatch[] }
-      if (failed.duplicates?.length) {
+      const failed = err as Error & { duplicates?: DuplicateMatch[]; dnc?: DncMatch[] }
+      if (failed.dnc?.length) {
+        setDnc(failed.dnc)
+        setError(failed.message)
+      } else if (failed.duplicates?.length) {
         setDuplicates(failed.duplicates)
         setError(failed.message)
       } else {
@@ -174,11 +221,19 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
     setBusy("preview")
     setError(null)
     try {
-      const draft = await request<{ subject: string; body: string; sent: false; case: DisclosureCase }>(
-        `/api/internal/prospects/${prospectId}/disclosure/preview`,
-        { method: "POST" },
-      )
+      const draft = await request<{
+        subject: string
+        body: string
+        sent: false
+        recipients: string[]
+        channel: string | null
+        case: DisclosureCase
+      }>(`/api/internal/prospects/${prospectId}/disclosure/preview`, {
+        method: "POST",
+        body: JSON.stringify(templateId === "" ? {} : { templateId }),
+      })
       setDesk(draft.case)
+      setPreviewMeta({ recipients: draft.recipients, channel: draft.channel })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not preview the draft.")
     } finally {
@@ -242,6 +297,7 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
           <p className="text-xs leading-relaxed text-mute">
             Private verification only. Drafts are never sent. Policy URLs are stored, not fetched.
             Fingerprints are rule|severity|path|title. Finding values stay off this desk.
+            Do-not-contact always blocks outreach. Missed deadlines stay internal.
           </p>
           {!desk ? (
             <div className="flex flex-wrap gap-2">
@@ -257,6 +313,17 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
                   onClick={() => void createCase(true)}
                 >
                   Confirm duplicate
+                </Button>
+              ) : null}
+              {dnc?.length ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={Boolean(busy)}
+                  onClick={() => void createCase(Boolean(duplicates?.length), true)}
+                >
+                  Research only
                 </Button>
               ) : null}
             </div>
@@ -344,6 +411,54 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
               >
                 Save notes
               </Button>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Vendor channel
+                  </Label>
+                  <select
+                    value={vendorChannel}
+                    onChange={(event) => setVendorChannel(event.target.value as VendorChannel | "")}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
+                  >
+                    <option value="">unset</option>
+                    <option value="security_email">security email</option>
+                    <option value="form">form</option>
+                    <option value="security_txt">security.txt</option>
+                    <option value="platform">platform advisory</option>
+                  </select>
+                </Field>
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Draft template
+                  </Label>
+                  <select
+                    value={templateId === "" ? "" : String(templateId)}
+                    onChange={(event) =>
+                      setTemplateId(event.target.value === "" ? "" : Number(event.target.value))
+                    }
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
+                  >
+                    <option value="">built-in draft</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={Boolean(busy)}
+                onClick={() =>
+                  void patch({ vendorChannel: vendorChannel === "" ? null : vendorChannel })
+                }
+              >
+                Save channel
+              </Button>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" disabled={Boolean(busy)} onClick={() => void preview()}>
                   {busy === "preview" ? "Previewing…" : "Preview draft"}
@@ -353,6 +468,14 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
               {desk.draftSubject ? (
                 <div className="rounded-md border border-white/10 px-3 py-3">
                   <p className="text-sm text-snow">{desk.draftSubject}</p>
+                  {previewMeta?.recipients.length ? (
+                    <p className="mt-2 font-mono text-xs text-dim">
+                      Recipients · {previewMeta.recipients.join(" · ")}
+                      {previewMeta.channel ? ` · ${previewMeta.channel}` : ""}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-dim">No recipient on file. Nothing is mailed.</p>
+                  )}
                   <pre className="mt-2 whitespace-pre-wrap font-mono text-xs text-mute">
                     {desk.draftBody}
                   </pre>
@@ -415,6 +538,36 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
                   />
                 </Field>
               </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Credit
+                  </Label>
+                  <Input
+                    value={outcomeCredit}
+                    onChange={(event) => setOutcomeCredit(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">CVE</Label>
+                  <Input
+                    value={outcomeCve}
+                    onChange={(event) => setOutcomeCve(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+                <Field>
+                  <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                    Outcome notes
+                  </Label>
+                  <Input
+                    value={outcomeNotes}
+                    onChange={(event) => setOutcomeNotes(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+                  />
+                </Field>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -425,6 +578,10 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
                     void patch({
                       deadlineAt: deadline ? new Date(deadline).toISOString() : null,
                       conversion,
+                      vendorChannel: vendorChannel === "" ? null : vendorChannel,
+                      outcomeCredit,
+                      outcomeCve,
+                      outcomeNotes,
                     })
                   }
                 >
@@ -469,6 +626,15 @@ export function DisclosureCasePanel({ prospectId, summary, request, onChanged }:
                 <li key={row.caseId}>
                   {row.owner}/{row.repo}
                   {row.packageName ? ` · ${row.packageName}` : ""} · {row.reasons.join(", ")}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {dnc?.length ? (
+            <ul className="text-xs text-mute">
+              {dnc.map((row) => (
+                <li key={row.id}>
+                  Do not contact · {row.reason} · {row.reasons.join(", ")}
                 </li>
               ))}
             </ul>

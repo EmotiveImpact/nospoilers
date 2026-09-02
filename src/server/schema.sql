@@ -221,6 +221,13 @@ CREATE TABLE IF NOT EXISTS disclosure_cases (
     CHECK (conversion IN ('none', 'trial', 'paid', 'declined')),
   fix_version TEXT,
   last_rescan_at TIMESTAMPTZ,
+  vendor_channel TEXT
+    CHECK (vendor_channel IS NULL OR vendor_channel IN (
+      'security_email', 'form', 'security_txt', 'platform'
+    )),
+  outcome_credit TEXT,
+  outcome_cve TEXT,
+  outcome_notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -256,9 +263,44 @@ CREATE TRIGGER disclosure_events_no_delete
   BEFORE DELETE ON disclosure_events
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_event_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_templates (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS disclosure_do_not_contact (
+  id BIGSERIAL PRIMARY KEY,
+  owner TEXT,
+  repo TEXT,
+  package_name TEXT,
+  contact TEXT,
+  reason TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (
+    (owner IS NOT NULL AND repo IS NOT NULL)
+    OR package_name IS NOT NULL
+    OR contact IS NOT NULL
+  )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_owner_repo_idx
+  ON disclosure_do_not_contact (lower(owner), lower(repo))
+  WHERE owner IS NOT NULL AND repo IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_package_idx
+  ON disclosure_do_not_contact (lower(package_name))
+  WHERE package_name IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_contact_idx
+  ON disclosure_do_not_contact (lower(contact))
+  WHERE contact IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS internal_notifications (
   id BIGSERIAL PRIMARY KEY,
-  kind TEXT NOT NULL CHECK (kind IN ('verified_critical')),
+  kind TEXT NOT NULL CHECK (kind IN ('verified_critical', 'deadline_missed')),
   prospect_id BIGINT NOT NULL REFERENCES prospects (id) ON DELETE CASCADE,
   case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
   title TEXT NOT NULL,

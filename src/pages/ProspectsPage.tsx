@@ -1,9 +1,10 @@
-import { Field, Input, Label } from "@headlessui/react"
+import { Field, Input, Label, Textarea } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DisclosureCasePanel,
   type DisclosureSummary,
+  type DncMatch,
   type DuplicateMatch,
 } from "@/pages/DisclosureCasePanel.tsx"
 import type { Finding } from "@/report-types"
@@ -39,11 +40,21 @@ type Prospect = {
 
 type InternalNotice = {
   id: number
-  kind: "verified_critical"
+  kind: "verified_critical" | "deadline_missed"
   prospectId: number
   title: string
   rules: string[]
   readAt: string | null
+}
+
+type DeskTemplate = { id: number; name: string; subject: string; body: string }
+type DeskDnc = {
+  id: number
+  owner: string | null
+  repo: string | null
+  packageName: string | null
+  contact: string | null
+  reason: string
 }
 
 type ProspectData = {
@@ -59,6 +70,8 @@ type ProspectData = {
     outreachAutomatic: boolean
     disclosureSend: boolean
     criticalNotifyUnverified: boolean
+    doNotContactEnforced?: boolean
+    deadlineRemindInternal?: boolean
   }
 }
 
@@ -107,6 +120,16 @@ export function ProspectsPage() {
   const [working, setWorking] = useState<"discover" | "repository" | "feed" | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
+  const [templates, setTemplates] = useState<DeskTemplate[]>([])
+  const [dncEntries, setDncEntries] = useState<DeskDnc[]>([])
+  const [templateName, setTemplateName] = useState("")
+  const [templateSubject, setTemplateSubject] = useState("")
+  const [templateBody, setTemplateBody] = useState("")
+  const [dncOwner, setDncOwner] = useState("")
+  const [dncRepo, setDncRepo] = useState("")
+  const [dncPackage, setDncPackage] = useState("")
+  const [dncContact, setDncContact] = useState("")
+  const [dncReason, setDncReason] = useState("")
 
   const request = useCallback(
     async <T,>(url: string, options: RequestInit = {}): Promise<T> => {
@@ -124,6 +147,7 @@ export function ProspectsPage() {
         githubLogin?: string
         tokenConfigured?: boolean
         duplicates?: DuplicateMatch[]
+        dnc?: DncMatch[]
       }
       if (response.status === 401) {
         setState({
@@ -136,8 +160,10 @@ export function ProspectsPage() {
       if (!response.ok) {
         const failed = new Error(body.error ?? `Request failed (${response.status}).`) as Error & {
           duplicates?: DuplicateMatch[]
+          dnc?: DncMatch[]
         }
         failed.duplicates = body.duplicates
+        failed.dnc = body.dnc
         throw failed
       }
       return body
@@ -153,6 +179,17 @@ export function ProspectsPage() {
         setQueue(await request<OwnerQueueHealth>("/api/internal/queue"))
       } catch {
         setQueue(null)
+      }
+      try {
+        const [templateBody, dncBody] = await Promise.all([
+          request<{ templates: DeskTemplate[] }>("/api/internal/disclosure/templates"),
+          request<{ entries: DeskDnc[] }>("/api/internal/disclosure/do-not-contact"),
+        ])
+        setTemplates(templateBody.templates)
+        setDncEntries(dncBody.entries)
+      } catch {
+        setTemplates([])
+        setDncEntries([])
       }
     } catch (error) {
       setState((current) =>
@@ -273,6 +310,60 @@ export function ProspectsPage() {
     }
   }
 
+  async function saveTemplate() {
+    setNotice(null)
+    try {
+      await request("/api/internal/disclosure/templates", {
+        method: "POST",
+        body: JSON.stringify({
+          name: templateName,
+          subject: templateSubject,
+          body: templateBody,
+        }),
+      })
+      setTemplateName("")
+      setTemplateSubject("")
+      setTemplateBody("")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save the template.")
+    }
+  }
+
+  async function saveDnc() {
+    setNotice(null)
+    try {
+      await request("/api/internal/disclosure/do-not-contact", {
+        method: "POST",
+        body: JSON.stringify({
+          owner: dncOwner || undefined,
+          repo: dncRepo || undefined,
+          packageName: dncPackage || undefined,
+          contact: dncContact || undefined,
+          reason: dncReason,
+        }),
+      })
+      setDncOwner("")
+      setDncRepo("")
+      setDncPackage("")
+      setDncContact("")
+      setDncReason("")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save do-not-contact.")
+    }
+  }
+
+  async function removeDnc(id: number) {
+    setNotice(null)
+    try {
+      await request(`/api/internal/disclosure/do-not-contact/${id}`, { method: "DELETE" })
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not remove do-not-contact.")
+    }
+  }
+
   async function rescan(id: number) {
     try {
       await request(`/api/internal/prospects/${id}/rescan`, { method: "POST" })
@@ -358,7 +449,8 @@ export function ProspectsPage() {
             poller, after customer work, checks known npm leads for a new latest and can run a
             three-repo discover when a discovery token is set. Customer jobs stay first. No source
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
-            and records a simulated acknowledgement. Nothing is sent or publicly named.
+            records a simulated acknowledgement, and enforces do-not-contact. Missed
+            deadlines stay as internal reminders. Nothing is sent or publicly named.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -371,7 +463,7 @@ export function ProspectsPage() {
         <section className="mt-10 rounded-lg border border-white/10 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">
-              Verified critical
+              Internal notifications
             </h2>
             <p className="text-xs text-dim">
               {data.notifications.unread} unread · never mailed · never unverified
@@ -383,7 +475,9 @@ export function ProspectsPage() {
                 <div>
                   <p className="text-sm text-snow">{notice.title}</p>
                   <p className="mt-1 font-mono text-xs text-dim">
-                    {notice.rules.join(" · ") || "critical fingerprints"}
+                    {notice.kind === "deadline_missed"
+                      ? "deadline missed"
+                      : notice.rules.join(" · ") || "critical fingerprints"}
                     {notice.readAt ? " · read" : " · unread"}
                   </p>
                 </div>
@@ -527,6 +621,119 @@ export function ProspectsPage() {
       </div>
 
       {notice && <p className="mt-4 text-sm text-mute">{notice}</p>}
+
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-white/10 p-5">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-dim">Disclosure templates</p>
+          <p className="mt-2 text-xs leading-relaxed text-mute">
+            Placeholders: {"{{coordinate}}"} {"{{package}}"} {"{{fingerprints}}"} {"{{channel}}"}.
+            Preview still never sends.
+          </p>
+          {templates.length > 0 ? (
+            <ul className="mt-3 space-y-1 font-mono text-xs text-dim">
+              {templates.map((template) => (
+                <li key={template.id}>{template.name}</li>
+              ))}
+            </ul>
+          ) : null}
+          <Field className="mt-4">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">Name</Label>
+            <Input
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+              className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+            />
+          </Field>
+          <Field className="mt-3">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">Subject</Label>
+            <Input
+              value={templateSubject}
+              onChange={(event) => setTemplateSubject(event.target.value)}
+              className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none data-focus:border-white/40"
+            />
+          </Field>
+          <Field className="mt-3">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">Body</Label>
+            <Textarea
+              value={templateBody}
+              onChange={(event) => setTemplateBody(event.target.value)}
+              rows={4}
+              className="mt-2 w-full rounded-md border border-white/15 bg-transparent px-3 py-2 text-sm text-snow outline-none data-focus:border-white/40"
+            />
+          </Field>
+          <Button type="button" size="sm" className="mt-4" onClick={() => void saveTemplate()}>
+            Save template
+          </Button>
+        </div>
+        <div className="rounded-lg border border-white/10 p-5">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-dim">Do not contact</p>
+          <p className="mt-2 text-xs leading-relaxed text-mute">
+            Owner/repo, package, or contact. Always blocks <span className="text-snow">contacted</span>.
+            Research-only cases may still be opened.
+          </p>
+          {dncEntries.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {dncEntries.map((entry) => (
+                <li key={entry.id} className="flex items-start justify-between gap-3 text-xs text-mute">
+                  <span>
+                    {[
+                      entry.owner && entry.repo ? `${entry.owner}/${entry.repo}` : null,
+                      entry.packageName,
+                      entry.contact,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    <span className="mt-1 block text-dim">{entry.reason}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void removeDnc(entry.id)}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Input
+              value={dncOwner}
+              onChange={(event) => setDncOwner(event.target.value)}
+              placeholder="owner"
+              className="h-10 rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+            <Input
+              value={dncRepo}
+              onChange={(event) => setDncRepo(event.target.value)}
+              placeholder="repo"
+              className="h-10 rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+            <Input
+              value={dncPackage}
+              onChange={(event) => setDncPackage(event.target.value)}
+              placeholder="package"
+              className="h-10 rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+            <Input
+              value={dncContact}
+              onChange={(event) => setDncContact(event.target.value)}
+              placeholder="contact"
+              className="h-10 rounded-md border border-white/15 bg-transparent px-3 text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+          </div>
+          <Input
+            value={dncReason}
+            onChange={(event) => setDncReason(event.target.value)}
+            placeholder="reason"
+            className="mt-3 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+          />
+          <Button type="button" size="sm" variant="outline" className="mt-4" onClick={() => void saveDnc()}>
+            Add do-not-contact
+          </Button>
+        </div>
+      </section>
 
       <section className="mt-14">
         <div className="flex items-baseline justify-between gap-4">

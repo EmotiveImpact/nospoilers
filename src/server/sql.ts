@@ -783,6 +783,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateReleaseGovernance(sql);
   await migrateDisclosureDesk(sql);
   await migrateInternalNotifications(sql);
+  await migrateDisclosurePhase2(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1076,6 +1077,76 @@ async function migrateInternalNotifications(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "039_internal_notifications",
+  ]);
+}
+
+async function migrateDisclosurePhase2(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS vendor_channel TEXT
+        CHECK (vendor_channel IS NULL OR vendor_channel IN (
+          'security_email', 'form', 'security_txt', 'platform'
+        ));
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS outcome_credit TEXT;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS outcome_cve TEXT;
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS outcome_notes TEXT;
+    CREATE TABLE IF NOT EXISTS disclosure_templates (
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    INSERT INTO disclosure_templates (name, subject, body)
+    VALUES (
+      'standard',
+      'Coordinated disclosure: public artifact findings in {{coordinate}}',
+      $std$This is a private coordinated disclosure. Nothing has been sent or published.
+
+Target: {{coordinate}}
+Artifact: {{package}}
+Preferred channel: {{channel}}
+
+Finding fingerprints (rule|severity|path|title):
+{{fingerprints}}
+
+Please acknowledge and tell us the fixed version. We will not name this publicly.$std$
+    )
+    ON CONFLICT (name) DO NOTHING;
+    CREATE TABLE IF NOT EXISTS disclosure_do_not_contact (
+      id BIGSERIAL PRIMARY KEY,
+      owner TEXT,
+      repo TEXT,
+      package_name TEXT,
+      contact TEXT,
+      reason TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CHECK (
+        (owner IS NOT NULL AND repo IS NOT NULL)
+        OR package_name IS NOT NULL
+        OR contact IS NOT NULL
+      )
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_owner_repo_idx
+      ON disclosure_do_not_contact (lower(owner), lower(repo))
+      WHERE owner IS NOT NULL AND repo IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_package_idx
+      ON disclosure_do_not_contact (lower(package_name))
+      WHERE package_name IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS disclosure_dnc_contact_idx
+      ON disclosure_do_not_contact (lower(contact))
+      WHERE contact IS NOT NULL;
+    ALTER TABLE internal_notifications DROP CONSTRAINT IF EXISTS internal_notifications_kind_check;
+    ALTER TABLE internal_notifications ADD CONSTRAINT internal_notifications_kind_check
+      CHECK (kind IN ('verified_critical', 'deadline_missed'));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "040_disclosure_phase2",
   ]);
 }
 

@@ -293,6 +293,15 @@ describe("Artifact Leads persistence", () => {
       expect(notices.status).toBe(401);
       expect(((await notices.json()) as { notifications?: unknown }).notifications).toBeUndefined();
 
+      const templates = await app.request("/api/internal/disclosure/templates", {
+        headers: { cookie },
+      });
+      expect(templates.status).toBe(401);
+      const dnc = await app.request("/api/internal/disclosure/do-not-contact", {
+        headers: { cookie },
+      });
+      expect(dnc.status).toBe(401);
+
       await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
       const ownerSession = await store.createSession("owner-1");
       const allowed = await app.request("/api/internal/prospects", {

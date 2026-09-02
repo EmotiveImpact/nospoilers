@@ -63,15 +63,22 @@ import { clientKey, createRateLimiter, retryAfterSeconds } from "./rate-limit.ts
 import {
   acknowledgeDisclosureCase,
   createDisclosureCase,
+  createDisclosureTemplate,
+  createDoNotContactEntry,
   DisclosureError,
+  DISCLOSURE_DNC_ERROR,
+  findDncMatches,
   loadDisclosureCase,
   outreachBlocked,
   previewDisclosureCase,
   rescanDisclosureCase,
   toDisclosureSummary,
+  toDncView,
+  toTemplateView,
   updateDisclosureCase,
+  updateDisclosureTemplate,
 } from "./disclosure.ts";
-import { toNotificationView } from "./internal-notify.ts";
+import { remindMissedDisclosureDeadlines, toNotificationView } from "./internal-notify.ts";
 import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
@@ -594,10 +601,14 @@ export function createApp(deps: AppDeps): Hono {
 
   function disclosureFailed(c: Context, error: unknown) {
     if (error instanceof DisclosureError) {
-      if (error.duplicates) {
-        return c.json({ error: error.message, duplicates: error.duplicates }, error.status);
-      }
-      return c.json({ error: error.message }, error.status);
+      return c.json(
+        {
+          error: error.message,
+          ...(error.duplicates ? { duplicates: error.duplicates } : {}),
+          ...(error.dnc ? { dnc: error.dnc } : {}),
+        },
+        error.status,
+      );
     }
     return c.json(
       { error: error instanceof Error ? error.message : "Disclosure request failed." },
@@ -653,6 +664,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/internal/prospects", async (c) => {
+    await remindMissedDisclosureDeadlines(deps.store);
     const limit = Number(c.req.query("limit") ?? 100);
     const [prospects, stats, cases, notices, unread] = await Promise.all([
       deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
@@ -680,11 +692,14 @@ export function createApp(deps: AppDeps): Hono {
         outreachAutomatic: false,
         disclosureSend: false,
         criticalNotifyUnverified: false,
+        doNotContactEnforced: true,
+        deadlineRemindInternal: true,
       },
     });
   });
 
   app.get("/api/internal/notifications", async (c) => {
+    await remindMissedDisclosureDeadlines(deps.store);
     const [items, unread] = await Promise.all([
       deps.store.listInternalNotifications(50),
       deps.store.unreadInternalNotificationCount(),
@@ -705,6 +720,71 @@ export function createApp(deps: AppDeps): Hono {
     return row
       ? c.json({ notification: toNotificationView(row) })
       : c.json({ error: "Notification not found." }, 404);
+  });
+
+  app.get("/api/internal/disclosure/templates", async (c) => {
+    const templates = await deps.store.listDisclosureTemplates();
+    return c.json({ templates: templates.map(toTemplateView), policy: { sent: false } });
+  });
+
+  app.post("/api/internal/disclosure/templates", async (c) => {
+    try {
+      const body = jsonObj(await c.req.json());
+      const template = await createDisclosureTemplate(deps.store, {
+        actor: await internalActor(c),
+        name: body.name,
+        subject: body.subject,
+        body: body.body,
+      });
+      return c.json({ template, sent: false }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.patch("/api/internal/disclosure/templates/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid template." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const template = await updateDisclosureTemplate(deps.store, {
+        id,
+        subject: body.subject,
+        body: body.body,
+      });
+      return c.json({ template, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.get("/api/internal/disclosure/do-not-contact", async (c) => {
+    const entries = await deps.store.listDoNotContact();
+    return c.json({ entries: entries.map(toDncView) });
+  });
+
+  app.post("/api/internal/disclosure/do-not-contact", async (c) => {
+    try {
+      const body = jsonObj(await c.req.json());
+      const entry = await createDoNotContactEntry(deps.store, {
+        actor: await internalActor(c),
+        owner: body.owner,
+        repo: body.repo,
+        packageName: body.packageName,
+        contact: body.contact,
+        reason: body.reason,
+      });
+      return c.json({ entry }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.delete("/api/internal/disclosure/do-not-contact/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid entry." }, 400);
+    const removed = await deps.store.deleteDoNotContact(id);
+    return removed ? c.json({ ok: true }) : c.json({ error: "Entry not found." }, 404);
   });
 
   app.get("/api/internal/queue", async (c) => {
@@ -808,6 +888,7 @@ export function createApp(deps: AppDeps): Hono {
         prospectId: id,
         actor: await internalActor(c),
         confirmDuplicate: body.confirmDuplicate === true,
+        researchOnly: body.researchOnly === true,
       });
       return c.json({ case: view }, 201);
     } catch (error) {
@@ -849,6 +930,10 @@ export function createApp(deps: AppDeps): Hono {
         deadlineAt: body.deadlineAt,
         conversion: body.conversion,
         fixVersion: body.fixVersion,
+        vendorChannel: body.vendorChannel,
+        outcomeCredit: body.outcomeCredit,
+        outcomeCve: body.outcomeCve,
+        outcomeNotes: body.outcomeNotes,
       });
       return c.json({ case: view });
     } catch (error) {
@@ -860,9 +945,11 @@ export function createApp(deps: AppDeps): Hono {
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
     try {
+      const body = jsonObj(await c.req.json().catch(() => ({})));
       const draft = await previewDisclosureCase(deps.store, {
         prospectId: id,
         actor: await internalActor(c),
+        templateId: body.templateId,
       });
       return c.json(draft);
     } catch (error) {
@@ -952,6 +1039,17 @@ export function createApp(deps: AppDeps): Hono {
     const desk = await deps.store.getDisclosureCaseByProspect(id);
     const blocked = outreachBlocked(status as ProspectStatus, desk);
     if (blocked) return c.json({ error: blocked }, 409);
+    if (status === "contacted") {
+      const dnc = await findDncMatches(deps.store, {
+        owner: existing.owner,
+        repo: existing.repo,
+        packageName: existing.package_name,
+        securityContact: desk?.security_contact ?? null,
+      });
+      if (dnc.length > 0) {
+        return c.json({ error: DISCLOSURE_DNC_ERROR, dnc }, 409);
+      }
+    }
     const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);
     return prospect ? c.json({ prospect }) : c.json({ error: "Prospect not found." }, 404);
   });
