@@ -8,8 +8,11 @@
   Watch alert names the skipped files. The worker does not download, unpack,
   or mint an inconclusive receipt for those assets. A later `release.edited`
   that only changes installer assets does not enqueue another heavy scan. A
-  Release that also has a scannable pack still scans that pack. This is not
-  the isolated Electron worker and not a Pricing change.
+  Release that also has a scannable pack still scans that pack. Live Neon:
+  owner `scan-latest-release` on `EmotiveImpact/Echo` job 46 `done`; Watch
+  alert 35 titles the skip and names the three Hearback installer assets;
+  no new `v0.1.7` Hearback receipts; open jobs 0; Echo git tree not written.
+  This is not the isolated Electron worker and not a Pricing change.
 
 - Hosted `release_scan` resolves GitHub Checks against the tag name and
   `target_commitish`, not `tags/<tag>` as a commit SHA. A missing commit

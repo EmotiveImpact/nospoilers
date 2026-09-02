@@ -236,10 +236,12 @@ Read in this order:
   the Watch alert. Hosted `release_scan` classifies Electron installer assets
   (DMG, EXE, MSI, AppImage, and mac/win desktop zip bundles) and skips them:
   Watch alert, no download, no inconclusive receipt. `release.edited` that only
-  changes those assets does not enqueue another heavy scan. Live Echo `v0.1.7`
-  Hearback mac.zip / AppImage assets were previously titled inconclusive because
-  they matched `.zip` over the 80 MiB cap. That is not the isolated Electron
-  worker.
+  changes those assets does not enqueue another heavy scan. Live Neon: owner
+  `scan-latest-release` on `EmotiveImpact/Echo` job 46 `done`; Watch alert 35
+  is `Release v0.1.7 has Electron installer assets we do not scan` and names
+  the Hearback mac.zip / AppImage assets; no new `v0.1.7` Hearback receipts;
+  open jobs 0. Historical alerts 33/34 stay the old inconclusive titles.
+  Echo git tree was not written. That is not the isolated Electron worker.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
