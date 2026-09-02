@@ -538,6 +538,8 @@ export type ProspectRow = {
   artifact_name: string;
   artifact_url: string;
   artifact_bytes: number | null;
+  artifact_sha256: string | null;
+  artifact_sha512: string | null;
   status: ProspectStatus;
   scan_status: ProspectScanStatus;
   file_count: number | null;
@@ -1198,6 +1200,8 @@ function prospectRow(row: ProspectRow & { workspace_members?: unknown; feed_chec
     ...row,
     id: num(row.id),
     artifact_bytes: row.artifact_bytes === null ? null : num(row.artifact_bytes),
+    artifact_sha256: asSha256(row.artifact_sha256),
+    artifact_sha512: asSha512(row.artifact_sha512),
     file_count: row.file_count === null ? null : num(row.file_count),
     critical_count: row.critical_count === null ? null : num(row.critical_count),
     warning_count: row.warning_count === null ? null : num(row.warning_count),
@@ -1205,6 +1209,14 @@ function prospectRow(row: ProspectRow & { workspace_members?: unknown; feed_chec
     workspace_members: asStringArray(row.workspace_members),
     feed_checked_at: iso(row.feed_checked_at ?? null),
   };
+}
+
+function asSha256(value: unknown): string | null {
+  return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value) ? value.toLowerCase() : null;
+}
+
+function asSha512(value: unknown): string | null {
+  return typeof value === "string" && /^[a-f0-9]{128}$/i.test(value) ? value.toLowerCase() : null;
 }
 
 function asStringArray(value: unknown): string[] {
@@ -2947,7 +2959,14 @@ export function createStore(
 
     async completeProspectScan(
       id: number,
-      report: { fileCount: number; findings: unknown[]; workspaceMembers?: string[] },
+      report: {
+        fileCount: number;
+        findings: unknown[];
+        workspaceMembers?: string[];
+        artifactSha256?: string | null;
+        artifactSha512?: string | null;
+        artifactBytes?: number | null;
+      },
     ): Promise<void> {
       const critical = report.findings.filter(
         (finding) =>
@@ -2965,6 +2984,9 @@ export function createStore(
              warning_count = $4,
              findings = $5::jsonb,
              workspace_members = $6::jsonb,
+             artifact_sha256 = COALESCE($7, artifact_sha256),
+             artifact_sha512 = COALESCE($8, artifact_sha512),
+             artifact_bytes = COALESCE($9, artifact_bytes),
              error = NULL,
              scanned_at = now(),
              updated_at = now()
@@ -2976,6 +2998,9 @@ export function createStore(
           warnings,
           JSON.stringify(report.findings),
           JSON.stringify(report.workspaceMembers ?? []),
+          asSha256(report.artifactSha256),
+          asSha512(report.artifactSha512),
+          report.artifactBytes == null ? null : num(report.artifactBytes),
         ],
       );
     },

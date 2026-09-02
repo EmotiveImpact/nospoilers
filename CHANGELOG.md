@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Disclosure Desk artifact hash: a completed prospect scan stores SHA-256 and
+  SHA-512 of the scanned bytes. Cases, redacted reports, drafts, and destination
+  payloads show the URL/version/hash. A new `verified` state requires a
+  64-hex SHA-256. A historical verified case without a hash stays verified.
+  Customer sessions stay 401. No worker wake. Nothing is mailed. Live Neon:
+  `053` applied; unauth and `not-admin` 401; owner desk 200; prettier and
+  left-pad hashes stay null (no rescan); leftover grants 0; leftover
+  destinations 0; no open jobs; campaigns 0; watches 0; Cloudflare tunnel
+  matched. Not a customer product and not a Pricing change.
+
 - Disclosure Desk duplicate warning before outreach: recording `contacted`
   now 409s on the same organization/domain/artifact/fingerprint matches as
   case create unless `confirmDuplicate` is sent. Do-not-contact and review

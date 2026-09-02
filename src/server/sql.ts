@@ -810,6 +810,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureDestinations(sql);
   await migrateOperatorGrants(sql);
   await migrateDisclosureFindingCategory(sql);
+  await migrateProspectArtifactHash(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1524,6 +1525,18 @@ async function migrateDisclosureFindingCategory(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "052_disclosure_finding_category",
+  ]);
+}
+
+async function migrateProspectArtifactHash(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE prospects
+      ADD COLUMN IF NOT EXISTS artifact_sha256 TEXT;
+    ALTER TABLE prospects
+      ADD COLUMN IF NOT EXISTS artifact_sha512 TEXT;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "053_prospect_artifact_hash",
   ]);
 }
 

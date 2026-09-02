@@ -448,12 +448,20 @@ async function downloadArtifact(url: string, maxBytes: number): Promise<Buffer> 
   return Buffer.concat(chunks, total);
 }
 
+export function hashArtifactBytes(bytes: Buffer | Uint8Array): { sha256: string; sha512: string } {
+  return {
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    sha512: createHash("sha512").update(bytes).digest("hex"),
+  };
+}
+
 export async function scanProspectArtifact(
   prospectId: number,
   deps: {
     store: Store;
     scan: (target: string) => Promise<ScanReport>;
     maxAssetBytes: number;
+    download?: (url: string, maxBytes: number) => Promise<Buffer>;
   },
 ): Promise<void> {
   const prospect = await deps.store.getProspect(prospectId);
@@ -463,13 +471,17 @@ export async function scanProspectArtifact(
   const filename = prospect.artifact_name.replace(/[^A-Za-z0-9_.-]+/g, "_");
   const target = path.join(dir, filename || "artifact.bin");
   try {
-    const bytes = await downloadArtifact(prospect.artifact_url, deps.maxAssetBytes);
+    const bytes = await (deps.download ?? downloadArtifact)(prospect.artifact_url, deps.maxAssetBytes);
+    const digests = hashArtifactBytes(bytes);
     await writeFile(target, bytes, { flag: "wx" });
     const report = await deps.scan(target);
     await deps.store.completeProspectScan(prospect.id, {
       fileCount: report.fileCount,
       findings: report.findings,
       workspaceMembers: workspaceMemberNamesFromReport(report.workspaces),
+      artifactSha256: digests.sha256,
+      artifactSha512: digests.sha512,
+      artifactBytes: bytes.byteLength,
     });
   } catch (error) {
     await deps.store.failProspectScan(

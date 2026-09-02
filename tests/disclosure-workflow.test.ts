@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
@@ -9,8 +11,12 @@ import {
   researcherWorkloadFromCases,
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
+import { hashArtifactBytes } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
+
+const SOURCEMAP_BYTES = readFileSync(path.resolve("fixtures/sourcemap.tgz"));
+const SOURCEMAP_DIGESTS = hashArtifactBytes(SOURCEMAP_BYTES);
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk3-admin-token", ...json };
@@ -143,6 +149,9 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       await store.completeProspectScan(prospect.id, {
         fileCount: 2,
         findings: [PRETTIER_FINDING],
+        artifactSha256: SOURCEMAP_DIGESTS.sha256,
+        artifactSha512: SOURCEMAP_DIGESTS.sha512,
+        artifactBytes: SOURCEMAP_BYTES.byteLength,
       });
 
       let wakes = 0;
@@ -293,6 +302,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
           attachmentBytesIncluded: boolean;
           coordinate: string;
           findingCategory: string;
+          artifact: { sha256: string | null };
           assignee: string;
           reviewState: string;
           replies: { summary: string }[];
@@ -304,6 +314,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       expect(reportBody.report.attachmentBytesIncluded).toBe(false);
       expect(reportBody.report.coordinate).toBe("prettier/prettier");
       expect(reportBody.report.findingCategory).toBe("sourcemap");
+      expect(reportBody.report.artifact.sha256).toBe(SOURCEMAP_DIGESTS.sha256);
       expect(reportBody.report.assignee).toBe("EmotiveImpact");
       expect(reportBody.report.reviewState).toBe("approved");
       expect(reportBody.report.replies[0]?.summary).toContain("3.9.7");
@@ -320,6 +331,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       const htmlText = await html.text();
       expect(htmlText).toContain("prettier/prettier");
       expect(htmlText).toContain("sourcemap");
+      expect(htmlText).toContain(SOURCEMAP_DIGESTS.sha256);
       expect(htmlText).not.toContain("Operator reproduction notes");
 
       const pdf = await app.request(

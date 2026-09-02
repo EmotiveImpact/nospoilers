@@ -25,6 +25,8 @@ type Prospect = {
   artifact_name: string
   artifact_url: string
   artifact_bytes: number | null
+  artifact_sha256: string | null
+  artifact_sha512: string | null
   status: ProspectStatus
   scan_status: ScanStatus
   file_count: number | null
@@ -1323,6 +1325,7 @@ export function ProspectsPage() {
                         {prospect.package_name ?? prospect.artifact_name}
                         {prospect.release_tag ? ` · ${prospect.release_tag}` : ""}
                         {prospect.artifact_bytes ? ` · ${formatBytes(prospect.artifact_bytes)}` : ""}
+                        {prospect.artifact_sha256 ? ` · ${prospect.artifact_sha256.slice(0, 12)}` : ""}
                       </p>
                       {prospect.workspace_members?.length ? (
                         <p className="mt-2 font-mono text-xs text-dim">

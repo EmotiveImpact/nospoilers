@@ -64,6 +64,7 @@ export type DisclosureSummary = {
   lastRescanAt: string | null
   fingerprintCount: number
   findingCategory?: FindingCategory
+  artifactSha256?: string | null
   vendorChannel?: VendorChannel | null
   assignee?: string | null
   reviewState?: DisclosureReviewState
@@ -111,6 +112,14 @@ type DisclosureCase = {
   checklist: Checklist
   fingerprints: string[]
   findingCategory: FindingCategory
+  artifact: {
+    url: string
+    name: string
+    version: string | null
+    bytes: number | null
+    sha256: string | null
+    sha512: string | null
+  }
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -529,6 +538,9 @@ export function DisclosureCasePanel({
           {summary?.findingCategory ? (
             <Badge variant="muted">{summary.findingCategory}</Badge>
           ) : null}
+          {summary?.artifactSha256 ? (
+            <Badge variant="muted">{summary.artifactSha256.slice(0, 12)}</Badge>
+          ) : null}
           {summary?.conversion && summary.conversion !== "none" ? (
             <Badge variant="muted">{summary.conversion}</Badge>
           ) : null}
@@ -542,7 +554,8 @@ export function DisclosureCasePanel({
           <p className="text-xs leading-relaxed text-mute">
             Private verification only. Drafts are never sent. Policy URLs are stored, not fetched.
             Fingerprints are rule|severity|path|title. Finding category is a closed
-            label from those rules. Finding values stay off this desk.
+            label from those rules. A new verified state needs a repeatable artifact
+            hash from the scanned bytes. Finding values stay off this desk.
             Do-not-contact always blocks outreach. Missed deadlines stay internal.
             Vendor replies and attachments stay on this desk. Reports omit notes and
             attachment bytes. Outreach still requires review approval. Nothing is mailed.
@@ -595,6 +608,11 @@ export function DisclosureCasePanel({
                   </li>
                 ))}
               </ul>
+              <p className="font-mono text-xs text-dim">
+                {desk.artifact.name}
+                {desk.artifact.version ? ` · ${desk.artifact.version}` : ""}
+                {desk.artifact.sha256 ? ` · ${desk.artifact.sha256}` : " · hash not recorded"}
+              </p>
               {desk.fingerprints.length > 0 ? (
                 <ul className="font-mono text-xs text-dim">
                   {desk.fingerprints.map((fp) => (

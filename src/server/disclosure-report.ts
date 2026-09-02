@@ -45,6 +45,7 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
 <body>
   <h1>Disclosure Desk report</h1>
   <p>${escapeHtml(report.coordinate)}${report.packageName ? ` · ${escapeHtml(report.packageName)}` : ""} · ${escapeHtml(report.state)} · ${escapeHtml(report.findingCategory)}</p>
+  <p class="mute">${escapeHtml(report.artifact.name)}${report.artifact.version ? ` · ${escapeHtml(report.artifact.version)}` : ""}${report.artifact.sha256 ? ` · SHA-256 ${escapeHtml(report.artifact.sha256)}` : " · hash not recorded"}</p>
   <p class="mute">Never sent. Operator notes and attachment bytes are omitted. Finding values are not included.</p>
   <h2>Service level</h2>
   <p>Opened ${escapeHtml(report.sla.openedAt)}</p>
@@ -68,6 +69,8 @@ export function renderDisclosureReportPdf(report: DisclosureReport): Buffer {
   const lines = [
     report.coordinate,
     report.packageName ? `package ${report.packageName}` : "package none",
+    `artifact ${report.artifact.name}${report.artifact.version ? ` ${report.artifact.version}` : ""}`,
+    report.artifact.sha256 ? `sha256 ${report.artifact.sha256}` : "sha256 not recorded",
     `state ${report.state} · ${report.findingCategory} · review ${report.reviewState}`,
     `assignee ${report.assignee ?? "unassigned"}`,
     `opened ${report.sla.openedAt}`,

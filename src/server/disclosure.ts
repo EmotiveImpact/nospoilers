@@ -43,6 +43,8 @@ export const DISCLOSURE_DUPLICATE_ERROR = "Possible duplicate case.";
 export const DISCLOSURE_EXISTS_ERROR = "A case already exists for this artifact.";
 export const DISCLOSURE_VERIFIED_ERROR =
   "Complete every verification check before marking verified.";
+export const DISCLOSURE_HASH_ERROR =
+  "A lead cannot be marked verified without a repeatable artifact hash.";
 export const DISCLOSURE_CHECK_CONTACT_ERROR =
   "Record a security contact or https policy URL before that check.";
 export const DISCLOSURE_CHECK_FINGERPRINT_ERROR =
@@ -248,6 +250,15 @@ export type DisclosureEventRow = {
   created_at: string;
 };
 
+export type ArtifactEvidence = {
+  url: string;
+  name: string;
+  version: string | null;
+  bytes: number | null;
+  sha256: string | null;
+  sha512: string | null;
+};
+
 export type DisclosureCaseView = {
   id: number;
   prospectId: number;
@@ -255,6 +266,7 @@ export type DisclosureCaseView = {
   checklist: DisclosureChecklist;
   fingerprints: string[];
   findingCategory: FindingCategory;
+  artifact: ArtifactEvidence;
   securityContact: string | null;
   policyUrl: string | null;
   notes: string | null;
@@ -325,6 +337,7 @@ export type DisclosureReport = {
   attachmentBytesIncluded: false;
   coordinate: string;
   packageName: string | null;
+  artifact: ArtifactEvidence;
   state: DisclosureState;
   fingerprints: string[];
   findingCategory: FindingCategory;
@@ -359,6 +372,7 @@ export type DisclosureCaseSummary = {
   lastRescanAt: string | null;
   fingerprintCount: number;
   findingCategory: FindingCategory;
+  artifactSha256: string | null;
   vendorChannel: VendorChannel | null;
   assignee: string | null;
   reviewState: DisclosureReviewState;
@@ -409,6 +423,38 @@ export function checklistComplete(checklist: DisclosureChecklist): boolean {
 
 export function checklistStarted(checklist: DisclosureChecklist): boolean {
   return CHECKLIST_KEYS.some((key) => checklist[key]);
+}
+
+export function isRepeatableArtifactHash(value: string | null | undefined): boolean {
+  return Boolean(value && /^[a-f0-9]{64}$/i.test(value));
+}
+
+export function artifactEvidence(
+  prospect: Pick<
+    ProspectRow,
+    "artifact_url" | "artifact_name" | "release_tag" | "artifact_bytes" | "artifact_sha256" | "artifact_sha512"
+  >,
+): ArtifactEvidence {
+  return {
+    url: prospect.artifact_url,
+    name: prospect.artifact_name,
+    version: prospect.release_tag,
+    bytes: prospect.artifact_bytes,
+    sha256: prospect.artifact_sha256,
+    sha512: prospect.artifact_sha512,
+  };
+}
+
+export function assertVerifiedArtifactHash(
+  next: DisclosureState,
+  current: DisclosureState,
+  sha256: string | null | undefined,
+): void {
+  if (next !== "verified") return;
+  if (current === "verified") return;
+  if (!isRepeatableArtifactHash(sha256)) {
+    throw new DisclosureError(DISCLOSURE_HASH_ERROR, 400);
+  }
 }
 
 export function fingerprintsFromFindings(findings: unknown): string[] {
@@ -1089,7 +1135,7 @@ export function previewDisclosureDraft(
   prospect: Pick<
     ProspectRow,
     "owner" | "repo" | "package_name" | "artifact_name" | "release_tag" | "source"
-  >,
+  > & { artifact_url?: string | null; artifact_sha256?: string | null },
   fingerprints: string[],
 ): { subject: string; body: string; sent: false } {
   const coordinate = `${prospect.owner}/${prospect.repo}`;
@@ -1101,6 +1147,8 @@ export function previewDisclosureDraft(
     "",
     `Target: ${coordinate}`,
     `Artifact: ${pack}${version}`,
+    ...(prospect.artifact_url ? [`URL: ${prospect.artifact_url}`] : []),
+    ...(prospect.artifact_sha256 ? [`SHA-256: ${prospect.artifact_sha256}`] : []),
     `Source: ${prospect.source}`,
     "",
     "Finding fingerprints (rule|severity|path|title):",
@@ -1175,6 +1223,7 @@ export function toDisclosureView(
   events: DisclosureEventRow[] = [],
   replies: DisclosureVendorReplyRow[] = [],
   attachments: DisclosureAttachmentRow[] = [],
+  artifact: ArtifactEvidence,
 ): DisclosureCaseView {
   return {
     id: row.id,
@@ -1183,6 +1232,7 @@ export function toDisclosureView(
     checklist: checklistFromRow(row),
     fingerprints: row.fingerprints,
     findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
+    artifact,
     securityContact: row.security_contact,
     policyUrl: row.policy_url,
     notes: notes.notes,
@@ -1223,7 +1273,10 @@ export function toDisclosureView(
   };
 }
 
-export function toDisclosureSummary(row: DisclosureCaseRow): DisclosureCaseSummary {
+export function toDisclosureSummary(
+  row: DisclosureCaseRow,
+  artifactSha256: string | null = null,
+): DisclosureCaseSummary {
   return {
     id: row.id,
     prospectId: row.prospect_id,
@@ -1235,6 +1288,7 @@ export function toDisclosureSummary(row: DisclosureCaseRow): DisclosureCaseSumma
     lastRescanAt: row.last_rescan_at,
     fingerprintCount: row.fingerprints.length,
     findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
+    artifactSha256,
     vendorChannel: row.vendor_channel,
     assignee: row.assignee,
     reviewState: row.review_state,
@@ -1373,12 +1427,21 @@ export async function createDisclosureCase(
 }
 
 async function loadedView(store: Store, row: DisclosureCaseRow): Promise<DisclosureCaseView> {
-  const [events, replies, attachments] = await Promise.all([
+  const [events, replies, attachments, prospect] = await Promise.all([
     store.listDisclosureEvents(row.id),
     store.listDisclosureVendorReplies(row.id),
     store.listDisclosureAttachments(row.id),
+    store.getProspect(row.prospect_id),
   ]);
-  return toDisclosureView(row, store.readDisclosureNotes(row), events, replies, attachments);
+  if (!prospect) throw new DisclosureError("Prospect not found.", 404);
+  return toDisclosureView(
+    row,
+    store.readDisclosureNotes(row),
+    events,
+    replies,
+    attachments,
+    artifactEvidence(prospect),
+  );
 }
 
 export async function updateDisclosureCase(
@@ -1455,6 +1518,8 @@ export async function updateDisclosureCase(
         ? categoryFromFingerprints(current.fingerprints)
         : parseFindingCategory(input.findingCategory)
       : (current.finding_category ?? categoryFromFingerprints(current.fingerprints));
+  const prospect = await requireProspect(store, input.prospectId);
+  assertVerifiedArtifactHash(state, current.state, prospect?.artifact_sha256);
   const row = await store.updateDisclosureCase({
     prospectId: input.prospectId,
     actor: input.actor,
@@ -1489,7 +1554,6 @@ export async function updateDisclosureCase(
       findingCategory,
     }),
   });
-  const prospect = await requireProspect(store, input.prospectId);
   if (prospect) {
     await notifyVerifiedCritical(store, {
       previousState: current.state,
@@ -1982,6 +2046,7 @@ export async function buildDisclosureReport(
     attachmentBytesIncluded: false,
     coordinate: `${prospect.owner}/${prospect.repo}`,
     packageName: prospect.package_name,
+    artifact: view.artifact,
     state: view.state,
     fingerprints: view.fingerprints,
     findingCategory: view.findingCategory,

@@ -93,6 +93,11 @@ export function disclosureDestinationPayload(report: DisclosureReport): Record<s
     attachmentBytesIncluded: false,
     coordinate: report.coordinate,
     packageName: report.packageName,
+    artifact: {
+      name: report.artifact.name,
+      version: report.artifact.version,
+      sha256: report.artifact.sha256,
+    },
     state: report.state,
     fingerprints: report.fingerprints,
     findingCategory: report.findingCategory,

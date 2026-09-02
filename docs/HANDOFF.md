@@ -94,7 +94,12 @@ Read in this order:
   `052_disclosure_finding_category` stores a closed finding category on each
   Disclosure Desk case (derived from fingerprints; operator can override).
   Live Neon: `052` applied; prettier verified case is `credential` from
-  SEC-003. Next unused id is `053_*`.
+  SEC-003.
+  `053_prospect_artifact_hash` stores SHA-256 and SHA-512 on `prospects`
+  from a completed scan. A new Disclosure Desk `verified` state requires
+  the SHA-256. Historical verified rows without a hash stay verified.
+  Live Neon: `053` applied; prettier and left-pad hashes stay null (no
+  rescan). Next unused id is `054_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -526,6 +531,8 @@ auto-watched. Owner-only.
 Disclosure Desk Phase 2 minus send is in on Artifact Leads: verification
 checklist, finding category (derived from fingerprints; operator can
 override; live Neon prettier verified case is `credential` from SEC-003),
+repeatable artifact SHA-256/SHA-512 on the lead (new `verified` requires
+the hash; historical verified prettier stays verified with a null hash),
 duplicate warning (owner/repo, GitHub owner, vendor domain,
 package, fingerprints; live Neon prettier vs left-pad still no match),
 encrypted expiring notes, stored (never fetched)

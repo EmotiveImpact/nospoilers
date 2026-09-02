@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
+import { scan } from "../src/scanner/index.ts";
 import { loadConfig } from "../src/server/config.ts";
 import type { GithubPort } from "../src/server/github.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
@@ -13,10 +16,15 @@ import {
 import {
   MAX_PROSPECT_WORKSPACE_PACKS,
   nestedNpmArtifactsFromGithub,
+  hashArtifactBytes,
   parseGithubRepository,
+  scanProspectArtifact,
   workspaceMemberNamesFromReport,
   workspaceParentDirs,
 } from "../src/server/prospects.ts";
+
+const SOURCEMAP_BYTES = readFileSync(path.resolve("fixtures/sourcemap.tgz"));
+const SOURCEMAP_DIGESTS = hashArtifactBytes(SOURCEMAP_BYTES);
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
 
@@ -84,11 +92,17 @@ describe("Artifact Leads persistence", () => {
             detail: "A .map file is included in the packed artifact.",
           },
         ],
+        artifactSha256: SOURCEMAP_DIGESTS.sha256,
+        artifactSha512: SOURCEMAP_DIGESTS.sha512,
+        artifactBytes: SOURCEMAP_BYTES.byteLength,
       });
       const row = await store.getProspect(first.id);
       expect(row?.scan_status).toBe("complete");
       expect(row?.critical_count).toBe(1);
       expect(row?.file_count).toBe(2);
+      expect(row?.artifact_sha256).toBe(SOURCEMAP_DIGESTS.sha256);
+      expect(row?.artifact_sha512).toBe(SOURCEMAP_DIGESTS.sha512);
+      expect(row?.artifact_bytes).toBe(SOURCEMAP_BYTES.byteLength);
       expect(row?.findings).toEqual([
         expect.objectContaining({ rule: "MAP-001", path: "package/dist/app.js.map" }),
       ]);
@@ -103,6 +117,42 @@ describe("Artifact Leads persistence", () => {
         "@octo/cli",
         "@octo/core",
       ]);
+      expect((await store.getProspect(first.id))?.artifact_sha256).toBe(SOURCEMAP_DIGESTS.sha256);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("hashes scanned fixture bytes on a prospect complete", async () => {
+    expect(SOURCEMAP_DIGESTS.sha256).toBe(
+      "c74219d282707cc25c766e077d1722ff6c2426d2317c51cbda1683290bc48cab",
+    );
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const created = await store.upsertProspect({
+        source: "npm",
+        owner: "prettier",
+        repo: "prettier",
+        repositoryUrl: "https://github.com/prettier/prettier",
+        packageName: "prettier",
+        releaseTag: "3.9.6",
+        artifactName: "sourcemap.tgz",
+        artifactUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      await scanProspectArtifact(created.id, {
+        store,
+        scan,
+        maxAssetBytes: 1_000_000,
+        download: async () => SOURCEMAP_BYTES,
+      });
+      const row = await store.getProspect(created.id);
+      expect(row?.scan_status).toBe("complete");
+      expect(row?.artifact_sha256).toBe(SOURCEMAP_DIGESTS.sha256);
+      expect(row?.artifact_sha512).toBe(SOURCEMAP_DIGESTS.sha512);
+      expect(row?.artifact_bytes).toBe(SOURCEMAP_BYTES.byteLength);
+      expect(row?.critical_count).toBeGreaterThan(0);
     } finally {
       await sql.close();
     }

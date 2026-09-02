@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
@@ -9,8 +11,11 @@ import {
   disclosureWebhookTestPayload,
 } from "../src/server/disclosure-destinations.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
+import { hashArtifactBytes } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
+
+const SOURCEMAP_DIGESTS = hashArtifactBytes(readFileSync(path.resolve("fixtures/sourcemap.tgz")));
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk-dest-admin", ...json };
@@ -68,6 +73,8 @@ describe("Disclosure Desk destinations", () => {
       await store.completeProspectScan(prospect.id, {
         fileCount: 2,
         findings: [PRETTIER_FINDING],
+        artifactSha256: SOURCEMAP_DIGESTS.sha256,
+        artifactSha512: SOURCEMAP_DIGESTS.sha512,
       });
 
       const posted: { url: string; body: string }[] = [];
@@ -241,6 +248,7 @@ describe("Disclosure Desk destinations", () => {
       expect(filedBody.inventedIncident).toBe(false);
       expect(posted[0]?.body).toContain("prettier/prettier");
       expect(posted[0]?.body).toContain("MAP-001");
+      expect(posted[0]?.body).toContain(SOURCEMAP_DIGESTS.sha256);
       expect(posted[0]?.body).not.toContain("AKIA");
       expect(posted[0]?.body).not.toContain("Operator reproduction notes");
       expect(posted[0]?.body).not.toContain("security@prettier.io");
@@ -340,6 +348,14 @@ describe("Disclosure Desk destinations", () => {
             attachmentBytesIncluded: false,
             coordinate: "prettier/prettier",
             packageName: "prettier",
+            artifact: {
+              url: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+              name: "prettier-3.9.6.tgz",
+              version: "3.9.6",
+              bytes: 401,
+              sha256: "c74219d282707cc25c766e077d1722ff6c2426d2317c51cbda1683290bc48cab",
+              sha512: "eddc6521b91410ecd19fe748c8afb249062b4909bc54c06441632004488189933baa9a1171536531e615d067467efb2681de0bb97e9257c68bd3e6227e72f83e",
+            },
             state: "verified",
             fingerprints: ["MAP-001|critical|package/dist/index.js.map|Source map ships in the artifact"],
             findingCategory: "sourcemap",

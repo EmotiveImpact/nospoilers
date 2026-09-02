@@ -173,6 +173,8 @@ CREATE TABLE IF NOT EXISTS prospects (
   artifact_name TEXT NOT NULL,
   artifact_url TEXT NOT NULL UNIQUE,
   artifact_bytes BIGINT,
+  artifact_sha256 TEXT,
+  artifact_sha512 TEXT,
   status TEXT NOT NULL DEFAULT 'new'
     CHECK (status IN ('new', 'contacted', 'fixed', 'ignored')),
   scan_status TEXT NOT NULL DEFAULT 'queued'

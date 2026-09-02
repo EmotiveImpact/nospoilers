@@ -786,18 +786,19 @@ export function createApp(deps: AppDeps): Hono {
       deps.store.unreadInternalNotificationCount(),
       deps.store.listDiscoveryCampaigns(),
     ]);
-    const byProspect = new Map(
-      cases.map((row) => [row.prospect_id, toDisclosureSummary(row)] as const),
-    );
+    const byProspect = new Map(cases.map((row) => [row.prospect_id, row] as const));
     return c.json({
       actor: {
         login: await internalActor(c),
         role: (await isOwner(c)) ? "owner" : "operator",
       },
-      prospects: prospects.map((prospect) => ({
-        ...prospect,
-        disclosure: byProspect.get(prospect.id) ?? null,
-      })),
+      prospects: prospects.map((prospect) => {
+        const row = byProspect.get(prospect.id);
+        return {
+          ...prospect,
+          disclosure: row ? toDisclosureSummary(row, prospect.artifact_sha256) : null,
+        };
+      }),
       stats,
       campaigns: campaigns.map(publicDiscoveryCampaign),
       notifications: {

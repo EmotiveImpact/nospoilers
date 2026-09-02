@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { findingFingerprint } from "../src/receipt.ts";
 import { createApp } from "../src/server/app.ts";
@@ -9,6 +11,9 @@ import {
   DISCLOSURE_REVIEW_ERROR,
   DISCLOSURE_SENT_ERROR,
   DISCLOSURE_VERIFIED_ERROR,
+  DISCLOSURE_HASH_ERROR,
+  assertVerifiedArtifactHash,
+  isRepeatableArtifactHash,
   categoryFromFingerprints,
   categoryFromRule,
   DISCLOSURE_CATEGORY_ERROR,
@@ -22,8 +27,12 @@ import {
   vendorHostFromPolicyUrl,
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
+import { hashArtifactBytes } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
+
+const SOURCEMAP_BYTES = readFileSync(path.resolve("fixtures/sourcemap.tgz"));
+const SOURCEMAP_DIGESTS = hashArtifactBytes(SOURCEMAP_BYTES);
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk-admin-token", ...json };
@@ -85,6 +94,9 @@ async function seedProspect(
   await store.completeProspectScan(row.id, {
     fileCount: 2,
     findings: [PRETTIER_FINDING],
+    artifactSha256: SOURCEMAP_DIGESTS.sha256,
+    artifactSha512: SOURCEMAP_DIGESTS.sha512,
+    artifactBytes: SOURCEMAP_BYTES.byteLength,
   });
   return row.id;
 }
@@ -204,6 +216,31 @@ describe("Disclosure Desk helpers", () => {
       ]),
     ).toBe("credential");
     expect(categoryFromFingerprints([])).toBe("other");
+    expect(SOURCEMAP_DIGESTS.sha256).toBe(
+      "c74219d282707cc25c766e077d1722ff6c2426d2317c51cbda1683290bc48cab",
+    );
+    expect(isRepeatableArtifactHash(SOURCEMAP_DIGESTS.sha256)).toBe(true);
+    expect(isRepeatableArtifactHash(null)).toBe(false);
+    expect(() => assertVerifiedArtifactHash("verified", "signal", null)).toThrow(DISCLOSURE_HASH_ERROR);
+    expect(() =>
+      assertVerifiedArtifactHash("verified", "signal", SOURCEMAP_DIGESTS.sha256),
+    ).not.toThrow();
+    expect(() => assertVerifiedArtifactHash("verified", "verified", null)).not.toThrow();
+    const hashedDraft = previewDisclosureDraft(
+      {
+        owner: "prettier",
+        repo: "prettier",
+        package_name: "prettier",
+        artifact_name: "prettier-3.9.6.tgz",
+        release_tag: "3.9.6",
+        source: "npm",
+        artifact_url: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+        artifact_sha256: SOURCEMAP_DIGESTS.sha256,
+      },
+      fingerprints,
+    );
+    expect(hashedDraft.body).toContain(`SHA-256: ${SOURCEMAP_DIGESTS.sha256}`);
+    expect(hashedDraft.body).toContain("https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz");
   });
 });
 
@@ -394,9 +431,12 @@ describe("Disclosure Desk Phase 1", () => {
           policyUrl: string | null;
           notes: string | null;
           sent: boolean;
+          artifact: { sha256: string | null; version: string | null };
         };
       };
       expect(saved.case.state).toBe("verified");
+      expect(saved.case.artifact.sha256).toBe(SOURCEMAP_DIGESTS.sha256);
+      expect(saved.case.artifact.version).toBe("3.9.6");
       expect(saved.case.policyUrl).toBe("https://prettier.io/security");
       expect(saved.case.notes).toBe("Operator reproduction notes. No secret values.");
       expect(saved.case.sent).toBe(false);
@@ -682,6 +722,118 @@ describe("Disclosure Desk organization and domain matching", () => {
       });
       expect(unrelated.status).toBe(201);
       expect(wakes).toBe(before);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("blocks a new verified state without a hash and keeps a historical verified case", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "desk-hash-session" });
+      const missing = await store.upsertProspect({
+        source: "npm",
+        owner: "prettier",
+        repo: "prettier",
+        repositoryUrl: "https://github.com/prettier/prettier",
+        packageName: "prettier",
+        releaseTag: "3.9.6",
+        artifactName: "prettier-3.9.6.tgz",
+        artifactUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      await store.completeProspectScan(missing.id, {
+        fileCount: 2,
+        findings: [PRETTIER_FINDING],
+      });
+      let wakes = 0;
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "desk-admin-token",
+          adminGithubLogin: "EmotiveImpact",
+          sessionSecret: "desk-hash-session",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {
+          wakes += 1;
+        },
+      });
+      const opened = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(opened.status).toBe(201);
+      const blocked = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({
+          securityContact: "security@prettier.io",
+          checklist: {
+            public_artifact: true,
+            reproduced: true,
+            fingerprints_recorded: true,
+            no_secret_values: true,
+            contact_or_policy: true,
+          },
+        }),
+      });
+      expect(blocked.status).toBe(400);
+      expect(((await blocked.json()) as { error: string }).error).toBe(DISCLOSURE_HASH_ERROR);
+      expect(((await store.getDisclosureCaseByProspect(missing.id))?.state)).toBe("signal");
+
+      await store.completeProspectScan(missing.id, {
+        fileCount: 2,
+        findings: [PRETTIER_FINDING],
+        artifactSha256: SOURCEMAP_DIGESTS.sha256,
+        artifactSha512: SOURCEMAP_DIGESTS.sha512,
+        artifactBytes: SOURCEMAP_BYTES.byteLength,
+      });
+      const verified = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({
+          securityContact: "security@prettier.io",
+          checklist: {
+            public_artifact: true,
+            reproduced: true,
+            fingerprints_recorded: true,
+            no_secret_values: true,
+            contact_or_policy: true,
+          },
+        }),
+      });
+      expect(verified.status).toBe(200);
+      expect(
+        ((await verified.json()) as { case: { artifact: { sha256: string } } }).case.artifact.sha256,
+      ).toBe(SOURCEMAP_DIGESTS.sha256);
+
+      await sql.query(`UPDATE prospects SET artifact_sha256 = NULL, artifact_sha512 = NULL WHERE id = $1`, [
+        missing.id,
+      ]);
+      const category = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ findingCategory: "other" }),
+      });
+      expect(category.status).toBe(200);
+      expect(((await category.json()) as { case: { state: string } }).case.state).toBe("verified");
+
+      const leave = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ state: "verifying" }),
+      });
+      expect(leave.status).toBe(200);
+      const reverify = await app.request(`/api/internal/prospects/${missing.id}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ state: "verified" }),
+      });
+      expect(reverify.status).toBe(400);
+      expect(((await reverify.json()) as { error: string }).error).toBe(DISCLOSURE_HASH_ERROR);
+      expect(wakes).toBe(0);
     } finally {
       await sql.close();
     }

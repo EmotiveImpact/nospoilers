@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
@@ -10,8 +12,11 @@ import {
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { deadlineMissedTitle } from "../src/server/internal-notify.ts";
+import { hashArtifactBytes } from "../src/server/prospects.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
+
+const SOURCEMAP_DIGESTS = hashArtifactBytes(readFileSync(path.resolve("fixtures/sourcemap.tgz")));
 
 const json = { "content-type": "application/json" };
 const admin = { authorization: "Bearer desk2-admin-token", ...json };
@@ -65,6 +70,8 @@ async function seedProspect(
   await store.completeProspectScan(row.id, {
     fileCount: 2,
     findings: [PRETTIER_FINDING],
+    artifactSha256: SOURCEMAP_DIGESTS.sha256,
+    artifactSha512: SOURCEMAP_DIGESTS.sha512,
   });
   return row.id;
 }
