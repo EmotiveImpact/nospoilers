@@ -12,7 +12,11 @@
   `STRIPE_WEBHOOK_SECRET`, and the four price IDs are set. This host has
   no Stripe keys (`/api/health` `stripe: false`). Live Neon: migration
   `059_stripe_billing` applied; `stripe_events` 0; no Stripe customer
-  ids; columns present. Not a Marketplace listing and not a live charge.
+  ids; columns present. Live `/api/health` reports `stripe: false`;
+  unauth Checkout is 401; unsigned Stripe webhook is 503. Pricing shows
+  Start trial / Open watch desk, not Subscribe monthly. Watch Subscribe
+  after coverage ended returns to Pricing, not checkout.stripe.com.
+  Not a Marketplace listing and not a live charge.
 
 - Hosted website crawls enqueue as light jobs. The hourly poller and
   Check now no longer take a daily unpack slot at enqueue, so an
