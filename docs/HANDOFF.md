@@ -242,7 +242,9 @@ Read in this order:
   the Hearback mac.zip / AppImage assets; no new `v0.1.7` Hearback receipts;
   open jobs 0.   Historical alerts 33/34 stay the old inconclusive titles.
   Echo git tree was not written. That is not the isolated Electron worker.
-  A later no-download skip refunds the daily unpack slot.
+  A later no-download skip refunds the daily unpack slot. Live Neon: job
+  47 `done`; usage stayed 9; alert 36 skip copy; no new `v0.1.7` receipts;
+  open jobs 0.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing

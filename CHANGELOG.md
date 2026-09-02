@@ -5,8 +5,11 @@
 - Hosted unpack fair use refunds a GitHub Release job that never downloads
   (no Release, no scannable pack, Electron installer skip, or every pack
   over the size cap). `release.published` with no scannable pack enqueues
-  a light job so it never consumes a daily unpack slot. A packed download
-  still counts. Not a scan-credit meter and not a Pricing change.
+  a light job so it never consumes a daily unpack slot.   A packed download
+  still counts. Live Neon: owner `scan-latest-release` on
+  `EmotiveImpact/Echo` job 47 `done`; usage stayed 9; Watch alert 36
+  skipped the Hearback installers; no new `v0.1.7` receipts; open jobs 0.
+  Not a scan-credit meter and not a Pricing change.
 
 - Hosted `release_scan` classifies Electron installer assets (DMG, EXE, MSI,
   AppImage, and mac/win desktop zip bundles such as

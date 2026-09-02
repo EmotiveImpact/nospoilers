@@ -104,7 +104,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
   Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. A GitHub Release job
   that never downloads (no pack, Electron skip, or every pack over the size cap) refunds
-  the slot. `release.published` with no scannable pack enqueues light. Watch shows
+  the slot. Live Echo job 47 / alert 36 left daily usage at 9.
+  `release.published` with no scannable pack enqueues light. Watch shows
   warning or paused copy, not remaining credits. Owner queue lists aggregate usage counts.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
 - Watch one-click GitHub responses: make-private, delete latest Release pack assets, disable
