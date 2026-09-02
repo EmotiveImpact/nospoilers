@@ -263,6 +263,8 @@ export async function migrate(sql: SqlClient): Promise<void> {
       has_attestations BOOLEAN,
       attestation_predicate TEXT,
       signature_keyids JSONB NOT NULL DEFAULT '[]'::jsonb,
+      publisher_name TEXT,
+      trusted_publisher TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS package_identity_snapshots_pkg_idx
@@ -746,6 +748,14 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "030_identity_provenance",
+  ]);
+  await sql.exec(`
+    ALTER TABLE package_identity_snapshots
+      ADD COLUMN IF NOT EXISTS publisher_name TEXT,
+      ADD COLUMN IF NOT EXISTS trusted_publisher TEXT;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "031_identity_publisher",
   ]);
 }
 

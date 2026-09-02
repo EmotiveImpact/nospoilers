@@ -297,6 +297,93 @@ export function provenanceFactsChanged(
   return next.signatureKeyids.some((keyid) => !previous.signatureKeyids.includes(keyid));
 }
 
+export const MAX_PUBLISHER_NAME = 128;
+export const MAX_TRUSTED_PUBLISHER = 64;
+
+export type PackagePublisherFacts = {
+  publisherName: string | null;
+  trustedPublisher: string | null;
+};
+
+export function emptyPackagePublisher(): PackagePublisherFacts {
+  return { publisherName: null, trustedPublisher: null };
+}
+
+function cleanPublisherName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim();
+  if (!name || name.length > MAX_PUBLISHER_NAME) return null;
+  if (name.includes("\n") || name.includes("\r")) return null;
+  return name;
+}
+
+function cleanTrustedPublisher(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const id = raw.trim().toLowerCase();
+  if (!id || id.length > MAX_TRUSTED_PUBLISHER) return null;
+  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id)) return null;
+  return id;
+}
+
+function publisherNameKey(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase();
+}
+
+/** Packument `_npmUser` name + `trustedPublisher.id` only. Never email or oidcConfigId. */
+export function publisherFromNpmUser(user: unknown): PackagePublisherFacts {
+  if (!user || typeof user !== "object" || Array.isArray(user)) return emptyPackagePublisher();
+  const record = user as Record<string, unknown>;
+  const trusted = record.trustedPublisher;
+  let trustedPublisher: string | null = null;
+  if (trusted && typeof trusted === "object" && !Array.isArray(trusted)) {
+    trustedPublisher = cleanTrustedPublisher((trusted as { id?: unknown }).id);
+  }
+  return {
+    publisherName: cleanPublisherName(record.name),
+    trustedPublisher,
+  };
+}
+
+export function publisherFactsChanged(
+  previous: PackagePublisherFacts | null,
+  next: PackagePublisherFacts,
+): boolean {
+  if (!previous) return true;
+  return (
+    publisherNameKey(previous.publisherName) !== publisherNameKey(next.publisherName) ||
+    (previous.trustedPublisher ?? "") !== (next.trustedPublisher ?? "")
+  );
+}
+
+/** Empty previous publisher is baseline, including old snapshots that lack the columns. */
+export function publisherChangeAlertable(
+  previous: PackagePublisherFacts | null,
+  next: PackagePublisherFacts,
+): boolean {
+  if (!previous) return false;
+  const had = Boolean(previous.publisherName?.trim()) || Boolean(previous.trustedPublisher?.trim());
+  if (!had) return false;
+  return publisherFactsChanged(previous, next);
+}
+
+function formatPublisher(facts: PackagePublisherFacts): string {
+  const name = facts.publisherName?.trim() || "(none)";
+  const trusted = facts.trustedPublisher?.trim();
+  return trusted ? `${name} via ${trusted}` : name;
+}
+
+export function describePublisherChange(
+  packageName: string,
+  from: PackagePublisherFacts,
+  to: PackagePublisherFacts,
+): { kind: string; title: string; body: string } {
+  return {
+    kind: "package_publisher_changed",
+    title: `Publishing identity changed on npm ${packageName}`,
+    body: `${packageName} latest was published by ${formatPublisher(from)} and is now ${formatPublisher(to)}. This is a publishing-identity fact, not a malware verdict. Email and OIDC config ids were not stored.`,
+  };
+}
+
 export function asHttpsMetadataUrl(raw: string | null | undefined): string | null {
   if (!raw || !raw.trim()) return null;
   const trimmed = raw.trim();

@@ -71,8 +71,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers
-  (names only), repository, homepage, bin names, and install lifecycle scripts. Changes alert
-  with before/after facts and never a malware verdict.
+  (names only), repository, homepage, bin names, install lifecycle scripts, `_npmUser` publisher
+  name, and trusted-publisher id. Changes alert with before/after facts and never a malware
+  verdict. Email and OIDC config ids are not stored. First snapshot / empty previous
+  publisher is baseline. Solo allowed.
 - Install health: covered installs get Watch alerts for GitHub App suspend, unsuspend,
   permission changes, and repository add/remove. Uninstall still drops the tenant. Watch
   lists this install's recent jobs (no payloads, no prospect scans). GitHub suspend is not

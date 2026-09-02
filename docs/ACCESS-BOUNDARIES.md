@@ -57,8 +57,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   returns 402. Another tenant’s destination is empty. Bugsnag matches a release version; it
   cannot look up a debug ID.
 - Protect a watched npm package’s identity after the npm scope or GitHub repository field
-  matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
-  repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
+  matches this GitHub install.   Naming an arbitrary pack is not ownership. Maintainer,
+  repository, homepage, artifact-shape, and publishing-identity (`_npmUser.name` /
+  trusted publisher id) changes append snapshots and explainable alerts. Email and
+  OIDC config ids are not stored. First snapshot and empty previous publisher do
+  not alert. Solo paid is allowed. Unpaid skips.
 - On a trial or Team install, list bounded lookalike candidate names for a protected pack.
   Metadata-only registry checks (never download or execute lookalike tarballs). A new
   dependency on a package first published within 14 days is a Watch alert (metadata
@@ -352,12 +355,12 @@ are append-only, tenant-scoped, flag digest mismatch without a compromise claim,
 SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt JSON for
 a sealed release even after coverage ends (another tenant is 404). `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
-maintainer/repository/shape alerts never store emails or issue a malware verdict, lookalike
+maintainer/repository/shape/publisher alerts never store emails, OIDC config ids, or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid
   402), registration/version/dormant/burst/jump/new-dependency/packument-size/provenance
   alerts never download lookalike or dependency tarballs, never fetch attestation URLs,
   never store signature values or claim malware, first snapshot and missing packument size
-  do not alert, and allowlisting skips further lookalike alerts.
+  do not alert, publishing-identity changes are Solo-allowed facts, and allowlisting skips further lookalike alerts.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

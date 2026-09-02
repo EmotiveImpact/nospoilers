@@ -35,13 +35,14 @@ Read in this order:
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
   `025_hosted_usage`, `026_github_response`,   `027_team_invites`,
-  `028_identity_dependencies`, `029_identity_unpacked_bytes`, and
-  `030_identity_provenance` are applied. `026_github_response` only
+  `028_identity_dependencies`, `029_identity_unpacked_bytes`,
+  `030_identity_provenance`, and `031_identity_publisher` are applied. `026_github_response` only
   extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
   `installation_invites`. `028_identity_dependencies` adds
   `package_identity_snapshots.dependency_names`. `029_identity_unpacked_bytes` adds
   `package_identity_snapshots.unpacked_bytes`. `030_identity_provenance` adds
   `has_attestations`, `attestation_predicate`, and `signature_keyids` on identity snapshots.
+  `031_identity_publisher` adds `publisher_name` and `trusted_publisher`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -275,7 +276,8 @@ Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing packa
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
-Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape).
+Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
+publishing identity / trusted publisher).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
@@ -344,6 +346,10 @@ or changes registry signature keyids writes `identity_provenance_lost` /
 `identity_provenance_changed` / `identity_signature_changed` (no fetch, no verify, no
 signature values stored; first snapshot is baseline; trial/Team; Solo 403). Event-driven.
 This is not a Sigstore/attestation adapter. Not a Pricing change.
+A protected pack whose `_npmUser` name or trusted-publisher id changes writes
+`package_publisher_changed` (no email or oidcConfigId stored; first snapshot / empty
+previous is baseline; Solo allowed; unpaid skips). Event-driven. Not a malware verdict.
+Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.

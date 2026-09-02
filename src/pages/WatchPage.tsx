@@ -3617,7 +3617,9 @@ export function WatchPage({ search }: { search: string }) {
           that fact without downloading. A later pack that is twice as large, or at least 5 MiB
           larger unpacked, raises SIZE-003 against the
           approved baseline or the previous receipt. Protect identity only after the npm scope or
-          GitHub repository field matches this install. Trial and Team installs then generate bounded
+          GitHub repository field matches this install. A later change of who published latest, or
+          whether it used an npm trusted publisher, is a Watch fact. Email and OIDC config ids are
+          not stored. Trial and Team installs then generate bounded
           lookalike names and watch dormant resurrection, release bursts, new dependencies that
           point at newly created packages, packument unpacked-size jumps, and whether npm
           attestations or registry signature keyids disappear or change. Those last facts are

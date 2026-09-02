@@ -12,6 +12,7 @@ import {
   emptyPackageIdentity,
   githubRepoFromNpmRepository,
   provenanceFromDist,
+  publisherFromNpmUser,
   verifyPackageOwnership,
 } from "../src/server/package-identity.ts";
 import { packFromRegistry, unpackedBytesFromClaim, type NpmPack, type NpmPort } from "../src/server/npm.ts";
@@ -115,6 +116,14 @@ describe("package identity parsing", () => {
           dependencies: { lodash: "^4.17.21" },
           optionalDependencies: { "left-pad": "1.3.0" },
           devDependencies: { typescript: "^5.0.0" },
+          _npmUser: {
+            name: "GitHub Actions",
+            email: "npm-oidc-no-reply@github.com",
+            trustedPublisher: {
+              id: "github",
+              oidcConfigId: "oidc:secret-config-id",
+            },
+          },
         },
       },
     });
@@ -145,12 +154,28 @@ describe("package identity parsing", () => {
     expect(parsed?.hasAttestations).toBe(true);
     expect(parsed?.attestationPredicate).toBe("https://slsa.dev/provenance/v1");
     expect(parsed?.signatureKeyids).toEqual(["SHA256:test-key"]);
+    expect(parsed?.publisherName).toBe("GitHub Actions");
+    expect(parsed?.trustedPublisher).toBe("github");
     expect(JSON.stringify(parsed)).not.toContain("super-secret-signature-value");
     expect(JSON.stringify(parsed)).not.toContain("/-/npm/v1/attestations/");
+    expect(JSON.stringify(parsed)).not.toContain("npm-oidc-no-reply@github.com");
+    expect(JSON.stringify(parsed)).not.toContain("oidc:secret-config-id");
     expect(provenanceFromDist(undefined)).toEqual({
       hasAttestations: false,
       attestationPredicate: null,
       signatureKeyids: [],
+    });
+    expect(publisherFromNpmUser(undefined)).toEqual({
+      publisherName: null,
+      trustedPublisher: null,
+    });
+    expect(publisherFromNpmUser({ name: "Octo\nLeak", trustedPublisher: { id: "github" } })).toEqual({
+      publisherName: null,
+      trustedPublisher: "github",
+    });
+    expect(publisherFromNpmUser({ name: "Octo", trustedPublisher: { id: "GITHUB" } })).toEqual({
+      publisherName: "Octo",
+      trustedPublisher: "github",
     });
     expect(parsed?.recentVersions?.map((row) => row.version)).not.toContain("created");
   });
@@ -274,6 +299,8 @@ describe("protected package identity", () => {
           unpackedBytes: number | null;
           hasAttestations: boolean | null;
           signatureKeyids: string[];
+          publisherName: string | null;
+          trustedPublisher: string | null;
         };
       };
       expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
@@ -281,6 +308,8 @@ describe("protected package identity", () => {
       expect(identityBody.snapshot.unpackedBytes).toBe(100);
       expect(identityBody.snapshot.hasAttestations).toBe(false);
       expect(identityBody.snapshot.signatureKeyids).toEqual([]);
+      expect(identityBody.snapshot.publisherName).toBeNull();
+      expect(identityBody.snapshot.trustedPublisher).toBeNull();
       const foreignIdentity = await app.request(`/api/packages/${packageId}/identity`, {
         headers: { cookie: otherCookie },
       });
@@ -1262,6 +1291,165 @@ describe("Team identity signals", () => {
       await sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );
+      const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(unpaidCheck.status).toBe(402);
+      expect(downloads).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("alerts when the npm publisher or trusted publisher changes, without storing email", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const downloads: string[] = [];
+      const current: { pack: NpmPack | null; downloads: string[] } = {
+        pack: ownedPack({ publisherName: "octo", trustedPublisher: null }),
+        downloads,
+      };
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+      });
+
+      const connected = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ packageName: "@octo/app", installationId: 7 }),
+      });
+      const packageId = ((await connected.json()) as { package: { id: number } }).package.id;
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/protect`, {
+            method: "POST",
+            headers: { cookie },
+          })
+        ).status,
+      ).toBe(201);
+
+      const baseline = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const baselineSnap = (
+        (await baseline.json()) as {
+          snapshot: { publisherName: string | null; trustedPublisher: string | null };
+        }
+      ).snapshot;
+      expect(baselineSnap.publisherName).toBe("octo");
+      expect(baselineSnap.trustedPublisher).toBeNull();
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterBaseline = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterBaseline.json()) as { alerts: { kind: string }[] }).alerts.map(
+          (row) => row.kind,
+        ),
+      ).not.toContain("package_publisher_changed");
+
+      current.pack = ownedPack({
+        publisherName: "GitHub Actions",
+        trustedPublisher: "github",
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterChange = await app.request("/api/alerts", { headers: { cookie } });
+      const publisherAlerts = (
+        (await afterChange.json()) as { alerts: { kind: string; body: string }[] }
+      ).alerts.filter((row) => row.kind === "package_publisher_changed");
+      expect(publisherAlerts).toHaveLength(1);
+      expect(publisherAlerts[0]?.body).toMatch(/octo/);
+      expect(publisherAlerts[0]?.body).toMatch(/GitHub Actions via github/);
+      expect(publisherAlerts[0]?.body).toMatch(/not a malware verdict/);
+      expect(publisherAlerts[0]?.body).not.toMatch(/npm-oidc-no-reply|@github\.com/);
+      expect(downloads).toEqual([]);
+
+      const identity = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const identitySnap = (
+        (await identity.json()) as {
+          snapshot: { publisherName: string | null; trustedPublisher: string | null };
+        }
+      ).snapshot;
+      expect(identitySnap.publisherName).toBe("GitHub Actions");
+      expect(identitySnap.trustedPublisher).toBe("github");
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterDedup = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterDedup.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "package_publisher_changed",
+        ),
+      ).toHaveLength(1);
+
+      const foreign = await app.request("/api/alerts", { headers: { cookie: otherCookie } });
+      expect(
+        ((await foreign.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("package_publisher_changed");
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      current.pack = ownedPack({
+        publisherName: "other-maintainer",
+        trustedPublisher: null,
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterSolo = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterSolo.json()) as { alerts: { kind: string; body: string }[] }).alerts.filter(
+          (row) => row.kind === "package_publisher_changed" && /other-maintainer/.test(row.body),
+        ),
+      ).toHaveLength(1);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      current.pack = ownedPack({
+        publisherName: "after-unpaid",
+        trustedPublisher: "github",
+      });
       const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
         method: "POST",
         headers: { cookie },

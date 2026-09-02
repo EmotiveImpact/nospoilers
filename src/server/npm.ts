@@ -11,6 +11,7 @@ import {
   lifecycleScriptsFromManifest,
   normalizeMaintainerNames,
   provenanceFromDist,
+  publisherFromNpmUser,
   type PackageIdentityFacts,
 } from "./package-identity.ts";
 
@@ -47,6 +48,8 @@ export type NpmPack = {
   hasAttestations?: boolean;
   attestationPredicate?: string | null;
   signatureKeyids?: string[];
+  publisherName?: string | null;
+  trustedPublisher?: string | null;
   recentVersions?: Array<{ version: string; publishedAt: Date }>;
   /** next/beta/canary (and rc/alpha/preview) tarballs that are not `latest`. */
   channelTarballs?: NpmChannelTarball[];
@@ -182,6 +185,7 @@ type RegistryBody = {
       dependencies?: unknown;
       optionalDependencies?: unknown;
       devDependencies?: unknown;
+      _npmUser?: unknown;
     }
   >;
 };
@@ -260,6 +264,7 @@ export function packFromRegistry(
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: unpackedBytesFromClaim(dist.unpackedSize),
     ...provenanceFromDist(dist),
+    ...publisherFromNpmUser(versionMeta?._npmUser),
     publishedAt: times.publishedAt,
     createdAt: parseRegistryCreatedAt(body.time),
     dependencyNames: [...new Set(dependencyNames)].sort(),

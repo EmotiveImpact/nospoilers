@@ -14,9 +14,13 @@ import type { AlertNotifier } from "./notifier.ts";
 import {
   diffPackageIdentity,
   describeIdentityChange,
+  describePublisherChange,
   emptyPackageIdentity,
   emptyPackageProvenance,
+  emptyPackagePublisher,
   provenanceFactsChanged,
+  publisherChangeAlertable,
+  publisherFactsChanged,
   verifyPackageOwnership,
   type PackageIdentityFacts,
 } from "./package-identity.ts";
@@ -107,13 +111,25 @@ export async function syncProtectedIdentity(
       : null,
     provenance,
   );
+  const publisher = {
+    publisherName: pack.publisherName ?? emptyPackagePublisher().publisherName,
+    trustedPublisher: pack.trustedPublisher ?? emptyPackagePublisher().trustedPublisher,
+  };
+  const previousPublisher = previous
+    ? {
+        publisherName: previous.publisher_name,
+        trustedPublisher: previous.trusted_publisher,
+      }
+    : null;
+  const publisherChanged = publisherFactsChanged(previousPublisher, publisher);
   if (
     prevFacts &&
     changes.length === 0 &&
     !versionChanged &&
     !depsChanged &&
     !sizeChanged &&
-    !provenanceChanged
+    !provenanceChanged &&
+    !publisherChanged
   ) {
     return { snapshot: false, alerts: 0 };
   }
@@ -132,10 +148,25 @@ export async function syncProtectedIdentity(
     hasAttestations: provenance.hasAttestations,
     attestationPredicate: provenance.attestationPredicate,
     signatureKeyids: provenance.signatureKeyids,
+    publisherName: publisher.publisherName,
+    trustedPublisher: publisher.trustedPublisher,
   });
   let alerts = 0;
   for (const change of changes) {
     const described = describeIdentityChange(pkg.package_name, change);
+    const payload = {
+      installationId: pkg.installation_id,
+      packageName: pkg.package_name,
+      kind: described.kind,
+      title: described.title,
+      body: described.body,
+    };
+    if (notifier) await notifier.send(payload);
+    else await store.insertAlert(payload);
+    alerts += 1;
+  }
+  if (previousPublisher && publisherChangeAlertable(previousPublisher, publisher)) {
+    const described = describePublisherChange(pkg.package_name, previousPublisher, publisher);
     const payload = {
       installationId: pkg.installation_id,
       packageName: pkg.package_name,

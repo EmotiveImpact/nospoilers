@@ -860,6 +860,7 @@ describe("Notification routes", () => {
     expect(alertSeverity({ kind: "repo_created_public" })).toBe("critical");
     expect(alertSeverity({ kind: "package_unpublished" })).toBe("critical");
     expect(alertSeverity({ kind: "identity_size_jump" })).toBe("warn");
+    expect(alertSeverity({ kind: "package_publisher_changed" })).toBe("warn");
     expect(alertSeverity({ kind: "identity_provenance_lost" })).toBe("warn");
     expect(alertSeverity({ kind: "identity_provenance_changed" })).toBe("warn");
     expect(alertSeverity({ kind: "identity_signature_changed" })).toBe("warn");

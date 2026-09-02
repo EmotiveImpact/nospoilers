@@ -496,6 +496,8 @@ CREATE TABLE IF NOT EXISTS package_identity_snapshots (
   has_attestations BOOLEAN,
   attestation_predicate TEXT,
   signature_keyids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  publisher_name TEXT,
+  trusted_publisher TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

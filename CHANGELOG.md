@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Watch records `package_publisher_changed` when a protected pack’s npm `_npmUser`
+  name or trusted-publisher id changes. First snapshot and empty previous publisher
+  are baseline. Email and OIDC config ids are not stored. Solo allowed. Unpaid skips.
+  Not a malware verdict. Not a Pricing change.
+
 - Trial and Team Package Identity alerts when a protected pack loses npm packument
   attestations, changes provenance `predicateType`, or changes registry signature keyids.
   First snapshot is baseline. The attestation URL is not fetched. Signature values are

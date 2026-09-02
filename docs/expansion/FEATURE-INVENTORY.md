@@ -102,6 +102,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Separator, keyboard, token-order, homoglyph and scope confusion | Built: ASCII confusables, adjacent-key, separator, token-order, scope confusion | NoSpoilers Team |
 | Maintainer addition/removal history | Built: append-only identity snapshots; emails never stored | NoSpoilers |
 | Package ownership continuity/transfer alert | Built: maintainer add/remove facts, not a malware verdict | NoSpoilers |
+| Publishing identity / trusted publisher change | Built: snapshot `_npmUser.name` and `trustedPublisher.id`; alert on later change; first snapshot / empty previous is baseline; never store email or oidcConfigId; Solo allowed; unpaid skips; not a malware verdict | NoSpoilers |
 | Repository/homepage/domain mismatch | Built: explainable npm repository/homepage change alerts | NoSpoilers |
 | Dormant-package resurrection | Built: explainable alert after 180 days without a recorded publish | NoSpoilers Team |
 | Suspicious release burst/version jump | Built: ≥5 versions in 7 days or major +3; facts, not a malware verdict | NoSpoilers Team |
