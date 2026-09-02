@@ -13,10 +13,12 @@ import type { AppConfig } from "./config.ts";
 import {
   databaseMode,
   githubAppConfigured,
+  processRunsHttp,
   resendConfigured,
   stripeConfigured,
   stripePriceMap,
 } from "./config.ts";
+import { serveUi, uiIndexExists } from "./static.ts";
 import {
   EMAIL_ADDRESS_ERROR,
   emailPlanDeniedFromBilling,
@@ -807,13 +809,15 @@ export function createApp(deps: AppDeps): Hono {
     await next();
   });
 
-  app.get("/api/health", (c) =>
+  app.get("/api/health", async (c) =>
     c.json({
       ok: true,
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
       stripe: stripeConfigured(deps.config),
       resend: resendConfigured(deps.config),
+      role: deps.config.processRole,
+      ui: processRunsHttp(deps.config.processRole) && (await uiIndexExists(deps.config.uiRoot)),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
       },
@@ -5602,6 +5606,14 @@ export function createApp(deps: AppDeps): Hono {
       error: posted.ok ? null : posted.error,
       detail: posted.ok ? detail : posted.error,
     }, status);
+  });
+
+  app.get("*", async (c) => {
+    if (c.req.path.startsWith("/api")) return c.notFound();
+    if (!processRunsHttp(deps.config.processRole)) return c.notFound();
+    const served = await serveUi(c.req.path, deps.config.uiRoot);
+    if (!served) return c.notFound();
+    return served;
   });
 
   return app;

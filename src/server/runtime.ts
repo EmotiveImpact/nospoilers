@@ -2,10 +2,12 @@ import {
   githubAppConfigured,
   loadConfig,
   databaseMode,
+  processRunsJobs,
   resendConfigured,
   stripeConfigured,
   type AppConfig,
 } from "./config.ts";
+import { listenJobQueued } from "./job-wake.ts";
 import { createGithubPort } from "./github.ts";
 import { logJson } from "./log.ts";
 import { createNpmPort } from "./npm.ts";
@@ -46,52 +48,68 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     staleAfterMs: config.jobStaleMs,
     receiptSecret: config.receiptSecret,
   });
+  const runJobs = processRunsJobs(config.processRole);
   const app = createApp({
     config,
     store,
     github,
     npm,
     notifier,
-    wakeWorker: () => {
-      void worker.tick();
-    },
+    wakeWorker: runJobs
+      ? () => {
+          void worker.tick();
+        }
+      : undefined,
   });
-  const poller = startPoller(
-    {
-      store,
-      github,
-      notifier,
-      npm,
-      wakeWorker: () => {
-        void worker.tick();
-      },
-      prospectDiscovery: config.githubDiscoveryToken
-        ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
-        : undefined,
-      staleAfterMs: config.jobStaleMs,
-    },
-    config.pollIntervalMs,
-  );
+  const poller = runJobs
+    ? startPoller(
+        {
+          store,
+          github,
+          notifier,
+          npm,
+          wakeWorker: () => {
+            void worker.tick();
+          },
+          prospectDiscovery: config.githubDiscoveryToken
+            ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
+            : undefined,
+          staleAfterMs: config.jobStaleMs,
+        },
+        config.pollIntervalMs,
+      )
+    : { stop() {} };
+  let stopListen: (() => Promise<void>) | undefined;
   return {
     app,
     store,
     config,
     worker,
     sql,
+    runJobs,
     startBackground() {
       logJson("info", "runtime.start", {
         database: databaseMode(config.databaseUrl),
         githubApp: githubAppConfigured(config),
         stripe: stripeConfigured(config),
         resend: resendConfigured(config),
+        role: config.processRole,
+        jobs: runJobs,
         recoveryIntervalMs: config.workerIntervalMs,
         visibilityPollIntervalMs: config.pollIntervalMs,
       });
+      if (!runJobs) return;
       worker.start();
+      void listenJobQueued(config.databaseUrl, () => {
+        void worker.tick();
+      }).then((stop) => {
+        stopListen = stop;
+      });
     },
     async close() {
       await worker.stop();
       poller.stop();
+      if (stopListen) await stopListen();
       await sql.close();
     },
   };

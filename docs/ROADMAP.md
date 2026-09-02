@@ -267,7 +267,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 ### Missing before launch
 
 - Stripe checkout/subscription webhooks and card-on-file trial (wired; live when keys exist).
-- Production deployment, Resend keys plus a from address (adapter is wired; this host has no keys), and monitoring.
+- Production deployment on Railway (process split is in code; this host is not deployed; no Railway account), Resend keys plus a from address (adapter is wired; this host has no keys), and monitoring.
 
 ## Milestone 0 — prove Neon runtime
 
@@ -326,7 +326,7 @@ Exit: customer one can pay without GitHub Marketplace once keys exist. Marketpla
 
 - Railway web/API and normal worker; Neon Postgres; Cloudflare DNS.
 - Before customers: Railway warning near $25 and hard stop near $50; review before production.
-- Set Resend keys when a sending domain exists. Serve built frontend and API together or document the production split.
+- Set Resend keys when a sending domain exists. Built frontend and API serve together (`npm run host` after `npm run build`). `NOSPOILERS_ROLE=web` / `worker` is the production split; enqueue NOTIFY wakes the worker. Not deployed.
 
 ## Milestone 5 — repeatable acquisition
 

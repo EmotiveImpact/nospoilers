@@ -51,7 +51,7 @@ formats, not current claims; see `docs/ELECTRON.md`.
 
 **Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
-**Not built / Phase B:** custom domain, Fly/Railway production deploy, Marketplace. Stripe Checkout/portal/webhooks and Resend Watch email are implemented and stay dark without keys.
+**Not built / Phase B:** custom domain, Railway/Fly account and DNS, Marketplace. The production process split is in code (`npm run build` + `npm run host`; `NOSPOILERS_ROLE=web|worker`). This host is not deployed. Stripe Checkout/portal/webhooks and Resend Watch email are implemented and stay dark without keys.
 
 ---
 

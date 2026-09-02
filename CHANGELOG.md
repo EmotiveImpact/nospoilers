@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Production process split is in code. `npm run build` then `npm run host`
+  serves the built SPA with the API. `NOSPOILERS_ROLE=web` serves HTTP and
+  does not claim jobs. `NOSPOILERS_ROLE=worker` claims jobs and does not bind
+  HTTP. A successful enqueue `NOTIFY`s `nospoilers_jobs` so a split worker
+  wakes immediately. Recovery stays 15 minutes. `/api/health` reports `role`
+  and `ui`. This host is not on Railway. Not a purchase.
+
 - Watch email destinations are wired through Resend. A covered install admin
   can save one address (encrypted). The API returns the domain and a redacted
   local part. Audit stores the domain only. Solo paid may save; unpaid is 402;

@@ -400,7 +400,7 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
   MAP-001/002/003). `npm run phase1:throwaway` is idempotent and skips Actions YAML.
   Stripe Checkout is wired and stays 503 without keys. Resend Watch email is wired and stays
   503 without keys.
-- Production deployment does not exist. Slack, SIEM, Jira, and PagerDuty destinations are live on trial/Team.
+- Production deployment does not exist. The web/worker process split and built-UI serve are in code. Slack, SIEM, Jira, and PagerDuty destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
 
@@ -415,6 +415,10 @@ Milestone 3 Checkout/portal/webhooks are wired and stay 503 without Stripe keys.
 This host has no Stripe keys. Do not create a Stripe account or prices without approval.
 Resend Watch email is wired and stays 503 without `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
 Do not create a Resend account or sending domain without approval. Do not mail disclosures or invites.
+Production serve is in: `npm run build` then `npm run host` serves the SPA with the API.
+`NOSPOILERS_ROLE=web|worker|all` splits HTTP from job claim. Enqueue NOTIFY wakes a
+split worker. Recovery stays 15 minutes. This host is not on Railway. Do not buy Railway
+or a domain without approval.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
@@ -738,6 +742,8 @@ email destinations 0, email deliveries 0, unauth POST/list 401, `/api/health`
 `resend: false`. Watch preview has no save-email form. No invented destination.
 Do not create a Resend account or sending domain without approval. Do not mail
 disclosures or invites.
+Production serve is in (`npm run build` + `npm run host`; `NOSPOILERS_ROLE` web/worker/all;
+enqueue NOTIFY). This host is not on Railway. Do not buy Railway or a domain without approval.
 Stripe Checkout is wired; this host has no Stripe keys. Resend Watch email is wired; this host has no Resend keys. The normal worker classifies and skips Electron
 installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.

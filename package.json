@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite --port 4347 --host",
     "host": "tsx src/server/index.ts",
+    "worker": "NOSPOILERS_ROLE=worker tsx src/server/index.ts",
+    "start": "tsx src/server/index.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4347 --host --strictPort",
     "nospoilers": "tsx src/cli.ts",
