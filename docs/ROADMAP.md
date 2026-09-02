@@ -216,7 +216,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   `prettier.io`, stevemao no vendor domain; extra orgs 0) — first-class
   append-only security contacts and policy URLs on that organization
   (live Neon prettier `security@prettier.io` + `https://prettier.io/security`;
-  stevemao none) —
+  stevemao none) — append-only `disclosure_findings` from existing
+  fingerprints (live Neon: `058` applied; prettier has two SEC-003 rows;
+  left-pad fingerprints are empty so leftover extra findings 0) —
   live Neon prettier vs left-pad still no match,
   templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before
