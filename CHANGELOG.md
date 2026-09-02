@@ -8,7 +8,10 @@
   or https policy URL, draft preview, simulated acknowledgement, internal deadline
   flag, conversion attribution, and a fix-version rescan. Outreach `contacted`
   requires a verified case; `fixed` requires that rescan. No message is sent.
-  Customer sessions stay 401. Not a customer product and not a Pricing change.
+  Customer sessions stay 401. Live-opened a case on the public `prettier`
+  npm artifact from `prettier/prettier`, verified it, previewed a draft that
+  was not sent, recorded a simulated acknowledgement, and queued a
+  `3.9.7` fix-version rescan. Not a customer product and not a Pricing change.
 
 - Trial and Team installs get Release Ledger governance: approve a passing sealed
   revision to ship or reject it, place a legal hold that survives the list

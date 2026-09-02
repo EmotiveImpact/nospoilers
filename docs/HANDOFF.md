@@ -435,6 +435,9 @@ Disclosure Desk Phase 1 is in on Artifact Leads: verification checklist, duplica
 warning, encrypted expiring notes, stored (never fetched) policy URL, draft preview,
 simulated acknowledgement, internal deadline, conversion attribution, and a
 fix-version rescan. `contacted`/`fixed` are gated on the API. Nothing is sent.
+Live-opened a private case on the public prettier npm artifact from
+`prettier/prettier` (verified, draft preview, simulated acknowledgement,
+fix-version `3.9.7` rescan). No companies were seeded.
 The hourly poller, after customer work, checks up to eight known npm leads for a new
 latest and can run a three-repo discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
 if customer jobs are out or three prospect jobs are already queued/running. Owner

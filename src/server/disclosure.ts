@@ -594,11 +594,11 @@ export async function updateDisclosureCase(
     fixVersion?: unknown;
   },
 ): Promise<DisclosureCaseView> {
+  const current = await store.getDisclosureCaseByProspect(input.prospectId);
+  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
   if (input.sent === true) {
     throw new DisclosureError(DISCLOSURE_SENT_ERROR, 400);
   }
-  const current = await store.getDisclosureCaseByProspect(input.prospectId);
-  if (!current) throw new DisclosureError("No disclosure case yet.", 404);
   const checklist = { ...checklistFromRow(current), ...input.checklist };
   const securityContact =
     input.securityContact !== undefined
