@@ -510,7 +510,8 @@ enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
 encrypted tokens never returned or written onto jobs, event-driven, light job so it does not
 consume a daily unpack slot). Not advertised as a Pricing change. Bugsnag matches a release
-version; it cannot look up a debug ID.
+version; it cannot look up a debug ID. Live Neon: map destinations 0;
+unauth 401; owner list empty; no invented destination.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow/Action files; workflow YAML stays copy-paste; 409 until Pull requests write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
