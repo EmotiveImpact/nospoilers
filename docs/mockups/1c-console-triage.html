@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1C · Console + triage — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+    <style>
+      .shell {
+        height: 100svh;
+        overflow: hidden;
+      }
+      .main {
+        height: 100svh;
+        overflow: hidden;
+      }
+      .topbar {
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <div class="app shell">
+      <aside class="side">
+        <div class="side-head">
+          <span class="logo">NoSpoilers</span>
+          <button class="installer">
+            <span class="av"></span>
+            <span class="grow col">
+              <span class="small snow truncate">EmotiveImpact</span>
+              <span class="tiny dim has-data">Team · 6 repos</span>
+              <span class="tiny dim s-empty">nothing connected</span>
+            </span>
+            <span class="dim tiny">⌄</span>
+          </button>
+        </div>
+
+        <nav class="nav scroll">
+          <div class="nav-group">
+            <a href="#"><span class="ico">◉</span> Overview</a>
+            <a href="#" aria-current="page"
+              ><span class="ico">▲</span> Alerts <span class="count crit has-data">2</span></a
+            >
+            <a href="#" class="team-only"><span class="ico">◷</span> Timeline</a>
+          </div>
+
+          <!-- borrowed from 03: saved views live under the route they belong to -->
+          <div class="nav-group">
+            <span class="kicker">Alert views</span>
+            <a href="#" aria-current="page"
+              ><span class="ico">▲</span> Needs triage <span class="count crit has-data">2</span></a
+            >
+            <a href="#"><span class="ico">◷</span> Waiting on rotation <span class="count has-data">1</span></a>
+            <a href="#" class="team-only"
+              ><span class="ico">☺</span> Assigned to me <span class="count has-data">1</span></a
+            >
+            <a href="#"><span class="ico">✓</span> Resolved <span class="count has-data">37</span></a>
+          </div>
+
+          <div class="nav-group">
+            <span class="kicker">Watched</span>
+            <a href="#"><span class="ico">⌥</span> Repositories <span class="count has-data">6</span></a>
+            <a href="#"><span class="ico">▣</span> npm packages <span class="count has-data">3</span></a>
+            <a href="#"><span class="ico">⬡</span> Websites <span class="count has-data">2</span></a>
+            <a href="#"><span class="ico">⎔</span> Map custody <span class="count has-data">1</span></a>
+          </div>
+
+          <div class="nav-group">
+            <span class="kicker">Settings</span>
+            <a href="#"><span class="ico">✉</span> Notifications</a>
+            <a href="#"><span class="ico">⚖</span> Policy &amp; allowlist</a>
+            <a href="#" class="admin-only"><span class="ico">◍</span> Scan API tokens</a>
+            <a href="#"><span class="ico">☗</span> Team &amp; roles</a>
+            <a href="#"><span class="ico">⧗</span> Retention</a>
+            <a href="#"><span class="ico">✱</span> Install health</a>
+          </div>
+        </nav>
+
+        <div class="side-foot">
+          <div class="between">
+            <span class="tiny dim s-trial">Trial · 11 days left</span>
+            <span class="tiny dim s-solo">Solo</span>
+            <span class="tiny dim s-member">Team · member</span>
+            <span class="tiny bad s-ended">Coverage ended</span>
+            <span class="tiny dim s-empty">Trial · 14 days left</span>
+            <a href="#" class="tiny snow">Subscribe</a>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div class="row gap8 wrap">
+            <strong class="small">Alerts</strong>
+            <span class="added">panes from 03</span>
+          </div>
+          <div class="grow"></div>
+          <span class="pill ok s-trial"><span class="dot ok"></span> Trial · 11 days left</span>
+          <span class="pill ok s-solo"><span class="dot ok"></span> Solo</span>
+          <span class="pill ok s-member"><span class="dot ok"></span> Team · member</span>
+          <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+          <span class="pill ok s-empty"><span class="dot ok"></span> Trial · 14 days left</span>
+          <span class="av round"></span>
+        </header>
+
+        <div
+          class="s-ended row gap12"
+          style="
+            flex: none;
+            padding: 9px 18px;
+            border-bottom: 1px solid rgba(226, 69, 58, 0.3);
+            background: rgba(226, 69, 58, 0.07);
+          "
+        >
+          <span class="dot crit"></span>
+          <span class="small"
+            >No new jobs run, so nothing new arrives here. Alerts already open can still be
+            acknowledged and resolved.</span
+          >
+          <div class="grow"></div>
+          <button class="btn sm">See plans</button>
+        </div>
+
+        <div class="panes">
+          <section class="pane">
+            <div class="pane-head between">
+              <div class="row gap8">
+                <strong class="small">Needs triage</strong>
+                <span class="pill has-data">2</span>
+                <span class="pill s-empty">0</span>
+              </div>
+              <span class="small dim has-data">Newest ⌄</span>
+            </div>
+            <div class="pane-body scroll">
+              <p class="empty s-empty">
+                <strong>Inbox is clear.</strong>
+                Nothing on this install yet.
+              </p>
+
+              <div class="item has-data" aria-selected="true">
+                <div class="row gap8 wrap">
+                  <span class="dot crit pulse"></span>
+                  <strong class="grow truncate">Original source in published pack</strong>
+                  <span class="tiny dim">41m</span>
+                </div>
+                <div class="sub"><code class="path">nospoilers@0.4.2</code> · MAP-002</div>
+              </div>
+
+              <div class="item has-data">
+                <div class="row gap8 wrap">
+                  <span class="dot warn"></span>
+                  <strong class="grow truncate">Internal docs in release asset</strong>
+                  <span class="tiny dim">3h</span>
+                </div>
+                <div class="sub"><code class="path">EmotiveImpact/desk</code> v2.1.0 · DOC-001</div>
+              </div>
+
+              <div class="item has-data team-only">
+                <div class="row gap8 wrap">
+                  <span class="dot"></span>
+                  <strong class="grow truncate">Lookalike package registered</strong>
+                  <span class="tiny dim">1d</span>
+                </div>
+                <div class="sub"><code class="path">no-spoilers</code> · acknowledged by @dana</div>
+              </div>
+
+              <div class="item has-data">
+                <div class="row gap8 wrap">
+                  <span class="dot ok"></span>
+                  <strong class="grow truncate">Repository went public</strong>
+                  <span class="tiny dim">1d</span>
+                </div>
+                <div class="sub">
+                  <code class="path">EmotiveImpact/relay-worker</code> · resolved
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="pane">
+            <div class="actionbar has-data">
+              <button class="btn sm">Acknowledge</button>
+              <button class="btn sm outline">Resolve…</button>
+              <button class="btn sm outline team-only">Assign</button>
+              <div class="grow"></div>
+              <button class="btn sm ghost">↑</button>
+              <button class="btn sm ghost">↓</button>
+              <span class="tiny dim">1 of 2</span>
+            </div>
+
+            <div class="pane-body scroll">
+              <div class="empty s-empty" style="padding-top: 90px">
+                <strong>Nothing selected.</strong>
+                When an alert arrives, its findings, rotation checklist, and activity open here.
+              </div>
+
+              <div class="detail has-data">
+                <div class="row gap8 wrap">
+                  <span class="pill crit">critical</span>
+                  <span class="pill">MAP-002</span>
+                  <span class="pill"><span class="dot crit"></span> open · 41 min exposed</span>
+                </div>
+                <h1 style="margin-top: 12px">
+                  <code class="path" style="font-size: 24px">dist/cli.js.map</code> embeds original
+                  source
+                </h1>
+                <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                  The <code>latest</code> tarball for <code class="path">nospoilers@0.4.2</code>
+                  contains a source map with a populated <code>sourcesContent</code> array. Anyone
+                  who runs <code>npm pack nospoilers</code> can reconstruct the pre-build
+                  TypeScript.
+                </p>
+
+                <div class="sec">
+                  <span class="kicker">Where</span>
+                  <div class="card" style="margin-top: 9px">
+                    <div class="finding">
+                      <span class="rulecode" style="width: 66px; flex: none">MAP-002</span>
+                      <span class="grow path">dist/cli.js.map</span>
+                      <span class="pill crit">critical</span>
+                    </div>
+                    <div class="finding">
+                      <span class="rulecode" style="width: 66px; flex: none">MAP-001</span>
+                      <span class="grow path">dist/index.js.map</span>
+                      <span class="pill crit">critical</span>
+                    </div>
+                    <div class="finding">
+                      <span class="rulecode" style="width: 66px; flex: none">MAP-003</span>
+                      <span class="grow path">dist/index.js</span>
+                      <span class="pill warn">sourceMappingURL</span>
+                    </div>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 8px">
+                    Credential values are never stored or shown. Paths and rule ids only.
+                  </p>
+                </div>
+
+                <!-- 08 borrowed into the detail: the exposure clock for this one alert -->
+                <div class="sec">
+                  <div class="row gap8 wrap" style="margin-bottom: 9px">
+                    <span class="kicker">Exposure</span>
+                    <span class="added">clock from 08</span>
+                  </div>
+                  <div class="card card-pad">
+                    <div class="row gap24 wrap">
+                      <div>
+                        <span class="kicker">Reachable for</span>
+                        <div
+                          class="bad"
+                          style="font-family: var(--display); font-size: 26px; margin-top: 4px"
+                        >
+                          41m 08s
+                        </div>
+                      </div>
+                      <div>
+                        <span class="kicker">Detected in</span>
+                        <div style="font-family: var(--display); font-size: 26px; margin-top: 4px">
+                          38s
+                        </div>
+                      </div>
+                      <div class="team-only">
+                        <span class="kicker">Notified in</span>
+                        <div style="font-family: var(--display); font-size: 26px; margin-top: 4px">
+                          41s
+                        </div>
+                      </div>
+                    </div>
+                    <div class="track" style="min-height: 26px; margin-top: 14px">
+                      <div class="span crit" style="left: 60%; right: 2%">still open</div>
+                      <div class="tick" style="left: 98%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sec">
+                  <span class="kicker">Rotation checklist</span>
+                  <div style="margin-top: 6px">
+                    <label class="task"
+                      ><input type="checkbox" checked /><span
+                        ><s class="dim">Confirm the pack is still on the latest tag</s></span
+                      ></label
+                    >
+                    <label class="task"
+                      ><input type="checkbox" /><span
+                        >Publish 0.4.3 built with <code>hidden-source-map</code>, then
+                        <code>npm deprecate nospoilers@0.4.2</code></span
+                      ></label
+                    >
+                    <label class="task"
+                      ><input type="checkbox" /><span
+                        >Upload maps to Sentry instead of packing them</span
+                      ></label
+                    >
+                    <label class="task"
+                      ><input type="checkbox" /><span
+                        >Add the CI gate so the next release fails closed</span
+                      ></label
+                    >
+                  </div>
+                </div>
+
+                <div class="sec">
+                  <span class="kicker">Activity</span>
+                  <div style="margin-top: 6px">
+                    <div class="thread">
+                      <span class="av round"></span>
+                      <div>
+                        <span class="snow">NoSpoilers</span> opened this from a registry check
+                        <span class="dim">· 09:14</span>
+                      </div>
+                    </div>
+                    <div class="thread team-only">
+                      <span class="av round"></span>
+                      <div>
+                        <span class="snow">Slack</span> delivered to <code>#sec-alerts</code>
+                        <span class="dim">· 09:14</span>
+                      </div>
+                    </div>
+                    <div class="thread">
+                      <span class="av round"></span>
+                      <div class="grow">
+                        <input class="field" placeholder="Add a resolution note…" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="gate admin-only" style="margin-top: 14px">
+                    <span class="tagword">Admin</span>
+                    <span
+                      >You can allow <code class="path">dist/*.map</code> for this repo with a
+                      reason and an expiry, instead of resolving this by hand every release.
+                      <a href="#" class="snow">Write an exception →</a></span
+                    >
+                  </div>
+                  <div class="gate s-member" style="margin-top: 14px">
+                    <span class="tagword">Member</span>
+                    <span
+                      >Writing a policy exception is admin-only. Triage, notes, and resolution are
+                      yours.</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>1C</b> Console + triage
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>
