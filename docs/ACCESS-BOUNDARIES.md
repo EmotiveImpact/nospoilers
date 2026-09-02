@@ -293,6 +293,11 @@ Internal staff running acquisition and disclosure work.
 - Run the npm version feed and scheduled three-repo discover. Both skip when
   customer jobs are queued/running. The hourly poller uses the same rules.
 - Record outreach state. Never send mail without a later human-confirm step.
+- Open a Disclosure Desk case on an Artifact Lead: verification checklist, duplicate
+  warning, encrypted expiring notes, stored (never fetched) security contact or https
+  policy URL, draft preview, simulated acknowledgement, internal deadline flag,
+  conversion attribution, and a fix-version rescan. `contacted` requires a verified
+  case. `fixed` requires a recorded fix version and rescan. No message is sent.
 
 **Must not**
 
@@ -329,9 +334,9 @@ These are never customer features:
 | Surface | Route / data |
 | --- | --- |
 | Artifact Leads | `/internal/prospects`, `/api/internal/prospects*` |
-| Disclosure Desk | future internal routes extending Artifact Leads |
+| Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` |
 | Prospect companies and artifacts | `prospects` table |
-| Disclosure records and campaigns | not built; will be internal-only |
+| Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
 | Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed; usage aggregates are counts only |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
@@ -367,8 +372,17 @@ These are never customer features:
 
 ## Tests
 
+`tests/disclosure.test.ts` proves Disclosure Desk is owner-only, a signal cannot be marked
+verified without the checklist, `PATCH /api/internal/prospects/:id` cannot record
+`contacted` before a verified case or `fixed` before a fix-version rescan, duplicates
+warn on owner/repo, package name, or fingerprint overlap unless confirmed, fingerprints
+are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are
+encrypted and expire from reads, drafts and acknowledgements stay `sent: false`, and
+`disclosure_events` are append-only. Existing feed tests still call
+`store.updateProspectStatus` directly.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
+cannot open Disclosure Desk routes,
 that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
 unpack aggregates, that nested workspace member discovery is metadata-only (private

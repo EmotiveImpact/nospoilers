@@ -1,6 +1,11 @@
 import { Field, Input, Label } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DisclosureCasePanel,
+  type DisclosureSummary,
+  type DuplicateMatch,
+} from "@/pages/DisclosureCasePanel.tsx"
 import type { Finding } from "@/report-types"
 import { ExternalLink, RefreshCw, Search, ShieldAlert } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
@@ -29,6 +34,7 @@ type Prospect = {
   error: string | null
   discovered_at: string
   scanned_at: string | null
+  disclosure: DisclosureSummary | null
 }
 
 type ProspectData = {
@@ -38,6 +44,7 @@ type ProspectData = {
     publicArtifactsOnly: boolean
     sourceRetained: boolean
     outreachAutomatic: boolean
+    disclosureSend: boolean
   }
 }
 
@@ -102,6 +109,7 @@ export function ProspectsPage() {
         error?: string
         githubLogin?: string
         tokenConfigured?: boolean
+        duplicates?: DuplicateMatch[]
       }
       if (response.status === 401) {
         setState({
@@ -111,7 +119,13 @@ export function ProspectsPage() {
         })
         throw new Error(body.error ?? "Admin access required.")
       }
-      if (!response.ok) throw new Error(body.error ?? `Request failed (${response.status}).`)
+      if (!response.ok) {
+        const failed = new Error(body.error ?? `Request failed (${response.status}).`) as Error & {
+          duplicates?: DuplicateMatch[]
+        }
+        failed.duplicates = body.duplicates
+        throw failed
+      }
       return body
     },
     [token],
@@ -317,7 +331,8 @@ export function ProspectsPage() {
             members from the repo workspace config (cap 8) and never auto-watches them. The hourly
             poller, after customer work, checks known npm leads for a new latest and can run a
             three-repo discover when a discovery token is set. Customer jobs stay first. No source
-            or secret values are retained. Nothing contacts or publicly names a maintainer for you.
+            or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
+            and records a simulated acknowledgement. Nothing is sent or publicly named.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -507,6 +522,12 @@ export function ProspectsPage() {
                         </p>
                       ) : null}
                       {prospect.error && <p className="mt-3 text-sm text-danger">{prospect.error}</p>}
+                      <DisclosureCasePanel
+                        prospectId={prospect.id}
+                        summary={prospect.disclosure}
+                        request={request}
+                        onChanged={load}
+                      />
                       {findings.length > 0 && (
                         <ul className="mt-4 flex max-w-2xl flex-col gap-1.5">
                           {findings.slice(0, 8).map((finding) => (

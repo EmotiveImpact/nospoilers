@@ -176,7 +176,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, nested
   public workspace member packs (cap 8 queued / 40 listed names, never auto-watched),
   hourly npm version feed and three-repo scheduled discover behind customer jobs,
-  manual outreach state.
+  manual outreach state, and Disclosure Desk Phase 1 (verification, duplicates, draft
+  preview, simulated acknowledgement, fix-version rescan; nothing sent).
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth

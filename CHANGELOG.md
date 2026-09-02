@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Artifact Leads includes Disclosure Desk Phase 1: an owner-only case per public
+  lead, verification checklist, duplicate warning (owner/repo, package, or
+  fingerprint), encrypted expiring notes, stored (never fetched) security contact
+  or https policy URL, draft preview, simulated acknowledgement, internal deadline
+  flag, conversion attribution, and a fix-version rescan. Outreach `contacted`
+  requires a verified case; `fixed` requires that rescan. No message is sent.
+  Customer sessions stay 401. Not a customer product and not a Pricing change.
+
 - Trial and Team installs get Release Ledger governance: approve a passing sealed
   revision to ship or reject it, place a legal hold that survives the list
   retention window, and export the ledger JSON. The admin who attached a delivery

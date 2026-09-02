@@ -3,6 +3,13 @@ import { coverageFrom, coverageIsOn } from "../coverage.ts";
 import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
+import type {
+  DisclosureCaseRow,
+  DisclosureChecklist,
+  DisclosureConversion,
+  DisclosureEventRow,
+  DisclosureState,
+} from "./disclosure.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
@@ -769,6 +776,96 @@ async function applyPendingInvite(
     );
     await tx.query(`DELETE FROM installation_invites WHERE id = $1`, [invite.id]);
   });
+}
+
+function asDisclosureState(value: string): DisclosureState {
+  if (
+    value === "signal" ||
+    value === "verifying" ||
+    value === "verified" ||
+    value === "false_positive" ||
+    value === "duplicate"
+  ) {
+    return value;
+  }
+  return "signal";
+}
+
+function asDisclosureConversion(value: string): DisclosureConversion {
+  if (value === "trial" || value === "paid" || value === "declined") return value;
+  return "none";
+}
+
+function disclosureCaseRow(row: {
+  id: unknown;
+  prospect_id: unknown;
+  state: string;
+  checklist_public_artifact: boolean;
+  checklist_reproduced: boolean;
+  checklist_fingerprints_recorded: boolean;
+  checklist_no_secret_values: boolean;
+  checklist_contact_or_policy: boolean;
+  fingerprints: unknown;
+  security_contact: string | null;
+  policy_url: string | null;
+  notes_ciphertext: string | null;
+  notes_expires_at: string | Date | null;
+  draft_subject: string | null;
+  draft_body: string | null;
+  draft_sent: boolean;
+  acknowledgement_note: string | null;
+  acknowledged_at: string | Date | null;
+  deadline_at: string | Date | null;
+  conversion: string;
+  fix_version: string | null;
+  last_rescan_at: string | Date | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): DisclosureCaseRow {
+  return {
+    id: num(row.id),
+    prospect_id: num(row.prospect_id),
+    state: asDisclosureState(row.state),
+    checklist_public_artifact: Boolean(row.checklist_public_artifact),
+    checklist_reproduced: Boolean(row.checklist_reproduced),
+    checklist_fingerprints_recorded: Boolean(row.checklist_fingerprints_recorded),
+    checklist_no_secret_values: Boolean(row.checklist_no_secret_values),
+    checklist_contact_or_policy: Boolean(row.checklist_contact_or_policy),
+    fingerprints: asStringArray(row.fingerprints),
+    security_contact: row.security_contact,
+    policy_url: row.policy_url,
+    notes_ciphertext: row.notes_ciphertext,
+    notes_expires_at: iso(row.notes_expires_at),
+    draft_subject: row.draft_subject,
+    draft_body: row.draft_body,
+    draft_sent: false,
+    acknowledgement_note: row.acknowledgement_note,
+    acknowledged_at: iso(row.acknowledged_at),
+    deadline_at: iso(row.deadline_at),
+    conversion: asDisclosureConversion(row.conversion),
+    fix_version: row.fix_version,
+    last_rescan_at: iso(row.last_rescan_at),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function disclosureEventRow(row: {
+  id: unknown;
+  case_id: unknown;
+  action: string;
+  actor: string;
+  summary: string;
+  created_at: string | Date;
+}): DisclosureEventRow {
+  return {
+    id: num(row.id),
+    case_id: num(row.case_id),
+    action: row.action,
+    actor: row.actor,
+    summary: row.summary,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
 }
 
 function prospectRow(row: ProspectRow & { workspace_members?: unknown; feed_checked_at?: string | Date | null }): ProspectRow {
@@ -2454,6 +2551,235 @@ export function createStore(
         [id, status],
       );
       return rows[0] ? prospectRow(rows[0]) : null;
+    },
+
+    readDisclosureNotes(row: DisclosureCaseRow): { notes: string | null; notesExpired: boolean } {
+      if (!row.notes_ciphertext) return { notes: null, notesExpired: false };
+      if (row.notes_expires_at && Date.parse(row.notes_expires_at) <= Date.now()) {
+        return { notes: null, notesExpired: true };
+      }
+      if (!tokenSecret) return { notes: null, notesExpired: false };
+      try {
+        return { notes: decryptSecret(row.notes_ciphertext, tokenSecret), notesExpired: false };
+      } catch {
+        return { notes: null, notesExpired: false };
+      }
+    },
+
+    async getDisclosureCaseByProspect(prospectId: number): Promise<DisclosureCaseRow | null> {
+      const { rows } = await sql.query<Parameters<typeof disclosureCaseRow>[0]>(
+        `SELECT * FROM disclosure_cases WHERE prospect_id = $1`,
+        [prospectId],
+      );
+      return rows[0] ? disclosureCaseRow(rows[0]) : null;
+    },
+
+    async listDisclosureCases(): Promise<DisclosureCaseRow[]> {
+      const { rows } = await sql.query<Parameters<typeof disclosureCaseRow>[0]>(
+        `SELECT * FROM disclosure_cases ORDER BY id ASC`,
+      );
+      return rows.map((row) => disclosureCaseRow(row));
+    },
+
+    async listDisclosureEvents(caseId: number): Promise<DisclosureEventRow[]> {
+      const { rows } = await sql.query<Parameters<typeof disclosureEventRow>[0]>(
+        `SELECT * FROM disclosure_events WHERE case_id = $1 ORDER BY id ASC`,
+        [caseId],
+      );
+      return rows.map((row) => disclosureEventRow(row));
+    },
+
+    async listOtherDisclosureCases(prospectId: number): Promise<
+      (DisclosureCaseRow & { owner: string; repo: string; package_name: string | null })[]
+    > {
+      const { rows } = await sql.query<
+        Parameters<typeof disclosureCaseRow>[0] & {
+          owner: string;
+          repo: string;
+          package_name: string | null;
+        }
+      >(
+        `SELECT c.*, p.owner, p.repo, p.package_name
+         FROM disclosure_cases c
+         JOIN prospects p ON p.id = c.prospect_id
+         WHERE c.prospect_id <> $1
+         ORDER BY c.id ASC`,
+        [prospectId],
+      );
+      return rows.map((row) => ({
+        ...disclosureCaseRow(row),
+        owner: row.owner,
+        repo: row.repo,
+        package_name: row.package_name,
+      }));
+    },
+
+    async insertDisclosureCase(input: {
+      prospectId: number;
+      fingerprints: string[];
+      actor: string;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const inserted = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `INSERT INTO disclosure_cases (prospect_id, state, fingerprints)
+           VALUES ($1, 'signal', $2::jsonb)
+           RETURNING *`,
+          [input.prospectId, JSON.stringify(input.fingerprints)],
+        );
+        const row = inserted.rows[0];
+        if (!row) throw new Error("Disclosure case was not created.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, 'created', $2, $3)`,
+          [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
+    },
+
+    async updateDisclosureCase(input: {
+      prospectId: number;
+      actor: string;
+      state: DisclosureState;
+      checklist: DisclosureChecklist;
+      securityContact: string | null;
+      policyUrl: string | null;
+      notes?: string | null;
+      notesExpiresInDays?: number;
+      draftSubject?: string | null;
+      draftBody?: string | null;
+      deadlineAt: string | null;
+      conversion: DisclosureConversion;
+      fixVersion: string | null;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const current = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `SELECT * FROM disclosure_cases WHERE prospect_id = $1`,
+          [input.prospectId],
+        );
+        const existing = current.rows[0];
+        if (!existing) throw new Error("Disclosure case disappeared.");
+        let notesCiphertext = existing.notes_ciphertext;
+        let notesExpires = existing.notes_expires_at;
+        if (input.notes !== undefined) {
+          if (input.notes == null || input.notes === "") {
+            notesCiphertext = null;
+            notesExpires = null;
+          } else {
+            if (!tokenSecret) {
+              throw Object.assign(new Error("Session secret is required to store operator notes."), {
+                status: 400,
+              });
+            }
+            notesCiphertext = encryptSecret(input.notes, tokenSecret);
+            const days = input.notesExpiresInDays ?? 90;
+            notesExpires = new Date(Date.now() + days * 86_400_000).toISOString();
+          }
+        }
+        const updated = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `UPDATE disclosure_cases
+           SET state = $2,
+               checklist_public_artifact = $3,
+               checklist_reproduced = $4,
+               checklist_fingerprints_recorded = $5,
+               checklist_no_secret_values = $6,
+               checklist_contact_or_policy = $7,
+               security_contact = $8,
+               policy_url = $9,
+               notes_ciphertext = $10,
+               notes_expires_at = $11,
+               draft_subject = $12,
+               draft_body = $13,
+               deadline_at = $14,
+               conversion = $15,
+               fix_version = $16,
+               updated_at = now()
+           WHERE prospect_id = $1
+           RETURNING *`,
+          [
+            input.prospectId,
+            input.state,
+            input.checklist.public_artifact,
+            input.checklist.reproduced,
+            input.checklist.fingerprints_recorded,
+            input.checklist.no_secret_values,
+            input.checklist.contact_or_policy,
+            input.securityContact,
+            input.policyUrl,
+            notesCiphertext,
+            notesExpires,
+            input.draftSubject ?? existing.draft_subject,
+            input.draftBody ?? existing.draft_body,
+            input.deadlineAt,
+            input.conversion,
+            input.fixVersion,
+          ],
+        );
+        const row = updated.rows[0];
+        if (!row) throw new Error("Disclosure case was not updated.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, 'updated', $2, $3)`,
+          [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
+    },
+
+    async acknowledgeDisclosureCase(input: {
+      prospectId: number;
+      actor: string;
+      note: string;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const updated = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `UPDATE disclosure_cases
+           SET acknowledgement_note = $2,
+               acknowledged_at = now(),
+               updated_at = now()
+           WHERE prospect_id = $1
+           RETURNING *`,
+          [input.prospectId, input.note],
+        );
+        const row = updated.rows[0];
+        if (!row) throw new Error("Disclosure case was not updated.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, 'acknowledged', $2, $3)`,
+          [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
+    },
+
+    async recordDisclosureRescan(input: {
+      prospectId: number;
+      actor: string;
+      fixVersion: string;
+      summary: string;
+    }): Promise<DisclosureCaseRow> {
+      return await sql.transaction(async (tx) => {
+        const updated = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
+          `UPDATE disclosure_cases
+           SET fix_version = $2,
+               last_rescan_at = now(),
+               updated_at = now()
+           WHERE prospect_id = $1
+           RETURNING *`,
+          [input.prospectId, input.fixVersion],
+        );
+        const row = updated.rows[0];
+        if (!row) throw new Error("Disclosure case was not updated.");
+        await tx.query(
+          `INSERT INTO disclosure_events (case_id, action, actor, summary)
+           VALUES ($1, 'rescan', $2, $3)`,
+          [row.id, input.actor, input.summary],
+        );
+        return disclosureCaseRow(row);
+      });
     },
 
     async listInstallationsForUser(userId: string): Promise<

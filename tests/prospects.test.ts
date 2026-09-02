@@ -273,6 +273,20 @@ describe("Artifact Leads persistence", () => {
       });
       expect(feed.status).toBe(401);
 
+      const desk = await app.request("/api/internal/prospects/1/disclosure", {
+        headers: { cookie },
+      });
+      expect(desk.status).toBe(401);
+      const deskBody = (await desk.json()) as { case?: unknown };
+      expect(deskBody.case).toBeUndefined();
+
+      const openDesk = await app.request("/api/internal/prospects/1/disclosure", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(openDesk.status).toBe(401);
+
       await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
       const ownerSession = await store.createSession("owner-1");
       const allowed = await app.request("/api/internal/prospects", {

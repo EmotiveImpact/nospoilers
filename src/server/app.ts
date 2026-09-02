@@ -61,6 +61,17 @@ import {
 } from "./npm-registry.ts";
 import { clientKey, createRateLimiter, retryAfterSeconds } from "./rate-limit.ts";
 import {
+  acknowledgeDisclosureCase,
+  createDisclosureCase,
+  DisclosureError,
+  loadDisclosureCase,
+  outreachBlocked,
+  previewDisclosureCase,
+  rescanDisclosureCase,
+  toDisclosureSummary,
+  updateDisclosureCase,
+} from "./disclosure.ts";
+import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
 } from "./prospects.ts";
@@ -574,6 +585,25 @@ export function createApp(deps: AppDeps): Hono {
     );
   }
 
+  async function internalActor(c: Context): Promise<string> {
+    const user = await currentUser(c);
+    if (user?.login) return user.login;
+    return deps.config.adminGithubLogin || "owner";
+  }
+
+  function disclosureFailed(c: Context, error: unknown) {
+    if (error instanceof DisclosureError) {
+      if (error.duplicates) {
+        return c.json({ error: error.message, duplicates: error.duplicates }, error.status);
+      }
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json(
+      { error: error instanceof Error ? error.message : "Disclosure request failed." },
+      errorStatus(error),
+    );
+  }
+
   app.use("/api/internal/*", async (c, next) => {
     if (!(await isInternalAdmin(c))) {
       return c.json(
@@ -623,17 +653,25 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/api/internal/prospects", async (c) => {
     const limit = Number(c.req.query("limit") ?? 100);
-    const [prospects, stats] = await Promise.all([
+    const [prospects, stats, cases] = await Promise.all([
       deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
       deps.store.prospectStats(),
+      deps.store.listDisclosureCases(),
     ]);
+    const byProspect = new Map(
+      cases.map((row) => [row.prospect_id, toDisclosureSummary(row)] as const),
+    );
     return c.json({
-      prospects,
+      prospects: prospects.map((prospect) => ({
+        ...prospect,
+        disclosure: byProspect.get(prospect.id) ?? null,
+      })),
       stats,
       policy: {
         publicArtifactsOnly: true,
         sourceRetained: false,
         outreachAutomatic: false,
+        disclosureSend: false,
       },
     });
   });
@@ -720,6 +758,128 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(result);
   });
 
+  app.get("/api/internal/prospects/:id/disclosure", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      return c.json({ case: await loadDisclosureCase(deps.store, id) });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json().catch(() => ({})));
+      const view = await createDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        confirmDuplicate: body.confirmDuplicate === true,
+      });
+      return c.json({ case: view }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.patch("/api/internal/prospects/:id/disclosure", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const checklistRaw = jsonObj(body.checklist);
+      const checklist = Object.fromEntries(
+        (
+          [
+            "public_artifact",
+            "reproduced",
+            "fingerprints_recorded",
+            "no_secret_values",
+            "contact_or_policy",
+          ] as const
+        )
+          .filter((key) => typeof checklistRaw[key] === "boolean")
+          .map((key) => [key, checklistRaw[key] === true]),
+      );
+      const view = await updateDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        checklist: Object.keys(checklist).length > 0 ? checklist : undefined,
+        state: body.state,
+        securityContact: body.securityContact,
+        policyUrl: body.policyUrl,
+        notes: body.notes,
+        notesExpiresInDays: body.notesExpiresInDays,
+        draftSubject: body.draftSubject,
+        draftBody: body.draftBody,
+        sent: body.sent,
+        deadlineAt: body.deadlineAt,
+        conversion: body.conversion,
+        fixVersion: body.fixVersion,
+      });
+      return c.json({ case: view });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/preview", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const draft = await previewDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+      });
+      return c.json(draft);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/acknowledge", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const view = await acknowledgeDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        note: body.note,
+      });
+      return c.json({ case: view, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/rescan", async (c) => {
+    const limited = rateLimited(
+      c,
+      discoveryLimiter,
+      `disclosure-rescan:${requestIp(c)}`,
+      deps.config.discoveryRateWindowMs,
+      "Too many discovery requests. Wait and try again.",
+    );
+    if (limited) return limited;
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    try {
+      const body = jsonObj(await c.req.json());
+      const result = await rescanDisclosureCase(deps.store, {
+        prospectId: id,
+        actor: await internalActor(c),
+        fixVersion: body.fixVersion,
+        wakeWorker: deps.wakeWorker,
+      });
+      return c.json({ ok: true, sent: false, ...result });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
   app.post("/api/internal/prospects/:id/rescan", async (c) => {
     const limited = rateLimited(
       c,
@@ -756,6 +916,11 @@ export function createApp(deps: AppDeps): Hono {
     ) {
       return c.json({ error: "Invalid prospect status." }, 400);
     }
+    const existing = await deps.store.getProspect(id);
+    if (!existing) return c.json({ error: "Prospect not found." }, 404);
+    const desk = await deps.store.getDisclosureCaseByProspect(id);
+    const blocked = outreachBlocked(status as ProspectStatus, desk);
+    if (blocked) return c.json({ error: blocked }, 409);
     const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);
     return prospect ? c.json({ prospect }) : c.json({ error: "Prospect not found." }, 404);
   });

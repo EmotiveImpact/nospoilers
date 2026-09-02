@@ -200,12 +200,12 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Continuous npm version feed | Built: hourly poller plus owner `POST /api/internal/prospects/feed`; metadata `getPack` on up to 8 known npm leads (`new`/`contacted`); new latest tarball becomes a new prospect row and queues behind customer jobs; 404/network is not an unpublish; ignored/fixed skipped; owner-only | Internal NoSpoilers |
 | Nested workspace package discovery | Built: Artifact Leads inspect lists public npm names from package.json / pnpm-workspace globs (`packages/*` or a literal path, cap 8 queued packs); scanned packs store member names (cap 40); never auto-watched; never executed; owner-only | Internal NoSpoilers |
 | Critical-only internal notifications | Planned | Internal NoSpoilers |
-| Human finding verification | Planned | Internal NoSpoilers |
-| Responsible-disclosure draft generation | Planned | Internal NoSpoilers |
-| Duplicate company/finding detection | Planned | Internal NoSpoilers |
-| Contact history and disclosure deadlines | Planned | Internal NoSpoilers |
-| Fixed-version automatic rescan | Planned | Internal NoSpoilers |
-| Trial/paid conversion attribution | Planned | Internal NoSpoilers |
+| Human finding verification | Built: owner-only case on Artifact Leads (`signal` / `verifying` / `verified` / `false_positive` / `duplicate`); checklist required before verified; no seeded companies | Internal NoSpoilers |
+| Responsible-disclosure draft generation | Built: preview subject/body from fingerprints only; `sent` is always false; Resend still benched | Internal NoSpoilers |
+| Duplicate company/finding detection | Built: owner/repo, package name, or overlapping `rule\|severity\|path\|title` fingerprints; 409 unless `confirmDuplicate` | Internal NoSpoilers |
+| Contact history and disclosure deadlines | Built: stored security contact / https policy URL (never fetched); simulated acknowledgement; internal `deadlineMissed` flag only; no mail | Internal NoSpoilers |
+| Fixed-version automatic rescan | Built: operator records a fix version and queues a prospect rescan; not a scheduled worker | Internal NoSpoilers |
+| Trial/paid conversion attribution | Built: `none` / `trial` / `paid` / `declined` on the case | Internal NoSpoilers |
 | Aggregate anonymized research | Planned | Internal NoSpoilers |
 | Automated outreach/public naming | Do not build | None |
 | Retention of public source/credential values | Do not build | None |

@@ -781,6 +781,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDeliveryVerifyChain(sql);
   await migrateReleaseSizeType(sql);
   await migrateReleaseGovernance(sql);
+  await migrateDisclosureDesk(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -990,6 +991,68 @@ async function migrateReleaseGovernance(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "037_release_governance",
+  ]);
+}
+
+async function migrateDisclosureDesk(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS disclosure_cases (
+      id BIGSERIAL PRIMARY KEY,
+      prospect_id BIGINT NOT NULL UNIQUE REFERENCES prospects (id) ON DELETE CASCADE,
+      state TEXT NOT NULL DEFAULT 'signal'
+        CHECK (state IN ('signal', 'verifying', 'verified', 'false_positive', 'duplicate')),
+      checklist_public_artifact BOOLEAN NOT NULL DEFAULT FALSE,
+      checklist_reproduced BOOLEAN NOT NULL DEFAULT FALSE,
+      checklist_fingerprints_recorded BOOLEAN NOT NULL DEFAULT FALSE,
+      checklist_no_secret_values BOOLEAN NOT NULL DEFAULT FALSE,
+      checklist_contact_or_policy BOOLEAN NOT NULL DEFAULT FALSE,
+      fingerprints JSONB NOT NULL DEFAULT '[]'::jsonb,
+      security_contact TEXT,
+      policy_url TEXT,
+      notes_ciphertext TEXT,
+      notes_expires_at TIMESTAMPTZ,
+      draft_subject TEXT,
+      draft_body TEXT,
+      draft_sent BOOLEAN NOT NULL DEFAULT FALSE CHECK (draft_sent = FALSE),
+      acknowledgement_note TEXT,
+      acknowledged_at TIMESTAMPTZ,
+      deadline_at TIMESTAMPTZ,
+      conversion TEXT NOT NULL DEFAULT 'none'
+        CHECK (conversion IN ('none', 'trial', 'paid', 'declined')),
+      fix_version TEXT,
+      last_rescan_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_cases_state_idx
+      ON disclosure_cases (state, updated_at DESC);
+    CREATE TABLE IF NOT EXISTS disclosure_events (
+      id BIGSERIAL PRIMARY KEY,
+      case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+      action TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_events_case_idx
+      ON disclosure_events (case_id, id ASC);
+    CREATE OR REPLACE FUNCTION reject_disclosure_event_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'disclosure_events are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS disclosure_events_no_update ON disclosure_events;
+    CREATE TRIGGER disclosure_events_no_update
+      BEFORE UPDATE ON disclosure_events
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_event_mutation();
+    DROP TRIGGER IF EXISTS disclosure_events_no_delete ON disclosure_events;
+    CREATE TRIGGER disclosure_events_no_delete
+      BEFORE DELETE ON disclosure_events
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_event_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "038_disclosure_desk",
   ]);
 }
 
