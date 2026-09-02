@@ -455,7 +455,9 @@ unexpired attachment ciphertext was not cleared; tunnel matched.
 `tests/campaigns.test.ts` proves discovery campaigns are owner-only, typed
 confirm is required, duplicate queries 409, the eighth campaign is the cap,
 disabling falls back to the default scheduled query, delete leaves zero
-campaigns, remigrate keeps rows, and no prospect job is enqueued.
+campaigns, remigrate keeps rows, and no prospect job is enqueued. Live Neon:
+`049` applied; unauth and non-admin 401; save 201; typed DELETE left 0
+rows; prospect count unchanged; tunnel matched.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
 cannot open Disclosure Desk, template, do-not-contact, or notification routes,

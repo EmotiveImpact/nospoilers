@@ -530,7 +530,9 @@ discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
 if customer jobs are out or three prospect jobs are already queued/running. Owner
 POST /api/internal/prospects/feed is the same feed. Owner
 `/api/internal/prospects/campaigns` saves GitHub search queries (cap 8, typed
-confirm). The poller rotates one enabled campaign. 404 is not an unpublish. Ignored
+confirm). The poller rotates one enabled campaign. Live Neon: `049` applied;
+unauth and non-admin 401; save 201; typed DELETE left 0 campaigns; no new
+prospects. 404 is not an unpublish. Ignored
 and fixed leads are skipped. No seeded companies.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
