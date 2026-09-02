@@ -29,7 +29,7 @@ GitHub secret scanning does **not** catch packed maps. Making the git repo priva
 ## What is already built (this repo)
 
 Hosted GitHub App on Neon (sign-in, install, webhook → queue → worker, Watch/Scan). Scanner, CLI,
-and Action still run locally. Stripe, Resend, and production deploy are not live.
+and Action still run locally. Stripe and Resend stay dark without keys. Production deploy is not live.
 
 | Piece | Where |
 | --- | --- |
@@ -51,7 +51,7 @@ formats, not current claims; see `docs/ELECTRON.md`.
 
 **Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
-**Not built / Phase B:** custom domain, Resend, Fly/Railway production deploy, Marketplace. Stripe Checkout/portal/webhooks are implemented and stay dark without keys.
+**Not built / Phase B:** custom domain, Fly/Railway production deploy, Marketplace. Stripe Checkout/portal/webhooks and Resend Watch email are implemented and stay dark without keys.
 
 ---
 
@@ -157,7 +157,7 @@ Postgres: users, installations, repos, jobs, alerts
 Workers: light (visibility) vs heavy (download+unpack, cap 2–8)
          existing src/scanner kernel
          do not store customer source — findings rows only
-Notifier port: logs + alerts table now; Resend later
+Notifier port: logs + alerts table; Resend Watch email when keys exist; log adapter stays the fallback
 Hourly poller: re-check visibility if a webhook was missed
 ```
 
@@ -309,7 +309,7 @@ NoSpoilers Phase B go-live. Read docs/PRODUCT.md. Phase A loop already works.
 
 - Buy/configure nospoilers.dev DNS (Cloudflare).
 - Deploy API + workers to Fly.io (uncommon port; always-on web process; worker process; spend cap). Neon for Postgres.
-- Plug Resend into AlertNotifier (keep log adapter as fallback).
+- Plug Resend into AlertNotifier (keep log adapter as fallback). Done in code; live only when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set. Do not mail Disclosure Desk or invites.
 - Stripe: 14-day trial, Solo $29, Team $99, yearly 10-for-12. After trial/cancel, kill unpaid hosted installs (stop jobs/alerts; dashboard paywall). Do not DRM the CLI.
 - Production GitHub App webhook URL on the real domain.
 - Do not add Slack, Marketplace, GCP, or make-private unless already specified.

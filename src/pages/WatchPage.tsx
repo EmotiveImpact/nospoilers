@@ -51,6 +51,7 @@ type Me = {
   }[];
   githubApp: boolean;
   stripe?: boolean;
+  resend?: boolean;
   installUrl?: string;
   hostedOrigin?: string;
   githubRunnersReachable?: boolean;
@@ -142,7 +143,7 @@ type NpmRegistry = {
 type NotificationDestination = {
   id: number;
   installationId: number;
-  kind: "slack" | "siem" | "jira" | "pagerduty";
+  kind: "slack" | "siem" | "jira" | "pagerduty" | "email";
   host: string;
   projectKey?: string | null;
   lastDeliveryAt: string | null;
@@ -153,7 +154,7 @@ type NotificationDestination = {
 
 type NotificationDelivery = {
   id: number;
-  kind: "slack" | "siem" | "jira" | "pagerduty";
+  kind: "slack" | "siem" | "jira" | "pagerduty" | "email";
   status: "sent" | "failed";
   inventedIncident: false;
   error: string | null;
@@ -175,6 +176,7 @@ function destinationKindLabel(kind: string): string {
   if (kind === "jira") return "Jira";
   if (kind === "siem") return "SIEM";
   if (kind === "pagerduty") return "PagerDuty";
+  if (kind === "email") return "Email";
   return "Slack";
 }
 
@@ -1104,6 +1106,8 @@ export function WatchPage({ search }: { search: string }) {
   const [jiraProjectKey, setJiraProjectKey] = useState("");
   const [pagerDutyKey, setPagerDutyKey] = useState("");
   const [savingSlack, setSavingSlack] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
   const [savingSiem, setSavingSiem] = useState(false);
   const [savingJira, setSavingJira] = useState(false);
   const [savingPagerDuty, setSavingPagerDuty] = useState(false);
@@ -2641,7 +2645,7 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : timeline.status === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            The install timeline is on Team. Email for Solo waits on Resend.
+            The install timeline is on Team. Solo can still save a Watch email destination.
           </p>
         ) : timeline.status === "ended" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
@@ -2834,10 +2838,10 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
           change roles, remove people, and invite by GitHub login. They get that role the next time
-          they sign in, if they can already see this App install. This does not send email. Email
-          waits on Resend. This does not grant GitHub Administration. The last admin stays. GitHub
-          suspend does not block this. An install admin also saves Slack, SIEM, Jira, PagerDuty, routes,
-          registries, scan
+          they sign in, if they can already see this App install. This does not send email. Invites
+          stay GitHub-login only. This does not grant GitHub Administration. The last admin stays. GitHub
+          suspend does not block this. An install admin also saves email on a covered install and
+          Slack, SIEM, Jira, PagerDuty, routes, registries, scan
           tokens, allowlists, and baselines, and opens setup or remediation PRs.
         </p>
         {previewing ? (
@@ -3181,26 +3185,24 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, Jira
-          Cloud, and PagerDuty. Secrets are encrypted and never shown again. A delivery test talks
-          to the destination and never creates a Watch alert. Jira tests never open a ticket.
-          PagerDuty tests send a change event and never open an incident. Routes send a real alert
-          or a routed test to matching destinations by severity, repository, package, and teammate.
+          Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
+          SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
+          encrypted and never shown again. A delivery test talks to the destination and never
+          creates a Watch alert. Jira tests never open a ticket. PagerDuty tests send a change
+          event and never open an incident. Email tests never invent an incident. Routes send a
+          real alert or a routed test to matching destinations by severity, repository, package,
+          and teammate. This host sends mail only when Resend keys are set.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot send Slack, SIEM, Jira, or PagerDuty. Preview cannot route a test. No
-            invented incident.
-          </p>
-        ) : deskCoverage?.plan === "solo" ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Slack, SIEM, Jira, and PagerDuty are on Team. Email for Solo waits on Resend.
+            Preview cannot send email, Slack, SIEM, Jira, or PagerDuty. Preview cannot route a
+            test. No invented incident.
           </p>
         ) : (
           <>
             {destinations.length === 0 ? (
               <p className="mt-6 text-sm leading-relaxed text-mute">
-                No Slack, SIEM, Jira, or PagerDuty destination saved on this install.
+                No email, Slack, SIEM, Jira, or PagerDuty destination saved on this install.
               </p>
             ) : (
               <ul className="mt-6 max-w-xl divide-y divide-white/5">
@@ -3208,7 +3210,10 @@ export function WatchPage({ search }: { search: string }) {
                   <li key={destination.id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="font-mono text-sm text-snow">
-                        {destinationKindLabel(destination.kind)} · {destination.host}
+                        {destinationKindLabel(destination.kind)} ·{" "}
+                        {destination.kind === "email" && destination.projectKey
+                          ? destination.projectKey
+                          : destination.host}
                         {destination.kind === "jira" && destination.projectKey
                           ? ` · ${destination.projectKey}`
                           : ""}
@@ -3288,6 +3293,60 @@ export function WatchPage({ search }: { search: string }) {
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
                   event.preventDefault();
+                  if (savingEmail || !activeInstallId) return;
+                  setSlackError(null);
+                  setSavingEmail(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/email", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          email: emailAddress,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save email.");
+                      setEmailAddress("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(error instanceof Error ? error.message : "Could not save email.");
+                    } finally {
+                      setSavingEmail(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    Alert email
+                  </span>
+                  <input
+                    type="email"
+                    autoComplete="off"
+                    value={emailAddress}
+                    onChange={(event) => setEmailAddress(event.target.value)}
+                    placeholder="alerts@your-company.com"
+                    className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" size="sm" disabled={savingEmail || !emailAddress.trim()}>
+                  {savingEmail ? "Saving…" : "Save email"}
+                </Button>
+              </form>
+            )}
+            {deskCoverage?.plan === "solo" ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">
+                Slack, SIEM, Jira, and PagerDuty are on Team.
+              </p>
+            ) : null}
+            {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
                   if (savingSlack || !activeInstallId) return;
                   setSlackError(null);
                   setSavingSlack(true);
@@ -3332,7 +3391,7 @@ export function WatchPage({ search }: { search: string }) {
                 </Button>
               </form>
             )}
-            {!ended && installAdmin && (
+            {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
@@ -3381,7 +3440,7 @@ export function WatchPage({ search }: { search: string }) {
                 </Button>
               </form>
             )}
-            {!ended && installAdmin && (
+            {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3"
                 onSubmit={(event) => {
@@ -3494,7 +3553,7 @@ export function WatchPage({ search }: { search: string }) {
                 </Button>
               </form>
             )}
-            {!ended && installAdmin && (
+            {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
               <form
                 className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                 onSubmit={(event) => {

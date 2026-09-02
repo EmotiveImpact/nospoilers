@@ -817,6 +817,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureContactsPolicies(sql);
   await migrateDisclosureFindings(sql);
   await migrateStripeBilling(sql);
+  await migrateEmailDestinations(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1746,11 +1747,17 @@ async function applyNotificationKindCheck(sql: SqlClient): Promise<void> {
   await sql.exec(`
     ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
     ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
-      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty', 'email'));
     ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
     ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
-      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty', 'email'));
   `);
+}
+
+async function migrateEmailDestinations(sql: SqlClient): Promise<void> {
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "060_email_destinations",
+  ]);
 }
 
 export function num(value: unknown): number {

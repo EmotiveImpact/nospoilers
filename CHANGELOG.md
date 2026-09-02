@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- Watch email destinations are wired through Resend. A covered install admin
+  can save one address (encrypted). The API returns the domain and a redacted
+  local part. Audit stores the domain only. Solo paid may save; unpaid is 402;
+  members and other tenants are 403. Test and send stay 503 / `failed` until
+  `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set. This host has no Resend
+  keys (`/api/health` `resend: false`). A delivery test never invents a Watch
+  alert. Disclosure Desk `sent` stays false. Invites stay GitHub-login only.
+  Live Neon: migration `060_email_destinations` applied; email destinations 0;
+  email deliveries 0; kind CHECKs include `email`. Live `/api/health` and
+  `/api/me` report `resend: false`; unauth email POST and destination list are
+  401. Watch preview shows no save-email form. Docs still say email alerts are
+  not live yet. Not a live send.
+
 - Stripe Checkout, Billing Portal, and signed lifecycle webhooks are wired.
   An install admin starts monthly/yearly Solo or Team Checkout. Checkout
   always collects a card and keeps remaining trial days. Failed payment or

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { parseFromEmail } from "./email.ts";
 
 export type AppConfig = {
   port: number;
@@ -35,6 +36,8 @@ export type AppConfig = {
   stripePriceSoloYearly: string;
   stripePriceTeamMonthly: string;
   stripePriceTeamYearly: string;
+  resendApiKey: string;
+  resendFromEmail: string;
 };
 
 function loadDotEnv(): void {
@@ -126,6 +129,8 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     stripePriceSoloYearly: env("STRIPE_PRICE_SOLO_YEARLY"),
     stripePriceTeamMonthly: env("STRIPE_PRICE_TEAM_MONTHLY"),
     stripePriceTeamYearly: env("STRIPE_PRICE_TEAM_YEARLY"),
+    resendApiKey: env("RESEND_API_KEY"),
+    resendFromEmail: env("RESEND_FROM_EMAIL"),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;
@@ -151,6 +156,10 @@ export function stripeConfigured(config: AppConfig): boolean {
       config.stripePriceTeamMonthly &&
       config.stripePriceTeamYearly,
   );
+}
+
+export function resendConfigured(config: AppConfig): boolean {
+  return Boolean(config.resendApiKey && parseFromEmail(config.resendFromEmail));
 }
 
 export function stripePriceMap(config: AppConfig) {

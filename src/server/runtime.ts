@@ -1,4 +1,11 @@
-import { githubAppConfigured, loadConfig, databaseMode, stripeConfigured, type AppConfig } from "./config.ts";
+import {
+  githubAppConfigured,
+  loadConfig,
+  databaseMode,
+  resendConfigured,
+  stripeConfigured,
+  type AppConfig,
+} from "./config.ts";
 import { createGithubPort } from "./github.ts";
 import { logJson } from "./log.ts";
 import { createNpmPort } from "./npm.ts";
@@ -22,7 +29,11 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   });
   const github = githubAppConfigured(config) ? createGithubPort(config) : stubGithub();
   const npm = createNpmPort();
-  const notifier = createLogNotifier(store);
+  const notifier = createLogNotifier(store, {
+    resend: resendConfigured(config)
+      ? { apiKey: config.resendApiKey, fromEmail: config.resendFromEmail }
+      : undefined,
+  });
   const worker = createWorker({
     store,
     github,
@@ -72,6 +83,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
         database: databaseMode(config.databaseUrl),
         githubApp: githubAppConfigured(config),
         stripe: stripeConfigured(config),
+        resend: resendConfigured(config),
         recoveryIntervalMs: config.workerIntervalMs,
         visibilityPollIntervalMs: config.pollIntervalMs,
       });

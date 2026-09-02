@@ -113,7 +113,7 @@ it to finish Phase 1. Contents write is not enough for those actions.
 
 Or set `GITHUB_PROOF_TOKEN` to a **fine-grained** PAT for **only**
 `EmotiveImpact/nospoilers-throwaway` with Contents: write. Do not use a classic `repo` PAT.
-Do not publicize a product repository. Stripe and Resend stay benched.
+Do not publicize a product repository. Stripe and Resend stay dark without keys.
 
 If GitHub cannot reach your laptop, start a webhook relay (leave `npm run dev` running):
 

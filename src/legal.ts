@@ -210,7 +210,7 @@ const SUPPORT: LegalDoc = {
       heading: "What we can help with",
       paragraphs: [
         "GitHub App install, Watch alerts that should have fired, hosted scan failures, trial and coverage state, and deletion requests. CLI and Action issues on your machine are in scope when you can share a pack you are allowed to send — never paste secrets.",
-        "Custom domains and email delivery are not live yet. Stripe checkout is live only when keys are configured. If you write about a host that cannot charge, you will get an honest “not live” rather than a fake ticket number.",
+        "Custom domains are not live yet. Email delivery is live only when Resend keys are set. Stripe checkout is live only when keys are configured. If you write about a host that cannot charge or send mail, you will get an honest “not live” rather than a fake ticket number.",
       ],
     },
     {

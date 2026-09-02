@@ -22,7 +22,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Billing portal | Built: install admin opens portal when a customer exists; already-subscribed Checkout returns the portal | NoSpoilers |
 | Railway web/API and worker deployment | Planned | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
-| Resend email delivery | Planned, benched | NoSpoilers |
+| Resend email delivery | Built: Watch email destinations encrypt the address; AlertNotifier POSTs to Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set; test and send stay 503 / `failed` without keys; this host has no keys (`resend: false`); Live Neon `060` applied, email destinations 0; Disclosure Desk `sent` stays false; invites stay GitHub-login only | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
 | Upload/API rate limiting | Built: hosted scan, GitHub OAuth, and owner discovery per address; GitHub webhooks are not limited | NoSpoilers |
@@ -30,7 +30,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
-| Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe live only when keys exist; Electron not claimed live) | NoSpoilers |
+| Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe and Resend live only when keys exist; Electron not claimed live) | NoSpoilers |
 | Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; a GitHub Release job that never downloads (no pack, Electron installer skip, or every pack over the size cap) refunds the slot; an npm scan that never downloads (missing private-registry token or oversize tarball) refunds the slot; website crawls enqueue light and consume a slot only when they scan; unchanged or failed-before-scan crawls never take a slot; `release.published` with no scannable pack enqueues light; Sentry/Bugsnag map custody is light (no unpack); live Echo job 47 / alert 36 left usage at 9; not a scan-credit meter; not a Pricing change | Infrastructure |
 
 ## Scanner and release automation
@@ -175,7 +175,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | Dashboard alerts | Built | NoSpoilers |
-| Email alerts | Planned | NoSpoilers |
+| Email alerts | Built: one encrypted destination per covered install (trial/Solo/Team); unpaid 402; members 403; API returns domain + redacted local; audit stores the domain only; test never invents a Watch alert; send waits on Resend keys | NoSpoilers |
 | Slack alerts | Built: encrypted incoming webhook on trial/Team; test delivery never invents an incident | NoSpoilers Team |
 | Jira tickets | Built: Jira Cloud only (`*.atlassian.net`); encrypted email+token; project key listed; trial/Team; test GETs myself+project and never creates a ticket or Watch alert | NoSpoilers Team |
 | SIEM/custom webhooks | Built: encrypted HTTPS webhook on trial/Team; private/local/metadata/Slack hosts blocked; DNS-resolved SSRF check; test never invents an incident | NoSpoilers Team |
@@ -183,13 +183,13 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Severity and repository routing rules | Built: trial/Team routes by min severity, repository, package, teammate assign, and destination; empty destination still gets every alert; routed test never invents an incident | NoSpoilers Team |
 | 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for the install list window (default 90 days); trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Built: query-time list window (90 default; 180/365/keep while this install exists); append-only evidence is never deleted; typed confirm; Solo allowed; unpaid 402; members may read | NoSpoilers |
-| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes and GitHub-login invites (no email; Resend is benched); Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, tokens, allowlists, baselines, PRs, and confirmed GitHub responses | NoSpoilers Team |
+| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes and GitHub-login invites (no email; invites stay GitHub-login only); Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save email on covered installs and Slack/SIEM/Jira/PagerDuty on trial/Team, plus map custody, routes, registries, tokens, allowlists, baselines, PRs, and confirmed GitHub responses | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
 | Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; map custody is light; website crawls are light until they scan; no-download GitHub/npm jobs refund; job list is counts not credits | NoSpoilers |
-| Multiple notification destinations | Built: one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers Team |
+| Multiple notification destinations | Built: one email (covered installs), one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers |
 
 ## Internal acquisition and responsible disclosure
 
@@ -205,7 +205,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Critical-only internal notifications | Built: owner-only `internal_notifications` when a Disclosure Desk case becomes `verified` and has critical fingerprints; unverified scans and warn-only cases do not notify; one row per case; mark-read; never mailed; no finding values | Internal NoSpoilers |
 | Deadline-missed internal reminders | Built: owner-only `deadline_missed` notification when a case deadline passes without acknowledgement; lazy on desk read, not a poller; one row per case; never mailed | Internal NoSpoilers |
 | Human finding verification | Built: owner-only case on Artifact Leads (`signal` / `verifying` / `verified` / `false_positive` / `duplicate`); checklist required before verified; a new verified state also requires a repeatable SHA-256 of the scanned artifact and operator-written reproducibility steps; finding category derived from fingerprints (operator can override); append-only `disclosure_findings` persist `rule\|severity\|path\|title` without values; no seeded companies. Live Neon: `058` applied; prettier/left-pad hashes and steps stay null (no rescan/rewrite); prettier stays `fixed`/`verified`; unauth/`not-admin` 401; leftover extra findings 0; leftover grants 0; no open jobs; tunnel matched | Internal NoSpoilers |
-| Responsible-disclosure draft generation | Built: preview subject/body from fingerprints or a human-edited template (`{{coordinate}}` `{{package}}` `{{fingerprints}}` `{{channel}}`); recipients and channel shown; `sent` is always false; Resend still benched | Internal NoSpoilers |
+| Responsible-disclosure draft generation | Built: preview subject/body from fingerprints or a human-edited template (`{{coordinate}}` `{{package}}` `{{fingerprints}}` `{{channel}}`); recipients and channel shown; `sent` is always false; Watch email never mails a disclosure | Internal NoSpoilers |
 | Preferred vendor channel | Built: `security_email` / `form` / `security_txt` / `platform` on the case | Internal NoSpoilers |
 | Do-not-contact | Built: owner/repo, package name, contact, or vendor domain from a contact email/host; blocks case create unless `researchOnly`; always blocks `contacted` | Internal NoSpoilers |
 | Disclosure outcomes | Built: credit / CVE / notes on the case; no bounty processor | Internal NoSpoilers |
