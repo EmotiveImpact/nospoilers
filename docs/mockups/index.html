@@ -2,14 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NoSpoilers watch desk — 10 UX directions</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="mockup.css" />
     <style>
+      html,
+      body {
+        background: #09090b;
+        color: #f4f4f5;
+      }
       .body {
         max-width: 1180px;
         margin: 0 auto;
@@ -59,28 +60,36 @@
       }
       .shot {
         position: relative;
-        height: 260px;
+        height: 168px;
         border-bottom: 1px solid var(--line);
         overflow: hidden;
-        background: var(--ink);
+        background: #0b0b0d;
+        padding: 14px;
+        display: flex;
+        gap: 8px;
       }
-      .shot iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 1440px;
-        height: 940px;
+      .shot .col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      .blk {
+        background: #161618;
+        border: 1px solid #232326;
+        border-radius: 6px;
+      }
+      .blk.red {
+        background: rgba(226, 69, 58, 0.16);
+        border-color: rgba(226, 69, 58, 0.35);
+      }
+      .blk.line {
+        height: 8px;
+        background: #2a2a2e;
         border: 0;
-        transform: scale(0.42);
-        transform-origin: top left;
-        pointer-events: none;
       }
-      .shot::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(to bottom, transparent 60%, rgba(9, 9, 11, 0.55));
-        pointer-events: none;
+      .blk.wide {
+        flex: 1;
       }
       .mk-body {
         padding: 16px 18px 18px;
@@ -185,7 +194,14 @@
 
         <div class="grid">
           <a class="mk" href="01-console-sidebar.html">
-            <div class="shot"><iframe src="01-console-sidebar.html" loading="lazy" title=""></iframe></div>
+            <div class="shot">
+              <div class="blk" style="width: 42px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 40%"></div>
+                <div class="blk red" style="height: 44px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">01</span>
               <h2 style="margin-top: 4px">Console sidebar</h2>
@@ -206,7 +222,13 @@
           </a>
 
           <a class="mk" href="02-command-stream.html">
-            <div class="shot"><iframe src="02-command-stream.html" loading="lazy" title=""></iframe></div>
+            <div class="shot" style="flex-direction: column; align-items: center">
+              <div class="blk line" style="width: 30%"></div>
+              <div class="blk red" style="width: 70%; height: 36px"></div>
+              <div class="blk" style="width: 70%; height: 22px"></div>
+              <div class="blk" style="width: 70%; height: 22px"></div>
+              <div class="blk" style="width: 50%; height: 16px"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">02</span>
               <h2 style="margin-top: 4px">Command stream</h2>
@@ -227,7 +249,15 @@
           </a>
 
           <a class="mk" href="03-triage-inbox.html">
-            <div class="shot"><iframe src="03-triage-inbox.html" loading="lazy" title=""></iframe></div>
+            <div class="shot">
+              <div class="blk" style="width: 36px; height: 100%"></div>
+              <div class="blk" style="width: 72px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 50%"></div>
+                <div class="blk red" style="height: 28px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">03</span>
               <h2 style="margin-top: 4px">Triage inbox</h2>
@@ -247,7 +277,11 @@
           </a>
 
           <a class="mk" href="04-tabbed-desk.html">
-            <div class="shot"><iframe src="04-tabbed-desk.html" loading="lazy" title=""></iframe></div>
+            <div class="shot" style="flex-direction: column">
+              <div class="blk line" style="width: 100%; height: 10px"></div>
+              <div class="blk line" style="width: 55%; height: 8px"></div>
+              <div class="blk wide"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">04</span>
               <h2 style="margin-top: 4px">Tabbed desk</h2>
@@ -267,7 +301,12 @@
           </a>
 
           <a class="mk" href="05-verdict-first.html">
-            <div class="shot"><iframe src="05-verdict-first.html" loading="lazy" title=""></iframe></div>
+            <div class="shot" style="flex-direction: column; align-items: center; justify-content: center">
+              <div class="blk red" style="width: 36px; height: 36px; border-radius: 999px"></div>
+              <div class="blk line" style="width: 62%"></div>
+              <div class="blk" style="width: 80%; height: 28px"></div>
+              <div class="blk" style="width: 80%; height: 28px"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">05</span>
               <h2 style="margin-top: 4px">Verdict first</h2>
@@ -288,7 +327,14 @@
           </a>
 
           <a class="mk" href="06-repo-drilldown.html">
-            <div class="shot"><iframe src="06-repo-drilldown.html" loading="lazy" title=""></iframe></div>
+            <div class="shot">
+              <div class="col wide">
+                <div class="blk line" style="width: 45%"></div>
+                <div class="blk red" style="height: 36px"></div>
+                <div class="blk wide"></div>
+              </div>
+              <div class="blk" style="width: 56px; height: 100%"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">06</span>
               <h2 style="margin-top: 4px">Repo drill-down</h2>
@@ -310,7 +356,13 @@
 
           <a class="mk" href="07-desk-settings-split.html">
             <div class="shot">
-              <iframe src="07-desk-settings-split.html" loading="lazy" title=""></iframe>
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 35%"></div>
+                <div class="blk" style="height: 18px"></div>
+                <div class="blk" style="height: 18px"></div>
+                <div class="blk wide"></div>
+              </div>
             </div>
             <div class="mk-body">
               <span class="mk-no">07</span>
@@ -331,8 +383,12 @@
           </a>
 
           <a class="mk" href="08-exposure-timeline.html">
-            <div class="shot">
-              <iframe src="08-exposure-timeline.html" loading="lazy" title=""></iframe>
+            <div class="shot" style="flex-direction: column">
+              <div class="blk line" style="width: 24%"></div>
+              <div class="blk red" style="width: 88%; height: 14px; margin-left: 12%"></div>
+              <div class="blk" style="width: 40%; height: 14px; margin-left: 50%; background: rgba(217,154,43,0.25); border-color: rgba(217,154,43,0.4)"></div>
+              <div class="blk" style="width: 12%; height: 14px; margin-left: 62%; background: rgba(63,185,80,0.2); border-color: rgba(63,185,80,0.35)"></div>
+              <div class="blk wide"></div>
             </div>
             <div class="mk-body">
               <span class="mk-no">08</span>
@@ -353,7 +409,13 @@
           </a>
 
           <a class="mk" href="09-bento-overview.html">
-            <div class="shot"><iframe src="09-bento-overview.html" loading="lazy" title=""></iframe></div>
+            <div class="shot" style="flex-wrap: wrap">
+              <div class="blk red" style="width: 62%; height: 70px"></div>
+              <div class="blk" style="width: calc(38% - 8px); height: 70px"></div>
+              <div class="blk" style="width: calc(33% - 6px); height: 48px"></div>
+              <div class="blk" style="width: calc(33% - 6px); height: 48px"></div>
+              <div class="blk" style="width: calc(34% - 6px); height: 48px"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">09</span>
               <h2 style="margin-top: 4px">Bento overview</h2>
@@ -372,7 +434,13 @@
           </a>
 
           <a class="mk" href="10-guided-setup.html">
-            <div class="shot"><iframe src="10-guided-setup.html" loading="lazy" title=""></iframe></div>
+            <div class="shot" style="flex-direction: column; align-items: stretch">
+              <div class="blk line" style="width: 48%"></div>
+              <div class="blk" style="height: 22px"></div>
+              <div class="blk" style="height: 22px"></div>
+              <div class="blk red" style="height: 36px"></div>
+              <div class="blk" style="height: 22px"></div>
+            </div>
             <div class="mk-body">
               <span class="mk-no">10</span>
               <h2 style="margin-top: 4px">Guided setup</h2>

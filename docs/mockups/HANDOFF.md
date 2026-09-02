@@ -13,11 +13,13 @@ and nothing here ships in the app build — `docs/` is outside `public/`.
 ## Serve them
 
 ```bash
-npx serve docs/mockups -l 3000   # http://localhost:3000/
+node scripts/serve-mockups.mjs   # http://localhost:3000/
 ```
 
-Open directly over `file://` also works, except the gallery's iframe previews, which some browsers
-block from local files.
+Use this script, not `npx serve`. Cursor's in-IDE `localhost:3000` tab iframes the port; `serve`
+and any Content-Security-Policy on the pages produce a white pane while the same files look fine
+on the Desktop tab. The script binds `0.0.0.0:3000`, never redirects, and sends
+`Access-Control-Allow-Origin: *`. After changing the server, refresh that tab.
 
 ## The state system
 
