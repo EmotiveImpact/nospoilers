@@ -86,8 +86,10 @@ import {
   createDoNotContactEntry,
   DisclosureError,
   DISCLOSURE_DNC_ERROR,
+  DISCLOSURE_DUPLICATE_ERROR,
   DISCLOSURE_REVIEW_ERROR,
   findDncMatches,
+  findDuplicateMatches,
   loadDisclosureCase,
   outreachBlocked,
   previewDisclosureCase,
@@ -1508,6 +1510,18 @@ export function createApp(deps: AppDeps): Hono {
       }
       if (desk?.review_state !== "approved") {
         return c.json({ error: DISCLOSURE_REVIEW_ERROR }, 409);
+      }
+      const duplicates = await findDuplicateMatches(deps.store, {
+        prospectId: existing.id,
+        owner: existing.owner,
+        repo: existing.repo,
+        packageName: existing.package_name,
+        fingerprints: desk.fingerprints,
+        policyUrl: desk.policy_url,
+        securityContact: desk.security_contact,
+      });
+      if (duplicates.length > 0 && body.confirmDuplicate !== true) {
+        return c.json({ error: DISCLOSURE_DUPLICATE_ERROR, duplicates }, 409);
       }
     }
     const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);

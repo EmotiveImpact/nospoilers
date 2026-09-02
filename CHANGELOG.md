@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Disclosure Desk duplicate warning before outreach: recording `contacted`
+  now 409s on the same organization/domain/artifact/fingerprint matches as
+  case create unless `confirmDuplicate` is sent. Do-not-contact and review
+  still win first. Customer sessions stay 401. No worker wake. Nothing is
+  mailed. Live Neon: unauth and `not-admin` 401; left-pad `contacted` 409
+  verify; prettier stays `fixed`/`verified`; prettier vs left-pad still no
+  match; leftover grants 0; leftover destinations 0; no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk finding category: each case stores a closed category
   (sourcemap, environment, credential, source, and the other scanner
   families). New cases derive it from fingerprints. Operators can override.

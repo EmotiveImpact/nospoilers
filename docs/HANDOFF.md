@@ -533,7 +533,11 @@ policy URL, human-edited templates, preferred vendor channel, draft preview,
 simulated acknowledgement, internal deadline, conversion attribution,
 credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
 `contacted`/`fixed` are gated on the API. Do-not-contact always blocks
-`contacted`. `contacted` also requires an approved review. Vendor replies and
+`contacted`. `contacted` also requires an approved review and warns on a
+possible duplicate unless `confirmDuplicate` is sent. Live Neon: unauth
+and `not-admin` 401; left-pad `contacted` 409 verify; prettier stays
+`fixed`/`verified`; leftover grants 0; no open jobs; tunnel matched.
+Vendor replies and
 encrypted expiring attachments are on the case. Expired attachment ciphertext
 is zeroed on desk read and the hourly poller; the row stays. Expired notes
 ciphertext is nulled. Live Neon: `048` applied; unauth and non-admin 401;

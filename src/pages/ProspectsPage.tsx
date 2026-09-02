@@ -168,6 +168,8 @@ export function ProspectsPage() {
     "discover" | "repository" | "feed" | "campaign" | "destination" | "operator" | null
   >(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [contactConfirmId, setContactConfirmId] = useState<number | null>(null)
+  const [contactDuplicates, setContactDuplicates] = useState<DuplicateMatch[] | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
   const [templates, setTemplates] = useState<DeskTemplate[]>([])
   const [dncEntries, setDncEntries] = useState<DeskDnc[]>([])
@@ -419,10 +421,22 @@ export function ProspectsPage() {
     try {
       await request(`/api/internal/prospects/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          confirmDuplicate: status === "contacted" && contactConfirmId === id,
+        }),
       })
+      setContactConfirmId(null)
+      setContactDuplicates(null)
       await load()
     } catch (error) {
+      const failed = error as Error & { duplicates?: DuplicateMatch[] }
+      if (status === "contacted" && failed.duplicates?.length) {
+        setContactConfirmId(id)
+        setContactDuplicates(failed.duplicates)
+        setNotice("Possible duplicate case. Click Contacted again to confirm. Nothing is mailed.")
+        return
+      }
       setNotice(error instanceof Error ? error.message : "Could not update lead.")
     }
   }
@@ -700,7 +714,8 @@ export function ProspectsPage() {
             saved campaign (or the default search) for three public repos when a discovery token
             is set. Customer jobs stay first. No source
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
-            records a simulated acknowledgement, and enforces do-not-contact. Missed
+            records a simulated acknowledgement, and enforces do-not-contact. A duplicate
+            warning appears before a new case and before recording contacted. Missed
             deadlines stay as internal reminders. Researcher workload is case counts
             by assignee. Time spent is not tracked. The owner can grant a GitHub login
             operator access to this desk. Queue counts stay owner-only. A verified case
@@ -1355,10 +1370,20 @@ export function ProspectsPage() {
                           variant={prospect.status === status ? "default" : "outline"}
                           onClick={() => void updateStatus(prospect.id, status)}
                         >
-                          {status[0]?.toUpperCase()}
-                          {status.slice(1)}
+                          {status === "contacted" && contactConfirmId === prospect.id
+                            ? "Confirm contacted"
+                            : `${status[0]?.toUpperCase()}${status.slice(1)}`}
                         </Button>
                       ))}
+                      {contactConfirmId === prospect.id && contactDuplicates?.length ? (
+                        <p className="basis-full text-xs text-mute">
+                          Possible duplicate
+                          {contactDuplicates
+                            .map((row) => ` ${row.owner}/${row.repo} (${row.reasons.join(", ")})`)
+                            .join(" ·")}
+                          . Click Confirm contacted to record outreach anyway. Nothing is mailed.
+                        </p>
+                      ) : null}
                       {prospect.scan_status === "failed" && (
                         <Button
                           type="button"

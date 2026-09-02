@@ -349,7 +349,8 @@ Internal staff running acquisition and disclosure work.
   reports, internal deadline flag, conversion attribution,
   credit/CVE/outcome notes, and a fix-version rescan. `contacted` requires a verified
   case, an approved review, and is blocked when a do-not-contact entry matches
-  owner/repo, package, contact, or vendor domain. `fixed` requires a recorded fix version and rescan.
+  owner/repo, package, contact, or vendor domain. A duplicate warning also appears
+  before `contacted` unless `confirmDuplicate` is sent. `fixed` requires a recorded fix version and rescan.
   No message is sent. Reports omit operator notes and attachment bytes.
 - Maintain owner-only disclosure templates and do-not-contact entries
   (`/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
@@ -465,7 +466,12 @@ and rejects an unknown category. Live Neon: `052` applied; unauth and
 `not-admin` 401; prettier verified case is `credential` from SEC-003;
 invalid category 400; leftover grants 0; no open jobs; tunnel matched.
 `PATCH /api/internal/prospects/:id` cannot record
-`contacted` before a verified case or `fixed` before a fix-version rescan, duplicates
+`contacted` before a verified case or `fixed` before a fix-version rescan, and
+`contacted` also warns on a possible duplicate unless `confirmDuplicate` is sent.
+Live Neon: unauth and `not-admin` 401; left-pad `contacted` 409 verify;
+prettier stays `fixed`/`verified`; prettier vs left-pad still no match;
+leftover grants 0; no open jobs; tunnel matched.
+Duplicates
 warn on owner/repo, same GitHub owner, vendor domain (policy URL or contact email),
 package name, or fingerprint overlap unless confirmed, fingerprints
 are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are

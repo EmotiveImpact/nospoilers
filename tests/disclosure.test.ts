@@ -508,10 +508,25 @@ describe("Disclosure Desk Phase 1", () => {
       });
       expect(reviewed.status).toBe(200);
 
-      const contacted = await app.request(`/api/internal/prospects/${prettierId}`, {
+      const contactedDup = await app.request(`/api/internal/prospects/${prettierId}`, {
         method: "PATCH",
         headers: admin,
         body: JSON.stringify({ status: "contacted" }),
+      });
+      expect(contactedDup.status).toBe(409);
+      const contactedDupBody = (await contactedDup.json()) as {
+        error: string;
+        duplicates: { reasons: string[]; packageName: string | null }[];
+      };
+      expect(contactedDupBody.error).toBe(DISCLOSURE_DUPLICATE_ERROR);
+      expect(contactedDupBody.duplicates.some((row) => row.reasons.includes("fingerprint"))).toBe(
+        true,
+      );
+
+      const contacted = await app.request(`/api/internal/prospects/${prettierId}`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ status: "contacted", confirmDuplicate: true }),
       });
       expect(contacted.status).toBe(200);
 

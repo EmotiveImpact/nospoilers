@@ -203,7 +203,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   a three-repo scheduled discover behind customer jobs,
   manual outreach state, Disclosure Desk Phase 2 minus send plus internal
   workflow (verification, finding category from fingerprints — live Neon
-  prettier verified case is `credential` from SEC-003 — duplicates including GitHub owner and vendor domain —
+  prettier verified case is `credential` from SEC-003 — duplicates including GitHub owner and vendor domain
+  on create and before `contacted` (live Neon prettier vs left-pad still no
+  match; left-pad `contacted` 409 verify; prettier stays `fixed`) —
   live Neon prettier vs left-pad still no match,
   templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before
