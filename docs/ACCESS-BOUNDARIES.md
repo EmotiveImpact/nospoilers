@@ -538,7 +538,7 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   for one hour; private-registry tokens and `{ fresh: true }` bypass that cache; the hourly
   poller skips lookalikes checked within the last hour while Watch Check now does not.
   Live Neon gates on install `158159401`:
-  unauth GET 401, unknown package 404, watch list empty, no new jobs; Cloudflare tunnel matched.
+  unauth GET 401, unknown package 404, watch list empty, namespaces 0, no open jobs; Cloudflare tunnel matched.
   Batch import (`POST /api/protections/import`) protects an owned name and snapshots
   identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,
   re-imports as `already_protected`, protects an existing watch in place, returns

@@ -428,6 +428,9 @@ Private-registry tokens bypass the cache. Watch Check now, connect, protect, and
 import fetch the watched name fresh. The hourly poller skips lookalike candidates
 checked within the last hour (eight per pass). Never-checked names stay due.
 Tarball bytes stay uncached. The identity risk GET does not fetch the registry.
+Live Neon gates on install `158159401`: unauth GET 401, owner/`not-admin`
+unknown package 404, watch list empty, namespaces 0, no open jobs,
+Cloudflare tunnel matched. No EmotiveImpact-owned npm pack to poll.
 Watch shows a deterministic 0–100 identity signal total on a protected pack
 (`GET /api/packages/:id/identity` `risk`), decomposed into current snapshot facts,
 registered non-allowlisted lookalikes, and open event alerts. Solo and unpaid
@@ -594,6 +597,13 @@ confirm 400, then owned `@emotiveimpact` POST 201 queued light
 `identity_namespace_new` alert, no `npm_scan`, and no prettier/left-pad
 watches. Typed DELETE left `protected_namespaces` 0. Cloudflare tunnel
 matched. Do not watch prettier or left-pad. Other registries stay out.
+Package Identity registry cache is in. Public packuments including 404s are
+cached one hour. Private tokens and Check now / connect / protect / import
+bypass that cache for the watched name. The hourly poller skips lookalikes
+checked within the last hour. Live Neon gates on install `158159401`: unauth
+GET 401, unknown package 404, watch list empty, namespaces 0, no open jobs,
+Cloudflare tunnel matched. No EmotiveImpact-owned npm pack to poll. Do not
+watch prettier or left-pad.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
 `GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`

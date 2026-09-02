@@ -144,7 +144,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   and dependency-name checks. Public packuments (including 404s) are cached for one
   hour; private-registry tokens bypass the cache; Watch Check now / connect / protect /
   import fetch the watched name fresh; the hourly poller skips lookalikes checked within
-  the last hour. Typed
+  the last hour. Live Neon gates on `158159401`: unauth 401, unknown package 404,
+  watch list empty, no open jobs, tunnel matched. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - Package Identity human-reviewed evidence: trial/Team admin assembles a frozen takedown
   pack for a protected npm name and may publish `/advisory/:token`. Members may

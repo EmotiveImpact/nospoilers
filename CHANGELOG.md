@@ -8,8 +8,12 @@
   name fresh. Lookalike and new-dependency metadata checks use the cache.
   The hourly poller skips lookalike candidates checked within the last hour
   (eight per pass); never-checked names stay due. Watch Check now still
-  re-checks immediately. Tarball bytes stay uncached. No extra fetch on the
-  identity risk GET. No worker wake and no migration. Not a Pricing change.
+  re-checks immediately.   Tarball bytes stay uncached. No extra fetch on the
+  identity risk GET. No worker wake and no migration. Live Neon gates on
+  install `158159401`: unauth GET `/api/packages/1/identity` 401, owner and
+  `not-admin` unknown package 404, watch list empty, namespaces 0, no open
+  jobs; Cloudflare tunnel matched. No EmotiveImpact-owned npm pack to poll.
+  Not a Pricing change.
 
 - Package Identity risk score: trial and Team Watch shows a deterministic 0–100
   signal total on a protected npm name (`GET /api/packages/:id/identity` `risk`).
