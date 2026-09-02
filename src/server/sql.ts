@@ -778,6 +778,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     "033_prospect_npm_feed",
   ]);
   await migrateDeliveryVerify(sql);
+  await migrateDeliveryVerifyChain(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -864,6 +865,20 @@ async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "034_delivery_verify",
+  ]);
+}
+
+async function migrateDeliveryVerifyChain(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE release_delivery_verifications
+      ADD COLUMN IF NOT EXISTS redirect_hosts TEXT;
+    ALTER TABLE release_delivery_verifications
+      ADD COLUMN IF NOT EXISTS cache_state TEXT;
+    ALTER TABLE release_delivery_verifications
+      ADD COLUMN IF NOT EXISTS delivery_region TEXT;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "035_delivery_verify_chain",
   ]);
 }
 

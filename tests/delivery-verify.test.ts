@@ -9,6 +9,9 @@ import {
   isExpectedDeliveryRedirect,
   isExpectedGithubAssetRedirect,
   isSealedArtifactDigest,
+  joinRedirectHosts,
+  normalizeDeliveryCacheState,
+  parseDeliveryRegion,
   parseDeliveryUrl,
   publicGithubReleaseDownloadUrl,
   redactDeliveryUrl,
@@ -81,6 +84,21 @@ describe("delivery URL parsing", () => {
 });
 
 describe("streaming verify", () => {
+  it("records hop hosts, cache tokens, and object-store regions without raw headers", () => {
+    expect(joinRedirectHosts(["GitHub.com", "github.com", "release-assets.githubusercontent.com"])).toBe(
+      "github.com,release-assets.githubusercontent.com",
+    );
+    expect(parseDeliveryRegion("ship-bucket.s3.eu-west-1.amazonaws.com")).toBe("eu-west-1");
+    expect(parseDeliveryRegion("s3.amazonaws.com")).toBe("us-east-1");
+    expect(parseDeliveryRegion("cdn.example.com")).toBeNull();
+    expect(normalizeDeliveryCacheState(new Headers({ "cf-cache-status": "HIT" }))).toBe("cf:hit");
+    expect(normalizeDeliveryCacheState(new Headers({ "x-cache": "Hit from cloudfront" }))).toBe(
+      "x-cache:hit",
+    );
+    expect(normalizeDeliveryCacheState(new Headers({ "x-cache": "Error from cloudfront" }))).toBeNull();
+    expect(normalizeDeliveryCacheState(new Headers({ "cache-control": "no-store" }))).toBe("no-store");
+  });
+
   it("matches, mismatches, and refuses cross-host redirects", async () => {
     const bytes = await readFile(CLEAN);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -93,6 +111,22 @@ describe("streaming verify", () => {
     expect(matched.status).toBe("matched");
     expect(matched.observedSha256).toBe(sha256);
     expect(matched.observedBytes).toBe(bytes.length);
+    expect(matched.redirectHosts).toBe("cdn.example.com");
+    expect(matched.deliveryRegion).toBeNull();
+    expect(matched.cacheState).toBeNull();
+
+    const cached = await verifyDeliveryUrl({
+      url: "https://cdn.example.com/app.tgz",
+      expectedSha256: sha256,
+      fetch: (async () =>
+        new Response(bytes, {
+          status: 200,
+          headers: { "content-type": "application/gzip", "cf-cache-status": "HIT" },
+        })) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(cached.status).toBe("matched");
+    expect(cached.cacheState).toBe("cf:hit");
 
     const mismatch = await verifyDeliveryUrl({
       url: "https://cdn.example.com/app.tgz",
@@ -160,6 +194,8 @@ describe("streaming verify", () => {
     expect(hop.observedSha256).toBe(sha256);
     expect(hop.redirectCount).toBe(1);
     expect(hop.finalHost).toBe("release-assets.githubusercontent.com");
+    expect(hop.redirectHosts).toBe("github.com,release-assets.githubusercontent.com");
+    expect(hop.deliveryRegion).toBe("github");
     expect(fetched).toEqual([
       "https://github.com/octo/app/releases/download/v1/app.tgz",
       "https://release-assets.githubusercontent.com/github-production-release-asset/1/app.tgz?token=secret",
@@ -268,6 +304,8 @@ describe("streaming verify", () => {
     expect(s3Hop.status).toBe("matched");
     expect(s3Hop.redirectCount).toBe(1);
     expect(s3Hop.finalHost).toBe("ship-bucket.s3.us-east-1.amazonaws.com");
+    expect(s3Hop.redirectHosts).toBe("s3.amazonaws.com,ship-bucket.s3.us-east-1.amazonaws.com");
+    expect(s3Hop.deliveryRegion).toBe("us-east-1");
     expect(s3Fetched).toEqual([
       "https://s3.amazonaws.com/ship-bucket/app.tgz",
       "https://ship-bucket.s3.us-east-1.amazonaws.com/app.tgz",
@@ -297,6 +335,10 @@ describe("streaming verify", () => {
     });
     expect(r2Hop.status).toBe("matched");
     expect(r2Hop.finalHost).toBe(`ship-bucket.${account}.r2.cloudflarestorage.com`);
+    expect(r2Hop.redirectHosts).toBe(
+      `${account}.r2.cloudflarestorage.com,ship-bucket.${account}.r2.cloudflarestorage.com`,
+    );
+    expect(r2Hop.deliveryRegion).toBe("r2");
     expect(r2Fetched).toHaveLength(2);
 
     const fromCdn = await verifyDeliveryUrl({
@@ -311,6 +353,8 @@ describe("streaming verify", () => {
     });
     expect(fromCdn.status).toBe("redirect");
     expect(fromCdn.finalHost).toBe("ship-bucket.s3.amazonaws.com");
+    expect(fromCdn.redirectHosts).toBe("cdn.example.com,ship-bucket.s3.amazonaws.com");
+    expect(fromCdn.deliveryRegion).toBe("us-east-1");
 
     const bucketSwapFetched: string[] = [];
     const bucketSwap = await verifyDeliveryUrl({
@@ -461,6 +505,10 @@ describe("hosted delivery verify", () => {
       };
       const row = listedBody.releases.find((item) => item.id === scannedBody.release.id);
       expect(row?.locations[0]?.lastStatus).toBe("matched");
+      expect(
+        (row?.locations[0] as { lastRedirectHosts?: string | null } | undefined)?.lastRedirectHosts,
+      ).toBe("cdn.example.com");
+      expect((row?.locations[0] as { lastRegion?: string | null } | undefined)?.lastRegion).toBeNull();
       expect(JSON.stringify(listedBody)).not.toContain("token=secret");
 
       const { rows: alerts } = await sql.query<{ kind: string }>("SELECT kind FROM alerts");

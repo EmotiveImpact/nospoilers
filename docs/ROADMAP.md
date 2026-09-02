@@ -73,7 +73,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   (stream-hash, no stored bytes, not the hourly poller). Public GitHub Release download
   URLs and public npm tarball URLs attach when the revision is sealed. Expected hops
   are GitHub’s asset CDN, same-bucket S3, and same-account R2; other hosts are not
-  fetched. Development
+  fetched. Each verify records hop hosts, a cache token, and a host-derived region.
+  Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

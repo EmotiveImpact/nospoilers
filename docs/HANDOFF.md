@@ -50,6 +50,8 @@ Read in this order:
   `release_delivery_verifications`, and extends `audit_events.action` with
   `delivery_location.save`. The 027 audit-action check is applied only on first
   migrate so later `delivery_location.save` rows are not rejected.
+  `035_delivery_verify_chain` adds `redirect_hosts`, `cache_state`, and
+  `delivery_region` on verifications. Next unused id is `036_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -62,7 +64,8 @@ Read in this order:
   registries are not. The worker stream-hashes and deletes the download. A GitHub Release
   download URL may hop once to GitHub’s asset CDN after a second public-DNS check;
   same-bucket S3 and same-account R2 hops are followed the same way. Other
-  cross-host redirects are not fetched. This is not added to the
+  cross-host redirects are not fetched. Each verification stores hop hosts, a
+  short cache token, and a host-derived region. This is not added to the
   hourly poller. Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
@@ -303,7 +306,8 @@ Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when 
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL,
 on-demand delivery URL verify against the sealed digest; public GitHub
 Release and public npm tarball URLs attach on seal; GitHub Release
-download hops to the asset CDN; same-bucket S3 and same-account R2 hops;
+download hops to the asset CDN; same-bucket S3 and same-account R2 hops; hop hosts / cache token / region
+on each verify;
 live-matched throwaway phase1-fixture
 sourcemap.tgz; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,

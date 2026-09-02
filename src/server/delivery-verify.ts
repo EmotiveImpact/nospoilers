@@ -51,6 +51,9 @@ export type DeliveryVerifyResult = {
   observedMediaType: string | null;
   finalHost: string | null;
   redirectCount: number;
+  redirectHosts: string | null;
+  cacheState: string | null;
+  deliveryRegion: string | null;
   error: string | null;
 };
 
@@ -192,6 +195,47 @@ export function isExpectedDeliveryRedirect(fromUrl: string, toUrl: string): bool
   );
 }
 
+export function joinRedirectHosts(hosts: string[]): string | null {
+  const ordered: string[] = [];
+  for (const host of hosts) {
+    const name = host.trim().toLowerCase();
+    if (!name || !HOST_RE.test(name)) continue;
+    if (ordered[ordered.length - 1] === name) continue;
+    ordered.push(name);
+  }
+  if (!ordered.length) return null;
+  return ordered.join(",");
+}
+
+export function parseDeliveryRegion(host: string | null | undefined): string | null {
+  const name = host?.trim().toLowerCase() ?? "";
+  if (!name) return null;
+  if (GITHUB_DOWNLOAD_HOSTS.has(name) || GITHUB_ASSET_HOSTS.has(name)) return "github";
+  if (name.endsWith(R2_API_SUFFIX)) return "r2";
+  const dualstack = name.match(/(?:^|\.)s3\.dualstack\.([a-z0-9-]+)\.amazonaws\.com$/);
+  if (dualstack?.[1]) return dualstack[1];
+  const regional = name.match(/(?:^|\.)s3\.([a-z0-9-]+)\.amazonaws\.com$/);
+  if (regional?.[1]) return regional[1];
+  if (name === "s3.amazonaws.com" || name.endsWith(".s3.amazonaws.com")) return "us-east-1";
+  return null;
+}
+
+export function normalizeDeliveryCacheState(
+  headers: Pick<Headers, "get"> | { get(name: string): string | null },
+): string | null {
+  const cf = headers.get("cf-cache-status")?.trim().toLowerCase() ?? "";
+  if (/^[a-z]{2,20}$/.test(cf)) return `cf:${cf}`;
+  const xcache = headers.get("x-cache")?.trim().toLowerCase() ?? "";
+  if (/\bhit\b/.test(xcache)) return "x-cache:hit";
+  if (/\bmiss\b/.test(xcache)) return "x-cache:miss";
+  const control = headers.get("cache-control")?.trim().toLowerCase() ?? "";
+  if (control.includes("no-store")) return "no-store";
+  if (control.includes("no-cache")) return "no-cache";
+  const age = headers.get("age")?.trim() ?? "";
+  if (/^\d{1,10}$/.test(age) && Number(age) > 0) return "aged";
+  return null;
+}
+
 export function parseDeliveryMediaType(raw: string | undefined | null): string | null {
   if (raw == null || !String(raw).trim()) return null;
   const value = normalizeMediaType(String(raw));
@@ -308,11 +352,25 @@ export async function verifyDeliveryUrl(input: {
   let current = parsed.url;
   let host = parsed.host;
   let redirects = 0;
+  const hopHosts = [parsed.host];
+
+  const finish = (
+    status: DeliveryVerifyStatus,
+    error: string | null,
+    finalHost: string | null = host,
+    redirectCount = redirects,
+    extras: { cacheState?: string | null } = {},
+  ): DeliveryVerifyResult => ({
+    ...emptyResult(status, error, finalHost, redirectCount),
+    redirectHosts: joinRedirectHosts(hopHosts),
+    cacheState: extras.cacheState ?? null,
+    deliveryRegion: parseDeliveryRegion(finalHost),
+  });
 
   while (true) {
     const publicHost = await assertPublicWebhookHost(host, lookup);
     if (!publicHost) {
-      return emptyResult("blocked", "Delivery URL resolved to a private address.", host, redirects);
+      return finish("blocked", "Delivery URL resolved to a private address.");
     }
     let response: Response;
     try {
@@ -322,33 +380,32 @@ export async function verifyDeliveryUrl(input: {
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      return emptyResult(
+      return finish(
         "error",
         error instanceof Error ? error.message : "Delivery URL could not be fetched.",
-        host,
-        redirects,
       );
     }
     if (response.status === 404 || response.status === 410) {
-      return emptyResult("missing", `Delivery URL returned HTTP ${response.status}.`, host, redirects);
+      return finish("missing", `Delivery URL returned HTTP ${response.status}.`);
     }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location) {
-        return emptyResult("error", "Redirect was missing a Location header.", host, redirects);
+        return finish("error", "Redirect was missing a Location header.");
       }
       let nextRaw: string;
       try {
         nextRaw = new URL(location, current).toString();
       } catch {
-        return emptyResult("blocked", "Redirect target is not a valid URL.", host, redirects);
+        return finish("blocked", "Redirect target is not a valid URL.");
       }
       const next = parseDeliveryUrl(nextRaw);
       if (!next) {
-        return emptyResult("blocked", "Redirect target host is not allowed.", host, redirects + 1);
+        return finish("blocked", "Redirect target host is not allowed.", host, redirects + 1);
       }
+      hopHosts.push(next.host);
       if (next.host !== host && !isExpectedDeliveryRedirect(current, next.url)) {
-        return emptyResult(
+        return finish(
           "redirect",
           `Delivery URL redirected from ${host} to ${next.host}. The other host was not fetched.`,
           next.host,
@@ -357,17 +414,17 @@ export async function verifyDeliveryUrl(input: {
       }
       redirects += 1;
       if (redirects > MAX_DELIVERY_REDIRECTS) {
-        return emptyResult("error", "Delivery URL followed too many redirects.", host, redirects);
+        return finish("error", "Delivery URL followed too many redirects.");
       }
       current = next.url;
       host = next.host;
       continue;
     }
     if (!response.ok) {
-      return emptyResult("error", `Delivery URL returned HTTP ${response.status}.`, host, redirects);
+      return finish("error", `Delivery URL returned HTTP ${response.status}.`);
     }
     if (!response.body) {
-      return emptyResult("error", "Delivery URL returned no body.", host, redirects);
+      return finish("error", "Delivery URL returned no body.");
     }
     const sha256 = createHash("sha256");
     const sha512 = createHash("sha512");
@@ -380,17 +437,15 @@ export async function verifyDeliveryUrl(input: {
         bytes += value.byteLength;
         if (bytes > maxBytes) {
           await reader.cancel();
-          return emptyResult("error", "Delivery URL exceeded the streaming size limit.", host, redirects);
+          return finish("error", "Delivery URL exceeded the streaming size limit.");
         }
         sha256.update(value);
         sha512.update(value);
       }
     } catch (error) {
-      return emptyResult(
+      return finish(
         "error",
         error instanceof Error ? error.message : "Delivery URL stream failed.",
-        host,
-        redirects,
       );
     }
     const observedSha256 = sha256.digest("hex");
@@ -409,6 +464,9 @@ export async function verifyDeliveryUrl(input: {
       observedMediaType,
       finalHost: host,
       redirectCount: redirects,
+      redirectHosts: joinRedirectHosts(hopHosts),
+      cacheState: normalizeDeliveryCacheState(response.headers),
+      deliveryRegion: parseDeliveryRegion(host),
       error: null,
     };
   }
@@ -422,7 +480,7 @@ function mediaTypeChanged(expected: string | null | undefined, observed: string 
 
 function emptyResult(
   status: DeliveryVerifyStatus,
-  error: string,
+  error: string | null,
   finalHost: string | null = null,
   redirectCount = 0,
 ): DeliveryVerifyResult {
@@ -434,6 +492,9 @@ function emptyResult(
     observedMediaType: null,
     finalHost,
     redirectCount,
+    redirectHosts: finalHost,
+    cacheState: null,
+    deliveryRegion: parseDeliveryRegion(finalHost),
     error,
   };
 }
@@ -475,6 +536,9 @@ export async function runDeliveryVerifyJob(input: {
     observedMediaType: result.observedMediaType,
     finalHost: result.finalHost,
     redirectCount: result.redirectCount,
+    redirectHosts: result.redirectHosts,
+    cacheState: result.cacheState,
+    deliveryRegion: result.deliveryRegion,
     error: result.error,
   });
   if (result.status === "matched" || result.status === "blocked" || result.status === "error") {

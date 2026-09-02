@@ -356,6 +356,9 @@ export type DeliveryLocationRow = {
   last_status: DeliveryVerifyStatus | null;
   last_sha256: string | null;
   last_media_type: string | null;
+  last_redirect_hosts: string | null;
+  last_cache_state: string | null;
+  last_region: string | null;
   last_checked_at: string | null;
 };
 
@@ -371,6 +374,9 @@ export type DeliveryVerificationRow = {
   observed_media_type: string | null;
   final_host: string | null;
   redirect_count: number;
+  redirect_hosts: string | null;
+  cache_state: string | null;
+  delivery_region: string | null;
   error: string | null;
   created_at: string;
 };
@@ -848,6 +854,9 @@ function deliveryLocationRow(row: {
   last_status?: string | null;
   last_sha256?: string | null;
   last_media_type?: string | null;
+  last_redirect_hosts?: string | null;
+  last_cache_state?: string | null;
+  last_region?: string | null;
   last_checked_at?: string | Date | null;
 }): DeliveryLocationRow {
   return {
@@ -862,6 +871,9 @@ function deliveryLocationRow(row: {
     last_status: parseDeliveryVerifyStatus(row.last_status ?? null),
     last_sha256: row.last_sha256 ?? null,
     last_media_type: row.last_media_type ?? null,
+    last_redirect_hosts: row.last_redirect_hosts ?? null,
+    last_cache_state: row.last_cache_state ?? null,
+    last_region: row.last_region ?? null,
     last_checked_at: iso(row.last_checked_at ?? null),
   };
 }
@@ -878,6 +890,9 @@ function deliveryVerificationRow(row: {
   observed_media_type: string | null;
   final_host: string | null;
   redirect_count: unknown;
+  redirect_hosts?: string | null;
+  cache_state?: string | null;
+  delivery_region?: string | null;
   error: string | null;
   created_at: string | Date;
 }): DeliveryVerificationRow {
@@ -893,6 +908,9 @@ function deliveryVerificationRow(row: {
     observed_media_type: row.observed_media_type,
     final_host: row.final_host,
     redirect_count: num(row.redirect_count),
+    redirect_hosts: row.redirect_hosts ?? null,
+    cache_state: row.cache_state ?? null,
+    delivery_region: row.delivery_region ?? null,
     error: row.error,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
@@ -4830,16 +4848,23 @@ export function createStore(
         last_status: string | null;
         last_sha256: string | null;
         last_media_type: string | null;
+        last_redirect_hosts: string | null;
+        last_cache_state: string | null;
+        last_region: string | null;
         last_checked_at: string | Date | null;
       }>(
         `SELECT l.*,
                 v.status AS last_status,
                 v.observed_sha256 AS last_sha256,
                 v.observed_media_type AS last_media_type,
+                v.redirect_hosts AS last_redirect_hosts,
+                v.cache_state AS last_cache_state,
+                v.delivery_region AS last_region,
                 v.created_at AS last_checked_at
          FROM release_delivery_locations l
          LEFT JOIN LATERAL (
-           SELECT status, observed_sha256, observed_media_type, created_at
+           SELECT status, observed_sha256, observed_media_type, redirect_hosts,
+                  cache_state, delivery_region, created_at
            FROM release_delivery_verifications
            WHERE location_id = l.id
            ORDER BY id DESC
@@ -4863,6 +4888,9 @@ export function createStore(
       observedMediaType?: string | null;
       finalHost?: string | null;
       redirectCount?: number;
+      redirectHosts?: string | null;
+      cacheState?: string | null;
+      deliveryRegion?: string | null;
       error?: string | null;
     }): Promise<DeliveryVerificationRow> {
       const { rows } = await sql.query<{
@@ -4877,15 +4905,18 @@ export function createStore(
         observed_media_type: string | null;
         final_host: string | null;
         redirect_count: unknown;
+        redirect_hosts: string | null;
+        cache_state: string | null;
+        delivery_region: string | null;
         error: string | null;
         created_at: string | Date;
       }>(
         `INSERT INTO release_delivery_verifications (
            installation_id, location_id, revision_id, status,
            observed_sha256, observed_sha512, observed_bytes, observed_media_type,
-           final_host, redirect_count, error
+           final_host, redirect_count, redirect_hosts, cache_state, delivery_region, error
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           input.installationId,
@@ -4898,6 +4929,9 @@ export function createStore(
           input.observedMediaType ?? null,
           input.finalHost ?? null,
           input.redirectCount ?? 0,
+          input.redirectHosts ?? null,
+          input.cacheState ?? null,
+          input.deliveryRegion ?? null,
           input.error ?? null,
         ],
       );

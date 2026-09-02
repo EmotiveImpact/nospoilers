@@ -284,6 +284,9 @@ function publicDeliveryLocation(row: {
   last_status: string | null;
   last_sha256: string | null;
   last_media_type: string | null;
+  last_redirect_hosts: string | null;
+  last_cache_state: string | null;
+  last_region: string | null;
   last_checked_at: string | null;
 }) {
   return {
@@ -295,6 +298,9 @@ function publicDeliveryLocation(row: {
     lastStatus: row.last_status,
     lastSha256: row.last_sha256,
     lastMediaType: row.last_media_type,
+    lastRedirectHosts: row.last_redirect_hosts,
+    lastCacheState: row.last_cache_state,
+    lastRegion: row.last_region,
     lastCheckedAt: row.last_checked_at,
   };
 }

@@ -237,7 +237,9 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   Cross-host redirects are not fetched, except `github.com` to GitHub’s release-asset
   CDN hosts, same-bucket S3 path-style ↔ virtual-hosted hops, and same-account R2
   path-style ↔ virtual-hosted hops (DNS is rechecked). Arbitrary hosts, other
-  buckets, CloudFront, website, accelerate, and `r2.dev` are not fetched. Query
+  buckets, CloudFront, website, accelerate, and `r2.dev` are not fetched. A
+  verification stores hop hosts, a short cache token, and a region parsed from
+  the host. Raw cache headers are not stored. Query
   strings are stored only to fetch and are redacted on Watch, alerts, and audit.
   Unpaid returns 402. Members return 403. Another tenant is 404. This is not the
   hourly poller and not scheduled CDN verification.
@@ -388,7 +390,8 @@ a sealed release even after coverage ends (another tenant is 404).
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub
-Release asset CDN hop, same-bucket S3 hops, and same-account R2 hops, does not
+Release asset CDN hop, same-bucket S3 hops, and same-account R2 hops, records
+hop hosts plus a cache token and host-derived region, does not
 follow any other cross-host redirect (including CDN→S3, S3→CloudFront, and
 bucket mismatch), rejects private DNS, keeps the list after coverage ends, and
 attaches the public GitHub Release or public npm tarball URL when a revision is

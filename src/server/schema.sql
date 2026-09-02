@@ -501,6 +501,9 @@ CREATE TABLE IF NOT EXISTS release_delivery_verifications (
   observed_media_type TEXT,
   final_host TEXT,
   redirect_count INTEGER NOT NULL DEFAULT 0,
+  redirect_hosts TEXT,
+  cache_state TEXT,
+  delivery_region TEXT,
   error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
