@@ -15,6 +15,8 @@ export const DORMANT_IDLE_MS = 180 * 24 * 60 * 60 * 1000;
 export const BURST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const BURST_VERSION_COUNT = 5;
 export const VERSION_JUMP_MAJOR = 3;
+export const NEW_DEPENDENCY_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+export const NEW_DEPENDENCY_CHECKS_PER_PASS = 8;
 export const MAX_ALLOWLIST_REASON = 200;
 
 export const IDENTITY_TRANSFORMATIONS = [
@@ -89,12 +91,16 @@ function isSkippableNameChar(ch: string): boolean {
 export function identityPlanDenied(coverage: Coverage): { error: string; status: 402 | 403 } | null {
   if (coverage.status === "ended") {
     return {
-      error: "Coverage ended. Subscribe to Team for lookalike and dormant package signals.",
+      error:
+        "Coverage ended. Subscribe to Team for lookalike, dormant, and new-dependency package signals.",
       status: 402,
     };
   }
   if (coverage.plan === "solo") {
-    return { error: "Lookalike, dormant, and burst signals are on Team.", status: 403 };
+    return {
+      error: "Lookalike, dormant, burst, and new-dependency signals are on Team.",
+      status: 403,
+    };
   }
   return null;
 }
@@ -313,6 +319,58 @@ function snapshotPublishedAt(row: PackageIdentitySnapshotRow | null): Date | nul
   return Number.isNaN(at.getTime()) ? null : at;
 }
 
+function snapshotDependencyNames(row: PackageIdentitySnapshotRow | null): string[] {
+  return row?.dependency_names ?? [];
+}
+
+function addedDependencyNames(previous: string[], current: string[]): string[] {
+  const seen = new Set(previous);
+  return current.filter((name) => !seen.has(name)).sort();
+}
+
+async function checkNewDependencies(input: {
+  store: Store;
+  npm: NpmPort;
+  notifier?: AlertNotifier;
+  pkg: WatchedPackageRow;
+  pack: NpmPack;
+  previous: PackageIdentitySnapshotRow | null;
+  auth?: NpmAuth;
+}): Promise<number> {
+  const previousNames = snapshotDependencyNames(input.previous);
+  if (previousNames.length === 0) return 0;
+  const currentNames = (input.pack.dependencyNames ?? [])
+    .map((name) => normalizePackageName(name))
+    .filter((name): name is string => Boolean(name));
+  const added = addedDependencyNames(previousNames, currentNames).slice(
+    0,
+    NEW_DEPENDENCY_CHECKS_PER_PASS,
+  );
+  let alerts = 0;
+  for (const dependencyName of added) {
+    let pack: NpmPack | null = null;
+    try {
+      pack = await input.npm.getPack(dependencyName, input.auth);
+    } catch {
+      pack = null;
+    }
+    if (!pack?.createdAt) continue;
+    const createdMs = pack.createdAt.getTime();
+    if (Number.isNaN(createdMs)) continue;
+    if (Date.now() - createdMs > NEW_DEPENDENCY_MAX_AGE_MS) continue;
+    await emitAlert(input.store, input.notifier, {
+      installationId: input.pkg.installation_id,
+      packageName: input.pkg.package_name,
+      kind: "identity_new_dependency",
+      title: `npm ${input.pkg.package_name} added newly created dependency ${dependencyName}`,
+      body: `${input.pkg.package_name} now depends on ${dependencyName}, first published on npm within 14 days. This is a dependency-graph fact, not a malware verdict.`,
+      githubDeliveryId: `identity-new-dep:${input.pkg.installation_id}:${input.pkg.package_name}:${dependencyName}`,
+    });
+    alerts += 1;
+  }
+  return alerts;
+}
+
 async function checkLookalikeCandidates(input: {
   store: Store;
   npm: NpmPort;
@@ -433,6 +491,7 @@ export async function checkIdentitySignals(input: {
       alerts += 1;
     }
   }
+  alerts += await checkNewDependencies(input);
   alerts += await checkLookalikeCandidates(input);
   return alerts;
 }

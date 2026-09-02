@@ -143,7 +143,8 @@ Read in this order:
   and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
   generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
-  resurrection, and release-burst/version-jump alerts. Admins allowlist with a reason and typed
+  resurrection, release-burst/version-jump alerts, and new-dependency alerts when a protected
+  pack starts depending on a package first published within 14 days. Admins allowlist with a reason and typed
   candidate name. This is not a malware verdict and not auto advisory/takedown.
 - Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
   permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
@@ -280,8 +281,10 @@ includes secrets; Solo 403; unpaid 402; members may read/export).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
 GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
-Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump;
-trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
+Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump,
+new dependency toward a package first published within 14 days; trial/Team; metadata-only
+candidate and dependency-name checks; typed allowlist; no malware verdict; no tarball
+download of the added dependency).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
 allowed; unpaid 402; append-only evidence never deleted).
 Extra packed formats are in (VSIX/CRX/XPI/Chrome ZIP/wheel/sdist/JAR/nupkg/gem; ZIP/tar magic; CRX header

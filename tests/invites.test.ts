@@ -183,6 +183,7 @@ describe("GitHub-login Team invites", () => {
         body: JSON.stringify({ login: "teammate", role: "member", confirm: "teammate" }),
       });
       expect(invited.status).toBe(200);
+      await migrate(sql);
       await sql.query(`DELETE FROM installation_users WHERE installation_id = 7`);
       expect(await store.getInstallationRole("u1", 7)).toBeNull();
       await store.linkUserInstallation(7, "u2");

@@ -104,6 +104,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Repository/homepage/domain mismatch | Built: explainable npm repository/homepage change alerts | NoSpoilers |
 | Dormant-package resurrection | Built: explainable alert after 180 days without a recorded publish | NoSpoilers Team |
 | Suspicious release burst/version jump | Built: ≥5 versions in 7 days or major +3; facts, not a malware verdict | NoSpoilers Team |
+| Dependency graph toward newly created packages | Built: new `dependencies` / `optionalDependencies` vs last snapshot; alert only if the added name’s npm `time.created` is within 14 days; metadata only, not a malware verdict | NoSpoilers Team |
 | Artifact hash/shape anomaly | Built: new `bin` or install lifecycle scripts vs last snapshot | NoSpoilers |
 | Human-reviewed advisory/takedown evidence | Planned, later | NoSpoilers Team |
 | Automatic malware verdict/takedown | Do not build | None |

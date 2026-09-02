@@ -2517,6 +2517,7 @@ export function createApp(deps: AppDeps): Hono {
             binNames: snapshot.bin_names,
             lifecycleScripts: snapshot.lifecycle_scripts,
             publishedAt: snapshot.published_at,
+            dependencyNames: snapshot.dependency_names,
             createdAt: snapshot.created_at,
           }
         : null,

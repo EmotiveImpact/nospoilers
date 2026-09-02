@@ -258,6 +258,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
       bin_names JSONB NOT NULL,
       lifecycle_scripts JSONB NOT NULL,
       published_at TIMESTAMPTZ,
+      dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS package_identity_snapshots_pkg_idx
@@ -533,28 +534,6 @@ export async function migrate(sql: SqlClient): Promise<void> {
       ON identity_candidates (package_id, last_checked_at ASC NULLS FIRST, id ASC);
     CREATE INDEX IF NOT EXISTS identity_candidates_install_idx
       ON identity_candidates (installation_id, package_id);
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save'
-    ));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "020_identity_signals",
@@ -586,30 +565,6 @@ export async function migrate(sql: SqlClient): Promise<void> {
       );
     $$;
   `);
-  await sql.exec(`
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save'
-    ));
-  `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "021_retention_policies",
   ]);
@@ -630,31 +585,6 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.exec(`
     CREATE INDEX IF NOT EXISTS watched_origins_install_idx
       ON watched_origins (installation_id, origin_url);
-  `);
-  await sql.exec(`
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save'
-    ));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "022_watched_origins",
@@ -699,33 +629,6 @@ export async function migrate(sql: SqlClient): Promise<void> {
     CREATE INDEX IF NOT EXISTS map_destinations_install_idx
       ON map_destinations (installation_id);
   `);
-  await sql.exec(`
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'map_destination.save',
-      'map_destination.delete',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save'
-    ));
-  `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "023_map_destinations",
   ]);
@@ -760,36 +663,6 @@ async function migrateHostedUsage(sql: SqlClient): Promise<void> {
 }
 
 async function migrateGithubResponseAudit(sql: SqlClient): Promise<void> {
-  await sql.exec(`
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'map_destination.save',
-      'map_destination.delete',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save',
-      'repo.make_private',
-      'repo.delete_pack_assets',
-      'repo.disable_workflow'
-    ));
-  `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "026_github_response",
   ]);
@@ -846,6 +719,13 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "027_team_invites",
+  ]);
+  await sql.exec(`
+    ALTER TABLE package_identity_snapshots
+      ADD COLUMN IF NOT EXISTS dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "028_identity_dependencies",
   ]);
 }
 

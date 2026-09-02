@@ -197,6 +197,31 @@ export function lifecycleScriptsFromManifest(scripts: unknown): string[] {
   return LIFECYCLE_SCRIPTS.filter((name) => typeof record[name] === "string" && String(record[name]).trim());
 }
 
+export const IDENTITY_DEPENDENCY_NAME_CAP = 80;
+
+/** Latest-version `dependencies` and `optionalDependencies` only. Not `devDependencies`. */
+export function dependencyNamesFromManifest(
+  versionMeta:
+    | {
+        dependencies?: unknown;
+        optionalDependencies?: unknown;
+        devDependencies?: unknown;
+      }
+    | undefined,
+  cap = IDENTITY_DEPENDENCY_NAME_CAP,
+): string[] {
+  const names = new Set<string>();
+  for (const field of ["dependencies", "optionalDependencies"] as const) {
+    const block = versionMeta?.[field];
+    if (!block || typeof block !== "object" || Array.isArray(block)) continue;
+    for (const key of Object.keys(block as Record<string, unknown>)) {
+      const name = key.trim().toLowerCase();
+      if (name) names.add(name);
+    }
+  }
+  return [...names].sort().slice(0, cap);
+}
+
 export function asHttpsMetadataUrl(raw: string | null | undefined): string | null {
   if (!raw || !raw.trim()) return null;
   const trimmed = raw.trim();

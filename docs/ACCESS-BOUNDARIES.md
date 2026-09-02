@@ -57,7 +57,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   matches this GitHub install. Naming an arbitrary pack is not ownership. Maintainer,
   repository, homepage, and artifact-shape changes append snapshots and explainable alerts.
 - On a trial or Team install, list bounded lookalike candidate names for a protected pack.
-  Metadata-only registry checks (never download or execute lookalike tarballs). Solo paid
+  Metadata-only registry checks (never download or execute lookalike tarballs). A new
+  dependency on a package first published within 14 days is a Watch alert (metadata
+  `time.created` only; the added pack is not downloaded). Solo paid
   returns 403. Unpaid returns 402. Another tenant’s package is 404. Alerts are facts, not a
   malware verdict, and never auto-advisory or takedown.
 - Watch packs from private HTTPS registries already saved on those installations. Token
@@ -342,8 +344,8 @@ a sealed release even after coverage ends (another tenant is 404). `tests/packag
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape alerts never store emails or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid
-402), registration/version/dormant/burst/jump alerts never download lookalike tarballs or
-claim malware, and allowlisting skips further lookalike alerts.
+  402), registration/version/dormant/burst/jump/new-dependency alerts never download lookalike
+  or dependency tarballs or claim malware, and allowlisting skips further lookalike alerts.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

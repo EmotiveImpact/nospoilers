@@ -96,6 +96,9 @@ describe("package identity parsing", () => {
           dist: { tarball: TARBALL, shasum: "abc123" },
           bin: { app: "bin/app.js" },
           scripts: { postinstall: "node scripts/leak.js", test: "echo ok" },
+          dependencies: { lodash: "^4.17.21" },
+          optionalDependencies: { "left-pad": "1.3.0" },
+          devDependencies: { typescript: "^5.0.0" },
         },
       },
     });
@@ -107,6 +110,9 @@ describe("package identity parsing", () => {
     expect(parsed?.identity.binNames).toEqual(["app"]);
     expect(parsed?.identity.lifecycleScripts).toEqual(["postinstall"]);
     expect(parsed?.publishedAt?.toISOString()).toBe("2024-01-02T00:00:00.000Z");
+    expect(parsed?.createdAt?.toISOString()).toBe("2024-01-01T00:00:00.000Z");
+    expect(parsed?.dependencyNames).toEqual(["left-pad", "lodash"]);
+    expect(parsed?.dependencyNames).not.toContain("typescript");
     expect(parsed?.recentVersions?.map((row) => row.version)).not.toContain("created");
   });
 
@@ -222,9 +228,10 @@ describe("protected package identity", () => {
         headers: { cookie },
       });
       const identityBody = (await identity.json()) as {
-        snapshot: { maintainers: string[]; binNames: string[] };
+        snapshot: { maintainers: string[]; binNames: string[]; dependencyNames: string[] };
       };
       expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
+      expect(identityBody.snapshot.dependencyNames).toEqual([]);
       const foreignIdentity = await app.request(`/api/packages/${packageId}/identity`, {
         headers: { cookie: otherCookie },
       });
@@ -646,6 +653,190 @@ describe("Team identity signals", () => {
       expect(alertBody.alerts.every((row) => !/malware/i.test(row.body) || /not a malware/.test(row.body))).toBe(
         true,
       );
+      expect(downloads).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("alerts when a new dependency is a newly created package, not an old one", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const downloads: string[] = [];
+      const getPackNames: string[] = [];
+      const now = Date.now();
+      const current: {
+        pack: NpmPack | null;
+        byName: Record<string, NpmPack | null>;
+        getPackNames: string[];
+        downloads: string[];
+      } = {
+        pack: ownedPack({
+          dependencyNames: ["brand-new-typo"],
+        }),
+        byName: {
+          "brand-new-typo": ownedPack({
+            name: "brand-new-typo",
+            createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000),
+          }),
+        },
+        getPackNames,
+        downloads,
+      };
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+      });
+
+      const connected = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ packageName: "@octo/app", installationId: 7 }),
+      });
+      const packageId = ((await connected.json()) as { package: { id: number } }).package.id;
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/protect`, {
+            method: "POST",
+            headers: { cookie },
+          })
+        ).status,
+      ).toBe(201);
+
+      const identity = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      expect(
+        ((await identity.json()) as { snapshot: { dependencyNames: string[] } }).snapshot
+          .dependencyNames,
+      ).toEqual(["brand-new-typo"]);
+
+      getPackNames.length = 0;
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterBaseline = await app.request("/api/alerts", { headers: { cookie } });
+      const afterBaselineBody = (await afterBaseline.json()) as { alerts: { kind: string }[] };
+      expect(afterBaselineBody.alerts.map((row) => row.kind)).not.toContain("identity_new_dependency");
+      expect(getPackNames).not.toContain("brand-new-typo");
+
+      current.pack = ownedPack({
+        version: "1.0.1",
+        distTags: { latest: "1.0.1" },
+        dependencyNames: ["brand-new-typo", "lodash"],
+      });
+      current.byName.lodash = ownedPack({
+        name: "lodash",
+        createdAt: new Date(now - 400 * 24 * 60 * 60 * 1000),
+      });
+      getPackNames.length = 0;
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterOld = await app.request("/api/alerts", { headers: { cookie } });
+      expect(((await afterOld.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind)).not.toContain(
+        "identity_new_dependency",
+      );
+      expect(getPackNames).toContain("lodash");
+      expect(downloads).toEqual([]);
+
+      current.pack = ownedPack({
+        version: "1.0.2",
+        distTags: { latest: "1.0.2" },
+        dependencyNames: ["brand-new-typo", "lodash", "missing-dep", "fresh-impersonator"],
+      });
+      current.byName["missing-dep"] = null;
+      current.byName["fresh-impersonator"] = ownedPack({
+        name: "fresh-impersonator",
+        createdAt: new Date(now - 1 * 24 * 60 * 60 * 1000),
+      });
+      getPackNames.length = 0;
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const alerts = await app.request("/api/alerts", { headers: { cookie } });
+      const alertBody = (await alerts.json()) as { alerts: { kind: string; body: string }[] };
+      const newDep = alertBody.alerts.filter((row) => row.kind === "identity_new_dependency");
+      expect(newDep).toHaveLength(1);
+      expect(newDep[0]?.body).toMatch(/fresh-impersonator/);
+      expect(newDep[0]?.body).toMatch(/not a malware verdict/);
+      expect(getPackNames).toEqual(expect.arrayContaining(["fresh-impersonator", "missing-dep"]));
+      expect(downloads).toEqual([]);
+
+      const foreign = await app.request("/api/alerts", { headers: { cookie: otherCookie } });
+      const foreignBody = (await foreign.json()) as { alerts: { kind: string }[] };
+      expect(foreignBody.alerts.map((row) => row.kind)).not.toContain("identity_new_dependency");
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      current.pack = ownedPack({
+        version: "1.0.3",
+        distTags: { latest: "1.0.3" },
+        dependencyNames: ["brand-new-typo", "lodash", "solo-new"],
+      });
+      current.byName["solo-new"] = ownedPack({
+        name: "solo-new",
+        createdAt: new Date(now),
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterSolo = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterSolo.json()) as { alerts: { kind: string; body: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_new_dependency" && /solo-new/.test(row.body),
+        ),
+      ).toHaveLength(0);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      current.pack = ownedPack({
+        version: "1.0.4",
+        distTags: { latest: "1.0.4" },
+        dependencyNames: ["brand-new-typo", "lodash", "unpaid-new"],
+      });
+      current.byName["unpaid-new"] = ownedPack({
+        name: "unpaid-new",
+        createdAt: new Date(now),
+      });
+      const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(unpaidCheck.status).toBe(402);
       expect(downloads).toEqual([]);
     } finally {
       await sql.close();

@@ -355,6 +355,7 @@ export type PackageIdentitySnapshotRow = {
   bin_names: string[];
   lifecycle_scripts: string[];
   published_at: string | null;
+  dependency_names: string[];
   created_at: string;
 };
 
@@ -430,6 +431,7 @@ function packageIdentitySnapshotRow(row: {
   bin_names: unknown;
   lifecycle_scripts: unknown;
   published_at?: string | Date | null;
+  dependency_names?: unknown;
   created_at: string | Date;
 }): PackageIdentitySnapshotRow {
   return {
@@ -443,6 +445,7 @@ function packageIdentitySnapshotRow(row: {
     bin_names: asStringArray(row.bin_names),
     lifecycle_scripts: asStringArray(row.lifecycle_scripts),
     published_at: iso(row.published_at ?? null),
+    dependency_names: asStringArray(row.dependency_names),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -2664,6 +2667,7 @@ export function createStore(
         bin_names: unknown;
         lifecycle_scripts: unknown;
         published_at: string | Date | null;
+        dependency_names?: unknown;
         created_at: string | Date;
       }>(
         `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -2682,6 +2686,7 @@ export function createStore(
       binNames: string[];
       lifecycleScripts: string[];
       publishedAt?: string | Date | null;
+      dependencyNames?: string[];
     }): Promise<PackageIdentitySnapshotRow> {
       const { rows } = await sql.query<{
         id: unknown;
@@ -2694,13 +2699,14 @@ export function createStore(
         bin_names: unknown;
         lifecycle_scripts: unknown;
         published_at: string | Date | null;
+        dependency_names?: unknown;
         created_at: string | Date;
       }>(
         `INSERT INTO package_identity_snapshots (
            installation_id, package_id, version, maintainers, repository_url, homepage,
-           bin_names, lifecycle_scripts, published_at
+           bin_names, lifecycle_scripts, published_at, dependency_names
          )
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz, $10::jsonb)
          RETURNING *`,
         [
           input.installationId,
@@ -2712,6 +2718,7 @@ export function createStore(
           JSON.stringify(input.binNames),
           JSON.stringify(input.lifecycleScripts),
           input.publishedAt ? iso(input.publishedAt) : null,
+          JSON.stringify(input.dependencyNames ?? []),
         ],
       );
       if (!rows[0]) throw new Error("package identity snapshot insert returned no row");

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Trial and Team Package Identity alerts when a protected pack adds a dependency whose npm
+  name was first published within 14 days. First snapshot is baseline. An old package newly
+  added does not alert. Missing registry metadata is skipped. Metadata only; the added
+  tarball is not downloaded. Solo 403. Unpaid 402. Not a malware verdict. Not a Pricing
+  change.
+- `migrate()` no longer recreates older, narrower `audit_events` action checks on every
+  boot. Invite and GitHub-response audit rows no longer block a second migrate.
+
 - Trial and Team Watch can invite a teammate by GitHub login. They get that role the next
   time they sign in, if GitHub already lists them on this App install. Typed confirm. Solo
   403. Unpaid 402. GitHub suspend does not block. Members cannot invite. Already a member is

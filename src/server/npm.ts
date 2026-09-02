@@ -7,6 +7,7 @@ import {
 import {
   asHttpsMetadataUrl,
   binNamesFromManifest,
+  dependencyNamesFromManifest,
   lifecycleScriptsFromManifest,
   normalizeMaintainerNames,
   type PackageIdentityFacts,
@@ -39,6 +40,9 @@ export type NpmPack = {
   bytes: number | null;
   identity: PackageIdentityFacts;
   publishedAt?: Date | null;
+  /** First publish of this package name (`time.created`), not the latest version stamp. */
+  createdAt?: Date | null;
+  dependencyNames?: string[];
   recentVersions?: Array<{ version: string; publishedAt: Date }>;
   /** next/beta/canary (and rc/alpha/preview) tarballs that are not `latest`. */
   channelTarballs?: NpmChannelTarball[];
@@ -168,9 +172,19 @@ type RegistryBody = {
       repository?: unknown;
       homepage?: unknown;
       maintainers?: unknown;
+      dependencies?: unknown;
+      optionalDependencies?: unknown;
+      devDependencies?: unknown;
     }
   >;
 };
+
+export function parseRegistryCreatedAt(time: Record<string, string> | undefined): Date | null {
+  const raw = time?.created;
+  if (!raw) return null;
+  const at = new Date(raw);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
 
 export function parseRegistryTimes(
   time: Record<string, string> | undefined,
@@ -220,6 +234,9 @@ export function packFromRegistry(
   allowedNpmTarballUrl(dist.tarball, allowedHost);
   const versionMeta = body.versions?.[version];
   const times = parseRegistryTimes(body.time, version);
+  const dependencyNames = dependencyNamesFromManifest(versionMeta)
+    .map((name) => normalizePackageName(name))
+    .filter((name): name is string => Boolean(name));
   return {
     name: typeof body.name === "string" ? body.name : packageName,
     version,
@@ -229,6 +246,8 @@ export function packFromRegistry(
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
     publishedAt: times.publishedAt,
+    createdAt: parseRegistryCreatedAt(body.time),
+    dependencyNames: [...new Set(dependencyNames)].sort(),
     recentVersions: times.recentVersions,
     channelTarballs: channelTarballsFromRegistry(distTags, body.versions, version, allowedHost),
     identity: {
