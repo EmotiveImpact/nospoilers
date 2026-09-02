@@ -52,9 +52,19 @@ const EXAMPLES = [
     hint: "ZIP magic. Extension code is not executed.",
   },
   {
+    path: "fixtures/sourcemap.chrome.zip",
+    label: "Chrome ZIP with a source map",
+    hint: "WebExtension layout, not a CRX header. Extension code is not executed.",
+  },
+  {
     path: "fixtures/sourcemap.whl",
     label: "Python wheel with a source map",
     hint: "ZIP magic. Python is not executed.",
+  },
+  {
+    path: "fixtures/sourcemap.sdist.tgz",
+    label: "Python sdist with a source map",
+    hint: "PKG-INFO layout. Python is not executed.",
   },
   {
     path: "fixtures/sourcemap.jar",

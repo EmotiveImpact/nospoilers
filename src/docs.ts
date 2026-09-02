@@ -15,7 +15,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     heading: "What it is",
     paragraphs: [
-      "NoSpoilers is a GitHub App. It watches repository visibility and scans the packed bytes customers actually download: npm tarballs, zip, Electron asar, extensions, wheels, jars, gems, images, mobile packages, and serverless zips. Secret scanners that only read git miss maps and .env files added at pack time.",
+      "NoSpoilers is a GitHub App. It watches repository visibility and scans the packed bytes customers actually download: npm tarballs, zip, Electron asar, extensions (CRX, XPI, Chrome ZIP), Python wheels and sdists, jars, gems, images, mobile packages, and serverless zips. Secret scanners that only read git miss maps and .env files added at pack time.",
       "You pay for coverage on our servers, not a scan-credit meter. The CLI and GitHub Action on your machine keep working when hosted coverage ends. We never execute customer packages, installers, DEX, Mach-O, or lifecycle scripts. We never retain source after a scan. Findings name a path and a rule. They do not quote secrets.",
     ],
   },
@@ -36,7 +36,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     heading: "Packed scans",
     paragraphs: [
-      "Drop a pack on Scan, publish a GitHub Release asset, watch an npm package, crawl an HTTPS origin, or POST /api/v1/scan with a hashed token. Classification uses magic bytes, not the extension alone. Nested archives unpack for inspection up to three levels. Encrypted zip, CRX without a ZIP payload, and encrypted image layers are inconclusive, never a passing receipt.",
+      "Drop a pack on Scan, publish a GitHub Release asset, watch an npm package, crawl an HTTPS origin, or POST /api/v1/scan with a hashed token. Classification uses magic bytes, not the extension alone. Nested archives unpack for inspection up to three levels. Encrypted zip, CRX without a ZIP payload, and encrypted image layers are inconclusive, never a passing receipt. Python and extension workers are never executed.",
       "Check a signed receipt JSON on Scan without unpacking. The optional pack is hashed in the browser; those bytes are not uploaded. Watch lists the linked receipt status on Releases and downloads the signed JSON. An authentic failed-policy or inconclusive receipt is not a clean bill of health and is not allowed to ship. The CLI is `npx nospoilers verify ./package.tgz --receipt receipt.json`. Coverage ended still allows this check.",
       "Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB per file, 90 seconds. Hitting a limit is inconclusive. Bytes are deleted when the job finishes. Hosted scans from one address are rate-limited. Sign-in and internal discovery are rate-limited too. GitHub webhooks are not; they must stay 200 so deliveries retry.",
     ],

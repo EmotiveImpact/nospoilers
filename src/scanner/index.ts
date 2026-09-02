@@ -27,6 +27,7 @@ import {
   packFormatFromName,
   sniffImageLayout,
   sniffPackFormat,
+  sniffSdistLayout,
   unwrapCrx,
   zipPayloadForKind,
   zipResolvedName,
@@ -174,7 +175,7 @@ type ScanChunk = {
   manifest: ManifestEntry[];
   workspaceFiles: WorkspaceFile[];
   identity: MapIdentity;
-  kindHint?: "docker" | "oci";
+  kindHint?: "docker" | "oci" | "sdist";
 };
 
 export const MAX_NEST_DEPTH = 3;
@@ -339,10 +340,16 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
   const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-tar-"));
   let limitError: ScanInconclusiveError | null = null;
   const linkFindings: Finding[] = [];
-  const listedLayout = sniffImageLayout(await listTarPaths(archive));
+  const tarPaths = await listTarPaths(archive);
+  const listedLayout = sniffImageLayout(tarPaths);
+  const listedSdist = !listedLayout && sniffSdistLayout(tarPaths);
   const withLayout = (error: ScanInconclusiveError): ScanInconclusiveError => {
-    if (listedLayout && !error.scanKind) {
+    if (error.scanKind) return error;
+    if (listedLayout) {
       return new ScanInconclusiveError(error.reason, error.message, listedLayout);
+    }
+    if (listedSdist) {
+      return new ScanInconclusiveError(error.reason, error.message, "sdist");
     }
     return error;
   };
@@ -389,6 +396,7 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
     const { files } = await walkTree(dir);
     const rels = files.map((abs) => path.relative(dir, abs).split(path.sep).join("/"));
     const layout = sniffImageLayout(rels) ?? listedLayout;
+    const sdist = !layout && (sniffSdistLayout(rels) || listedSdist);
     if (layout) {
       for (const abs of files) {
         const rel = path.relative(dir, abs).split(path.sep).join("/");
@@ -403,7 +411,7 @@ async function scanTarball(archive: string, ctx: ScanCtx, label = ""): Promise<S
     return {
       ...scanned,
       findings: [...linkFindings, ...scanned.findings],
-      kindHint: layout ?? undefined,
+      kindHint: layout ?? (sdist ? "sdist" : undefined),
     };
   } catch (error) {
     if (error instanceof ScanInconclusiveError) throw withLayout(error);
@@ -603,7 +611,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     let manifest: ManifestEntry[] = [];
     let workspaceFiles: WorkspaceFile[] = [];
     let identity = emptyMapIdentity();
-    let kindHint: "docker" | "oci" | undefined;
+    let kindHint: "docker" | "oci" | "sdist" | undefined;
 
     const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0 };
 

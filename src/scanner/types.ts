@@ -18,6 +18,7 @@ export type ScanTargetKind =
   | "crx"
   | "xpi"
   | "wheel"
+  | "sdist"
   | "jar"
   | "nupkg"
   | "gem"

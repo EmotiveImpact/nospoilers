@@ -136,12 +136,12 @@ Read in this order:
   caches (CACHE-001), and additional AI/MCP agent files. Credential values are not copied
   into reports. DOC-001 also flags architecture/design/rfc/spec/product/month1/
   feature-inventory/electron, `*.prd.md`, `docs/internal/`, and numbered ADRs.
-- Packed scans also cover VSIX, CRX, XPI, Python wheels, JAR/WAR, NuGet nupkg/snupkg, and
+- Packed scans also cover VSIX, CRX, XPI, Chrome extension ZIPs, Python wheels and sdists, JAR/WAR, NuGet nupkg/snupkg, and
   Ruby gems. Classification uses ZIP/tar/CRX magic, not the extension alone. Encrypted zip
   and CRX wrappers without a ZIP payload are inconclusive, never a passing receipt. Zip-slip
   entry names flag ARC-002 and are not unpacked for content. GitHub Release asset matching
-  includes those extensions. Scan lists VSIX, CRX, XPI, wheel, JAR, nupkg, and gem fixture
-  examples. These formats are not a Pricing extras change.
+  includes those extensions. Scan lists VSIX, CRX, XPI, Chrome ZIP, wheel, sdist, JAR, nupkg, and gem fixture
+  examples. Python and extension workers are never executed. These formats are not a Pricing extras change.
 - Packed scans also cover Docker save and OCI image archives. Layout sniff uses `manifest.json`
   plus `layer.tar`, or `oci-layout` / `blobs/sha256`. Gzip layer blobs without a `.tar` name are
   unpacked. Overlay whiteouts are not applied, so lower-layer spoilers remain visible. Encrypted
@@ -257,7 +257,7 @@ Package Identity Team signals are in (bounded lookalikes, dormant resurrection, 
 trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
 allowed; unpaid 402; append-only evidence never deleted).
-Extra packed formats are in (VSIX/CRX/XPI/wheel/JAR/nupkg/gem; ZIP/tar magic; CRX header
+Extra packed formats are in (VSIX/CRX/XPI/Chrome ZIP/wheel/sdist/JAR/nupkg/gem; ZIP/tar magic; CRX header
 stripped; encrypted zip and CRX-without-ZIP inconclusive; zip-slip ARC-002 not unpacked for
 content; GitHub Release `isPackAssetName` extended; Scan VSIX/CRX/XPI/wheel/JAR/nupkg/gem
 examples). Not advertised as a Pricing change.
@@ -312,7 +312,7 @@ Scan page checks a signed receipt without unpacking (pack hashed in-browser). Co
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
 Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save, OCI, VSIX,
-CRX, XPI, wheel, JAR, WAR, nupkg, snupkg, gem, APK, XAPK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
+CRX, XPI, Chrome ZIP, wheel, sdist, JAR, WAR, nupkg, snupkg, gem, APK, XAPK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
 DEX, Mach-O, and extension payloads are not executed.
 Watch Test install reports Members read and optional Contents/PR/Checks write, and warns if
 Administration is granted. Missing optional grants do not fail the test.

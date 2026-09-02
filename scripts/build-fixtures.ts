@@ -143,6 +143,13 @@ async function main(): Promise<void> {
       "manifest.json": '{"manifest_version":2,"name":"spoiler"}',
       ...dirtyJs,
     });
+    await writeZipPack(path.join(fixtures, "sourcemap.chrome.zip"), {
+      "manifest.json":
+        '{"manifest_version":3,"name":"spoiler","background":{"service_worker":"background.js"}}',
+      "background.js": `${minified}//# sourceMappingURL=background.js.map\n`,
+      "background.js.map": sourceMap,
+      "_locales/en/messages.json": "{}",
+    });
     await writeZipPack(path.join(fixtures, "sourcemap.whl"), {
       "pkg-1.0.0.dist-info/METADATA": "Name: pkg\nVersion: 1.0.0\n",
       "pkg/static/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
@@ -187,6 +194,12 @@ async function main(): Promise<void> {
       "manifest.json": '{"manifest_version":2,"name":"clean"}',
       ...cleanJs,
     });
+    await writeZipPack(path.join(fixtures, "clean.chrome.zip"), {
+      "manifest.json":
+        '{"manifest_version":3,"name":"clean","background":{"service_worker":"background.js"}}',
+      "background.js": minified,
+      "_locales/en/messages.json": "{}",
+    });
     await writeZipPack(path.join(fixtures, "clean.whl"), {
       "pkg-1.0.0.dist-info/METADATA": "Name: pkg\nVersion: 1.0.0\n",
       "pkg/static/index.js": minified,
@@ -210,6 +223,29 @@ async function main(): Promise<void> {
       "lib/net8.0/index.js": minified,
     });
     await writeGemPack(path.join(fixtures, "clean.gem"), cleanJs, "clean");
+
+    const sdistClean = await mkdtemp(path.join(os.tmpdir(), "ns-sdist-clean-"));
+    const sdistDirty = await mkdtemp(path.join(os.tmpdir(), "ns-sdist-dirty-"));
+    try {
+      await writeTree(sdistClean, {
+        "clean-1.0.0/PKG-INFO": "Metadata-Version: 2.1\nName: clean\nVersion: 1.0.0\n",
+        "clean-1.0.0/pyproject.toml": '[project]\nname = "clean"\nversion = "1.0.0"\n',
+        "clean-1.0.0/src/clean/__init__.py": "x = 1\n",
+        "clean-1.0.0/src/clean/static/index.js": minified,
+      });
+      await writeTree(sdistDirty, {
+        "spoiler-1.0.0/PKG-INFO": "Metadata-Version: 2.1\nName: spoiler\nVersion: 1.0.0\n",
+        "spoiler-1.0.0/pyproject.toml": '[project]\nname = "spoiler"\nversion = "1.0.0"\n',
+        "spoiler-1.0.0/src/spoiler/__init__.py": "x = 1\n",
+        "spoiler-1.0.0/src/spoiler/static/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+        "spoiler-1.0.0/src/spoiler/static/index.js.map": sourceMap,
+      });
+      await packTar(sdistClean, path.join(fixtures, "clean.sdist.tgz"));
+      await packTar(sdistDirty, path.join(fixtures, "sourcemap.sdist.tgz"));
+    } finally {
+      await rm(sdistClean, { recursive: true, force: true });
+      await rm(sdistDirty, { recursive: true, force: true });
+    }
 
     const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "ns-workspace-"));
     try {

@@ -9,7 +9,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Proven locally
 
-- Scanner: directories, npm tarballs, ZIP, VSIX, CRX, XPI, wheels, JAR/WAR, NuGet packs, Ruby gems, Docker/OCI image archives, APK/AAB/IPA, serverless Lambda/Azure/Netlify/Vercel zips, and Electron `app.asar`.
+- Scanner: directories, npm tarballs, ZIP, VSIX, CRX, XPI, Chrome extension ZIP, wheels, Python sdist, JAR/WAR, NuGet packs, Ruby gems, Docker/OCI image archives, APK/AAB/IPA, serverless Lambda/Azure/Netlify/Vercel zips, and Electron `app.asar`.
 - Critical detection: maps, embedded source, map URLs, environment files, private keys, and
   high-confidence provider credentials.
 - Warnings: credential configs, AI context, internal endpoints/paths, debug artifacts, original
@@ -100,9 +100,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Configurable data retention: 90, 180, or 365 days, or keep while this install exists.
   Query-time lists. Append-only evidence is not deleted. Typed confirm. Solo allowed.
   Unpaid 402. Members may read.
-- Extra packed formats: VSIX, CRX, XPI, wheels, JAR/WAR, NuGet, Ruby gems. ZIP/tar magic.
+- Extra packed formats: VSIX, CRX, XPI, Chrome extension ZIP, wheels, Python sdist, JAR/WAR, NuGet, Ruby gems. ZIP/tar magic.
   Encrypted zip and CRX without ZIP are inconclusive. Zip-slip is ARC-002 and is not unpacked
-  for content. Scan accepts those extensions and includes VSIX, CRX, XPI, wheel, JAR, nupkg,
+  for content. Scan accepts those extensions and includes VSIX, CRX, XPI, Chrome ZIP, wheel, sdist, JAR, nupkg,
   and gem fixture examples. Payloads are not executed. Not a Pricing change.
 - Docker/OCI image layers: docker save (`manifest.json` + `layer.tar`) and OCI layout (`oci-layout` /
   `blobs/sha256`). MIME/magic, not extension. Overlay whiteouts are not applied. Encrypted layers

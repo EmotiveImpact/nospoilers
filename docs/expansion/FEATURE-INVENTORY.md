@@ -37,7 +37,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Directory, `.tar`, tgz/tar.gz, ZIP, asar, VSIX, CRX, XPI, wheel, JAR/WAR, nupkg, gem, Docker/OCI image, APK/AAB/IPA, serverless zip and single-file scanning | Built | NoSpoilers |
+| Directory, `.tar`, tgz/tar.gz, ZIP, asar, VSIX, CRX, XPI, Chrome extension ZIP, wheel, Python sdist, JAR/WAR, nupkg, gem, Docker/OCI image, APK/AAB/IPA, serverless zip and single-file scanning | Built | NoSpoilers |
 | Source maps, embedded source and map URL rules | Built | NoSpoilers |
 | Environment, private key and high-confidence token rules | Built | NoSpoilers |
 | Credential config, AI context, internal location, debug rules | Built | NoSpoilers |
@@ -118,8 +118,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
 | Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, clean and dirty fixtures, GitHub Release asset, Scan example | NoSpoilers |
-| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; clean and dirty Scan examples | NoSpoilers |
-| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path; clean and dirty Scan examples | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; Chrome ZIP WebExtension layout (root manifest.json, not a CRX header) classified as xpi; clean and dirty Scan examples | NoSpoilers |
+| Python wheel and source distribution | Built: `.whl` as ZIP; sdist tar.gz PKG-INFO layout sniff (not a generic npm tarball); Python is not executed; clean and dirty Scan examples | NoSpoilers |
 | Java JAR/WAR | Built: ZIP magic; clean and dirty JAR and WAR Scan examples | NoSpoilers |
 | NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; clean and dirty nupkg and snupkg Scan examples | NoSpoilers |
 | Ruby gems | Built: tar + nested `data.tar.gz`, never executed; clean and dirty Scan examples | NoSpoilers |

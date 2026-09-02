@@ -20,7 +20,7 @@ const ZIP_KINDS = new Set<ScanTargetKind>([
 
 const NAMED_ZIP_KINDS = new Set<ScanTargetKind>(["vsix", "crx", "xpi", "wheel", "jar", "nupkg"]);
 
-const TAR_KINDS = new Set<ScanTargetKind>(["tarball", "gem", "docker", "oci"]);
+const TAR_KINDS = new Set<ScanTargetKind>(["tarball", "gem", "docker", "oci", "sdist"]);
 
 export function isZipFamilyKind(kind: ScanTargetKind): boolean {
   return ZIP_KINDS.has(kind);
@@ -200,6 +200,32 @@ export function archivePathEscapes(name: string): boolean {
   return n.split("/").includes("..");
 }
 
+export function sniffSdistLayout(paths: string[]): boolean {
+  const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
+  return names.some((n) => {
+    const parts = n.split("/").filter((part) => part && part !== ".");
+    const base = parts[parts.length - 1] ?? "";
+    if (base !== "PKG-INFO") return false;
+    if (parts.length === 1 || parts.length === 2) return true;
+    if (parts.length === 3 && /\.egg-info$/i.test(parts[1] ?? "")) return true;
+    return false;
+  });
+}
+
+export function sniffWebExtensionLayout(paths: string[]): boolean {
+  const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
+  if (sniffMobileLayout(names)) return false;
+  if (names.some((n) => /\.apk$/i.test(path.posix.basename(n)))) return false;
+  const hasRootManifest = names.some((n) => n === "manifest.json" || n === "./manifest.json");
+  if (!hasRootManifest) return false;
+  return names.some((n) => {
+    if (n === "background.js" || n.endsWith("/background.js")) return true;
+    if (n === "service_worker.js" || n.endsWith("/service_worker.js")) return true;
+    if (n === "_locales" || n.startsWith("_locales/")) return true;
+    return false;
+  });
+}
+
 export function sniffServerlessLayout(paths: string[]): boolean {
   const names = paths.map((p) => posixArchivePath(p).split("!/")[0] ?? p);
   return names.some((n) => {
@@ -254,12 +280,14 @@ export function sniffPackFormat(bytes: Buffer, filename = ""): ScanTargetKind | 
     const mobile = sniffMobileLayout(zipNames);
     if (mobile) return mobile;
     if (fromName === "serverless" || sniffServerlessLayout(zipNames)) return "serverless";
+    if (sniffWebExtensionLayout(zipNames)) return "xpi";
     if (fromName && ZIP_KINDS.has(fromName)) return fromName;
     return "zip";
   }
   if (isGzipMagic(bytes) || isTarMagic(bytes)) {
     if (fromName === "gem") return "gem";
     if (fromName === "oci" || fromName === "docker") return fromName;
+    if (fromName === "sdist") return "sdist";
     return "tarball";
   }
   return fromName;
@@ -279,6 +307,12 @@ export const MOBILE_SIGNING_NOTE =
 
 export const SERVERLESS_NOTE =
   "Lambda, Azure Functions, Netlify, and Vercel handlers are never executed. Runtimes, bootstraps, and native binaries inside the zip are not run. Encrypted zip entries are not decrypted. Cloud provider signatures are not verified.";
+
+export const PYTHON_NOTE =
+  "Python wheels and source distributions are not executed. setup.py, setup.cfg, pyproject.toml, and installed scripts are read as text only. PKG-INFO layout marks an sdist. Encrypted zip entries are not decrypted.";
+
+export const WEBEXTENSION_NOTE =
+  "Chrome CRX headers are stripped to a ZIP payload. Chrome extension ZIPs and Firefox XPI share WebExtension layout (root manifest.json). Extension workers, content scripts, and native hosts are never executed. A CRX wrapper without a ZIP payload is inconclusive.";
 
 function posixArchivePath(rel: string): string {
   return rel.replace(/\\/g, "/").replace(/^\.\//, "");

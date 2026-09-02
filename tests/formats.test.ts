@@ -8,9 +8,11 @@ import { c as tarCreate } from "tar";
 import {
   CRX_INCONCLUSIVE,
   ENCRYPTION_INCONCLUSIVE,
+  WEBEXTENSION_NOTE,
   listZipEntryNames,
   packFormatFromName,
   sniffPackFormat,
+  sniffWebExtensionLayout,
   unwrapCrx,
   zipUsesEncryption,
 } from "../src/scanner/formats.ts";
@@ -141,7 +143,44 @@ describe("extra packed formats", () => {
     expect(isPackAssetName("dist/app.war")).toBe(true);
     expect(isPackAssetName("dist/App.1.0.0.snupkg")).toBe(true);
     expect(isPackAssetName("dist/fn.lambda.zip")).toBe(true);
+    expect(isPackAssetName("dist/spoiler-1.0.0.tar.gz")).toBe(true);
+    expect(isPackAssetName("dist/theme.chrome.zip")).toBe(true);
     expect(isPackAssetName("README.md")).toBe(false);
+  });
+
+  it("classifies a Chrome extension ZIP by WebExtension layout, not a CRX header", async () => {
+    expect(sniffWebExtensionLayout(["manifest.json", "background.js"])).toBe(true);
+    expect(sniffWebExtensionLayout(["manifest.json", "_locales/en/messages.json"])).toBe(true);
+    expect(sniffWebExtensionLayout(["manifest.json", "index.js"])).toBe(false);
+    expect(sniffWebExtensionLayout(["manifest.json", "app.apk"])).toBe(false);
+    expect(WEBEXTENSION_NOTE).toMatch(/never executed/i);
+    expect(WEBEXTENSION_NOTE).toMatch(/not a CRX header|CRX headers are stripped/i);
+
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ns-chrome-"));
+    try {
+      await writeZip(path.join(dir, "theme.zip"), {
+        "manifest.json": '{"manifest_version":3,"name":"spoiler","background":{"service_worker":"background.js"}}',
+        "background.js": JS,
+        "background.js.map": MAP,
+        "_locales/en/messages.json": "{}",
+      });
+      await writeZip(path.join(dir, "site.zip"), {
+        "manifest.json": '{"name":"PWA","start_url":"/"}',
+        "index.js": "console.log(1)\n",
+      });
+      const chrome = await scan(path.join(dir, "theme.zip"));
+      expect(chrome.kind).toBe("xpi");
+      expect(chrome.status).toBe("failed-policy");
+      expect(chrome.findings.map((row) => row.rule)).toEqual(
+        expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+      );
+      const bytes = await readFile(path.join(dir, "theme.zip"));
+      expect(sniffPackFormat(bytes, "theme.zip")).toBe("xpi");
+      const site = await scan(path.join(dir, "site.zip"));
+      expect(site.kind).toBe("zip");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("prefers ZIP/CRX magic over a misleading extension", async () => {

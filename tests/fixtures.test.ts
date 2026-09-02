@@ -138,7 +138,9 @@ describe("packed fixtures", () => {
       ["clean.vsix", "vsix"],
       ["clean.crx", "crx"],
       ["clean.xpi", "xpi"],
+      ["clean.chrome.zip", "xpi"],
       ["clean.whl", "wheel"],
+      ["clean.sdist.tgz", "sdist"],
       ["clean.jar", "jar"],
       ["clean.war", "jar"],
       ["clean.nupkg", "nupkg"],
@@ -166,7 +168,9 @@ describe("packed fixtures", () => {
     const cases = [
       ["sourcemap.crx", "crx"],
       ["sourcemap.xpi", "xpi"],
+      ["sourcemap.chrome.zip", "xpi"],
       ["sourcemap.whl", "wheel"],
+      ["sourcemap.sdist.tgz", "sdist"],
       ["sourcemap.jar", "jar"],
       ["sourcemap.war", "jar"],
       ["sourcemap.nupkg", "nupkg"],
@@ -188,8 +192,12 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/path: "fixtures\/sourcemap.crx"/);
     expect(page).toMatch(/CRX header stripped/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.xpi"/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.chrome.zip"/);
+    expect(page).toMatch(/WebExtension layout, not a CRX header/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.whl"/);
     expect(page).toMatch(/Python is not executed/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.sdist.tgz"/);
+    expect(page).toMatch(/PKG-INFO layout/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.jar"/);
     expect(page).toMatch(/Bytecode is not executed/);
     expect(page).toMatch(/path: "fixtures\/sourcemap.war"/);
