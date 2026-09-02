@@ -266,7 +266,7 @@
           </div>
         </div>
 
-        <div class="headline has-data">
+        <div class="headline has-data hide-ended">
           <div>
             <span class="kicker">Time exposed, last 7 days</span>
             <div class="big bad" style="margin-top: 8px">41m</div>
@@ -383,7 +383,8 @@
                 <span class="pill crit">open</span>
                 <strong>nospoilers@0.4.2 · MAP-002</strong>
               </div>
-              <span class="tiny dim">exposure clock running</span>
+              <span class="tiny dim hide-ended">exposure clock running</span>
+              <span class="tiny bad s-ended">clock stopped when coverage did</span>
             </div>
 
             <div style="margin-top: 16px">
@@ -443,7 +444,12 @@
             <div class="mttr">
               <span class="kicker">This incident</span>
               <div class="n bad">41m 08s</div>
-              <p class="tiny dim" style="margin-top: 5px">Reachable by anyone with npm</p>
+              <p class="tiny dim hide-ended" style="margin-top: 5px">
+                Reachable by anyone with npm
+              </p>
+              <p class="tiny bad s-ended" style="margin-top: 5px">
+                Last measured 6 days ago. Still reachable, as far as we know.
+              </p>
               <hr class="hr" style="margin: 13px 0" />
               <div class="between small muted">
                 <span>Detected in</span><span class="snow mono">38 s</span>
@@ -462,9 +468,16 @@
                 Exposure windows and receipts, for the incident write-up nobody enjoys.
               </p>
               <div class="col gap8" style="margin-top: 12px">
-                <button class="btn sm outline">Download timeline CSV</button>
+                <button class="btn sm outline team-only">Download timeline CSV</button>
+                <button class="btn sm outline admin-only team-only">Export audit log</button>
                 <button class="btn sm outline">Download signed receipts</button>
               </div>
+              <p class="tiny dim s-solo" style="margin-top: 11px">
+                The exportable timeline and audit log are on Team. Receipts download on any plan.
+              </p>
+              <p class="tiny dim s-member" style="margin-top: 11px">
+                Exporting the audit log is an admin action. Timeline and receipts are yours.
+              </p>
             </div>
           </aside>
         </div>

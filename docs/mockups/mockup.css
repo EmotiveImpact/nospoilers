@@ -504,6 +504,10 @@ table.tbl tbody tr:hover td {
 #p-empty:checked ~ .app .has-data {
   display: none !important;
 }
+/* For content a dedicated .s-ended block replaces, so the two never stack. */
+#p-ended:checked ~ .app .hide-ended {
+  display: none !important;
+}
 
 /* Mirrors CoverageLock.tsx: it covers the panel rather than dimming it. */
 .lockable {

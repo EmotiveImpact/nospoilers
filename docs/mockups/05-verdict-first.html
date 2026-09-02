@@ -186,7 +186,8 @@
           </p>
           <p class="muted has-data s-solo" style="margin-top: 12px">
             Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
-            4 minutes.
+            4 minutes. On Solo both problems stay on this page: nothing routes to Slack or Jira,
+            and there is no install timeline or audit log behind them.
           </p>
           <p class="muted has-data s-member" style="margin-top: 12px">
             Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
@@ -384,7 +385,10 @@
         <details class="fold">
           <summary>
             <span class="dot"></span> Advanced
-            <span class="summary-val">Scan API tokens, registries, install health, audit log</span>
+            <span class="summary-val team-only"
+              >Scan API tokens, registries, install health, audit log</span
+            >
+            <span class="summary-val s-solo">Scan API tokens, registries, install health</span>
             <span class="caret">›</span>
           </summary>
           <div class="fold-body">
@@ -393,11 +397,17 @@
               configuration.
             </p>
             <div class="row gap8 wrap" style="margin-top: 12px">
-              <button class="btn sm outline">Scan API tokens</button>
-              <button class="btn sm outline">Private registries</button>
+              <button class="btn sm outline admin-only">Scan API tokens</button>
+              <button class="btn sm outline admin-only">Private registries</button>
               <button class="btn sm outline">Install health</button>
-              <button class="btn sm outline">Audit log</button>
+              <button class="btn sm outline team-only">Audit log</button>
             </div>
+            <p class="tiny dim s-solo" style="margin-top: 12px">
+              Subscribe to Team to keep the audit log.
+            </p>
+            <p class="tiny dim s-member" style="margin-top: 12px">
+              Scan API tokens and private registries are admin-only.
+            </p>
           </div>
         </details>
       </div>

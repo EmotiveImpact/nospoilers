@@ -33,6 +33,7 @@ The markup contract:
 | `.has-data` | Hidden in the Empty preset |
 | `.admin-only` | Hidden in the Member preset |
 | `.team-only` | Hidden in the Solo preset |
+| `.hide-ended` | Hidden in the Ended preset, for content a dedicated `.s-ended` block replaces |
 | `.lockable` with a `.lockveil` child | The veil covers the panel in the Ended preset |
 
 Rules to keep if you extend this:
@@ -62,12 +63,31 @@ Real strings were lifted from the app so the gated states read truthfully:
 
 Rule ids, severities, and limits come from the table in the root `README.md`.
 
+## Verifying a preset without clicking
+
+A headless screenshot cannot click the switcher, and a browser-driving agent gets it wrong often
+enough that you should not trust a negative result from one. Render the state directly instead:
+
+```bash
+node -e '
+const fs=require("fs");
+let h=fs.readFileSync("docs/mockups/09-bento-overview.html","utf8");
+h=h.replace(/ id="p-trial" class="stateset" checked/, " id=\"p-trial\" class=\"stateset\"");
+h=h.replace(/ id="p-ended" class="stateset"/, " id=\"p-ended\" class=\"stateset\" checked");
+fs.writeFileSync("docs/mockups/_tmp.html",h);'
+```
+
+Then screenshot `http://localhost:3000/_tmp` and delete the file. Chrome needs
+`--host-resolver-rules="MAP fonts.googleapis.com 127.0.0.1,MAP fonts.gstatic.com 127.0.0.1"` or it
+stalls for 40 seconds on the Google Fonts request. The fonts fall back to system sans, which is
+fine for checking layout.
+
 ## Known gaps, in the order worth doing
 
-1. **A visual pass over the five presets on all ten pages** was in flight when this note was
-   written. Anything it turned up is either fixed on this branch or listed in the PR. Re-run it
-   after any structural edit: the presets are easy to break by adding content without a state
-   class, which makes an element show up in all five.
+1. **The presets are easy to break by adding content without a state class**, which makes an
+   element show up in all five. The other trap is adding an `.s-ended` block next to content it
+   replaces without marking that content `.hide-ended` — you get both stacked. That bug happened
+   twice and was caught by rendering, not by reading the markup.
 2. **Narrow widths are only spot-checked.** 01 and 09 were verified at 700px. The three-pane
    layout in 03 and the gantt in 08 are the likely problems.
 3. **No mockup shows the loading or per-section error states.** The real desk has both, and 03's
