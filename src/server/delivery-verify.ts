@@ -300,11 +300,13 @@ export async function attachCanonicalDeliveryUrl(
     installationId: input.installationId,
   });
   if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) return null;
+  const revision = await store.getReleaseRevision(input.revisionId);
   return store.insertDeliveryLocationIfAbsent({
     installationId: input.installationId,
     revisionId: input.revisionId,
     url: parsed.url,
     host: parsed.host,
+    expectedMediaType: revision?.media_type ?? null,
     createdByLogin: input.createdByLogin ?? CANONICAL_DELIVERY_ACTOR,
   });
 }
@@ -519,7 +521,7 @@ export async function runDeliveryVerifyJob(input: {
   const result = await verifyDeliveryUrl({
     url: location.url,
     expectedSha256: revision.artifact_sha256,
-    expectedMediaType: location.expected_media_type,
+    expectedMediaType: location.expected_media_type ?? revision.media_type,
     previousMediaType: previous?.observed_media_type ?? null,
     maxBytes: input.maxBytes,
     fetch: input.fetch,
@@ -548,6 +550,8 @@ export async function runDeliveryVerifyJob(input: {
   const alert = alertForVerify(result, {
     coordinate: revision.coordinate,
     expectedSha256: revision.artifact_sha256,
+    expectedBytes: revision.artifact_bytes,
+    expectedMediaType: location.expected_media_type ?? revision.media_type,
     redacted,
     host: location.host,
   });
@@ -567,13 +571,24 @@ export async function runDeliveryVerifyJob(input: {
 
 function alertForVerify(
   result: DeliveryVerifyResult,
-  input: { coordinate: string; expectedSha256: string; redacted: string; host: string },
+  input: {
+    coordinate: string;
+    expectedSha256: string;
+    expectedBytes?: number | null;
+    expectedMediaType?: string | null;
+    redacted: string;
+    host: string;
+  },
 ): { kind: string; title: string; body: string } | null {
   if (result.status === "mismatch") {
+    const sizeNote =
+      input.expectedBytes != null && result.observedBytes != null
+        ? ` Served ${result.observedBytes} bytes; sealed size is ${input.expectedBytes}.`
+        : "";
     return {
       kind: "delivery_mismatch",
       title: `Delivery bytes changed for ${input.coordinate}`,
-      body: `${input.redacted} served SHA-256 ${result.observedSha256}. The sealed revision is ${input.expectedSha256}. Bytes were hashed in transit and not stored. This is a delivery fact, not a compromise claim.`,
+      body: `${input.redacted} served SHA-256 ${result.observedSha256}. The sealed revision is ${input.expectedSha256}.${sizeNote} Bytes were hashed in transit and not stored. This is a delivery fact, not a compromise claim.`,
     };
   }
   if (result.status === "missing") {
@@ -594,7 +609,9 @@ function alertForVerify(
     return {
       kind: "delivery_content_type",
       title: `Delivery content-type changed for ${input.coordinate}`,
-      body: `${input.redacted} served ${result.observedMediaType ?? "an unexpected type"}. Digests still matched. This is a content-type fact, not a compromise claim.`,
+      body: `${input.redacted} served ${result.observedMediaType ?? "an unexpected type"}${
+        input.expectedMediaType ? ` (sealed ${input.expectedMediaType})` : ""
+      }. Digests still matched. This is a content-type fact, not a compromise claim.`,
     };
   }
   return null;

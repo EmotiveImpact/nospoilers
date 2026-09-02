@@ -96,6 +96,45 @@ export function parseCiRunUrl(raw: string | undefined | null): string | null {
   return url.toString();
 }
 
+export function mediaTypeFromPackName(name: string | null | undefined): string | null {
+  const base = (name ?? "").trim().split(/[\\/]/).pop()?.toLowerCase() ?? "";
+  if (!base) return null;
+  if (base.endsWith(".tar.gz") || base.endsWith(".tgz")) return "application/gzip";
+  if (base.endsWith(".tar")) return "application/x-tar";
+  if (/\.(?:zip|vsix|xpi|whl|jar|war|nupkg|snupkg|apk|aab|ipa|xapk)$/.test(base)) {
+    return "application/zip";
+  }
+  if (base.endsWith(".asar") || base.endsWith(".gem") || base.endsWith(".crx")) {
+    return "application/octet-stream";
+  }
+  return null;
+}
+
+export function assetNameFromCoordinate(coordinate: string): string | null {
+  const hash = coordinate.lastIndexOf("#");
+  if (hash < 0) return null;
+  const name = coordinate.slice(hash + 1).trim();
+  return name || null;
+}
+
+export function inferSealedMediaType(input: {
+  coordinate: string;
+  filename?: string | null;
+}): string | null {
+  return (
+    mediaTypeFromPackName(input.filename) ??
+    mediaTypeFromPackName(assetNameFromCoordinate(input.coordinate)) ??
+    (input.coordinate.startsWith("npm:") ? "application/gzip" : null)
+  );
+}
+
+export function parseSealedArtifactBytes(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 320 * 1024 * 1024) return null;
+  return n;
+}
+
 export function parseReleaseScanMeta(input: {
   channel?: string | null;
   sourceRevision?: string | null;
@@ -128,8 +167,11 @@ export async function appendReleaseRevision(
     coordinate: string;
     artifactSha256: string;
     artifactSha512?: string | null;
+    artifactBytes?: number | null;
+    mediaType?: string | null;
     sourceRevision?: string | null;
     ciRunUrl?: string | null;
+    filename?: string | null;
   },
 ) {
   const sha256 = input.artifactSha256.toLowerCase();
@@ -140,6 +182,10 @@ export async function appendReleaseRevision(
   );
   const previousSha256 = previous?.artifact_sha256 ?? null;
   const mismatch = previousSha256 !== null && previousSha256 !== sha256;
+  const artifactBytes = parseSealedArtifactBytes(input.artifactBytes);
+  const mediaType =
+    input.mediaType ??
+    inferSealedMediaType({ coordinate: input.coordinate, filename: input.filename });
   const row = await store.insertReleaseRevision({
     installationId: input.installationId,
     packageId: input.packageId ?? null,
@@ -149,18 +195,24 @@ export async function appendReleaseRevision(
     coordinate: input.coordinate,
     artifactSha256: sha256,
     artifactSha512: input.artifactSha512 ? input.artifactSha512.toLowerCase() : null,
+    artifactBytes,
+    mediaType,
     sourceRevision: input.sourceRevision ?? null,
     ciRunUrl: input.ciRunUrl ?? null,
     previousSha256,
     mismatch,
   });
   if (mismatch) {
+    const sizeNote =
+      previous?.artifact_bytes != null && artifactBytes != null
+        ? ` Previous size ${previous.artifact_bytes} bytes. This artifact is ${artifactBytes} bytes.`
+        : "";
     await store.insertAlert({
       installationId: input.installationId,
       repoId: input.repoId ?? null,
       kind: "release_digest_mismatch",
       title: `Digest mismatch on ${input.coordinate} (${input.channel})`,
-      body: `Previous SHA-256 ${previousSha256}. This artifact is ${sha256}. Historical revisions were not rewritten. A digest change is not a compromise claim.`,
+      body: `Previous SHA-256 ${previousSha256}. This artifact is ${sha256}.${sizeNote} Historical revisions were not rewritten. A digest change is not a compromise claim.`,
       findings: {
         coordinate: input.coordinate,
         channel: input.channel,

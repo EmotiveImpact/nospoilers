@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Sealed release revisions store packed size and an inferred media type
+  (`.tgz` / npm → `application/gzip`, zip-family → `application/zip`).
+  Watch shows both. Canonical and attached delivery URLs inherit that type
+  when none is sent. Delivery verify uses it for content-type drift.
+  Older rows stay null (append-only). Not a Pricing change.
+
 - `nospoilers verify` accepts `--url` so CI can stream-hash a delivery URL
   against a signed receipt without uploading the pack. Same expected hops and
   SSRF rules as Watch. Query strings are not printed. Bytes are not stored.

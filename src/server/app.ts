@@ -319,6 +319,8 @@ function publicRelease(
     coordinate: row.coordinate,
     artifactSha256: row.artifact_sha256,
     artifactSha512: row.artifact_sha512,
+    artifactBytes: row.artifact_bytes,
+    mediaType: row.media_type,
     sourceRevision: row.source_revision,
     ciRunUrl: row.ci_run_url,
     previousSha256: row.previous_sha256,
@@ -3107,7 +3109,7 @@ export function createApp(deps: AppDeps): Hono {
       revisionId: row.id,
       url: parsed.url,
       host: parsed.host,
-      expectedMediaType: mediaType,
+      expectedMediaType: mediaType ?? row.media_type,
       createdByLogin: user.login,
     });
     await recordAudit({

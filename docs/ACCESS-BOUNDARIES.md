@@ -384,7 +384,7 @@ files are not overwritten, empty `.nospoilers.yml` has no allowlist, and the mer
   a download while 5xx and unpaid do not. `tests/scan-api.test.ts`
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
-are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
+are append-only, tenant-scoped, store packed size and inferred media type, flag digest mismatch without a compromise claim, reject
 SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt JSON for
 a sealed release even after coverage ends (another tenant is 404).
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is

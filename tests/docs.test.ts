@@ -29,7 +29,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/signed receipt/i);
     expect(text).toMatch(/hashed in the browser/i);
     expect(text).toMatch(/Watch lists the linked receipt status/i);
-    expect(text).toMatch(/Watch lists the linked receipt status on Releases and downloads the signed JSON/i);
+    expect(text).toMatch(/Watch lists the linked receipt status, sealed size, and media type on Releases and downloads the signed JSON/i);
     expect(text).toMatch(/verify it now/i);
     expect(text).toMatch(/not scheduled CDN verification/i);
     expect(text).toMatch(/GitHub Release download hop/i);

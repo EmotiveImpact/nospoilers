@@ -13,8 +13,11 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import {
   inferReleaseChannel,
   inferReleaseChannelFromCoordinate,
+  inferSealedMediaType,
+  mediaTypeFromPackName,
   parseCiRunUrl,
   parseReleaseScanMeta,
+  parseSealedArtifactBytes,
   parseSourceRevision,
 } from "../src/server/release-ledger.ts";
 import { persistHostedReceipt } from "../src/server/receipts.ts";
@@ -63,6 +66,26 @@ function passedReport(overrides: Partial<ScanReport> = {}): ScanReport {
     ...overrides,
   };
 }
+
+describe("sealed size and media type", () => {
+  it("infers pack media types and rejects junk sizes", () => {
+    expect(mediaTypeFromPackName("app.tgz")).toBe("application/gzip");
+    expect(mediaTypeFromPackName("layer.tar.gz")).toBe("application/gzip");
+    expect(mediaTypeFromPackName("image.tar")).toBe("application/x-tar");
+    expect(mediaTypeFromPackName("ext.vsix")).toBe("application/zip");
+    expect(mediaTypeFromPackName("app.asar")).toBe("application/octet-stream");
+    expect(inferSealedMediaType({ coordinate: "npm:demo-pack@1.0.0" })).toBe("application/gzip");
+    expect(
+      inferSealedMediaType({
+        coordinate: "github:octo/app@v1#app.tgz",
+        filename: "ignored.zip",
+      }),
+    ).toBe("application/zip");
+    expect(parseSealedArtifactBytes(12)).toBe(12);
+    expect(parseSealedArtifactBytes(-1)).toBeNull();
+    expect(parseSealedArtifactBytes("nope")).toBeNull();
+  });
+});
 
 describe("release channel inference", () => {
   it("maps tags and versions onto stable, beta, or canary", () => {
@@ -160,6 +183,8 @@ describe("release ledger", () => {
           channel: string;
           mismatch: boolean;
           artifactSha256: string;
+          artifactBytes: number | null;
+          mediaType: string | null;
           sourceRevision: string | null;
           ciRunUrl: string | null;
           receiptStatus: "passed" | "failed-policy" | "inconclusive" | null;
@@ -169,6 +194,8 @@ describe("release ledger", () => {
       expect(firstBody.release.mismatch).toBe(false);
       expect(firstBody.release.receiptId).toBeGreaterThan(0);
       expect(firstBody.release.receiptStatus).toBe("passed");
+      expect(firstBody.release.artifactBytes).toBe(bytes.length);
+      expect(firstBody.release.mediaType).toBe("application/gzip");
       expect(firstBody.release.sourceRevision).toBe("v1.0.0");
       expect(firstBody.release.ciRunUrl).toBe("https://github.com/octo/app/actions/runs/99");
       expect(firstBody.receipt.channel).toBe("stable");
@@ -396,6 +423,8 @@ describe("release ledger", () => {
       expect(persisted.revision.mismatch).toBe(false);
       expect(persisted.revision.receipt_status).toBe("passed");
       expect(persisted.revision.source_revision).toBe("1.0.0-beta.1");
+      expect(persisted.revision.artifact_bytes).toBe(12);
+      expect(persisted.revision.media_type).toBe("application/gzip");
       expect(parseReleaseScanMeta({ coordinate: "npm:demo-pack@1.0.0-beta.1" }).channel).toBe("beta");
     } finally {
       await sql.close();

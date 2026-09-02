@@ -375,6 +375,8 @@ type ReleaseRevision = {
   channel: "stable" | "beta" | "canary";
   coordinate: string;
   artifactSha256: string;
+  artifactBytes: number | null;
+  mediaType: string | null;
   sourceRevision: string | null;
   ciRunUrl: string | null;
   mismatch: boolean;
@@ -382,6 +384,16 @@ type ReleaseRevision = {
   createdAt: string;
   locations?: DeliveryLocation[];
 };
+
+function formatSealedBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) {
+    const kib = bytes / 1024;
+    return `${kib < 10 ? kib.toFixed(1) : Math.round(kib)} KiB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
 
 function receiptStatusMark(status: ReceiptScanStatus | null) {
   if (status === "failed-policy") {
@@ -4467,7 +4479,8 @@ export function WatchPage({ search }: { search: string }) {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
           canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
-          and never fetched. Each row shows the linked receipt status. Failed-policy and
+          and never fetched.           Each row shows the linked receipt status, sealed size, and media type.
+          Failed-policy and
           inconclusive are not clean and are not allowed to ship. Download the signed receipt JSON
           and check it on Scan or with{" "}
           <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
@@ -4500,6 +4513,8 @@ export function WatchPage({ search }: { search: string }) {
                       {release.channel}
                       {release.sourceRevision ? ` · ${release.sourceRevision}` : ""}
                       {` · ${release.artifactSha256.slice(0, 12)}`}
+                      {release.artifactBytes != null ? ` · ${formatSealedBytes(release.artifactBytes)}` : ""}
+                      {release.mediaType ? ` · ${release.mediaType}` : ""}
                       {release.createdAt ? ` · ${release.createdAt.slice(0, 10)}` : ""}
                     </p>
                   </div>

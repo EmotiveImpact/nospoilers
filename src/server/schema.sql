@@ -439,6 +439,8 @@ CREATE TABLE IF NOT EXISTS release_revisions (
   coordinate TEXT NOT NULL,
   artifact_sha256 TEXT NOT NULL,
   artifact_sha512 TEXT,
+  artifact_bytes BIGINT,
+  media_type TEXT,
   source_revision TEXT,
   ci_run_url TEXT,
   previous_sha256 TEXT,

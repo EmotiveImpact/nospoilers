@@ -51,12 +51,14 @@ Read in this order:
   `delivery_location.save`. The 027 audit-action check is applied only on first
   migrate so later `delivery_location.save` rows are not rejected.
   `035_delivery_verify_chain` adds `redirect_hosts`, `cache_state`, and
-  `delivery_region` on verifications. Next unused id is `036_*`.
+  `delivery_region` on verifications.
+  `036_release_size_type` adds `artifact_bytes` and `media_type` on
+  `release_revisions`. Next unused id is `037_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
-  append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
+  append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, packed size, media type, source revision, stored CI URL).
   UPDATE/DELETE on `release_revisions` is rejected. Install admins can attach HTTPS delivery
   URLs to a sealed revision and verify them now (`delivery_verify` light job, enqueue wakes
   the worker). A public GitHub Release download URL and a public npm tarball URL are

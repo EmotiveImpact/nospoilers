@@ -66,7 +66,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   `APP_BASE_URL` as `NOSPOILERS_API_URL` when signed in; loopback/HTTP is not reachable from
   GitHub-hosted runners.
 - Release Ledger foundations: append-only `release_revisions` with stable/beta/canary channels,
-  SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
+  SHA-256/SHA-512 identity, packed size, media type, source revision, stored HTTPS CI run URL (never fetched), and a
   Watch Releases view with linked receipt status (`passed` / `failed-policy` / `inconclusive`).
   Failed-policy and inconclusive are not clean. Digest mismatch appends a new row and an
   explainable alert. An install admin can attach an HTTPS delivery URL and verify it now

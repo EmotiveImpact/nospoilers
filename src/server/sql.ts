@@ -779,6 +779,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   ]);
   await migrateDeliveryVerify(sql);
   await migrateDeliveryVerifyChain(sql);
+  await migrateReleaseSizeType(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -879,6 +880,18 @@ async function migrateDeliveryVerifyChain(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "035_delivery_verify_chain",
+  ]);
+}
+
+async function migrateReleaseSizeType(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE release_revisions
+      ADD COLUMN IF NOT EXISTS artifact_bytes BIGINT;
+    ALTER TABLE release_revisions
+      ADD COLUMN IF NOT EXISTS media_type TEXT;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "036_release_size_type",
   ]);
 }
 

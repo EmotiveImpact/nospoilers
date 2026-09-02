@@ -44,7 +44,9 @@ export async function runCliVerify(input: {
   }
   const receipt = checked.receipt;
   const lines = [
-    `Receipt ${receipt.status}  sha256 ${receipt.artifactSha256}  ${receipt.coordinate}`,
+    `Receipt ${receipt.status}  sha256 ${receipt.artifactSha256}` +
+      (receipt.artifactBytes != null ? `  ${receipt.artifactBytes} bytes` : "") +
+      `  ${receipt.coordinate}`,
   ];
 
   if (url) {

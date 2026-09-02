@@ -171,6 +171,8 @@ export async function persistHostedReceipt(opts: {
     coordinate: opts.coordinate,
     artifactSha256: receipt.artifactSha256,
     artifactSha512: receipt.artifactSha512,
+    artifactBytes: receipt.artifactBytes,
+    filename: opts.report.target,
     sourceRevision: sourceRevision ?? receipt.sourceRevision ?? null,
     ciRunUrl: opts.ciRunUrl ?? receipt.ciRunUrl ?? null,
   });

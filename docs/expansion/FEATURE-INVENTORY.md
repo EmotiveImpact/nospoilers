@@ -81,7 +81,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | SHA-256/SHA-512 artifact identity | Built: packed-file SHA-256/SHA-512 on receipts | NoSpoilers |
-| Append-only sealed release revisions | Built: append-only `release_revisions`; digest mismatch appends, never rewrites; Watch lists linked receipt status (`passed` / `failed-policy` / `inconclusive`) and downloads the signed receipt JSON; failed-policy and inconclusive are not clean | NoSpoilers |
+| Append-only sealed release revisions | Built: append-only `release_revisions`; digest mismatch appends, never rewrites; each new row stores packed size and inferred media type (`application/gzip` for `.tgz` / npm, `application/zip` for zip-family packs); Watch lists size, media type, and linked receipt status (`passed` / `failed-policy` / `inconclusive`) and downloads the signed receipt JSON; failed-policy and inconclusive are not clean | NoSpoilers |
 | Build/source revision and CI provenance link | Built: git SHA/tag/version and HTTPS CI URL stored, never fetched; Sigstore still Planned | NoSpoilers |
 | CycloneDX/SPDX SBOM attachment | Planned | NoSpoilers Team |
 | SLSA/in-toto provenance validation | Planned | NoSpoilers Team |

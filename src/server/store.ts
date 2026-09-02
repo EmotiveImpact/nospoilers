@@ -327,6 +327,8 @@ export type ReleaseRevisionRow = {
   coordinate: string;
   artifact_sha256: string;
   artifact_sha512: string | null;
+  artifact_bytes: number | null;
+  media_type: string | null;
   source_revision: string | null;
   ci_run_url: string | null;
   previous_sha256: string | null;
@@ -794,6 +796,8 @@ type ReleaseRevisionSqlRow = {
   coordinate: string;
   artifact_sha256: string;
   artifact_sha512: string | null;
+  artifact_bytes?: unknown;
+  media_type?: string | null;
   source_revision: string | null;
   ci_run_url: string | null;
   previous_sha256: string | null;
@@ -818,6 +822,9 @@ function releaseRevisionRow(row: ReleaseRevisionSqlRow): ReleaseRevisionRow {
     coordinate: row.coordinate,
     artifact_sha256: row.artifact_sha256,
     artifact_sha512: row.artifact_sha512,
+    artifact_bytes:
+      row.artifact_bytes === null || row.artifact_bytes === undefined ? null : num(row.artifact_bytes),
+    media_type: row.media_type ?? null,
     source_revision: row.source_revision,
     ci_run_url: row.ci_run_url,
     previous_sha256: row.previous_sha256,
@@ -4623,6 +4630,8 @@ export function createStore(
       coordinate: string;
       artifactSha256: string;
       artifactSha512?: string | null;
+      artifactBytes?: number | null;
+      mediaType?: string | null;
       sourceRevision?: string | null;
       ciRunUrl?: string | null;
       previousSha256?: string | null;
@@ -4631,10 +4640,10 @@ export function createStore(
       const { rows } = await sql.query<ReleaseRevisionSqlRow>(
         `INSERT INTO release_revisions (
            installation_id, package_id, repo_id, receipt_id, channel, coordinate,
-           artifact_sha256, artifact_sha512, source_revision, ci_run_url,
-           previous_sha256, mismatch
+           artifact_sha256, artifact_sha512, artifact_bytes, media_type,
+           source_revision, ci_run_url, previous_sha256, mismatch
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           input.installationId,
@@ -4645,6 +4654,8 @@ export function createStore(
           input.coordinate,
           input.artifactSha256,
           input.artifactSha512 ?? null,
+          input.artifactBytes ?? null,
+          input.mediaType ?? null,
           input.sourceRevision ?? null,
           input.ciRunUrl ?? null,
           input.previousSha256 ?? null,
