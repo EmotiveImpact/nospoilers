@@ -104,6 +104,12 @@ export function disclosureDestinationPayload(report: DisclosureReport): Record<s
       repo: row.repo,
       reasons: row.reasons,
     })),
+    organization: report.organization
+      ? {
+          githubOwner: report.organization.githubOwner,
+          domains: report.organization.domains.map((row) => row.host),
+        }
+      : null,
     state: report.state,
     fingerprints: report.fingerprints,
     findingCategory: report.findingCategory,

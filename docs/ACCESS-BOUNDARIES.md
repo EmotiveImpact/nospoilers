@@ -348,7 +348,9 @@ Internal staff running acquisition and disclosure work.
   stay verified), duplicate
   warning and confirmed append-only `duplicate_links` (both cases see the
   other owner/repo and reasons; a 409 without `confirmDuplicate` writes
-  no row), encrypted expiring notes, stored (never fetched) security contact or https
+  no row), first-class GitHub-owner organizations with append-only vendor
+  domains from a stored policy URL or security contact (forge/registry hosts
+  are omitted; not a commercial workspace), encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
   (text/PDF/image only; expired ciphertext is zeroed on desk read and the
@@ -365,6 +367,9 @@ Internal staff running acquisition and disclosure work.
 - Read owner-only researcher workload (`GET /api/internal/disclosure/workload`):
   case counts per assignee and unassigned, including state, pending review, and
   missed deadlines. Minutes, last-active, ranking, and billing fields are omitted.
+- Read first-class Disclosure Desk organizations (`GET /api/internal/disclosure/organizations`):
+  GitHub owners from cases plus recorded vendor domains. No create form; rows
+  come from real cases only.
 - Save, test, and delete owner-only Disclosure Desk destinations
   (`/api/internal/disclosure/destinations`): one HTTPS webhook and one Jira Cloud
   project. Secrets are never returned. A test never invents an incident or
@@ -489,9 +494,11 @@ warn on owner/repo, same GitHub owner, vendor domain (policy URL or contact emai
 package name, or fingerprint overlap unless confirmed, fingerprints
 are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are
 encrypted and expire from reads, drafts and acknowledgements stay `sent: false`,
-`disclosure_events` are append-only, and confirmed `disclosure_duplicate_links`
-are append-only. Live Neon: unauth and `not-admin` 401; owner
-desk 200; prettier vs left-pad still no duplicate; leftover links 0; no open jobs; tunnel matched.
+`disclosure_events` are append-only, confirmed `disclosure_duplicate_links`
+are append-only, and vendor domains on `disclosure_organizations` stay after
+contact/policy is cleared. Live Neon: `056` applied; unauth and `not-admin` 401; owner
+desk 200; prettier org + `prettier.io`; stevemao org, no vendor domain;
+prettier vs left-pad still no duplicate; leftover extra orgs 0; leftover links 0; no open jobs; tunnel matched.
 Existing feed tests still call
 `store.updateProspectStatus` directly.
 `tests/disclosure-phase2.test.ts` proves human-edited templates substitute placeholders

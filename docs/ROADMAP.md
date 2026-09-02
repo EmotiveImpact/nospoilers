@@ -211,7 +211,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   on create and before `contacted`, with confirmed pairs stored on
   `disclosure_duplicate_links` (live Neon prettier vs left-pad still no
   match so leftover links stay 0; left-pad `contacted` 409 verify;
-  prettier stays `fixed`) —
+  prettier stays `fixed`) — first-class GitHub-owner organizations and
+  append-only vendor domains from policy/contact (live Neon prettier
+  `prettier.io`, stevemao no vendor domain; extra orgs 0) —
   live Neon prettier vs left-pad still no match,
   templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before

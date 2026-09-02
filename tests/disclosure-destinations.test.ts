@@ -253,6 +253,7 @@ describe("Disclosure Desk destinations", () => {
       expect(posted[0]?.body).toContain("MAP-001");
       expect(posted[0]?.body).toContain(SOURCEMAP_DIGESTS.sha256);
       expect(posted[0]?.body).toContain(REPRO_STEPS);
+      expect(posted[0]?.body).toContain("\"githubOwner\":\"prettier\"");
       expect(posted[0]?.body).not.toContain("AKIA");
       expect(posted[0]?.body).not.toContain("Operator reproduction notes");
       expect(posted[0]?.body).not.toContain("security@prettier.io");
@@ -383,6 +384,12 @@ describe("Disclosure Desk destinations", () => {
             attachments: [],
             events: [],
             duplicateLinks: [],
+            organization: {
+              id: 1,
+              githubOwner: "prettier",
+              domains: [{ host: "prettier.io", source: "policy" }],
+              caseCount: 1,
+            },
           }),
         ),
       ).not.toMatch(/security@|timeTo|Ms/i);

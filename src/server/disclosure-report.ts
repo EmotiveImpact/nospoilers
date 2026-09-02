@@ -54,6 +54,16 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
   <p>Verified ${report.sla.verifiedAt ? escapeHtml(report.sla.verifiedAt) : "not yet"}</p>
   <p>Acknowledged ${report.sla.acknowledgedAt ? escapeHtml(report.sla.acknowledgedAt) : "not yet"}</p>
   <p>Assignee ${report.assignee ? escapeHtml(report.assignee) : "unassigned"} · review ${escapeHtml(report.reviewState)}</p>
+  <h2>Organization</h2>
+  <p>${
+    report.organization
+      ? `${escapeHtml(report.organization.githubOwner)}${
+          report.organization.domains.length
+            ? ` · ${escapeHtml(report.organization.domains.map((row) => row.host).join(", "))}`
+            : ""
+        }`
+      : "not recorded"
+  }</p>
   <h2>Duplicate links</h2>
   <ul>${
     report.duplicateLinks
@@ -85,6 +95,13 @@ export function renderDisclosureReportPdf(report: DisclosureReport): Buffer {
     report.reproducibilitySteps
       ? `reproduced ${report.reproducibilitySteps.slice(0, 120)}`
       : "reproduced not recorded",
+    report.organization
+      ? `org ${report.organization.githubOwner}${
+          report.organization.domains.length
+            ? ` ${report.organization.domains.map((row) => row.host).join(",")}`
+            : ""
+        }`
+      : "org not recorded",
     ...report.duplicateLinks.slice(0, 6).map((row) => `dup ${row.owner}/${row.repo} ${row.reasons.join(",")}`),
     `state ${report.state} · ${report.findingCategory} · review ${report.reviewState}`,
     `assignee ${report.assignee ?? "unassigned"}`,

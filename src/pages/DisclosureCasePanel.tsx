@@ -129,6 +129,10 @@ type DisclosureCase = {
     packageName: string | null
     reasons: string[]
   }>
+  organization: {
+    githubOwner: string
+    domains: { host: string; source: string }[]
+  } | null
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -654,6 +658,14 @@ export function DisclosureCasePanel({
                 {desk.artifact.version ? ` · ${desk.artifact.version}` : ""}
                 {desk.artifact.sha256 ? ` · ${desk.artifact.sha256}` : " · hash not recorded"}
               </p>
+              {desk.organization ? (
+                <p className="text-xs text-mute">
+                  Organization · {desk.organization.githubOwner}
+                  {desk.organization.domains.length
+                    ? ` · ${desk.organization.domains.map((row) => row.host).join(", ")}`
+                    : " · no vendor domain"}
+                </p>
+              ) : null}
               {desk.fingerprints.length > 0 ? (
                 <ul className="font-mono text-xs text-dim">
                   {desk.fingerprints.map((fp) => (

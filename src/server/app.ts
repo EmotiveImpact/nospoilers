@@ -90,6 +90,7 @@ import {
   DISCLOSURE_REVIEW_ERROR,
   findDncMatches,
   findDuplicateMatches,
+  listDisclosureOrganizations,
   loadDisclosureCase,
   outreachBlocked,
   persistConfirmedDuplicates,
@@ -883,6 +884,11 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/internal/disclosure/workload", async (c) => {
     const cases = await deps.store.listDisclosureCases();
     return c.json(researcherWorkloadFromCases(cases));
+  });
+
+  app.get("/api/internal/disclosure/organizations", async (c) => {
+    const organizations = await listDisclosureOrganizations(deps.store);
+    return c.json({ organizations });
   });
 
   app.get("/api/internal/disclosure/destinations", async (c) => {

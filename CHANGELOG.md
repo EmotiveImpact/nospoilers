@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+- Disclosure Desk organizations and vendor domains: each case upserts a
+  first-class organization from the GitHub owner. Saving a policy URL or
+  security contact records an append-only vendor domain (forge and registry
+  hosts are not stored). Cleared contact/policy keep the recorded domain so
+  later duplicate matching still sees it. Case views, the owner/operator
+  organization list, redacted reports, and destination payloads show the
+  owner and hosts, never finding values. Not a commercial workspace.
+  Customer sessions stay 401. No worker wake. Nothing is mailed. Live Neon:
+  `056` applied; unauth and `not-admin` 401; owner list has prettier
+  (`prettier.io` from the stored policy/contact) and stevemao (no vendor
+  domain); prettier vs left-pad still no match; prettier stays
+  `fixed`/`verified`; leftover extra orgs 0; leftover links 0; leftover
+  grants 0; leftover destinations 0; no open jobs; campaigns 0; watches 0;
+  Cloudflare tunnel matched. Not a customer product and not a Pricing change.
+
 - Disclosure Desk duplicate links: a confirmed duplicate on case create or
   `contacted` stores an append-only `disclosure_duplicate_links` pair
   (owner/repo, organization, package, fingerprint, or domain). A 409

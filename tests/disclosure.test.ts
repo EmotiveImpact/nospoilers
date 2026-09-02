@@ -852,6 +852,18 @@ describe("Disclosure Desk organization and domain matching", () => {
         body: JSON.stringify({ policyUrl: "https://prettier.io/security" }),
       });
       expect(policy.status).toBe(200);
+      const policyBody = (await policy.json()) as {
+        case: {
+          organization: {
+            githubOwner: string;
+            domains: { host: string; source: string }[];
+          } | null;
+        };
+      };
+      expect(policyBody.case.organization?.githubOwner).toBe("prettier");
+      expect(policyBody.case.organization?.domains).toEqual([
+        expect.objectContaining({ host: "prettier.io", source: "policy" }),
+      ]);
       const category = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
         method: "PATCH",
         headers: admin,
@@ -907,6 +919,101 @@ describe("Disclosure Desk organization and domain matching", () => {
         body: JSON.stringify({}),
       });
       expect(unrelated.status).toBe(201);
+      const cleared = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ policyUrl: null, securityContact: null }),
+      });
+      expect(cleared.status).toBe(200);
+      expect(
+        (
+          (await cleared.json()) as {
+            case: { organization: { domains: { host: string }[] } | null; policyUrl: string | null };
+          }
+        ).case.organization?.domains.map((row) => row.host),
+      ).toEqual(["prettier.io"]);
+      const otherOwnerId = await seedProspect(store, {
+        owner: "acme-tools",
+        repo: "cli",
+        packageName: "acme-cli",
+        artifactUrl: "https://registry.npmjs.org/acme-cli/-/acme-cli-1.0.0.tgz",
+        artifactName: "acme-cli-1.0.0.tgz",
+        releaseTag: "1.0.0",
+      });
+      await store.completeProspectScan(otherOwnerId, {
+        fileCount: 1,
+        findings: [
+          {
+            rule: "SEC-003",
+            severity: "critical",
+            path: "package/token.json",
+            title: "Provider token material",
+            detail: "must not be stored",
+          },
+        ],
+      });
+      const otherOpened = await app.request(`/api/internal/prospects/${otherOwnerId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(otherOpened.status).toBe(201);
+      const siblingId = await seedProspect(store, {
+        owner: "prettier",
+        repo: "prettier-vscode",
+        packageName: "prettier-vscode",
+        artifactUrl: "https://registry.npmjs.org/prettier-vscode/-/prettier-vscode-1.0.0.tgz",
+        artifactName: "prettier-vscode-1.0.0.tgz",
+        releaseTag: "1.0.0",
+      });
+      await store.completeProspectScan(siblingId, {
+        fileCount: 1,
+        findings: [
+          {
+            rule: "SIZE-001",
+            severity: "warn",
+            path: "package/index.js",
+            title: "Unusually large packed file",
+            detail: "must not be stored",
+          },
+        ],
+      });
+      const storedDomain = await app.request(`/api/internal/prospects/${siblingId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(storedDomain.status).toBe(409);
+      const storedDomainBody = (await storedDomain.json()) as { duplicates: { reasons: string[] }[] };
+      expect(storedDomainBody.duplicates[0]?.reasons).toEqual(
+        expect.arrayContaining(["organization", "domain"]),
+      );
+      expect(storedDomainBody.duplicates[0]?.reasons).not.toContain("fingerprint");
+      const listed = await app.request("/api/internal/disclosure/organizations", { headers: admin });
+      expect(listed.status).toBe(200);
+      const listedBody = (await listed.json()) as {
+        organizations: {
+          githubOwner: string;
+          domains: { host: string; source: string }[];
+          caseCount: number;
+        }[];
+      };
+      const prettierOrg = listedBody.organizations.find((row) => row.githubOwner === "prettier");
+      expect(prettierOrg?.domains).toEqual([
+        expect.objectContaining({ host: "prettier.io", source: "policy" }),
+      ]);
+      expect(prettierOrg?.caseCount).toBe(2);
+      expect(listedBody.organizations.some((row) => row.githubOwner === "stevemao")).toBe(true);
+      await store.upsertUser({ id: "customer-org", login: "acme-founder" });
+      const customer = `ns_session=${signSession("desk-domain-session", await store.createSession("customer-org"))}`;
+      const customerList = await app.request("/api/internal/disclosure/organizations", {
+        headers: { cookie: customer },
+      });
+      expect(customerList.status).toBe(401);
+      await expect(sql.query(`UPDATE disclosure_domains SET host = 'mutated.io'`)).rejects.toThrow(
+        /append-only/,
+      );
+      await expect(sql.query(`DELETE FROM disclosure_domains`)).rejects.toThrow(/append-only/);
       expect(wakes).toBe(before);
     } finally {
       await sql.close();

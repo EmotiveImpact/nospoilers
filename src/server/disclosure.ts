@@ -178,6 +178,43 @@ export type DuplicateLinkView = {
   createdAt: string;
 };
 
+export const DOMAIN_SOURCES = ["policy", "contact"] as const;
+export type DomainSource = (typeof DOMAIN_SOURCES)[number];
+
+export type DisclosureOrganizationRow = {
+  id: number;
+  github_owner: string;
+  github_owner_key: string;
+  created_at: string;
+};
+
+export type DisclosureDomainRow = {
+  id: number;
+  organization_id: number;
+  host: string;
+  host_key: string;
+  source: DomainSource;
+  created_at: string;
+};
+
+export type DisclosureDomainView = {
+  host: string;
+  source: DomainSource;
+};
+
+export type DisclosureOrganizationView = {
+  id: number;
+  githubOwner: string;
+  domains: DisclosureDomainView[];
+  caseCount: number;
+};
+
+export function parseDomainSource(value: unknown): DomainSource | null {
+  return typeof value === "string" && DOMAIN_SOURCES.includes(value as DomainSource)
+    ? (value as DomainSource)
+    : null;
+}
+
 export const DUPLICATE_REASONS: DuplicateReason[] = [
   "owner_repo",
   "organization",
@@ -345,6 +382,7 @@ export type DisclosureCaseView = {
   replies: DisclosureVendorReplyView[];
   attachments: DisclosureAttachmentView[];
   duplicateLinks: DuplicateLinkView[];
+  organization: DisclosureOrganizationView | null;
   createdAt: string;
   updatedAt: string;
   events: DisclosureEventView[];
@@ -403,6 +441,7 @@ export type DisclosureReport = {
   attachments: DisclosureAttachmentView[];
   events: DisclosureEventView[];
   duplicateLinks: DuplicateLinkView[];
+  organization: DisclosureOrganizationView | null;
 };
 
 export type DisclosureEventView = {
@@ -981,11 +1020,28 @@ export function ownerMatchesVendorHost(owner: string, host: string): boolean {
 }
 
 export function vendorHostsOverlap(
-  left: { owner: string; policyUrl?: string | null; securityContact?: string | null },
-  right: { owner: string; policyUrl?: string | null; securityContact?: string | null },
+  left: {
+    owner: string;
+    policyUrl?: string | null;
+    securityContact?: string | null;
+    storedHosts?: string[];
+  },
+  right: {
+    owner: string;
+    policyUrl?: string | null;
+    securityContact?: string | null;
+    storedHosts?: string[];
+  },
 ): boolean {
-  const leftHosts = collectVendorHosts(left.policyUrl, left.securityContact);
-  const rightHosts = collectVendorHosts(right.policyUrl, right.securityContact);
+  const leftHosts = [
+    ...new Set([...collectVendorHosts(left.policyUrl, left.securityContact), ...(left.storedHosts ?? [])]),
+  ];
+  const rightHosts = [
+    ...new Set([
+      ...collectVendorHosts(right.policyUrl, right.securityContact),
+      ...(right.storedHosts ?? []),
+    ]),
+  ];
   if (leftHosts.some((host) => rightHosts.includes(host))) return true;
   if (leftHosts.some((host) => ownerMatchesVendorHost(right.owner, host))) return true;
   if (rightHosts.some((host) => ownerMatchesVendorHost(left.owner, host))) return true;
@@ -1198,6 +1254,7 @@ export function matchDuplicateReasons(
     fingerprints: string[];
     policyUrl?: string | null;
     securityContact?: string | null;
+    storedHosts?: string[];
   },
   incoming: {
     owner: string;
@@ -1206,6 +1263,7 @@ export function matchDuplicateReasons(
     fingerprints: string[];
     policyUrl?: string | null;
     securityContact?: string | null;
+    storedHosts?: string[];
   },
 ): DuplicateReason[] {
   const reasons: DuplicateReason[] = [];
@@ -1316,6 +1374,7 @@ export function toDisclosureView(
   attachments: DisclosureAttachmentRow[] = [],
   artifact: ArtifactEvidence,
   duplicateLinks: DuplicateLinkView[] = [],
+  organization: DisclosureOrganizationView | null = null,
 ): DisclosureCaseView {
   return {
     id: row.id,
@@ -1355,6 +1414,7 @@ export function toDisclosureView(
     replies: replies.map(toVendorReplyView),
     attachments: attachments.map(toAttachmentView),
     duplicateLinks,
+    organization,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map((event) => ({
@@ -1419,7 +1479,14 @@ export async function findDuplicateMatches(
     securityContact?: string | null;
   },
 ): Promise<DuplicateMatch[]> {
-  const others = await store.listOtherDisclosureCases(incoming.prospectId);
+  const [others, storedHosts] = await Promise.all([
+    store.listOtherDisclosureCases(incoming.prospectId),
+    store.listDisclosureDomainHosts(),
+  ]);
+  const hostsFor = (owner: string) =>
+    storedHosts
+      .filter((row) => row.github_owner_key === owner.trim().toLowerCase())
+      .map((row) => row.host);
   const matches: DuplicateMatch[] = [];
   for (const row of others) {
     const reasons = matchDuplicateReasons(
@@ -1430,8 +1497,12 @@ export async function findDuplicateMatches(
         fingerprints: row.fingerprints,
         policyUrl: row.policy_url,
         securityContact: row.security_contact,
+        storedHosts: hostsFor(row.owner),
       },
-      incoming,
+      {
+        ...incoming,
+        storedHosts: hostsFor(incoming.owner),
+      },
     );
     if (reasons.length === 0) continue;
     matches.push({
@@ -1530,6 +1601,47 @@ export async function persistConfirmedDuplicates(
   return store.recordDuplicateLinks(input);
 }
 
+export async function syncDisclosureOrganization(
+  store: Store,
+  input: { owner: string; policyUrl?: string | null; securityContact?: string | null },
+): Promise<DisclosureOrganizationView | null> {
+  const owner = input.owner.trim();
+  if (!owner) return null;
+  const org = await store.upsertDisclosureOrganization(owner);
+  const policyHost = vendorHostFromPolicyUrl(input.policyUrl);
+  if (policyHost) await store.addDisclosureDomain(org.id, policyHost, "policy");
+  const contactHost = vendorHostFromContact(input.securityContact);
+  if (contactHost) await store.addDisclosureDomain(org.id, contactHost, "contact");
+  const domains = await store.listDisclosureDomains(org.id);
+  const caseCount = await store.countDisclosureCasesForOwner(owner);
+  return toOrganizationView(org, domains, caseCount);
+}
+
+export function toOrganizationView(
+  org: DisclosureOrganizationRow,
+  domains: DisclosureDomainRow[],
+  caseCount = 0,
+): DisclosureOrganizationView {
+  return {
+    id: org.id,
+    githubOwner: org.github_owner,
+    domains: domains.map((row) => ({ host: row.host, source: row.source })),
+    caseCount,
+  };
+}
+
+export async function listDisclosureOrganizations(store: Store): Promise<DisclosureOrganizationView[]> {
+  const cases = await store.listDisclosureCasesWithProspects();
+  for (const row of cases) {
+    await syncDisclosureOrganization(store, {
+      owner: row.owner,
+      policyUrl: row.policy_url,
+      securityContact: row.security_contact,
+    });
+  }
+  return store.listDisclosureOrganizationViews();
+}
+
 async function loadedView(store: Store, row: DisclosureCaseRow): Promise<DisclosureCaseView> {
   const [events, replies, attachments, prospect, links] = await Promise.all([
     store.listDisclosureEvents(row.id),
@@ -1539,6 +1651,11 @@ async function loadedView(store: Store, row: DisclosureCaseRow): Promise<Disclos
     store.listDuplicateLinks(row.id),
   ]);
   if (!prospect) throw new DisclosureError("Prospect not found.", 404);
+  const organization = await syncDisclosureOrganization(store, {
+    owner: prospect.owner,
+    policyUrl: row.policy_url,
+    securityContact: row.security_contact,
+  });
   return toDisclosureView(
     row,
     store.readDisclosureNotes(row),
@@ -1547,6 +1664,7 @@ async function loadedView(store: Store, row: DisclosureCaseRow): Promise<Disclos
     attachments,
     artifactEvidence(prospect),
     links.map((link) => toDuplicateLinkView(link, row.id)),
+    organization,
   );
 }
 
@@ -2208,5 +2326,6 @@ export async function buildDisclosureReport(
     attachments: view.attachments,
     events: view.events,
     duplicateLinks: view.duplicateLinks,
+    organization: view.organization,
   };
 }

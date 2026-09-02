@@ -329,6 +329,44 @@ CREATE TRIGGER disclosure_duplicate_links_no_delete
   BEFORE DELETE ON disclosure_duplicate_links
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_duplicate_link_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_organizations (
+  id BIGSERIAL PRIMARY KEY,
+  github_owner TEXT NOT NULL,
+  github_owner_key TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS disclosure_domains (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id BIGINT NOT NULL REFERENCES disclosure_organizations (id) ON DELETE CASCADE,
+  host TEXT NOT NULL,
+  host_key TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('policy', 'contact')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, host_key)
+);
+
+CREATE INDEX IF NOT EXISTS disclosure_domains_org_idx
+  ON disclosure_domains (organization_id, id ASC);
+CREATE INDEX IF NOT EXISTS disclosure_domains_host_idx
+  ON disclosure_domains (host_key, organization_id);
+
+CREATE OR REPLACE FUNCTION reject_disclosure_domain_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'disclosure_domains are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS disclosure_domains_no_update ON disclosure_domains;
+CREATE TRIGGER disclosure_domains_no_update
+  BEFORE UPDATE ON disclosure_domains
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_domain_mutation();
+DROP TRIGGER IF EXISTS disclosure_domains_no_delete ON disclosure_domains;
+CREATE TRIGGER disclosure_domains_no_delete
+  BEFORE DELETE ON disclosure_domains
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_domain_mutation();
+
 CREATE TABLE IF NOT EXISTS disclosure_vendor_replies (
   id BIGSERIAL PRIMARY KEY,
   case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,

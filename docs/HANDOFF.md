@@ -110,7 +110,12 @@ Read in this order:
   A 409 without confirm writes no row. First confirm wins. Both cases
   see the other owner/repo and reasons. Live Neon: `055` applied;
   prettier vs left-pad still no match so both cases keep
-  `duplicateLinks: []`; leftover links 0. Next unused id is `056_*`.
+  `duplicateLinks: []`; leftover links 0.
+  `056_disclosure_organizations` stores a first-class organization per
+  GitHub owner and append-only vendor domains from policy URL or contact
+  email. Matching uses stored hosts after contact/policy is cleared.
+  Live Neon: `056` applied; prettier has `prettier.io`; stevemao has no
+  vendor domain; leftover extra orgs 0. Next unused id is `057_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -548,7 +553,8 @@ operator-written reproducibility steps (new `reproduced`/`verified`
 require the text; historical prettier steps stay null),
 duplicate warning (owner/repo, GitHub owner, vendor domain,
 package, fingerprints; confirmed pairs persist on
-`disclosure_duplicate_links`; live Neon prettier vs left-pad still no
+`disclosure_duplicate_links`; first-class organizations persist vendor
+domains; live Neon prettier vs left-pad still no
 match so leftover links stay 0),
 encrypted expiring notes, stored (never fetched)
 policy URL, human-edited templates, preferred vendor channel, draft preview,

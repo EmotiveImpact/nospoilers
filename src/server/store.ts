@@ -5,17 +5,23 @@ import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
 import {
   asFindingCategory,
+  parseDomainSource,
   parseDuplicateReasons,
+  toOrganizationView,
   type DisclosureAttachmentRow,
   type DisclosureCaseRow,
   type DisclosureChecklist,
   type DisclosureConversion,
+  type DisclosureDomainRow,
   type DisclosureEventRow,
+  type DisclosureOrganizationRow,
+  type DisclosureOrganizationView,
   type DisclosureReviewState,
   type DisclosureState,
   type DisclosureTemplateRow,
   type DisclosureVendorReplyRow,
   type DoNotContactRow,
+  type DomainSource,
   type DuplicateLinkRow,
   type DuplicateMatch,
   type FindingCategory,
@@ -1196,6 +1202,38 @@ function disclosureEventRow(row: {
     action: row.action,
     actor: row.actor,
     summary: row.summary,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function organizationRow(row: {
+  id: unknown;
+  github_owner: string;
+  github_owner_key: string;
+  created_at: string | Date;
+}): DisclosureOrganizationRow {
+  return {
+    id: num(row.id),
+    github_owner: row.github_owner,
+    github_owner_key: row.github_owner_key,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function domainRow(row: {
+  id: unknown;
+  organization_id: unknown;
+  host: string;
+  host_key: string;
+  source: unknown;
+  created_at: string | Date;
+}): DisclosureDomainRow {
+  return {
+    id: num(row.id),
+    organization_id: num(row.organization_id),
+    host: row.host,
+    host_key: row.host_key,
+    source: parseDomainSource(row.source) ?? "policy",
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -3120,6 +3158,13 @@ export function createStore(
     async listOtherDisclosureCases(prospectId: number): Promise<
       (DisclosureCaseRow & { owner: string; repo: string; package_name: string | null })[]
     > {
+      const rows = await this.listDisclosureCasesWithProspects();
+      return rows.filter((row) => row.prospect_id !== prospectId);
+    },
+
+    async listDisclosureCasesWithProspects(): Promise<
+      (DisclosureCaseRow & { owner: string; repo: string; package_name: string | null })[]
+    > {
       const { rows } = await sql.query<
         Parameters<typeof disclosureCaseRow>[0] & {
           owner: string;
@@ -3130,9 +3175,7 @@ export function createStore(
         `SELECT c.*, p.owner, p.repo, p.package_name
          FROM disclosure_cases c
          JOIN prospects p ON p.id = c.prospect_id
-         WHERE c.prospect_id <> $1
          ORDER BY c.id ASC`,
-        [prospectId],
       );
       return rows.map((row) => ({
         ...disclosureCaseRow(row),
@@ -3140,6 +3183,114 @@ export function createStore(
         repo: row.repo,
         package_name: row.package_name,
       }));
+    },
+
+    async upsertDisclosureOrganization(owner: string): Promise<DisclosureOrganizationRow> {
+      const githubOwner = owner.trim();
+      const key = githubOwner.toLowerCase();
+      const existing = await sql.query<Parameters<typeof organizationRow>[0]>(
+        `SELECT * FROM disclosure_organizations WHERE github_owner_key = $1`,
+        [key],
+      );
+      if (existing.rows[0]) return organizationRow(existing.rows[0]);
+      const inserted = await sql.query<Parameters<typeof organizationRow>[0]>(
+        `INSERT INTO disclosure_organizations (github_owner, github_owner_key)
+         VALUES ($1, $2)
+         ON CONFLICT (github_owner_key) DO NOTHING
+         RETURNING *`,
+        [githubOwner, key],
+      );
+      if (inserted.rows[0]) return organizationRow(inserted.rows[0]);
+      const again = await sql.query<Parameters<typeof organizationRow>[0]>(
+        `SELECT * FROM disclosure_organizations WHERE github_owner_key = $1`,
+        [key],
+      );
+      if (!again.rows[0]) throw new Error("Disclosure organization was not created.");
+      return organizationRow(again.rows[0]);
+    },
+
+    async addDisclosureDomain(
+      organizationId: number,
+      host: string,
+      source: DomainSource,
+    ): Promise<boolean> {
+      const normalized = host.trim().toLowerCase();
+      if (!normalized) return false;
+      const row = await sql.query<{ id: unknown }>(
+        `INSERT INTO disclosure_domains (organization_id, host, host_key, source)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (organization_id, host_key) DO NOTHING
+         RETURNING id`,
+        [organizationId, normalized, normalized, source],
+      );
+      return Boolean(row.rows[0]);
+    },
+
+    async listDisclosureDomains(organizationId: number): Promise<DisclosureDomainRow[]> {
+      const { rows } = await sql.query<Parameters<typeof domainRow>[0]>(
+        `SELECT * FROM disclosure_domains WHERE organization_id = $1 ORDER BY id ASC`,
+        [organizationId],
+      );
+      return rows.map(domainRow);
+    },
+
+    async listDisclosureDomainHosts(): Promise<{ github_owner_key: string; host: string }[]> {
+      const { rows } = await sql.query<{ github_owner_key: string; host: string }>(
+        `SELECT o.github_owner_key, d.host
+         FROM disclosure_domains d
+         JOIN disclosure_organizations o ON o.id = d.organization_id
+         ORDER BY o.github_owner_key, d.id`,
+      );
+      return rows;
+    },
+
+    async countDisclosureCasesForOwner(owner: string): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*) AS n
+         FROM disclosure_cases c
+         JOIN prospects p ON p.id = c.prospect_id
+         WHERE lower(p.owner) = lower($1)`,
+        [owner],
+      );
+      return Number(rows[0]?.n ?? 0);
+    },
+
+    async listDisclosureOrganizationViews(): Promise<DisclosureOrganizationView[]> {
+      const orgs = await sql.query<Parameters<typeof organizationRow>[0]>(
+        `SELECT * FROM disclosure_organizations ORDER BY github_owner_key ASC, id ASC`,
+      );
+      const domains = await sql.query<
+        Parameters<typeof domainRow>[0] & { github_owner_key: string }
+      >(
+        `SELECT d.*, o.github_owner_key
+         FROM disclosure_domains d
+         JOIN disclosure_organizations o ON o.id = d.organization_id
+         ORDER BY d.id ASC`,
+      );
+      const counts = await sql.query<{ owner_key: string; n: unknown }>(
+        `SELECT lower(p.owner) AS owner_key, count(*) AS n
+         FROM disclosure_cases c
+         JOIN prospects p ON p.id = c.prospect_id
+         GROUP BY lower(p.owner)`,
+      );
+      const countByOwner = new Map(
+        counts.rows.map((row) => [row.owner_key, Number(row.n)] as const),
+      );
+      const domainsByOrg = new Map<number, DisclosureDomainRow[]>();
+      for (const row of domains.rows) {
+        const parsed = domainRow(row);
+        const list = domainsByOrg.get(parsed.organization_id) ?? [];
+        list.push(parsed);
+        domainsByOrg.set(parsed.organization_id, list);
+      }
+      return orgs.rows.map((row) => {
+        const org = organizationRow(row);
+        return toOrganizationView(
+          org,
+          domainsByOrg.get(org.id) ?? [],
+          countByOwner.get(org.github_owner_key) ?? 0,
+        );
+      });
     },
 
     async insertDisclosureCase(input: {

@@ -57,6 +57,12 @@ type DeskCampaign = {
   lastRanAt: string | null
   lastQueued: number | null
 }
+type DeskOrganization = {
+  id: number
+  githubOwner: string
+  domains: { host: string; source: string }[]
+  caseCount: number
+}
 type DeskTemplate = { id: number; name: string; subject: string; body: string }
 type DeskDnc = {
   id: number
@@ -187,6 +193,7 @@ export function ProspectsPage() {
   const [operators, setOperators] = useState<DeskOperator[]>([])
   const [operatorLogin, setOperatorLogin] = useState("")
   const [operatorConfirm, setOperatorConfirm] = useState("")
+  const [organizations, setOrganizations] = useState<DeskOrganization[]>([])
   const [destinations, setDestinations] = useState<DeskDestination[]>([])
   const [webhookUrl, setWebhookUrl] = useState("")
   const [webhookConfirm, setWebhookConfirm] = useState("")
@@ -257,21 +264,25 @@ export function ProspectsPage() {
         setOperators([])
       }
       try {
-        const [templateBody, dncBody, workloadBody, destinationBody] = await Promise.all([
+        const [templateBody, dncBody, workloadBody, destinationBody, organizationBody] =
+          await Promise.all([
           request<{ templates: DeskTemplate[] }>("/api/internal/disclosure/templates"),
           request<{ entries: DeskDnc[] }>("/api/internal/disclosure/do-not-contact"),
           request<DeskWorkload>("/api/internal/disclosure/workload"),
           request<{ destinations: DeskDestination[] }>("/api/internal/disclosure/destinations"),
+          request<{ organizations: DeskOrganization[] }>("/api/internal/disclosure/organizations"),
         ])
         setTemplates(templateBody.templates)
         setDncEntries(dncBody.entries)
         setWorkload(workloadBody)
         setDestinations(destinationBody.destinations)
+        setOrganizations(organizationBody.organizations)
       } catch {
         setTemplates([])
         setDncEntries([])
         setWorkload(null)
         setDestinations([])
+        setOrganizations([])
       }
     } catch (error) {
       setState((current) =>
@@ -817,6 +828,30 @@ export function ProspectsPage() {
               ))}
             </ul>
           )}
+        </section>
+      ) : null}
+
+      {organizations.length > 0 ? (
+        <section className="mt-10 rounded-lg border border-white/10 p-5">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Organizations</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
+            GitHub owners from Disclosure Desk cases, with vendor domains recorded from a
+            stored policy URL or security contact. Forge and registry hosts are not vendor
+            domains. This is not a commercial workspace.
+          </p>
+          <ul className="mt-5 divide-y divide-white/8">
+            {organizations.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-3 py-3">
+                <p className="text-sm text-snow">{row.githubOwner}</p>
+                <p className="font-mono text-xs text-dim">
+                  {row.caseCount} {row.caseCount === 1 ? "case" : "cases"}
+                  {row.domains.length
+                    ? ` · ${row.domains.map((domain) => domain.host).join(", ")}`
+                    : " · no vendor domain"}
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
