@@ -69,7 +69,9 @@ Read in this order:
   `043_release_public_pages` adds customer-controlled `release_public_pages`
   (unguessable token, enable/disable) and extends `audit_events.action` with
   `release.publish_verify` and `release.unpublish_verify`.
-  Next unused id is `044_*`.
+  `044_pagerduty_destinations` extends destination and delivery kind checks
+  with `pagerduty`.
+  Next unused id is `045_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -96,9 +98,10 @@ Read in this order:
   unpublish; an already-published page still reads. Public GET does not
   enqueue a verify job. This is not scheduled CDN verification.
   Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
-  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
-  SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
-  after save. Jira stores a plaintext project key for the list UI. Notification deliveries are
+  AES-GCM ciphertext (`ns1.` prefix) and are never returned after save.   Slack incoming webhooks,
+  SIEM HTTPS webhooks, Jira Cloud email+token, and PagerDuty routing keys are the same
+  ciphertext and are never returned after save. Jira stores a plaintext project key for the
+  list UI. PagerDuty lists `events.pagerduty.com`. Notification deliveries are
   append-only. Scan API tokens are SHA-256
   hashes (`nsp_` secrets shown once). `installation_users.role` is `admin` or `member`
   (first linked user is admin). Alert acknowledgement, assignment, resolution notes, and
@@ -254,13 +257,15 @@ Read in this order:
   resolved with a note, and reopened. Exposure duration and a SEC/MAP rotation checklist
   are shown. Watch can export that activity as JSON. Incident actions stay available when
   unpaid or GitHub-suspended.
-- Trial and Team installs can save a Slack incoming webhook, a SIEM HTTPS webhook, and a Jira
-  Cloud destination (encrypted, never returned). New Watch alerts POST to those destinations
-  after they are stored. Watch **Test delivery** talks to Slack, SIEM, or Jira and never
-  inserts an alert. A Jira test GETs myself+project and never creates a ticket. Solo paid does
-  not get Slack, SIEM, or Jira. Email still needs Resend. SIEM hosts cannot be private, local,
-  metadata, or hooks.slack.com. Jira is `*.atlassian.net` only. Trial and Team installs can
-  save routing rules (min severity, repository, package, teammate assign) per destination.
+- Trial and Team installs can save a Slack incoming webhook, a SIEM HTTPS webhook, a Jira
+  Cloud destination, and a PagerDuty Events API routing key (encrypted, never returned). New
+  Watch alerts POST to those destinations after they are stored. Watch **Test delivery** talks
+  to Slack, SIEM, Jira, or PagerDuty and never inserts an alert. A Jira test GETs
+  myself+project and never creates a ticket. A PagerDuty test POSTs a change event and never
+  creates an incident. Solo paid does not get Slack, SIEM, Jira, or PagerDuty. Email still
+  needs Resend. SIEM hosts cannot be private, local, metadata, or hooks.slack.com. Jira is
+  `*.atlassian.net` only. PagerDuty is `events.pagerduty.com` only. Trial and Team installs
+  can save routing rules (min severity, repository, package, teammate assign) per destination.
   Destinations without a route still receive every Watch alert. A routed test talks to matching
   destinations and never inserts an alert.
 - Trial and Team installs get a Watch **audit log** of admin writes plus a titles-only export of
@@ -273,7 +278,7 @@ Read in this order:
 - Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
-  delivery tests. Admins save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists, baselines,
+  delivery tests. Admins save Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Trial/Team can invite by GitHub login. No email (Resend is
   benched). They become that role when they sign in after GitHub lists them on this App.
   First-user-admin still wins if a member invite would leave zero admins.
@@ -312,7 +317,7 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
   `github:EmotiveImpact/nospoilers-throwaway@phase1-fixture#sourcemap.tgz` (`failed-policy`,
   MAP-001/002/003). `npm run phase1:throwaway` is idempotent and skips Actions YAML.
   Stripe and Resend are benched.
-- Production deployment does not exist. Slack, SIEM, and Jira destinations are live on trial/Team.
+- Production deployment does not exist. Slack, SIEM, Jira, and PagerDuty destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
 
@@ -369,13 +374,16 @@ Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never 
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
 Jira Cloud tickets are in (trial/Team, `*.atlassian.net` only, encrypted email+token, test never
 creates an issue or Watch alert).
+PagerDuty Events API routing is in (trial/Team, `events.pagerduty.com` only, encrypted routing
+key, test POSTs `/v2/change/enqueue` and never creates an incident or Watch alert; real alerts
+POST `/v2/enqueue` trigger).
 Team alert routing is in (trial/Team, severity/repo/package/teammate/destination, routed test never
 invents an incident, destinations without a route still receive every alert).
 Team audit log is in (trial/Team, append-only, typed confirm on destructive writes, export never
 includes secrets; Solo 403; unpaid 402; members may read/export).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
-GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
+GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/PagerDuty/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump,
 new dependency toward a package first published within 14 days, packument unpacked-size
 jumps (2× or ≥5 MiB versus the last snapshot, metadata only), and npm attestation
@@ -524,8 +532,12 @@ Release Ledger public verification pages are in (`POST /api/releases/:id/public`
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`
 matched, no new `delivery_verify` job, Cloudflare tunnel matched. Scheduled
 CDN, SBOM, and Sigstore stay out.
-Stripe and Resend are benched. Do not start the Electron installer worker yet.
-Do not start SBOM, Sigstore, or scheduled CDN verification yet.
+PagerDuty destinations are in (`POST /api/destinations/pagerduty`). Encrypted
+routing key, host locked to `events.pagerduty.com`. Test POSTs a change event
+and never creates an incident. Real alerts trigger Events API. Solo 403.
+Unpaid 402. Members 403. Stripe and Resend are benched. Do not start the
+Electron installer worker yet. Do not start SBOM, Sigstore, or scheduled CDN
+verification yet.
 ```
 
 ## Cleanup

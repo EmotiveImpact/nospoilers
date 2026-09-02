@@ -124,6 +124,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Jira Cloud tickets for trial/Team: `*.atlassian.net` only, encrypted email+token, listed
   project key, event-driven issue create, test that GETs myself+project and never creates a
   ticket or Watch alert.
+- PagerDuty Events API for trial/Team: `events.pagerduty.com` only, encrypted routing key,
+  event-driven trigger, test that POSTs a change event and never creates an incident or
+  Watch alert.
 - Team alert routing: min severity, repository, package, teammate assign, and destination.
   Destinations without a route still receive every alert. Routed tests never invent an incident.
 - Team audit log: append-only admin writes, typed confirmation on destructive actions, and a
@@ -168,7 +171,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   look up a debug ID.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
-  block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists,
+  block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira/PagerDuty, routes, registries, tokens, allowlists,
   baselines, and open setup/remediation PRs. Trial/Team can invite by GitHub login (no email;
   Resend is benched). They get that role on sign-in if GitHub already lists them on this App.
   First-user-admin still wins if a member invite would leave zero admins.

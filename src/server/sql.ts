@@ -787,6 +787,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureWorkflow(sql);
   await migrateDisclosureSlaBackfill(sql);
   await migrateReleasePublicPages(sql);
+  await migratePagerDutyDestinations(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1309,6 +1310,20 @@ async function migrateReleasePublicPages(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "043_release_public_pages",
+  ]);
+}
+
+async function migratePagerDutyDestinations(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "044_pagerduty_destinations",
   ]);
 }
 

@@ -141,7 +141,7 @@ type NpmRegistry = {
 type NotificationDestination = {
   id: number;
   installationId: number;
-  kind: "slack" | "siem" | "jira";
+  kind: "slack" | "siem" | "jira" | "pagerduty";
   host: string;
   projectKey?: string | null;
   lastDeliveryAt: string | null;
@@ -152,7 +152,7 @@ type NotificationDestination = {
 
 type NotificationDelivery = {
   id: number;
-  kind: "slack" | "siem" | "jira";
+  kind: "slack" | "siem" | "jira" | "pagerduty";
   status: "sent" | "failed";
   inventedIncident: false;
   error: string | null;
@@ -173,6 +173,7 @@ type NotificationRoute = {
 function destinationKindLabel(kind: string): string {
   if (kind === "jira") return "Jira";
   if (kind === "siem") return "SIEM";
+  if (kind === "pagerduty") return "PagerDuty";
   return "Slack";
 }
 
@@ -1061,9 +1062,11 @@ export function WatchPage({ search }: { search: string }) {
   const [jiraEmail, setJiraEmail] = useState("");
   const [jiraToken, setJiraToken] = useState("");
   const [jiraProjectKey, setJiraProjectKey] = useState("");
+  const [pagerDutyKey, setPagerDutyKey] = useState("");
   const [savingSlack, setSavingSlack] = useState(false);
   const [savingSiem, setSavingSiem] = useState(false);
   const [savingJira, setSavingJira] = useState(false);
+  const [savingPagerDuty, setSavingPagerDuty] = useState(false);
   const [routeDestinationId, setRouteDestinationId] = useState("");
   const [routeMinSeverity, setRouteMinSeverity] = useState<"all" | "warn" | "critical">("all");
   const [routeRepo, setRouteRepo] = useState("");
@@ -2620,7 +2623,7 @@ export function WatchPage({ search }: { search: string }) {
           change roles, remove people, and invite by GitHub login. They get that role the next time
           they sign in, if they can already see this App install. This does not send email. Email
           waits on Resend. This does not grant GitHub Administration. The last admin stays. GitHub
-          suspend does not block this. An install admin also saves Slack, SIEM, Jira, routes,
+          suspend does not block this. An install admin also saves Slack, SIEM, Jira, PagerDuty, routes,
           registries, scan
           tokens, allowlists, and baselines, and opens setup or remediation PRs.
         </p>
@@ -2965,26 +2968,26 @@ export function WatchPage({ search }: { search: string }) {
       <section className="mt-16">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, and Jira
-          Cloud. Secrets are encrypted and never shown again. A delivery test talks to the
-          destination and never creates a Watch alert. Jira tests never open a ticket. Routes send
-          a real alert or a routed test to matching destinations by severity, repository, package,
-          and teammate.
+          Team and trial installs can send Watch alerts to Slack, a SIEM HTTPS webhook, Jira
+          Cloud, and PagerDuty. Secrets are encrypted and never shown again. A delivery test talks
+          to the destination and never creates a Watch alert. Jira tests never open a ticket.
+          PagerDuty tests send a change event and never open an incident. Routes send a real alert
+          or a routed test to matching destinations by severity, repository, package, and teammate.
         </p>
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot send Slack, SIEM, or Jira. Preview cannot route a test. No invented
-            incident.
+            Preview cannot send Slack, SIEM, Jira, or PagerDuty. Preview cannot route a test. No
+            invented incident.
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
-            Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend.
+            Slack, SIEM, Jira, and PagerDuty are on Team. Email for Solo waits on Resend.
           </p>
         ) : (
           <>
             {destinations.length === 0 ? (
               <p className="mt-6 text-sm leading-relaxed text-mute">
-                No Slack, SIEM, or Jira destination saved on this install.
+                No Slack, SIEM, Jira, or PagerDuty destination saved on this install.
               </p>
             ) : (
               <ul className="mt-6 max-w-xl divide-y divide-white/5">
@@ -3275,6 +3278,57 @@ export function WatchPage({ search }: { search: string }) {
                   }
                 >
                   {savingJira ? "Saving…" : "Save Jira"}
+                </Button>
+              </form>
+            )}
+            {!ended && installAdmin && (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (savingPagerDuty || !activeInstallId || !pagerDutyKey.trim()) return;
+                  setSlackError(null);
+                  setSavingPagerDuty(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/destinations/pagerduty", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          routingKey: pagerDutyKey,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not save PagerDuty.");
+                      setPagerDutyKey("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setSlackError(
+                        error instanceof Error ? error.message : "Could not save PagerDuty.",
+                      );
+                    } finally {
+                      setSavingPagerDuty(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    PagerDuty Events API routing key
+                  </span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={pagerDutyKey}
+                    onChange={(event) => setPagerDutyKey(event.target.value)}
+                    placeholder="32-character routing key"
+                    className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" size="sm" disabled={savingPagerDuty || !pagerDutyKey.trim()}>
+                  {savingPagerDuty ? "Saving…" : "Save PagerDuty"}
                 </Button>
               </form>
             )}

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- PagerDuty destination: trial and Team installs save one encrypted Events API
+  routing key per install. Host is locked to `events.pagerduty.com`. The key is
+  never returned. A delivery test POSTs `/v2/change/enqueue` and never creates
+  an incident or Watch alert. Real alerts POST `/v2/enqueue` with
+  `event_action: trigger`. Solo 403. Unpaid 402. Members 403. Another tenant
+  403. Email still waits on Resend. Not a Pricing change.
+
 - Release Ledger public verification page: an install admin publishes
   `/verify/:token` for a sealed revision. Visitors see digests, receipt status,
   and last delivery host match. Query strings, pack bytes, CI URLs, and signed

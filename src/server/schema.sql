@@ -462,7 +462,7 @@ CREATE INDEX IF NOT EXISTS npm_registries_install_idx
 CREATE TABLE IF NOT EXISTS notification_destinations (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
-  kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem', 'jira')),
+  kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty')),
   host TEXT NOT NULL,
   project_key TEXT,
   webhook_ciphertext TEXT NOT NULL,
@@ -482,7 +482,7 @@ CREATE TABLE IF NOT EXISTS notification_deliveries (
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
   destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
   alert_id BIGINT REFERENCES alerts (id) ON DELETE SET NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem', 'jira')),
+  kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty')),
   status TEXT NOT NULL CHECK (status IN ('sent', 'failed')),
   invented_incident BOOLEAN NOT NULL DEFAULT false CHECK (invented_incident = false),
   error TEXT,

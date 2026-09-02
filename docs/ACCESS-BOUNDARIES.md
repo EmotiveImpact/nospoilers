@@ -147,11 +147,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   receipt status, approvals, hold events, redacted delivery URLs). Members may export.
   Solo paid returns 403. Unpaid returns 402. Another tenant’s installation is empty.
   Query strings, pack bytes, and receipt bodies are not included.
-- List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
-  tokens are never returned). Jira lists the project key. A delivery test talks to the
-  destination and never inserts an alert. A Jira test never creates a ticket. List routing
-  rules for those destinations. A routed test talks to matching destinations and never
-  inserts an alert.
+- List Slack, SIEM, Jira, and PagerDuty destination hosts on a trial or Team install (URLs,
+  emails, tokens, and routing keys are never returned). Jira lists the project key. PagerDuty
+  lists `events.pagerduty.com`. A delivery test talks to the destination and never inserts an
+  alert. A Jira test never creates a ticket. A PagerDuty test POSTs a change event and never
+  creates an incident. List routing rules for those destinations. A routed test talks to
+  matching destinations and never inserts an alert.
 - Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
@@ -167,7 +168,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
+- Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
   verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
@@ -176,7 +177,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
-- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
+- See other tenants’ registry tokens, Slack, SIEM, Jira, or PagerDuty destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
 - Edit or delete scan receipts, release revisions, release approvals, legal-hold events, jobs, alert events, or audit events. Receipts, revisions, approvals, holds, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -208,12 +209,14 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   Administration. If applying a member invite would leave zero admins, they stay admin and
   the invite is consumed. Upserts a pending invite when the login is not yet a member (409
   if they already are).
-- Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, and Jira Cloud
-  destinations on a trial or Team install. URLs, emails, and API tokens are never returned
-  after save. Deletes require typing the destination host. Jira is `*.atlassian.net` only (site name, host, or https URL). Private, local,
-  metadata, and Slack hosts are rejected for SIEM, and DNS must resolve to a public address
-  before POST. Jira tests GET `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never
-  POST `/issue`.
+- Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, Jira Cloud
+  destinations, and PagerDuty Events API routing keys on a trial or Team install. URLs,
+  emails, API tokens, and routing keys are never returned after save. Deletes require typing
+  the destination host. Jira is `*.atlassian.net` only (site name, host, or https URL).
+  PagerDuty is `events.pagerduty.com` only. Private, local, metadata, and Slack hosts are
+  rejected for SIEM, and DNS must resolve to a public address before POST. Jira tests GET
+  `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never POST `/issue`. PagerDuty
+  tests POST `/v2/change/enqueue` and never POST `/v2/enqueue`.
 - Save and delete alert routes (min severity, repository, package, teammate assign, destination)
   on a trial or Team install. Destinations without a route still receive every Watch alert.
   A routed test never inserts an alert and never auto-assigns. Route deletes require typing
@@ -550,6 +553,10 @@ POST JSON with `inventedIncident: false`.
 The same file proves Jira Cloud destinations encrypt email+token, never return them, reject
 non-`*.atlassian.net` hosts, skip fetch when DNS resolves private, test with GET myself+project
 (never POST `/issue`, never insert an alert), and real alerts POST `/rest/api/3/issue`.
+The same file proves PagerDuty destinations encrypt the routing key, never return it, lock
+the host to `events.pagerduty.com`, skip fetch when DNS resolves private, test with POST
+`/v2/change/enqueue` (never POST `/v2/enqueue`, never insert an alert), and real alerts POST
+`/v2/enqueue` with `event_action: trigger`.
 The same file proves Team routing rules are tenant-scoped, unpaid saves return 402, Solo paid
 returns 403, a routed test never inserts an alert, destinations without a route still receive
 every alert, critical-only routes skip info scans, and a matching teammate is assigned on a
@@ -564,7 +571,7 @@ returns 402 when unpaid, returns 403 for members and other tenants, and that app
 typed confirmation is required for destructive deletes, export never includes webhook URLs
 or alert bodies, members can read/export, and `audit_events` cannot be updated or deleted.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
-members can watch and test but cannot save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists,
+members can watch and test but cannot save Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 `tests/github-response.test.ts` proves make-private, delete-pack-assets, and disable-workflow

@@ -10,6 +10,7 @@ import {
   type WebhookHostLookup,
 } from "./siem.ts";
 import { postJiraIssue } from "./jira.ts";
+import { postPagerDutyAlert } from "./pagerduty.ts";
 import {
   alertSeverity,
   destinationReceives,
@@ -102,6 +103,46 @@ export async function deliverSiemAlert(
   });
 }
 
+export async function deliverPagerDutyAlert(
+  store: Store,
+  input: {
+    installationId: number;
+    alertId: number | null;
+    kind: string;
+    title: string;
+    body: string;
+    severity: "info" | "warn" | "critical";
+  },
+  opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
+): Promise<void> {
+  const dest = await store.getPagerDutyKeyForInstallation(input.installationId);
+  if (!dest) return;
+  const posted = await postPagerDutyAlert(
+    dest.routingKey,
+    {
+      title: input.title,
+      body: input.body,
+      kind: input.kind,
+      severity: input.severity,
+    },
+    opts,
+  );
+  await store.recordNotificationDelivery({
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    kind: "pagerduty",
+    status: posted.ok ? "sent" : "failed",
+    error: posted.error,
+  });
+  logJson(posted.ok ? "info" : "error", posted.ok ? "alert.pagerduty_sent" : "alert.pagerduty_failed", {
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    status: posted.status,
+  });
+}
+
 export async function deliverJiraAlert(
   store: Store,
   input: {
@@ -175,6 +216,7 @@ export function createLogNotifier(
         kind: alert.kind,
         title: alert.title,
         body: alert.body,
+        severity: sample.severity,
       };
       try {
         const dest = await store.getSlackWebhookForInstallation(alert.installationId);
@@ -228,6 +270,24 @@ export function createLogNotifier(
           id,
           installationId: alert.installationId,
           error: error instanceof Error ? error.message : "Jira delivery failed.",
+        });
+      }
+      try {
+        const dest = await store.getPagerDutyKeyForInstallation(alert.installationId);
+        if (
+          dest &&
+          destinationReceives(
+            routes.filter((row) => row.destinationId === dest.id),
+            sample,
+          )
+        ) {
+          await deliverPagerDutyAlert(store, payload, { fetch: fetchImpl, lookup: opts.lookup });
+        }
+      } catch (error) {
+        logJson("error", "alert.pagerduty_failed", {
+          id,
+          installationId: alert.installationId,
+          error: error instanceof Error ? error.message : "PagerDuty delivery failed.",
         });
       }
       const assignee = routes.find(

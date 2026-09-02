@@ -107,6 +107,7 @@ import type {
   ReleaseApprovalRow,
   ReleaseLegalHoldRow,
   ReleaseRevisionRow,
+  NotificationKind,
 } from "./store.ts";
 import {
   exposureMs,
@@ -171,6 +172,11 @@ import {
   parseJiraToken,
   testJiraDestination,
 } from "./jira.ts";
+import {
+  pagerDutyPlanDeniedFromBilling,
+  parsePagerDutyRoutingKey,
+  testPagerDutyDestination,
+} from "./pagerduty.ts";
 import {
   MAX_SCAN_TOKENS,
   parseScanBearer,
@@ -440,16 +446,17 @@ function fairUseResponse(c: Context) {
   return c.json({ error: FAIR_USE_EXHAUSTED }, 429);
 }
 
-function destinationKindLabel(kind: "slack" | "siem" | "jira"): string {
+function destinationKindLabel(kind: NotificationKind): string {
   if (kind === "jira") return "Jira";
   if (kind === "siem") return "SIEM";
+  if (kind === "pagerduty") return "PagerDuty";
   return "Slack";
 }
 
 function publicDestination(row: {
   id: number;
   installationId: number;
-  kind: "slack" | "siem" | "jira";
+  kind: NotificationKind;
   host: string;
   projectKey?: string | null;
   lastDeliveryAt: string | null;
@@ -534,7 +541,7 @@ export function createApp(deps: AppDeps): Hono {
   async function testSavedDestination(destination: {
     id: number;
     installationId: number;
-    kind: "slack" | "siem" | "jira";
+    kind: NotificationKind;
   }): Promise<{ ok: boolean; status: number; error: string | null }> {
     const install = await deps.store.getInstallation(destination.installationId);
     const outbound = { fetch: deps.slackFetch ?? fetch, lookup: deps.webhookLookup };
@@ -545,6 +552,17 @@ export function createApp(deps: AppDeps): Hono {
         posted = { ok: false, status: 0, error: "Unknown destination." };
       } else {
         posted = await testJiraDestination(auth.host, auth.projectKey, auth.secret, outbound);
+      }
+    } else if (destination.kind === "pagerduty") {
+      const auth = await deps.store.getPagerDutyKeyForInstallation(destination.installationId);
+      if (!auth || auth.id !== destination.id) {
+        posted = { ok: false, status: 0, error: "Unknown destination." };
+      } else {
+        posted = await testPagerDutyDestination(
+          auth.routingKey,
+          install?.account_login ?? "",
+          outbound,
+        );
       }
     } else {
       const webhook = await deps.store.getDestinationWebhookForInstallation(
@@ -4163,7 +4181,7 @@ export function createApp(deps: AppDeps): Hono {
     if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
     const destinationId = Number(body.destinationId);
     if (!Number.isFinite(destinationId) || destinationId <= 0) {
-      return c.json({ error: "Choose a Slack, SIEM, or Jira destination to route." }, 400);
+      return c.json({ error: "Choose a Slack, SIEM, Jira, or PagerDuty destination to route." }, 400);
     }
     const destination = await deps.store.getNotificationDestinationForUser(
       destinationId,
@@ -4309,7 +4327,7 @@ export function createApp(deps: AppDeps): Hono {
     );
     const results: {
       id: number;
-      kind: "slack" | "siem" | "jira";
+      kind: NotificationKind;
       host: string;
       ok: boolean;
       error: string | null;
@@ -4556,6 +4574,61 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/destinations/pagerduty", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach PagerDuty to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = pagerDutyPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const routingKey = parsePagerDutyRoutingKey(String(body.routingKey ?? body.routing_key ?? ""));
+    if (!routingKey) {
+      return c.json(
+        {
+          error:
+            "Use a 32-character PagerDuty Events API routing key. It is encrypted and never shown again.",
+        },
+        400,
+      );
+    }
+    try {
+      const destination = await deps.store.upsertPagerDutyDestination({
+        installationId,
+        routingKey,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "destination.save",
+        summary: "Saved PagerDuty destination events.pagerduty.com",
+        targetKind: "destination",
+        targetId: "events.pagerduty.com",
+      });
+      return c.json({ ok: true, destination: publicDestination(destination) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that PagerDuty destination." },
+        errorStatus(error),
+      );
+    }
+  });
+
   app.delete("/api/destinations/:id", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -4595,7 +4668,9 @@ export function createApp(deps: AppDeps): Hono {
     const detail =
       destination.kind === "jira"
         ? "Jira received a delivery test. This talked to Jira (myself and the project) and never created a ticket or Watch alert. This is not a security incident."
-        : `${label} received a delivery test. This is not a security incident.`;
+        : destination.kind === "pagerduty"
+          ? "PagerDuty received a change-event delivery test. This never created an incident or Watch alert. This is not a security incident."
+          : `${label} received a delivery test. This is not a security incident.`;
     return c.json({
       ok: posted.ok,
       inventedIncident: false,

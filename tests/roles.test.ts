@@ -249,6 +249,17 @@ describe("installation roles", () => {
       expect(memberJira.status).toBe(403);
       expect(((await memberJira.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
 
+      const memberPagerDuty = await app.request("/api/destinations/pagerduty", {
+        method: "POST",
+        headers: { cookie: memberCookie, ...json },
+        body: JSON.stringify({
+          installationId: 7,
+          routingKey: "PAGERDUTYROUTINGKEY0000000000001",
+        }),
+      });
+      expect(memberPagerDuty.status).toBe(403);
+      expect(((await memberPagerDuty.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
+
       const memberDeleteJira = await app.request(`/api/destinations/${jiraBody.destination.id}`, {
         method: "DELETE",
         headers: { cookie: memberCookie },

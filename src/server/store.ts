@@ -205,7 +205,7 @@ export type NpmRegistryRow = {
   updated_at: string;
 };
 
-export type NotificationKind = "slack" | "siem" | "jira";
+export type NotificationKind = "slack" | "siem" | "jira" | "pagerduty";
 
 export type NotificationDestinationRow = {
   id: number;
@@ -632,7 +632,7 @@ function optionalInstallId(id?: number | null): number | null {
 }
 
 function asNotificationKind(value: string): NotificationKind {
-  if (value === "siem" || value === "jira") return value;
+  if (value === "siem" || value === "jira" || value === "pagerduty") return value;
   return "slack";
 }
 
@@ -4757,6 +4757,18 @@ export function createStore(
       return await this.upsertNotificationDestination({ ...input, kind: "siem" });
     },
 
+    async upsertPagerDutyDestination(input: {
+      installationId: number;
+      routingKey: string;
+    }): Promise<NotificationDestinationRow> {
+      return await this.upsertNotificationDestination({
+        installationId: input.installationId,
+        kind: "pagerduty",
+        webhookUrl: input.routingKey,
+        host: "events.pagerduty.com",
+      });
+    },
+
     async upsertJiraDestination(input: {
       installationId: number;
       host: string;
@@ -4839,6 +4851,15 @@ export function createStore(
       url: string;
     } | null> {
       return await this.getDestinationWebhookForInstallation(installationId, "siem");
+    },
+
+    async getPagerDutyKeyForInstallation(installationId: number): Promise<{
+      id: number;
+      routingKey: string;
+    } | null> {
+      const dest = await this.getDestinationWebhookForInstallation(installationId, "pagerduty");
+      if (!dest) return null;
+      return { id: dest.id, routingKey: dest.url };
     },
 
     async getJiraAuthForInstallation(installationId: number): Promise<{
