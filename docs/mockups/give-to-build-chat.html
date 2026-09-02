@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Give this to the build chat</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      html,
+      body {
+        background: #09090b;
+        color: #f4f4f5;
+      }
+      .body {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 54px 24px 90px;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.5;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: #111113;
+        color: #e4e4e7;
+      }
+      .pick {
+        display: grid;
+        gap: 10px;
+        margin: 18px 0 28px;
+      }
+      .pick a {
+        display: block;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--panel);
+        color: inherit;
+        text-decoration: none;
+      }
+      .pick a:hover {
+        border-color: var(--line-strong);
+      }
+      .pick b {
+        font-family: var(--display);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="body">
+        <a class="logo" href="index.html">NoSpoilers</a>
+        <h1 style="margin-top: 22px; font-size: 34px">Paste this into the other chat after you pick.</h1>
+        <p class="muted" style="margin-top: 12px; max-width: 68ch">
+          These four pages are the complete decision set. They are comparable apps, not states of
+          one demo. Pick one, then copy the prompt. The build chat will not have seen the design
+          thread, so the file path has to be in the prompt.
+        </p>
+
+        <div class="pick">
+          <a href="2a-full-overview.html"
+            ><b>2A · Split console</b><br /><span class="small muted"
+              >Desk and Settings as two walls. File: 2a-full-overview.html</span
+            ></a
+          >
+          <a href="2b-full-guided.html"
+            ><b>2B · Monolith sidebar</b><br /><span class="small muted"
+              >One sidebar: Work, Evidence, Settings. File: 2b-full-guided.html</span
+            ></a
+          >
+          <a href="2c-full-triage.html"
+            ><b>2C · Tabbed desk</b><br /><span class="small muted"
+              >One surface with a tab rail. File: 2c-full-triage.html</span
+            ></a
+          >
+          <a href="2d-full-sources.html"
+            ><b>2D · Object-first</b><br /><span class="small muted"
+              >Repo/source first, then global work. File: 2d-full-sources.html</span
+            ></a
+          >
+        </div>
+
+        <p class="small dim">Replace only the letter and filename.</p>
+        <pre id="prompt">Build the watch desk from mockup 2B.
+
+Live mockup (this is the spec — match it, do not invent a new layout):
+- Open this exact page and click through every route and the five state presets:
+  2B https://nospoilers-watch-desk-mockups.voltaic-net.workers.dev/2b-full-guided.html
+- Gallery: https://nospoilers-watch-desk-mockups.voltaic-net.workers.dev/
+- Also read on branch cursor/watch-desk-ux-mockups-71d1:
+  docs/mockups/2b-full-guided.html
+  docs/mockups/HANDOFF.md
+  docs/mockups/README.md
+  docs/mockups/combined.css
+
+Implement it for real in src/ against origin/main.
+- Start from origin/main, not from cursor/watch-desk-redesign-71d1 (that branch is a different IA the user already rejected).
+- Wire every screen to the existing API routes. No mock data, no fixtures, no invented backend features.
+- Match the mockup's information architecture, navigation, and copy.
+- Treat “Built on main” controls as real writes.
+- Treat “Proposed UX” as client presentation only (routing, filters, palette, charts, unified Sources, setup ring). Do not add new APIs for those.
+- Split WatchPage.tsx into route-level components as you go.
+- Serve the app at http://localhost:3000/ and verify the real flows, not a screenshot.
+
+Read src/pages/WatchPage.tsx and the current watch API routes before writing UI.
+Do not use mockups 01–10 or 1F–1I as the spec. Those are studies. 2A–2D are the complete apps.</pre>
+
+        <p class="small muted" style="margin-top: 22px">
+          <a href="index.html">Back to gallery</a>
+        </p>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var el = document.getElementById("prompt");
+        el.textContent = el.textContent.replace(
+          /https:\/\/nospoilers-watch-desk-mockups\.voltaic-net\.workers\.dev/g,
+          location.origin
+        );
+      })();
+    </script>
+  </body>
+</html>
