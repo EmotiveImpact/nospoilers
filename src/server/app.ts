@@ -1093,6 +1093,7 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: "Invalid attachment." }, 400);
     }
     try {
+      await sweepExpiredDisclosureEvidence(deps.store);
       const file = await readDisclosureAttachment(deps.store, { prospectId: id, attachmentId });
       return new Response(Uint8Array.from(file.bytes), {
         status: 200,
