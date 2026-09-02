@@ -4,8 +4,11 @@
 
 - On-demand delivery verify stores hop hosts, a short cache token (`cf:hit`,
   `x-cache:hit`, `no-store`, `aged`), and a host-derived region (`us-east-1`,
-  `r2`, `github`). Raw cache headers are not stored. This is not the hourly
-  poller and not scheduled CDN verification. Not a Pricing change.
+  `r2`, `github`). Raw cache headers are not stored. Live-recorded the
+  throwaway `phase1-fixture` hop as `github.com` →
+  `release-assets.githubusercontent.com`, `x-cache:hit`, region `github`,
+  digest `c74219d2…`. This is not the hourly poller and not scheduled CDN
+  verification. Not a Pricing change.
 
 - On-demand delivery verify follows same-bucket S3 path-style ↔ virtual-hosted
   hops and same-account R2 path-style ↔ virtual-hosted hops after a second DNS

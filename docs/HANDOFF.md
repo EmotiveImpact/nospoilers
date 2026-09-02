@@ -307,7 +307,8 @@ Release Ledger foundations are in (append-only revisions, channels, source revis
 on-demand delivery URL verify against the sealed digest; public GitHub
 Release and public npm tarball URLs attach on seal; GitHub Release
 download hops to the asset CDN; same-bucket S3 and same-account R2 hops; hop hosts / cache token / region
-on each verify;
+on each verify (live throwaway hop `github.com` → asset CDN, `x-cache:hit`,
+region `github`);
 live-matched throwaway phase1-fixture
 sourcemap.tgz; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
