@@ -24,6 +24,7 @@ import {
   scoreIdentityRisk,
   unpackedSizeJump,
   IDENTITY_CANDIDATE_CAP,
+  IDENTITY_CANDIDATE_STALE_MS,
   IDENTITY_RISK_LOOKALIKE_CAP,
   IDENTITY_RISK_MAX,
   IDENTITY_RISK_NOT_MALWARE,
@@ -41,6 +42,7 @@ import { packFromRegistry, unpackedBytesFromClaim, type NpmPack, type NpmPort } 
 import {
   MAX_PROTECTION_IMPORT,
   parseProtectionImportNames,
+  runNpmWatchPoll,
 } from "../src/server/npm-watch.ts";
 import {
   NAMESPACE_NEW_KIND,
@@ -993,6 +995,27 @@ describe("Team identity signals", () => {
       expect(downloads).toEqual([]);
       expect(getPackNames).toContain("@0cto/app");
       expect(getPackNames).not.toContain("https://registry.npmjs.org/@0cto/app/-/@0cto/app-0.0.1.tgz");
+
+      await sql.query(`UPDATE identity_candidates SET last_checked_at = now() WHERE package_id = $1`, [
+        packageId,
+      ]);
+      getPackNames.length = 0;
+      const polled = await runNpmWatchPoll({
+        store,
+        npm: stubNpm(current),
+      });
+      expect(polled.checked).toBe(1);
+      expect(getPackNames).toEqual(["@octo/app"]);
+      expect(IDENTITY_CANDIDATE_STALE_MS).toBe(60 * 60 * 1000);
+
+      getPackNames.length = 0;
+      const checkNow = await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(checkNow.status).toBe(200);
+      expect(getPackNames).toContain("@octo/app");
+      expect(getPackNames).toContain("@0cto/app");
 
       const alerts = await app.request("/api/alerts", { headers: { cookie } });
       const alertBody = (await alerts.json()) as { alerts: { kind: string; title: string; body: string }[] };

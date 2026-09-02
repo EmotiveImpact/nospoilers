@@ -164,7 +164,9 @@ Read in this order:
   Stripe or Electron are live.
 - Customers can watch public npm packages on a covered install. Connecting a name scans `latest`
   plus `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs when those tags point at another
-  version (cap three extras). The hourly poller and Watch “Check now” enqueue new versions,
+  version (cap three extras). Public packuments, including 404s, are cached for one hour;
+  private-registry tokens bypass that cache; Check now / connect / protect / import fetch the
+  watched name fresh. The hourly poller and Watch “Check now” enqueue new versions,
   mutated tarballs, channel-tag tarballs, and tag-only alerts for other dist-tag moves.
   A later registry 404 after a recorded version is a Watch `package_unpublished` alert
   without downloading. A 5xx or network error is not treated as unpublish.
@@ -224,7 +226,10 @@ Read in this order:
   revisions with the linked receipt status; preview invents none. Unpaid still allows the list
   and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
-  generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
+  generate bounded lookalike names (metadata only, never download lookalike tarballs; public
+  packuments including 404s are cached one hour; the hourly poller skips lookalikes checked
+  within that hour; Watch Check now / connect / protect / import fetch the watched name
+  fresh; private-registry tokens bypass the cache), dormant
   resurrection, release-burst/version-jump alerts, new-dependency alerts when a protected
   pack starts depending on a package first published within 14 days, packument unpacked-size
   jumps (2× or ≥5 MiB versus the last snapshot’s `dist.unpackedSize`, no download), and npm
@@ -418,6 +423,11 @@ jumps (2× or ≥5 MiB versus the last snapshot, metadata only), and npm attesta
 presence / signature keyid changes (packument only; no fetch, no verify); trial/Team; metadata-only
 candidate and dependency-name checks; typed allowlist; no malware verdict; no tarball
 download of the added dependency).
+Public npm packuments, including 404s, are cached for one hour per process.
+Private-registry tokens bypass the cache. Watch Check now, connect, protect, and
+import fetch the watched name fresh. The hourly poller skips lookalike candidates
+checked within the last hour (eight per pass). Never-checked names stay due.
+Tarball bytes stay uncached. The identity risk GET does not fetch the registry.
 Watch shows a deterministic 0–100 identity signal total on a protected pack
 (`GET /api/packages/:id/identity` `risk`), decomposed into current snapshot facts,
 registered non-allowlisted lookalikes, and open event alerts. Solo and unpaid

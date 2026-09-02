@@ -44,8 +44,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Git/source/size rules | Built | NoSpoilers |
 | Hard input/unpacked/file/time budgets | Built | NoSpoilers |
 | JSON and SARIF reports | Built | NoSpoilers |
-| Automatic npm package watching | Built: public registry.npmjs.org and private HTTPS registries per GitHub install | NoSpoilers |
-| New npm version detection | Built: hourly check + Watch “Check now” | NoSpoilers |
+| Automatic npm package watching | Built: public registry.npmjs.org and private HTTPS registries per GitHub install; public packuments (including 404s) cached 1h per process; private-registry tokens bypass the cache | NoSpoilers |
+| New npm version detection | Built: hourly check + Watch “Check now”; Check now / connect / protect / import fetch the watched name fresh | NoSpoilers |
 | Watched package unpublished / missing from registry | Built: registry 404 after a recorded version writes `package_unpublished` without download; 5xx/network errors do not; unpaid skips; tenant-scoped; not a malware verdict | NoSpoilers |
 | npm dist-tag and prerelease-channel changes | Built: next/beta/canary/rc/alpha/preview tarballs scanned (cap 3 extras); other tags stay a tag-only light alert | NoSpoilers |
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
@@ -102,7 +102,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Verified protected package/scope ownership | Built: protect only if npm scope or GitHub repository field matches the install | NoSpoilers |
 | Namespace watchlists | Built: trial/Team admin watches `@${install login}` on public npm search (cap 20); first snapshot baseline; later new names write `identity_namespace_new` without download or `npm_scan` or auto-watch; one scope per install; members may read/check; Solo 403; unpaid 402; typed confirm; other registries stay out. Live on `158159401`: unauth 401, `@prettier` 403, `@emotiveimpact` POST 201 → `namespace_check` done empty baseline, no alert/`npm_scan`, typed DELETE left 0 rows; tunnel matched | NoSpoilers Team |
 | API and batch protected-package import | Built: `POST /api/protections/import` (cap 20) protects owned npm names from a list or Watch textarea; metadata only (`getPack`); never downloads or enqueues `npm_scan`; unowned / missing / invalid names are not watched; already protected stays in place; watch cap 25; Solo allowed; unpaid 402; another tenant 403. Live on `158159401`: prettier / left-pad / missing / invalid → `not_owned` / `not_owned` / `not_found` / `invalid`, `queued: false`, watch list still empty, unauth 401; tunnel matched. No EmotiveImpact-owned npm pack to protect | NoSpoilers |
-| Bounded typo/edit-distance candidate generation | Built: deterministic cap of 40 candidates; first transformation wins | NoSpoilers Team |
+| Bounded typo/edit-distance candidate generation | Built: deterministic cap of 40 candidates; first transformation wins; hourly poller skips lookalikes checked within 1h (8 per pass); Watch Check now re-checks immediately; public lookalike packuments cached 1h; private tokens bypass; no extra fetch on risk GET | NoSpoilers Team |
 | Separator, keyboard, token-order, homoglyph and scope confusion | Built: ASCII confusables, adjacent-key, separator, token-order, scope confusion | NoSpoilers Team |
 | Maintainer addition/removal history | Built: append-only identity snapshots; emails never stored | NoSpoilers |
 | Package ownership continuity/transfer alert | Built: maintainer add/remove facts, not a malware verdict | NoSpoilers |

@@ -8,10 +8,14 @@ import { emptyPackageIdentity } from "../src/server/package-identity.ts";
 import {
   allowedNpmTarballUrl,
   channelScansForDelta,
+  createNpmPort,
+  createPackumentCache,
   diffWatchedPack,
   MAX_CHANNEL_SCANS,
   normalizePackageName,
   packFromRegistry,
+  packumentCacheKey,
+  PACKUMENT_CACHE_MAX,
   type NpmAuth,
   type NpmPack,
   type NpmPort,
@@ -194,6 +198,97 @@ describe("npm names and diffs", () => {
         pack(),
       )[0]?.type,
     ).toBe("unchanged");
+  });
+});
+
+describe("public packument cache", () => {
+  it("caches public metadata, 404s, and fresh/token bypasses", async () => {
+    const urls: string[] = [];
+    const cache = createPackumentCache({ ttlMs: 60_000, max: 2 });
+    const body = {
+      name: "left-pad",
+      "dist-tags": { latest: "1.3.0" },
+      versions: {
+        "1.3.0": {
+          dist: {
+            tarball: "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+            shasum: "abc123",
+          },
+        },
+      },
+    };
+    const npm = createNpmPort({
+      cache,
+      fetch: async (url) => {
+        urls.push(String(url));
+        if (String(url).includes("missing-zzzz")) {
+          return new Response("not found", { status: 404 });
+        }
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+    const first = await npm.getPack("left-pad");
+    const second = await npm.getPack("Left-Pad");
+    expect(first?.version).toBe("1.3.0");
+    expect(second?.version).toBe("1.3.0");
+    expect(urls).toHaveLength(1);
+    expect(cache.get(packumentCacheKey("left-pad", "https://registry.npmjs.org"))?.version).toBe(
+      "1.3.0",
+    );
+    const missing = await npm.getPack("missing-zzzz");
+    const missingAgain = await npm.getPack("missing-zzzz");
+    expect(missing).toBeNull();
+    expect(missingAgain).toBeNull();
+    expect(urls.filter((url) => url.includes("missing-zzzz"))).toHaveLength(1);
+    await npm.getPack("left-pad", undefined, { fresh: true });
+    expect(urls.filter((url) => url.includes("/left-pad")).length).toBe(2);
+    await npm.getPack("left-pad", {
+      registryOrigin: "https://registry.npmjs.org",
+      token: "private-registry-token-value",
+    });
+    expect(urls.length).toBeGreaterThanOrEqual(3);
+    cache.set("a", first ?? null);
+    cache.set("b", first ?? null);
+    cache.set("c", first ?? null);
+    expect(cache.size()).toBeLessThanOrEqual(PACKUMENT_CACHE_MAX);
+    expect(cache.size()).toBe(2);
+  });
+
+  it("expires cached packuments after the TTL", async () => {
+    let now = 1_000;
+    const cache = createPackumentCache({ ttlMs: 50, now: () => now });
+    const urls: string[] = [];
+    const npm = createNpmPort({
+      cache,
+      fetch: async (url) => {
+        urls.push(String(url));
+        return new Response(
+          JSON.stringify({
+            name: "once",
+            "dist-tags": { latest: "1.0.0" },
+            versions: {
+              "1.0.0": {
+                dist: {
+                  tarball: "https://registry.npmjs.org/once/-/once-1.0.0.tgz",
+                  shasum: "abc",
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      },
+    });
+    await npm.getPack("once");
+    now = 1_040;
+    await npm.getPack("once");
+    expect(urls).toHaveLength(1);
+    now = 1_060;
+    await npm.getPack("once");
+    expect(urls).toHaveLength(2);
   });
 });
 

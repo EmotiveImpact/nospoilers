@@ -70,7 +70,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   when this install is under the 25-package watch cap. Solo paid is allowed. Unpaid
   returns 402. Another tenant is 403. Unauthenticated is 401.
 - On a trial or Team install, list bounded lookalike candidate names for a protected pack.
-  Metadata-only registry checks (never download or execute lookalike tarballs). A new
+  Metadata-only registry checks (never download or execute lookalike tarballs). Public
+  packument metadata, including 404s, is cached for one hour per process. Private-registry
+  tokens bypass the cache. Watch Check now, connect, protect, and import fetch the watched
+  name fresh. The hourly poller skips lookalike candidates checked within the last hour
+  (eight per pass). Never-checked names stay due. A new
   dependency on a package first published within 14 days is a Watch alert (metadata
   `time.created` only; the added pack is not downloaded). A packument `dist.unpackedSize`
   that is 2× or ≥5 MiB versus the last identity snapshot is a Watch alert (claimed size
@@ -82,7 +86,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   `risk`). The total is decomposed into current snapshot facts, registered non-allowlisted
   lookalikes, and open burst / lookalike-version / new-dependency / unpublished alerts. Solo
   paid and unpaid still return identity snapshots with `risk: null`. Another tenant’s package
-  is 404. Alerts are facts, not a malware verdict, and never auto-advisory or takedown.
+  is 404. The risk GET does not fetch the registry. Alerts are facts, not a malware verdict, and never auto-advisory or takedown.
 - On a trial or Team install, read assembled identity evidence for a protected pack on
   that install. Members may download the JSON. Unpublished or missing packs return
   `evidence: null`. Solo paid returns 403. Unpaid returns 402. Another tenant’s package
@@ -530,7 +534,10 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   never store signature values or claim malware, first snapshot and missing packument size
   do not alert, publishing-identity changes are Solo-allowed facts, allowlisting skips further lookalike alerts,
   and the identity risk score is deterministic, decomposable, omitted for Solo/unpaid (`risk: null`),
-  tenant-scoped, and never a malware verdict. Live Neon gates on install `158159401`:
+  tenant-scoped, and never a malware verdict. Public packuments (including 404s) are cached
+  for one hour; private-registry tokens and `{ fresh: true }` bypass that cache; the hourly
+  poller skips lookalikes checked within the last hour while Watch Check now does not.
+  Live Neon gates on install `158159401`:
   unauth GET 401, unknown package 404, watch list empty, no new jobs; Cloudflare tunnel matched.
   Batch import (`POST /api/protections/import`) protects an owned name and snapshots
   identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,

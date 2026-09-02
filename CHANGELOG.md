@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Package Identity registry cache: public npm packuments, including 404s, are
+  cached for one hour per process (cap 256). Private-registry tokens bypass
+  the cache. Watch Check now, connect, protect, and import fetch the watched
+  name fresh. Lookalike and new-dependency metadata checks use the cache.
+  The hourly poller skips lookalike candidates checked within the last hour
+  (eight per pass); never-checked names stay due. Watch Check now still
+  re-checks immediately. Tarball bytes stay uncached. No extra fetch on the
+  identity risk GET. No worker wake and no migration. Not a Pricing change.
+
 - Package Identity risk score: trial and Team Watch shows a deterministic 0–100
   signal total on a protected npm name (`GET /api/packages/:id/identity` `risk`).
   The total decomposes into current snapshot facts, registered non-allowlisted

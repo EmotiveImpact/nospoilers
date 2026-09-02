@@ -4323,7 +4323,11 @@ export function createStore(
       return rows[0] ? identityCandidateRow(rows[0]) : null;
     },
 
-    async listDueIdentityCandidates(packageId: number, limit: number): Promise<IdentityCandidateRow[]> {
+    async listDueIdentityCandidates(
+      packageId: number,
+      limit: number,
+      staleBefore?: Date | string | null,
+    ): Promise<IdentityCandidateRow[]> {
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -4341,9 +4345,14 @@ export function createStore(
       }>(
         `SELECT * FROM identity_candidates
          WHERE package_id = $1 AND allowlisted_at IS NULL
+           AND (
+             $3::timestamptz IS NULL
+             OR last_checked_at IS NULL
+             OR last_checked_at < $3::timestamptz
+           )
          ORDER BY last_checked_at ASC NULLS FIRST, id ASC
          LIMIT $2`,
-        [packageId, limit],
+        [packageId, limit, staleBefore ?? null],
       );
       return rows.map(identityCandidateRow);
     },

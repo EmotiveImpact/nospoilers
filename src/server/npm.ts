@@ -62,11 +62,65 @@ export type NpmPack = {
 
 export type { NamespaceSearchHit };
 
+export type NpmGetOpts = {
+  /** Bypass the public packument cache. Used for Check now / connect on the watched name. */
+  fresh?: boolean;
+};
+
 export type NpmPort = {
-  getPack: (packageName: string, auth?: NpmAuth) => Promise<NpmPack | null>;
+  getPack: (packageName: string, auth?: NpmAuth, opts?: NpmGetOpts) => Promise<NpmPack | null>;
   downloadTarball: (url: string, maxBytes: number, auth?: NpmAuth) => Promise<Buffer>;
   searchScope: (scope: string) => Promise<NamespaceSearchHit[]>;
 };
+
+export const PACKUMENT_CACHE_TTL_MS = 60 * 60 * 1000;
+export const PACKUMENT_CACHE_MAX = 256;
+
+export type PackumentCache = {
+  get(key: string): NpmPack | null | undefined;
+  set(key: string, pack: NpmPack | null): void;
+  size(): number;
+};
+
+export function packumentCacheKey(name: string, origin: string): string {
+  return `${origin.trim().toLowerCase()}\0${name}`;
+}
+
+export function createPackumentCache(opts?: {
+  ttlMs?: number;
+  max?: number;
+  now?: () => number;
+}): PackumentCache {
+  const ttlMs = opts?.ttlMs ?? PACKUMENT_CACHE_TTL_MS;
+  const max = opts?.max ?? PACKUMENT_CACHE_MAX;
+  const now = opts?.now ?? Date.now;
+  const entries = new Map<string, { at: number; pack: NpmPack | null }>();
+  return {
+    get(key) {
+      const hit = entries.get(key);
+      if (!hit) return undefined;
+      if (now() - hit.at >= ttlMs) {
+        entries.delete(key);
+        return undefined;
+      }
+      entries.delete(key);
+      entries.set(key, hit);
+      return hit.pack;
+    },
+    set(key, pack) {
+      entries.delete(key);
+      entries.set(key, { at: now(), pack });
+      while (entries.size > max) {
+        const oldest = entries.keys().next().value;
+        if (oldest === undefined) break;
+        entries.delete(oldest);
+      }
+    },
+    size() {
+      return entries.size;
+    },
+  };
+}
 
 const NAME_RE = /^(?:@[a-z0-9][a-z0-9-._]{0,212}\/)?[a-z0-9][a-z0-9-._]{0,213}$/;
 
@@ -333,20 +387,36 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
   return Buffer.concat(chunks, total);
 }
 
-export function createNpmPort(): NpmPort {
+export function createNpmPort(opts?: {
+  fetch?: typeof fetch;
+  cache?: PackumentCache;
+}): NpmPort {
+  const fetchImpl = opts?.fetch ?? fetch;
+  const cache = opts?.cache ?? createPackumentCache();
   return {
-    async getPack(packageName, auth) {
+    async getPack(packageName, auth, getOpts) {
       const name = normalizePackageName(packageName);
       if (!name) throw new Error("Invalid npm package name.");
       const resolved = resolveAuth(auth);
-      const response = await fetch(registryMetadataUrl(resolved.origin, name), {
+      const key = packumentCacheKey(name, resolved.origin);
+      const cacheable = !resolved.token;
+      if (!getOpts?.fresh && cacheable) {
+        const hit = cache.get(key);
+        if (hit !== undefined) return hit;
+      }
+      const response = await fetchImpl(registryMetadataUrl(resolved.origin, name), {
         headers: npmHeaders(auth, true),
         signal: AbortSignal.timeout(20_000),
       });
-      if (response.status === 404) return null;
+      if (response.status === 404) {
+        if (cacheable) cache.set(key, null);
+        return null;
+      }
       if (!response.ok) throw new Error(`npm registry returned ${response.status}.`);
       const body = (await response.json()) as RegistryBody;
-      return packFromRegistry(name, body, resolved.host);
+      const pack = packFromRegistry(name, body, resolved.host);
+      if (cacheable) cache.set(key, pack);
+      return pack;
     },
     async downloadTarball(url, maxBytes, auth) {
       const resolved = resolveAuth(auth);

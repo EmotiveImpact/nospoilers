@@ -141,7 +141,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   verify, no stored signature values). Watch shows a deterministic 0–100 signal
   total on a protected pack, decomposed into those facts plus open event alerts.
   Metadata-only candidate
-  and dependency-name checks. Typed
+  and dependency-name checks. Public packuments (including 404s) are cached for one
+  hour; private-registry tokens bypass the cache; Watch Check now / connect / protect /
+  import fetch the watched name fresh; the hourly poller skips lookalikes checked within
+  the last hour. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - Package Identity human-reviewed evidence: trial/Team admin assembles a frozen takedown
   pack for a protected npm name and may publish `/advisory/:token`. Members may

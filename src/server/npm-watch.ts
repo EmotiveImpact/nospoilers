@@ -7,6 +7,7 @@ import {
 } from "./npm-registry.ts";
 import {
   checkIdentitySignals,
+  IDENTITY_CANDIDATE_STALE_MS,
   identityPlanDeniedFromBilling,
   persistIdentityCandidates,
 } from "./identity-signals.ts";
@@ -260,7 +261,7 @@ export async function protectWatchedPackage(
     throw Object.assign(new Error("Unknown GitHub installation."), { status: 404 });
   }
   const auth = await authForPackage(store, pkg);
-  const pack = await npm.getPack(pkg.package_name, auth);
+  const pack = await npm.getPack(pkg.package_name, auth, { fresh: true });
   if (!pack) {
     throw Object.assign(new Error(`npm has no package named ${pkg.package_name}.`), { status: 404 });
   }
@@ -359,7 +360,7 @@ export async function importProtectedPackages(
     }
     let pack: NpmPack | null = null;
     try {
-      pack = await npm.getPack(name, auth);
+      pack = await npm.getPack(name, auth, { fresh: true });
     } catch {
       pack = null;
     }
@@ -609,7 +610,7 @@ export async function connectWatchedPackage(
     installation_id: input.installationId,
     registry_origin: parsed.origin,
   });
-  const pack = await npm.getPack(packageName, auth);
+  const pack = await npm.getPack(packageName, auth, { fresh: true });
   if (!pack) {
     throw Object.assign(
       new Error(
@@ -669,6 +670,7 @@ export async function checkWatchedPackage(
   npm: NpmPort,
   pkg: WatchedPackageRow,
   notifier?: AlertNotifier,
+  opts?: { candidateStaleMs?: number },
 ): Promise<{ queued: boolean; deltas: WatchDelta[] }> {
   if (!(await store.installationWorkAllowed(pkg.installation_id))) {
     await store.touchWatchedPackage(pkg.id, {});
@@ -683,7 +685,7 @@ export async function checkWatchedPackage(
   }
   let pack: NpmPack | null = null;
   try {
-    pack = await npm.getPack(pkg.package_name, auth);
+    pack = await npm.getPack(pkg.package_name, auth, { fresh: true });
   } catch {
     await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
@@ -707,7 +709,16 @@ export async function checkWatchedPackage(
   });
   const previous = await store.latestPackageIdentitySnapshot(pkg.id);
   await syncProtectedIdentity(store, pkg, pack, notifier);
-  await checkIdentitySignals({ store, npm, notifier, pkg, pack, previous, auth });
+  await checkIdentitySignals({
+    store,
+    npm,
+    notifier,
+    pkg,
+    pack,
+    previous,
+    auth,
+    candidateStaleMs: opts?.candidateStaleMs,
+  });
   let queued = false;
   for (const delta of deltas) {
     if (await enqueueFromDelta(store, pkg, pack, delta, pkg.last_dist_tags)) queued = true;
@@ -725,7 +736,9 @@ export async function runNpmWatchPoll(deps: {
   let queued = 0;
   for (const pkg of packages) {
     checked += 1;
-    const result = await checkWatchedPackage(deps.store, deps.npm, pkg, deps.notifier);
+    const result = await checkWatchedPackage(deps.store, deps.npm, pkg, deps.notifier, {
+      candidateStaleMs: IDENTITY_CANDIDATE_STALE_MS,
+    });
     if (result.queued) queued += 1;
   }
   return { checked, queued };

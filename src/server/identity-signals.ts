@@ -19,6 +19,7 @@ import type { IdentityCandidateRow, PackageIdentitySnapshotRow, Store, WatchedPa
 
 export const IDENTITY_CANDIDATE_CAP = 40;
 export const IDENTITY_CANDIDATES_PER_PASS = 8;
+export const IDENTITY_CANDIDATE_STALE_MS = 60 * 60 * 1000;
 export const DORMANT_IDLE_MS = 180 * 24 * 60 * 60 * 1000;
 export const BURST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const BURST_VERSION_COUNT = 5;
@@ -709,8 +710,17 @@ async function checkLookalikeCandidates(input: {
   notifier?: AlertNotifier;
   pkg: WatchedPackageRow;
   auth?: NpmAuth;
+  candidateStaleMs?: number;
 }): Promise<number> {
-  const due = await input.store.listDueIdentityCandidates(input.pkg.id, IDENTITY_CANDIDATES_PER_PASS);
+  const staleBefore =
+    input.candidateStaleMs && input.candidateStaleMs > 0
+      ? new Date(Date.now() - input.candidateStaleMs)
+      : null;
+  const due = await input.store.listDueIdentityCandidates(
+    input.pkg.id,
+    IDENTITY_CANDIDATES_PER_PASS,
+    staleBefore,
+  );
   let alerts = 0;
   for (const row of due) {
     let pack: NpmPack | null = null;
@@ -765,6 +775,7 @@ export async function checkIdentitySignals(input: {
   pack: NpmPack;
   previous: PackageIdentitySnapshotRow | null;
   auth?: NpmAuth;
+  candidateStaleMs?: number;
 }): Promise<number> {
   const protection = await input.store.getPackageProtection(input.pkg.id);
   if (!protection) return 0;
