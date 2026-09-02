@@ -26,7 +26,7 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-seven product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
@@ -53,7 +53,10 @@ Read in this order:
   `035_delivery_verify_chain` adds `redirect_hosts`, `cache_state`, and
   `delivery_region` on verifications.
   `036_release_size_type` adds `artifact_bytes` and `media_type` on
-  `release_revisions`. Next unused id is `037_*`.
+  `release_revisions`. `037_release_governance` adds append-only
+  `release_approvals` and `release_legal_holds`, and extends
+  `audit_events.action` with `release.approve`, `release.reject`,
+  `release.hold`, and `release.release_hold`. Next unused id is `038_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -68,7 +71,12 @@ Read in this order:
   same-bucket S3 and same-account R2 hops are followed the same way. Other
   cross-host redirects are not fetched. Each verification stores hop hosts, a
   short cache token, and a host-derived region. This is not added to the
-  hourly poller. Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
+  hourly poller. Trial and Team admins approve a passing revision to ship
+  or reject it (typed coordinate; the delivery-URL attacher cannot approve
+  that row). Legal hold keeps a revision on the list after the query-time
+  retention window; another admin must release the hold. Members export the
+  ledger JSON (redacted URLs, no pack bytes). Solo 403. Unpaid 402.
+  Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
   after save. Jira stores a plaintext project key for the list UI. Notification deliveries are
@@ -315,6 +323,9 @@ on each verify (live throwaway hop `github.com` → asset CDN, `x-cache:hit`,
 region `github`);
 live-matched throwaway phase1-fixture
 sourcemap.tgz; not scheduled CDN).
+Release Ledger governance is in (trial/Team approve-to-ship / reject with SoD versus the
+delivery-URL attacher; legal hold that survives the list retention window; another admin
+must release the hold; member ledger export; Solo 403; unpaid 402; append-only).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).

@@ -127,10 +127,16 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
   revision, stored CI run URL, linked receipt status, attached delivery URLs with query
-  strings redacted). Failed-policy and inconclusive are
+  strings redacted, latest approval, and legal-hold status). Failed-policy and inconclusive are
   not a passing result. Historical rows cannot be edited or deleted. Download the
   linked signed receipt JSON (`GET /api/receipts/:id`). Unpaid still allowed. Another tenant
-  is 404. Pack bytes are not included. Delivery verification rows are append-only.
+  is 404. Pack bytes are not included. Delivery verification, approval, and legal-hold
+  rows are append-only. A revision on legal hold stays on the list after the retention
+  window. Direct revision ids still load for incident work.
+- On a trial or Team install, export the release ledger JSON (digests, size, media type,
+  receipt status, approvals, hold events, redacted delivery URLs). Members may export.
+  Solo paid returns 403. Unpaid returns 402. Another tenant’s installation is empty.
+  Query strings, pack bytes, and receipt bodies are not included.
 - List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
   tokens are never returned). Jira lists the project key. A delivery test talks to the
   destination and never inserts an alert. A Jira test never creates a ticket. List routing
@@ -154,14 +160,14 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
-  verify a release delivery URL, open setup or
+  verify a release delivery URL, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
 - See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
-- Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
+- Edit or delete scan receipts, release revisions, release approvals, legal-hold events, jobs, alert events, or audit events. Receipts, revisions, approvals, holds, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
 - Access `/internal/*` or `/api/internal/*`.
@@ -243,6 +249,16 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   strings are stored only to fetch and are redacted on Watch, alerts, and audit.
   Unpaid returns 402. Members return 403. Another tenant is 404. This is not the
   hourly poller and not scheduled CDN verification.
+- Approve a passing sealed revision to ship, or reject it, on a trial or Team install.
+  Type the coordinate. Reason required. Failed-policy, inconclusive, and digest-changed
+  rows cannot be approved (409). The admin who attached a delivery URL cannot approve
+  that revision (separation of duties). Duplicate same decision by the same admin is 409.
+  Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404.
+  Audit records the coordinate only.
+- Place or release a legal hold on a sealed revision on a trial or Team install. Type
+  the coordinate. Reason required. The admin who placed the hold cannot release it.
+  Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404.
+  Hold events are append-only. Audit records the coordinate only.
 
 **Must not**
 
@@ -387,6 +403,12 @@ and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release 
 are append-only, tenant-scoped, store packed size and inferred media type, flag digest mismatch without a compromise claim, reject
 SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt JSON for
 a sealed release even after coverage ends (another tenant is 404).
+`tests/release-governance.test.ts` proves trial/Team approval and legal hold are
+admin-only, typed-confirm, Solo 403, unpaid 402, another tenant 404, dirty and
+digest-changed revisions cannot be approved, the delivery-URL attacher cannot
+approve that revision, another admin must release a hold, held revisions stay
+listed after the retention window, export is member-readable and redacts query
+strings, and approval/hold rows are append-only.
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub

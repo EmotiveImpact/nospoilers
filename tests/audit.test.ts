@@ -67,6 +67,10 @@ describe("Team audit log", () => {
     expect(AUDIT_ACTIONS).toContain("invite.create");
     expect(AUDIT_ACTIONS).toContain("invite.revoke");
     expect(AUDIT_ACTIONS).toContain("delivery_location.save");
+    expect(AUDIT_ACTIONS).toContain("release.approve");
+    expect(AUDIT_ACTIONS).toContain("release.reject");
+    expect(AUDIT_ACTIONS).toContain("release.hold");
+    expect(AUDIT_ACTIONS).toContain("release.release_hold");
   });
 
   it("records admin writes, requires typed confirmation, exports titles only, and hides other tenants", async () => {

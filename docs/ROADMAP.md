@@ -75,7 +75,11 @@ the immediate operational sequence. The exhaustive expansion plan is
   are GitHub’s asset CDN, same-bucket S3, and same-account R2; other hosts are not
   fetched. Each verify records hop hosts, a cache token, and a host-derived region.
   `nospoilers verify --receipt` can stream-hash a `--url` the same way.
-  Development
+  Trial and Team admins approve a passing revision to ship (typed coordinate; the
+  delivery-URL attacher cannot approve that row) or reject it. Legal hold keeps a
+  revision listed after the retention window; another admin must release the hold.
+  Members export the ledger JSON (query strings and pack bytes omitted). Solo 403.
+  Unpaid 402. Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

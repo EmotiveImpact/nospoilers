@@ -66,7 +66,16 @@ import {
 } from "./prospects.ts";
 import { runProspectNpmFeed } from "./prospect-feed.ts";
 import type { Store } from "./store.ts";
-import type { AlertEventRow, AlertRow, IdentityCandidateRow, PolicyExceptionRow, ProspectStatus, ReleaseRevisionRow } from "./store.ts";
+import type {
+  AlertEventRow,
+  AlertRow,
+  IdentityCandidateRow,
+  PolicyExceptionRow,
+  ProspectStatus,
+  ReleaseApprovalRow,
+  ReleaseLegalHoldRow,
+  ReleaseRevisionRow,
+} from "./store.ts";
 import {
   exposureMs,
   findingRules,
@@ -81,6 +90,21 @@ import {
   parseReleaseScanMeta,
   ReleaseLedgerError,
 } from "./release-ledger.ts";
+import {
+  GOVERNANCE_DUPLICATE_ERROR,
+  GOVERNANCE_HELD_ERROR,
+  GOVERNANCE_NOT_HELD_ERROR,
+  GOVERNANCE_SOD_ATTACH_ERROR,
+  GOVERNANCE_SOD_HOLD_ERROR,
+  RELEASE_EXPORT_LIMIT,
+  governancePlanDeniedFromBilling,
+  groupedByRevision,
+  latestByRevision,
+  parseApprovalDecision,
+  parseGovernanceReason,
+  parseHoldAction,
+  shippingBlockedReason,
+} from "./release-governance.ts";
 import {
   DeliveryVerifyError,
   MAX_DELIVERY_LOCATIONS_PER_INSTALL,
@@ -305,9 +329,30 @@ function publicDeliveryLocation(row: {
   };
 }
 
+function publicApproval(row: ReleaseApprovalRow) {
+  return {
+    decision: row.decision,
+    actorLogin: row.actor_login,
+    reason: row.reason,
+    createdAt: row.created_at,
+  };
+}
+
+function publicLegalHold(row: ReleaseLegalHoldRow | null) {
+  if (!row || row.action !== "place") return null;
+  return {
+    active: true as const,
+    actorLogin: row.actor_login,
+    reason: row.reason,
+    createdAt: row.created_at,
+  };
+}
+
 function publicRelease(
   row: ReleaseRevisionRow,
   locations: ReturnType<typeof publicDeliveryLocation>[] = [],
+  approval: ReleaseApprovalRow | null = null,
+  hold: ReleaseLegalHoldRow | null = null,
 ) {
   return {
     id: row.id,
@@ -328,6 +373,8 @@ function publicRelease(
     receiptStatus: row.receipt_status,
     createdAt: row.created_at,
     locations,
+    approval: approval ? publicApproval(approval) : null,
+    legalHold: publicLegalHold(hold),
   };
 }
 
@@ -3032,7 +3079,10 @@ export function createApp(deps: AppDeps): Hono {
     const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
       installationId: queryInstallationId(c),
     });
-    const locations = await deps.store.listDeliveryLocationsForRevisions(releases.map((row) => row.id));
+    const revisionIds = releases.map((row) => row.id);
+    const locations = await deps.store.listDeliveryLocationsForRevisions(revisionIds);
+    const approvals = latestByRevision(await deps.store.listReleaseApprovalsForRevisions(revisionIds));
+    const holds = latestByRevision(await deps.store.listReleaseLegalHoldsForRevisions(revisionIds));
     const byRevision = new Map<number, ReturnType<typeof publicDeliveryLocation>[]>();
     for (const location of locations) {
       const list = byRevision.get(location.revision_id) ?? [];
@@ -3040,7 +3090,94 @@ export function createApp(deps: AppDeps): Hono {
       byRevision.set(location.revision_id, list);
     }
     return c.json({
-      releases: releases.map((row) => publicRelease(row, byRevision.get(row.id) ?? [])),
+      releases: releases.map((row) =>
+        publicRelease(
+          row,
+          byRevision.get(row.id) ?? [],
+          approvals.get(row.id) ?? null,
+          holds.get(row.id) ?? null,
+        ),
+      ),
+    });
+  });
+
+  app.get("/api/releases/export", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the release ledger." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({
+        exportedAt: new Date().toISOString(),
+        installationId,
+        retentionDays: 90,
+        releases: [],
+      });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = governancePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
+      installationId,
+      limit: RELEASE_EXPORT_LIMIT,
+    });
+    const revisionIds = releases.map((row) => row.id);
+    const locations = await deps.store.listDeliveryLocationsForRevisions(revisionIds);
+    const approvals = await deps.store.listReleaseApprovalsForRevisions(revisionIds);
+    const holds = await deps.store.listReleaseLegalHoldsForRevisions(revisionIds);
+    const locationsByRevision = groupedByRevision(locations);
+    const approvalsByRevision = groupedByRevision(approvals);
+    const holdsByRevision = groupedByRevision(holds);
+    const latestApproval = latestByRevision(approvals);
+    const latestHold = latestByRevision(holds);
+    return c.json({
+      exportedAt: new Date().toISOString(),
+      installationId,
+      retentionDays: billing?.retentionDays ?? 90,
+      releases: releases.map((row) => ({
+        id: row.id,
+        channel: row.channel,
+        coordinate: row.coordinate,
+        artifactSha256: row.artifact_sha256,
+        artifactSha512: row.artifact_sha512,
+        artifactBytes: row.artifact_bytes,
+        mediaType: row.media_type,
+        sourceRevision: row.source_revision,
+        ciRunUrl: row.ci_run_url,
+        previousSha256: row.previous_sha256,
+        mismatch: row.mismatch,
+        receiptStatus: row.receipt_status,
+        createdAt: row.created_at,
+        approval: latestApproval.get(row.id) ? publicApproval(latestApproval.get(row.id)!) : null,
+        approvals: (approvalsByRevision.get(row.id) ?? []).map(publicApproval),
+        legalHold: publicLegalHold(latestHold.get(row.id) ?? null),
+        holds: (holdsByRevision.get(row.id) ?? []).map((hold) => ({
+          action: hold.action,
+          actorLogin: hold.actor_login,
+          reason: hold.reason,
+          createdAt: hold.created_at,
+        })),
+        locations: (locationsByRevision.get(row.id) ?? []).map((location) => ({
+          url: redactDeliveryUrl(location.url),
+          host: location.host,
+          lastStatus: location.last_status,
+          lastSha256: location.last_sha256,
+          lastMediaType: location.last_media_type,
+          lastRedirectHosts: location.last_redirect_hosts,
+          lastCacheState: location.last_cache_state,
+          lastRegion: location.last_region,
+          lastCheckedAt: location.last_checked_at,
+        })),
+      })),
     });
   });
 
@@ -3052,7 +3189,146 @@ export function createApp(deps: AppDeps): Hono {
     const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
     if (!row) return c.json({ error: "Unknown release." }, 404);
     const locations = await deps.store.listDeliveryLocationsForRevisions([row.id]);
-    return c.json({ release: publicRelease(row, locations.map(publicDeliveryLocation)) });
+    const approvals = await deps.store.listReleaseApprovalsForRevisions([row.id]);
+    const holds = await deps.store.listReleaseLegalHoldsForRevisions([row.id]);
+    return c.json({
+      release: publicRelease(
+        row,
+        locations.map(publicDeliveryLocation),
+        latestByRevision(approvals).get(row.id) ?? null,
+        latestByRevision(holds).get(row.id) ?? null,
+      ),
+    });
+  });
+
+  app.post("/api/releases/:id/approvals", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = governancePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, row.coordinate);
+    if (confirmError) return c.json(confirmError, 400);
+    let decision: ReturnType<typeof parseApprovalDecision>;
+    let reason: string;
+    try {
+      decision = parseApprovalDecision(body.decision);
+      reason = parseGovernanceReason(body.reason);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not record that decision." },
+        errorStatus(error),
+      );
+    }
+    if (decision === "approved") {
+      const blocked = shippingBlockedReason(row);
+      if (blocked) return c.json({ error: blocked }, 409);
+      const attachers = await deps.store.listDeliveryAttacherLogins(row.id);
+      if (attachers.includes(user.login)) {
+        return c.json({ error: GOVERNANCE_SOD_ATTACH_ERROR }, 409);
+      }
+    }
+    const latest = latestByRevision(await deps.store.listReleaseApprovalsForRevisions([row.id])).get(
+      row.id,
+    );
+    if (latest && latest.decision === decision && latest.actor_login === user.login) {
+      return c.json({ error: GOVERNANCE_DUPLICATE_ERROR }, 409);
+    }
+    const recorded = await deps.store.insertReleaseApproval({
+      installationId: row.installation_id,
+      revisionId: row.id,
+      decision,
+      reason,
+      actorLogin: user.login,
+    });
+    await recordAudit({
+      installationId: row.installation_id,
+      actorLogin: user.login,
+      action: decision === "approved" ? "release.approve" : "release.reject",
+      summary:
+        decision === "approved"
+          ? `Approved shipping ${row.coordinate}`
+          : `Rejected shipping ${row.coordinate}`,
+      targetKind: "release",
+      targetId: row.coordinate,
+    });
+    return c.json({ ok: true, approval: publicApproval(recorded) }, 201);
+  });
+
+  app.post("/api/releases/:id/holds", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = governancePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, row.coordinate);
+    if (confirmError) return c.json(confirmError, 400);
+    let action: ReturnType<typeof parseHoldAction>;
+    let reason: string;
+    try {
+      action = parseHoldAction(body.action);
+      reason = parseGovernanceReason(body.reason);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not record that legal hold." },
+        errorStatus(error),
+      );
+    }
+    const latest = latestByRevision(await deps.store.listReleaseLegalHoldsForRevisions([row.id])).get(
+      row.id,
+    );
+    if (action === "place") {
+      if (latest?.action === "place") return c.json({ error: GOVERNANCE_HELD_ERROR }, 409);
+    } else {
+      if (latest?.action !== "place") return c.json({ error: GOVERNANCE_NOT_HELD_ERROR }, 400);
+      if (latest.actor_login === user.login) {
+        return c.json({ error: GOVERNANCE_SOD_HOLD_ERROR }, 409);
+      }
+    }
+    const recorded = await deps.store.insertReleaseLegalHold({
+      installationId: row.installation_id,
+      revisionId: row.id,
+      action,
+      reason,
+      actorLogin: user.login,
+    });
+    await recordAudit({
+      installationId: row.installation_id,
+      actorLogin: user.login,
+      action: action === "place" ? "release.hold" : "release.release_hold",
+      summary:
+        action === "place"
+          ? `Placed legal hold on ${row.coordinate}`
+          : `Released legal hold on ${row.coordinate}`,
+      targetKind: "release",
+      targetId: row.coordinate,
+    });
+    return c.json(
+      {
+        ok: true,
+        hold: {
+          action: recorded.action,
+          actorLogin: recorded.actor_login,
+          reason: recorded.reason,
+          createdAt: recorded.created_at,
+        },
+      },
+      201,
+    );
   });
 
   app.post("/api/releases/:id/locations", async (c) => {

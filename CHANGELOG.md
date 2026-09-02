@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Trial and Team installs get Release Ledger governance: approve a passing sealed
+  revision to ship or reject it, place a legal hold that survives the list
+  retention window, and export the ledger JSON. The admin who attached a delivery
+  URL cannot approve that revision. Another admin must release a hold.
+  Failed-policy, inconclusive, and digest-changed rows cannot be approved.
+  Members may export. Solo 403. Unpaid 402. Query strings and pack bytes stay off
+  the export. Not scheduled CDN, SBOM, or Sigstore. Not a Pricing change.
+
 - Sealed release revisions store packed size and an inferred media type
   (`.tgz` / npm → `application/gzip`, zip-family → `application/zip`).
   Watch shows both. Canonical and attached delivery URLs inherit that type

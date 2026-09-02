@@ -383,6 +383,26 @@ export type DeliveryVerificationRow = {
   created_at: string;
 };
 
+export type ReleaseApprovalRow = {
+  id: number;
+  installation_id: number;
+  revision_id: number;
+  decision: "approved" | "rejected";
+  reason: string;
+  actor_login: string;
+  created_at: string;
+};
+
+export type ReleaseLegalHoldRow = {
+  id: number;
+  installation_id: number;
+  revision_id: number;
+  action: "place" | "release";
+  reason: string;
+  actor_login: string;
+  created_at: string;
+};
+
 export type PackageProtectionRow = {
   id: number;
   installation_id: number;
@@ -919,6 +939,50 @@ function deliveryVerificationRow(row: {
     cache_state: row.cache_state ?? null,
     delivery_region: row.delivery_region ?? null,
     error: row.error,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+type ReleaseApprovalSqlRow = {
+  id: unknown;
+  installation_id: unknown;
+  revision_id: unknown;
+  decision: string;
+  reason: string;
+  actor_login: string;
+  created_at: string | Date;
+};
+
+type ReleaseLegalHoldSqlRow = {
+  id: unknown;
+  installation_id: unknown;
+  revision_id: unknown;
+  action: string;
+  reason: string;
+  actor_login: string;
+  created_at: string | Date;
+};
+
+function releaseApprovalRow(row: ReleaseApprovalSqlRow): ReleaseApprovalRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    revision_id: num(row.revision_id),
+    decision: row.decision === "rejected" ? "rejected" : "approved",
+    reason: row.reason,
+    actor_login: row.actor_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function releaseLegalHoldRow(row: ReleaseLegalHoldSqlRow): ReleaseLegalHoldRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    revision_id: num(row.revision_id),
+    action: row.action === "release" ? "release" : "place",
+    reason: row.reason,
+    actor_login: row.actor_login,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -4686,7 +4750,18 @@ export function createStore(
          LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE iu.user_id = $1
            AND ($3::bigint IS NULL OR rr.installation_id = $3)
-           AND row_within_retention(rr.installation_id, rr.created_at)
+           AND (
+             row_within_retention(rr.installation_id, rr.created_at)
+             OR EXISTS (
+               SELECT 1 FROM release_legal_holds h
+               WHERE h.revision_id = rr.id
+                 AND NOT EXISTS (
+                   SELECT 1 FROM release_legal_holds later
+                   WHERE later.revision_id = h.revision_id AND later.id > h.id
+                 )
+                 AND h.action = 'place'
+             )
+           )
          ORDER BY rr.created_at DESC, rr.id DESC
          LIMIT $2`,
         [userId, limit, scoped],
@@ -4718,6 +4793,78 @@ export function createStore(
         [id],
       );
       return rows[0] ? releaseRevisionRow(rows[0]) : null;
+    },
+
+    async listDeliveryAttacherLogins(revisionId: number): Promise<string[]> {
+      const { rows } = await sql.query<{ created_by_login: string }>(
+        `SELECT DISTINCT created_by_login
+         FROM release_delivery_locations
+         WHERE revision_id = $1`,
+        [revisionId],
+      );
+      return rows.map((row) => row.created_by_login);
+    },
+
+    async insertReleaseApproval(input: {
+      installationId: number;
+      revisionId: number;
+      decision: "approved" | "rejected";
+      reason: string;
+      actorLogin: string;
+    }): Promise<ReleaseApprovalRow> {
+      const { rows } = await sql.query<ReleaseApprovalSqlRow>(
+        `INSERT INTO release_approvals (
+           installation_id, revision_id, decision, reason, actor_login
+         )
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [input.installationId, input.revisionId, input.decision, input.reason, input.actorLogin],
+      );
+      if (!rows[0]) throw new Error("release approval insert returned no row");
+      return releaseApprovalRow(rows[0]);
+    },
+
+    async listReleaseApprovalsForRevisions(revisionIds: number[]): Promise<ReleaseApprovalRow[]> {
+      if (revisionIds.length === 0) return [];
+      const placeholders = revisionIds.map((_, index) => `$${index + 1}`).join(", ");
+      const { rows } = await sql.query<ReleaseApprovalSqlRow>(
+        `SELECT * FROM release_approvals
+         WHERE revision_id IN (${placeholders})
+         ORDER BY id ASC`,
+        revisionIds,
+      );
+      return rows.map(releaseApprovalRow);
+    },
+
+    async insertReleaseLegalHold(input: {
+      installationId: number;
+      revisionId: number;
+      action: "place" | "release";
+      reason: string;
+      actorLogin: string;
+    }): Promise<ReleaseLegalHoldRow> {
+      const { rows } = await sql.query<ReleaseLegalHoldSqlRow>(
+        `INSERT INTO release_legal_holds (
+           installation_id, revision_id, action, reason, actor_login
+         )
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [input.installationId, input.revisionId, input.action, input.reason, input.actorLogin],
+      );
+      if (!rows[0]) throw new Error("release legal hold insert returned no row");
+      return releaseLegalHoldRow(rows[0]);
+    },
+
+    async listReleaseLegalHoldsForRevisions(revisionIds: number[]): Promise<ReleaseLegalHoldRow[]> {
+      if (revisionIds.length === 0) return [];
+      const placeholders = revisionIds.map((_, index) => `$${index + 1}`).join(", ");
+      const { rows } = await sql.query<ReleaseLegalHoldSqlRow>(
+        `SELECT * FROM release_legal_holds
+         WHERE revision_id IN (${placeholders})
+         ORDER BY id ASC`,
+        revisionIds,
+      );
+      return rows.map(releaseLegalHoldRow);
     },
 
     async countDeliveryLocations(input: {

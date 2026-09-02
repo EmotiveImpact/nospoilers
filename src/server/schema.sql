@@ -530,6 +530,72 @@ CREATE TRIGGER release_delivery_verifications_no_delete
   BEFORE DELETE ON release_delivery_verifications
   FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
 
+CREATE TABLE IF NOT EXISTS release_approvals (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+  decision TEXT NOT NULL CHECK (decision IN ('approved', 'rejected')),
+  reason TEXT NOT NULL,
+  actor_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS release_approvals_revision_idx
+  ON release_approvals (revision_id, id DESC);
+
+CREATE INDEX IF NOT EXISTS release_approvals_install_idx
+  ON release_approvals (installation_id, created_at DESC, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_release_approval_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'release_approvals are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS release_approvals_no_update ON release_approvals;
+CREATE TRIGGER release_approvals_no_update
+  BEFORE UPDATE ON release_approvals
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_approval_mutation();
+
+DROP TRIGGER IF EXISTS release_approvals_no_delete ON release_approvals;
+CREATE TRIGGER release_approvals_no_delete
+  BEFORE DELETE ON release_approvals
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_approval_mutation();
+
+CREATE TABLE IF NOT EXISTS release_legal_holds (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK (action IN ('place', 'release')),
+  reason TEXT NOT NULL,
+  actor_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS release_legal_holds_revision_idx
+  ON release_legal_holds (revision_id, id DESC);
+
+CREATE INDEX IF NOT EXISTS release_legal_holds_install_idx
+  ON release_legal_holds (installation_id, created_at DESC, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_release_legal_hold_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'release_legal_holds are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS release_legal_holds_no_update ON release_legal_holds;
+CREATE TRIGGER release_legal_holds_no_update
+  BEFORE UPDATE ON release_legal_holds
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_legal_hold_mutation();
+
+DROP TRIGGER IF EXISTS release_legal_holds_no_delete ON release_legal_holds;
+CREATE TRIGGER release_legal_holds_no_delete
+  BEFORE DELETE ON release_legal_holds
+  FOR EACH ROW EXECUTE PROCEDURE reject_release_legal_hold_mutation();
+
 CREATE TABLE IF NOT EXISTS package_protections (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -649,7 +715,11 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'repo.make_private',
     'repo.delete_pack_assets',
     'repo.disable_workflow',
-    'delivery_location.save'
+    'delivery_location.save',
+    'release.approve',
+    'release.reject',
+    'release.hold',
+    'release.release_hold'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

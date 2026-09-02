@@ -299,7 +299,11 @@ type Confirming =
   | { kind: "retention"; days: RetentionDays; expected: string }
   | { kind: "make-private"; id: number; expected: string }
   | { kind: "delete-pack-assets"; id: number; expected: string }
-  | { kind: "disable-workflow"; id: number; expected: string; workflow: string };
+  | { kind: "disable-workflow"; id: number; expected: string; workflow: string }
+  | { kind: "release-approve"; id: number; expected: string; reason: string }
+  | { kind: "release-reject"; id: number; expected: string; reason: string }
+  | { kind: "release-hold"; id: number; expected: string; reason: string }
+  | { kind: "release-hold-release"; id: number; expected: string; reason: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -339,6 +343,14 @@ function confirmActionLabel(row: Confirming): string {
       return "delete packed Release assets";
     case "disable-workflow":
       return "disable this workflow";
+    case "release-approve":
+      return "approve this release to ship";
+    case "release-reject":
+      return "reject this release";
+    case "release-hold":
+      return "place a legal hold on this release";
+    case "release-hold-release":
+      return "release this legal hold";
   }
 }
 
@@ -383,6 +395,18 @@ type ReleaseRevision = {
   receiptStatus: ReceiptScanStatus | null;
   createdAt: string;
   locations?: DeliveryLocation[];
+  approval?: {
+    decision: "approved" | "rejected";
+    actorLogin: string;
+    reason: string;
+    createdAt: string;
+  } | null;
+  legalHold?: {
+    active: true;
+    actorLogin: string;
+    reason: string;
+    createdAt: string;
+  } | null;
 };
 
 function formatSealedBytes(bytes: number): string {
@@ -1035,6 +1059,10 @@ export function WatchPage({ search }: { search: string }) {
   const [attachingReleaseId, setAttachingReleaseId] = useState<number | null>(null);
   const [verifyingLocationId, setVerifyingLocationId] = useState<number | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [governanceReasonByRelease, setGovernanceReasonByRelease] = useState<Record<number, string>>(
+    {},
+  );
+  const [ledgerExportError, setLedgerExportError] = useState<string | null>(null);
   const [protections, setProtections] = useState<PackageProtection[]>([]);
   const [jobs, setJobs] = useState<TenantJob[]>([]);
   const [jobSummary, setJobSummary] = useState<JobSummary>({
@@ -1450,6 +1478,28 @@ export function WatchPage({ search }: { search: string }) {
             headers,
             body: JSON.stringify({ userId: confirming.userId, role: confirming.role, confirm }),
           });
+        } else if (confirming.kind === "release-approve" || confirming.kind === "release-reject") {
+          response = await fetch(`/api/releases/${confirming.id}/approvals`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              decision: confirming.kind === "release-approve" ? "approved" : "rejected",
+              reason: confirming.reason,
+              confirm,
+            }),
+          });
+        } else if (confirming.kind === "release-hold" || confirming.kind === "release-hold-release") {
+          response = await fetch(`/api/releases/${confirming.id}/holds`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              action: confirming.kind === "release-hold" ? "place" : "release",
+              reason: confirming.reason,
+              confirm,
+            }),
+          });
         } else {
           throw new Error("Unknown confirmation.");
         }
@@ -1640,6 +1690,14 @@ export function WatchPage({ search }: { search: string }) {
   const installAdmin = selectedLiveInstall?.role === "admin";
   const canManageRoles =
     Boolean(installAdmin) && (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const canGovernReleases =
+    Boolean(installAdmin) &&
+    !ended &&
+    (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const canExportReleases =
+    !previewing &&
+    !ended &&
+    (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
@@ -4495,7 +4553,57 @@ export function WatchPage({ search }: { search: string }) {
           GitHub’s asset CDN, a same-bucket S3 hop, or a same-account R2 hop. Verify records
           hop hosts, a cache token, and a region when we can read them from the host. Query
           strings never appear on Watch. This is not the hourly poller and not a hosted unpack.
+          Trial and Team admins can approve a passing revision to ship or reject it — type the
+          coordinate. The admin who attached a delivery URL cannot approve that revision.
+          Failed-policy, inconclusive, and digest-changed rows cannot be approved. Legal hold
+          keeps a revision on the list after the retention window; another admin must release
+          the hold. Members can export the ledger JSON. Query strings and pack bytes stay off
+          that export. Solo is 403. Unpaid is 402. This is not scheduled CDN verification.
         </p>
+        {previewing ? (
+          <p className="mt-4 text-sm leading-relaxed text-mute">
+            Preview cannot approve or export releases. No invented incident.
+          </p>
+        ) : deskCoverage?.plan === "solo" ? (
+          <p className="mt-4 text-sm leading-relaxed text-mute">
+            Subscribe to Team to approve shipping releases, place legal hold, and export the ledger.
+          </p>
+        ) : null}
+        {canExportReleases ? (
+          <div className="mt-4">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setLedgerExportError(null);
+                void (async () => {
+                  try {
+                    const body = await loadJson<{ exportedAt: string }>(
+                      scopedApi("/api/releases/export", activeInstallId),
+                    );
+                    const blob = new Blob([JSON.stringify(body, null, 2)], {
+                      type: "application/json",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `nospoilers-releases-${body.exportedAt.slice(0, 10)}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  } catch (error) {
+                    setLedgerExportError(
+                      error instanceof Error ? error.message : "Could not export the release ledger.",
+                    );
+                  }
+                })();
+              }}
+            >
+              Export ledger
+            </Button>
+            {ledgerExportError ? <p className="mt-2 text-sm text-danger">{ledgerExportError}</p> : null}
+          </div>
+        ) : null}
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}
         {previewing ? (
@@ -4525,6 +4633,21 @@ export function WatchPage({ search }: { search: string }) {
                       </span>
                     ) : null}
                     {receiptStatusMark(release.receiptStatus)}
+                    {release.approval?.decision === "approved" ? (
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        approved to ship
+                      </span>
+                    ) : null}
+                    {release.approval?.decision === "rejected" ? (
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                        rejected
+                      </span>
+                    ) : null}
+                    {release.legalHold?.active ? (
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-snow">
+                        legal hold
+                      </span>
+                    ) : null}
                     {!release.mismatch && !release.receiptStatus ? (
                       <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
                     ) : null}
@@ -4684,6 +4807,117 @@ export function WatchPage({ search }: { search: string }) {
                       {attachingReleaseId === release.id ? "Attaching…" : "Attach URL"}
                     </Button>
                   </form>
+                ) : null}
+                {release.approval ? (
+                  <p className="mt-2 text-xs text-mute">
+                    {release.approval.decision === "approved" ? "Approved" : "Rejected"} by{" "}
+                    {release.approval.actorLogin}
+                    {release.approval.reason ? ` · ${release.approval.reason}` : ""}
+                  </p>
+                ) : null}
+                {release.legalHold?.active ? (
+                  <p className="mt-1 text-xs text-mute">
+                    Legal hold by {release.legalHold.actorLogin}
+                    {release.legalHold.reason ? ` · ${release.legalHold.reason}` : ""}
+                  </p>
+                ) : null}
+                {canGovernReleases ? (
+                  <div className="mt-3 max-w-xl">
+                    <label className="block">
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        Approval or hold reason
+                      </span>
+                      <input
+                        value={governanceReasonByRelease[release.id] ?? ""}
+                        onChange={(event) =>
+                          setGovernanceReasonByRelease((current) => ({
+                            ...current,
+                            [release.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Why this revision may ship, is rejected, or is held."
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                      />
+                    </label>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={(governanceReasonByRelease[release.id] ?? "").trim().length < 8}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "release-approve",
+                            id: release.id,
+                            expected: release.coordinate,
+                            reason: (governanceReasonByRelease[release.id] ?? "").trim(),
+                          })
+                        }
+                      >
+                        Approve to ship
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={(governanceReasonByRelease[release.id] ?? "").trim().length < 8}
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "release-reject",
+                            id: release.id,
+                            expected: release.coordinate,
+                            reason: (governanceReasonByRelease[release.id] ?? "").trim(),
+                          })
+                        }
+                      >
+                        Reject
+                      </Button>
+                      {release.legalHold?.active ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={(governanceReasonByRelease[release.id] ?? "").trim().length < 8}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "release-hold-release",
+                              id: release.id,
+                              expected: release.coordinate,
+                              reason: (governanceReasonByRelease[release.id] ?? "").trim(),
+                            })
+                          }
+                        >
+                          Release hold
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={(governanceReasonByRelease[release.id] ?? "").trim().length < 8}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "release-hold",
+                              id: release.id,
+                              expected: release.coordinate,
+                              reason: (governanceReasonByRelease[release.id] ?? "").trim(),
+                            })
+                          }
+                        >
+                          Legal hold
+                        </Button>
+                      )}
+                    </div>
+                    {confirmForm(
+                      (confirming?.kind === "release-approve" ||
+                        confirming?.kind === "release-reject" ||
+                        confirming?.kind === "release-hold" ||
+                        confirming?.kind === "release-hold-release") &&
+                        confirming.id === release.id,
+                    )}
+                  </div>
                 ) : null}
               </li>
             ))}
