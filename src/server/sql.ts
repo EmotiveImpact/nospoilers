@@ -809,6 +809,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDiscoveryCampaigns(sql);
   await migrateDisclosureDestinations(sql);
   await migrateOperatorGrants(sql);
+  await migrateDisclosureFindingCategory(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1506,6 +1507,23 @@ async function migrateOperatorGrants(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "051_operator_grants",
+  ]);
+}
+
+async function migrateDisclosureFindingCategory(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE disclosure_cases
+      ADD COLUMN IF NOT EXISTS finding_category TEXT;
+    ALTER TABLE disclosure_cases DROP CONSTRAINT IF EXISTS disclosure_cases_finding_category_check;
+    ALTER TABLE disclosure_cases ADD CONSTRAINT disclosure_cases_finding_category_check
+      CHECK (finding_category IS NULL OR finding_category IN (
+        'sourcemap', 'environment', 'credential', 'source', 'git', 'archive',
+        'backup', 'database', 'crash', 'document', 'agent', 'debug', 'network',
+        'size', 'other'
+      ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "052_disclosure_finding_category",
   ]);
 }
 

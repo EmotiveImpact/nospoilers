@@ -342,6 +342,7 @@ describe("Disclosure Desk destinations", () => {
             packageName: "prettier",
             state: "verified",
             fingerprints: ["MAP-001|critical|package/dist/index.js.map|Source map ships in the artifact"],
+            findingCategory: "sourcemap",
             vendorChannel: "security_email",
             securityContact: "security@prettier.io",
             policyUrl: "https://github.com/prettier/prettier#security",

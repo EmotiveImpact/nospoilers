@@ -339,7 +339,8 @@ Internal staff running acquisition and disclosure work.
   customer jobs are queued/running. The hourly poller uses the same rules.
   Save, pause, and delete GitHub search campaigns that the poller rotates.
 - Record outreach state. Never send mail without a later human-confirm step.
-- Open a Disclosure Desk case on an Artifact Lead: verification checklist, duplicate
+- Open a Disclosure Desk case on an Artifact Lead: verification checklist, finding
+  category (derived from fingerprints; operator can override), duplicate
   warning, encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
@@ -459,7 +460,11 @@ notify, a verified warn-only case does not notify, a verified critical case crea
 owner-only notification with rule ids and fingerprints only, a second verify is
 idempotent, mark-read works, and customer sessions stay 401.
 `tests/disclosure.test.ts` proves Disclosure Desk is owner-only, a signal cannot be marked
-verified without the checklist, `PATCH /api/internal/prospects/:id` cannot record
+verified without the checklist, a new case derives finding category from fingerprints
+and rejects an unknown category. Live Neon: `052` applied; unauth and
+`not-admin` 401; prettier verified case is `credential` from SEC-003;
+invalid category 400; leftover grants 0; no open jobs; tunnel matched.
+`PATCH /api/internal/prospects/:id` cannot record
 `contacted` before a verified case or `fixed` before a fix-version rescan, duplicates
 warn on owner/repo, same GitHub owner, vendor domain (policy URL or contact email),
 package name, or fingerprint overlap unless confirmed, fingerprints

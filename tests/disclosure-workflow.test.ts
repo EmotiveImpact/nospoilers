@@ -292,6 +292,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
           notesIncluded: boolean;
           attachmentBytesIncluded: boolean;
           coordinate: string;
+          findingCategory: string;
           assignee: string;
           reviewState: string;
           replies: { summary: string }[];
@@ -302,6 +303,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       expect(reportBody.report.notesIncluded).toBe(false);
       expect(reportBody.report.attachmentBytesIncluded).toBe(false);
       expect(reportBody.report.coordinate).toBe("prettier/prettier");
+      expect(reportBody.report.findingCategory).toBe("sourcemap");
       expect(reportBody.report.assignee).toBe("EmotiveImpact");
       expect(reportBody.report.reviewState).toBe("approved");
       expect(reportBody.report.replies[0]?.summary).toContain("3.9.7");
@@ -317,6 +319,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
       expect(html.status).toBe(200);
       const htmlText = await html.text();
       expect(htmlText).toContain("prettier/prettier");
+      expect(htmlText).toContain("sourcemap");
       expect(htmlText).not.toContain("Operator reproduction notes");
 
       const pdf = await app.request(

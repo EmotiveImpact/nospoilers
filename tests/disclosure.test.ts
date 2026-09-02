@@ -9,6 +9,9 @@ import {
   DISCLOSURE_REVIEW_ERROR,
   DISCLOSURE_SENT_ERROR,
   DISCLOSURE_VERIFIED_ERROR,
+  categoryFromFingerprints,
+  categoryFromRule,
+  DISCLOSURE_CATEGORY_ERROR,
   fingerprintsFromFindings,
   matchDoNotContact,
   matchDuplicateReasons,
@@ -190,6 +193,17 @@ describe("Disclosure Desk helpers", () => {
     expect(draft.sent).toBe(false);
     expect(draft.body).toContain("Nothing has been sent");
     expect(draft.body).not.toContain("AKIA");
+    expect(categoryFromRule("MAP-002")).toBe("sourcemap");
+    expect(categoryFromRule("SEC-001")).toBe("environment");
+    expect(categoryFromRule("SEC-003")).toBe("credential");
+    expect(categoryFromFingerprints(fingerprints)).toBe("sourcemap");
+    expect(
+      categoryFromFingerprints([
+        "SEC-003|critical|package/token.json|Provider token material",
+        "MAP-001|critical|package/dist/index.js.map|Source map ships in the artifact",
+      ]),
+    ).toBe("credential");
+    expect(categoryFromFingerprints([])).toBe("other");
   });
 });
 
@@ -197,6 +211,7 @@ describe("Disclosure Desk Phase 1", () => {
   it("verifies a public artifact, blocks outreach, detects duplicates, and never sends mail", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
+      await migrate(sql);
       await migrate(sql);
       const store = createStore(sql, { tokenSecret: "desk-session-secret" });
       const prettierId = await seedProspect(store, {
@@ -271,15 +286,35 @@ describe("Disclosure Desk Phase 1", () => {
         case: {
           state: string;
           fingerprints: string[];
+          findingCategory: string;
           sent: boolean;
           notes: string | null;
         };
       };
       expect(createdBody.case.state).toBe("signal");
+      expect(createdBody.case.findingCategory).toBe("sourcemap");
       expect(createdBody.case.sent).toBe(false);
       expect(createdBody.case.fingerprints.join(" ")).not.toContain("AKIA");
       expect(JSON.stringify(createdBody)).not.toContain("AKIA");
       expect(JSON.stringify(createdBody)).not.toContain("notes_ciphertext");
+
+      const badCategory = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ findingCategory: "malware" }),
+      });
+      expect(badCategory.status).toBe(400);
+      expect(((await badCategory.json()) as { error: string }).error).toBe(DISCLOSURE_CATEGORY_ERROR);
+
+      const setCategory = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ findingCategory: "other" }),
+      });
+      expect(setCategory.status).toBe(200);
+      expect(((await setCategory.json()) as { case: { findingCategory: string } }).case.findingCategory).toBe(
+        "other",
+      );
 
       const duplicateFp = await app.request(`/api/internal/prospects/${leftPadId}/disclosure`, {
         method: "POST",
@@ -598,12 +633,21 @@ describe("Disclosure Desk organization and domain matching", () => {
         body: JSON.stringify({}),
       });
       expect(created.status).toBe(201);
+      expect(((await created.json()) as { case: { findingCategory: string } }).case.findingCategory).toBe(
+        "sourcemap",
+      );
       const policy = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
         method: "PATCH",
         headers: admin,
         body: JSON.stringify({ policyUrl: "https://prettier.io/security" }),
       });
       expect(policy.status).toBe(200);
+      const category = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ findingCategory: "sourcemap" }),
+      });
+      expect(category.status).toBe(200);
       const orgDup = await app.request(`/api/internal/prospects/${pluginId}/disclosure`, {
         method: "POST",
         headers: admin,

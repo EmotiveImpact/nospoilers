@@ -44,7 +44,7 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
 </head>
 <body>
   <h1>Disclosure Desk report</h1>
-  <p>${escapeHtml(report.coordinate)}${report.packageName ? ` · ${escapeHtml(report.packageName)}` : ""} · ${escapeHtml(report.state)}</p>
+  <p>${escapeHtml(report.coordinate)}${report.packageName ? ` · ${escapeHtml(report.packageName)}` : ""} · ${escapeHtml(report.state)} · ${escapeHtml(report.findingCategory)}</p>
   <p class="mute">Never sent. Operator notes and attachment bytes are omitted. Finding values are not included.</p>
   <h2>Service level</h2>
   <p>Opened ${escapeHtml(report.sla.openedAt)}</p>
@@ -68,7 +68,7 @@ export function renderDisclosureReportPdf(report: DisclosureReport): Buffer {
   const lines = [
     report.coordinate,
     report.packageName ? `package ${report.packageName}` : "package none",
-    `state ${report.state} · review ${report.reviewState}`,
+    `state ${report.state} · ${report.findingCategory} · review ${report.reviewState}`,
     `assignee ${report.assignee ?? "unassigned"}`,
     `opened ${report.sla.openedAt}`,
     `verified ${report.sla.verifiedAt ?? "not yet"}`,

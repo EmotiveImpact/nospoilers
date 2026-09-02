@@ -225,6 +225,12 @@ CREATE TABLE IF NOT EXISTS disclosure_cases (
   checklist_no_secret_values BOOLEAN NOT NULL DEFAULT FALSE,
   checklist_contact_or_policy BOOLEAN NOT NULL DEFAULT FALSE,
   fingerprints JSONB NOT NULL DEFAULT '[]'::jsonb,
+  finding_category TEXT
+    CHECK (finding_category IS NULL OR finding_category IN (
+      'sourcemap', 'environment', 'credential', 'source', 'git', 'archive',
+      'backup', 'database', 'crash', 'document', 'agent', 'debug', 'network',
+      'size', 'other'
+    )),
   security_contact TEXT,
   policy_url TEXT,
   notes_ciphertext TEXT,

@@ -1250,6 +1250,7 @@ export function createApp(deps: AppDeps): Hono {
         outcomeCredit: body.outcomeCredit,
         outcomeCve: body.outcomeCve,
         outcomeNotes: body.outcomeNotes,
+        findingCategory: body.findingCategory,
       });
       return c.json({ case: view });
     } catch (error) {

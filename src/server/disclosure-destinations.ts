@@ -95,6 +95,7 @@ export function disclosureDestinationPayload(report: DisclosureReport): Record<s
     packageName: report.packageName,
     state: report.state,
     fingerprints: report.fingerprints,
+    findingCategory: report.findingCategory,
     vendorChannel: report.vendorChannel,
     reviewState: report.reviewState,
     assignee: report.assignee,

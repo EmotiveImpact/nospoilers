@@ -3,19 +3,21 @@ import { coverageFrom, coverageIsOn } from "../coverage.ts";
 import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
-import type {
-  DisclosureAttachmentRow,
-  DisclosureCaseRow,
-  DisclosureChecklist,
-  DisclosureConversion,
-  DisclosureEventRow,
-  DisclosureReviewState,
-  DisclosureState,
-  DisclosureTemplateRow,
-  DisclosureVendorReplyRow,
-  DoNotContactRow,
-  VendorChannel,
-  VendorReplyChannel,
+import {
+  asFindingCategory,
+  type DisclosureAttachmentRow,
+  type DisclosureCaseRow,
+  type DisclosureChecklist,
+  type DisclosureConversion,
+  type DisclosureEventRow,
+  type DisclosureReviewState,
+  type DisclosureState,
+  type DisclosureTemplateRow,
+  type DisclosureVendorReplyRow,
+  type DoNotContactRow,
+  type FindingCategory,
+  type VendorChannel,
+  type VendorReplyChannel,
 } from "./disclosure.ts";
 import type {
   InternalNotificationKind,
@@ -977,6 +979,7 @@ function disclosureCaseRow(row: {
   checklist_no_secret_values: boolean;
   checklist_contact_or_policy: boolean;
   fingerprints: unknown;
+  finding_category?: string | null;
   security_contact: string | null;
   policy_url: string | null;
   notes_ciphertext: string | null;
@@ -1013,6 +1016,7 @@ function disclosureCaseRow(row: {
     checklist_no_secret_values: Boolean(row.checklist_no_secret_values),
     checklist_contact_or_policy: Boolean(row.checklist_contact_or_policy),
     fingerprints: asStringArray(row.fingerprints),
+    finding_category: asFindingCategory(row.finding_category),
     security_contact: row.security_contact,
     policy_url: row.policy_url,
     notes_ciphertext: row.notes_ciphertext,
@@ -3062,15 +3066,16 @@ export function createStore(
     async insertDisclosureCase(input: {
       prospectId: number;
       fingerprints: string[];
+      findingCategory: FindingCategory;
       actor: string;
       summary: string;
     }): Promise<DisclosureCaseRow> {
       return await sql.transaction(async (tx) => {
         const inserted = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
-          `INSERT INTO disclosure_cases (prospect_id, state, fingerprints)
-           VALUES ($1, 'signal', $2::jsonb)
+          `INSERT INTO disclosure_cases (prospect_id, state, fingerprints, finding_category)
+           VALUES ($1, 'signal', $2::jsonb, $3)
            RETURNING *`,
-          [input.prospectId, JSON.stringify(input.fingerprints)],
+          [input.prospectId, JSON.stringify(input.fingerprints), input.findingCategory],
         );
         const row = inserted.rows[0];
         if (!row) throw new Error("Disclosure case was not created.");
@@ -3101,6 +3106,7 @@ export function createStore(
       outcomeCredit?: string | null;
       outcomeCve?: string | null;
       outcomeNotes?: string | null;
+      findingCategory?: FindingCategory | null;
       summary: string;
     }): Promise<DisclosureCaseRow> {
       return await sql.transaction(async (tx) => {
@@ -3148,6 +3154,7 @@ export function createStore(
                outcome_credit = $18,
                outcome_cve = $19,
                outcome_notes = $20,
+               finding_category = $21,
                verified_at = CASE
                  WHEN $2 = 'verified' THEN COALESCE(verified_at, now())
                  ELSE verified_at
@@ -3176,6 +3183,9 @@ export function createStore(
             input.outcomeCredit !== undefined ? input.outcomeCredit : existing.outcome_credit,
             input.outcomeCve !== undefined ? input.outcomeCve : existing.outcome_cve,
             input.outcomeNotes !== undefined ? input.outcomeNotes : existing.outcome_notes,
+            input.findingCategory !== undefined
+              ? input.findingCategory
+              : existing.finding_category,
           ],
         );
         const row = updated.rows[0];

@@ -90,8 +90,11 @@ Read in this order:
   destinations for redacted Disclosure Desk filings.
   `051_operator_grants` lets the owner grant a GitHub login operator access
   to Artifact Leads. Queue and further grants stay owner-only. Live Neon:
-  `051` applied; leftover grants 0 after typed DELETE. Next unused id is
-  `052_*`.
+  `051` applied; leftover grants 0 after typed DELETE.
+  `052_disclosure_finding_category` stores a closed finding category on each
+  Disclosure Desk case (derived from fingerprints; operator can override).
+  Live Neon: `052` applied; prettier verified case is `credential` from
+  SEC-003. Next unused id is `053_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -521,7 +524,9 @@ Artifact Leads inspect also queues up to eight public npm workspace member packs
 from the repo workspace config. Scanned packs store member names. Members are not
 auto-watched. Owner-only.
 Disclosure Desk Phase 2 minus send is in on Artifact Leads: verification
-checklist, duplicate warning (owner/repo, GitHub owner, vendor domain,
+checklist, finding category (derived from fingerprints; operator can
+override; live Neon prettier verified case is `credential` from SEC-003),
+duplicate warning (owner/repo, GitHub owner, vendor domain,
 package, fingerprints; live Neon prettier vs left-pad still no match),
 encrypted expiring notes, stored (never fetched)
 policy URL, human-edited templates, preferred vendor channel, draft preview,

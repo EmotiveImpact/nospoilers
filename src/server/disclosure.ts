@@ -62,6 +62,45 @@ export const DISCLOSURE_ATTACHMENT_KIND_ERROR =
   "Attach a short text, PDF, or image. Archives and packages are not stored.";
 export const DISCLOSURE_ATTACHMENT_EXPIRED_ERROR = "That attachment has expired.";
 export const DISCLOSURE_ASSIGNEE_ERROR = "Use a GitHub login, or clear the assignee.";
+export const DISCLOSURE_CATEGORY_ERROR =
+  "Finding category must be sourcemap, environment, credential, source, git, archive, backup, database, crash, document, agent, debug, network, size, or other.";
+
+export const FINDING_CATEGORIES = [
+  "sourcemap",
+  "environment",
+  "credential",
+  "source",
+  "git",
+  "archive",
+  "backup",
+  "database",
+  "crash",
+  "document",
+  "agent",
+  "debug",
+  "network",
+  "size",
+  "other",
+] as const;
+export type FindingCategory = (typeof FINDING_CATEGORIES)[number];
+
+const FINDING_CATEGORY_PRIORITY: readonly FindingCategory[] = [
+  "credential",
+  "environment",
+  "sourcemap",
+  "git",
+  "database",
+  "crash",
+  "source",
+  "archive",
+  "document",
+  "agent",
+  "debug",
+  "network",
+  "backup",
+  "size",
+  "other",
+];
 
 export const VENDOR_CHANNELS = ["security_email", "form", "security_txt", "platform"] as const;
 export type VendorChannel = (typeof VENDOR_CHANNELS)[number];
@@ -120,6 +159,7 @@ export type DisclosureCaseRow = {
   checklist_no_secret_values: boolean;
   checklist_contact_or_policy: boolean;
   fingerprints: string[];
+  finding_category: FindingCategory | null;
   security_contact: string | null;
   policy_url: string | null;
   notes_ciphertext: string | null;
@@ -214,6 +254,7 @@ export type DisclosureCaseView = {
   state: DisclosureState;
   checklist: DisclosureChecklist;
   fingerprints: string[];
+  findingCategory: FindingCategory;
   securityContact: string | null;
   policyUrl: string | null;
   notes: string | null;
@@ -286,6 +327,7 @@ export type DisclosureReport = {
   packageName: string | null;
   state: DisclosureState;
   fingerprints: string[];
+  findingCategory: FindingCategory;
   vendorChannel: VendorChannel | null;
   securityContact: string | null;
   policyUrl: string | null;
@@ -316,6 +358,7 @@ export type DisclosureCaseSummary = {
   fixVersion: string | null;
   lastRescanAt: string | null;
   fingerprintCount: number;
+  findingCategory: FindingCategory;
   vendorChannel: VendorChannel | null;
   assignee: string | null;
   reviewState: DisclosureReviewState;
@@ -393,6 +436,60 @@ export function fingerprintsFromFindings(findings: unknown): string[] {
     );
   }
   return [...out].sort();
+}
+
+export function categoryFromRule(rule: string): FindingCategory {
+  const id = rule.trim().toUpperCase();
+  if (id === "SEC-001") return "environment";
+  if (id.startsWith("SEC-")) return "credential";
+  if (id.startsWith("MAP-")) return "sourcemap";
+  if (id.startsWith("SRC-")) return "source";
+  if (id.startsWith("GIT-")) return "git";
+  if (id.startsWith("ARC-") || id.startsWith("LNK-")) return "archive";
+  if (id.startsWith("BAK-")) return "backup";
+  if (id.startsWith("DB-")) return "database";
+  if (id.startsWith("CRASH-")) return "crash";
+  if (id.startsWith("DOC-")) return "document";
+  if (id.startsWith("AI-")) return "agent";
+  if (id.startsWith("DBG-") || id.startsWith("CACHE-")) return "debug";
+  if (id.startsWith("NET-")) return "network";
+  if (id.startsWith("SIZE-")) return "size";
+  return "other";
+}
+
+export function categoryFromFingerprints(fingerprints: string[]): FindingCategory {
+  let best: FindingCategory = "other";
+  let bestRank = FINDING_CATEGORY_PRIORITY.indexOf("other");
+  for (const fingerprint of fingerprints) {
+    const category = categoryFromRule(fingerprint.split("|")[0] ?? "");
+    const rank = FINDING_CATEGORY_PRIORITY.indexOf(category);
+    if (rank >= 0 && rank < bestRank) {
+      best = category;
+      bestRank = rank;
+    }
+  }
+  return best;
+}
+
+export function asFindingCategory(raw: string | null | undefined): FindingCategory | null {
+  if (typeof raw === "string" && (FINDING_CATEGORIES as readonly string[]).includes(raw)) {
+    return raw as FindingCategory;
+  }
+  return null;
+}
+
+export function effectiveFindingCategory(
+  stored: FindingCategory | null | undefined,
+  fingerprints: string[],
+): FindingCategory {
+  return stored ?? categoryFromFingerprints(fingerprints);
+}
+
+export function parseFindingCategory(raw: unknown): FindingCategory {
+  if (typeof raw === "string" && (FINDING_CATEGORIES as readonly string[]).includes(raw)) {
+    return raw as FindingCategory;
+  }
+  throw new DisclosureError(DISCLOSURE_CATEGORY_ERROR, 400);
 }
 
 export function parseDisclosureState(raw: unknown): DisclosureState {
@@ -1085,6 +1182,7 @@ export function toDisclosureView(
     state: row.state,
     checklist: checklistFromRow(row),
     fingerprints: row.fingerprints,
+    findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
     securityContact: row.security_contact,
     policyUrl: row.policy_url,
     notes: notes.notes,
@@ -1136,6 +1234,7 @@ export function toDisclosureSummary(row: DisclosureCaseRow): DisclosureCaseSumma
     fixVersion: row.fix_version,
     lastRescanAt: row.last_rescan_at,
     fingerprintCount: row.fingerprints.length,
+    findingCategory: effectiveFindingCategory(row.finding_category, row.fingerprints),
     vendorChannel: row.vendor_channel,
     assignee: row.assignee,
     reviewState: row.review_state,
@@ -1261,6 +1360,7 @@ export async function createDisclosureCase(
   const row = await store.insertDisclosureCase({
     prospectId: prospect.id,
     fingerprints,
+    findingCategory: categoryFromFingerprints(fingerprints),
     actor: input.actor,
     summary:
       dnc.length > 0
@@ -1302,6 +1402,7 @@ export async function updateDisclosureCase(
     outcomeCredit?: unknown;
     outcomeCve?: unknown;
     outcomeNotes?: unknown;
+    findingCategory?: unknown;
   },
 ): Promise<DisclosureCaseView> {
   const current = await store.getDisclosureCaseByProspect(input.prospectId);
@@ -1348,6 +1449,12 @@ export async function updateDisclosureCase(
     typeof input.draftSubject === "string" ? input.draftSubject.trim().slice(0, 200) : current.draft_subject;
   const draftBody =
     typeof input.draftBody === "string" ? input.draftBody.trim().slice(0, 8000) : current.draft_body;
+  const findingCategory =
+    input.findingCategory !== undefined
+      ? input.findingCategory == null || input.findingCategory === ""
+        ? categoryFromFingerprints(current.fingerprints)
+        : parseFindingCategory(input.findingCategory)
+      : (current.finding_category ?? categoryFromFingerprints(current.fingerprints));
   const row = await store.updateDisclosureCase({
     prospectId: input.prospectId,
     actor: input.actor,
@@ -1366,6 +1473,7 @@ export async function updateDisclosureCase(
     outcomeCredit,
     outcomeCve,
     outcomeNotes,
+    findingCategory,
     summary: summarizeUpdate(current, {
       state,
       checklist,
@@ -1378,6 +1486,7 @@ export async function updateDisclosureCase(
       outcomeCredit,
       outcomeCve,
       outcomeNotes,
+      findingCategory,
     }),
   });
   const prospect = await requireProspect(store, input.prospectId);
@@ -1406,6 +1515,7 @@ function summarizeUpdate(
     outcomeCredit: string | null;
     outcomeCve: string | null;
     outcomeNotes: string | null;
+    findingCategory: FindingCategory;
   },
 ): string {
   if (next.state !== current.state) return `Set case state to ${next.state}.`;
@@ -1422,6 +1532,9 @@ function summarizeUpdate(
   }
   if (next.vendorChannel !== current.vendor_channel) {
     return `Recorded preferred vendor channel (${next.vendorChannel ?? "unset"}).`;
+  }
+  if (next.findingCategory !== (current.finding_category ?? categoryFromFingerprints(current.fingerprints))) {
+    return `Recorded finding category (${next.findingCategory}).`;
   }
   if (
     next.outcomeCredit !== current.outcome_credit ||
@@ -1871,6 +1984,7 @@ export async function buildDisclosureReport(
     packageName: prospect.package_name,
     state: view.state,
     fingerprints: view.fingerprints,
+    findingCategory: view.findingCategory,
     vendorChannel: view.vendorChannel,
     securityContact: view.securityContact,
     policyUrl: view.policyUrl,

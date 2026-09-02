@@ -14,6 +14,41 @@ export type DisclosureConversion = "none" | "trial" | "paid" | "declined"
 
 export type VendorChannel = "security_email" | "form" | "security_txt" | "platform"
 
+export type FindingCategory =
+  | "sourcemap"
+  | "environment"
+  | "credential"
+  | "source"
+  | "git"
+  | "archive"
+  | "backup"
+  | "database"
+  | "crash"
+  | "document"
+  | "agent"
+  | "debug"
+  | "network"
+  | "size"
+  | "other"
+
+const FINDING_CATEGORY_OPTIONS: { value: FindingCategory; label: string }[] = [
+  { value: "sourcemap", label: "sourcemap" },
+  { value: "environment", label: "environment file" },
+  { value: "credential", label: "credential" },
+  { value: "source", label: "source" },
+  { value: "git", label: "git history" },
+  { value: "archive", label: "archive" },
+  { value: "backup", label: "backup" },
+  { value: "database", label: "database dump" },
+  { value: "crash", label: "crash dump" },
+  { value: "document", label: "internal document" },
+  { value: "agent", label: "agent context" },
+  { value: "debug", label: "debug" },
+  { value: "network", label: "internal network" },
+  { value: "size", label: "size" },
+  { value: "other", label: "other" },
+]
+
 export type VendorReplyChannel = VendorChannel | "other"
 
 export type DisclosureReviewState = "none" | "pending" | "approved" | "rejected"
@@ -28,6 +63,7 @@ export type DisclosureSummary = {
   fixVersion: string | null
   lastRescanAt: string | null
   fingerprintCount: number
+  findingCategory?: FindingCategory
   vendorChannel?: VendorChannel | null
   assignee?: string | null
   reviewState?: DisclosureReviewState
@@ -74,6 +110,7 @@ type DisclosureCase = {
   state: DisclosureState
   checklist: Checklist
   fingerprints: string[]
+  findingCategory: FindingCategory
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -165,6 +202,7 @@ export function DisclosureCasePanel({
   const [fixVersion, setFixVersion] = useState("")
   const [deadline, setDeadline] = useState("")
   const [conversion, setConversion] = useState<DisclosureConversion>("none")
+  const [findingCategory, setFindingCategory] = useState<FindingCategory>("other")
   const [vendorChannel, setVendorChannel] = useState<VendorChannel | "">("")
   const [outcomeCredit, setOutcomeCredit] = useState("")
   const [outcomeCve, setOutcomeCve] = useState("")
@@ -199,6 +237,7 @@ export function DisclosureCasePanel({
       setFixVersion(body.case.fixVersion ?? "")
       setDeadline(body.case.deadlineAt ? body.case.deadlineAt.slice(0, 16) : "")
       setConversion(body.case.conversion)
+      setFindingCategory(body.case.findingCategory)
       setVendorChannel(body.case.vendorChannel ?? "")
       setOutcomeCredit(body.case.outcomeCredit ?? "")
       setOutcomeCve(body.case.outcomeCve ?? "")
@@ -487,6 +526,9 @@ export function DisclosureCasePanel({
             </Badge>
           ) : null}
           {summary?.deadlineMissed ? <Badge variant="critical">deadline missed</Badge> : null}
+          {summary?.findingCategory ? (
+            <Badge variant="muted">{summary.findingCategory}</Badge>
+          ) : null}
           {summary?.conversion && summary.conversion !== "none" ? (
             <Badge variant="muted">{summary.conversion}</Badge>
           ) : null}
@@ -499,7 +541,8 @@ export function DisclosureCasePanel({
         <div className="mt-4 space-y-4">
           <p className="text-xs leading-relaxed text-mute">
             Private verification only. Drafts are never sent. Policy URLs are stored, not fetched.
-            Fingerprints are rule|severity|path|title. Finding values stay off this desk.
+            Fingerprints are rule|severity|path|title. Finding category is a closed
+            label from those rules. Finding values stay off this desk.
             Do-not-contact always blocks outreach. Missed deadlines stay internal.
             Vendor replies and attachments stay on this desk. Reports omit notes and
             attachment bytes. Outreach still requires review approval. Nothing is mailed.
@@ -561,6 +604,31 @@ export function DisclosureCasePanel({
               ) : (
                 <p className="text-xs text-dim">No fingerprints yet. Complete a scan first.</p>
               )}
+              <Field>
+                <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                  Finding category
+                </Label>
+                <select
+                  value={findingCategory}
+                  onChange={(event) => setFindingCategory(event.target.value as FindingCategory)}
+                  className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
+                >
+                  {FINDING_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={Boolean(busy)}
+                onClick={() => void patch({ findingCategory })}
+              >
+                Save category
+              </Button>
               <div className="grid gap-3 md:grid-cols-2">
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">

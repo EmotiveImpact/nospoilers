@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- Disclosure Desk finding category: each case stores a closed category
+  (sourcemap, environment, credential, source, and the other scanner
+  families). New cases derive it from fingerprints. Operators can override.
+  Reports and destination payloads include the label, never finding values.
+  Customer sessions stay 401. No worker wake. Nothing is mailed. Live Neon:
+  `052` applied; unauth and `not-admin` 401; owner desk 200; prettier
+  verified case is `credential` from SEC-003 fingerprints; invalid
+  category 400; leftover grants 0; leftover destinations 0; no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk researcher roles: owner grants a GitHub login operator access
   to Artifact Leads (`GET`/`POST`/`DELETE /api/internal/operators`, cap 8,
   typed login confirm). Granted operators can run the desk. Queue counts and
