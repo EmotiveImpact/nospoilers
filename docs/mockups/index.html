@@ -192,21 +192,143 @@
           </p>
         </div>
 
-        <div class="card card-pad" style="margin-top: 22px; border-color: var(--line-strong)">
+        <div
+          class="card card-pad"
+          style="
+            margin-top: 22px;
+            border-color: rgba(165, 243, 165, 0.42);
+            background: radial-gradient(100% 180% at 0 0, rgba(165, 243, 165, 0.07), transparent 65%), var(--panel);
+          "
+        >
           <div class="row gap12 wrap">
-            <h2>Click through — these function</h2>
-            <span class="pill solid">start here</span>
+            <h2>Decision set — four complete versions of the same app</h2>
+            <span class="pill solid">compare these</span>
           </div>
           <p class="small muted" style="margin-top: 10px; max-width: 76ch">
-            Still plain HTML and CSS, no script. Sidebar routes, alert inbox, acknowledge / resolve,
-            command palette, plans, add-source, and a first-session walk are real clicks — radios
-            and labels, the same trick as the state switcher. Open 1F and use the desk like an app.
+            These four are directly comparable. Every version contains the same complete capability
+            set from the current Watch app: Overview, Alerts, Sources, Releases, Timeline, Setup,
+            source drill-down, Notifications, Policy, Team, Retention, Audit, Install health, Scan
+            API tokens, private registries, coverage gates, and acknowledge → assign → resolve.
+            Each also carries the same Trial admin, Solo, Member, Ended, and Empty switcher.
+            <strong class="snow">Only the starting point and information architecture change.</strong>
           </p>
           <div class="row gap8 wrap" style="margin-top: 14px">
-            <a class="btn sm" href="1f-click-desk.html">1F · click-through desk →</a>
+            <a class="btn sm" href="2a-full-overview.html">2A · Overview-first →</a>
+            <a class="btn sm outline" href="2b-full-guided.html">2B · Setup-first</a>
+            <a class="btn sm outline" href="2c-full-triage.html">2C · Incident-first</a>
+            <a class="btn sm outline" href="2d-full-sources.html">2D · Source-first</a>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top: 20px">
+          <a class="mk" href="2a-full-overview.html" style="border-color: rgba(165, 243, 165, 0.42)">
+            <div class="shot">
+              <div class="blk" style="width: 42px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 40%"></div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+                  <div class="blk" style="height:34px"></div><div class="blk" style="height:34px"></div>
+                  <div class="blk" style="height:34px"></div><div class="blk" style="height:34px"></div>
+                </div>
+                <div class="blk red" style="height: 38px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2A · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Overview-first · Desk / Settings</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens on the operational verdict. Desk keeps work; the top switch replaces its
+                sidebar with configuration. This is the full 1F depth inside the 1I split.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> the desk should answer “what needs me?” first.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2b-full-guided.html">
+            <div class="shot">
+              <div class="blk" style="width: 34px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 48%"></div>
+                <div class="blk" style="height: 22px"></div>
+                <div class="blk red" style="height: 30px"></div>
+                <div class="blk" style="height: 22px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2B · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Setup-first guided desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens on the ordered leak-path setup. Once connected, the user moves into the same
+                overview, incident inbox, source inventory, evidence and settings.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> first-run confidence is the hardest problem.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2c-full-triage.html">
+            <div class="shot">
+              <div class="blk" style="width: 52px; height: 100%"></div>
+              <div class="col" style="width: 32%">
+                <div class="blk line"></div><div class="blk red" style="height:35px"></div>
+                <div class="blk" style="height:35px"></div><div class="blk wide"></div>
+              </div>
+              <div class="col wide">
+                <div class="blk line" style="width: 45%"></div>
+                <div class="blk red" style="height: 24px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2C · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Incident-first operations desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens on saved alert queues and list + detail response. Exposure, findings,
+                checklist, activity, assignment and resolution stay together.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> responding to leaks is the dominant job.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2d-full-sources.html">
+            <div class="shot" style="flex-direction:column">
+              <div class="blk" style="height: 28px"></div>
+              <div class="blk line" style="width: 42%"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1">
+                <div class="blk"></div><div class="blk red"></div>
+                <div class="blk"></div><div class="blk"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2D · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Source-first control plane</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens on one broad inventory for GitHub repos, npm packages, production websites,
+                and map custody. The full incident and settings routes remain one click away.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> coverage and ownership start with inventory.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 22px">
+          <h2>Earlier studies — not four complete versions</h2>
+          <p class="small muted" style="margin-top: 10px; max-width: 76ch">
+            01–10 are structural sketches. 1A–1E combine selected pieces. 1F is the original broad
+            click-through. 1G is only the first-session workflow, 1H is only the incident workflow,
+            and 1I is only the Desk / Settings split study. They are useful evidence, but they were
+            not a fair side-by-side decision set.
+          </p>
+          <div class="row gap8 wrap" style="margin-top: 14px">
+            <a class="btn sm outline" href="1f-click-desk.html">1F original click-through</a>
             <a class="btn sm outline" href="1g-first-session.html">1G first session</a>
-            <a class="btn sm outline" href="1h-clear-incident.html">1H clear an incident</a>
-            <a class="btn sm outline" href="1i-desk-settings.html">1I desk / settings</a>
+            <a class="btn sm outline" href="1h-clear-incident.html">1H incident</a>
+            <a class="btn sm outline" href="1i-desk-settings.html">1I split study</a>
           </div>
         </div>
 

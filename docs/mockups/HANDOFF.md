@@ -4,10 +4,12 @@ Branch: `cursor/watch-desk-ux-mockups-71d1` · PR: EmotiveImpact/nospoilers#3
 
 ## State
 
-Ten static HTML mockups, five `1x-` static variants built on 01, and four click-through mockups
-(`1f`–`1i`) that you operate with radios and labels. Gallery is `index.html`. Styles:
+Ten static HTML mockups, five `1x-` static variants built on 01, four earlier click-through studies
+(`1f`–`1i`), and the four complete decision mocks (`2a`–`2d`) that you operate with radios and
+labels. Gallery is `index.html`. Styles:
 `mockup.css` (tokens and the state system), `console.css` (the 01 shell plus borrowed components),
-`click.css` (routes, alerts, overlays, scenes). `README.md` and `PROMPT.md` are the brief.
+`click.css` (routes, alerts, overlays, scenes), and `combined.css` (the four decision-set
+architectures). `README.md` and `PROMPT.md` are the brief.
 
 All fifteen are wired for the five state presets. Nothing in `src/` is touched and nothing here
 ships in the app build — `docs/` is outside `public/`.
@@ -18,6 +20,14 @@ lifecycle wired**. `1g` is the first hour, `1h` is acknowledge → resolve, `1i`
 desk/settings split. New 01-based work should link `console.css` and `click.css` rather than
 copying shell or click-through styles. Tag borrowed pieces with
 `<span class="added">from 0X</span>` so the provenance stays visible.
+
+The user later correctly pointed out that the gallery did not make a fair decision possible:
+`1G` was only first session, `1H` only incident response, and `1I` only the split. `2A`–`2D`
+therefore all carry the same full `1F` route/state/action scope and differ only in architecture:
+Overview-first, Setup-first, Incident-first, and Source-first. They also reflect current `main`
+additions that the old comps missed: GitHub-login invites, batch protected-package import,
+fair-use state, release size/media type, delivery locations and verification, approval/rejection,
+legal hold, and ledger export. Compare `2A`–`2D`; treat everything before them as design evidence.
 
 Do not add `<link>` tags to Google Fonts and do not add a Content-Security-Policy meta tag. Both
 break Cursor's in-IDE `localhost:3000` preview, which iframes the port. The system font stack is

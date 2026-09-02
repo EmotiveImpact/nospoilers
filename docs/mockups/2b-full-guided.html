@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>2B · Complete setup-first desk — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+    <link rel="stylesheet" href="click.css" />
+    <link rel="stylesheet" href="combined.css" />
+  </head>
+  <body class="combined-b">
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <input type="radio" name="view" id="v-overview" class="viewset" />
+    <input type="radio" name="view" id="v-alerts" class="viewset" />
+    <input type="radio" name="view" id="v-alerts-wait" class="viewset" />
+    <input type="radio" name="view" id="v-alerts-mine" class="viewset" />
+    <input type="radio" name="view" id="v-alerts-done" class="viewset" />
+    <input type="radio" name="view" id="v-sources" class="viewset" />
+    <input type="radio" name="view" id="v-releases" class="viewset" />
+    <input type="radio" name="view" id="v-timeline" class="viewset" />
+    <input type="radio" name="view" id="v-notify" class="viewset" />
+    <input type="radio" name="view" id="v-policy" class="viewset" />
+    <input type="radio" name="view" id="v-team" class="viewset" />
+    <input type="radio" name="view" id="v-retention" class="viewset" />
+    <input type="radio" name="view" id="v-audit" class="viewset" />
+    <input type="radio" name="view" id="v-health" class="viewset" />
+    <input type="radio" name="view" id="v-tokens" class="viewset" />
+    <input type="radio" name="view" id="v-registries" class="viewset" />
+    <input type="radio" name="view" id="v-setup" class="viewset" checked />
+    <input type="radio" name="view" id="v-repo" class="viewset" />
+
+    <input type="radio" name="alert" id="a-map" class="alertset" checked />
+    <input type="radio" name="alert" id="a-doc" class="alertset" />
+    <input type="radio" name="alert" id="a-pub" class="alertset" />
+    <input type="radio" name="alert" id="a-none" class="alertset" />
+
+    <input type="radio" name="srcf" id="sf-all" class="srcset" checked />
+    <input type="radio" name="srcf" id="sf-gh" class="srcset" />
+    <input type="radio" name="srcf" id="sf-npm" class="srcset" />
+    <input type="radio" name="srcf" id="sf-web" class="srcset" />
+    <input type="radio" name="srcf" id="sf-map" class="srcset" />
+    <input type="radio" name="srcf" id="sf-hot" class="srcset" />
+
+    <input type="checkbox" id="ack-map" class="actset" />
+    <input type="checkbox" id="ack-doc" class="actset" />
+    <input type="checkbox" id="res-map" class="actset" />
+    <input type="checkbox" id="res-doc" class="actset" />
+    <input type="checkbox" id="src-npm-on" class="actset" />
+    <input type="checkbox" id="approve-release" class="actset" />
+    <input type="checkbox" id="hold-release" class="actset" />
+    <input type="checkbox" id="import-protected" class="actset" />
+    <input type="radio" name="assignee" id="as-none" class="actset" checked />
+    <input type="radio" name="assignee" id="as-dana" class="actset" />
+
+    <input type="radio" name="overlay" id="ov-none" class="ovset" checked />
+    <input type="radio" name="overlay" id="ov-cmd" class="ovset" />
+    <input type="radio" name="overlay" id="ov-plans" class="ovset" />
+    <input type="radio" name="overlay" id="ov-source" class="ovset" />
+    <input type="radio" name="overlay" id="ov-assign" class="ovset" />
+    <input type="radio" name="overlay" id="ov-install" class="ovset" />
+
+    <div class="app shell">
+      <aside class="side">
+        <div class="side-head">
+          <span class="logo">NoSpoilers</span>
+          <label class="installer" for="ov-install">
+            <span class="av"></span>
+            <span class="grow col">
+              <span class="small snow truncate">EmotiveImpact</span>
+              <span class="tiny dim has-data">Team · 12 sources</span>
+              <span class="tiny dim s-empty">nothing connected</span>
+            </span>
+            <span class="dim tiny">⌄</span>
+          </label>
+        </div>
+        <div class="inst-pop">
+          <button type="button"><span class="av"></span> EmotiveImpact</button>
+          <button type="button"><span class="av"></span> acme-labs</button>
+          <label for="ov-none" class="tiny dim" style="margin-top: 4px">Close</label>
+        </div>
+
+        <nav class="nav scroll">
+          <div class="nav-group">
+            <label for="v-overview"><span class="ico">◉</span> Overview</label>
+            <label for="v-alerts">
+              <span class="ico">▲</span> Alerts
+              <span class="count crit has-data c2">2</span>
+              <span class="count crit has-data c1-map">1</span>
+              <span class="count crit has-data c1-doc">1</span>
+              <span class="count has-data c0">0</span>
+            </label>
+            <label for="v-sources"><span class="ico">⌸</span> Sources <span class="count has-data">12</span></label>
+            <label for="v-releases"><span class="ico">✓</span> Releases</label>
+            <label for="v-timeline" class="team-only"><span class="ico">◷</span> Timeline</label>
+            <label for="v-setup"><span class="ico">◎</span> Finish setup</label>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Alert views</span>
+            <label for="v-alerts"
+              ><span class="ico">▲</span> Needs triage
+              <span class="count crit has-data c2">2</span>
+              <span class="count crit has-data c1-map">1</span>
+              <span class="count crit has-data c1-doc">1</span>
+              <span class="count has-data c0">0</span></label
+            >
+            <label for="v-alerts-wait"><span class="ico">◷</span> Waiting on rotation <span class="count has-data show-map-ack">1</span></label>
+            <label for="v-alerts-mine" class="team-only"><span class="ico">☺</span> Assigned to me <span class="count has-data">1</span></label>
+            <label for="v-alerts-done"><span class="ico">✓</span> Resolved <span class="count has-data">37</span></label>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Settings</span>
+            <label for="v-notify"><span class="ico">✉</span> Notifications</label>
+            <label for="v-policy"><span class="ico">⚖</span> Policy &amp; allowlist</label>
+            <label for="v-team"><span class="ico">☗</span> Team &amp; roles</label>
+            <label for="v-retention"><span class="ico">⧗</span> Retention</label>
+            <label for="v-audit" class="team-only"><span class="ico">⎙</span> Audit log</label>
+            <label for="v-health"><span class="ico">✱</span> Install health</label>
+            <label for="v-tokens" class="admin-only"><span class="ico">◍</span> Scan API tokens</label>
+            <label for="v-registries" class="admin-only"><span class="ico">▤</span> Private registries</label>
+          </div>
+        </nav>
+
+        <div class="side-foot">
+          <label for="v-setup" class="row gap12" style="cursor: pointer">
+            <div class="ring sm has-data" style="--p: 60"><span>3/5</span></div>
+            <div class="ring sm s-empty" style="--p: 0"><span>0/5</span></div>
+            <div class="grow">
+              <span class="tiny snow has-data">3 of 5 leak paths covered</span>
+              <span class="tiny snow s-empty">Nothing covered yet</span>
+              <p class="tiny dim s-trial" style="margin-top: 2px">Trial · 11 days left</p>
+              <p class="tiny dim s-solo" style="margin-top: 2px">Solo</p>
+              <p class="tiny dim s-member" style="margin-top: 2px">Team · member</p>
+              <p class="tiny bad s-ended" style="margin-top: 2px">Coverage ended</p>
+              <p class="tiny dim s-empty" style="margin-top: 2px">Trial · 14 days left</p>
+            </div>
+          </label>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <label class="search" for="ov-cmd">
+            <span>⌕</span><span class="grow">Search or run a command…</span>
+            <span class="kbd">⌘K</span>
+          </label>
+          <div class="grow"></div>
+          <strong class="small">
+            <span class="vt vt-overview">Overview</span>
+            <span class="vt vt-alerts">Alerts</span>
+            <span class="vt vt-sources">Sources</span>
+            <span class="vt vt-releases">Releases</span>
+            <span class="vt vt-timeline">Timeline</span>
+            <span class="vt vt-notify">Notifications</span>
+            <span class="vt vt-policy">Policy</span>
+            <span class="vt vt-team">Team</span>
+            <span class="vt vt-retention">Retention</span>
+            <span class="vt vt-audit">Audit log</span>
+            <span class="vt vt-health">Install health</span>
+            <span class="vt vt-tokens">Scan API tokens</span>
+            <span class="vt vt-registries">Private registries</span>
+            <span class="vt vt-setup">Setup</span>
+            <span class="vt vt-repo">EmotiveImpact/nospoilers</span>
+          </strong>
+          <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+          <label for="ov-plans" class="btn sm outline admin-only">See plans</label>
+          <span class="av round"></span>
+        </header>
+
+        <div class="compare-note">
+          <strong>Setup-first guided desk.</strong> First-session default: one ordered setup path before the operator lands on the same Overview, Alerts, Sources, evidence and Settings.
+          <span class="same-scope"> Same complete capability set and same five states as 2A–2D.</span>
+        </div>
+
+        <!-- ===== OVERVIEW ===== -->
+        <div class="view view-overview body">
+          <h1 class="has-data hide-ended hide-both-res">Two things are exposed right now.</h1>
+          <h1 class="has-data hide-ended show-both-res">Nothing is exposed right now.</h1>
+          <h1 class="s-ended">We stopped looking six days ago.</h1>
+          <h1 class="s-empty">Nothing is being watched yet.</h1>
+          <p class="muted has-data hide-ended hide-both-res" style="margin-top: 10px; max-width: 64ch">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes.
+          </p>
+          <p class="muted has-data hide-ended show-both-res" style="margin-top: 10px; max-width: 64ch">
+            6 repos, 3 packages, 2 origins — last check 4 minutes ago. The two you just closed stay
+            in Resolved.
+          </p>
+          <p class="muted s-ended" style="margin-top: 10px; max-width: 64ch">
+            Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos stay
+            listed, receipts stay downloadable, and open alerts can still be resolved.
+          </p>
+          <p class="muted s-empty" style="margin-top: 10px; max-width: 64ch">
+            Install on one private repo and this sentence starts telling you the truth about your
+            releases.
+          </p>
+          <div class="row gap8 s-ended" style="margin-top: 15px">
+            <label for="ov-plans" class="btn">See plans</label>
+            <span class="btn outline">Locked scan</span>
+          </div>
+          <div class="row gap8 s-empty" style="margin-top: 15px">
+            <label for="v-setup" class="btn">Install on GitHub</label>
+            <label for="ov-source" class="btn outline">Scan a pack by hand</label>
+          </div>
+
+          <div class="stats has-data" style="margin-top: 22px">
+            <label class="stat" for="v-alerts" style="cursor: pointer">
+              <span class="kicker">Open alerts</span>
+              <div class="n bad hide-both-res c2">2</div>
+              <div class="n bad hide-both-res c1-map">1</div>
+              <div class="n bad hide-both-res c1-doc">1</div>
+              <div class="n show-both-res">0</div>
+              <span class="tiny dim hide-map-res">1 critical · 1 warn</span>
+              <span class="tiny dim show-map-res hide-doc-res">1 warn left</span>
+              <span class="tiny dim show-both-res">inbox clear</span>
+            </label>
+            <div class="stat">
+              <span class="kicker">Exposed now</span>
+              <div class="n bad hide-map-res">41m</div>
+              <div class="n show-map-res">0</div>
+              <span class="tiny dim">oldest open alert</span>
+            </div>
+            <label class="stat" for="v-releases" style="cursor: pointer">
+              <span class="kicker">Packs read, 30 d</span>
+              <div class="n">48</div>
+              <span class="tiny dim">4 failed policy</span>
+            </label>
+            <label class="stat" for="v-health" style="cursor: pointer">
+              <span class="kicker">Queue</span>
+              <div class="n">0</div>
+              <span class="tiny dim">idle · last run 2 m ago</span>
+            </label>
+          </div>
+
+          <section class="sec has-data hide-map-res">
+            <div class="verdict">
+              <span class="mark">!</span>
+              <div class="grow">
+                <h2>A source map with original source shipped 41 minutes ago.</h2>
+                <p class="muted" style="margin-top: 7px; max-width: 62ch">
+                  <code class="path">dist/cli.js.map</code> in
+                  <code class="path">nospoilers@0.4.2</code> on npm embeds
+                  <code>sourcesContent</code>. The tarball is still the <code>latest</code> tag.
+                </p>
+                <div class="row gap8 wrap" style="margin-top: 13px">
+                  <label for="v-alerts" class="btn sm">Open rotation checklist</label>
+                  <label for="ack-map" class="btn sm outline hide-map-ack">Acknowledge</label>
+                  <span class="pill ok show-map-ack">Acknowledged</span>
+                  <label for="ov-assign" class="btn sm ghost team-only hide-dana">Assign teammate</label>
+                  <span class="pill info show-dana">Assigned to @dana</span>
+                  <label for="v-policy" class="btn sm ghost admin-only">Allow this path</label>
+                </div>
+              </div>
+              <span class="pill crit">MAP-002</span>
+            </div>
+          </section>
+
+          <section class="sec has-data show-map-res">
+            <div class="card card-pad">
+              <div class="row gap8 wrap">
+                <span class="pill ok">resolved</span>
+                <span class="pill">MAP-002</span>
+              </div>
+              <h2 style="margin-top: 10px">MAP-002 is closed. Exposure clock stopped.</h2>
+              <p class="small muted" style="margin-top: 7px; max-width: 60ch">
+                Reachable for 41 minutes. Receipt for <code class="path">nospoilers@0.4.2</code>
+                stays downloadable.
+              </p>
+              <label for="v-alerts-done" class="btn sm outline" style="margin-top: 12px">See in Resolved</label>
+            </div>
+          </section>
+
+          <section class="sec has-data">
+            <div class="sec-head">
+              <h2>Exposure, last 7 days</h2>
+              <label for="v-timeline" class="small dim team-only" style="cursor: pointer">Full timeline →</label>
+            </div>
+            <div class="card">
+              <div class="strip">
+                <div class="row gap8">
+                  <span class="dot crit pulse hide-map-res"></span>
+                  <span class="dot ok show-map-res"></span>
+                  <span class="small truncate path">npm · nospoilers</span>
+                </div>
+                <div class="track" style="min-height: 30px">
+                  <div class="span crit hide-map-res" style="left: 80%; right: 2.5%">MAP-002 · open</div>
+                  <div class="span ok show-map-res" style="left: 80%; width: 16%">41 m</div>
+                  <div class="tick" style="left: 97.5%"></div>
+                </div>
+              </div>
+              <div class="strip hide-doc-res">
+                <div class="row gap8">
+                  <span class="dot warn"></span>
+                  <span class="small truncate path">EmotiveImpact/desk</span>
+                </div>
+                <div class="track" style="min-height: 30px">
+                  <div class="span warn" style="left: 82%; width: 15.5%">DOC-001 · 3 h</div>
+                </div>
+              </div>
+              <div class="strip">
+                <div class="row gap8">
+                  <span class="dot ok"></span>
+                  <span class="small truncate path">relay-worker</span>
+                </div>
+                <div class="track" style="min-height: 30px">
+                  <div class="span ok" style="left: 69%; width: 5.5%">4 m</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec">
+            <div class="sec-head">
+              <h2>Sources</h2>
+              <label for="v-sources" class="small dim has-data" style="cursor: pointer">All 12 →</label>
+            </div>
+            <div class="card s-empty">
+              <div class="empty" style="padding: 30px 24px">
+                <strong>No sources yet.</strong>
+                A private throwaway repo or a public npm package name is enough to start.
+              </div>
+            </div>
+            <div class="card has-data lockable">
+              <div class="lockveil">
+                <span class="kicker">Hosted coverage is off</span>
+                <h2>Subscribe to keep watching.</h2>
+                <p class="small muted" style="max-width: 48ch">
+                  Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active.
+                  Repos stay listed.
+                </p>
+                <label for="ov-plans" class="btn sm">See plans</label>
+              </div>
+              <div class="srccard">
+                <span class="glyph">▣</span>
+                <div>
+                  <div class="row gap8 wrap">
+                    <strong class="path">nospoilers</strong>
+                    <span class="pill crit hide-map-res">MAP-002</span>
+                    <span class="pill ok show-map-res">resolved</span>
+                  </div>
+                  <div class="meta"><span>npm · latest 0.4.2</span><span>41 min ago</span></div>
+                </div>
+                <label for="v-alerts" class="btn sm hide-map-res">Open alert</label>
+                <label for="v-repo" class="btn sm outline show-map-res">Open repo</label>
+              </div>
+              <div class="srccard">
+                <span class="glyph">⌥</span>
+                <div>
+                  <div class="row gap8 wrap">
+                    <strong class="path">EmotiveImpact/nospoilers</strong>
+                    <span class="pill">private</span>
+                  </div>
+                  <div class="meta"><span>GitHub</span><span>1 min ago</span><span>NoSpoilers workflow found</span></div>
+                </div>
+                <label for="v-repo" class="btn sm outline">Open</label>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec">
+            <div class="sec-head">
+              <h2 class="has-data">Two leak paths still open</h2>
+              <h2 class="s-empty">Five leak paths to close</h2>
+              <label for="v-setup" class="small dim" style="cursor: pointer">Setup →</label>
+            </div>
+            <div class="stepcard active">
+              <div class="stephead">
+                <span class="mark now has-data">4</span>
+                <span class="mark now s-empty">1</span>
+                <div class="grow">
+                  <strong class="small">Watch what the registry actually serves</strong>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    The clean release asset and the published tarball are not always the same file.
+                  </p>
+                </div>
+                <label for="ov-source" class="btn sm">Connect npm</label>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ===== ALERTS ===== -->
+        <div class="view view-alerts">
+          <div
+            class="s-ended row gap12"
+            style="flex: none; padding: 9px 18px; border-bottom: 1px solid rgba(226, 69, 58, 0.3); background: rgba(226, 69, 58, 0.07)"
+          >
+            <span class="dot crit"></span>
+            <span class="small">No new jobs run. Alerts already open can still be acknowledged and resolved.</span>
+            <div class="grow"></div>
+            <label for="ov-plans" class="btn sm">See plans</label>
+          </div>
+          <div class="panes">
+            <section class="pane">
+              <div class="pane-head between">
+                <div class="row gap8">
+                  <strong class="small">Inbox</strong>
+                  <span class="pill has-data c2">2</span>
+                  <span class="pill has-data c1-map">1</span>
+                  <span class="pill has-data c1-doc">1</span>
+                  <span class="pill has-data c0">0</span>
+                  <span class="pill s-empty">0</span>
+                </div>
+                <span class="small dim has-data">Newest ⌄</span>
+              </div>
+              <div class="pane-body scroll">
+                <p class="empty s-empty">
+                  <strong>Inbox is clear.</strong>
+                  Nothing on this install yet.
+                </p>
+                <p class="empty has-data show-both-res">
+                  <strong>Needs triage is empty.</strong>
+                  Both open alerts are resolved. Open the Resolved view.
+                </p>
+
+                <div class="alist alist-triage has-data hide-both-res">
+                  <label class="item aitem-map hide-map-res" for="a-map">
+                    <div class="row gap8 wrap">
+                      <span class="dot crit pulse"></span>
+                      <strong class="grow truncate">Original source in published pack</strong>
+                      <span class="tiny dim">41m</span>
+                    </div>
+                    <div class="sub"><code class="path">nospoilers@0.4.2</code> · MAP-002</div>
+                  </label>
+                  <label class="item aitem-doc hide-doc-res" for="a-doc">
+                    <div class="row gap8 wrap">
+                      <span class="dot warn"></span>
+                      <strong class="grow truncate">Internal docs in release asset</strong>
+                      <span class="tiny dim">3h</span>
+                    </div>
+                    <div class="sub"><code class="path">EmotiveImpact/desk</code> v2.1.0 · DOC-001</div>
+                  </label>
+                </div>
+
+                <div class="alist alist-wait has-data">
+                  <p class="empty hide-map-ack">
+                    <strong>Nothing waiting.</strong>
+                    Acknowledge MAP-002 and it lands here until you resolve it.
+                  </p>
+                  <label class="item aitem-map show-map-ack hide-map-res" for="a-map">
+                    <div class="row gap8 wrap">
+                      <span class="dot crit"></span>
+                      <strong class="grow truncate">Original source in published pack</strong>
+                      <span class="pill">ack</span>
+                    </div>
+                    <div class="sub">Waiting on 0.4.3 + deprecate 0.4.2</div>
+                  </label>
+                </div>
+
+                <div class="alist alist-mine has-data">
+                  <label class="item aitem-map hide-map-res" for="a-map">
+                    <div class="row gap8 wrap">
+                      <span class="dot crit pulse"></span>
+                      <strong class="grow truncate">Original source in published pack</strong>
+                      <span class="tiny dim">you</span>
+                    </div>
+                    <div class="sub">Assigned in the sample to the signed-in admin</div>
+                  </label>
+                </div>
+
+                <div class="alist alist-done has-data">
+                  <label class="item aitem-map show-map-res" for="a-map">
+                    <div class="row gap8 wrap">
+                      <span class="dot ok"></span>
+                      <strong class="grow truncate">Original source in published pack</strong>
+                      <span class="tiny dim">just now</span>
+                    </div>
+                    <div class="sub">MAP-002 · resolved this session</div>
+                  </label>
+                  <label class="item aitem-doc show-doc-res" for="a-doc">
+                    <div class="row gap8 wrap">
+                      <span class="dot ok"></span>
+                      <strong class="grow truncate">Internal docs in release asset</strong>
+                    </div>
+                    <div class="sub">DOC-001 · resolved this session</div>
+                  </label>
+                  <label class="item aitem-pub" for="a-pub">
+                    <div class="row gap8 wrap">
+                      <span class="dot ok"></span>
+                      <strong class="grow truncate">Repository went public</strong>
+                      <span class="tiny dim">1d</span>
+                    </div>
+                    <div class="sub"><code class="path">EmotiveImpact/relay-worker</code> · resolved</div>
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <section class="pane">
+              <div class="actionbar abar abar-map has-data">
+                <label for="ack-map" class="btn sm hide-map-ack">Acknowledge</label>
+                <span class="btn sm disabled show-map-ack">Acknowledged</span>
+                <label for="res-map" class="btn sm outline hide-map-res">Resolve</label>
+                <span class="btn sm outline disabled show-map-res">Resolved</span>
+                <label for="ov-assign" class="btn sm outline team-only hide-dana">Assign</label>
+                <span class="pill info show-dana">@dana</span>
+                <div class="grow"></div>
+                <label for="a-map" class="btn sm ghost">↑</label>
+                <label for="a-doc" class="btn sm ghost">↓</label>
+              </div>
+              <div class="actionbar abar abar-doc has-data">
+                <label for="ack-doc" class="btn sm hide-doc-ack">Acknowledge</label>
+                <span class="btn sm disabled show-doc-ack">Acknowledged</span>
+                <label for="res-doc" class="btn sm outline hide-doc-res">Resolve</label>
+                <span class="btn sm outline disabled show-doc-res">Resolved</span>
+                <div class="grow"></div>
+                <label for="a-map" class="btn sm ghost">↑</label>
+                <label for="a-doc" class="btn sm ghost">↓</label>
+              </div>
+              <div class="actionbar abar abar-pub has-data">
+                <span class="pill ok">Resolved yesterday</span>
+                <div class="grow"></div>
+                <label for="a-doc" class="btn sm ghost">↑</label>
+              </div>
+              <div class="pane-body scroll">
+                <div class="empty s-empty" style="padding-top: 90px">
+                  <strong>Nothing selected.</strong>
+                  When an alert arrives, its findings, rotation checklist, and activity open here.
+                </div>
+
+                <div class="detail adetail adetail-map has-data">
+                  <div class="row gap8 wrap">
+                    <span class="pill crit hide-map-res">critical</span>
+                    <span class="pill ok show-map-res">resolved</span>
+                    <span class="pill">MAP-002</span>
+                    <span class="pill hide-map-res"><span class="dot crit"></span> open · 41 min exposed</span>
+                    <span class="pill ok show-map-res">closed · 41 min total</span>
+                    <span class="pill ok show-map-ack hide-map-res">acknowledged</span>
+                  </div>
+                  <h1 style="margin-top: 12px">
+                    <code class="path" style="font-size: 24px">dist/cli.js.map</code> embeds original
+                    source
+                  </h1>
+                  <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                    The <code>latest</code> tarball for <code class="path">nospoilers@0.4.2</code>
+                    contains a source map with a populated <code>sourcesContent</code> array. Anyone
+                    who runs <code>npm pack nospoilers</code> can reconstruct the pre-build
+                    TypeScript.
+                  </p>
+                  <div class="sec">
+                    <span class="kicker">Where</span>
+                    <div class="card" style="margin-top: 9px">
+                      <div class="finding">
+                        <span class="rulecode" style="width: 66px; flex: none">MAP-002</span>
+                        <span class="grow path">dist/cli.js.map</span>
+                        <span class="pill crit">critical</span>
+                      </div>
+                      <div class="finding">
+                        <span class="rulecode" style="width: 66px; flex: none">MAP-001</span>
+                        <span class="grow path">dist/index.js.map</span>
+                        <span class="pill crit">critical</span>
+                      </div>
+                      <div class="finding">
+                        <span class="rulecode" style="width: 66px; flex: none">MAP-003</span>
+                        <span class="grow path">dist/index.js</span>
+                        <span class="pill warn">sourceMappingURL</span>
+                      </div>
+                    </div>
+                    <p class="tiny dim" style="margin-top: 8px">
+                      Credential values are never stored or shown. Paths and rule ids only.
+                    </p>
+                  </div>
+                  <div class="sec">
+                    <span class="kicker">Exposure</span>
+                    <div class="card card-pad" style="margin-top: 9px">
+                      <div class="row gap24 wrap">
+                        <div>
+                          <span class="kicker">Reachable for</span>
+                          <div class="bad hide-map-res" style="font-family: var(--display); font-size: 26px; margin-top: 4px">41m 08s</div>
+                          <div class="okc show-map-res" style="font-family: var(--display); font-size: 26px; margin-top: 4px">41m</div>
+                        </div>
+                        <div>
+                          <span class="kicker">Opened</span>
+                          <div style="font-family: var(--display); font-size: 26px; margin-top: 4px">09:14</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sec">
+                    <span class="kicker">Rotation checklist</span>
+                    <div style="margin-top: 6px">
+                      <label class="task"><input type="checkbox" checked /><span><s class="dim">Confirm the pack is still on the latest tag</s></span></label>
+                      <label class="task"><input type="checkbox" /><span>Publish 0.4.3 built with <code>hidden-source-map</code>, then <code>npm deprecate nospoilers@0.4.2</code></span></label>
+                      <label class="task"><input type="checkbox" /><span>Upload maps to Sentry instead of packing them</span></label>
+                      <label class="task"><input type="checkbox" /><span>Add the CI gate so the next release fails closed</span></label>
+                    </div>
+                  </div>
+                  <div class="sec">
+                    <span class="kicker">Activity</span>
+                    <div class="thread" style="margin-top: 6px">
+                      <span class="av round"></span>
+                      <div><span class="snow">NoSpoilers</span> opened this from a registry check <span class="dim">· 09:14</span></div>
+                    </div>
+                    <div class="thread team-only">
+                      <span class="av round"></span>
+                      <div><span class="snow">Slack</span> delivered to <code>#sec-alerts</code> <span class="dim">· 09:14</span></div>
+                    </div>
+                    <div class="thread show-map-ack">
+                      <span class="av round"></span>
+                      <div><span class="snow">You</span> acknowledged this <span class="dim">· just now</span></div>
+                    </div>
+                    <div class="thread show-map-res">
+                      <span class="av round"></span>
+                      <div><span class="snow">You</span> resolved this <span class="dim">· just now</span></div>
+                    </div>
+                    <div class="thread">
+                      <span class="av round"></span>
+                      <div class="grow"><input class="field" placeholder="Add a resolution note…" /></div>
+                    </div>
+                    <div class="gate admin-only" style="margin-top: 14px">
+                      <span class="tagword">Admin</span>
+                      <span>You can allow <code class="path">dist/*.map</code> for this repo with a reason and an expiry.
+                        <label for="v-policy" class="snow" style="cursor: pointer">Write an exception →</label></span>
+                    </div>
+                    <div class="gate s-member" style="margin-top: 14px">
+                      <span class="tagword">Member</span>
+                      <span>Writing a policy exception is admin-only. Triage, notes, and resolution are yours.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail adetail adetail-doc has-data">
+                  <div class="row gap8 wrap">
+                    <span class="pill warn hide-doc-res">warn</span>
+                    <span class="pill ok show-doc-res">resolved</span>
+                    <span class="pill">DOC-001</span>
+                  </div>
+                  <h1 style="margin-top: 12px">Internal docs packed in desk 2.1.0</h1>
+                  <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                    <code class="path">docs/internal/ROADMAP.md</code> and 2 similar paths shipped
+                    in the GitHub release asset.
+                  </p>
+                  <div class="row gap8 wrap" style="margin-top: 14px">
+                    <label for="ack-doc" class="btn sm outline hide-doc-ack">Acknowledge</label>
+                    <label for="res-doc" class="btn sm hide-doc-res">Resolve</label>
+                    <span class="btn sm outline admin-only">Open remediation PR</span>
+                  </div>
+                </div>
+
+                <div class="detail adetail adetail-pub has-data">
+                  <div class="row gap8 wrap">
+                    <span class="pill ok">resolved</span>
+                    <span class="pill">visibility</span>
+                  </div>
+                  <h1 style="margin-top: 12px">Repository went public, then private again</h1>
+                  <p class="muted" style="margin-top: 10px; max-width: 60ch">
+                    <code class="path">EmotiveImpact/relay-worker</code> was reachable for 4 minutes
+                    yesterday. Resolved by @dana.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ===== SOURCES ===== -->
+        <div class="view view-sources body">
+          <div class="between" style="margin-bottom: 14px">
+            <div>
+              <h1>Everything we watch, one list.</h1>
+              <p class="muted" style="margin-top: 9px; max-width: 64ch">
+                A repo, an npm package, a production origin, and a map destination behave the same
+                way: connect it, we check it, it reports into the same alert inbox.
+              </p>
+            </div>
+            <label for="ov-source" class="btn admin-only">+ Add a source</label>
+          </div>
+          <div class="row gap8 wrap has-data" style="margin: 16px 0">
+            <label class="chip" for="sf-all">All <span class="dim">12</span></label>
+            <label class="chip" for="sf-gh">GitHub repos <span class="dim">6</span></label>
+            <label class="chip" for="sf-npm">npm packages <span class="dim">3</span></label>
+            <label class="chip" for="sf-web">Websites <span class="dim">2</span></label>
+            <label class="chip" for="sf-map">Map custody <span class="dim">1</span></label>
+            <label class="chip" for="sf-hot" style="margin-left: auto">Needs attention <span class="bad hide-map-res">2</span><span class="dim show-map-res">1</span></label>
+          </div>
+          <div class="card s-empty">
+            <div class="empty" style="padding: 36px 24px">
+              <strong>No sources yet.</strong>
+              Install NoSpoilers on a private throwaway repo, or connect a public npm package by
+              name — neither needs a token.
+            </div>
+            <div class="addrow" style="justify-content: center">
+              <label for="v-setup" class="btn sm">GitHub repos</label>
+              <label for="ov-source" class="btn sm outline">npm package</label>
+            </div>
+          </div>
+          <div class="card has-data lockable">
+            <div class="lockveil">
+              <span class="kicker">Hosted coverage is off</span>
+              <h2>Subscribe to keep watching.</h2>
+              <p class="small muted" style="max-width: 50ch">
+                Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos
+                stay listed. Existing alerts can still be acknowledged and resolved.
+              </p>
+              <label for="ov-plans" class="btn sm">See plans</label>
+            </div>
+            <div class="srccard src-gh">
+              <span class="glyph">⌥</span>
+              <div>
+                <div class="row gap8 wrap">
+                  <strong class="path">EmotiveImpact/nospoilers</strong>
+                  <span class="pill">private</span>
+                </div>
+                <div class="meta"><span>GitHub repository</span><span>Checked 1 min ago</span><span>Release gate active</span></div>
+              </div>
+              <label for="v-repo" class="btn sm outline">Open</label>
+            </div>
+            <div class="srccard src-npm src-hot">
+              <span class="glyph">▣</span>
+              <div>
+                <div class="row gap8 wrap">
+                  <strong class="path">nospoilers</strong>
+                  <span class="pill crit hide-map-res">MAP-002</span>
+                  <span class="pill ok show-map-res">clean after resolve</span>
+                </div>
+                <div class="meta"><span>npm · registry.npmjs.org</span><span>latest 0.4.2</span><span>sha256 9f31…c0a</span></div>
+              </div>
+              <label for="v-alerts" class="btn sm hide-map-res">Open alert</label>
+              <label for="v-releases" class="btn sm outline show-map-res">Receipt</label>
+            </div>
+            <div class="srccard src-npm show-npm-on">
+              <span class="glyph">▣</span>
+              <div>
+                <div class="row gap8 wrap">
+                  <strong class="path">acme-ui</strong>
+                  <span class="pill ok">just added</span>
+                </div>
+                <div class="meta"><span>npm · registry.npmjs.org</span><span>first check queued</span></div>
+              </div>
+              <span class="pill info">queued</span>
+            </div>
+            <div class="srccard src-gh src-hot">
+              <span class="glyph">⌥</span>
+              <div>
+                <div class="row gap8 wrap">
+                  <strong class="path">EmotiveImpact/relay-worker</strong>
+                  <span class="pill">private</span>
+                </div>
+                <div class="meta"><span>GitHub repository</span><span>No CI gate wired</span></div>
+              </div>
+              <span class="pill info">Setup incomplete</span>
+            </div>
+            <div class="srccard src-gh">
+              <span class="glyph">⌥</span>
+              <div>
+                <div class="row gap8 wrap">
+                  <strong class="path">EmotiveImpact/desk</strong>
+                  <span class="pill warn hide-doc-res">DOC-001</span>
+                </div>
+                <div class="meta"><span>GitHub repository</span><span>Release asset v2.1.0</span></div>
+              </div>
+              <label for="a-doc" class="btn sm outline hide-doc-res">Open alert</label>
+            </div>
+            <div class="srccard src-web">
+              <span class="glyph">⬡</span>
+              <div>
+                <strong class="path">https://app.emotiveimpact.com</strong>
+                <div class="meta"><span>Production origin</span><span>Checked 2 h ago</span></div>
+              </div>
+              <span class="pill ok"><span class="dot ok"></span> Clean</span>
+            </div>
+            <div class="srccard src-map">
+              <span class="glyph">⎔</span>
+              <div>
+                <strong class="path">sentry.io · emotiveimpact/desk</strong>
+                <div class="meta"><span>Map custody</span><span>Maps uploaded for 2.1.0</span></div>
+              </div>
+              <span class="pill ok"><span class="dot ok"></span> Verified</span>
+            </div>
+            <div class="addrow admin-only">
+              <span class="small dim">Add:</span>
+              <label for="ov-source" class="btn sm outline">npm package</label>
+              <label for="v-setup" class="btn sm outline">GitHub repos</label>
+              <label for="ov-source" class="btn sm outline">Website origin</label>
+              <label for="import-protected" class="btn sm outline hide-import">Import protected names</label>
+              <span class="pill ok show-import">Protected names imported</span>
+            </div>
+            <div class="capability-note admin-only show-import" style="grid-column:1/-1">
+              <strong class="small">Protect identities in a batch</strong>
+              <p class="tiny dim" style="margin-top:4px">Up to 20 npm names. Registry metadata only — no tarball download or scan job. Scope or GitHub repository must match this install.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== RELEASES ===== -->
+        <div class="view view-releases body">
+          <h1>Releases and receipts</h1>
+          <p class="muted" style="margin-top: 8px; max-width: 68ch">
+            Append-only packed revisions: sealed digest, size, media type, signed receipt and verified delivery locations. Trial and Team can approve or reject shipping, place legal hold, and export the ledger.
+          </p>
+          <div class="row gap8 team-only" style="margin-top:14px"><span class="btn sm outline">Export ledger</span><span class="tiny dim">Members can export. Solo is gated.</span></div>
+          <div class="card has-data" style="margin-top: 18px; overflow: auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Pack</th>
+                  <th>sha256</th>
+                  <th>Verdict</th>
+                  <th>Evidence</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="path">nospoilers 0.4.2</td>
+                  <td class="mono">9f31…c0a</td>
+                  <td><span class="pill crit hide-map-res">MAP-002</span><span class="pill ok show-map-res">passed</span></td>
+                  <td><span class="tiny dim">84 KB · application/gzip<br />GitHub → objects.githubusercontent.com · iad</span></td>
+                  <td><label for="v-alerts" class="btn sm hide-map-res">Open</label><span class="tiny dim show-map-res">Receipt JSON</span></td>
+                </tr>
+                <tr>
+                  <td class="path">desk 2.1.0</td>
+                  <td class="mono">4b02…e71</td>
+                  <td><span class="pill warn hide-doc-res">DOC-001</span><span class="pill ok show-doc-res">passed</span></td>
+                  <td><span class="tiny dim">2.4 MB · application/zip</span></td>
+                  <td><span class="tiny dim">Receipt JSON</span></td>
+                </tr>
+                <tr>
+                  <td class="path">acme-ui 3.8.1</td>
+                  <td class="mono">7c5d…20a</td>
+                  <td><span class="pill ok">passed</span></td>
+                  <td><span class="tiny dim">126 KB · application/gzip</span></td>
+                  <td><span class="tiny dim">Receipt JSON</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="capability-note has-data team-only">
+            <span class="kicker">Selected passing revision</span>
+            <div class="release-actions admin-only">
+              <label for="approve-release" class="btn sm hide-approval">Approve to ship</label>
+              <span class="pill ok show-approval">approved to ship</span>
+              <span class="btn sm outline hide-approval">Reject</span>
+              <label for="hold-release" class="btn sm outline hide-hold">Place legal hold</label>
+              <span class="pill show-hold">legal hold</span>
+              <span class="btn sm outline">Attach delivery URL</span>
+              <span class="btn sm outline">Verify now</span>
+            </div>
+            <p class="tiny dim" style="margin-top:8px">The admin who attached a delivery URL cannot approve that revision. Another admin must release legal hold. Failed-policy, inconclusive and digest-changed rows cannot be approved.</p>
+          </div>
+          <div class="card s-empty" style="margin-top: 18px">
+            <div class="empty"><strong>No receipts yet.</strong> The first sealed release appears after the first pack is read.</div>
+          </div>
+        </div>
+
+        <!-- ===== TIMELINE ===== -->
+        <div class="view view-timeline body">
+          <div class="gate s-solo" style="margin-bottom: 16px">
+            <span class="tagword">Solo</span>
+            <span>Subscribe to Team to keep the install timeline.</span>
+          </div>
+          <h1 class="has-data hide-ended">Time exposed, last 7 days</h1>
+          <h1 class="s-ended">The clock is not running.</h1>
+          <h1 class="s-empty">No exposure to plot yet.</h1>
+          <div class="gantt has-data" style="margin-top: 18px">
+            <div class="gantt-head">
+              <span class="pill crit hide-map-res">1 open</span>
+              <span class="pill ok show-map-res">all closed</span>
+              <div class="grow"></div>
+              <span class="tiny dim">Bars show the window a leak was publicly reachable</span>
+            </div>
+            <div class="ruler">
+              <div style="padding: 6px 16px" class="tiny dim">Source</div>
+              <div class="r">
+                <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Today</span>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">
+                <strong class="small truncate">npm · nospoilers</strong>
+                <p class="tiny dim" style="margin-top: 4px">registry.npmjs.org</p>
+              </div>
+              <div class="track">
+                <div class="span crit hide-map-res" style="left: 80%; right: 2.5%">MAP-002 · open</div>
+                <div class="span ok show-map-res" style="left: 80%; width: 16%">41 m</div>
+                <div class="tick" style="left: 97.5%"></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">
+                <strong class="small truncate">EmotiveImpact/desk</strong>
+                <p class="tiny dim" style="margin-top: 4px">release asset v2.1.0</p>
+              </div>
+              <div class="track">
+                <div class="span warn" style="left: 82%; width: 15.5%">DOC-001 · 3 h</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== NOTIFICATIONS ===== -->
+        <div class="view view-notify body narrow">
+          <h1>Notifications</h1>
+          <p class="muted" style="margin-top: 8px; max-width: 60ch">
+            Destinations are tested when you save them. A destination receives an alert when any of its routes match.
+          </p>
+          <div class="gate s-member" style="margin-top: 16px">
+            <span class="tagword">Member</span>
+            <span>This page is read-only for you. The first GitHub user to connect an install is admin; later users become members. Ask <code>@ryan</code> or <code>@dana</code>.</span>
+          </div>
+          <div class="gate s-solo" style="margin-top: 16px">
+            <span class="tagword">Solo</span>
+            <span>Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend.
+              <label for="ov-plans" class="snow" style="cursor: pointer">Compare plans →</label></span>
+          </div>
+          <div class="setrow team-only" style="margin-top: 8px">
+            <div class="lbl">
+              <h3>Destinations</h3>
+              <p class="small dim has-data">Two connected.</p>
+              <p class="small dim s-empty">None connected yet.</p>
+            </div>
+            <div>
+              <div class="dest has-data">
+                <span class="glyph" style="width: 28px; height: 28px; font-size: 12px">◈</span>
+                <div class="grow">
+                  <strong class="small">Slack</strong>
+                  <p class="tiny dim">hooks.slack.com · last delivery 41 min ago</p>
+                </div>
+                <span class="pill ok">ok</span>
+              </div>
+              <div class="dest has-data">
+                <span class="glyph" style="width: 28px; height: 28px; font-size: 12px">◇</span>
+                <div class="grow">
+                  <strong class="small">Jira</strong>
+                  <p class="tiny dim">emotiveimpact.atlassian.net · project SEC</p>
+                </div>
+                <span class="pill ok">ok</span>
+              </div>
+            </div>
+          </div>
+          <div class="setrow team-only">
+            <div class="lbl">
+              <h3>Routes</h3>
+              <p class="small dim">Anything unmatched stays in the desk inbox only.</p>
+            </div>
+            <div>
+              <p class="small dim s-empty">No routes yet. Destinations without a route still receive every Watch alert.</p>
+              <div class="routerow has-data">
+                <span class="pill crit">critical</span><span class="dim">→</span><span class="snow">Slack</span>
+                <code class="path">#sec-alerts</code>
+              </div>
+              <div class="routerow has-data">
+                <span class="pill warn">warn</span><span class="dim">on</span>
+                <code class="path">EmotiveImpact/desk</code><span class="dim">→</span><span class="snow">Jira</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== POLICY ===== -->
+        <div class="view view-policy body narrow">
+          <h1>Policy &amp; allowlist</h1>
+          <p class="muted" style="margin-top: 8px; max-width: 60ch">
+            Exceptions need a reason and an expiry. They are scoped to a source, not the whole install.
+          </p>
+          <div class="card card-pad" style="margin-top: 18px">
+            <div class="kv"><span class="path">SRC-001</span><span class="summary-val">EmotiveImpact/desk · expires 12 Oct</span></div>
+            <div class="kv"><span class="path">SIZE-001</span><span class="summary-val">acme-ui · expires 1 Nov</span></div>
+            <div class="row gap8 admin-only" style="margin-top: 14px">
+              <input class="field" placeholder="Rule id, e.g. MAP-002" style="max-width: 160px" />
+              <input class="field" placeholder="Reason" />
+              <span class="btn sm">Add exception</span>
+            </div>
+            <p class="tiny dim s-member" style="margin-top: 12px">Writing a policy exception is admin-only.</p>
+          </div>
+        </div>
+
+        <!-- ===== TEAM ===== -->
+        <div class="view view-team body narrow">
+          <h1>Team &amp; roles</h1>
+          <p class="muted" style="margin-top: 8px; max-width: 60ch">
+            The first GitHub user to connect this install is admin. Later users become members.
+          </p>
+          <div class="gate s-solo" style="margin-top: 16px">
+            <span class="tagword">Solo</span>
+            <span>Subscribe to Team to keep managing roles.</span>
+          </div>
+          <div class="row gap8 admin-only" style="margin-top:16px">
+            <input class="field" placeholder="GitHub login" value="octocat" />
+            <select class="field" style="max-width:140px"><option>member</option><option>admin</option></select>
+            <span class="btn sm">Invite</span>
+          </div>
+          <p class="tiny dim" style="margin-top:8px">Invites claim a role on next sign-in if that GitHub login can already see the App install. This does not send email.</p>
+          <div class="card has-data" style="margin-top: 16px">
+            <div class="srccard"><span class="av round"></span><div><strong class="small">@octocat</strong><p class="tiny dim">pending member</p></div><span class="btn sm ghost admin-only">Revoke</span></div>
+            <div class="srccard"><span class="av round"></span><div><strong class="small">@ryan</strong><p class="tiny dim">admin · connected the install</p></div><span class="pill">admin</span></div>
+            <div class="srccard"><span class="av round"></span><div><strong class="small">@dana</strong><p class="tiny dim">admin</p></div><span class="pill">admin</span></div>
+            <div class="srccard"><span class="av round"></span><div><strong class="small">@lee</strong><p class="tiny dim">member</p></div><span class="pill">member</span></div>
+          </div>
+        </div>
+
+        <!-- ===== RETENTION ===== -->
+        <div class="view view-retention body narrow">
+          <h1>Retention</h1>
+          <div class="setrow" style="margin-top: 18px">
+            <div class="lbl">
+              <h3>List retention</h3>
+              <p class="small dim">How long alerts, receipts, and the timeline stay on this install.</p>
+            </div>
+            <div>
+              <select class="field admin-only" style="max-width: 200px">
+                <option>90 days</option>
+                <option selected>180 days</option>
+                <option>365 days</option>
+              </select>
+              <p class="small dim s-member" style="margin-top: 10px">An install admin has to change this window.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== AUDIT ===== -->
+        <div class="view view-audit body narrow">
+          <h1>Audit log</h1>
+          <div class="gate s-solo" style="margin-top: 16px">
+            <span class="tagword">Solo</span>
+            <span>Subscribe to Team to keep the audit log.</span>
+          </div>
+          <div class="card has-data team-only" style="margin-top: 16px">
+            <div class="kv"><span>@ryan acknowledged MAP-002</span><span class="summary-val">just now</span></div>
+            <div class="kv"><span>Slack delivered #sec-alerts</span><span class="summary-val">09:14</span></div>
+            <div class="kv"><span>Registry check nospoilers@0.4.2</span><span class="summary-val">09:14</span></div>
+            <div class="kv"><span>@dana resolved relay-worker public</span><span class="summary-val">yesterday</span></div>
+          </div>
+        </div>
+
+        <!-- ===== HEALTH ===== -->
+        <div class="view view-health body narrow">
+          <h1>Install health</h1>
+          <div class="stats has-data" style="margin-top: 18px; grid-template-columns: repeat(4, 1fr)">
+            <div class="stat"><span class="kicker">Webhook</span><div class="n okc" style="font-size: 20px">ok</div><span class="tiny dim">last event 1 d ago</span></div>
+            <div class="stat"><span class="kicker">Permissions</span><div class="n okc" style="font-size: 20px">pass</div><span class="tiny dim">Administration off</span></div>
+            <div class="stat"><span class="kicker">Queue</span><div class="n">0</div><span class="tiny dim">48 jobs in 30 d</span></div>
+            <div class="stat"><span class="kicker">Fair use</span><div class="n okc" style="font-size: 20px">ok</div><span class="tiny dim">not scan credits</span></div>
+          </div>
+          <div class="capability-note has-data"><span class="kicker">When the cap is reached</span><p class="small dim" style="margin-top:5px">Hosted unpacks pause until 00:00 UTC. Visibility alerts, the CLI, and the GitHub Action on your machine still work.</p></div>
+          <div class="card s-empty" style="margin-top: 18px">
+            <div class="empty"><strong>Nothing on this install yet.</strong> Health fills in after the GitHub app can see a repo.</div>
+          </div>
+        </div>
+
+        <!-- ===== TOKENS ===== -->
+        <div class="view view-tokens body narrow">
+          <h1>Scan API tokens</h1>
+          <p class="muted" style="margin-top: 8px">CI and the CLI send packs here. The token is shown once.</p>
+          <div class="card card-pad has-data" style="margin-top: 16px">
+            <div class="kv"><span class="mono">nsp_live_7f3a…c21</span><span class="summary-val">created 12 Aug · last used 2 m ago</span></div>
+            <span class="btn sm outline admin-only" style="margin-top: 12px">Create token</span>
+          </div>
+        </div>
+
+        <!-- ===== REGISTRIES ===== -->
+        <div class="view view-registries body narrow">
+          <h1>Private registries</h1>
+          <p class="muted" style="margin-top: 8px">Watch a package name on a registry that is not registry.npmjs.org.</p>
+          <div class="card card-pad" style="margin-top: 16px">
+            <p class="small dim">No private registry saved. Public npm still works from Sources.</p>
+            <div class="row gap8 admin-only" style="margin-top: 12px">
+              <input class="field" placeholder="registry.example.com" />
+              <span class="btn sm">Add registry</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SETUP ===== -->
+        <div class="view view-setup body narrow">
+          <h1 class="has-data">Two leak paths still open</h1>
+          <h1 class="s-empty">Five leak paths. None covered yet.</h1>
+          <div class="progress" style="margin: 18px 0">
+            <div class="ring has-data" style="--p: 60"><span>3/5</span></div>
+            <div class="ring s-empty" style="--p: 0"><span>0/5</span></div>
+            <div class="grow">
+              <strong class="small has-data">Repo visibility, release assets, CI gate are live</strong>
+              <strong class="small s-empty">Nothing connected yet</strong>
+              <p class="tiny dim" style="margin-top: 4px">Registry tarballs and your production origin are not.</p>
+            </div>
+          </div>
+          <div class="stepcard done has-data">
+            <div class="stephead"><span class="mark done">✓</span><div class="grow"><strong class="small">Watch GitHub visibility</strong><p class="tiny dim">6 repos · webhook delivering</p></div></div>
+          </div>
+          <div class="stepcard done has-data">
+            <div class="stephead"><span class="mark done">✓</span><div class="grow"><strong class="small">Read GitHub release assets</strong><p class="tiny dim">31 receipts sealed</p></div></div>
+          </div>
+          <div class="stepcard active">
+            <div class="stephead">
+              <span class="mark now has-data">4</span>
+              <span class="mark now s-empty">1</span>
+              <div class="grow">
+                <strong class="small">Watch what the registry actually serves</strong>
+                <p class="tiny dim">The clean release asset and the published tarball are not always the same file.</p>
+              </div>
+            </div>
+            <div class="stepbody">
+              <div class="row gap8 wrap">
+                <input class="field" placeholder="Package name, e.g. nospoilers" style="max-width: 240px" value="acme-ui" />
+                <select class="field" style="width: 190px">
+                  <option>registry.npmjs.org</option>
+                  <option>+ add a private registry</option>
+                </select>
+                <label for="src-npm-on" class="btn sm hide-npm-on">Watch</label>
+                <span class="btn sm disabled show-npm-on">Watching</span>
+              </div>
+              <p class="tiny dim show-npm-on" style="margin-top: 10px">acme-ui is on the Sources list. Open Sources to see the queued check.</p>
+            </div>
+          </div>
+          <div class="stepcard">
+            <div class="stephead">
+              <span class="mark has-data">5</span>
+              <span class="mark s-empty">2</span>
+              <div class="grow">
+                <strong class="small">Crawl your production origin</strong>
+                <p class="tiny dim">Same-origin JS, CSS, and maps, plus a bounded probe for exposed files.</p>
+              </div>
+              <label for="ov-source" class="btn sm outline">Add origin</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== REPO DRILL-DOWN ===== -->
+        <div class="view view-repo body">
+          <div class="row gap8 wrap">
+            <label for="v-sources" class="small dim" style="cursor: pointer">Sources</label>
+            <span class="dim">/</span>
+            <span class="small">EmotiveImpact/nospoilers</span>
+          </div>
+          <h1 style="margin-top: 10px" class="path">EmotiveImpact/nospoilers</h1>
+          <p class="muted" style="margin-top: 8px">Private · NoSpoilers workflow found · last event 1 min ago</p>
+          <div class="stats" style="margin-top: 18px">
+            <div class="stat"><span class="kicker">Visibility</span><div class="n" style="font-size: 20px">private</div></div>
+            <div class="stat"><span class="kicker">Latest pack</span><div class="n" style="font-size: 20px">0.4.2</div></div>
+            <div class="stat"><span class="kicker">Linked npm</span><div class="n" style="font-size: 20px">nospoilers</div></div>
+            <div class="stat"><span class="kicker">Open</span><div class="n bad hide-map-res">1</div><div class="n show-map-res">0</div></div>
+          </div>
+          <div class="card" style="margin-top: 16px">
+            <div class="kv"><span>Setup status</span><span class="summary-val">workflow and vendored Action found</span></div>
+            <div class="kv"><span>Linked package</span><span class="summary-val path">nospoilers@0.4.2</span></div>
+            <div class="kv"><span>Map custody</span><span class="summary-val">none on this repo</span></div>
+            <div class="kv"><span>Scoped exceptions</span><span class="summary-val">none</span></div>
+          </div>
+          <div class="row gap8" style="margin-top: 14px">
+            <label for="v-alerts" class="btn sm hide-map-res">Open MAP-002</label>
+            <label for="v-releases" class="btn sm outline">Receipts</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <label class="scrim" for="ov-none" aria-label="Close overlay"></label>
+
+    <div class="palette" role="dialog" aria-label="Command palette">
+      <input type="search" placeholder="Search repos, packages, alerts, settings…" />
+      <div class="pgroup">
+        <span class="kicker">Jump</span>
+        <label class="pitem" for="v-alerts"><span class="ico">▲</span> Alerts · 2 open<span class="grow"></span><span class="kbd">↵</span></label>
+        <label class="pitem" for="v-sources"><span class="ico">⌸</span> Sources</label>
+        <label class="pitem team-only" for="v-timeline"><span class="ico">◷</span> Timeline</label>
+        <label class="pitem" for="v-setup"><span class="ico">✓</span> Finish setup</label>
+      </div>
+      <div class="pgroup">
+        <span class="kicker">Do</span>
+        <label class="pitem" for="ov-source"><span class="ico">+</span> Watch an npm package</label>
+        <label class="pitem" for="ov-plans"><span class="ico">$</span> See plans</label>
+        <label class="pitem admin-only" for="v-policy"><span class="ico">⚖</span> Write an exception</label>
+      </div>
+      <div class="pfoot">
+        <span>↵ go</span><span>esc closes · click the dim area</span>
+      </div>
+    </div>
+
+    <div class="modal modal-plans" role="dialog" aria-label="Plans">
+      <span class="kicker">Coverage</span>
+      <h2>Solo $29 or Team $99.</h2>
+      <p class="small muted">Same GitHub install. Jobs and alerts start again. The CLI on your machine still runs.</p>
+      <div class="card card-pad">
+        <div class="between"><strong>Solo</strong><span class="snow">$29 / mo</span></div>
+        <p class="tiny dim" style="margin-top: 6px">One admin. Email for Solo waits on Resend. No Slack, SIEM, Jira, timeline, or audit log.</p>
+      </div>
+      <div class="card card-pad">
+        <div class="between"><strong>Team</strong><span class="snow">$99 / mo</span></div>
+        <p class="tiny dim" style="margin-top: 6px">Roles, Slack / Jira / SIEM, install timeline, audit log.</p>
+      </div>
+      <div class="row gap8">
+        <span class="btn">Continue to checkout</span>
+        <label for="ov-none" class="btn outline">Not now</label>
+      </div>
+    </div>
+
+    <div class="modal modal-source" role="dialog" aria-label="Add a source">
+      <span class="kicker">Add a source</span>
+      <h2>Watch what the registry serves.</h2>
+      <p class="small muted">We suggest names that match a repo you already watch. Neither needs a token.</p>
+      <input class="field" placeholder="Package name, e.g. acme-ui" value="acme-ui" />
+      <select class="field">
+        <option>registry.npmjs.org</option>
+        <option>+ add a private registry</option>
+      </select>
+      <div class="row gap8">
+        <label for="src-npm-on" class="btn hide-npm-on">Watch</label>
+        <span class="btn disabled show-npm-on">Watching acme-ui</span>
+        <label for="ov-none" class="btn outline">Cancel</label>
+      </div>
+      <p class="tiny dim show-npm-on">Added. It is on the Sources list with a queued first check.</p>
+    </div>
+
+    <div class="modal modal-assign" role="dialog" aria-label="Assign">
+      <span class="kicker">Assign</span>
+      <h2>Who owns MAP-002?</h2>
+      <label class="option" for="as-dana"><span class="av round"></span><span class="grow">@dana</span><span class="tiny dim">admin</span></label>
+      <label class="option" for="as-none"><span class="av round"></span><span class="grow">Unassigned</span></label>
+      <label for="ov-none" class="btn outline">Done</label>
+    </div>
+
+    <div class="mock-bar">
+      <b>2B</b> Setup-first guided desk
+      <span class="sep"></span>
+      <a href="2a-full-overview.html">2A overview</a>
+      <a href="2b-full-guided.html">2B guided</a>
+      <a href="2c-full-triage.html">2C triage</a>
+      <a href="2d-full-sources.html">2D sources</a>
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>
