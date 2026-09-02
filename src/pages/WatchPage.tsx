@@ -444,6 +444,24 @@ type PackageProtection = {
   createdAt: string;
 };
 
+type ProtectionImportResult = {
+  name: string;
+  status: "protected" | "already_protected" | "not_owned" | "not_found" | "invalid" | "watch_cap";
+  packageId: number | null;
+  verifiedVia: "scope_match" | "github_repository" | null;
+  githubRepo: string | null;
+  watched: boolean;
+};
+
+function protectionImportStatusLabel(status: ProtectionImportResult["status"]): string {
+  if (status === "already_protected") return "already protected";
+  if (status === "not_owned") return "not owned";
+  if (status === "not_found") return "not on the registry";
+  if (status === "invalid") return "invalid name";
+  if (status === "watch_cap") return "watch cap";
+  return "protected";
+}
+
 type TenantJob = {
   id: number;
   installationId: number;
@@ -1095,6 +1113,10 @@ export function WatchPage({ search }: { search: string }) {
   const [workflowDraft, setWorkflowDraft] = useState<Record<number, string>>({});
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
+  const [importNames, setImportNames] = useState("");
+  const [importingPackages, setImportingPackages] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResults, setImportResults] = useState<ProtectionImportResult[] | null>(null);
   const [originUrl, setOriginUrl] = useState("");
   const [watchingOrigin, setWatchingOrigin] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
@@ -3874,9 +3896,11 @@ export function WatchPage({ search }: { search: string }) {
           that fact without downloading. A later pack that is twice as large, or at least 5 MiB
           larger unpacked, raises SIZE-003 against the
           approved baseline or the previous receipt. Protect identity only after the npm scope or
-          GitHub repository field matches this install. A later change of who published latest, or
-          whether it used an npm trusted publisher, is a Watch fact. Email and OIDC config ids are
-          not stored. Trial and Team installs then generate bounded
+          GitHub repository field matches this install. Paste a list of names to protect owned
+          packs in one pass — registry metadata only, no tarball download, no scan queue. Other
+          people’s packs are not added to this watch list. A later change of who published latest,
+          or whether it used an npm trusted publisher, is a Watch fact. Email and OIDC config ids
+          are not stored. Trial and Team installs then generate bounded
           lookalike names and watch dormant resurrection, release bursts, new dependencies that
           point at newly created packages, packument unpacked-size jumps, and whether npm
           attestations or registry signature keyids disappear or change. Those last facts are
@@ -4062,6 +4086,103 @@ export function WatchPage({ search }: { search: string }) {
               {watchingPackage ? "Connecting…" : "Watch package"}
             </Button>
           </form>
+        )}
+        {!previewing && user && installations.length > 0 && (
+          <form
+            className="mt-8 flex max-w-xl flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (locked || importingPackages) return;
+              setImportError(null);
+              setImportResults(null);
+              setImportingPackages(true);
+              void (async () => {
+                try {
+                  const response = await fetch("/api/protections/import", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      names: importNames,
+                      installationId: activeInstallId,
+                      registryOrigin: watchRegistryOrigin,
+                    }),
+                  });
+                  const body = (await response.json()) as {
+                    error?: string;
+                    queued?: boolean;
+                    results?: ProtectionImportResult[];
+                  };
+                  if (!response.ok) throw new Error(body.error ?? "Could not import protections.");
+                  setImportNames("");
+                  setImportResults(body.results ?? []);
+                  await refreshSignedIn(selectedInstallId);
+                } catch (error) {
+                  setImportError(
+                    error instanceof Error ? error.message : "Could not import protections.",
+                  );
+                } finally {
+                  setImportingPackages(false);
+                }
+              })();
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Protect identities</p>
+            <p className="text-sm leading-relaxed text-mute">
+              Up to 20 npm names, one per line or comma-separated. We read registry metadata only —
+              no tarball download and no scan job. Protect only when the npm scope or GitHub
+              repository field matches this install. Names you do not own stay off this watch list.
+            </p>
+            <label className="min-w-0">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package names</span>
+              <textarea
+                value={importNames}
+                onChange={(event) => setImportNames(event.target.value)}
+                placeholder={"@you/app\nleft-pad"}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={locked}
+                rows={4}
+                className="mt-2 w-full resize-y rounded-md border border-white/15 bg-transparent px-3 py-2 font-mono text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+              />
+            </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="min-w-0 sm:w-56">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Registry</span>
+                <select
+                  value={watchRegistryOrigin}
+                  onChange={(event) => setWatchRegistryOrigin(event.target.value)}
+                  disabled={locked}
+                  className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                >
+                  <option value="https://registry.npmjs.org">registry.npmjs.org</option>
+                  {registries.map((registry) => (
+                    <option key={registry.id} value={registry.origin}>
+                      {registry.host}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" disabled={locked || importingPackages || !importNames.trim()}>
+                {importingPackages ? "Importing…" : "Import protections"}
+              </Button>
+            </div>
+          </form>
+        )}
+        {importError && <p className="mt-4 text-sm text-danger">{importError}</p>}
+        {importResults && importResults.length > 0 && (
+          <ul className="mt-4 max-w-xl divide-y divide-white/5">
+            {importResults.map((row) => (
+              <li key={`${row.name}:${row.status}`} className="py-3">
+                <p className="font-mono text-sm text-snow">{row.name}</p>
+                <p className="mt-1 text-xs text-dim">
+                  {protectionImportStatusLabel(row.status)}
+                  {row.verifiedVia ? ` · ${row.verifiedVia}` : ""}
+                  {row.githubRepo ? ` ${row.githubRepo}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
         {packageError && <p className="mt-4 text-sm text-danger">{packageError}</p>}
         {deskPackages.length === 0 && (previewing || packages.status === "ready") && (

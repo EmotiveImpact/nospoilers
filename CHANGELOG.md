@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Package Identity batch import: `POST /api/protections/import` (cap 20) protects
+  npm names this GitHub install owns. Registry metadata only — no tarball
+  download and no `npm_scan` job. Unowned, missing, or invalid names are not
+  added to the watch list. Already protected names stay as they are. Watch cap
+  is 25. Solo allowed. Unpaid 402. Another tenant 403. Watch has a matte-black
+  import list. Other registries, takedown evidence, and a consumer advisory
+  page stay out. Not a Pricing change.
+
 - Disclosure Desk Phase 2 minus send: human-edited templates, preferred vendor
   channel, do-not-contact (create is research-only unless confirmed; `contacted`
   is always blocked), credit/CVE/outcome notes, and an internal

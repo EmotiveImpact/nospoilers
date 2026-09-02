@@ -100,6 +100,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Feature | Status | Home |
 | --- | --- | --- |
 | Verified protected package/scope ownership | Built: protect only if npm scope or GitHub repository field matches the install | NoSpoilers |
+| API and batch protected-package import | Built: `POST /api/protections/import` (cap 20) protects owned npm names from a list or Watch textarea; metadata only (`getPack`); never downloads or enqueues `npm_scan`; unowned / missing / invalid names are not watched; already protected stays in place; watch cap 25; Solo allowed; unpaid 402; another tenant 403 | NoSpoilers |
 | Bounded typo/edit-distance candidate generation | Built: deterministic cap of 40 candidates; first transformation wins | NoSpoilers Team |
 | Separator, keyboard, token-order, homoglyph and scope confusion | Built: ASCII confusables, adjacent-key, separator, token-order, scope confusion | NoSpoilers Team |
 | Maintainer addition/removal history | Built: append-only identity snapshots; emails never stored | NoSpoilers |

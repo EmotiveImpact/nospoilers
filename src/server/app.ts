@@ -43,7 +43,12 @@ import { probeRepoSetupStatus } from "./setup-status.ts";
 import { hostedScanOrigin } from "./hosted-origin.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
-import { checkWatchedPackage, connectWatchedPackage, protectWatchedPackage } from "./npm-watch.ts";
+import {
+  checkWatchedPackage,
+  connectWatchedPackage,
+  importProtectedPackages,
+  protectWatchedPackage,
+} from "./npm-watch.ts";
 import { checkWatchedOrigin, connectWatchedOrigin } from "./web-watch.ts";
 import {
   parseMapDestination,
@@ -2565,6 +2570,39 @@ export function createApp(deps: AppDeps): Hono {
         createdAt: row.created_at,
       })),
     });
+  });
+
+  app.post("/api/protections/import", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach these packages to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    try {
+      const result = await importProtectedPackages(deps.store, npm, {
+        installationId,
+        names: body.names,
+        registryOrigin: String(body.registryOrigin ?? ""),
+      });
+      return c.json({ ok: true, queued: result.queued, results: result.results });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not import those packages." },
+        errorStatus(error),
+      );
+    }
   });
 
   app.post("/api/packages", async (c) => {

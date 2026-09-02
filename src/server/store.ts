@@ -3447,6 +3447,32 @@ export function createStore(
       return rows[0] ? watchedPackageRow(rows[0]) : null;
     },
 
+    async getWatchedPackageByName(
+      installationId: number,
+      packageName: string,
+      registryOrigin: string = PUBLIC_NPM_ORIGIN,
+    ): Promise<WatchedPackageRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_name: string;
+        registry_origin?: string | null;
+        last_version: string | null;
+        last_dist_tags: unknown;
+        last_tarball_url: string | null;
+        last_shasum: string | null;
+        last_sha256: string | null;
+        last_checked_at: string | Date | null;
+        last_scanned_at: string | Date | null;
+        last_scan_status: string | null;
+      }>(
+        `SELECT * FROM watched_packages
+         WHERE installation_id = $1 AND package_name = $2 AND registry_origin = $3`,
+        [installationId, packageName, registryOrigin],
+      );
+      return rows[0] ? watchedPackageRow(rows[0]) : null;
+    },
+
     async insertPackageProtection(input: {
       installationId: number;
       packageId: number;

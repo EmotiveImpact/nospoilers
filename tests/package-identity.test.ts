@@ -16,6 +16,10 @@ import {
   verifyPackageOwnership,
 } from "../src/server/package-identity.ts";
 import { packFromRegistry, unpackedBytesFromClaim, type NpmPack, type NpmPort } from "../src/server/npm.ts";
+import {
+  MAX_PROTECTION_IMPORT,
+  parseProtectionImportNames,
+} from "../src/server/npm-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { coverageFrom } from "../src/coverage.ts";
@@ -206,6 +210,23 @@ describe("package identity parsing", () => {
       })?.via,
     ).toBe("github_repository");
   });
+
+  it("parses a batch of protection import names without inventing packs", () => {
+    expect(parseProtectionImportNames("@octo/app\nleft-pad, @octo/app\nNOT A NAME!!!")).toEqual([
+      { input: "@octo/app", name: "@octo/app" },
+      { input: "left-pad", name: "left-pad" },
+      { input: "NOT A NAME!!!", name: null },
+    ]);
+    expect(parseProtectionImportNames(["@octo/app", "left-pad", "../evil", "foo.js"])).toEqual([
+      { input: "@octo/app", name: "@octo/app" },
+      { input: "left-pad", name: "left-pad" },
+      { input: "../evil", name: null },
+      { input: "foo.js", name: null },
+    ]);
+    const overflow = Array.from({ length: MAX_PROTECTION_IMPORT + 5 }, (_, index) => `pack-${index}`);
+    expect(parseProtectionImportNames(overflow)).toHaveLength(MAX_PROTECTION_IMPORT);
+    expect(parseProtectionImportNames({ names: ["@octo/app"] })).toEqual([]);
+  });
 });
 
 describe("protected package identity", () => {
@@ -367,6 +388,201 @@ describe("protected package identity", () => {
       const unpaid = await app.request(`/api/packages/${otherPkg?.id}/protect`, {
         method: "POST",
         headers: { cookie },
+      });
+      expect(unpaid.status).toBe(402);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("batch protected-package import", () => {
+  it("protects owned names, refuses arbitrary packs, and never downloads", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(9, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const getPackNames: string[] = [];
+      const downloads: string[] = [];
+      const current = {
+        pack: ownedPack(),
+        byName: {
+          "@octo/app": ownedPack(),
+          "@octo/other": ownedPack({ name: "@octo/other" }),
+          "@octo/cap": ownedPack({ name: "@octo/cap" }),
+          "left-pad": ownedPack({
+            name: "left-pad",
+            identity: {
+              ...emptyPackageIdentity(),
+              repositoryUrl: "https://github.com/stevemao/left-pad",
+            },
+          }),
+        } as Record<string, NpmPack | null>,
+        getPackNames,
+        downloads,
+      };
+      const npm: NpmPort = stubNpm(current);
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm,
+      });
+
+      const unauth = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ names: ["@octo/app"], installationId: 7 }),
+      });
+      expect(unauth.status).toBe(401);
+
+      const imported = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          installationId: 7,
+          names: ["@octo/app", "left-pad", "no-such-octo-pack-zzzz", "NOT A NAME!!!", "@octo/app"],
+        }),
+      });
+      expect(imported.status).toBe(200);
+      const importedBody = (await imported.json()) as {
+        queued: boolean;
+        results: Array<{
+          name: string;
+          status: string;
+          packageId: number | null;
+          verifiedVia: string | null;
+          watched: boolean;
+        }>;
+      };
+      expect(importedBody.queued).toBe(false);
+      expect(importedBody.results).toEqual([
+        expect.objectContaining({
+          name: "@octo/app",
+          status: "protected",
+          verifiedVia: "scope_match",
+          watched: true,
+        }),
+        expect.objectContaining({
+          name: "left-pad",
+          status: "not_owned",
+          packageId: null,
+          watched: false,
+        }),
+        expect.objectContaining({
+          name: "no-such-octo-pack-zzzz",
+          status: "not_found",
+          packageId: null,
+          watched: false,
+        }),
+        expect.objectContaining({
+          name: "NOT A NAME!!!",
+          status: "invalid",
+          packageId: null,
+          watched: false,
+        }),
+      ]);
+      expect(downloads).toEqual([]);
+      expect(await store.getWatchedPackageByName(7, "left-pad")).toBeNull();
+      expect(await store.getWatchedPackageByName(7, "no-such-octo-pack-zzzz")).toBeNull();
+      const owned = await store.getWatchedPackageByName(7, "@octo/app");
+      expect(owned).not.toBeNull();
+      const { rows: scanJobs } = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM jobs WHERE kind = 'npm_scan'`,
+      );
+      expect(scanJobs[0]?.n).toBe("0");
+
+      const identity = await app.request(`/api/packages/${owned?.id}/identity`, {
+        headers: { cookie },
+      });
+      const identityBody = (await identity.json()) as {
+        snapshot: { maintainers: string[]; unpackedBytes: number | null };
+      };
+      expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
+      expect(identityBody.snapshot.unpackedBytes).toBe(100);
+
+      const again = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, names: ["@octo/app"] }),
+      });
+      expect(again.status).toBe(200);
+      const againBody = (await again.json()) as { queued: boolean; results: Array<{ status: string }> };
+      expect(againBody.queued).toBe(false);
+      expect(againBody.results[0]?.status).toBe("already_protected");
+
+      const existing = await store.insertWatchedPackage(7, "@octo/other");
+      const inPlace = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, names: ["@octo/other"] }),
+      });
+      expect(inPlace.status).toBe(200);
+      const inPlaceBody = (await inPlace.json()) as {
+        results: Array<{ status: string; packageId: number | null }>;
+      };
+      expect(inPlaceBody.results[0]).toEqual(
+        expect.objectContaining({
+          status: "protected",
+          packageId: existing?.id,
+        }),
+      );
+
+      const foreign = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie: otherCookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, names: ["@octo/app"] }),
+      });
+      expect(foreign.status).toBe(403);
+
+      for (let index = 0; index < 23; index += 1) {
+        await store.insertWatchedPackage(7, `@octo/fill-${index}`);
+      }
+      const capped = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, names: ["@octo/cap"] }),
+      });
+      expect(capped.status).toBe(200);
+      const cappedBody = (await capped.json()) as { results: Array<{ status: string; watched: boolean }> };
+      expect(cappedBody.results[0]).toEqual(
+        expect.objectContaining({ status: "watch_cap", watched: false }),
+      );
+      expect(await store.getWatchedPackageByName(7, "@octo/cap")).toBeNull();
+      expect(downloads).toEqual([]);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const unpaid = await app.request("/api/protections/import", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, names: ["@octo/app"] }),
       });
       expect(unpaid.status).toBe(402);
     } finally {

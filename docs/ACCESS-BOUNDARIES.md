@@ -62,6 +62,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   trusted publisher id) changes append snapshots and explainable alerts. Email and
   OIDC config ids are not stored. First snapshot and empty previous publisher do
   not alert. Solo paid is allowed. Unpaid skips.
+- Import a batch of npm names (`POST /api/protections/import`, cap 20) and protect the
+  ones this install owns. Registry metadata only — no tarball download and no `npm_scan`
+  job. Names that are not owned, not on the registry, or invalid are not added to the
+  watch list. Already protected names stay as they are. A new owned name is watched only
+  when this install is under the 25-package watch cap. Solo paid is allowed. Unpaid
+  returns 402. Another tenant is 403. Unauthenticated is 401.
 - On a trial or Team install, list bounded lookalike candidate names for a protected pack.
   Metadata-only registry checks (never download or execute lookalike tarballs). A new
   dependency on a package first published within 14 days is a Watch alert (metadata
@@ -459,6 +465,11 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   alerts never download lookalike or dependency tarballs, never fetch attestation URLs,
   never store signature values or claim malware, first snapshot and missing packument size
   do not alert, publishing-identity changes are Solo-allowed facts, and allowlisting skips further lookalike alerts.
+  Batch import (`POST /api/protections/import`) protects an owned name and snapshots
+  identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,
+  re-imports as `already_protected`, protects an existing watch in place, returns
+  `watch_cap` at 25 watches without inserting, never downloads or enqueues `npm_scan`,
+  is 401 anonymous, 403 off-tenant, and 402 unpaid.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

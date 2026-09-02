@@ -28,6 +28,53 @@ import type { PackageIdentitySnapshotRow, PackageProtectionRow, Store, WatchedPa
 import { httpErrorForWorkBlock } from "./install-health.ts";
 
 export const MAX_WATCHED_PACKAGES = 25;
+export const MAX_PROTECTION_IMPORT = 20;
+
+export const PROTECTION_IMPORT_STATUSES = [
+  "protected",
+  "already_protected",
+  "not_owned",
+  "not_found",
+  "invalid",
+  "watch_cap",
+] as const;
+
+export type ProtectionImportStatus = (typeof PROTECTION_IMPORT_STATUSES)[number];
+
+export type ProtectionImportRow = {
+  name: string;
+  status: ProtectionImportStatus;
+  packageId: number | null;
+  verifiedVia: PackageProtectionRow["verified_via"] | null;
+  githubRepo: string | null;
+  watched: boolean;
+};
+
+export function parseProtectionImportNames(raw: unknown): { input: string; name: string | null }[] {
+  const values = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? raw.split(/[\n,]+/)
+      : [];
+  const seen = new Set<string>();
+  const names: { input: string; name: string | null }[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const input = value.trim();
+    if (!input) continue;
+    const name = normalizePackageName(input);
+    if (!name) {
+      names.push({ input, name: null });
+      if (names.length >= MAX_PROTECTION_IMPORT) break;
+      continue;
+    }
+    if (seen.has(name)) continue;
+    seen.add(name);
+    names.push({ input: name, name });
+    if (names.length >= MAX_PROTECTION_IMPORT) break;
+  }
+  return names;
+}
 
 export function npmScanDeliveryId(
   installationId: number,
@@ -249,6 +296,167 @@ export async function protectWatchedPackage(
     await persistIdentityCandidates(store, pkg);
   }
   return { protection, snapshot: synced.snapshot };
+}
+
+export async function importProtectedPackages(
+  store: Store,
+  npm: NpmPort,
+  input: { installationId: number; names: unknown; registryOrigin?: string },
+): Promise<{ results: ProtectionImportRow[]; queued: false }> {
+  await requireHostedWork(
+    store,
+    input.installationId,
+    "Coverage ended. Subscribe to protect package identity.",
+  );
+  const parsed = parseRegistryOrigin(input.registryOrigin?.trim() || PUBLIC_NPM_ORIGIN);
+  if (!parsed) {
+    throw Object.assign(new Error("That registry origin is not allowed."), { status: 400 });
+  }
+  const requested = parseProtectionImportNames(input.names);
+  if (requested.length === 0) {
+    throw Object.assign(new Error("Provide npm package names to protect."), { status: 400 });
+  }
+  const installation = await store.getInstallation(input.installationId);
+  if (!installation) {
+    throw Object.assign(new Error("Unknown GitHub installation."), { status: 404 });
+  }
+  const repos = await store.listReposForInstallation(input.installationId);
+  const auth = await authForPackage(store, {
+    installation_id: input.installationId,
+    registry_origin: parsed.origin,
+  });
+  const billing = await store.installationBilling(input.installationId);
+  const teamSignals = !identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+  let watchedCount = await store.countWatchedPackages(input.installationId);
+  const results: ProtectionImportRow[] = [];
+  for (const request of requested) {
+    const name = request.name;
+    if (!name) {
+      results.push({
+        name: request.input,
+        status: "invalid",
+        packageId: null,
+        verifiedVia: null,
+        githubRepo: null,
+        watched: false,
+      });
+      continue;
+    }
+    const existing = await store.getWatchedPackageByName(input.installationId, name, parsed.origin);
+    if (existing) {
+      const already = await store.getPackageProtection(existing.id);
+      if (already) {
+        results.push({
+          name,
+          status: "already_protected",
+          packageId: existing.id,
+          verifiedVia: already.verified_via,
+          githubRepo: already.github_repo,
+          watched: true,
+        });
+        continue;
+      }
+    }
+    let pack: NpmPack | null = null;
+    try {
+      pack = await npm.getPack(name, auth);
+    } catch {
+      pack = null;
+    }
+    if (!pack) {
+      results.push({
+        name,
+        status: "not_found",
+        packageId: existing?.id ?? null,
+        verifiedVia: null,
+        githubRepo: null,
+        watched: Boolean(existing),
+      });
+      continue;
+    }
+    const proof = verifyPackageOwnership({
+      packageName: name,
+      repositoryUrl: identityOf(pack).repositoryUrl,
+      installationAccountLogin: installation.account_login,
+      installationRepos: repos,
+    });
+    if (!proof) {
+      results.push({
+        name,
+        status: "not_owned",
+        packageId: existing?.id ?? null,
+        verifiedVia: null,
+        githubRepo: null,
+        watched: Boolean(existing),
+      });
+      continue;
+    }
+    let pkg = existing;
+    if (!pkg) {
+      if (watchedCount >= MAX_WATCHED_PACKAGES) {
+        results.push({
+          name,
+          status: "watch_cap",
+          packageId: null,
+          verifiedVia: null,
+          githubRepo: null,
+          watched: false,
+        });
+        continue;
+      }
+      pkg = await store.insertWatchedPackage(input.installationId, name, parsed.origin);
+      if (!pkg) {
+        pkg = await store.getWatchedPackageByName(input.installationId, name, parsed.origin);
+      }
+      if (!pkg) {
+        results.push({
+          name,
+          status: "invalid",
+          packageId: null,
+          verifiedVia: null,
+          githubRepo: null,
+          watched: false,
+        });
+        continue;
+      }
+      watchedCount += 1;
+      await store.touchWatchedPackage(pkg.id, {
+        version: pack.version,
+        distTags: pack.distTags,
+        tarballUrl: pack.tarballUrl,
+        shasum: pack.shasum,
+      });
+    }
+    const protection = await store.insertPackageProtection({
+      installationId: input.installationId,
+      packageId: pkg.id,
+      verifiedVia: proof.via,
+      githubRepo: proof.githubRepo,
+    });
+    if (!protection) {
+      const already = await store.getPackageProtection(pkg.id);
+      results.push({
+        name,
+        status: "already_protected",
+        packageId: pkg.id,
+        verifiedVia: already?.verified_via ?? proof.via,
+        githubRepo: already?.github_repo ?? proof.githubRepo,
+        watched: true,
+      });
+      continue;
+    }
+    await syncProtectedIdentity(store, pkg, pack);
+    if (teamSignals) await persistIdentityCandidates(store, pkg);
+    results.push({
+      name,
+      status: "protected",
+      packageId: pkg.id,
+      verifiedVia: protection.verified_via,
+      githubRepo: protection.github_repo,
+      watched: true,
+    });
+  }
+  return { results, queued: false };
 }
 
 async function authForPackage(

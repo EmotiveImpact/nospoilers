@@ -336,6 +336,9 @@ delivery-URL attacher; legal hold that survives the list retention window; anoth
 must release the hold; member ledger export; Solo 403; unpaid 402; append-only).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).
+Package Identity batch import is in (`POST /api/protections/import`, cap 20, metadata only,
+ownership required, never download, never enqueue `npm_scan`). Unowned or missing names
+are not watched. Solo allowed. Unpaid 402. Other registries stay out.
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).

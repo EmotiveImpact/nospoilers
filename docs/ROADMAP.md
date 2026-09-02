@@ -87,6 +87,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   name, and trusted-publisher id. Changes alert with before/after facts and never a malware
   verdict. Email and OIDC config ids are not stored. First snapshot / empty previous
   publisher is baseline. Solo allowed.
+- Package Identity batch import: `POST /api/protections/import` protects owned npm names from
+  a list (cap 20). Metadata only. Arbitrary packs are not watched. Watch cap 25. Solo
+  allowed. Unpaid 402. Not other registries. Not takedown or a public advisory.
 - Install health: covered installs get Watch alerts for GitHub App suspend, unsuspend,
   permission changes, and repository add/remove. Uninstall still drops the tenant. Watch
   lists this install's recent jobs (no payloads, no prospect scans). GitHub suspend is not
