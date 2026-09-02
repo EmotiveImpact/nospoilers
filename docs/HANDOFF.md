@@ -520,7 +520,10 @@ prettier, left-pad, a missing name, and an invalid token. `queued` was false.
 No watches were added. Anonymous 401. Cloudflare tunnel matched. There is no
 EmotiveImpact-owned npm pack to protect. Other registries stay out.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
-`GET /api/verify/:token`). Scheduled CDN, SBOM, and Sigstore stay out.
+`GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
+unauth 401, public GET 200 failed-policy / not clean, host `github.com`
+matched, no new `delivery_verify` job, Cloudflare tunnel matched. Scheduled
+CDN, SBOM, and Sigstore stay out.
 Stripe and Resend are benched. Do not start the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```

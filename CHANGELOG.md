@@ -9,8 +9,11 @@
   publish or unpublish; an already-published page still reads. Members 403.
   Another tenant 404. The token is not the revision id. Audit records the
   coordinate only. Public GET does not enqueue a delivery download. Unpublish
-  404s; republish keeps the same path. Not scheduled CDN, SBOM, or Sigstore.
-  Not a Pricing change.
+  404s; republish keeps the same path. Live on throwaway `phase1-fixture`
+  (`c74219d2…`, failed-policy, host `github.com` matched): unauth publish 401,
+  publish 201, public GET 200 with `passingReceipt: false`, no query string,
+  no new `delivery_verify` job; Cloudflare tunnel matched. Not scheduled CDN,
+  SBOM, or Sigstore. Not a Pricing change.
 
 - Disclosure Desk internal workflow: vendor replies, encrypted expiring
   attachments (text/PDF/image only; archives rejected), assignment, review

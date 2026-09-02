@@ -470,6 +470,9 @@ enabled, redacts query strings / CI URLs / pack bytes, treats failed-policy as n
 clean, refuses members and other tenants on publish, allows Solo, returns 402 when
 unpaid while the existing page still reads, uses an unguessable token, records the
 coordinate only on audit, and does not enqueue a delivery-verify job on public GET.
+Live throwaway `phase1-fixture` (`c74219d2…`) published on Neon: unauth publish
+401, public GET 200 with `passingReceipt: false` and host `github.com` matched,
+no query string, no new verify job; Cloudflare tunnel matched.
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub
