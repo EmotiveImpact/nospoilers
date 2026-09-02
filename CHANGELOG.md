@@ -6,8 +6,11 @@
   reads zero expired attachment ciphertext and expired operator notes.
   Attachment rows stay append-only except that one post-expiry update.
   DELETE stays rejected. Download of an expired attachment is still 410.
-  Customer sessions stay 401. Nothing is mailed. Not a customer product
-  and not a Pricing change.
+  Customer sessions stay 401. Nothing is mailed. Live Neon: `048`
+  applied; unauth and non-admin desk GET 401; owner GET 200 ran the
+  sweep; nothing was expired so existing attachment ciphertext stayed;
+  leftover `protected_namespaces` 0; Cloudflare tunnel matched. Not a
+  customer product and not a Pricing change.
 
 - Package Identity namespace watchlists: trial and Team install admins
   watch the npm scope that matches this GitHub login (`POST /api/namespaces`).

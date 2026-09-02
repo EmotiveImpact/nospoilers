@@ -501,7 +501,9 @@ credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
 `contacted`. `contacted` also requires an approved review. Vendor replies and
 encrypted expiring attachments are on the case. Expired attachment ciphertext
 is zeroed on desk read and the hourly poller; the row stays. Expired notes
-ciphertext is nulled. Redacted JSON/HTML/PDF reports
+ciphertext is nulled. Live Neon: `048` applied; unauth and non-admin 401;
+owner desk GET ran the sweep; no rows were expired so ciphertext stayed.
+Redacted JSON/HTML/PDF reports
 omit notes and attachment bytes. A missed deadline creates an internal reminder
 only. Nothing is sent. Client projects, billing, and aggregate research stay out.
 Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive

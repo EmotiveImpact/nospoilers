@@ -448,7 +448,9 @@ attachment bytes, and finding values.
 `tests/disclosure-expiry.test.ts` proves expired attachment ciphertext is zeroed
 and expired notes ciphertext is nulled, the row stays, unexpired ciphertext
 cannot be cleared, DELETE stays rejected, remigrate keeps the empty ciphertext,
-download is 410, customer sessions stay 401, and no job is enqueued.
+download is 410, customer sessions stay 401, and no job is enqueued. Live Neon:
+`048` applied; unauth and non-admin desk GET 401; owner GET ran the sweep;
+unexpired attachment ciphertext was not cleared; tunnel matched.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
 cannot open Disclosure Desk, template, do-not-contact, or notification routes,
