@@ -9,8 +9,9 @@
   also refunds. A crawl that scans — first crawl, changed bytes, or a
   truncated crawl — keeps the slot. A scanner throw after files are
   written keeps the slot. Live Neon: `watched_origins` 0; owner list
-  empty; unauth 401; no invented website watch; open jobs 0. Not a
-  scan-credit meter and not a Pricing change.
+  empty; unauth 401; `web_origin_scan` jobs 0; no invented website
+  watch; daily usage stayed 9; open jobs 0; Cloudflare tunnel
+  matched. Not a scan-credit meter and not a Pricing change.
 
 - Sentry/Bugsnag map custody checks enqueue as light jobs. They look up
   debug IDs or release names and never download map source, so they do

@@ -509,6 +509,7 @@ exposed files, credentials, and linked internal paths, SSRF-blocked, never execu
 enqueue, hourly poller enqueues only). An unchanged crawl (same sha256, not truncated) or a
 crawl error before scan refunds the daily unpack slot so the hourly poller does not burn the
 cap. A crawl that scans, including truncated, keeps the slot. Live Neon: watched origins 0;
+`web_origin_scan` jobs 0; owner list empty; unauth 401; usage stayed 9; open jobs 0;
 do not invent a website watch. Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
 encrypted tokens never returned or written onto jobs, event-driven, light job so it does not
