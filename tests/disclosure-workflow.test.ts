@@ -5,6 +5,7 @@ import {
   DISCLOSURE_ATTACHMENT_KIND_ERROR,
   DISCLOSURE_REVIEW_ERROR,
   attachmentLooksPacked,
+  attachmentNameLooksPacked,
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
@@ -51,6 +52,8 @@ describe("Disclosure Desk workflow helpers", () => {
     expect(attachmentLooksPacked(Buffer.from("PK\u0003\u0004hello"))).toBe(true);
     expect(attachmentLooksPacked(Buffer.from([0x1f, 0x8b, 0x08]))).toBe(true);
     expect(attachmentLooksPacked(Buffer.from("Vendor said they will ship 3.9.7.\n"))).toBe(false);
+    expect(attachmentNameLooksPacked("evil.tgz")).toBe(true);
+    expect(attachmentNameLooksPacked("vendor-note.txt")).toBe(false);
   });
 });
 

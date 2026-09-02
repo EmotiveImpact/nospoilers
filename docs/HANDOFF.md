@@ -64,7 +64,9 @@ Read in this order:
   `deadline_missed` on `internal_notifications`.
   `041_disclosure_workflow` adds assignee/review/verified_at on cases,
   append-only `disclosure_vendor_replies` and encrypted expiring
-  `disclosure_attachments`. Next unused id is `042_*`.
+  `disclosure_attachments`.
+  `042_disclosure_sla_backfill` sets `verified_at` on already-verified cases.
+  Next unused id is `043_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are

@@ -1501,6 +1501,13 @@ export function decodeAttachmentBytes(raw: unknown): Buffer {
   return bytes;
 }
 
+const PACKED_ATTACHMENT_NAME =
+  /\.(?:tgz|tar|gz|zip|vsix|crx|nupkg|snupkg|gem|jar|war|whl|apk|aab|ipa|asar)$/i;
+
+export function attachmentNameLooksPacked(filename: string): boolean {
+  return PACKED_ATTACHMENT_NAME.test(filename);
+}
+
 export function attachmentLooksPacked(bytes: Buffer): boolean {
   if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05)) {
     return true;
@@ -1564,6 +1571,9 @@ export async function addDisclosureAttachment(
     throw new DisclosureError(`This case already has ${MAX_ATTACHMENTS_PER_CASE} attachments.`, 400);
   }
   const filename = sanitizeAttachmentFilename(input.filename);
+  if (attachmentNameLooksPacked(filename)) {
+    throw new DisclosureError(DISCLOSURE_ATTACHMENT_KIND_ERROR, 400);
+  }
   const mediaType = parseAttachmentMediaType(input.mediaType);
   const bytes = decodeAttachmentBytes(input.bytes);
   if (attachmentLooksPacked(bytes)) {

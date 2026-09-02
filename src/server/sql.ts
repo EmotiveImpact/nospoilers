@@ -785,6 +785,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateInternalNotifications(sql);
   await migrateDisclosurePhase2(sql);
   await migrateDisclosureWorkflow(sql);
+  await migrateDisclosureSlaBackfill(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1227,6 +1228,26 @@ async function migrateDisclosureWorkflow(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "041_disclosure_workflow",
+  ]);
+}
+
+async function migrateDisclosureSlaBackfill(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    UPDATE disclosure_cases c
+    SET verified_at = COALESCE(
+      c.verified_at,
+      (
+        SELECT MIN(e.created_at)
+        FROM disclosure_events e
+        WHERE e.case_id = c.id
+          AND e.summary = 'Set case state to verified.'
+      ),
+      c.updated_at
+    )
+    WHERE c.state = 'verified' AND c.verified_at IS NULL;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "042_disclosure_sla_backfill",
   ]);
 }
 
