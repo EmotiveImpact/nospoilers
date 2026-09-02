@@ -12,8 +12,10 @@
   Another tenant 404. The token is not the package id. Audit records the
   package name only. Never sent to npm or GitHub. Never a malware verdict.
   Never downloads a tarball. Live Neon gates on install `158159401`: unauth
-  401, missing package 404. No EmotiveImpact-owned npm pack exists to assemble
-  on that install. Other registries stay out. Not a Pricing change.
+  GET/POST 401, missing package 404, unknown `/advisory/:token` 404, watch list
+  still empty, evidence packs 0; Cloudflare tunnel matched. No
+  EmotiveImpact-owned npm pack exists to assemble on that install. Other
+  registries stay out. Not a Pricing change.
 
 - PagerDuty destination: trial and Team installs save one encrypted Events API
   routing key per install. Host is locked to `events.pagerduty.com`. The key is

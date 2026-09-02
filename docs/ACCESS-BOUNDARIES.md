@@ -514,8 +514,9 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   `GET /api/advisory/:token`) requires a protected pack, typed confirm, and Team/trial;
   members may read; Solo 403; unpaid 402 to change; public GET is redacted hosts and
   lookalike names only; never sends; never a malware verdict; remigrate keeps
-  `identity.evidence` rows. Live Neon gates: unauth 401, missing package 404; no
-  owned npm pack on `158159401` to assemble.
+  `identity.evidence` rows. Live Neon gates: unauth GET/POST 401, missing
+  package 404, unknown advisory 404, watch list empty, evidence packs 0;
+  Cloudflare tunnel matched. No owned npm pack on `158159401` to assemble.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

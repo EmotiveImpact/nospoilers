@@ -544,9 +544,11 @@ prettier, left-pad, a missing name, and an invalid token. `queued` was false.
 No watches were added. Anonymous 401. Cloudflare tunnel matched. There is no
 EmotiveImpact-owned npm pack to protect. Other registries stay out.
 Package Identity evidence/advisory is in. Live Neon gates on install
-`158159401`: unauth evidence 401, missing package 404. There is no
-EmotiveImpact-owned npm pack to assemble. Do not watch or protect prettier or
-left-pad on that install. Auto-send and other registries stay out.
+`158159401`: unauth GET/POST 401, missing package 404, unknown advisory
+token 404, watch list empty, `identity_evidence_packs` 0. Cloudflare
+tunnel matched. There is no EmotiveImpact-owned npm pack to assemble. Do
+not watch or protect prettier or left-pad on that install. Auto-send and
+other registries stay out.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
 `GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`
