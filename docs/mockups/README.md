@@ -16,15 +16,21 @@ Only the default surface and information architecture differ.
 | # | Default | What changes | What does not change |
 | --- | --- | --- | --- |
 | [2A](2a-full-overview.html) | Overview | Balanced console; verdict and four numbers first | All routes, settings, states, and alert actions |
-| [2B](2b-full-guided.html) | Setup | Guided leak-path setup first; calmer reading width | All routes, settings, states, and alert actions |
-| [2C](2c-full-triage.html) | Alerts | Saved queues and list/detail response first | All routes, settings, states, and source actions |
-| [2D](2d-full-sources.html) | Sources | Broad source inventory and horizontal control rail | All routes, settings, states, and incident actions |
+| [2B](2b-full-guided.html) | Overview | One grouped sidebar for Work, Evidence, and Settings | All routes, settings, states, and alert actions |
+| [2C](2c-full-triage.html) | Overview | Horizontal tab rail over one working surface | All routes, settings, states, and source actions |
+| [2D](2d-full-sources.html) | Repository | Object-first repo/source context, then global work | All routes, settings, states, and incident actions |
 
 Every complete version includes Overview, Alerts, Sources, Releases, Timeline, Setup, source
 drill-down, Notifications, Policy, Team, Retention, Audit, Install health, Scan API tokens, private
 registries, Trial/Solo/Member/Ended/Empty, acknowledge/assign/resolve, current GitHub response
 actions, GitHub-login invites, batch protected-name import, fair-use status, and release approval,
 legal hold, delivery verification, receipt download, and ledger export.
+
+The mocks distinguish **product capability** from **proposed presentation**. The APIs and data
+fields above exist on `main`. Sidebar routes, saved alert filters, the command palette, exposure
+chart, unified Sources list, setup progress ring, and Desk/Settings switch are proposed client UX
+over that data. Rotation checklist items are read-only, matching `main`; acknowledge, assign,
+resolve, and reopen are writable.
 
 `1G` and `1H` are not alternative full apps: they are walkthroughs the chosen full app must
 survive. `01`–`10` are structural studies. `1A`–`1E` are combinations, and `1I` is a focused

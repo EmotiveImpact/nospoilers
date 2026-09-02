@@ -179,6 +179,7 @@
         <div class="compare-note">
           <strong>Overview-first console with a real Desk / Settings split.</strong> Daily work stays on Desk; the top switch swaps the sidebar to configuration. Verdict, four numbers, incidents, sources and setup remain in the complete app.
           <span class="same-scope"> Same complete capability set and same five states as 2A–2D.</span>
+          <span class="dim"> Built on main: data and actions. Proposed UX: routing, saved filters, charts, command palette and layout.</span>
         </div>
 
         <!-- ===== OVERVIEW ===== -->
@@ -410,7 +411,7 @@
                   <span class="pill has-data c0">0</span>
                   <span class="pill s-empty">0</span>
                 </div>
-                <span class="small dim has-data">Newest ⌄</span>
+                <span class="btn sm ghost has-data">Export alerts JSON</span>
               </div>
               <div class="pane-body scroll">
                 <p class="empty s-empty">
@@ -500,7 +501,7 @@
                 <label for="ack-map" class="btn sm hide-map-ack">Acknowledge</label>
                 <span class="btn sm disabled show-map-ack">Acknowledged</span>
                 <label for="res-map" class="btn sm outline hide-map-res">Resolve</label>
-                <span class="btn sm outline disabled show-map-res">Resolved</span>
+                <label for="res-map" class="btn sm outline show-map-res">Reopen</label>
                 <label for="ov-assign" class="btn sm outline team-only hide-dana">Assign</label>
                 <span class="pill info show-dana">@dana</span>
                 <div class="grow"></div>
@@ -511,7 +512,7 @@
                 <label for="ack-doc" class="btn sm hide-doc-ack">Acknowledge</label>
                 <span class="btn sm disabled show-doc-ack">Acknowledged</span>
                 <label for="res-doc" class="btn sm outline hide-doc-res">Resolve</label>
-                <span class="btn sm outline disabled show-doc-res">Resolved</span>
+                <label for="res-doc" class="btn sm outline show-doc-res">Reopen</label>
                 <div class="grow"></div>
                 <label for="a-map" class="btn sm ghost">↑</label>
                 <label for="a-doc" class="btn sm ghost">↓</label>
@@ -586,12 +587,12 @@
                     </div>
                   </div>
                   <div class="sec">
-                    <span class="kicker">Rotation checklist</span>
+                    <span class="kicker">Rotation checklist · read-only on main</span>
                     <div style="margin-top: 6px">
-                      <label class="task"><input type="checkbox" checked /><span><s class="dim">Confirm the pack is still on the latest tag</s></span></label>
-                      <label class="task"><input type="checkbox" /><span>Publish 0.4.3 built with <code>hidden-source-map</code>, then <code>npm deprecate nospoilers@0.4.2</code></span></label>
-                      <label class="task"><input type="checkbox" /><span>Upload maps to Sentry instead of packing them</span></label>
-                      <label class="task"><input type="checkbox" /><span>Add the CI gate so the next release fails closed</span></label>
+                      <label class="task"><input type="checkbox" checked disabled /><span><s class="dim">Confirm the pack is still on the latest tag</s></span></label>
+                      <label class="task"><input type="checkbox" disabled /><span>Publish 0.4.3 built with <code>hidden-source-map</code>, then <code>npm deprecate nospoilers@0.4.2</code></span></label>
+                      <label class="task"><input type="checkbox" disabled /><span>Upload maps to Sentry instead of packing them</span></label>
+                      <label class="task"><input type="checkbox" disabled /><span>Add the workflow, then require its check in branch protection</span></label>
                     </div>
                   </div>
                   <div class="sec">
@@ -618,7 +619,7 @@
                     </div>
                     <div class="gate admin-only" style="margin-top: 14px">
                       <span class="tagword">Admin</span>
-                      <span>You can allow <code class="path">dist/*.map</code> for this repo with a reason and an expiry.
+                      <span>You can allow this exact package rule/path with a reason and an expiry.
                         <label for="v-policy" class="snow" style="cursor: pointer">Write an exception →</label></span>
                     </div>
                     <div class="gate s-member" style="margin-top: 14px">
@@ -745,7 +746,7 @@
                   <strong class="path">EmotiveImpact/relay-worker</strong>
                   <span class="pill">private</span>
                 </div>
-                <div class="meta"><span>GitHub repository</span><span>No CI gate wired</span></div>
+                <div class="meta"><span>GitHub repository</span><span>NoSpoilers workflow not found</span></div>
               </div>
               <span class="pill info">Setup incomplete</span>
             </div>
@@ -787,6 +788,15 @@
             <div class="capability-note admin-only show-import" style="grid-column:1/-1">
               <strong class="small">Protect identities in a batch</strong>
               <p class="tiny dim" style="margin-top:4px">Up to 20 npm names. Registry metadata only — no tarball download or scan job. Scope or GitHub repository must match this install.</p>
+            </div>
+            <div class="capability-note" style="grid-column:1/-1">
+              <span class="kicker">Main-backed source actions</span>
+              <div class="row gap8 wrap" style="margin-top:8px">
+                <span class="btn sm outline">Check now</span><span class="btn sm outline admin-only">Stop watching</span>
+                <span class="btn sm outline admin-only">Protect npm identity</span><span class="btn sm outline">Diff revisions</span>
+                <span class="btn sm outline admin-only">Approve baseline</span><span class="btn sm outline team-only">Review lookalikes</span>
+              </div>
+              <p class="tiny dim" style="margin-top:7px">GitHub, npm, website and map-custody rows expose only the actions their existing API supports.</p>
             </div>
           </div>
         </div>
@@ -858,7 +868,7 @@
             <span class="tagword">Solo</span>
             <span>Subscribe to Team to keep the install timeline.</span>
           </div>
-          <h1 class="has-data hide-ended">Time exposed, last 7 days</h1>
+          <h1 class="has-data hide-ended">Exposure over the retained timeline</h1>
           <h1 class="s-ended">The clock is not running.</h1>
           <h1 class="s-empty">No exposure to plot yet.</h1>
           <div class="gantt has-data" style="margin-top: 18px">
@@ -866,7 +876,7 @@
               <span class="pill crit hide-map-res">1 open</span>
               <span class="pill ok show-map-res">all closed</span>
               <div class="grow"></div>
-              <span class="tiny dim">Bars show the window a leak was publicly reachable</span>
+              <span class="tiny dim">Proposed chart from alert created/resolved timestamps and exposure_ms</span>
             </div>
             <div class="ruler">
               <div style="padding: 6px 16px" class="tiny dim">Source</div>
@@ -963,7 +973,8 @@
             Exceptions need a reason and an expiry. They are scoped to a source, not the whole install.
           </p>
           <div class="card card-pad" style="margin-top: 18px">
-            <div class="kv"><span class="path">SRC-001</span><span class="summary-val">EmotiveImpact/desk · expires 12 Oct</span></div>
+            <div class="kv"><span>Shipping baseline</span><span class="summary-val path">nospoilers@0.4.1 · approved receipt</span></div>
+            <div class="kv"><span class="path">SRC-001</span><span class="summary-val">package/path exact · expires 12 Oct</span></div>
             <div class="kv"><span class="path">SIZE-001</span><span class="summary-val">acme-ui · expires 1 Nov</span></div>
             <div class="row gap8 admin-only" style="margin-top: 14px">
               <input class="field" placeholder="Rule id, e.g. MAP-002" style="max-width: 160px" />
@@ -1019,7 +1030,7 @@
 
         <!-- ===== AUDIT ===== -->
         <div class="view view-audit body narrow">
-          <h1>Audit log</h1>
+          <div class="between"><h1>Audit log</h1><span class="btn sm outline team-only">Export audit JSON</span></div>
           <div class="gate s-solo" style="margin-top: 16px">
             <span class="tagword">Solo</span>
             <span>Subscribe to Team to keep the audit log.</span>
@@ -1034,7 +1045,7 @@
 
         <!-- ===== HEALTH ===== -->
         <div class="view view-health body narrow">
-          <h1>Install health</h1>
+          <div class="between"><h1>Install health</h1><span class="btn sm outline">Test install</span></div>
           <div class="stats has-data" style="margin-top: 18px; grid-template-columns: repeat(4, 1fr)">
             <div class="stat"><span class="kicker">Webhook</span><div class="n okc" style="font-size: 20px">ok</div><span class="tiny dim">last event 1 d ago</span></div>
             <div class="stat"><span class="kicker">Permissions</span><div class="n okc" style="font-size: 20px">pass</div><span class="tiny dim">Administration off</span></div>
@@ -1078,7 +1089,7 @@
             <div class="ring has-data" style="--p: 60"><span>3/5</span></div>
             <div class="ring s-empty" style="--p: 0"><span>0/5</span></div>
             <div class="grow">
-              <strong class="small has-data">Repo visibility, release assets, CI gate are live</strong>
+              <strong class="small has-data">Repo visibility, release assets, and workflow files are connected</strong>
               <strong class="small s-empty">Nothing connected yet</strong>
               <p class="tiny dim" style="margin-top: 4px">Registry tarballs and your production origin are not.</p>
             </div>
@@ -1140,14 +1151,20 @@
             <div class="stat"><span class="kicker">Open</span><div class="n bad hide-map-res">1</div><div class="n show-map-res">0</div></div>
           </div>
           <div class="card" style="margin-top: 16px">
-            <div class="kv"><span>Setup status</span><span class="summary-val">workflow and vendored Action found</span></div>
+            <div class="kv"><span>Setup status</span><span class="summary-val">workflow + vendored Action found · required check unknown</span></div>
             <div class="kv"><span>Linked package</span><span class="summary-val path">nospoilers@0.4.2</span></div>
             <div class="kv"><span>Map custody</span><span class="summary-val">none on this repo</span></div>
             <div class="kv"><span>Scoped exceptions</span><span class="summary-val">none</span></div>
           </div>
-          <div class="row gap8" style="margin-top: 14px">
-            <label for="v-alerts" class="btn sm hide-map-res">Open MAP-002</label>
-            <label for="v-releases" class="btn sm outline">Receipts</label>
+          <div class="row gap8 wrap" style="margin-top: 14px">
+            <span class="btn sm outline">Check setup status</span><span class="btn sm outline">Scan latest release</span>
+            <span class="btn sm outline admin-only">Setup PR</span><span class="btn sm outline admin-only">Remediation PR</span>
+            <label for="v-alerts" class="btn sm hide-map-res">Open MAP-002</label><label for="v-releases" class="btn sm outline">Receipts</label>
+          </div>
+          <div class="capability-note admin-only">
+            <span class="kicker">Confirmed GitHub response · Administration required</span>
+            <div class="row gap8 wrap" style="margin-top:8px"><span class="btn sm danger">Make private</span><span class="btn sm danger">Remove pack assets</span><span class="btn sm danger">Disable workflow</span></div>
+            <p class="tiny dim" style="margin-top:7px">A confirmed GitHub response is not a discovered incident. Setup/remediation PRs do not need Administration and are never merged automatically.</p>
           </div>
         </div>
       </div>
@@ -1188,8 +1205,8 @@
         <p class="tiny dim" style="margin-top: 6px">Roles, Slack / Jira / SIEM, install timeline, audit log.</p>
       </div>
       <div class="row gap8">
-        <span class="btn">Continue to checkout</span>
-        <label for="ov-none" class="btn outline">Not now</label>
+        <span class="btn">See pricing</span>
+        <label for="ov-none" class="btn outline">Back to desk</label>
       </div>
     </div>
 
@@ -1222,9 +1239,9 @@
       <b>2A</b> Overview-first console
       <span class="sep"></span>
       <a href="2a-full-overview.html">2A overview</a>
-      <a href="2b-full-guided.html">2B guided</a>
-      <a href="2c-full-triage.html">2C triage</a>
-      <a href="2d-full-sources.html">2D sources</a>
+      <a href="2b-full-guided.html">2B sidebar</a>
+      <a href="2c-full-triage.html">2C tabs</a>
+      <a href="2d-full-sources.html">2D objects</a>
       <span class="sep"></span>
       <label for="p-trial">Trial admin</label>
       <label for="p-solo">Solo</label>

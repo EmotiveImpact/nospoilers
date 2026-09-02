@@ -24,10 +24,16 @@ copying shell or click-through styles. Tag borrowed pieces with
 The user later correctly pointed out that the gallery did not make a fair decision possible:
 `1G` was only first session, `1H` only incident response, and `1I` only the split. `2A`–`2D`
 therefore all carry the same full `1F` route/state/action scope and differ only in architecture:
-Overview-first, Setup-first, Incident-first, and Source-first. They also reflect current `main`
+split console, monolith sidebar, tabbed desk, and object-first desk. They also reflect current `main`
 additions that the old comps missed: GitHub-login invites, batch protected-package import,
 fair-use state, release size/media type, delivery locations and verification, approval/rejection,
 legal hold, and ledger export. Compare `2A`–`2D`; treat everything before them as design evidence.
+
+The current-main audit also found that some 1F interactions are proposed presentation rather than
+already-shipped UI: saved alert filters, command palette, gantt, unified Sources, setup ring, and
+Desk/Settings routing. Keep them as design decisions, but label them as such. Checklist items are
+read-only on main. Alert reopen, alert/audit JSON export, package protection/diff/baseline/
+lookalikes, install test, and GitHub response controls are real and are represented in `2A`–`2D`.
 
 Do not add `<link>` tags to Google Fonts and do not add a Content-Security-Policy meta tag. Both
 break Cursor's in-IDE `localhost:3000` preview, which iframes the port. The system font stack is

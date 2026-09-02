@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NoSpoilers watch desk — 10 UX directions</title>
+    <title>NoSpoilers watch desk — complete decision set</title>
     <link rel="stylesheet" href="mockup.css" />
     <style>
       html,
@@ -139,10 +139,11 @@
     <div class="app">
       <div class="body">
         <span class="logo">NoSpoilers</span>
-        <h1 style="margin-top: 22px; font-size: 40px">Ten ways the watch desk could work.</h1>
+        <h1 style="margin-top: 22px; font-size: 40px">Choose the complete watch desk.</h1>
         <p class="muted lede" style="margin-top: 14px">
-          Static HTML comps, no framework and no build step. Each one takes the same real data
-          — repos, packs, rule ids, receipts, routes — and answers the same question differently:
+          Start with the green 2A–2D decision set. Those four contain the same current-main
+          capabilities and states, organized through four different architectures. The older
+          studies remain below as evidence for individual patterns. The shared question is:
           <strong class="snow"
             >how does a person find the one thing that is exposed without scrolling past thirteen
             configuration panels?</strong
@@ -210,13 +211,19 @@
             source drill-down, Notifications, Policy, Team, Retention, Audit, Install health, Scan
             API tokens, private registries, coverage gates, and acknowledge → assign → resolve.
             Each also carries the same Trial admin, Solo, Member, Ended, and Empty switcher.
-            <strong class="snow">Only the starting point and information architecture change.</strong>
+            <strong class="snow">Only the information architecture changes.</strong>
+          </p>
+          <p class="small" style="margin-top: 10px; max-width: 76ch; color: #a5f3a5">
+            Accuracy key: the entities, gates, data fields, and actions map to current
+            <code>main</code>. Routing, saved filters, charts, command palette, unified Sources,
+            setup progress, and Desk / Settings chrome are proposed client presentation—not
+            features being claimed as already shipped.
           </p>
           <div class="row gap8 wrap" style="margin-top: 14px">
             <a class="btn sm" href="2a-full-overview.html">2A · Overview-first →</a>
-            <a class="btn sm outline" href="2b-full-guided.html">2B · Setup-first</a>
-            <a class="btn sm outline" href="2c-full-triage.html">2C · Incident-first</a>
-            <a class="btn sm outline" href="2d-full-sources.html">2D · Source-first</a>
+            <a class="btn sm outline" href="2b-full-guided.html">2B · Monolith sidebar</a>
+            <a class="btn sm outline" href="2c-full-triage.html">2C · Tabbed desk</a>
+            <a class="btn sm outline" href="2d-full-sources.html">2D · Object-first</a>
           </div>
         </div>
 
@@ -259,12 +266,12 @@
             </div>
             <div class="mk-body">
               <span class="mk-no">2B · SAME COMPLETE APP</span>
-              <h2 style="margin-top: 4px">Setup-first guided desk</h2>
+              <h2 style="margin-top: 4px">Monolith sidebar</h2>
               <p class="small muted" style="margin-top: 7px">
-                Opens on the ordered leak-path setup. Once connected, the user moves into the same
-                overview, incident inbox, source inventory, evidence and settings.
+                One grouped sidebar holds Work, alert filters, Evidence, and Settings. This keeps
+                every route visible and is the safest migration from the current Watch surface.
               </p>
-              <p class="verdict-line"><b>Decide this if</b> first-run confidence is the hardest problem.</p>
+              <p class="verdict-line"><b>Decide this if</b> one predictable navigation model matters most.</p>
               <div class="foot"><span class="btn sm">Open complete app →</span></div>
             </div>
           </a>
@@ -284,12 +291,12 @@
             </div>
             <div class="mk-body">
               <span class="mk-no">2C · SAME COMPLETE APP</span>
-              <h2 style="margin-top: 4px">Incident-first operations desk</h2>
+              <h2 style="margin-top: 4px">Tabbed desk</h2>
               <p class="small muted" style="margin-top: 7px">
-                Opens on saved alert queues and list + detail response. Exposure, findings,
-                checklist, activity, assignment and resolution stay together.
+                A horizontal route rail sits over one working surface. Alerts still become full
+                list + detail; Sources, Releases, Timeline, Setup and Settings use the same rail.
               </p>
-              <p class="verdict-line"><b>Decide this if</b> responding to leaks is the dominant job.</p>
+              <p class="verdict-line"><b>Decide this if</b> the smallest conceptual jump from tabs is best.</p>
               <div class="foot"><span class="btn sm">Open complete app →</span></div>
             </div>
           </a>
@@ -305,12 +312,12 @@
             </div>
             <div class="mk-body">
               <span class="mk-no">2D · SAME COMPLETE APP</span>
-              <h2 style="margin-top: 4px">Source-first control plane</h2>
+              <h2 style="margin-top: 4px">Object-first desk</h2>
               <p class="small muted" style="margin-top: 7px">
-                Opens on one broad inventory for GitHub repos, npm packages, production websites,
-                and map custody. The full incident and settings routes remain one click away.
+                Opens inside a source/repository object: setup status, response controls, releases,
+                linked package and policy context. Global alerts and settings stay reachable.
               </p>
-              <p class="verdict-line"><b>Decide this if</b> coverage and ownership start with inventory.</p>
+              <p class="verdict-line"><b>Decide this if</b> large installs ask “what is true for this repo?” first.</p>
               <div class="foot"><span class="btn sm">Open complete app →</span></div>
             </div>
           </a>
