@@ -197,6 +197,21 @@ function permissionDenied(status: number): boolean {
   return status === 403 || status === 404;
 }
 
+export function githubCommitMissing(status: number): boolean {
+  return status === 404 || status === 422;
+}
+
+export function commitRefsForCheck(tag: string, targetCommitish?: string | null): string[] {
+  const refs: string[] = [];
+  const add = (value: string) => {
+    const ref = value.trim().replace(/^(?:refs\/)?tags\//, "");
+    if (ref && !refs.includes(ref)) refs.push(ref);
+  };
+  add(tag);
+  if (targetCommitish) add(targetCommitish);
+  return refs;
+}
+
 function b64urlJson(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
@@ -404,10 +419,9 @@ export function createGithubPort(config: AppConfig): GithubPort {
           },
         },
       );
-      if (response.status === 404) return null;
+      if (githubCommitMissing(response.status) || permissionDenied(response.status)) return null;
       if (!response.ok) {
         const text = await response.text();
-        if (permissionDenied(response.status)) return null;
         throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);
       }
       const body = (await response.json()) as { sha?: string };
@@ -455,7 +469,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
           },
         },
       );
-      if (response.status === 404 || permissionDenied(response.status)) return [];
+      if (githubCommitMissing(response.status) || permissionDenied(response.status)) return [];
       if (!response.ok) {
         const text = await response.text();
         throw new GithubApiError(response.status, `GitHub ${response.status}: ${text.slice(0, 400)}`);

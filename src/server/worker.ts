@@ -5,7 +5,7 @@ import path from "node:path";
 import { ENGINE_VERSION, scan, type ScanReport } from "../scanner/index.ts";
 import { summarizeWorkspaces } from "../scanner/workspaces.ts";
 import type { ScanStatus } from "../scanner/types.ts";
-import type { GithubPort } from "./github.ts";
+import { commitRefsForCheck, type GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
 import type { NpmAuth, NpmPort } from "./npm.ts";
@@ -350,14 +350,11 @@ export async function handleJob(
       `Spoilers in ${repo.fullName} ${tag}`,
       `Inconclusive scan of ${repo.fullName} ${tag}`,
     );
-    const sha =
-      (await deps.github.getRefSha(installationId, repo.owner, repo.name, `tags/${tag}`)) ??
-      (await deps.github.getRefSha(
-        installationId,
-        repo.owner,
-        repo.name,
-        String(payload.targetCommitish ?? tag),
-      ));
+    let sha: string | null = null;
+    for (const ref of commitRefsForCheck(tag, String(payload.targetCommitish ?? ""))) {
+      sha = await deps.github.getRefSha(installationId, repo.owner, repo.name, ref);
+      if (sha) break;
+    }
     if (sha) {
       const check = await deps.github.createCheckRun(installationId, repo.owner, repo.name, {
         name: "NoSpoilers",

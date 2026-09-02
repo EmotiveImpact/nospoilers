@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "../src/server/github-checks.ts";
+import { commitRefsForCheck, githubCommitMissing } from "../src/server/github.ts";
 import type { Finding } from "../src/scanner/types.ts";
 
 function finding(overrides: Partial<Finding> = {}): Finding {
@@ -43,6 +44,15 @@ describe("GitHub Checks mapping", () => {
       Array.from({ length: 60 }, (_, i) => finding({ path: `package/${i}.map` })),
     );
     expect(many).toHaveLength(50);
+  });
+
+  it("resolves Checks against the tag name, not tags/tag as a commit SHA", () => {
+    expect(commitRefsForCheck("v0.1.7", "main")).toEqual(["v0.1.7", "main"]);
+    expect(commitRefsForCheck("tags/v0.1.7", "refs/tags/v0.1.7")).toEqual(["v0.1.7"]);
+    expect(commitRefsForCheck("phase1-fixture", null)).toEqual(["phase1-fixture"]);
+    expect(githubCommitMissing(422)).toBe(true);
+    expect(githubCommitMissing(404)).toBe(true);
+    expect(githubCommitMissing(500)).toBe(false);
   });
 
   it("titles a failed release scan without calling it allowed to ship", () => {

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Hosted `release_scan` resolves GitHub Checks against the tag name and
+  `target_commitish`, not `tags/<tag>` as a commit SHA. A missing commit
+  (GitHub 422/404) skips the Check and still writes the Watch alert.
+  Live Neon: jobs 42 and 44 (`v0.1.7`) left `queued` after `tags/v0.1.7`
+  422; after the fix they complete without failing the pack scan. Not a
+  Checks-write grant and not a Pricing change.
+
 - Disclosure Desk findings: each case stores append-only
   `disclosure_findings` rows parsed from `rule|severity|path|title`
   fingerprints. Finding values are never stored. Case views and reports

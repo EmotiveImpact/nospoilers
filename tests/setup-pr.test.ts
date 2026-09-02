@@ -885,4 +885,94 @@ describe("release_scan GitHub Checks", () => {
       await sql.close();
     }
   });
+
+  it("looks up the tag name, not tags/tag, and still finishes when that commit is missing", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertRepo({
+        id: 99,
+        installationId: 7,
+        owner: "octo",
+        name: "throwaway",
+        fullName: "octo/throwaway",
+        private: false,
+        htmlUrl: "https://github.com/octo/throwaway",
+      });
+      const bytes = await readFile(FIXTURE);
+      const refs: string[] = [];
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          listReleaseAssets: async () => [
+            {
+              id: 1,
+              name: "sourcemap.tgz",
+              size: bytes.length,
+              url: "https://api.github.com/asset/1",
+            },
+          ],
+          downloadAsset: async () => bytes,
+          getRefSha: async (_installationId, _owner, _repo, ref) => {
+            refs.push(ref);
+            if (ref.startsWith("tags/")) {
+              throw new Error(`GitHub 422: No commit found for SHA: ${ref}`);
+            }
+            if (ref === "v0.1.7") return null;
+            if (ref === "main") return "c".repeat(40);
+            return null;
+          },
+          createCheckRun: async () => ({
+            skipped: "permission",
+            reason: "Grant Checks write to report release scans. Do not grant Administration.",
+          }),
+        }),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+      });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: {
+          installationId: 7,
+          releaseId: 381173289,
+          tag: "v0.1.7",
+          targetCommitish: "main",
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      await worker.tick();
+      await waitUntil(async () => {
+        const { rows } = await sql.query<{ status: string }>("SELECT status FROM jobs");
+        return rows[0]?.status === "done";
+      }, "release_scan after missing tag SHA");
+      await worker.stop();
+      expect(refs).toEqual(["v0.1.7", "main"]);
+      expect(refs.some((ref) => ref.startsWith("tags/"))).toBe(false);
+      const { rows: alerts } = await sql.query<{ title: string; kind: string }>(
+        "SELECT title, kind FROM alerts",
+      );
+      expect(alerts.some((row) => row.kind === "release_scan")).toBe(true);
+    } finally {
+      await sql.close();
+    }
+  });
 });

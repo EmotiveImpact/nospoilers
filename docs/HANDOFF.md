@@ -231,7 +231,9 @@ Read in this order:
   to mark the NoSpoilers check required; the App does not set branch protection. If GitHub
   returns 403/404, the API returns 409 plus copy-paste files. Hosted `release_scan` jobs post a
   **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
-  still completes.
+  still completes. The Check looks up the tag name (then `target_commitish`), not
+  `tags/<tag>` as a commit SHA. GitHub 422/404 skips the Check and still writes
+  the Watch alert.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
