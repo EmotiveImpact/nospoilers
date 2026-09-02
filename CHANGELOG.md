@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- When Contents write commits setup or remediation files but Pull requests write is
+  missing, the 409 names the branch and committed paths instead of pretending nothing
+  landed. Watch links that branch. The App still does not merge. Not a Pricing change.
+
 - Setup and remediation PRs commit the vendored Action with Contents write and leave
   `.github/workflows/nospoilers.yml` as copy-paste. GitHub needs a Workflows permission
   to create Actions YAML; the App does not request it and Watch Test install never asks

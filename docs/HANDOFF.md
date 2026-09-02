@@ -138,7 +138,8 @@ Read in this order:
   customer ignore/policy/workflow/Action files are not overwritten. Contents write commits
   non-workflow files. GitHub Actions YAML stays copy-paste; Workflows write is not requested.
   Pull requests write is shown before
-  the button. 409 returns the file bundle for copy-paste. The App never merges it. This is not
+  the button. 409 returns the file bundle for copy-paste and names any committed branch/paths.
+  The App never merges it. This is not
   make-private or asset deletion.
 - Packed scans discover npm/pnpm/Yarn/Bun workspaces (package.json `workspaces`,
   `pnpm-workspace.yaml`, yarn/bun lockfile presence). Members are listed on the report, receipt,

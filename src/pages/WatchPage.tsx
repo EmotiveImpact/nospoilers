@@ -605,12 +605,26 @@ type RemediationFileView = { path: string; content: string };
 
 type SetupPrView =
   | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
-  | { status: "copy"; reason: string; files: RemediationFileView[] }
+  | {
+      status: "copy";
+      reason: string;
+      files: RemediationFileView[];
+      written?: string[];
+      branch?: string;
+      compareUrl?: string | null;
+    }
   | { status: "error"; message: string };
 
 type RemediationPrView =
   | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
-  | { status: "copy"; reason: string; files: RemediationFileView[] }
+  | {
+      status: "copy";
+      reason: string;
+      files: RemediationFileView[];
+      written?: string[];
+      branch?: string;
+      compareUrl?: string | null;
+    }
   | { status: "error"; message: string };
 
 type GithubResponseView =
@@ -639,10 +653,30 @@ function SetupPrResult({ view }: { view: SetupPrView }) {
     return (
       <div className="mt-3 space-y-4">
         <p className="text-sm leading-relaxed text-mute">{view.reason}</p>
-        <p className="mt-2 text-xs leading-relaxed text-dim">
-          Paste these files yourself. They scan packed artifacts only, POST bytes to hosted scan,
-          and are never merged automatically.
-        </p>
+        {view.written && view.written.length > 0 ? (
+          <p className="text-xs leading-relaxed text-dim">
+            Committed on{" "}
+            {view.compareUrl ? (
+              <a
+                href={view.compareUrl}
+                className="text-snow underline-offset-4 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {view.branch ?? "the setup branch"}
+              </a>
+            ) : (
+              (view.branch ?? "the setup branch")
+            )}
+            : {view.written.join(", ")}. Paste the workflow YAML. Grant Pull requests write to open
+            the PR. NoSpoilers does not merge.
+          </p>
+        ) : (
+          <p className="mt-2 text-xs leading-relaxed text-dim">
+            Paste these files yourself. They scan packed artifacts only, POST bytes to hosted scan,
+            and are never merged automatically.
+          </p>
+        )}
         {view.files.map((file) => (
           <div key={file.path}>
             <p className="font-mono text-[11px] text-snow">{file.path}</p>
@@ -678,9 +712,29 @@ function RemediationPrResult({ view }: { view: RemediationPrView }) {
     return (
       <div className="mt-3 space-y-4">
         <p className="text-sm leading-relaxed text-mute">{view.reason}</p>
-        <p className="text-xs leading-relaxed text-dim">
-          Paste these files yourself. They are additive, reviewable, and never merged automatically.
-        </p>
+        {view.written && view.written.length > 0 ? (
+          <p className="text-xs leading-relaxed text-dim">
+            Committed on{" "}
+            {view.compareUrl ? (
+              <a
+                href={view.compareUrl}
+                className="text-snow underline-offset-4 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {view.branch ?? "the remediation branch"}
+              </a>
+            ) : (
+              (view.branch ?? "the remediation branch")
+            )}
+            : {view.written.join(", ")}. Paste any missing workflow YAML. Grant Pull requests write
+            to open the PR. NoSpoilers does not merge.
+          </p>
+        ) : (
+          <p className="text-xs leading-relaxed text-dim">
+            Paste these files yourself. They are additive, reviewable, and never merged automatically.
+          </p>
+        )}
         {view.files.map((file) => (
           <div key={file.path}>
             <p className="font-mono text-[11px] text-snow">{file.path}</p>
@@ -1731,6 +1785,9 @@ export function WatchPage({ search }: { search: string }) {
                               reason?: string;
                               workflow?: string;
                               files?: { path: string; content: string }[];
+                              written?: string[];
+                              branch?: string;
+                              compareUrl?: string | null;
                               htmlUrl?: string;
                               number?: number;
                               existing?: boolean;
@@ -1752,6 +1809,9 @@ export function WatchPage({ search }: { search: string }) {
                                   status: "copy",
                                   reason: body.reason ?? "GitHub App cannot open a pull request.",
                                   files,
+                                  written: body.written,
+                                  branch: body.branch,
+                                  compareUrl: body.compareUrl,
                                 },
                               }));
                               return;
@@ -1805,6 +1865,9 @@ export function WatchPage({ search }: { search: string }) {
                               error?: string;
                               reason?: string;
                               files?: RemediationFileView[];
+                              written?: string[];
+                              branch?: string;
+                              compareUrl?: string | null;
                               htmlUrl?: string;
                               number?: number;
                               existing?: boolean;
@@ -1817,6 +1880,9 @@ export function WatchPage({ search }: { search: string }) {
                                   status: "copy",
                                   reason: body.reason ?? "GitHub App cannot open a pull request.",
                                   files: body.files ?? [],
+                                  written: body.written,
+                                  branch: body.branch,
+                                  compareUrl: body.compareUrl,
                                 },
                               }));
                               return;

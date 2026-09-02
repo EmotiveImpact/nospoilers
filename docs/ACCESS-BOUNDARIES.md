@@ -345,7 +345,7 @@ tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unp
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
 the row, unrelated rules stay unsuppressed, and Release Diff uses the approved baseline.
 `tests/setup-pr.test.ts` proves setup-PR files are tenant-scoped, unpaid POST returns 402,
-permission skips return copy-paste files instead of failing the worker, the merge API
+permission skips return copy-paste files plus any committed branch/paths instead of failing the worker, the merge API
 is never called, Contents write commits the vendored Action and skips `.github/workflows/`
 unless Workflows write is present (never requested), the generated workflow vendors `.github/actions/nospoilers` instead of
 `uses:` on this private repository, and the workflow lists only existing `package.tgz` / `dist/` packs

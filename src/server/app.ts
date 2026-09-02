@@ -34,6 +34,7 @@ import {
 } from "./remediation.ts";
 import {
   SETUP_PERMISSIONS,
+  SETUP_BRANCH,
   SETUP_WORKFLOW_PATH,
   setupFiles,
   setupWorkflowYaml,
@@ -1516,6 +1517,9 @@ export function createApp(deps: AppDeps): Hono {
           ok: false,
           skipped: result.skipped,
           reason: result.reason,
+          written: result.written ?? [],
+          branch: result.branch ?? SETUP_BRANCH,
+          compareUrl: result.compareUrl ?? null,
           workflow: setupWorkflowYaml(),
           files: setupFiles(),
           permissions: SETUP_PERMISSIONS,
@@ -1593,7 +1597,9 @@ export function createApp(deps: AppDeps): Hono {
           ok: false,
           skipped: result.skipped,
           reason: result.reason,
-          branch: REMEDIATION_BRANCH,
+          written: result.written ?? [],
+          branch: result.branch ?? REMEDIATION_BRANCH,
+          compareUrl: result.compareUrl ?? null,
           files: remediationBundle(),
           permissions: REMEDIATION_PERMISSIONS,
           merged: false,

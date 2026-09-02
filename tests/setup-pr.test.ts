@@ -550,6 +550,9 @@ describe("setup workflow and PR APIs", () => {
           createSetupPullRequest: async () => ({
             skipped: "permission",
             reason: "Grant Contents write and Pull requests write to open a setup PR. Do not grant Administration.",
+            written: [SETUP_ACTION_PATH],
+            branch: "nospoilers/setup",
+            compareUrl: "https://github.com/octo/throwaway/tree/nospoilers/setup",
           }),
         }),
       });
@@ -564,9 +567,15 @@ describe("setup workflow and PR APIs", () => {
         reason: string;
         workflow: string;
         files: { path: string; content: string }[];
+        written: string[];
+        branch: string;
+        compareUrl: string;
       };
       expect(body.skipped).toBe("permission");
       expect(body.reason).toContain("Do not grant Administration");
+      expect(body.written).toEqual([SETUP_ACTION_PATH]);
+      expect(body.branch).toBe("nospoilers/setup");
+      expect(body.compareUrl).toBe("https://github.com/octo/throwaway/tree/nospoilers/setup");
       expect(body.workflow).toContain("never merged automatically");
       expect(body.workflow).toContain("package.tgz");
       expect(body.workflow).not.toContain("EmotiveImpact/nospoilers@main");

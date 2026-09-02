@@ -247,6 +247,9 @@ describe("remediation PR APIs", () => {
             skipped: "permission",
             reason:
               "Grant Contents write and Pull requests write to open a remediation PR. Do not grant Administration.",
+            written: [".gitignore", SETUP_ACTION_PATH],
+            branch: REMEDIATION_BRANCH,
+            compareUrl: "https://github.com/octo/throwaway/tree/nospoilers/remediate",
           }),
         }),
       });
@@ -262,9 +265,15 @@ describe("remediation PR APIs", () => {
         files: { path: string; content: string }[];
         permissions: string[];
         merged: boolean;
+        written: string[];
+        branch: string;
+        compareUrl: string;
       };
       expect(body.skipped).toBe("permission");
       expect(body.reason).toContain("Do not grant Administration");
+      expect(body.written).toEqual([".gitignore", SETUP_ACTION_PATH]);
+      expect(body.branch).toBe(REMEDIATION_BRANCH);
+      expect(body.compareUrl).toBe("https://github.com/octo/throwaway/tree/nospoilers/remediate");
       expect(body.merged).toBe(false);
       expect(body.permissions).toEqual([...REMEDIATION_PERMISSIONS]);
       expect(body.files.some((file) => file.path === ".gitignore")).toBe(true);

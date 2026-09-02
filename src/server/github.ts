@@ -54,7 +54,13 @@ export type GithubCheckResult =
   | { id: number; htmlUrl: string | null };
 
 export type GithubSetupPrResult =
-  | { skipped: "permission"; reason: string }
+  | {
+      skipped: "permission";
+      reason: string;
+      written?: string[];
+      branch?: string;
+      compareUrl?: string;
+    }
   | { htmlUrl: string; number: number; existing: boolean };
 
 export type GithubAdminResult =
@@ -430,6 +436,8 @@ export function createGithubPort(config: AppConfig): GithubPort {
       const canWriteWorkflows = hasWrite(install.permissions ?? {}, "workflows");
       const reason =
         "Grant Contents write and Pull requests write to open a setup PR. The App does not write GitHub Actions workflow YAML (Workflows write is not requested). Do not grant Administration.";
+      const written: string[] = [];
+      let branchReady = false;
       try {
         const repoInfo = await githubJson<{ default_branch?: string }>(
           `https://api.github.com/repos/${owner}/${repo}`,
@@ -456,6 +464,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
           const text = await created.text();
           throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
         }
+        branchReady = true;
 
         for (const file of setupCommitFiles(canWriteWorkflows)) {
           await putGithubFile(
@@ -467,6 +476,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
             SETUP_BRANCH,
             setupCommitMessage(),
           );
+          written.push(file.path);
         }
 
         const open = await githubJson<{ html_url: string; number: number }[]>(
@@ -495,7 +505,17 @@ export function createGithubPort(config: AppConfig): GithubPort {
         return { htmlUrl: pull.html_url, number: pull.number, existing: false };
       } catch (error) {
         if (error instanceof GithubApiError && permissionDenied(error.status)) {
-          return { skipped: "permission", reason };
+          return {
+            skipped: "permission",
+            reason,
+            written,
+            ...(branchReady || written.length > 0
+              ? {
+                  branch: SETUP_BRANCH,
+                  compareUrl: `https://github.com/${owner}/${repo}/tree/${SETUP_BRANCH}`,
+                }
+              : {}),
+          };
         }
         throw error;
       }
@@ -507,6 +527,8 @@ export function createGithubPort(config: AppConfig): GithubPort {
       const canWriteWorkflows = hasWrite(install.permissions ?? {}, "workflows");
       const reason =
         "Grant Contents write and Pull requests write to open a remediation PR. The App does not write GitHub Actions workflow YAML (Workflows write is not requested). Do not grant Administration.";
+      const written: string[] = [];
+      let branchReady = false;
       try {
         const repoInfo = await githubJson<{ default_branch?: string }>(
           `https://api.github.com/repos/${owner}/${repo}`,
@@ -533,6 +555,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
           const text = await created.text();
           throw new GithubApiError(created.status, `GitHub ${created.status}: ${text.slice(0, 400)}`);
         }
+        branchReady = true;
 
         const existingOnDefault: string[] = [];
         for (const file of remediationBundle()) {
@@ -552,6 +575,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
             REMEDIATION_BRANCH,
             remediationCommitMessage(),
           );
+          written.push(file.path);
         }
 
         const open = await githubJson<{ html_url: string; number: number }[]>(
@@ -580,7 +604,17 @@ export function createGithubPort(config: AppConfig): GithubPort {
         return { htmlUrl: pull.html_url, number: pull.number, existing: false };
       } catch (error) {
         if (error instanceof GithubApiError && permissionDenied(error.status)) {
-          return { skipped: "permission", reason };
+          return {
+            skipped: "permission",
+            reason,
+            written,
+            ...(branchReady || written.length > 0
+              ? {
+                  branch: REMEDIATION_BRANCH,
+                  compareUrl: `https://github.com/${owner}/${repo}/tree/${REMEDIATION_BRANCH}`,
+                }
+              : {}),
+          };
         }
         throw error;
       }
