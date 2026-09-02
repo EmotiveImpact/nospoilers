@@ -480,7 +480,7 @@ CREATE INDEX IF NOT EXISTS notification_destinations_install_idx
 CREATE TABLE IF NOT EXISTS notification_deliveries (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
-  destination_id BIGINT NOT NULL REFERENCES notification_destinations (id) ON DELETE CASCADE,
+  destination_id BIGINT REFERENCES notification_destinations (id) ON DELETE SET NULL,
   alert_id BIGINT REFERENCES alerts (id) ON DELETE SET NULL,
   kind TEXT NOT NULL CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty')),
   status TEXT NOT NULL CHECK (status IN ('sent', 'failed')),
@@ -495,6 +495,21 @@ CREATE INDEX IF NOT EXISTS notification_deliveries_install_idx
 CREATE OR REPLACE FUNCTION reject_notification_delivery_mutation()
 RETURNS trigger AS $$
 BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.destination_id IS NULL
+      AND OLD.destination_id IS NOT NULL
+      AND NEW.id IS NOT DISTINCT FROM OLD.id
+      AND NEW.installation_id IS NOT DISTINCT FROM OLD.installation_id
+      AND NEW.alert_id IS NOT DISTINCT FROM OLD.alert_id
+      AND NEW.kind IS NOT DISTINCT FROM OLD.kind
+      AND NEW.status IS NOT DISTINCT FROM OLD.status
+      AND NEW.invented_incident IS NOT DISTINCT FROM OLD.invented_incident
+      AND NEW.error IS NOT DISTINCT FROM OLD.error
+      AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+    THEN
+      RETURN NEW;
+    END IF;
+  END IF;
   RAISE EXCEPTION 'notification_deliveries are append-only';
 END;
 $$ LANGUAGE plpgsql;

@@ -71,10 +71,15 @@ Read in this order:
   `release.publish_verify` and `release.unpublish_verify`.
   `044_pagerduty_destinations` extends destination and delivery kind checks
   with `pagerduty`.
-  Next unused id is `045_*`.
+  `045_destination_delete_keeps_deliveries` lets an admin remove a destination
+  after a delivery: `destination_id` becomes nullable and SET NULL, and the
+  append-only trigger allows only that nulling. Delivery rows stay.
+  Next unused id is `046_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
+  Historical SIEM/Jira kind CHECKs are skipped once applied so a PagerDuty
+  row does not fail remigrate.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are

@@ -222,7 +222,7 @@ export type NotificationDestinationRow = {
 export type NotificationDeliveryRow = {
   id: number;
   installationId: number;
-  destinationId: number;
+  destinationId: number | null;
   alertId: number | null;
   kind: NotificationKind;
   status: "sent" | "failed";
@@ -4972,7 +4972,10 @@ export function createStore(
       return rows.map((row) => ({
         id: num(row.id),
         installationId: num(row.installation_id),
-        destinationId: num(row.destination_id),
+        destinationId:
+          row.destination_id === null || row.destination_id === undefined
+            ? null
+            : num(row.destination_id),
         alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
         kind: asNotificationKind(row.kind),
         status: row.status,
@@ -6503,7 +6506,10 @@ export function createStore(
         notificationDeliveries: deliveryRows.map((row) => ({
           id: num(row.id),
           installationId: num(row.installation_id),
-          destinationId: num(row.destination_id),
+          destinationId:
+            row.destination_id === null || row.destination_id === undefined
+              ? null
+              : num(row.destination_id),
           alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
           kind: asNotificationKind(row.kind),
           status: row.status,

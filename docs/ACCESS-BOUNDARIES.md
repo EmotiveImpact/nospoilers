@@ -212,7 +212,7 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
 - Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, Jira Cloud
   destinations, and PagerDuty Events API routing keys on a trial or Team install. URLs,
   emails, API tokens, and routing keys are never returned after save. Deletes require typing
-  the destination host. Jira is `*.atlassian.net` only (site name, host, or https URL).
+  the destination host. Delivery rows stay and drop the destination id. Jira is `*.atlassian.net` only (site name, host, or https URL).
   PagerDuty is `events.pagerduty.com` only. Private, local, metadata, and Slack hosts are
   rejected for SIEM, and DNS must resolve to a public address before POST. Jira tests GET
   `/rest/api/3/myself` and `/rest/api/3/project/{key}` and never POST `/issue`. PagerDuty

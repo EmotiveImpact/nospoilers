@@ -1024,6 +1024,29 @@ describe("PagerDuty destinations", () => {
       expect(deliveryBody.deliveries[0]?.kind).toBe("pagerduty");
       expect(JSON.stringify(deliveryBody)).not.toContain(PAGERDUTY_KEY);
 
+      const removed = await app.request(`/api/destinations/${savedBody.destination.id}`, {
+        method: "DELETE",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "events.pagerduty.com" }),
+      });
+      expect(removed.status).toBe(200);
+      const listedGone = await app.request("/api/destinations?installationId=7", {
+        headers: { cookie },
+      });
+      expect(
+        ((await listedGone.json()) as { destinations: { kind: string }[] }).destinations,
+      ).toEqual([]);
+      const deliveriesAfter = await app.request("/api/destinations/deliveries?installationId=7", {
+        headers: { cookie },
+      });
+      const afterBody = (await deliveriesAfter.json()) as {
+        deliveries: { destinationId: number | null; kind: string; inventedIncident: boolean }[];
+      };
+      expect(afterBody.deliveries[0]?.kind).toBe("pagerduty");
+      expect(afterBody.deliveries[0]?.destinationId).toBeNull();
+      expect(afterBody.deliveries[0]?.inventedIncident).toBe(false);
+      expect(JSON.stringify(afterBody)).not.toContain(PAGERDUTY_KEY);
+
       await expect(
         sql.query("UPDATE notification_deliveries SET error = 'x'"),
       ).rejects.toThrow(/append-only/);

@@ -401,17 +401,23 @@ export async function migrate(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "014_notification_destinations",
   ]);
-  await sql.exec(`
-    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
-    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
-      CHECK (kind IN ('slack', 'siem'));
-    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
-    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
-      CHECK (kind IN ('slack', 'siem'));
-  `);
-  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-    "015_siem_destinations",
-  ]);
+  const { rows: siemKindMigration } = await sql.query<{ id: string }>(
+    `SELECT id FROM schema_migrations WHERE id = $1`,
+    ["015_siem_destinations"],
+  );
+  if (!siemKindMigration[0]) {
+    await sql.exec(`
+      ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+      ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+        CHECK (kind IN ('slack', 'siem'));
+      ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+      ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+        CHECK (kind IN ('slack', 'siem'));
+    `);
+    await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+      "015_siem_destinations",
+    ]);
+  }
   await sql.exec(`
     ALTER TABLE installation_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin';
     ALTER TABLE installation_users DROP CONSTRAINT IF EXISTS installation_users_role_check;
@@ -423,16 +429,24 @@ export async function migrate(sql: SqlClient): Promise<void> {
   ]);
   await sql.exec(`
     ALTER TABLE notification_destinations ADD COLUMN IF NOT EXISTS project_key TEXT;
-    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
-    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
-      CHECK (kind IN ('slack', 'siem', 'jira'));
-    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
-    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
-      CHECK (kind IN ('slack', 'siem', 'jira'));
   `);
-  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-    "017_jira_destinations",
-  ]);
+  const { rows: jiraKindMigration } = await sql.query<{ id: string }>(
+    `SELECT id FROM schema_migrations WHERE id = $1`,
+    ["017_jira_destinations"],
+  );
+  if (!jiraKindMigration[0]) {
+    await sql.exec(`
+      ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+      ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+        CHECK (kind IN ('slack', 'siem', 'jira'));
+      ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+      ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+        CHECK (kind IN ('slack', 'siem', 'jira'));
+    `);
+    await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+      "017_jira_destinations",
+    ]);
+  }
   await sql.exec(`
     CREATE TABLE IF NOT EXISTS notification_routes (
       id BIGSERIAL PRIMARY KEY,
@@ -788,6 +802,8 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureSlaBackfill(sql);
   await migrateReleasePublicPages(sql);
   await migratePagerDutyDestinations(sql);
+  await migrateDestinationDeleteKeepsDeliveries(sql);
+  await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
 
@@ -1265,6 +1281,58 @@ async function migratePagerDutyDestinations(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "044_pagerduty_destinations",
   ]);
+}
+
+async function migrateDestinationDeleteKeepsDeliveries(sql: SqlClient): Promise<void> {
+  const { rows: applied } = await sql.query<{ id: string }>(
+    `SELECT id FROM schema_migrations WHERE id = $1`,
+    ["045_destination_delete_keeps_deliveries"],
+  );
+  if (applied[0]) return;
+  await sql.exec(`
+    ALTER TABLE notification_deliveries
+      ALTER COLUMN destination_id DROP NOT NULL;
+    ALTER TABLE notification_deliveries
+      DROP CONSTRAINT IF EXISTS notification_deliveries_destination_id_fkey;
+    ALTER TABLE notification_deliveries
+      ADD CONSTRAINT notification_deliveries_destination_id_fkey
+      FOREIGN KEY (destination_id) REFERENCES notification_destinations (id) ON DELETE SET NULL;
+    CREATE OR REPLACE FUNCTION reject_notification_delivery_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      IF TG_OP = 'UPDATE' THEN
+        IF NEW.destination_id IS NULL
+          AND OLD.destination_id IS NOT NULL
+          AND NEW.id IS NOT DISTINCT FROM OLD.id
+          AND NEW.installation_id IS NOT DISTINCT FROM OLD.installation_id
+          AND NEW.alert_id IS NOT DISTINCT FROM OLD.alert_id
+          AND NEW.kind IS NOT DISTINCT FROM OLD.kind
+          AND NEW.status IS NOT DISTINCT FROM OLD.status
+          AND NEW.invented_incident IS NOT DISTINCT FROM OLD.invented_incident
+          AND NEW.error IS NOT DISTINCT FROM OLD.error
+          AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+        THEN
+          RETURN NEW;
+        END IF;
+      END IF;
+      RAISE EXCEPTION 'notification_deliveries are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "045_destination_delete_keeps_deliveries",
+  ]);
+}
+
+async function applyNotificationKindCheck(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
+    ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+    ALTER TABLE notification_deliveries DROP CONSTRAINT IF EXISTS notification_deliveries_kind_check;
+    ALTER TABLE notification_deliveries ADD CONSTRAINT notification_deliveries_kind_check
+      CHECK (kind IN ('slack', 'siem', 'jira', 'pagerduty'));
+  `);
 }
 
 export function num(value: unknown): number {
