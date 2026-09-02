@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- Stripe Checkout, Billing Portal, and signed lifecycle webhooks are wired.
+  An install admin starts monthly/yearly Solo or Team Checkout. Checkout
+  always collects a card and keeps remaining trial days. Failed payment or
+  cancellation clears the plan so hosted work stops (GitHub still gets HTTP
+  200). Events are idempotent. Members and other tenants cannot open
+  Checkout or the portal. Responses never include customer, subscription,
+  or price IDs. Routes return 503 until `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, and the four price IDs are set. This host has
+  no Stripe keys (`/api/health` `stripe: false`). Live Neon: migration
+  `059_stripe_billing` applied; `stripe_events` 0; no Stripe customer
+  ids; columns present. Not a Marketplace listing and not a live charge.
+
 - Hosted website crawls enqueue as light jobs. The hourly poller and
   Check now no longer take a daily unpack slot at enqueue, so an
   unchanged site cannot block a GitHub Release scan. The worker

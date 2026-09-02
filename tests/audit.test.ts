@@ -78,6 +78,8 @@ describe("Team audit log", () => {
     expect(AUDIT_ACTIONS).toContain("identity.unpublish_advisory");
     expect(AUDIT_ACTIONS).toContain("namespace.protect");
     expect(AUDIT_ACTIONS).toContain("namespace.unprotect");
+    expect(AUDIT_ACTIONS).toContain("billing.checkout");
+    expect(AUDIT_ACTIONS).toContain("billing.portal");
   });
 
   it("records admin writes, requires typed confirmation, exports titles only, and hides other tenants", async () => {

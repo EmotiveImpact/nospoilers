@@ -173,6 +173,9 @@ Create the app. Then:
 6. Webhook secret → `GITHUB_WEBHOOK_SECRET` (at least 32 random characters)
 7. `SESSION_SECRET` → a **different** long random string (at least 32 characters). Neon and https
    origins refuse to boot if this is missing, short, a known default, or equal to the webhook secret.
+8. Optional Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and Solo/Team monthly+yearly
+   price IDs. Checkout and `/api/webhooks/stripe` stay 503 until all six are set. Point Stripe at
+   `/api/webhooks/stripe`. Do not commit live secrets.
 
 Where to install: **Install App** on your user or org, only the throwaway repo until you trust it.
 

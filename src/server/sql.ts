@@ -816,6 +816,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureOrganizations(sql);
   await migrateDisclosureContactsPolicies(sql);
   await migrateDisclosureFindings(sql);
+  await migrateStripeBilling(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1301,7 +1302,9 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'identity.publish_advisory',
       'identity.unpublish_advisory',
       'namespace.protect',
-      'namespace.unprotect'
+      'namespace.unprotect',
+      'billing.checkout',
+      'billing.portal'
     ));
   `);
 }
@@ -1715,6 +1718,27 @@ async function migrateDisclosureFindings(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "058_disclosure_findings",
+  ]);
+}
+
+async function migrateStripeBilling(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS stripe_status TEXT;
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS stripe_price_id TEXT;
+    ALTER TABLE billing_accounts ADD COLUMN IF NOT EXISTS stripe_current_period_end TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS billing_accounts_stripe_customer_uidx
+      ON billing_accounts (stripe_customer_id)
+      WHERE stripe_customer_id IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS stripe_events (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "059_stripe_billing",
   ]);
 }
 

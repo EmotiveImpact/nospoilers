@@ -51,7 +51,7 @@ formats, not current claims; see `docs/ELECTRON.md`.
 
 **Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
-**Not built / Phase B:** Stripe, custom domain, Resend, Fly/Railway production deploy, Marketplace.
+**Not built / Phase B:** custom domain, Resend, Fly/Railway production deploy, Marketplace. Stripe Checkout/portal/webhooks are implemented and stay dark without keys.
 
 ---
 
