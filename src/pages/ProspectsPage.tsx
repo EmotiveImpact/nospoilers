@@ -37,14 +37,28 @@ type Prospect = {
   disclosure: DisclosureSummary | null
 }
 
+type InternalNotice = {
+  id: number
+  kind: "verified_critical"
+  prospectId: number
+  title: string
+  rules: string[]
+  readAt: string | null
+}
+
 type ProspectData = {
   prospects: Prospect[]
   stats: { total: number; actionable: number; queued: number; contacted: number }
+  notifications?: {
+    unread: number
+    items: InternalNotice[]
+  }
   policy: {
     publicArtifactsOnly: boolean
     sourceRetained: boolean
     outreachAutomatic: boolean
     disclosureSend: boolean
+    criticalNotifyUnverified: boolean
   }
 }
 
@@ -247,6 +261,18 @@ export function ProspectsPage() {
     }
   }
 
+  async function markNoticeRead(id: number) {
+    try {
+      await request(`/api/internal/notifications/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ read: true }),
+      })
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not mark notification read.")
+    }
+  }
+
   async function rescan(id: number) {
     try {
       await request(`/api/internal/prospects/${id}/rescan`, { method: "POST" })
@@ -340,6 +366,42 @@ export function ProspectsPage() {
           Refresh
         </Button>
       </div>
+
+      {data.notifications?.items.length ? (
+        <section className="mt-10 rounded-lg border border-white/10 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">
+              Verified critical
+            </h2>
+            <p className="text-xs text-dim">
+              {data.notifications.unread} unread · never mailed · never unverified
+            </p>
+          </div>
+          <ul className="mt-4 divide-y divide-white/8">
+            {data.notifications.items.map((notice) => (
+              <li key={notice.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm text-snow">{notice.title}</p>
+                  <p className="mt-1 font-mono text-xs text-dim">
+                    {notice.rules.join(" · ") || "critical fingerprints"}
+                    {notice.readAt ? " · read" : " · unread"}
+                  </p>
+                </div>
+                {!notice.readAt ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void markNoticeRead(notice.id)}
+                  >
+                    Mark read
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-lg bg-white/8 sm:grid-cols-4">
         {[

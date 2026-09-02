@@ -287,6 +287,12 @@ describe("Artifact Leads persistence", () => {
       });
       expect(openDesk.status).toBe(401);
 
+      const notices = await app.request("/api/internal/notifications", {
+        headers: { cookie },
+      });
+      expect(notices.status).toBe(401);
+      expect(((await notices.json()) as { notifications?: unknown }).notifications).toBeUndefined();
+
       await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
       const ownerSession = await store.createSession("owner-1");
       const allowed = await app.request("/api/internal/prospects", {

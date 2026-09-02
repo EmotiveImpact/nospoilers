@@ -298,6 +298,8 @@ Internal staff running acquisition and disclosure work.
   policy URL, draft preview, simulated acknowledgement, internal deadline flag,
   conversion attribution, and a fix-version rescan. `contacted` requires a verified
   case. `fixed` requires a recorded fix version and rescan. No message is sent.
+- Read owner-only verified-critical notifications on Artifact Leads
+  (`GET /api/internal/notifications`). Unverified scans do not notify. Nothing is mailed.
 
 **Must not**
 
@@ -337,6 +339,7 @@ These are never customer features:
 | Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` |
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
+| Verified-critical notifications | `/api/internal/notifications`; `internal_notifications`; owner-only; never mailed |
 | Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed; usage aggregates are counts only |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
@@ -372,6 +375,10 @@ These are never customer features:
 
 ## Tests
 
+`tests/internal-notifications.test.ts` proves a prospect scan with criticals does not
+notify, a verified warn-only case does not notify, a verified critical case creates one
+owner-only notification with rule ids and fingerprints only, a second verify is
+idempotent, mark-read works, and customer sessions stay 401.
 `tests/disclosure.test.ts` proves Disclosure Desk is owner-only, a signal cannot be marked
 verified without the checklist, `PATCH /api/internal/prospects/:id` cannot record
 `contacted` before a verified case or `fixed` before a fix-version rescan, duplicates
@@ -382,7 +389,7 @@ encrypted and expire from reads, drafts and acknowledgements stay `sent: false`,
 `store.updateProspectStatus` directly.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
-cannot open Disclosure Desk routes,
+cannot open Disclosure Desk or verified-critical notification routes,
 that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
 unpack aggregates, that nested workspace member discovery is metadata-only (private

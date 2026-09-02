@@ -256,6 +256,22 @@ CREATE TRIGGER disclosure_events_no_delete
   BEFORE DELETE ON disclosure_events
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_event_mutation();
 
+CREATE TABLE IF NOT EXISTS internal_notifications (
+  id BIGSERIAL PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('verified_critical')),
+  prospect_id BIGINT NOT NULL REFERENCES prospects (id) ON DELETE CASCADE,
+  case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  fingerprints JSONB NOT NULL DEFAULT '[]'::jsonb,
+  rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (case_id, kind)
+);
+
+CREATE INDEX IF NOT EXISTS internal_notifications_unread_idx
+  ON internal_notifications (read_at NULLS FIRST, created_at DESC, id DESC);
+
 CREATE TABLE IF NOT EXISTS watched_packages (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,

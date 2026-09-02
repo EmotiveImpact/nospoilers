@@ -10,6 +10,10 @@ import type {
   DisclosureEventRow,
   DisclosureState,
 } from "./disclosure.ts";
+import type {
+  InternalNotificationKind,
+  InternalNotificationRow,
+} from "./internal-notify.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
@@ -847,6 +851,30 @@ function disclosureCaseRow(row: {
     last_rescan_at: iso(row.last_rescan_at),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
     updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function internalNotificationRow(row: {
+  id: unknown;
+  kind: string;
+  prospect_id: unknown;
+  case_id: unknown;
+  title: string;
+  fingerprints: unknown;
+  rules: unknown;
+  read_at: string | Date | null;
+  created_at: string | Date;
+}): InternalNotificationRow {
+  return {
+    id: num(row.id),
+    kind: row.kind === "verified_critical" ? "verified_critical" : "verified_critical",
+    prospect_id: num(row.prospect_id),
+    case_id: num(row.case_id),
+    title: row.title,
+    fingerprints: asStringArray(row.fingerprints),
+    rules: asStringArray(row.rules),
+    read_at: iso(row.read_at),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
 
@@ -2753,6 +2781,61 @@ export function createStore(
         );
         return disclosureCaseRow(row);
       });
+    },
+
+    async insertInternalNotification(input: {
+      kind: InternalNotificationKind;
+      prospectId: number;
+      caseId: number;
+      title: string;
+      fingerprints: string[];
+      rules: string[];
+    }): Promise<InternalNotificationRow | null> {
+      const { rows } = await sql.query<Parameters<typeof internalNotificationRow>[0]>(
+        `INSERT INTO internal_notifications (
+           kind, prospect_id, case_id, title, fingerprints, rules
+         )
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+         ON CONFLICT (case_id, kind) DO NOTHING
+         RETURNING *`,
+        [
+          input.kind,
+          input.prospectId,
+          input.caseId,
+          input.title,
+          JSON.stringify(input.fingerprints),
+          JSON.stringify(input.rules),
+        ],
+      );
+      return rows[0] ? internalNotificationRow(rows[0]) : null;
+    },
+
+    async listInternalNotifications(limit = 50): Promise<InternalNotificationRow[]> {
+      const { rows } = await sql.query<Parameters<typeof internalNotificationRow>[0]>(
+        `SELECT * FROM internal_notifications
+         ORDER BY read_at NULLS FIRST, created_at DESC, id DESC
+         LIMIT $1`,
+        [Math.min(200, Math.max(1, limit))],
+      );
+      return rows.map((row) => internalNotificationRow(row));
+    },
+
+    async unreadInternalNotificationCount(): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM internal_notifications WHERE read_at IS NULL`,
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async markInternalNotificationRead(id: number): Promise<InternalNotificationRow | null> {
+      const { rows } = await sql.query<Parameters<typeof internalNotificationRow>[0]>(
+        `UPDATE internal_notifications
+         SET read_at = COALESCE(read_at, now())
+         WHERE id = $1
+         RETURNING *`,
+        [id],
+      );
+      return rows[0] ? internalNotificationRow(rows[0]) : null;
     },
 
     async recordDisclosureRescan(input: {

@@ -56,9 +56,10 @@ Read in this order:
   `release_revisions`.   `037_release_governance` adds append-only
   `release_approvals` and `release_legal_holds`, and extends
   `audit_events.action` with `release.approve`, `release.reject`,
-  `release.hold`, and `release.release_hold`. `038_disclosure_desk` adds
-  `disclosure_cases` and append-only `disclosure_events`. Next unused id is
-  `039_*`.
+  `release.hold`, and `release.release_hold`.   `038_disclosure_desk` adds
+  `disclosure_cases` and append-only `disclosure_events`.
+  `039_internal_notifications` adds owner-only verified-critical notifications.
+  Next unused id is `040_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -438,6 +439,8 @@ fix-version rescan. `contacted`/`fixed` are gated on the API. Nothing is sent.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.
+Owner-only verified-critical notifications fire when a case becomes verified
+and has critical fingerprints. Unverified scans do not notify. Nothing is mailed.
 The hourly poller, after customer work, checks up to eight known npm leads for a new
 latest and can run a three-repo discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
 if customer jobs are out or three prospect jobs are already queued/running. Owner

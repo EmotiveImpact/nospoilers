@@ -71,6 +71,7 @@ import {
   toDisclosureSummary,
   updateDisclosureCase,
 } from "./disclosure.ts";
+import { toNotificationView } from "./internal-notify.ts";
 import {
   discoverAndQueueProspects,
   inspectAndQueueRepository,
@@ -653,10 +654,12 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/api/internal/prospects", async (c) => {
     const limit = Number(c.req.query("limit") ?? 100);
-    const [prospects, stats, cases] = await Promise.all([
+    const [prospects, stats, cases, notices, unread] = await Promise.all([
       deps.store.listProspects(Number.isFinite(limit) ? limit : 100),
       deps.store.prospectStats(),
       deps.store.listDisclosureCases(),
+      deps.store.listInternalNotifications(10),
+      deps.store.unreadInternalNotificationCount(),
     ]);
     const byProspect = new Map(
       cases.map((row) => [row.prospect_id, toDisclosureSummary(row)] as const),
@@ -667,13 +670,41 @@ export function createApp(deps: AppDeps): Hono {
         disclosure: byProspect.get(prospect.id) ?? null,
       })),
       stats,
+      notifications: {
+        unread,
+        items: notices.map(toNotificationView),
+      },
       policy: {
         publicArtifactsOnly: true,
         sourceRetained: false,
         outreachAutomatic: false,
         disclosureSend: false,
+        criticalNotifyUnverified: false,
       },
     });
+  });
+
+  app.get("/api/internal/notifications", async (c) => {
+    const [items, unread] = await Promise.all([
+      deps.store.listInternalNotifications(50),
+      deps.store.unreadInternalNotificationCount(),
+    ]);
+    return c.json({
+      unread,
+      notifications: items.map(toNotificationView),
+      policy: { sent: false, unverified: false },
+    });
+  });
+
+  app.patch("/api/internal/notifications/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid notification." }, 400);
+    const body = jsonObj(await c.req.json());
+    if (body.read !== true) return c.json({ error: "Mark the notification read." }, 400);
+    const row = await deps.store.markInternalNotificationRead(id);
+    return row
+      ? c.json({ notification: toNotificationView(row) })
+      : c.json({ error: "Notification not found." }, 404);
   });
 
   app.get("/api/internal/queue", async (c) => {

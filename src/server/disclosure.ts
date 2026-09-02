@@ -1,5 +1,6 @@
 import { findingFingerprint } from "../receipt.ts";
 import type { Finding } from "../scanner/types.ts";
+import { notifyVerifiedCritical } from "./internal-notify.ts";
 import { isBlockedRegistryHost } from "./npm-registry.ts";
 import type { ProspectRow, Store } from "./store.ts";
 
@@ -648,6 +649,14 @@ export async function updateDisclosureCase(
       conversion,
     }),
   });
+  const prospect = await requireProspect(store, input.prospectId);
+  if (prospect) {
+    await notifyVerifiedCritical(store, {
+      previousState: current.state,
+      row,
+      prospect,
+    });
+  }
   return await loadedView(store, row);
 }
 

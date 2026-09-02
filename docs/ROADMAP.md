@@ -176,8 +176,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Internal Artifact Leads: public GitHub/npm discovery, metadata-only results, nested
   public workspace member packs (cap 8 queued / 40 listed names, never auto-watched),
   hourly npm version feed and three-repo scheduled discover behind customer jobs,
-  manual outreach state, and Disclosure Desk Phase 1 (verification, duplicates, draft
-  preview, simulated acknowledgement, fix-version rescan; nothing sent).
+  manual outreach state, Disclosure Desk Phase 1 (verification, duplicates, draft
+  preview, simulated acknowledgement, fix-version rescan; nothing sent), and
+  owner-only notifications for verified critical findings (never mailed).
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth
@@ -254,6 +255,11 @@ Exit: customer one can pay without GitHub Marketplace. Marketplace is optional a
 - Resend email. Serve built frontend and API together or document the production split.
 
 ## Milestone 5 — repeatable acquisition
+
+Done except anonymized aggregate research (still after review). Scheduled
+discovery, npm version feed, nested workspace discovery, Disclosure Desk
+verification, conversion attribution, and owner-only verified-critical
+notifications are in. Outreach stays manual. Nothing is mailed.
 
 - Scheduled public artifact discovery and npm version monitoring.
 - Nested workspace package discovery.

@@ -782,6 +782,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateReleaseSizeType(sql);
   await migrateReleaseGovernance(sql);
   await migrateDisclosureDesk(sql);
+  await migrateInternalNotifications(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1053,6 +1054,28 @@ async function migrateDisclosureDesk(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "038_disclosure_desk",
+  ]);
+}
+
+async function migrateInternalNotifications(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS internal_notifications (
+      id BIGSERIAL PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('verified_critical')),
+      prospect_id BIGINT NOT NULL REFERENCES prospects (id) ON DELETE CASCADE,
+      case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      fingerprints JSONB NOT NULL DEFAULT '[]'::jsonb,
+      rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (case_id, kind)
+    );
+    CREATE INDEX IF NOT EXISTS internal_notifications_unread_idx
+      ON internal_notifications (read_at NULLS FIRST, created_at DESC, id DESC);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "039_internal_notifications",
   ]);
 }
 
