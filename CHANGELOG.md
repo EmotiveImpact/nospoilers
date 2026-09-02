@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Disclosure Desk duplicate matching: a new case also warns on the same GitHub
+  owner (different repository) or the same vendor domain from a stored policy
+  URL or security-contact email. Forge and registry hosts are not vendor
+  domains. Do-not-contact entries whose contact is an email or host match that
+  domain. Customer sessions stay 401. No worker wake and no migration. Nothing
+  is mailed. Live Neon: unauth and `not-admin` 401; owner desk 200; prettier
+  vs left-pad still no duplicate (prettier.io does not match stevemao);
+  leftover destinations 0; no open jobs; campaigns 0; watches 0; Cloudflare
+  tunnel matched. Not a customer product and not a Pricing change.
+
 - Disclosure Desk destinations: owner saves one HTTPS webhook and one Jira
   Cloud project (`GET`/`POST`/`DELETE /api/internal/disclosure/destinations`).
   Secrets are encrypted and never returned. A test never invents an incident

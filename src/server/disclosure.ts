@@ -87,7 +87,7 @@ export const ALLOWED_ATTACHMENT_TYPES = [
 export type AllowedAttachmentType = (typeof ALLOWED_ATTACHMENT_TYPES)[number];
 export const MAX_ASSIGNEE = 39;
 
-export const DNC_MATCH_REASONS = ["owner_repo", "package", "contact"] as const;
+export const DNC_MATCH_REASONS = ["owner_repo", "package", "contact", "domain"] as const;
 export type DncReason = (typeof DNC_MATCH_REASONS)[number];
 
 export const MAX_TEMPLATE_NAME = 80;
@@ -98,7 +98,7 @@ export const MAX_OUTCOME_CVE = 40;
 export const MAX_OUTCOME_NOTES = 2000;
 export const MAX_DNC_REASON = 200;
 
-export type DuplicateReason = "owner_repo" | "package" | "fingerprint";
+export type DuplicateReason = "owner_repo" | "organization" | "package" | "fingerprint" | "domain";
 
 export type DuplicateMatch = {
   caseId: number;
@@ -575,6 +575,7 @@ export function matchDoNotContact(
     repo: string;
     packageName: string | null;
     securityContact: string | null;
+    policyUrl?: string | null;
   },
 ): DncMatch[] {
   const matches: DncMatch[] = [];
@@ -594,6 +595,16 @@ export function matchDoNotContact(
     const contact = entry.contact?.trim().toLowerCase() ?? "";
     const recorded = incoming.securityContact?.trim().toLowerCase() ?? "";
     if (contact && recorded && contact === recorded) reasons.push("contact");
+    const entryHost = vendorHostFromContact(entry.contact);
+    if (entryHost) {
+      const incomingHosts = collectVendorHosts(incoming.policyUrl, incoming.securityContact);
+      if (
+        incomingHosts.includes(entryHost) ||
+        ownerMatchesVendorHost(incoming.owner, entryHost)
+      ) {
+        reasons.push("domain");
+      }
+    }
     if (reasons.length === 0) continue;
     matches.push({
       id: entry.id,
@@ -674,6 +685,82 @@ export function parsePolicyUrl(raw: unknown): string | null {
     throw new DisclosureError("Policy URL path is not allowed.", 400);
   }
   return `https://${host}${port}${path}`;
+}
+
+const GENERIC_VENDOR_HOSTS = new Set([
+  "github.com",
+  "githubusercontent.com",
+  "gitlab.com",
+  "bitbucket.org",
+  "npmjs.com",
+  "npmjs.org",
+  "registry.npmjs.org",
+]);
+
+const MIN_OWNER_LABEL = 3;
+
+export function normalizeVendorHost(host: string | null | undefined): string | null {
+  if (!host) return null;
+  let name = host.trim().toLowerCase();
+  if (name.startsWith("www.")) name = name.slice(4);
+  if (!name || isBlockedRegistryHost(name)) return null;
+  if (GENERIC_VENDOR_HOSTS.has(name)) return null;
+  if (name.endsWith(".github.com") || name.endsWith(".githubusercontent.com")) return null;
+  if (name.endsWith(".npmjs.com") || name.endsWith(".npmjs.org")) return null;
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(name)) {
+    return null;
+  }
+  return name;
+}
+
+export function vendorHostFromPolicyUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return normalizeVendorHost(new URL(url).hostname);
+  } catch {
+    return null;
+  }
+}
+
+export function vendorHostFromContact(contact: string | null | undefined): string | null {
+  if (!contact) return null;
+  const trimmed = contact.trim();
+  const at = trimmed.lastIndexOf("@");
+  if (at > 0) return normalizeVendorHost(trimmed.slice(at + 1));
+  if (!trimmed.includes("/") && trimmed.includes(".")) return normalizeVendorHost(trimmed);
+  return null;
+}
+
+export function collectVendorHosts(
+  policyUrl: string | null | undefined,
+  contact: string | null | undefined,
+): string[] {
+  const hosts = new Set<string>();
+  const fromPolicy = vendorHostFromPolicyUrl(policyUrl);
+  const fromContact = vendorHostFromContact(contact);
+  if (fromPolicy) hosts.add(fromPolicy);
+  if (fromContact) hosts.add(fromContact);
+  return [...hosts];
+}
+
+export function ownerMatchesVendorHost(owner: string, host: string): boolean {
+  const login = owner.trim().toLowerCase();
+  if (login.length < MIN_OWNER_LABEL) return false;
+  const normalized = normalizeVendorHost(host) ?? host.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === login || normalized.startsWith(`${login}.`);
+}
+
+export function vendorHostsOverlap(
+  left: { owner: string; policyUrl?: string | null; securityContact?: string | null },
+  right: { owner: string; policyUrl?: string | null; securityContact?: string | null },
+): boolean {
+  const leftHosts = collectVendorHosts(left.policyUrl, left.securityContact);
+  const rightHosts = collectVendorHosts(right.policyUrl, right.securityContact);
+  if (leftHosts.some((host) => rightHosts.includes(host))) return true;
+  if (leftHosts.some((host) => ownerMatchesVendorHost(right.owner, host))) return true;
+  if (rightHosts.some((host) => ownerMatchesVendorHost(left.owner, host))) return true;
+  return false;
 }
 
 export function parseFixVersion(raw: unknown): string {
@@ -875,26 +962,29 @@ export function matchDuplicateReasons(
     repo: string;
     packageName: string | null;
     fingerprints: string[];
+    policyUrl?: string | null;
+    securityContact?: string | null;
   },
   incoming: {
     owner: string;
     repo: string;
     packageName: string | null;
     fingerprints: string[];
+    policyUrl?: string | null;
+    securityContact?: string | null;
   },
 ): DuplicateReason[] {
   const reasons: DuplicateReason[] = [];
-  if (
-    candidate.owner.toLowerCase() === incoming.owner.toLowerCase() &&
-    candidate.repo.toLowerCase() === incoming.repo.toLowerCase()
-  ) {
-    reasons.push("owner_repo");
-  }
+  const sameOwner = candidate.owner.toLowerCase() === incoming.owner.toLowerCase();
+  const sameRepo = candidate.repo.toLowerCase() === incoming.repo.toLowerCase();
+  if (sameOwner && sameRepo) reasons.push("owner_repo");
+  else if (sameOwner) reasons.push("organization");
   const left = candidate.packageName?.trim().toLowerCase() ?? "";
   const right = incoming.packageName?.trim().toLowerCase() ?? "";
   if (left && right && left === right) reasons.push("package");
   const theirs = new Set(candidate.fingerprints);
   if (incoming.fingerprints.some((fp) => theirs.has(fp))) reasons.push("fingerprint");
+  if (vendorHostsOverlap(candidate, incoming)) reasons.push("domain");
   return reasons;
 }
 
@@ -1077,6 +1167,8 @@ export async function findDuplicateMatches(
     repo: string;
     packageName: string | null;
     fingerprints: string[];
+    policyUrl?: string | null;
+    securityContact?: string | null;
   },
 ): Promise<DuplicateMatch[]> {
   const others = await store.listOtherDisclosureCases(incoming.prospectId);
@@ -1088,6 +1180,8 @@ export async function findDuplicateMatches(
         repo: row.repo,
         packageName: row.package_name,
         fingerprints: row.fingerprints,
+        policyUrl: row.policy_url,
+        securityContact: row.security_contact,
       },
       incoming,
     );
@@ -1112,6 +1206,7 @@ export async function findDncMatches(
     repo: string;
     packageName: string | null;
     securityContact: string | null;
+    policyUrl?: string | null;
   },
 ): Promise<DncMatch[]> {
   return matchDoNotContact(await store.listDoNotContact(), incoming);

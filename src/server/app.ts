@@ -1429,6 +1429,7 @@ export function createApp(deps: AppDeps): Hono {
         repo: existing.repo,
         packageName: existing.package_name,
         securityContact: desk?.security_contact ?? null,
+        policyUrl: desk?.policy_url ?? null,
       });
       if (dnc.length > 0) {
         return c.json({ error: DISCLOSURE_DNC_ERROR, dnc }, 409);

@@ -40,12 +40,12 @@ export type DuplicateMatch = {
   repo: string
   packageName: string | null
   state: DisclosureState
-  reasons: Array<"owner_repo" | "package" | "fingerprint">
+  reasons: Array<"owner_repo" | "organization" | "package" | "fingerprint" | "domain">
 }
 
 export type DncMatch = {
   id: number
-  reasons: Array<"owner_repo" | "package" | "contact">
+  reasons: Array<"owner_repo" | "package" | "contact" | "domain">
   owner: string | null
   repo: string | null
   packageName: string | null

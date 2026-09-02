@@ -202,7 +202,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   hourly npm version feed and one saved campaign (or the default search) for
   a three-repo scheduled discover behind customer jobs,
   manual outreach state, Disclosure Desk Phase 2 minus send plus internal
-  workflow (verification, duplicates, templates, vendor channel, do-not-contact,
+  workflow (verification, duplicates including GitHub owner and vendor domain —
+  live Neon prettier vs left-pad still no match,
+  templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before
   `contacted`, redacted reports, draft preview, simulated acknowledgement,
   fix-version rescan; expired attachment and notes ciphertext is zeroed on

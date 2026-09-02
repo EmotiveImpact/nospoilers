@@ -517,7 +517,9 @@ Artifact Leads inspect also queues up to eight public npm workspace member packs
 from the repo workspace config. Scanned packs store member names. Members are not
 auto-watched. Owner-only.
 Disclosure Desk Phase 2 minus send is in on Artifact Leads: verification
-checklist, duplicate warning, encrypted expiring notes, stored (never fetched)
+checklist, duplicate warning (owner/repo, GitHub owner, vendor domain,
+package, fingerprints; live Neon prettier vs left-pad still no match),
+encrypted expiring notes, stored (never fetched)
 policy URL, human-edited templates, preferred vendor channel, draft preview,
 simulated acknowledgement, internal deadline, conversion attribution,
 credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.

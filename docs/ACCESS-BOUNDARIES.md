@@ -348,7 +348,7 @@ Internal staff running acquisition and disclosure work.
   reports, internal deadline flag, conversion attribution,
   credit/CVE/outcome notes, and a fix-version rescan. `contacted` requires a verified
   case, an approved review, and is blocked when a do-not-contact entry matches
-  owner/repo, package, or contact. `fixed` requires a recorded fix version and rescan.
+  owner/repo, package, contact, or vendor domain. `fixed` requires a recorded fix version and rescan.
   No message is sent. Reports omit operator notes and attachment bytes.
 - Maintain owner-only disclosure templates and do-not-contact entries
   (`/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
@@ -449,10 +449,13 @@ idempotent, mark-read works, and customer sessions stay 401.
 `tests/disclosure.test.ts` proves Disclosure Desk is owner-only, a signal cannot be marked
 verified without the checklist, `PATCH /api/internal/prospects/:id` cannot record
 `contacted` before a verified case or `fixed` before a fix-version rescan, duplicates
-warn on owner/repo, package name, or fingerprint overlap unless confirmed, fingerprints
+warn on owner/repo, same GitHub owner, vendor domain (policy URL or contact email),
+package name, or fingerprint overlap unless confirmed, fingerprints
 are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are
 encrypted and expire from reads, drafts and acknowledgements stay `sent: false`, and
-`disclosure_events` are append-only. Existing feed tests still call
+`disclosure_events` are append-only. Live Neon: unauth and `not-admin` 401; owner
+desk 200; prettier vs left-pad still no duplicate; no open jobs; tunnel matched.
+Existing feed tests still call
 `store.updateProspectStatus` directly.
 `tests/disclosure-phase2.test.ts` proves human-edited templates substitute placeholders
 and still stay `sent: false`, do-not-contact blocks case create unless `researchOnly`

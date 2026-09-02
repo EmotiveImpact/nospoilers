@@ -119,7 +119,7 @@ describe("Disclosure Desk Phase 2 helpers", () => {
           securityContact: "security@prettier.io",
         },
       ).map((row) => row.reasons),
-    ).toEqual([["owner_repo", "package", "contact"]]);
+    ).toEqual([["owner_repo", "package", "contact", "domain"]]);
   });
 });
 

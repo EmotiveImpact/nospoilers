@@ -10,9 +10,13 @@ import {
   DISCLOSURE_SENT_ERROR,
   DISCLOSURE_VERIFIED_ERROR,
   fingerprintsFromFindings,
+  matchDoNotContact,
   matchDuplicateReasons,
+  ownerMatchesVendorHost,
   parsePolicyUrl,
   previewDisclosureDraft,
+  vendorHostFromContact,
+  vendorHostFromPolicyUrl,
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
@@ -108,6 +112,70 @@ describe("Disclosure Desk helpers", () => {
         },
       ),
     ).toEqual(["owner_repo", "package", "fingerprint"]);
+    expect(
+      matchDuplicateReasons(
+        {
+          owner: "prettier",
+          repo: "prettier",
+          packageName: "prettier",
+          fingerprints,
+          policyUrl: "https://prettier.io/security",
+        },
+        {
+          owner: "prettier",
+          repo: "eslint-plugin-prettier",
+          packageName: "eslint-plugin-prettier",
+          fingerprints: [],
+        },
+      ),
+    ).toEqual(["organization", "domain"]);
+    expect(
+      matchDuplicateReasons(
+        {
+          owner: "stevemao",
+          repo: "left-pad",
+          packageName: "left-pad",
+          fingerprints: [],
+          securityContact: "security@left-pad.example",
+        },
+        {
+          owner: "prettier",
+          repo: "prettier",
+          packageName: "prettier",
+          fingerprints,
+          policyUrl: "https://prettier.io/security",
+        },
+      ),
+    ).toEqual([]);
+    expect(vendorHostFromPolicyUrl("https://www.prettier.io/security")).toBe("prettier.io");
+    expect(vendorHostFromPolicyUrl("https://github.com/prettier/prettier")).toBeNull();
+    expect(vendorHostFromContact("security@prettier.io")).toBe("prettier.io");
+    expect(vendorHostFromContact("prettier.io")).toBe("prettier.io");
+    expect(ownerMatchesVendorHost("prettier", "prettier.io")).toBe(true);
+    expect(ownerMatchesVendorHost("stevemao", "prettier.io")).toBe(false);
+    expect(
+      matchDoNotContact(
+        [
+          {
+            id: 1,
+            owner: null,
+            repo: null,
+            package_name: null,
+            contact: "prettier.io",
+            reason: "Vendor domain is do-not-contact.",
+            created_by: "EmotiveImpact",
+            created_at: new Date().toISOString(),
+          },
+        ],
+        {
+          owner: "prettier",
+          repo: "eslint-plugin-prettier",
+          packageName: "eslint-plugin-prettier",
+          securityContact: null,
+          policyUrl: "https://prettier.io/security",
+        },
+      ).map((row) => row.reasons),
+    ).toEqual([["domain"]]);
     const draft = previewDisclosureDraft(
       {
         owner: "prettier",
@@ -452,6 +520,109 @@ describe("Disclosure Desk Phase 1", () => {
 
       const ungated = await store.updateProspectStatus(leftPadId, "contacted");
       expect(ungated?.status).toBe("contacted");
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("Disclosure Desk organization and domain matching", () => {
+  it("warns on the same GitHub owner or vendor domain and does not wake the worker", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "desk-domain-session" });
+      let wakes = 0;
+      const prettierId = await seedProspect(store, {
+        owner: "prettier",
+        repo: "prettier",
+        packageName: "prettier",
+        artifactUrl: "https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz",
+      });
+      const pluginId = await seedProspect(store, {
+        owner: "prettier",
+        repo: "eslint-plugin-prettier",
+        packageName: "eslint-plugin-prettier",
+        artifactUrl: "https://registry.npmjs.org/eslint-plugin-prettier/-/eslint-plugin-prettier-5.0.0.tgz",
+        artifactName: "eslint-plugin-prettier-5.0.0.tgz",
+        releaseTag: "5.0.0",
+      });
+      await store.completeProspectScan(pluginId, {
+        fileCount: 1,
+        findings: [
+          {
+            rule: "SEC-003",
+            severity: "critical",
+            path: "package/token.json",
+            title: "Provider token material",
+            detail: "must not be stored",
+          },
+        ],
+      });
+      const unrelatedId = await seedProspect(store, {
+        owner: "stevemao",
+        repo: "left-pad",
+        packageName: "left-pad",
+        artifactUrl: "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+        artifactName: "left-pad-1.3.0.tgz",
+        releaseTag: "1.3.0",
+      });
+      await store.completeProspectScan(unrelatedId, {
+        fileCount: 1,
+        findings: [
+          {
+            rule: "SIZE-001",
+            severity: "warn",
+            path: "package/index.js",
+            title: "Unusually large packed file",
+            detail: "must not be stored",
+          },
+        ],
+      });
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "desk-admin-token",
+          adminGithubLogin: "EmotiveImpact",
+          sessionSecret: "desk-domain-session",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {
+          wakes += 1;
+        },
+      });
+      const before = wakes;
+      const created = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(created.status).toBe(201);
+      const policy = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ policyUrl: "https://prettier.io/security" }),
+      });
+      expect(policy.status).toBe(200);
+      const orgDup = await app.request(`/api/internal/prospects/${pluginId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(orgDup.status).toBe(409);
+      const orgBody = (await orgDup.json()) as { duplicates: { reasons: string[] }[] };
+      expect(orgBody.duplicates[0]?.reasons).toEqual(
+        expect.arrayContaining(["organization", "domain"]),
+      );
+      expect(orgBody.duplicates[0]?.reasons).not.toContain("owner_repo");
+      expect(orgBody.duplicates[0]?.reasons).not.toContain("fingerprint");
+      const unrelated = await app.request(`/api/internal/prospects/${unrelatedId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({}),
+      });
+      expect(unrelated.status).toBe(201);
+      expect(wakes).toBe(before);
     } finally {
       await sql.close();
     }
