@@ -50,7 +50,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
-| Pre-publish CI gate | Partial: Action exists; generated workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked | NoSpoilers |
+| Pre-publish CI gate | Partial: this repo’s GitHub Actions rebuilds fixtures, fail-closes every dirty pack (sourcemap.* / dotenv.tgz) and passes every clean pack plus workspace.tgz; generated customer workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked; live customer PRs wait on Contents+PR write | NoSpoilers |
 | App-generated setup PR | Partial: reviewable PR, never merged; generated CI scans each existing pack under package.tgz and dist/; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
 | Required-check setup guidance | Partial: setup PR body and Watch copy tell maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |

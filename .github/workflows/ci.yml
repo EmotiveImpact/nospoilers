@@ -16,23 +16,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run fixtures
-      - name: Clean pack must pass
+      - name: Fixture packs must pass or fail closed
+        run: npm run ci:fixtures
+      - name: Clean pack SARIF
         run: npx tsx src/cli.ts scan fixtures/clean.tgz --sarif nospoilers.sarif
-      - name: Source map tarball must fail
-        run: |
-          if npx tsx src/cli.ts scan fixtures/sourcemap.tgz; then
-            echo "expected a failing scan" >&2
-            exit 1
-          fi
-      - name: Source map asar must fail
-        run: |
-          if npx tsx src/cli.ts scan fixtures/sourcemap.asar; then
-            echo "expected a failing asar scan" >&2
-            exit 1
-          fi
-      - name: Source map zip must fail
-        run: |
-          if npx tsx src/cli.ts scan fixtures/sourcemap.zip; then
-            echo "expected a failing zip scan" >&2
-            exit 1
-          fi

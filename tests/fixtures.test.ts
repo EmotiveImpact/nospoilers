@@ -166,6 +166,7 @@ describe("packed fixtures", () => {
 
   it("fails extra packed-format fixtures that contain a source map", async () => {
     const cases = [
+      ["sourcemap.vsix", "vsix"],
       ["sourcemap.crx", "crx"],
       ["sourcemap.xpi", "xpi"],
       ["sourcemap.chrome.zip", "xpi"],

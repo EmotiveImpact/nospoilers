@@ -21,6 +21,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   inconclusive. Overlay whiteouts are not applied. APK and Apple signatures are not verified.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
+- Product CI: after rebuilding fixtures, fail-closes every dirty pack and passes every clean
+  pack plus `workspace.tgz`. An unclassified fixture fails the gate.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
   release scans, alerts, and Watch desk.
 - Event-driven worker wake-up with a 15-minute recovery check.

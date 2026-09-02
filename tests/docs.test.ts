@@ -22,6 +22,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/Administration/);
     expect(text).toMatch(/Test install names that gap/);
     expect(text).toMatch(/does not ask for Administration/);
+    expect(text).toMatch(/fail-closes every advertised dirty pack/);
     expect(text).toMatch(/make-private, delete assets, disable workflows/);
     expect(text).toMatch(/signed receipt/i);
     expect(text).toMatch(/hashed in the browser/i);

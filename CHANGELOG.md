@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Product CI fail-closes every dirty fixture pack (`sourcemap.*`, `dotenv.tgz`) and passes every `clean.*` pack plus `workspace.tgz` after rebuild. An unclassified fixture fails the gate. The generated customer Action is unchanged. Not a Pricing change.
 - Connected the application runtime to Neon `NoSpoilers` / `production` / `neondb`.
 - Documented access boundaries; customer sessions cannot read Artifact Leads.
 - Allowed the Cloudflare tunnel host so GitHub can reach `/api/webhooks/github`.
