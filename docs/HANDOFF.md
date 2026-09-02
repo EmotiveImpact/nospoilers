@@ -87,7 +87,11 @@ Read in this order:
   `049_discovery_campaigns` adds owner-only `discovery_campaigns` for
   scheduled GitHub search queries.
   `050_disclosure_destinations` adds owner-only webhook and Jira Cloud
-  destinations for redacted Disclosure Desk filings. Next unused id is `051_*`.
+  destinations for redacted Disclosure Desk filings.
+  `051_operator_grants` lets the owner grant a GitHub login operator access
+  to Artifact Leads. Queue and further grants stay owner-only. Live Neon:
+  `051` applied; leftover grants 0 after typed DELETE. Next unused id is
+  `052_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -532,7 +536,13 @@ owner desk GET ran the sweep; no rows were expired so ciphertext stayed.
 Redacted JSON/HTML/PDF reports
 omit notes and attachment bytes. A missed deadline creates an internal reminder
 only. Nothing is sent. Researcher workload is owner-only case counts per
-assignee. Time spent is not tracked. Owner-only webhook and Jira destinations
+assignee. Time spent is not tracked. The owner can grant a GitHub login
+operator access to the desk; queue counts stay owner-only. Live Neon:
+`051` applied; unauth and `not-admin` 401; owner list empty; owner
+self-grant 400; missing confirm 400; grant `desk-researcher` 201; typed
+DELETE leftover grants 0; leftover destinations 0; no open jobs;
+campaigns 0; watches 0; Cloudflare tunnel matched.
+Owner-only webhook and Jira destinations
 file a redacted verified case after typed confirm. Tests never invent an
 incident. Client projects, billing, and aggregate research stay out.
 Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive

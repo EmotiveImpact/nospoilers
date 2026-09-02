@@ -316,6 +316,11 @@ describe("Artifact Leads persistence", () => {
       });
       expect(destinations.status).toBe(401);
       expect(JSON.stringify(await destinations.json())).not.toMatch(/hooks\.|atlassian/);
+      const operators = await app.request("/api/internal/operators", {
+        headers: { cookie },
+      });
+      expect(operators.status).toBe(401);
+      expect(JSON.stringify(await operators.json())).not.toMatch(/desk-researcher|operators/);
 
       await store.upsertUser({ id: "owner-1", login: "EmotiveImpact" });
       const ownerSession = await store.createSession("owner-1");

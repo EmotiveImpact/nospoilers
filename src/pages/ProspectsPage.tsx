@@ -93,7 +93,15 @@ type DeskDestination = {
   projectKey: string | null
 }
 
+type DeskOperator = {
+  id: number
+  githubLogin: string
+  createdBy: string
+  createdAt: string
+}
+
 type ProspectData = {
+  actor?: { login: string; role: "owner" | "operator" }
   prospects: Prospect[]
   stats: { total: number; actionable: number; queued: number; contacted: number }
   campaigns?: DeskCampaign[]
@@ -157,7 +165,7 @@ export function ProspectsPage() {
   const [campaignName, setCampaignName] = useState("")
   const [repository, setRepository] = useState("")
   const [working, setWorking] = useState<
-    "discover" | "repository" | "feed" | "campaign" | "destination" | null
+    "discover" | "repository" | "feed" | "campaign" | "destination" | "operator" | null
   >(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
@@ -172,6 +180,9 @@ export function ProspectsPage() {
   const [dncPackage, setDncPackage] = useState("")
   const [dncContact, setDncContact] = useState("")
   const [dncReason, setDncReason] = useState("")
+  const [operators, setOperators] = useState<DeskOperator[]>([])
+  const [operatorLogin, setOperatorLogin] = useState("")
+  const [operatorConfirm, setOperatorConfirm] = useState("")
   const [destinations, setDestinations] = useState<DeskDestination[]>([])
   const [webhookUrl, setWebhookUrl] = useState("")
   const [webhookConfirm, setWebhookConfirm] = useState("")
@@ -224,10 +235,22 @@ export function ProspectsPage() {
     try {
       const data = await request<ProspectData>("/api/internal/prospects")
       setState({ status: "ready", data })
-      try {
-        setQueue(await request<OwnerQueueHealth>("/api/internal/queue"))
-      } catch {
+      if (data.actor?.role === "owner") {
+        try {
+          setQueue(await request<OwnerQueueHealth>("/api/internal/queue"))
+        } catch {
+          setQueue(null)
+        }
+        try {
+          setOperators(
+            (await request<{ operators: DeskOperator[] }>("/api/internal/operators")).operators,
+          )
+        } catch {
+          setOperators([])
+        }
+      } else {
         setQueue(null)
+        setOperators([])
       }
       try {
         const [templateBody, dncBody, workloadBody, destinationBody] = await Promise.all([
@@ -470,6 +493,42 @@ export function ProspectsPage() {
     }
   }
 
+  async function grantOperator() {
+    setWorking("operator")
+    setNotice(null)
+    try {
+      await request("/api/internal/operators", {
+        method: "POST",
+        body: JSON.stringify({ githubLogin: operatorLogin, confirm: operatorConfirm }),
+      })
+      setOperatorLogin("")
+      setOperatorConfirm("")
+      setNotice("Granted Artifact Leads access. Queue and grant admin stay with the owner.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not grant that login.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function revokeOperator(operator: DeskOperator) {
+    setWorking("operator")
+    setNotice(null)
+    try {
+      await request(`/api/internal/operators/${operator.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ confirm: operator.githubLogin }),
+      })
+      setNotice(`Removed operator access for ${operator.githubLogin}.`)
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not revoke that grant.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
   async function saveWebhookDestination() {
     setWorking("destination")
     setNotice(null)
@@ -643,9 +702,10 @@ export function ProspectsPage() {
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
             records a simulated acknowledgement, and enforces do-not-contact. Missed
             deadlines stay as internal reminders. Researcher workload is case counts
-            by assignee. Time spent is not tracked. A verified case can be filed to an
-            owner webhook or Jira Cloud project after typed confirm. Nothing is mailed
-            or publicly named.
+            by assignee. Time spent is not tracked. The owner can grant a GitHub login
+            operator access to this desk. Queue counts stay owner-only. A verified case
+            can be filed to an owner webhook or Jira Cloud project after typed confirm.
+            Nothing is mailed or publicly named.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -740,6 +800,67 @@ export function ProspectsPage() {
               ))}
             </ul>
           )}
+        </section>
+      ) : null}
+
+      {data.actor?.role === "owner" ? (
+        <section className="mt-10 rounded-lg border border-white/10 p-5">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Researcher roles</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
+            Grant a GitHub login operator access to Artifact Leads and Disclosure Desk. Type
+            the login to confirm. Queue counts and further grants stay with the owner. Time
+            spent is not tracked.
+          </p>
+          {operators.length > 0 ? (
+            <ul className="mt-5 divide-y divide-white/8">
+              {operators.map((operator) => (
+                <li
+                  key={operator.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <p className="text-sm text-snow">{operator.githubLogin}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={working === "operator"}
+                    onClick={() => void revokeOperator(operator)}
+                  >
+                    Revoke
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-dim">No operator grants.</p>
+          )}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <Field>
+              <Label className="text-[11px] uppercase tracking-[0.18em] text-dim">GitHub login</Label>
+              <Input
+                value={operatorLogin}
+                onChange={(event) => setOperatorLogin(event.target.value)}
+                className="mt-2 w-full rounded-md border border-white/10 bg-ink px-3 py-2 text-sm text-snow"
+              />
+            </Field>
+            <Field>
+              <Label className="text-[11px] uppercase tracking-[0.18em] text-dim">Type login</Label>
+              <Input
+                value={operatorConfirm}
+                onChange={(event) => setOperatorConfirm(event.target.value)}
+                className="mt-2 w-full rounded-md border border-white/10 bg-ink px-3 py-2 text-sm text-snow"
+              />
+            </Field>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-4"
+            disabled={working === "operator" || !operatorLogin || !operatorConfirm}
+            onClick={() => void grantOperator()}
+          >
+            Grant operator access
+          </Button>
         </section>
       ) : null}
 

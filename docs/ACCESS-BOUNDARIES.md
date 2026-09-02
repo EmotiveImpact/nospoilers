@@ -370,8 +370,14 @@ Internal staff running acquisition and disclosure work.
 - Change another customer’s billing or GitHub installation.
 - Export cross-customer datasets for research without anonymization review.
 
-**Current implementation:** Operator is not a separate login. Use Owner credentials
-(`ADMIN_TOKEN` or `ADMIN_GITHUB_LOGIN`) until a narrower operator grant exists.
+**Current implementation:** Owner credentials (`ADMIN_TOKEN` or `ADMIN_GITHUB_LOGIN`)
+are always operators. The owner can grant additional GitHub logins operator access
+(`GET`/`POST`/`DELETE /api/internal/operators`, cap 8, typed login confirm). Granted
+operators use Artifact Leads and Disclosure Desk. Queue counts and further grants stay
+owner-only. Customer sessions stay 401. Live Neon: `051` applied; unauth and
+`not-admin` 401; owner list empty; owner self-grant 400; missing confirm 400;
+grant `desk-researcher` 201; typed DELETE leftover grants 0; leftover
+destinations 0; no open jobs; campaigns 0; watches 0; tunnel matched.
 
 ### NoSpoilers Owner
 
@@ -384,7 +390,10 @@ The product owner (GitHub login `EmotiveImpact` unless `ADMIN_GITHUB_LOGIN` is c
 - See global queue depth, failed-job counts, and daily hosted-unpack aggregates at
   `GET /api/internal/queue` (shown on Artifact Leads). Counts only: no payloads, tenant
   names, remaining-credit UI, or credential values. Usage fields are
-  `customerHeavyToday`, `installsWarning`, and `installsExhausted`.
+  `customerHeavyToday`, `installsWarning`, and `installsExhausted`. Granted operators
+  receive 403.
+- Grant and revoke operator GitHub logins (`/api/internal/operators`). Cap 8.
+  Typed login confirm. The owner login cannot be granted.
 - Change production configuration.
 
 **Must not**
@@ -398,8 +407,9 @@ These are never customer features:
 
 | Surface | Route / data |
 | --- | --- |
-| Artifact Leads | `/internal/prospects`, `/api/internal/prospects*` |
-| Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` including replies, attachments, assign, review, and report |
+| Artifact Leads | `/internal/prospects`, `/api/internal/prospects*`; owner or granted operator |
+| Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` including replies, attachments, assign, review, and report; owner or granted operator |
+| Researcher roles | `/api/internal/operators`; owner grants a GitHub login; cap 8; typed confirm |
 | Disclosure templates | `/api/internal/disclosure/templates`; `disclosure_templates`; owner-only |
 | Researcher workload | `/api/internal/disclosure/workload`; case counts per assignee; no time tracking |
 | Disclosure destinations | `/api/internal/disclosure/destinations`; webhook + Jira; encrypted; owner-only |
@@ -407,7 +417,7 @@ These are never customer features:
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
 | Verified-critical and deadline-missed notifications | `/api/internal/notifications`; `internal_notifications`; owner-only; never mailed |
-| Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed; usage aggregates are counts only |
+| Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; owner-only; granted operators 403; job bodies are not listed; usage aggregates are counts only |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
 
@@ -435,8 +445,10 @@ These are never customer features:
 ## How access is checked today
 
 1. **Public / customer APIs** — signed session cookie `ns_session` where required.
-2. **Internal APIs** — `Authorization: Bearer $ADMIN_TOKEN`, `x-admin-token`, **or** a
-   session whose GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`).
+2. **Internal APIs** — `Authorization: Bearer $ADMIN_TOKEN`, `x-admin-token`, a
+   session whose GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`),
+   **or** a session whose GitHub login has an owner-granted `operator_grants` row.
+   Queue counts and operator-grant admin stay owner-only (403).
 3. Health reports `database.mode` as `neon`, `postgres`, or `pglite` and never the URL.
    `/status` renders that same public liveness payload.
 
@@ -462,6 +474,13 @@ and still stay `sent: false`, do-not-contact blocks case create unless `research
 and always blocks `contacted`, vendor channel and credit/CVE/outcome notes persist,
 a missed deadline creates one `deadline_missed` internal notification, and customer
 sessions stay 401 on template and do-not-contact routes.
+`tests/operator-grants.test.ts` proves the owner can grant a GitHub login operator
+access, a granted researcher can read Artifact Leads, queue and further grants stay
+403, remigrate keeps the table, customer sessions stay 401, and no worker wake.
+Live Neon: `051` applied; unauth and `not-admin` 401; owner list empty; owner
+self-grant 400; missing confirm 400; grant `desk-researcher` 201; typed DELETE
+leftover grants 0; leftover destinations 0; no open jobs; campaigns 0; watches 0;
+tunnel matched.
 `tests/disclosure-destinations.test.ts` proves webhook and Jira destinations are
 owner-only, secrets never return, private/Slack URLs 400, tests never invent an
 incident or create a Jira issue, unverified notify is 409, a verified prettier
@@ -491,7 +510,7 @@ campaigns, remigrate keeps rows, and no prospect job is enqueued. Live Neon:
 rows; prospect count unchanged; tunnel matched.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
-cannot open Disclosure Desk, template, do-not-contact, workload, destination, or notification routes,
+cannot open Disclosure Desk, template, do-not-contact, workload, destination, operator-grant, or notification routes,
 that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
 unpack aggregates, that nested workspace member discovery is metadata-only (private

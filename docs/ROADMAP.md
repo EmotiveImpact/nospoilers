@@ -210,8 +210,12 @@ the immediate operational sequence. The exhaustive expansion plan is
   fix-version rescan; expired attachment and notes ciphertext is zeroed on
   schedule; nothing sent), and
   owner-only notifications for verified critical findings and missed deadlines
-  (never mailed), owner-only researcher workload as case counts per
-  assignee (no time tracking), and   owner-only webhook/Jira destinations
+  (never mailed),   owner-only researcher workload as case counts per
+  assignee (no time tracking), owner-granted researcher roles (queue stays
+  owner-only; live Neon: `051` applied; unauth/`not-admin` 401; owner
+  self-grant 400; grant `desk-researcher` 201; typed DELETE leftover
+  grants 0; leftover destinations 0; no open jobs; tunnel matched), and
+  owner-only webhook/Jira destinations
   that file a redacted verified case after typed confirm (test never
   invents an incident). Live destination gates: `050` applied;
   unauth/`not-admin` 401; owner list empty; localhost webhook 400;

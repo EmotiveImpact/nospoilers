@@ -1079,3 +1079,12 @@ CREATE TABLE IF NOT EXISTS disclosure_destinations (
 CREATE INDEX IF NOT EXISTS disclosure_destinations_kind_idx
   ON disclosure_destinations (kind);
 
+CREATE TABLE IF NOT EXISTS operator_grants (
+  id BIGSERIAL PRIMARY KEY,
+  github_login TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS operator_grants_login_idx
+  ON operator_grants (lower(github_login));
+

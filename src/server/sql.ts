@@ -808,6 +808,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureEvidenceExpiry(sql);
   await migrateDiscoveryCampaigns(sql);
   await migrateDisclosureDestinations(sql);
+  await migrateOperatorGrants(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1489,6 +1490,22 @@ async function migrateDisclosureDestinations(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "050_disclosure_destinations",
+  ]);
+}
+
+async function migrateOperatorGrants(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS operator_grants (
+      id BIGSERIAL PRIMARY KEY,
+      github_login TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS operator_grants_login_idx
+      ON operator_grants (lower(github_login));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "051_operator_grants",
   ]);
 }
 

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- Disclosure Desk researcher roles: owner grants a GitHub login operator access
+  to Artifact Leads (`GET`/`POST`/`DELETE /api/internal/operators`, cap 8,
+  typed login confirm). Granted operators can run the desk. Queue counts and
+  further grants stay owner-only (403). The owner login cannot be granted.
+  Customer sessions stay 401. No worker wake. Nothing is mailed. Live Neon:
+  `051` applied; unauth and `not-admin` 401; owner list empty; owner
+  self-grant 400; missing confirm 400; grant `desk-researcher` 201; typed
+  DELETE leftover grants 0; leftover destinations 0; no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk duplicate matching: a new case also warns on the same GitHub
   owner (different repository) or the same vendor domain from a stored policy
   URL or security-contact email. Forge and registry hosts are not vendor

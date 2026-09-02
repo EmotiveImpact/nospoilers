@@ -113,6 +113,16 @@ import {
   saveDisclosureWebhook,
   testDisclosureDestination,
 } from "./disclosure-destinations.ts";
+import {
+  OPERATOR_CONFIRM_ERROR,
+  OPERATOR_GRANT_ERROR,
+  OPERATOR_OWNER_ERROR,
+  OPERATOR_UNKNOWN_ERROR,
+  assertOperatorConfirm,
+  isOwnerGithubLogin,
+  parseOperatorGithubLogin,
+  publicOperatorGrant,
+} from "./operator-grants.ts";
 import { remindMissedDisclosureDeadlines, toNotificationView } from "./internal-notify.ts";
 import {
   discoverAndQueueProspects,
@@ -667,7 +677,7 @@ export function createApp(deps: AppDeps): Hono {
     );
   }
 
-  async function isInternalAdmin(c: Context): Promise<boolean> {
+  async function isOwner(c: Context): Promise<boolean> {
     const authorization = c.req.header("authorization") ?? "";
     const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     const headerToken = c.req.header("x-admin-token") ?? bearer;
@@ -684,6 +694,12 @@ export function createApp(deps: AppDeps): Hono {
         deps.config.adminGithubLogin &&
         user.login.toLowerCase() === deps.config.adminGithubLogin.toLowerCase(),
     );
+  }
+
+  async function isOperator(c: Context): Promise<boolean> {
+    if (await isOwner(c)) return true;
+    const user = await currentUser(c);
+    return Boolean(user?.login && (await deps.store.hasOperatorGrant(user.login)));
   }
 
   async function internalActor(c: Context): Promise<string> {
@@ -710,7 +726,7 @@ export function createApp(deps: AppDeps): Hono {
   }
 
   app.use("/api/internal/*", async (c, next) => {
-    if (!(await isInternalAdmin(c))) {
+    if (!(await isOperator(c))) {
       return c.json(
         {
           error: "Admin access required.",
@@ -772,6 +788,10 @@ export function createApp(deps: AppDeps): Hono {
       cases.map((row) => [row.prospect_id, toDisclosureSummary(row)] as const),
     );
     return c.json({
+      actor: {
+        login: await internalActor(c),
+        role: (await isOwner(c)) ? "owner" : "operator",
+      },
       prospects: prospects.map((prospect) => ({
         ...prospect,
         disclosure: byProspect.get(prospect.id) ?? null,
@@ -964,8 +984,59 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/internal/queue", async (c) => {
+    if (!(await isOwner(c))) return c.json({ error: OPERATOR_OWNER_ERROR }, 403);
     const health = await deps.store.ownerQueueHealth(deps.config.jobStaleMs);
     return c.json(health);
+  });
+
+  app.get("/api/internal/operators", async (c) => {
+    if (!(await isOwner(c))) return c.json({ error: OPERATOR_OWNER_ERROR }, 403);
+    const grants = await deps.store.listOperatorGrants();
+    return c.json({
+      operators: grants.map(publicOperatorGrant),
+      policy: { timeTracking: false, productivitySurveillance: false },
+    });
+  });
+
+  app.post("/api/internal/operators", async (c) => {
+    if (!(await isOwner(c))) return c.json({ error: OPERATOR_OWNER_ERROR }, 403);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const githubLogin = parseOperatorGithubLogin(body.githubLogin);
+      assertOperatorConfirm(githubLogin, body.confirm);
+      if (isOwnerGithubLogin(githubLogin, deps.config.adminGithubLogin)) {
+        return c.json({ error: OPERATOR_GRANT_ERROR }, 400);
+      }
+      const grant = await deps.store.insertOperatorGrant({
+        githubLogin,
+        createdBy: await internalActor(c),
+      });
+      return c.json({ operator: publicOperatorGrant(grant) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : OPERATOR_GRANT_ERROR },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/internal/operators/:id", async (c) => {
+    if (!(await isOwner(c))) return c.json({ error: OPERATOR_OWNER_ERROR }, 403);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: OPERATOR_UNKNOWN_ERROR }, 400);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const existing = await deps.store.getOperatorGrant(id);
+    if (!existing) return c.json({ error: OPERATOR_UNKNOWN_ERROR }, 404);
+    try {
+      assertOperatorConfirm(existing.github_login, body.confirm);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : OPERATOR_CONFIRM_ERROR },
+        400,
+      );
+    }
+    const removed = await deps.store.deleteOperatorGrant(id);
+    return removed ? c.json({ ok: true }) : c.json({ error: OPERATOR_UNKNOWN_ERROR }, 404);
   });
 
   app.get("/api/internal/prospects/campaigns", async (c) => {

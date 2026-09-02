@@ -56,6 +56,11 @@ import {
   type DisclosureDestinationKind,
   type DisclosureDestinationRow,
 } from "./disclosure-destinations.ts";
+import {
+  OPERATOR_CAP_ERROR,
+  OPERATOR_EXISTS_ERROR,
+  type OperatorGrantRow,
+} from "./operator-grants.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -1149,6 +1154,20 @@ function disclosureDestinationRow(row: {
     created_by: row.created_by,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
     updated_at: iso(row.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+function operatorGrantRow(row: {
+  id: unknown;
+  github_login: string;
+  created_by: string;
+  created_at: string | Date;
+}): OperatorGrantRow {
+  return {
+    id: num(row.id),
+    github_login: row.github_login,
+    created_by: row.created_by,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
 
@@ -3466,6 +3485,69 @@ export function createStore(
         projectKey: row.project_key,
         secret: decryptSecret(row.secret_ciphertext, tokenSecret),
       };
+    },
+
+    async listOperatorGrants(): Promise<OperatorGrantRow[]> {
+      const { rows } = await sql.query<Parameters<typeof operatorGrantRow>[0]>(
+        `SELECT * FROM operator_grants ORDER BY lower(github_login) ASC, id ASC`,
+      );
+      return rows.map((row) => operatorGrantRow(row));
+    },
+
+    async hasOperatorGrant(login: string): Promise<boolean> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM operator_grants WHERE lower(github_login) = $1`,
+        [githubLoginKey(login)],
+      );
+      return num(rows[0]?.n ?? 0) > 0;
+    },
+
+    async getOperatorGrant(id: number): Promise<OperatorGrantRow | null> {
+      const { rows } = await sql.query<Parameters<typeof operatorGrantRow>[0]>(
+        `SELECT * FROM operator_grants WHERE id = $1`,
+        [id],
+      );
+      return rows[0] ? operatorGrantRow(rows[0]) : null;
+    },
+
+    async insertOperatorGrant(input: {
+      githubLogin: string;
+      createdBy: string;
+    }): Promise<OperatorGrantRow> {
+      const existing = await sql.query<{ id: unknown }>(
+        `SELECT id FROM operator_grants WHERE lower(github_login) = $1`,
+        [githubLoginKey(input.githubLogin)],
+      );
+      if (existing.rows[0]) {
+        throw Object.assign(new Error(OPERATOR_EXISTS_ERROR), {
+          status: 409,
+        });
+      }
+      const { rows: counted } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM operator_grants`,
+      );
+      if (num(counted[0]?.n ?? 0) >= 8) {
+        throw Object.assign(new Error(OPERATOR_CAP_ERROR), {
+          status: 400,
+        });
+      }
+      const { rows } = await sql.query<Parameters<typeof operatorGrantRow>[0]>(
+        `INSERT INTO operator_grants (github_login, created_by)
+         VALUES ($1, $2)
+         RETURNING *`,
+        [input.githubLogin, input.createdBy],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not save that operator grant.");
+      return operatorGrantRow(row);
+    },
+
+    async deleteOperatorGrant(id: number): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM operator_grants WHERE id = $1 RETURNING id`,
+        [id],
+      );
+      return Boolean(rows[0]);
     },
 
     async listDisclosureVendorReplies(caseId: number): Promise<DisclosureVendorReplyRow[]> {
