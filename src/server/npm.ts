@@ -1,4 +1,9 @@
 import {
+  parseScopeSearchHits,
+  registryScopeSearchUrl,
+  type NamespaceSearchHit,
+} from "./namespace-names.ts";
+import {
   parseRegistryOrigin,
   PUBLIC_NPM_HOST,
   PUBLIC_NPM_ORIGIN,
@@ -55,9 +60,12 @@ export type NpmPack = {
   channelTarballs?: NpmChannelTarball[];
 };
 
+export type { NamespaceSearchHit };
+
 export type NpmPort = {
   getPack: (packageName: string, auth?: NpmAuth) => Promise<NpmPack | null>;
   downloadTarball: (url: string, maxBytes: number, auth?: NpmAuth) => Promise<Buffer>;
+  searchScope: (scope: string) => Promise<NamespaceSearchHit[]>;
 };
 
 const NAME_RE = /^(?:@[a-z0-9][a-z0-9-._]{0,212}\/)?[a-z0-9][a-z0-9-._]{0,213}$/;
@@ -351,6 +359,25 @@ export function createNpmPort(): NpmPort {
       if (!response.ok) throw new Error(`npm tarball download returned ${response.status}.`);
       allowedNpmTarballUrl(response.url, resolved.host);
       return await readLimitedBody(response, maxBytes);
+    },
+    async searchScope(scope) {
+      const url = registryScopeSearchUrl(scope);
+      const response = await fetch(url, {
+        redirect: "follow",
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!response.ok) throw new Error(`npm search returned ${response.status}.`);
+      let finalHost = "";
+      try {
+        finalHost = new URL(response.url).hostname.toLowerCase();
+      } catch {
+        throw new Error("npm search returned an invalid URL.");
+      }
+      if (finalHost !== PUBLIC_NPM_HOST) {
+        throw new Error("npm search redirected off registry.npmjs.org.");
+      }
+      const body = (await response.json()) as unknown;
+      return parseScopeSearchHits(scope, body);
     },
   };
 }

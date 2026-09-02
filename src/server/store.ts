@@ -457,6 +457,24 @@ export type PackageProtectionRow = {
   created_at: string;
 };
 
+export type ProtectedNamespaceRow = {
+  id: number;
+  installation_id: number;
+  scope: string;
+  names: string[];
+  created_by_login: string;
+  last_checked_at: string | null;
+  created_at: string;
+};
+
+export type NamespaceNameSnapshotRow = {
+  id: number;
+  namespace_id: number;
+  installation_id: number;
+  names: string[];
+  created_at: string;
+};
+
 export type PackageIdentitySnapshotRow = {
   id: number;
   installation_id: number;
@@ -537,6 +555,44 @@ function packageProtectionRow(row: {
     package_id: num(row.package_id),
     verified_via: row.verified_via as PackageProtectionRow["verified_via"],
     github_repo: row.github_repo,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function protectedNamespaceRow(
+  row: {
+    id: unknown;
+    installation_id: unknown;
+    scope: string;
+    created_by_login: string;
+    last_checked_at: string | Date | null;
+    created_at: string | Date;
+  },
+  names: string[] = [],
+): ProtectedNamespaceRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    scope: row.scope,
+    names,
+    created_by_login: row.created_by_login,
+    last_checked_at: iso(row.last_checked_at),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function namespaceSnapshotRow(row: {
+  id: unknown;
+  namespace_id: unknown;
+  installation_id: unknown;
+  names: unknown;
+  created_at: string | Date;
+}): NamespaceNameSnapshotRow {
+  return {
+    id: num(row.id),
+    namespace_id: num(row.namespace_id),
+    installation_id: num(row.installation_id),
+    names: asStringArray(row.names).filter((name) => name.startsWith("@")).sort(),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -4305,6 +4361,170 @@ export function createStore(
         [input.packageId, input.enabled, input.actorLogin],
       );
       return rows[0] ? identityEvidencePackRow(rows[0]) : null;
+    },
+
+    async insertProtectedNamespace(input: {
+      installationId: number;
+      scope: string;
+      createdByLogin: string;
+    }): Promise<ProtectedNamespaceRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        scope: string;
+        created_by_login: string;
+        last_checked_at: string | Date | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO protected_namespaces (installation_id, scope, created_by_login)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (installation_id) DO NOTHING
+         RETURNING *`,
+        [input.installationId, input.scope, input.createdByLogin],
+      );
+      return rows[0] ? protectedNamespaceRow(rows[0]) : null;
+    },
+
+    async getProtectedNamespace(id: number): Promise<ProtectedNamespaceRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        scope: string;
+        created_by_login: string;
+        last_checked_at: string | Date | null;
+        created_at: string | Date;
+      }>(`SELECT * FROM protected_namespaces WHERE id = $1`, [id]);
+      if (!rows[0]) return null;
+      const snapshot = await this.latestNamespaceSnapshot(id);
+      return protectedNamespaceRow(rows[0], snapshot?.names ?? []);
+    },
+
+    async getProtectedNamespaceForInstallation(
+      installationId: number,
+    ): Promise<ProtectedNamespaceRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        scope: string;
+        created_by_login: string;
+        last_checked_at: string | Date | null;
+        created_at: string | Date;
+      }>(`SELECT * FROM protected_namespaces WHERE installation_id = $1`, [installationId]);
+      if (!rows[0]) return null;
+      const snapshot = await this.latestNamespaceSnapshot(num(rows[0].id));
+      return protectedNamespaceRow(rows[0], snapshot?.names ?? []);
+    },
+
+    async listProtectedNamespacesForUser(
+      userId: string,
+      installationId?: number | null,
+    ): Promise<ProtectedNamespaceRow[]> {
+      const scoped = optionalInstallId(installationId);
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        scope: string;
+        created_by_login: string;
+        last_checked_at: string | Date | null;
+        created_at: string | Date;
+      }>(
+        `SELECT n.*
+         FROM protected_namespaces n
+         JOIN installation_users iu ON iu.installation_id = n.installation_id
+         WHERE iu.user_id = $1
+           AND ($2::bigint IS NULL OR n.installation_id = $2)
+         ORDER BY n.scope`,
+        [userId, scoped],
+      );
+      const out: ProtectedNamespaceRow[] = [];
+      for (const row of rows) {
+        const snapshot = await this.latestNamespaceSnapshot(num(row.id));
+        out.push(protectedNamespaceRow(row, snapshot?.names ?? []));
+      }
+      return out;
+    },
+
+    async deleteProtectedNamespaceForUser(id: number, userId: string): Promise<ProtectedNamespaceRow | null> {
+      const existing = await this.getProtectedNamespace(id);
+      if (!existing) return null;
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM protected_namespaces n
+         USING installation_users iu
+         WHERE n.id = $1
+           AND n.installation_id = iu.installation_id
+           AND iu.user_id = $2
+         RETURNING n.id`,
+        [id, userId],
+      );
+      return rows[0] ? existing : null;
+    },
+
+    async latestNamespaceSnapshot(namespaceId: number): Promise<NamespaceNameSnapshotRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        namespace_id: unknown;
+        installation_id: unknown;
+        names: unknown;
+        created_at: string | Date;
+      }>(
+        `SELECT * FROM namespace_name_snapshots WHERE namespace_id = $1 ORDER BY id DESC LIMIT 1`,
+        [namespaceId],
+      );
+      return rows[0] ? namespaceSnapshotRow(rows[0]) : null;
+    },
+
+    async insertNamespaceSnapshot(input: {
+      namespaceId: number;
+      installationId: number;
+      names: string[];
+    }): Promise<NamespaceNameSnapshotRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        namespace_id: unknown;
+        installation_id: unknown;
+        names: unknown;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO namespace_name_snapshots (namespace_id, installation_id, names)
+         VALUES ($1, $2, $3::jsonb)
+         RETURNING *`,
+        [input.namespaceId, input.installationId, JSON.stringify(input.names)],
+      );
+      if (!rows[0]) throw new Error("namespace snapshot insert returned no row");
+      return namespaceSnapshotRow(rows[0]);
+    },
+
+    async touchProtectedNamespaceChecked(id: number): Promise<void> {
+      await sql.query(`UPDATE protected_namespaces SET last_checked_at = now() WHERE id = $1`, [id]);
+    },
+
+    async listDueProtectedNamespaces(): Promise<ProtectedNamespaceRow[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        scope: string;
+        created_by_login: string;
+        last_checked_at: string | Date | null;
+        created_at: string | Date;
+      }>(
+        `SELECT * FROM protected_namespaces
+         WHERE last_checked_at IS NULL OR last_checked_at < now() - interval '1 hour'
+         ORDER BY last_checked_at ASC NULLS FIRST, id ASC`,
+      );
+      return rows.map((row) => protectedNamespaceRow(row));
+    },
+
+    async hasOpenNamespaceCheck(namespaceId: number): Promise<boolean> {
+      const { rows } = await sql.query<{ ok: number }>(
+        `SELECT 1 AS ok
+         FROM jobs
+         WHERE kind = 'namespace_check'
+           AND status IN ('queued', 'running')
+           AND (payload->>'namespaceId')::bigint = $1
+         LIMIT 1`,
+        [namespaceId],
+      );
+      return Boolean(rows[0]);
     },
 
     async countWatchedPackages(installationId: number): Promise<number> {

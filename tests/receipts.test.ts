@@ -212,6 +212,7 @@ describe("hosted receipts", () => {
           downloads.push(url);
           return await readFile(downloads.length === 1 ? FIXTURE : CLEAN);
         },
+        searchScope: async () => [],
       };
       const config = loadConfig({
         githubWebhookSecret: "wh",
@@ -631,6 +632,7 @@ describe("hosted receipts", () => {
           throw new Error("getPack should not run");
         },
         downloadTarball: async () => Buffer.from("pack"),
+        searchScope: async () => [],
       };
       const worker = createWorker({
         store,

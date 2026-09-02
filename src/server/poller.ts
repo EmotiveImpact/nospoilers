@@ -5,6 +5,7 @@ import { runNpmWatchPoll } from "./npm-watch.ts";
 import { runWebOriginPoll } from "./web-watch.ts";
 import { runMapCustodyPoll } from "./map-watch.ts";
 import { runProspectAcquisitionPoll } from "./prospect-feed.ts";
+import { runNamespaceWatchPoll } from "./namespace-watch.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
@@ -55,6 +56,7 @@ export function startPoller(
     void (async () => {
       await runVisibilityPoll(deps);
       const npm = await runNpmWatchPoll(deps);
+      const namespaces = await runNamespaceWatchPoll(deps);
       const web = await runWebOriginPoll(deps);
       const maps = await runMapCustodyPoll(deps);
       const prospects = await runProspectAcquisitionPoll({
@@ -63,7 +65,15 @@ export function startPoller(
         discovery: deps.prospectDiscovery,
         staleAfterMs: deps.staleAfterMs,
       });
-      if (npm.queued + web.queued + maps.queued + prospects.feedQueued + prospects.discoveryQueued > 0) {
+      if (
+        npm.queued +
+          namespaces.queued +
+          web.queued +
+          maps.queued +
+          prospects.feedQueued +
+          prospects.discoveryQueued >
+        0
+      ) {
         deps.wakeWorker?.();
       }
     })().catch((error: unknown) => {

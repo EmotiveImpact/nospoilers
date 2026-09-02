@@ -438,6 +438,9 @@ function stubFeedNpm(input: {
     downloadTarball: async () => {
       throw new Error("Feed must not download a tarball.");
     },
+    searchScope: async () => {
+      throw new Error("Feed must not search npm scopes.");
+    },
   };
 }
 

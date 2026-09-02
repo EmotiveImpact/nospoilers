@@ -32,6 +32,7 @@ import {
   runMapCustodyCheck,
 } from "./map-custody.ts";
 import { enqueueMapCustodyChecks } from "./map-watch.ts";
+import { NAMESPACE_CHECK_KIND, runNamespaceCheck } from "./namespace-watch.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
 
@@ -375,6 +376,19 @@ export async function handleJob(
       body: notes.join(" "),
       findings: allFindings,
     });
+  }
+
+  if (job.kind === NAMESPACE_CHECK_KIND) {
+    if (!deps.npm) throw new Error("namespace_check job is missing the npm port.");
+    const namespaceId = Number(payload.namespaceId);
+    if (!Number.isFinite(namespaceId) || namespaceId <= 0) return;
+    await runNamespaceCheck({
+      store: deps.store,
+      npm: deps.npm,
+      notifier: deps.notifier,
+      namespaceId,
+    });
+    return;
   }
 
   if (job.kind === "npm_dist_tag") {

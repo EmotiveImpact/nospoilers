@@ -291,6 +291,16 @@ type IdentityEvidenceView = {
   takedown: Record<string, unknown>;
 };
 
+type ProtectedNamespace = {
+  id: number;
+  installationId: number;
+  scope: string;
+  names: string[];
+  createdByLogin: string;
+  lastCheckedAt: string | null;
+  createdAt: string;
+};
+
 type Confirming =
   | { kind: "destination"; id: number; expected: string }
   | { kind: "route"; id: number; expected: string }
@@ -318,7 +328,8 @@ type Confirming =
   | { kind: "release-unpublish"; id: number; expected: string }
   | { kind: "identity-evidence"; id: number; expected: string }
   | { kind: "identity-publish-advisory"; id: number; expected: string }
-  | { kind: "identity-unpublish-advisory"; id: number; expected: string };
+  | { kind: "identity-unpublish-advisory"; id: number; expected: string }
+  | { kind: "namespace-unprotect"; id: number; expected: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -376,6 +387,8 @@ function confirmActionLabel(row: Confirming): string {
       return "publish a consumer advisory for this package";
     case "identity-unpublish-advisory":
       return "unpublish this consumer advisory";
+    case "namespace-unprotect":
+      return "stop watching this npm scope";
   }
 }
 
@@ -1193,6 +1206,11 @@ export function WatchPage({ search }: { search: string }) {
     {},
   );
   const [downloadingEvidenceId, setDownloadingEvidenceId] = useState<number | null>(null);
+  const [namespaces, setNamespaces] = useState<ProtectedNamespace[]>([]);
+  const [namespaceScope, setNamespaceScope] = useState("");
+  const [namespaceError, setNamespaceError] = useState<string | null>(null);
+  const [savingNamespace, setSavingNamespace] = useState(false);
+  const [checkingNamespaceId, setCheckingNamespaceId] = useState<number | null>(null);
   const [allowReasonByCandidate, setAllowReasonByCandidate] = useState<Record<number, string>>({});
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [confirmText, setConfirmText] = useState("");
@@ -1374,6 +1392,24 @@ export function WatchPage({ search }: { search: string }) {
       setIdentitySignals(identityStatus);
       setCandidatesByPackage(nextCandidates);
       setEvidenceByPackage(nextEvidence);
+      const namespaceResponse = await fetch(q("/api/namespaces"), { credentials: "include" });
+      const namespaceBody = (await namespaceResponse.json()) as {
+        error?: string;
+        namespaces?: ProtectedNamespace[];
+      };
+      if (namespaceResponse.status === 402 || namespaceResponse.status === 403) {
+        setNamespaces([]);
+      } else if (!namespaceResponse.ok) {
+        setNamespaces([]);
+        if (identityStatus.status === "ready") {
+          setIdentitySignals({
+            status: "error",
+            message: namespaceBody.error ?? "Could not load npm scope watchlists.",
+          });
+        }
+      } else {
+        setNamespaces(namespaceBody.namespaces ?? []);
+      }
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -1395,6 +1431,7 @@ export function WatchPage({ search }: { search: string }) {
       setRetention({ status: "error", message });
       setIdentitySignals({ status: "error", message });
       setEvidenceByPackage({});
+      setNamespaces([]);
       setMembers([]);
       setInvites([]);
       setMembersError(message);
@@ -1609,6 +1646,13 @@ export function WatchPage({ search }: { search: string }) {
               enabled: confirming.kind === "identity-publish-advisory",
               confirm,
             }),
+          });
+        } else if (confirming.kind === "namespace-unprotect") {
+          response = await fetch(`/api/namespaces/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
           });
         } else {
           throw new Error("Unknown confirmation.");
@@ -4048,7 +4092,9 @@ export function WatchPage({ search }: { search: string }) {
           larger unpacked, raises SIZE-003 against the
           approved baseline or the previous receipt. Protect identity only after the npm scope or
           GitHub repository field matches this install. Paste a list of names to protect owned
-          packs in one pass — registry metadata only, no tarball download, no scan queue. Other
+          packs in one pass — registry metadata only, no tarball download, no scan queue. Trial and
+          Team installs can watch the npm scope that matches this GitHub login. New names on that
+          public search are a Watch fact. The tarball is not downloaded. Other
           people’s packs are not added to this watch list. A later change of who published latest,
           or whether it used an npm trusted publisher, is a Watch fact. Email and OIDC config ids
           are not stored. Trial and Team installs then generate bounded
@@ -4065,16 +4111,147 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-            Lookalike, dormant, burst, new-dependency, packument-size, provenance, identity evidence,
-            and consumer advisories are on Team.
+            Lookalike, dormant, burst, new-dependency, packument-size, provenance, namespace
+            watchlists, identity evidence, and consumer advisories are on Team.
           </p>
         ) : ended ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-            Subscribe to Team to watch lookalike names and assemble identity evidence.
+            Subscribe to Team to watch lookalike names, an owned npm scope, and assemble identity
+            evidence.
           </p>
         ) : identitySignals.status === "error" ? (
           <p className="mt-4 max-w-xl text-sm text-danger">{identitySignals.message}</p>
         ) : null}
+        {!previewing && user && installations.length > 0 && identitySignals.status === "ready" && (
+          <div className="mt-6 max-w-xl">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">npm scope watchlist</p>
+            <p className="mt-2 text-sm leading-relaxed text-mute">
+              Public npm search only. Cap {20} names. First check is a baseline. Later new names
+              alert. Nothing is downloaded or auto-watched.
+            </p>
+            {installAdmin && namespaces.length === 0 ? (
+              <form
+                className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (locked || savingNamespace) return;
+                  const scope = namespaceScope.trim();
+                  if (!scope) return;
+                  setNamespaceError(null);
+                  setSavingNamespace(true);
+                  void (async () => {
+                    try {
+                      const response = await fetch("/api/namespaces", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({
+                          scope,
+                          confirm: scope,
+                          installationId: activeInstallId,
+                        }),
+                      });
+                      const body = (await response.json()) as { error?: string };
+                      if (!response.ok) throw new Error(body.error ?? "Could not watch that scope.");
+                      setNamespaceScope("");
+                      await refreshSignedIn(selectedInstallId);
+                    } catch (error) {
+                      setNamespaceError(
+                        error instanceof Error ? error.message : "Could not watch that scope.",
+                      );
+                    } finally {
+                      setSavingNamespace(false);
+                    }
+                  })();
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Scope</span>
+                  <input
+                    value={namespaceScope}
+                    onChange={(event) => setNamespaceScope(event.target.value)}
+                    placeholder="@scope"
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={locked}
+                    className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                  />
+                </label>
+                <Button type="submit" disabled={locked || savingNamespace || !namespaceScope.trim()}>
+                  {savingNamespace ? "Watching…" : "Watch scope"}
+                </Button>
+              </form>
+            ) : null}
+            {namespaceError ? <p className="mt-3 text-sm text-danger">{namespaceError}</p> : null}
+            {namespaces.length > 0 ? (
+              <ul className="mt-4 divide-y divide-white/5">
+                {namespaces.map((row) => (
+                  <li key={row.id} className="py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-mono text-xs text-snow">{row.scope}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={locked || checkingNamespaceId === row.id}
+                          onClick={() => {
+                            setCheckingNamespaceId(row.id);
+                            setNamespaceError(null);
+                            void (async () => {
+                              try {
+                                const response = await fetch(`/api/namespaces/${row.id}/check`, {
+                                  method: "POST",
+                                  credentials: "include",
+                                });
+                                const body = (await response.json()) as { error?: string };
+                                if (!response.ok) {
+                                  throw new Error(body.error ?? "Could not check that scope.");
+                                }
+                                await refreshSignedIn(selectedInstallId);
+                              } catch (error) {
+                                setNamespaceError(
+                                  error instanceof Error ? error.message : "Could not check that scope.",
+                                );
+                              } finally {
+                                setCheckingNamespaceId(null);
+                              }
+                            })();
+                          }}
+                        >
+                          {checkingNamespaceId === row.id ? "Checking…" : "Check now"}
+                        </Button>
+                        {installAdmin ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={locked || confirmBusy}
+                            onClick={() =>
+                              beginConfirm({
+                                kind: "namespace-unprotect",
+                                id: row.id,
+                                expected: row.scope,
+                              })
+                            }
+                          >
+                            Stop
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-mute">
+                      {row.names.length === 0
+                        ? "No names on the last public search."
+                        : row.names.join(", ")}
+                    </p>
+                    {confirmForm(confirming?.kind === "namespace-unprotect" && confirming.id === row.id)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        )}
         {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
         {!previewing && packages.status === "error" && (
           <p className="mt-6 text-sm text-danger">{packages.message}</p>

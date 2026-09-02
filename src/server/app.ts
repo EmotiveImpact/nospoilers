@@ -49,6 +49,17 @@ import {
   importProtectedPackages,
   protectWatchedPackage,
 } from "./npm-watch.ts";
+import {
+  NAMESPACE_INVALID_ERROR,
+  NAMESPACE_SOLO_ERROR,
+  NAMESPACE_UNKNOWN_ERROR,
+  NAMESPACE_UNPAID_ERROR,
+  enqueueNamespaceCheck,
+  normalizeNpmScope,
+  protectNamespace,
+  publicNamespace,
+  unprotectNamespace,
+} from "./namespace-watch.ts";
 import { checkWatchedOrigin, connectWatchedOrigin } from "./web-watch.ts";
 import {
   parseMapDestination,
@@ -2779,6 +2790,141 @@ export function createApp(deps: AppDeps): Hono {
         errorStatus(error),
       );
     }
+  });
+
+  app.get("/api/namespaces", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const requested = queryInstallationId(c);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const installationId =
+      requested != null
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : null;
+    if (installationId != null) {
+      if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+        return c.json({ namespaces: [] });
+      }
+      const billing = await deps.store.installationBilling(installationId);
+      const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+      if (planDenied) {
+        return c.json(
+          { error: planDenied.status === 402 ? NAMESPACE_UNPAID_ERROR : NAMESPACE_SOLO_ERROR },
+          planDenied.status,
+        );
+      }
+    }
+    const rows = await deps.store.listProtectedNamespacesForUser(user.userId, requested);
+    return c.json({ namespaces: rows.map((row) => publicNamespace(row, row.names)) });
+  });
+
+  app.post("/api/namespaces", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach this scope to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const scope = normalizeNpmScope(String(body.scope ?? body.confirm ?? ""));
+    if (!scope) return c.json({ error: NAMESPACE_INVALID_ERROR }, 400);
+    const confirmError = typedConfirm(body, scope);
+    if (confirmError) return c.json(confirmError, 400);
+    try {
+      const result = await protectNamespace(deps.store, {
+        installationId,
+        scope,
+        actorLogin: user.login,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "namespace.protect",
+        summary: `Watched npm scope ${result.namespace.scope}`,
+        targetKind: "namespace",
+        targetId: result.namespace.scope,
+      });
+      if (result.queued) deps.wakeWorker?.();
+      return c.json({ ok: true, queued: result.queued, namespace: result.namespace }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not watch that npm scope." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/namespaces/:id", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: NAMESPACE_UNKNOWN_ERROR }, 404);
+    const row = await deps.store.getProtectedNamespace(id);
+    if (!row || !(await deps.store.userOwnsInstallation(user.userId, row.installation_id))) {
+      return c.json({ error: NAMESPACE_UNKNOWN_ERROR }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) {
+      return c.json(
+        { error: planDenied.status === 402 ? NAMESPACE_UNPAID_ERROR : NAMESPACE_SOLO_ERROR },
+        planDenied.status,
+      );
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, row.scope);
+    if (confirmError) return c.json(confirmError, 400);
+    const removed = await unprotectNamespace(deps.store, { id, userId: user.userId });
+    if (!removed) return c.json({ error: NAMESPACE_UNKNOWN_ERROR }, 404);
+    await recordAudit({
+      installationId: row.installation_id,
+      actorLogin: user.login,
+      action: "namespace.unprotect",
+      summary: `Stopped watching npm scope ${row.scope}`,
+      targetKind: "namespace",
+      targetId: row.scope,
+    });
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/namespaces/:id/check", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: NAMESPACE_UNKNOWN_ERROR }, 404);
+    const row = await deps.store.getProtectedNamespace(id);
+    if (!row || !(await deps.store.userOwnsInstallation(user.userId, row.installation_id))) {
+      return c.json({ error: NAMESPACE_UNKNOWN_ERROR }, 404);
+    }
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) {
+      return c.json(
+        { error: planDenied.status === 402 ? NAMESPACE_UNPAID_ERROR : NAMESPACE_SOLO_ERROR },
+        planDenied.status,
+      );
+    }
+    const checkDenied = await hostedWorkDenied(deps.store, row.installation_id, NAMESPACE_UNPAID_ERROR);
+    if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const queued = await enqueueNamespaceCheck(deps.store, row, { now: true });
+    if (queued) deps.wakeWorker?.();
+    return c.json({ ok: true, queued });
   });
 
   app.post("/api/packages", async (c) => {

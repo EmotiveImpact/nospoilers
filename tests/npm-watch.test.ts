@@ -64,6 +64,7 @@ function stubNpm(
       downloads.push(url);
       return await readFile(FIXTURE);
     },
+    searchScope: async () => [],
   };
 }
 

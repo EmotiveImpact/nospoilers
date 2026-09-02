@@ -84,6 +84,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   that install. Members may download the JSON. Unpublished or missing packs return
   `evidence: null`. Solo paid returns 403. Unpaid returns 402. Another tenant’s package
   is 404. The public advisory token 404s when disabled.
+- On a trial or Team install, read the npm scope watchlist that matches this GitHub
+  login and enqueue a metadata-only check. Members may read and check. Solo paid
+  returns 403. Unpaid returns 402. Another tenant’s list is empty. New names are a
+  Watch fact. Tarballs are not downloaded and names are not auto-watched.
 - Watch packs from private HTTPS registries already saved on those installations. Token
   values are never returned.
 - Trigger a latest-release scan on those repositories while coverage is active. That scan
@@ -174,7 +178,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
+  lookalike names, watch or stop watching an npm scope, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
   verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
@@ -288,6 +292,11 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   public token is unguessable and is not the package id. Audit records the package
   name only. Assembling does not download a tarball and does not send mail or registry
   tickets. Cap 40 enabled advisory pages per install. Not a malware verdict.
+- Watch or stop watching the npm scope that matches this GitHub install login on a
+  trial or Team install. Type the scope. Members return 403. Solo paid returns 403.
+  Unpaid returns 402. Another tenant is 403. One scope per install. Public npm
+  search only (cap 20 names). First check is a baseline. Later new names alert
+  without download or `npm_scan`. Not a malware verdict. Other registries stay out.
 
 **Must not**
 
@@ -517,6 +526,14 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   `identity.evidence` rows. Live Neon gates: unauth GET/POST 401, missing
   package 404, unknown advisory 404, watch list empty, evidence packs 0;
   Cloudflare tunnel matched. No owned npm pack on `158159401` to assemble.
+  Namespace watchlists (`POST /api/namespaces`, `GET /api/namespaces`,
+  `POST /api/namespaces/:id/check`) require the npm scope to match this GitHub
+  login, typed confirm, and Team/trial; members may read/check; Solo 403; unpaid
+  402; other tenant 403/empty; first snapshot does not alert; a later new name
+  writes `identity_namespace_new` without download or `npm_scan`; remigrate keeps
+  `namespace.protect` rows. Live Neon gates: unauth GET/POST 401, unowned
+  `@prettier` 403, watch list empty unless the owner later watches
+  `@emotiveimpact`. Do not watch prettier or left-pad on that install.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

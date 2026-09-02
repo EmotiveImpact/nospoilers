@@ -41,6 +41,8 @@ export const AUDIT_ACTIONS = [
   "identity.evidence",
   "identity.publish_advisory",
   "identity.unpublish_advisory",
+  "namespace.protect",
+  "namespace.unprotect",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

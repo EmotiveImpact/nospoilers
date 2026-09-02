@@ -36,6 +36,16 @@ import {
   MAX_PROTECTION_IMPORT,
   parseProtectionImportNames,
 } from "../src/server/npm-watch.ts";
+import {
+  NAMESPACE_NEW_KIND,
+  NAMESPACE_OWNED_ERROR,
+  NAMESPACE_SEARCH_SIZE,
+  NAMESPACE_SOLO_ERROR,
+  parseScopeSearchHits,
+  runNamespaceCheck,
+  verifyNamespaceOwnership,
+  normalizeNpmScope,
+} from "../src/server/namespace-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { coverageFrom } from "../src/coverage.ts";
@@ -84,6 +94,8 @@ function stubNpm(current: {
   byName?: Record<string, NpmPack | null>;
   getPackNames?: string[];
   downloads?: string[];
+  scopeNames?: Record<string, Array<{ name: string; version: string | null }>>;
+  searchScopes?: string[];
 }): NpmPort {
   return {
     getPack: async (name) => {
@@ -97,6 +109,10 @@ function stubNpm(current: {
     downloadTarball: async (url) => {
       current.downloads?.push(url);
       throw new Error("identity tests do not download tarballs");
+    },
+    searchScope: async (scope) => {
+      current.searchScopes?.push(scope);
+      return current.scopeNames?.[scope] ?? [];
     },
   };
 }
@@ -242,6 +258,25 @@ describe("package identity parsing", () => {
     const overflow = Array.from({ length: MAX_PROTECTION_IMPORT + 5 }, (_, index) => `pack-${index}`);
     expect(parseProtectionImportNames(overflow)).toHaveLength(MAX_PROTECTION_IMPORT);
     expect(parseProtectionImportNames({ names: ["@octo/app"] })).toEqual([]);
+    expect(normalizeNpmScope("@Octo")).toBe("@octo");
+    expect(normalizeNpmScope("octo/*")).toBe("@octo");
+    expect(normalizeNpmScope("@prettier")).toBe("@prettier");
+    expect(normalizeNpmScope("left-pad")).toBe("@left-pad");
+    expect(normalizeNpmScope("@octo/app")).toBeNull();
+    expect(verifyNamespaceOwnership("@octo", "octo")).toBe(true);
+    expect(verifyNamespaceOwnership("@prettier", "octo")).toBe(false);
+    expect(parseScopeSearchHits("@octo", {
+      objects: [
+        { package: { name: "@octo/app", version: "1.0.0" } },
+        { package: { name: "left-pad", version: "1.3.0" } },
+        { package: { name: "@prettier/plugin", version: "3.0.0" } },
+        { package: { name: "@octo/cli", version: "2.0.0" } },
+      ],
+    })).toEqual([
+      { name: "@octo/app", version: "1.0.0" },
+      { name: "@octo/cli", version: "2.0.0" },
+    ]);
+    expect(NAMESPACE_SEARCH_SIZE).toBe(20);
   });
 });
 
@@ -2078,6 +2113,243 @@ describe("identity evidence and consumer advisory", () => {
       expect((await app.request(`/api/advisory/${token}`)).status).toBe(200);
       expect(downloads).toEqual([]);
       expect(woke).toBe(wokeBeforePublish);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("npm namespace watchlists", () => {
+  it("watches an owned npm scope without downloading or auto-watching packs", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "teammate" });
+      await store.upsertUser({ id: "u3", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "Organization",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 11,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 3,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(7, "u2");
+      await store.linkUserInstallation(11, "u3");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const memberCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u3"))}`;
+      const downloads: string[] = [];
+      const searchScopes: string[] = [];
+      const current = {
+        pack: ownedPack(),
+        downloads,
+        searchScopes,
+        scopeNames: {
+          "@octo": [{ name: "@octo/app", version: "1.0.0" }],
+        },
+      };
+      let woke = 0;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+        wakeWorker: () => {
+          woke += 1;
+        },
+      });
+
+      expect((await app.request("/api/namespaces")).status).toBe(401);
+      expect((await app.request("/api/namespaces", { method: "POST" })).status).toBe(401);
+
+      const invalid = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "NOT A SCOPE", confirm: "NOT A SCOPE" }),
+      });
+      expect(invalid.status).toBe(400);
+
+      const stolen = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@prettier", confirm: "@prettier" }),
+      });
+      expect(stolen.status).toBe(403);
+      expect(((await stolen.json()) as { error: string }).error).toBe(NAMESPACE_OWNED_ERROR);
+
+      const memberProtect = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie: memberCookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@octo", confirm: "@octo" }),
+      });
+      expect(memberProtect.status).toBe(403);
+      expect(((await memberProtect.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
+
+      const otherProtect = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie: otherCookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@octo", confirm: "@octo" }),
+      });
+      expect(otherProtect.status).toBe(403);
+
+      const created = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@octo", confirm: "@octo" }),
+      });
+      expect(created.status).toBe(201);
+      const createdBody = (await created.json()) as {
+        queued: boolean;
+        namespace: { id: number; scope: string; names: string[] };
+      };
+      expect(createdBody.queued).toBe(true);
+      expect(createdBody.namespace.scope).toBe("@octo");
+      expect(createdBody.namespace.names).toEqual([]);
+      expect(woke).toBe(1);
+      const namespaceId = createdBody.namespace.id;
+
+      const listed = await app.request("/api/namespaces?installationId=7", { headers: { cookie: memberCookie } });
+      expect(listed.status).toBe(200);
+      expect(((await listed.json()) as { namespaces: { scope: string }[] }).namespaces.map((row) => row.scope)).toEqual([
+        "@octo",
+      ]);
+
+      const otherList = await app.request("/api/namespaces?installationId=7", {
+        headers: { cookie: otherCookie },
+      });
+      expect(otherList.status).toBe(200);
+      expect(((await otherList.json()) as { namespaces: unknown[] }).namespaces).toEqual([]);
+
+      const duplicate = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@octo", confirm: "@octo" }),
+      });
+      expect(duplicate.status).toBe(409);
+
+      const first = await runNamespaceCheck({
+        store,
+        npm: stubNpm(current),
+        namespaceId,
+      });
+      expect(first.alerts).toBe(0);
+      expect(first.names).toEqual(["@octo/app"]);
+      expect(searchScopes).toEqual(["@octo"]);
+
+      current.scopeNames["@octo"] = [
+        { name: "@octo/app", version: "1.0.0" },
+        { name: "@octo/cli", version: "2.0.0" },
+      ];
+      const second = await runNamespaceCheck({
+        store,
+        npm: stubNpm(current),
+        namespaceId,
+      });
+      expect(second.alerts).toBe(1);
+      expect(second.names).toEqual(["@octo/app", "@octo/cli"]);
+
+      const alerts = await app.request("/api/alerts?installationId=7", { headers: { cookie } });
+      const alertBody = (await alerts.json()) as { alerts: { kind: string; title: string; body: string }[] };
+      expect(alertBody.alerts.map((row) => row.kind)).toContain(NAMESPACE_NEW_KIND);
+      expect(alertBody.alerts.some((row) => /@octo\/cli/.test(row.title))).toBe(true);
+      expect(JSON.stringify(alertBody)).not.toContain("is malware");
+      expect(alertBody.alerts.some((row) => /not a malware verdict/.test(row.body))).toBe(true);
+
+      const watched = await app.request("/api/packages?installationId=7", { headers: { cookie } });
+      expect(((await watched.json()) as { packages: unknown[] }).packages).toEqual([]);
+
+      const jobs = await sql.query<{ kind: string }>(
+        `SELECT kind FROM jobs WHERE kind IN ('namespace_check', 'npm_scan')`,
+      );
+      expect(jobs.rows.every((row) => row.kind === "namespace_check")).toBe(true);
+      expect(jobs.rows.some((row) => row.kind === "npm_scan")).toBe(false);
+
+      await sql.query(`UPDATE jobs SET status = 'done' WHERE kind = 'namespace_check'`);
+      const checkNow = await app.request(`/api/namespaces/${namespaceId}/check`, {
+        method: "POST",
+        headers: { cookie: memberCookie },
+      });
+      expect(checkNow.status).toBe(200);
+      expect(((await checkNow.json()) as { queued: boolean }).queued).toBe(true);
+
+      const missingConfirm = await app.request(`/api/namespaces/${namespaceId}`, {
+        method: "DELETE",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(missingConfirm.status).toBe(400);
+      expect(((await missingConfirm.json()) as { error: string }).error).toBe(CONFIRM_MISSING_ERROR);
+
+      const removed = await app.request(`/api/namespaces/${namespaceId}`, {
+        method: "DELETE",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "@octo" }),
+      });
+      expect(removed.status).toBe(200);
+
+      const after = await app.request("/api/namespaces?installationId=7", { headers: { cookie } });
+      expect(((await after.json()) as { namespaces: unknown[] }).namespaces).toEqual([]);
+
+      const recreate = await app.request("/api/namespaces", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ installationId: 7, scope: "@octo", confirm: "@octo" }),
+      });
+      expect(recreate.status).toBe(201);
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      const solo = await app.request("/api/namespaces?installationId=7", { headers: { cookie } });
+      expect(solo.status).toBe(403);
+      expect(((await solo.json()) as { error: string }).error).toBe(NAMESPACE_SOLO_ERROR);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const unpaid = await app.request("/api/namespaces?installationId=7", { headers: { cookie } });
+      expect(unpaid.status).toBe(402);
+      expect(downloads).toEqual([]);
+
+      const audit = await app.request("/api/audit?installationId=7", { headers: { cookie } });
+      expect(audit.status).toBe(402);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = $1, plan = NULL WHERE installation_id = 7`,
+        [new Date(Date.now() + 86400000).toISOString()],
+      );
+      const auditOk = await app.request("/api/audit?installationId=7", { headers: { cookie } });
+      const auditBody = (await auditOk.json()) as { rows: { action: string }[] };
+      expect(auditBody.rows.map((row) => row.action)).toEqual(
+        expect.arrayContaining(["namespace.protect", "namespace.unprotect"]),
+      );
+
+      await store.insertAuditEvent({
+        installationId: 7,
+        actorLogin: "octo",
+        action: "namespace.protect",
+        summary: "Watched npm scope @octo",
+        targetKind: "namespace",
+        targetId: "@octo",
+      });
+      await migrate(sql);
+      const remigrated = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM audit_events WHERE action = 'namespace.protect'`,
+      );
+      expect(Number(remigrated.rows[0]?.n ?? 0)).toBeGreaterThan(0);
     } finally {
       await sql.close();
     }

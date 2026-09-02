@@ -78,7 +78,10 @@ Read in this order:
   (frozen payload, unguessable advisory token, enable/disable) and extends
   `audit_events.action` with `identity.evidence`, `identity.publish_advisory`,
   and `identity.unpublish_advisory`.
-  Next unused id is `047_*`.
+  `047_protected_namespaces` adds `protected_namespaces` and append-only
+  `namespace_name_snapshots`, and extends `audit_events.action` with
+  `namespace.protect` and `namespace.unprotect`.
+  Next unused id is `048_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -380,6 +383,10 @@ Package Identity human-reviewed evidence is in (`POST /api/packages/:id/evidence
 `POST /api/packages/:id/advisory`, `GET /api/advisory/:token`). Trial/Team admin.
 Typed package-name confirm. Members may read. Solo 403. Unpaid 402 to change.
 Never sends to npm or GitHub. Never a malware verdict. Other registries stay out.
+Package Identity namespace watchlists are in (`POST /api/namespaces`). Trial/Team
+admin. Scope must match this GitHub login. Public search only. First snapshot
+baseline. Later new names alert without download or auto-watch. Solo 403.
+Unpaid 402. Members may read/check. Other registries stay out.
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
@@ -549,6 +556,10 @@ token 404, watch list empty, `identity_evidence_packs` 0. Cloudflare
 tunnel matched. There is no EmotiveImpact-owned npm pack to assemble. Do
 not watch or protect prettier or left-pad on that install. Auto-send and
 other registries stay out.
+Package Identity namespace watchlists are in (`POST /api/namespaces`). Live
+Neon gates on install `158159401`: unauth GET/POST 401, `@prettier` 403,
+missing confirm 400. Cloudflare tunnel matched. Do not watch prettier or
+left-pad. Other registries stay out.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
 `GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`

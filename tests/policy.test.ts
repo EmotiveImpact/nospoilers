@@ -322,6 +322,7 @@ describe("hosted allowlist and baseline", () => {
           downloads.push(url);
           return await readFile(FIXTURE);
         },
+        searchScope: async () => [],
       };
       const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
       const app = createApp({

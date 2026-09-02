@@ -52,6 +52,8 @@ describe("public documentation", () => {
     expect(text).toMatch(/not the git tree/i);
     expect(text).toMatch(/identity evidence/i);
     expect(text).toMatch(/consumer advisory/i);
+    expect(text).toMatch(/watch the npm scope/i);
+    expect(text).toMatch(/not auto-watched/i);
     expect(text).toMatch(/not a malware verdict/i);
     expect(text).toMatch(/does not send the pack/i);
     expect(text).toMatch(/failed-policy/i);

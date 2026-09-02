@@ -37,6 +37,7 @@ const CRITICAL_KINDS = new Set([
   "delivery_mismatch",
   "delivery_missing",
   "identity_lookalike_registered",
+  "identity_namespace_new",
   "identity_dormant",
 ]);
 

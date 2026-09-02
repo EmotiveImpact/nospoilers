@@ -923,6 +923,41 @@ CREATE INDEX IF NOT EXISTS identity_evidence_packs_token_idx
 CREATE INDEX IF NOT EXISTS identity_evidence_packs_install_idx
   ON identity_evidence_packs (installation_id, enabled, id DESC);
 
+CREATE TABLE IF NOT EXISTS protected_namespaces (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL UNIQUE REFERENCES installations (id) ON DELETE CASCADE,
+  scope TEXT NOT NULL,
+  created_by_login TEXT NOT NULL,
+  last_checked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS protected_namespaces_scope_idx
+  ON protected_namespaces (installation_id, scope);
+
+CREATE TABLE IF NOT EXISTS namespace_name_snapshots (
+  id BIGSERIAL PRIMARY KEY,
+  namespace_id BIGINT NOT NULL REFERENCES protected_namespaces (id) ON DELETE CASCADE,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  names JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS namespace_name_snapshots_ns_idx
+  ON namespace_name_snapshots (namespace_id, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_namespace_name_snapshot_update()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'namespace_name_snapshots are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS namespace_name_snapshots_no_update ON namespace_name_snapshots;
+CREATE TRIGGER namespace_name_snapshots_no_update
+  BEFORE UPDATE ON namespace_name_snapshots
+  FOR EACH ROW EXECUTE PROCEDURE reject_namespace_name_snapshot_update();
+
 CREATE TABLE IF NOT EXISTS audit_events (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -964,7 +999,9 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'release.unpublish_verify',
     'identity.evidence',
     'identity.publish_advisory',
-    'identity.unpublish_advisory'
+    'identity.unpublish_advisory',
+    'namespace.protect',
+    'namespace.unprotect'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

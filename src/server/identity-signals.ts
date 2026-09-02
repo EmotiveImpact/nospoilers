@@ -94,14 +94,14 @@ export function identityPlanDenied(coverage: Coverage): { error: string; status:
   if (coverage.status === "ended") {
     return {
       error:
-        "Coverage ended. Subscribe to Team for lookalike, dormant, new-dependency, packument-size, and provenance package signals.",
+        "Coverage ended. Subscribe to Team for lookalike, dormant, new-dependency, packument-size, provenance, and namespace package signals.",
       status: 402,
     };
   }
   if (coverage.plan === "solo") {
     return {
       error:
-        "Lookalike, dormant, burst, new-dependency, packument-size, and provenance signals are on Team.",
+        "Lookalike, dormant, burst, new-dependency, packument-size, provenance, and namespace signals are on Team.",
       status: 403,
     };
   }

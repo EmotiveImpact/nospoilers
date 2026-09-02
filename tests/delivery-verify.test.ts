@@ -812,6 +812,7 @@ describe("canonical delivery URLs", () => {
           throw new Error("unused");
         },
         downloadTarball: async () => bytes,
+        searchScope: async () => [],
       };
       await store.enqueueJob({
         priority: "heavy",

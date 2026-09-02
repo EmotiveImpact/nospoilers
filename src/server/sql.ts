@@ -804,6 +804,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migratePagerDutyDestinations(sql);
   await migrateDestinationDeleteKeepsDeliveries(sql);
   await migrateIdentityEvidence(sql);
+  await migrateProtectedNamespaces(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1268,7 +1269,9 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'release.unpublish_verify',
       'identity.evidence',
       'identity.publish_advisory',
-      'identity.unpublish_advisory'
+      'identity.unpublish_advisory',
+      'namespace.protect',
+      'namespace.unprotect'
     ));
   `);
 }
@@ -1350,6 +1353,43 @@ async function migrateIdentityEvidence(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "046_identity_evidence",
+  ]);
+}
+
+async function migrateProtectedNamespaces(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS protected_namespaces (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL UNIQUE REFERENCES installations (id) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      created_by_login TEXT NOT NULL,
+      last_checked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS protected_namespaces_scope_idx
+      ON protected_namespaces (installation_id, scope);
+    CREATE TABLE IF NOT EXISTS namespace_name_snapshots (
+      id BIGSERIAL PRIMARY KEY,
+      namespace_id BIGINT NOT NULL REFERENCES protected_namespaces (id) ON DELETE CASCADE,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      names JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS namespace_name_snapshots_ns_idx
+      ON namespace_name_snapshots (namespace_id, id DESC);
+    CREATE OR REPLACE FUNCTION reject_namespace_name_snapshot_update()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'namespace_name_snapshots are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS namespace_name_snapshots_no_update ON namespace_name_snapshots;
+    CREATE TRIGGER namespace_name_snapshots_no_update
+      BEFORE UPDATE ON namespace_name_snapshots
+      FOR EACH ROW EXECUTE PROCEDURE reject_namespace_name_snapshot_update();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "047_protected_namespaces",
   ]);
 }
 

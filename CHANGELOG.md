@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Package Identity namespace watchlists: trial and Team install admins
+  watch the npm scope that matches this GitHub login (`POST /api/namespaces`).
+  Public registry search only (cap 20 names). First check is a baseline.
+  A later new name writes `identity_namespace_new` without downloading a
+  tarball or enqueueing `npm_scan`. One scope per install. Members may
+  read and check. Solo 403. Unpaid 402. Typed scope confirm. Another
+  tenant is 403 or empty. Never a malware verdict. Other registries stay
+  out. Not a Pricing change.
+
 - Package Identity human-reviewed evidence: trial and Team install admins
   assemble a frozen evidence pack for a protected npm name and may publish
   `/advisory/:token`. Members may read and download the JSON. The public page
