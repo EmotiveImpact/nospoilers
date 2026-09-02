@@ -422,6 +422,9 @@ Watch shows a deterministic 0–100 identity signal total on a protected pack
 (`GET /api/packages/:id/identity` `risk`), decomposed into current snapshot facts,
 registered non-allowlisted lookalikes, and open event alerts. Solo and unpaid
 omit the score. Never a malware verdict. No extra registry fetch.
+Live Neon gates on install `158159401`: unauth GET 401, owner/`not-admin`
+unknown package 404, watch list empty, no new jobs, Cloudflare tunnel matched.
+No EmotiveImpact-owned npm pack to score.
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
 allowed; unpaid 402; append-only evidence never deleted).
 Extra packed formats are in (VSIX/CRX/XPI/Chrome ZIP/wheel/sdist/JAR/nupkg/gem; ZIP/tar magic; CRX header

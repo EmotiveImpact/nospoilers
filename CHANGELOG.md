@@ -8,7 +8,11 @@
   lookalikes, and open burst / lookalike-version / new-dependency / unpublished
   alerts. Same facts always produce the same total. Solo and unpaid keep the
   identity snapshot and omit the score. Another tenant 404. Never a malware
-  verdict. No extra registry fetch and no worker wake. Not a Pricing change.
+  verdict. No extra registry fetch and no worker wake. Live Neon gates on
+  install `158159401`: unauth GET `/api/packages/1/identity` 401, owner and
+  `not-admin` unknown package 404, watch list empty so no score to compute,
+  no new jobs; Cloudflare tunnel matched. No EmotiveImpact-owned npm pack to
+  score. Not a Pricing change.
 
 - Artifact Leads discovery campaigns: owner saves GitHub search queries
   (`GET`/`POST`/`PATCH`/`DELETE /api/internal/prospects/campaigns`). The

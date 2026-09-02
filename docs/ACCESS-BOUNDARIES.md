@@ -530,7 +530,8 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   never store signature values or claim malware, first snapshot and missing packument size
   do not alert, publishing-identity changes are Solo-allowed facts, allowlisting skips further lookalike alerts,
   and the identity risk score is deterministic, decomposable, omitted for Solo/unpaid (`risk: null`),
-  tenant-scoped, and never a malware verdict.
+  tenant-scoped, and never a malware verdict. Live Neon gates on install `158159401`:
+  unauth GET 401, unknown package 404, watch list empty, no new jobs; Cloudflare tunnel matched.
   Batch import (`POST /api/protections/import`) protects an owned name and snapshots
   identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,
   re-imports as `already_protected`, protects an existing watch in place, returns
