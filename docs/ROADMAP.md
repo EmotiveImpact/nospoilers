@@ -70,9 +70,11 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Extra inspect: Azure/GCP service-account documents, PKCS12, terraform state, build caches
   (CACHE-001), and additional AI/MCP agent files. Values are not copied into reports.
 - Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
+  Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. Watch shows warning or
+  paused copy, not remaining credits. Owner queue lists aggregate usage counts.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
-- Owner queue health: Artifact Leads shows customer vs prospect queue counts, stale locks, and
-  oldest wait. Payloads are not listed. Not a customer page.
+- Owner queue health: Artifact Leads shows customer vs prospect queue counts, stale locks,
+  oldest wait, and daily unpack aggregates. Payloads are not listed. Not a customer page.
 - Incident response: live GitHub permission test without inventing an incident; Watch
   acknowledgement, assignment to install members, resolution notes, reopen, exposure
   duration, and a credential/source-map rotation checklist. `alert_events` are append-only.

@@ -47,6 +47,11 @@ type OwnerQueueHealth = {
   lightQueued: number
   staleRunning: number
   oldestQueuedAgeMs: number | null
+  usage: {
+    customerHeavyToday: number
+    installsWarning: number
+    installsExhausted: number
+  }
 }
 
 function formatQueueAge(ms: number | null): string {
@@ -324,6 +329,18 @@ export function ProspectsPage() {
               ["Prospect running", queue.prospect.running],
               ["Heavy waiting", queue.heavyQueued],
               ["Stale locks", queue.staleRunning],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-panel px-4 py-5">
+                <dt className="text-[11px] uppercase tracking-[0.18em] text-dim">{label}</dt>
+                <dd className="mt-2 font-display text-2xl text-snow">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <dl className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-white/8 sm:grid-cols-3">
+            {[
+              ["Customer unpacks today", queue.usage.customerHeavyToday],
+              ["Installs at warning", queue.usage.installsWarning],
+              ["Installs at cap", queue.usage.installsExhausted],
             ].map(([label, value]) => (
               <div key={label} className="bg-panel px-4 py-5">
                 <dt className="text-[11px] uppercase tracking-[0.18em] text-dim">{label}</dt>

@@ -31,7 +31,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
 | Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe/Electron not claimed live) | NoSpoilers |
-| Cloud usage warnings and hard budget controls | Planned | Infrastructure |
+| Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; not a scan-credit meter; not a Pricing change | Infrastructure |
 
 ## Scanner and release automation
 
@@ -176,9 +176,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, map custody, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
-| Queue and usage health | Built: tenant-scoped job list and counts; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
+| Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
-| Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack per install, Team/trial 3; global heavy cap still applies; job list is counts not credits | NoSpoilers |
+| Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one Slack, one SIEM, and one Jira Cloud destination per install | NoSpoilers Team |
 
 ## Internal acquisition and responsible disclosure

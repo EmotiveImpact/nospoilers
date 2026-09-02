@@ -730,6 +730,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
     "023_map_destinations",
   ]);
   await migrateFairUseConcurrency(sql);
+  await migrateHostedUsage(sql);
 }
 
 async function migrateFairUseConcurrency(sql: SqlClient): Promise<void> {
@@ -740,6 +741,20 @@ async function migrateFairUseConcurrency(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "024_fair_use_concurrency",
+  ]);
+}
+
+async function migrateHostedUsage(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS hosted_usage_days (
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      day DATE NOT NULL,
+      heavy_jobs INTEGER NOT NULL DEFAULT 0 CHECK (heavy_jobs >= 0),
+      PRIMARY KEY (installation_id, day)
+    );
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "025_hosted_usage",
   ]);
 }
 

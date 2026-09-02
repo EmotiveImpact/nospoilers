@@ -45,7 +45,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     heading: "Coverage",
     paragraphs: [
       "New installations start a 14-day full trial. Solo is $29 per month. Team is $99 per month. Yearly is 10 months for the price of 12. When the trial ends unpaid, GitHub still gets HTTP 200, but we do not enqueue hosted work, scan, poll, or alert for that installation.",
-      "Card checkout through Stripe is the intended billing path. It is not live yet. Email alerts wait on Resend. Slack, SIEM, and Jira Cloud destinations are live on trial and Team. Electron DMG/EXE/AppImage/MSI scanning stays on ice until an isolated worker exists. Formats are not advertised on Pricing until hostile fixtures and resource limits exist.",
+      "Hosted unpacks pause at a daily fair-use cap until 00:00 UTC. That is not a scan-credit purchase. The CLI and GitHub Action on your machine still work, and visibility alerts still run. Card checkout through Stripe is the intended billing path. It is not live yet. Email alerts wait on Resend. Slack, SIEM, and Jira Cloud destinations are live on trial and Team. Electron DMG/EXE/AppImage/MSI scanning stays on ice until an isolated worker exists. Formats are not advertised on Pricing until hostile fixtures and resource limits exist.",
     ],
   },
   {

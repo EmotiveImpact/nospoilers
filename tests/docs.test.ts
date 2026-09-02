@@ -26,6 +26,8 @@ describe("public documentation", () => {
     expect(text).toMatch(/Watch lists the linked receipt status/i);
     expect(text).toMatch(/Watch lists the linked receipt status on Releases and downloads the signed JSON/i);
     expect(text).toMatch(/Scan latest release unpacks that repository/i);
+    expect(text).toMatch(/until 00:00 UTC/);
+    expect(text).toMatch(/not a scan-credit purchase/);
     expect(text).toMatch(/not the git tree/i);
     expect(text).toMatch(/failed-policy/i);
     expect(text).toMatch(/renamed/i);

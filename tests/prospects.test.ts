@@ -238,16 +238,32 @@ describe("Artifact Leads persistence", () => {
         lightQueued: number;
         staleRunning: number;
         oldestQueuedAgeMs: number | null;
+        usage: {
+          customerHeavyToday: number;
+          installsWarning: number;
+          installsExhausted: number;
+        };
       };
       expect(body.customer.failed).toBe(1);
       expect(body.prospect.queued).toBe(1);
       expect(body.lightQueued).toBe(1);
       expect(body.heavyQueued).toBe(1);
+      expect(body.usage).toEqual({
+        customerHeavyToday: 1,
+        installsWarning: 0,
+        installsExhausted: 0,
+      });
+      expect(Object.keys(body.usage).sort()).toEqual([
+        "customerHeavyToday",
+        "installsExhausted",
+        "installsWarning",
+      ]);
       const raw = JSON.stringify(body);
       expect(raw).not.toMatch(/sk_live_exampletokenvalue12/);
       expect(raw).not.toMatch(/ghu_secret/);
       expect(raw).not.toMatch(/github\.com\/acme/);
       expect(raw).not.toMatch(/prettier/);
+      expect(raw).not.toMatch(/credit/i);
       expect(body).not.toHaveProperty("jobs");
     } finally {
       await sql.close();

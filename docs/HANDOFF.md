@@ -26,14 +26,16 @@ Read in this order:
 - Default branch: `production`
 - Database: `neondb`
 - Neon Auth: disabled; NoSpoilers uses GitHub OAuth.
-- Twenty-six product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
+- Twenty-seven product tables plus `schema_migrations`. Migrations `001_init`, `002_coverage`,
   `003_prospects`, `004_billing_accounts`, `005_watched_packages`, `006_scan_receipts`,
   `007_policy_exceptions`, `008_npm_registries`, `009_scan_api_tokens`,
   `010_release_revisions`, `011_package_identities`, `012_install_health`,
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
-  `022_watched_origins`, `023_map_destinations`, and `024_fair_use_concurrency` are applied. Hosted
+  `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`, and
+  `025_hosted_usage` are applied. `hosted_usage_days` counts heavy hosted unpacks per
+  installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
@@ -121,7 +123,8 @@ Read in this order:
   packed artifact, applies the allowlist, mints a receipt, appends a release revision, and
   deletes the bytes. Optional headers: `X-NoSpoilers-Channel`, `X-NoSpoilers-Source-Revision`,
   `X-NoSpoilers-CI-Run` (HTTPS, stored, never fetched). Unpaid mint/scan
-  return 402. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
+  return 402. Exhausted daily fair use returns 429 with Retry-After until 00:00 UTC, not a
+  remaining-credit balance. The local GitHub Action stays the default CI path. Watch **Releases** lists sealed
   revisions with the linked receipt status; preview invents none. Unpaid still allows the list
   and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
@@ -130,7 +133,8 @@ Read in this order:
   candidate name. This is not a malware verdict and not auto advisory/takedown.
 - Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
   permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
-  **Install health** lists this install's jobs (no payloads, no prospect scans). GitHub
+  **Install health** lists this install's jobs (no payloads, no prospect scans) and fair-use
+  warning or pause copy when the daily hosted unpack cap is near or exhausted. GitHub
   suspend is not treated as unpaid coverage; GitHub-backed writes return 409.
 - Packed scans flag Azure/GCP service-account documents, PKCS12, terraform state, build
   caches (CACHE-001), and additional AI/MCP agent files. Credential values are not copied
@@ -280,10 +284,11 @@ Automatic remediation PRs are in (reviewable, never merged; empty policy; no ove
 ignore/policy/workflow files; 409 copy-paste until Contents+PR write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).
 Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pack).
-Fair-use hosted unpacks are in (Solo 1 concurrent heavy job per install; Team/trial 3; global
-heavy cap still applies; no scan-credit meter). Not advertised as a Pricing change.
+Fair-use hosted unpacks are in (Solo 1 concurrent heavy job and 8 per UTC day per install;
+Team/trial 3 concurrent and 24/day; global heavy cap still applies; Watch warning/pause copy;
+owner queue usage aggregates; no scan-credit meter). Not advertised as a Pricing change.
 Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; customer vs prospect;
-stale locks; no payloads). Not a customer page.
+stale locks; daily unpack aggregates; no payloads). Not a customer page.
 SIZE-003 unexpected unpacked growth is in (2× or ≥5 MiB versus previous receipt or approved
 baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a Pricing change.
 Prerelease npm channel tarballs are in (`next`/`beta`/`canary`/`rc`/`alpha`/`preview` when those

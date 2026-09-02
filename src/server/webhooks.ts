@@ -144,11 +144,15 @@ async function enqueueCovered(
     kind: string;
     payload: unknown;
   },
-): Promise<{ queued: boolean; kind: string; skipped?: "uncovered" }> {
+): Promise<{ queued: boolean; kind: string; skipped?: "uncovered" | "fair_use" }> {
   if (!(await store.installationWorkAllowed(installationId))) {
     return { queued: false, kind: input.kind, skipped: "uncovered" };
   }
   const result = await store.enqueueJob(input);
+  if (result.skipped === "fair_use") {
+    await store.noteFairUseExhausted(installationId);
+    return { queued: false, kind: input.kind, skipped: "fair_use" };
+  }
   return { queued: result.inserted, kind: input.kind };
 }
 
@@ -219,7 +223,7 @@ export async function enqueueFromWebhook(
   event: string,
   deliveryId: string,
   payload: Json,
-): Promise<{ queued: boolean; kind: string | null; skipped?: "uncovered" }> {
+): Promise<{ queued: boolean; kind: string | null; skipped?: "uncovered" | "fair_use" }> {
   if (event === "ping") return { queued: false, kind: "ping" };
 
   if (event === "github_app_authorization") {

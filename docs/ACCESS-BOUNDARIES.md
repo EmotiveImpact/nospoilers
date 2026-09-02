@@ -81,7 +81,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   or deleted by customers. Done and failed jobs older than the install list window are
   hidden; queued and running jobs stay visible. Counts are not a remaining-scan credit
   meter. Hosted unpacks are capped by concurrent jobs per install (Solo one, Team/trial
-  three), not by a visible credit balance.
+  three) and by a daily fair-use budget (Solo 8, Team/trial 24 heavy unpacks per UTC
+  day). Watch may show warning or paused-until-UTC-midnight copy. It does not show
+  remaining credits or buy-more. `GET /api/jobs` may include `fairUse` with
+  `warning`, `exhausted`, and `resetsAt` only.
 - Read this install’s retention window (90, 180, 365 days, or keep while this install
   exists). Default is 90 days. GET is not Team-gated. Unpaid installs may read. Another
   tenant’s installation returns the default 90-day window, not that tenant’s setting.
@@ -137,6 +140,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Assign an alert to a GitHub login that is not a member of that installation.
 - Access `/internal/*` or `/api/internal/*`.
 - Read prospect companies, disclosure records, campaigns, global jobs, or infrastructure costs.
+- See a remaining-scan credit balance, “N remaining”, or buy-more copy. Daily hosted
+  unpacks are fair use, not a credit meter.
 
 ### Customer Administrator
 
@@ -229,9 +234,10 @@ The product owner (GitHub login `EmotiveImpact` unless `ADMIN_GITHUB_LOGIN` is c
 
 - Everything an Operator may do.
 - Hold `ADMIN_TOKEN`, GitHub App PEM, Neon, Stripe, and infrastructure secrets.
-- See global queue depth and failed-job counts at `GET /api/internal/queue` (shown on Artifact
-  Leads). Counts only: no payloads, tenant names, or credential values. Cost controls are not
-  built.
+- See global queue depth, failed-job counts, and daily hosted-unpack aggregates at
+  `GET /api/internal/queue` (shown on Artifact Leads). Counts only: no payloads, tenant
+  names, remaining-credit UI, or credential values. Usage fields are
+  `customerHeavyToday`, `installsWarning`, and `installsExhausted`.
 - Change production configuration.
 
 **Must not**
@@ -249,7 +255,7 @@ These are never customer features:
 | Disclosure Desk | future internal routes extending Artifact Leads |
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records and campaigns | not built; will be internal-only |
-| Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed |
+| Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; job bodies are not listed; usage aggregates are counts only |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
 | Cross-tenant support views | not built; will be owner-only |
 
@@ -286,7 +292,8 @@ These are never customer features:
 
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue`, and that owner queue JSON is
-counts only (no payloads, URLs, or credential values). `tests/receipts.test.ts` proves customers cannot read another
+counts only (no payloads, URLs, credential values, or tenant names), including daily
+unpack aggregates. `tests/receipts.test.ts` proves customers cannot read another
 tenant’s receipts, receipts cannot be patched, and SIZE-003 mints on a 2× unpacked jump
 (not the first scan, not inconclusive, suppressible by allowlist) without storing source. `tests/policy.test.ts` proves
 allowlist entries are tenant-scoped, unpaid writes return 402, revoke does not DELETE
@@ -314,7 +321,14 @@ claim malware, and allowlisting skips further lookalike alerts.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and
-the summary is queued/running/done/failed counts with no scan-credit field.
+the summary is queued/running/done/failed counts with no scan-credit field, and `fairUse`
+is warning/exhausted/resetsAt only.
+`tests/usage.test.ts` proves Solo is 8 heavy hosted unpacks per UTC day, Team/trial 24,
+the ninth webhook stays HTTP 200 with no extra job, one `fair_use_budget` alert per install
+per UTC day, light jobs and prospect scans do not consume the cap, Scan latest and
+`POST /api/v1/scan` return 429 + Retry-After when exhausted, unpaid Scan latest stays 402,
+`/api/jobs` has no remaining-credit field, and owner queue usage is aggregate counts
+without tenant names.
 `tests/hosted.test.ts` proves Solo is capped to one concurrent heavy unpack, Team gets
 three, another tenant is not stuck behind a Solo queue, and the global heavy cap still
 applies. The same file proves GitHub `release.edited` rescans only when pack assets change,

@@ -88,6 +88,13 @@ CREATE INDEX IF NOT EXISTS jobs_running_heavy_install_idx
   ON jobs (installation_id)
   WHERE status = 'running' AND priority = 'heavy';
 
+CREATE TABLE IF NOT EXISTS hosted_usage_days (
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  day DATE NOT NULL,
+  heavy_jobs INTEGER NOT NULL DEFAULT 0 CHECK (heavy_jobs >= 0),
+  PRIMARY KEY (installation_id, day)
+);
+
 CREATE TABLE IF NOT EXISTS alerts (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,

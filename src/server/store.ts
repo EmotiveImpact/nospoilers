@@ -8,6 +8,15 @@ import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
 import { num, type SqlClient } from "./sql.ts";
 import { heavyFairUseCaseSql } from "./fair-use.ts";
+import {
+  FAIR_USE_ALERT_KIND,
+  FAIR_USE_EXHAUSTED,
+  fairUseDeliveryId,
+  heavyUsageCapSql,
+  hostedUsageStatus,
+  SOLO_HEAVY_PER_UTC_DAY,
+  type HostedUsageStatus,
+} from "./usage.ts";
 import type { PermissionTestResult } from "./install-test.ts";
 import { TIMELINE_LIMIT } from "./timeline.ts";
 import {
@@ -59,6 +68,11 @@ export type OwnerQueueHealth = {
   lightQueued: number;
   staleRunning: number;
   oldestQueuedAgeMs: number | null;
+  usage: {
+    customerHeavyToday: number;
+    installsWarning: number;
+    installsExhausted: number;
+  };
 };
 
 export type RepoRow = {
@@ -1276,31 +1290,138 @@ export function createStore(
       kind: string;
       payload: unknown;
       installationId?: number | null;
-    }): Promise<{ id: number | null; inserted: boolean }> {
+    }): Promise<{ id: number | null; inserted: boolean; skipped?: "fair_use" }> {
       const installationId = input.installationId ?? installationIdFromPayload(input.payload);
-      const { rows } = await sql.query<{ id: unknown }>(
-        `INSERT INTO jobs (delivery_id, installation_id, priority, kind, payload)
-         VALUES (
-           $1,
-           CASE
-             WHEN $5::bigint IS NULL THEN NULL
-             WHEN EXISTS (SELECT 1 FROM installations WHERE id = $5::bigint) THEN $5::bigint
-             ELSE NULL
-           END,
-           $2, $3, $4::jsonb
-         )
-         ON CONFLICT (delivery_id) WHERE delivery_id IS NOT NULL DO NOTHING
-         RETURNING id`,
-        [
-          input.deliveryId ?? null,
-          input.priority,
-          input.kind,
-          JSON.stringify(input.payload),
-          installationId,
-        ],
+      return await sql.transaction(async (tx) => {
+        const countsTowardUsage =
+          input.priority === "heavy" &&
+          input.kind !== "prospect_scan" &&
+          installationId != null;
+        let consumed = false;
+        if (countsTowardUsage) {
+          const { rows: billed } = await tx.query<{ ok: number }>(
+            `SELECT 1 AS ok
+             FROM installations i
+             JOIN billing_accounts b ON b.installation_id = i.id
+             WHERE i.id = $1`,
+            [installationId],
+          );
+          if (billed[0]) {
+            const { rows: used } = await tx.query<{ heavy_jobs: unknown }>(
+              `INSERT INTO hosted_usage_days (installation_id, day, heavy_jobs)
+               SELECT $1, (timezone('utc', now()))::date, 1
+               WHERE EXISTS (
+                 SELECT 1 FROM installations i
+                 JOIN billing_accounts b ON b.installation_id = i.id
+                 WHERE i.id = $1
+               )
+               ON CONFLICT (installation_id, day)
+               DO UPDATE SET heavy_jobs = hosted_usage_days.heavy_jobs + 1
+               WHERE hosted_usage_days.heavy_jobs < (
+                 SELECT ${heavyUsageCapSql()}
+                 FROM billing_accounts b
+                 WHERE b.installation_id = hosted_usage_days.installation_id
+               )
+               RETURNING heavy_jobs`,
+              [installationId],
+            );
+            if (!used[0]) return { id: null, inserted: false, skipped: "fair_use" as const };
+            consumed = true;
+          }
+        }
+
+        const { rows } = await tx.query<{ id: unknown }>(
+          `INSERT INTO jobs (delivery_id, installation_id, priority, kind, payload)
+           VALUES (
+             $1,
+             CASE
+               WHEN $5::bigint IS NULL THEN NULL
+               WHEN EXISTS (SELECT 1 FROM installations WHERE id = $5::bigint) THEN $5::bigint
+               ELSE NULL
+             END,
+             $2, $3, $4::jsonb
+           )
+           ON CONFLICT (delivery_id) WHERE delivery_id IS NOT NULL DO NOTHING
+           RETURNING id`,
+          [
+            input.deliveryId ?? null,
+            input.priority,
+            input.kind,
+            JSON.stringify(input.payload),
+            installationId,
+          ],
+        );
+        const id = rows[0] ? num(rows[0].id) : null;
+        if (!id && consumed && installationId != null) {
+          await tx.query(
+            `UPDATE hosted_usage_days
+             SET heavy_jobs = GREATEST(0, heavy_jobs - 1)
+             WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
+            [installationId],
+          );
+        }
+        return { id, inserted: id !== null };
+      });
+    },
+
+    async consumeHostedUnpack(installationId: number): Promise<boolean> {
+      return await sql.transaction(async (tx) => {
+        const { rows: billed } = await tx.query<{ ok: number }>(
+          `SELECT 1 AS ok
+           FROM installations i
+           JOIN billing_accounts b ON b.installation_id = i.id
+           WHERE i.id = $1`,
+          [installationId],
+        );
+        if (!billed[0]) return false;
+        const { rows: used } = await tx.query<{ heavy_jobs: unknown }>(
+          `INSERT INTO hosted_usage_days (installation_id, day, heavy_jobs)
+           SELECT $1, (timezone('utc', now()))::date, 1
+           ON CONFLICT (installation_id, day)
+           DO UPDATE SET heavy_jobs = hosted_usage_days.heavy_jobs + 1
+           WHERE hosted_usage_days.heavy_jobs < (
+             SELECT ${heavyUsageCapSql()}
+             FROM billing_accounts b
+             WHERE b.installation_id = hosted_usage_days.installation_id
+           )
+           RETURNING heavy_jobs`,
+          [installationId],
+        );
+        return Boolean(used[0]);
+      });
+    },
+
+    async refundHostedUnpack(installationId: number): Promise<void> {
+      await sql.query(
+        `UPDATE hosted_usage_days
+         SET heavy_jobs = GREATEST(0, heavy_jobs - 1)
+         WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
+        [installationId],
       );
-      const id = rows[0] ? num(rows[0].id) : null;
-      return { id, inserted: id !== null };
+    },
+
+    async hostedUsageStatus(installationId: number): Promise<HostedUsageStatus> {
+      const { rows } = await sql.query<{ used: unknown; cap: unknown }>(
+        `SELECT COALESCE(u.heavy_jobs, 0)::int AS used, (${heavyUsageCapSql()})::int AS cap
+         FROM billing_accounts b
+         LEFT JOIN hosted_usage_days u
+           ON u.installation_id = b.installation_id AND u.day = (timezone('utc', now()))::date
+         WHERE b.installation_id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return hostedUsageStatus(0, SOLO_HEAVY_PER_UTC_DAY);
+      return hostedUsageStatus(num(row.used), num(row.cap));
+    },
+
+    async noteFairUseExhausted(installationId: number): Promise<number> {
+      return await this.insertAlert({
+        installationId,
+        kind: FAIR_USE_ALERT_KIND,
+        title: "Hosted unpacks paused until UTC midnight",
+        body: `${FAIR_USE_EXHAUSTED} This is not a remaining-scan credit balance.`,
+        githubDeliveryId: fairUseDeliveryId(installationId),
+      });
     },
 
     async countRunning(priority: JobPriority): Promise<number> {
@@ -1444,6 +1565,25 @@ export function createStore(
       );
       const row = rows[0];
       const age = row?.oldest_queued_age_ms == null ? null : num(row.oldest_queued_age_ms);
+      const { rows: usageRows } = await sql.query<{
+        customer_heavy_today: unknown;
+        installs_warning: unknown;
+        installs_exhausted: unknown;
+      }>(
+        `SELECT
+           COALESCE(SUM(u.heavy_jobs), 0)::int AS customer_heavy_today,
+           count(*) FILTER (
+             WHERE u.heavy_jobs >= CEIL(0.8 * (${heavyUsageCapSql()}))
+               AND u.heavy_jobs < (${heavyUsageCapSql()})
+           )::int AS installs_warning,
+           count(*) FILTER (
+             WHERE u.heavy_jobs >= (${heavyUsageCapSql()})
+           )::int AS installs_exhausted
+         FROM hosted_usage_days u
+         JOIN billing_accounts b ON b.installation_id = u.installation_id
+         WHERE u.day = (timezone('utc', now()))::date`,
+      );
+      const usage = usageRows[0];
       return {
         customer: {
           queued: num(row?.customer_queued ?? 0),
@@ -1459,6 +1599,11 @@ export function createStore(
         lightQueued: num(row?.light_queued ?? 0),
         staleRunning: num(row?.stale_running ?? 0),
         oldestQueuedAgeMs: Number.isFinite(age) ? age : null,
+        usage: {
+          customerHeavyToday: num(usage?.customer_heavy_today ?? 0),
+          installsWarning: num(usage?.installs_warning ?? 0),
+          installsExhausted: num(usage?.installs_exhausted ?? 0),
+        },
       };
     },
 
@@ -1527,7 +1672,7 @@ export function createStore(
     async listJobsForUser(
       userId: string,
       installationId?: number | null,
-    ): Promise<{ jobs: TenantJobRow[]; summary: JobSummary }> {
+    ): Promise<{ jobs: TenantJobRow[]; summary: JobSummary; fairUse: HostedUsageStatus | null }> {
       const scoped = optionalInstallId(installationId);
       const tenant = `SELECT installation_id FROM installation_users WHERE user_id = $1`;
       const { rows } = await sql.query<{
@@ -1567,6 +1712,18 @@ export function createStore(
           summary[row.status] = num(row.n);
         }
       }
+      let fairUse: HostedUsageStatus | null = null;
+      if (scoped != null) {
+        fairUse = await this.hostedUsageStatus(scoped);
+      } else {
+        const { rows: installs } = await sql.query<{ installation_id: unknown }>(
+          `SELECT installation_id FROM installation_users WHERE user_id = $1`,
+          [userId],
+        );
+        if (installs.length === 1) {
+          fairUse = await this.hostedUsageStatus(num(installs[0]?.installation_id));
+        }
+      }
       return {
         jobs: rows.map((row) => ({
           id: num(row.id),
@@ -1580,6 +1737,7 @@ export function createStore(
           runAfter: iso(row.run_after) ?? new Date().toISOString(),
         })),
         summary,
+        fairUse,
       };
     },
 

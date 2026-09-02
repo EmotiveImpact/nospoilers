@@ -282,6 +282,7 @@ describe("tenant job health", () => {
       const mineBody = (await mine.json()) as {
         jobs: { kind: string; status: string; error?: string | null }[];
         summary: { queued: number; running: number; done: number; failed: number };
+        fairUse: { warning: boolean; exhausted: boolean; resetsAt: string } | null;
       };
       expect(JSON.stringify(mineBody)).not.toContain("ghu_must_not_appear");
       expect(JSON.stringify(mineBody)).not.toContain("ghu_other");
@@ -292,6 +293,14 @@ describe("tenant job health", () => {
         done: expect.any(Number),
         failed: expect.any(Number),
       });
+      expect(Object.keys(mineBody.summary).sort()).toEqual(["done", "failed", "queued", "running"]);
+      expect(mineBody.fairUse).toEqual({
+        warning: expect.any(Boolean),
+        exhausted: expect.any(Boolean),
+        resetsAt: expect.any(String),
+      });
+      expect(Object.keys(mineBody.fairUse ?? {}).sort()).toEqual(["exhausted", "resetsAt", "warning"]);
+      expect(mineBody).not.toHaveProperty("credit");
       expect(mineBody.jobs.every((row) => row.kind !== "prospect_scan")).toBe(true);
       expect(mineBody.jobs.map((row) => row.kind).sort()).toEqual(["fork", "member_added"]);
       expect(mineBody.summary.failed).toBe(1);

@@ -1,4 +1,5 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
+import { FAIR_USE_EXHAUSTED, FAIR_USE_WARNING } from "@/fair-use-copy.ts";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
@@ -374,6 +375,12 @@ type JobSummary = {
   failed: number;
 };
 
+type FairUseStatus = {
+  warning: boolean;
+  exhausted: boolean;
+  resetsAt: string;
+} | null
+
 type ReleaseDiffView = {
   versus?: "baseline" | "previous" | null;
   baseline?: {
@@ -539,6 +546,8 @@ function kindLabel(kind: string): string {
       return "Repos added";
     case "repos_removed":
       return "Repos removed";
+    case "fair_use_budget":
+      return "Fair use";
     default:
       return kind;
   }
@@ -837,6 +846,7 @@ export function WatchPage({ search }: { search: string }) {
     done: 0,
     failed: 0,
   });
+  const [fairUse, setFairUse] = useState<FairUseStatus>(null);
   const [protectingId, setProtectingId] = useState<number | null>(null);
   const [scanTokenName, setScanTokenName] = useState("CI");
   const [revealedScanToken, setRevealedScanToken] = useState<string | null>(null);
@@ -934,7 +944,7 @@ export function WatchPage({ search }: { search: string }) {
         loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
         loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
         loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
-        loadJson<{ jobs: TenantJob[]; summary: JobSummary }>(q("/api/jobs")),
+        loadJson<{ jobs: TenantJob[]; summary: JobSummary; fairUse?: FairUseStatus }>(q("/api/jobs")),
         loadJson<{ destinations: MapCustodyDestination[] }>(q("/api/map-destinations")),
       ]);
       setRepos({ status: "ready", data: repoBody });
@@ -951,6 +961,7 @@ export function WatchPage({ search }: { search: string }) {
       setProtections(protectionBody.protections);
       setJobs(jobBody.jobs);
       setJobSummary(jobBody.summary);
+      setFairUse(jobBody.fairUse ?? null);
       setMapDestinations(mapBody.destinations);
       if (installationId) {
         const membersResponse = await fetch(`/api/installations/${installationId}/members`, {
@@ -1241,6 +1252,7 @@ export function WatchPage({ search }: { search: string }) {
           setProtections([]);
           setJobs([]);
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
+          setFairUse(null);
           setMembers([]);
           setMembersError(null);
           setAudit({ status: "ready", rows: [] });
@@ -2122,6 +2134,11 @@ export function WatchPage({ search }: { search: string }) {
             {selectedInstall ? ` on ${selectedInstall.account_login}` : ""}
             . This is not a billing change.
           </p>
+        ) : null}
+        {!previewing && fairUse?.exhausted ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">{FAIR_USE_EXHAUSTED}</p>
+        ) : !previewing && fairUse?.warning ? (
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">{FAIR_USE_WARNING}</p>
         ) : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">

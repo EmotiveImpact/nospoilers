@@ -91,6 +91,7 @@ import {
   validateScanTokenName,
 } from "./scan-api.ts";
 import { httpErrorForWorkBlock } from "./install-health.ts";
+import { FAIR_USE_EXHAUSTED, secondsUntilUtcMidnight } from "./usage.ts";
 import {
   TIMELINE_DAYS,
   timelinePlanDeniedFromBilling,
@@ -270,6 +271,11 @@ async function hostedWorkDenied(
   if (!block) return null;
   const denied = httpErrorForWorkBlock(block, unpaidMessage);
   return { error: denied.message, status: denied.status };
+}
+
+function fairUseResponse(c: Context) {
+  c.header("Retry-After", String(secondsUntilUtcMidnight()));
+  return c.json({ error: FAIR_USE_EXHAUSTED }, 429);
 }
 
 function destinationKindLabel(kind: "slack" | "siem" | "jira"): string {
@@ -1269,8 +1275,8 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/jobs", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
-    const { jobs, summary } = await deps.store.listJobsForUser(user.userId, queryInstallationId(c));
-    return c.json({ jobs, summary });
+    const { jobs, summary, fairUse } = await deps.store.listJobsForUser(user.userId, queryInstallationId(c));
+    return c.json({ jobs, summary, fairUse });
   });
 
   app.post("/api/repos/:id/scan-latest-release", async (c) => {
@@ -1312,6 +1318,10 @@ export function createApp(deps: AppDeps): Hono {
         },
       },
     });
+    if (result.skipped === "fair_use") {
+      await deps.store.noteFairUseExhausted(repo.installation_id);
+      return fairUseResponse(c);
+    }
     if (result.inserted) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.inserted, jobId: result.id });
   });
@@ -1696,68 +1706,77 @@ export function createApp(deps: AppDeps): Hono {
     }
     const buf = Buffer.from(await c.req.arrayBuffer());
     if (buf.length === 0) return c.json({ error: "Upload a packed artifact." }, 400);
-    await deps.store.touchScanApiToken(auth.id);
-    if (buf.length > MAX_UPLOAD) {
-      const report = {
-        target: filename,
-        kind: "file" as const,
-        fileCount: 0,
-        findings: [],
-        ok: false,
-        status: "inconclusive" as const,
-        inconclusiveReason: "Upload is larger than 80 MB.",
-        manifest: [],
-        engineVersion: ENGINE_VERSION,
-        artifactSha256: createHash("sha256").update(buf).digest("hex"),
-        artifactSha512: createHash("sha512").update(buf).digest("hex"),
-        artifactBytes: buf.length,
-        scannedAt: new Date().toISOString(),
-        suppressed: [],
-        policyHash: null,
-        workspaces: [],
-      };
-      const persisted = await persistHostedReceipt({
-        store: deps.store,
-        secret: deps.config.receiptSecret,
-        installationId: auth.installationId,
-        coordinate,
-        report,
-        ...releaseMeta,
-      });
-      return c.json({
-        report: persisted.report,
-        receipt: persisted.receipt,
-        receiptId: persisted.row.id,
-        release: publicRelease(persisted.revision),
-      });
+    if (!(await deps.store.consumeHostedUnpack(auth.installationId))) {
+      await deps.store.noteFairUseExhausted(auth.installationId);
+      return fairUseResponse(c);
     }
-    const dir = path.join(os.tmpdir(), "nospoilers-api-scan");
-    await mkdir(dir, { recursive: true });
-    const dest = path.join(dir, `${Date.now()}-${filename.replace(/[^\w.-]+/g, "_")}`);
     try {
-      await writeFile(dest, buf);
-      const report = await applyHostedPolicy(
-        deps.store,
-        await scanFn(dest),
-        auth.installationId,
-      );
-      const persisted = await persistHostedReceipt({
-        store: deps.store,
-        secret: deps.config.receiptSecret,
-        installationId: auth.installationId,
-        coordinate,
-        report,
-        ...releaseMeta,
-      });
-      return c.json({
-        report: persisted.report,
-        receipt: persisted.receipt,
-        receiptId: persisted.row.id,
-        release: publicRelease(persisted.revision),
-      });
-    } finally {
-      await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
-      await unlink(dest).catch(() => undefined);
+      await deps.store.touchScanApiToken(auth.id);
+      if (buf.length > MAX_UPLOAD) {
+        const report = {
+          target: filename,
+          kind: "file" as const,
+          fileCount: 0,
+          findings: [],
+          ok: false,
+          status: "inconclusive" as const,
+          inconclusiveReason: "Upload is larger than 80 MB.",
+          manifest: [],
+          engineVersion: ENGINE_VERSION,
+          artifactSha256: createHash("sha256").update(buf).digest("hex"),
+          artifactSha512: createHash("sha512").update(buf).digest("hex"),
+          artifactBytes: buf.length,
+          scannedAt: new Date().toISOString(),
+          suppressed: [],
+          policyHash: null,
+          workspaces: [],
+        };
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.config.receiptSecret,
+          installationId: auth.installationId,
+          coordinate,
+          report,
+          ...releaseMeta,
+        });
+        return c.json({
+          report: persisted.report,
+          receipt: persisted.receipt,
+          receiptId: persisted.row.id,
+          release: publicRelease(persisted.revision),
+        });
+      }
+      const dir = path.join(os.tmpdir(), "nospoilers-api-scan");
+      await mkdir(dir, { recursive: true });
+      const dest = path.join(dir, `${Date.now()}-${filename.replace(/[^\w.-]+/g, "_")}`);
+      try {
+        await writeFile(dest, buf);
+        const report = await applyHostedPolicy(
+          deps.store,
+          await scanFn(dest),
+          auth.installationId,
+        );
+        const persisted = await persistHostedReceipt({
+          store: deps.store,
+          secret: deps.config.receiptSecret,
+          installationId: auth.installationId,
+          coordinate,
+          report,
+          ...releaseMeta,
+        });
+        return c.json({
+          report: persisted.report,
+          receipt: persisted.receipt,
+          receiptId: persisted.row.id,
+          release: publicRelease(persisted.revision),
+        });
+      } finally {
+        await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
+        await unlink(dest).catch(() => undefined);
+      }
+    } catch (error) {
+      await deps.store.refundHostedUnpack(auth.installationId);
+      throw error;
     }
   });
 
@@ -1858,6 +1877,11 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching npm packages.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const npmUsage = await deps.store.hostedUsageStatus(pkg.installation_id);
+    if (npmUsage.exhausted) {
+      await deps.store.noteFairUseExhausted(pkg.installation_id);
+      return fairUseResponse(c);
+    }
     const checkLimited = rateLimited(
       c,
       scanLimiter,
@@ -1963,6 +1987,11 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching production websites.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const originUsage = await deps.store.hostedUsageStatus(origin.installation_id);
+    if (originUsage.exhausted) {
+      await deps.store.noteFairUseExhausted(origin.installation_id);
+      return fairUseResponse(c);
+    }
     const originLimited = rateLimited(
       c,
       scanLimiter,
@@ -2136,6 +2165,11 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep checking map custody.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const mapUsage = await deps.store.hostedUsageStatus(destination.installation_id);
+    if (mapUsage.exhausted) {
+      await deps.store.noteFairUseExhausted(destination.installation_id);
+      return fairUseResponse(c);
+    }
     const result = await checkMapDestination(deps.store, destination);
     if (result.queued) deps.wakeWorker?.();
     return c.json({ ok: true, queued: result.queued });
