@@ -377,6 +377,9 @@ same light publicized job. `repository.privatized` updates the Watch row and doe
 Real GitHub proof is still outstanding.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
+Artifact Leads inspect also queues up to eight public npm workspace member packs named
+from the repo workspace config. Scanned packs store member names. Members are not
+auto-watched. Owner-only.
 Scan page checks a signed receipt without unpacking (pack hashed in-browser). Coverage ended
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
