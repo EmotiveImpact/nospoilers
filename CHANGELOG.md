@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Disclosure Desk researcher workload: owner Artifact Leads shows case counts
+  per assignee (`GET /api/internal/disclosure/workload`). States, pending
+  review, and missed deadlines only. Minutes, last-active, ranking, and
+  billing fields are omitted. Customer sessions stay 401. No worker wake
+  and no migration. Nothing is mailed. Not a customer product and not a
+  Pricing change.
+
 - Package Identity registry cache: public npm packuments, including 404s, are
   cached for one hour per process (cap 256). Private-registry tokens bypass
   the cache. Watch Check now, connect, protect, and import fetch the watched

@@ -93,6 +93,7 @@ import {
   previewDisclosureCase,
   readDisclosureAttachment,
   recordVendorReply,
+  researcherWorkloadFromCases,
   rescanDisclosureCase,
   reviewDisclosureCase,
   sweepExpiredDisclosureEvidence,
@@ -844,6 +845,11 @@ export function createApp(deps: AppDeps): Hono {
     } catch (error) {
       return disclosureFailed(c, error);
     }
+  });
+
+  app.get("/api/internal/disclosure/workload", async (c) => {
+    const cases = await deps.store.listDisclosureCases();
+    return c.json(researcherWorkloadFromCases(cases));
   });
 
   app.get("/api/internal/disclosure/do-not-contact", async (c) => {

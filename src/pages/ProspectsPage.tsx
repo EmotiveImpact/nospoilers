@@ -65,6 +65,27 @@ type DeskDnc = {
   reason: string
 }
 
+type WorkloadCounts = {
+  cases: number
+  signal: number
+  verifying: number
+  verified: number
+  falsePositive: number
+  duplicate: number
+  pendingReview: number
+  deadlineMissed: number
+}
+
+type DeskWorkload = {
+  researchers: Array<WorkloadCounts & { assignee: string | null }>
+  totals: WorkloadCounts
+  policy: {
+    timeTracking: false
+    productivitySurveillance: false
+    sent: false
+  }
+}
+
 type ProspectData = {
   prospects: Prospect[]
   stats: { total: number; actionable: number; queued: number; contacted: number }
@@ -133,6 +154,7 @@ export function ProspectsPage() {
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
   const [templates, setTemplates] = useState<DeskTemplate[]>([])
   const [dncEntries, setDncEntries] = useState<DeskDnc[]>([])
+  const [workload, setWorkload] = useState<DeskWorkload | null>(null)
   const [templateName, setTemplateName] = useState("")
   const [templateSubject, setTemplateSubject] = useState("")
   const [templateBody, setTemplateBody] = useState("")
@@ -192,15 +214,18 @@ export function ProspectsPage() {
         setQueue(null)
       }
       try {
-        const [templateBody, dncBody] = await Promise.all([
+        const [templateBody, dncBody, workloadBody] = await Promise.all([
           request<{ templates: DeskTemplate[] }>("/api/internal/disclosure/templates"),
           request<{ entries: DeskDnc[] }>("/api/internal/disclosure/do-not-contact"),
+          request<DeskWorkload>("/api/internal/disclosure/workload"),
         ])
         setTemplates(templateBody.templates)
         setDncEntries(dncBody.entries)
+        setWorkload(workloadBody)
       } catch {
         setTemplates([])
         setDncEntries([])
+        setWorkload(null)
       }
     } catch (error) {
       setState((current) =>
@@ -513,7 +538,8 @@ export function ProspectsPage() {
             is set. Customer jobs stay first. No source
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
             records a simulated acknowledgement, and enforces do-not-contact. Missed
-            deadlines stay as internal reminders. Nothing is sent or publicly named.
+            deadlines stay as internal reminders. Researcher workload is case counts
+            by assignee. Time spent is not tracked. Nothing is sent or publicly named.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -573,6 +599,43 @@ export function ProspectsPage() {
           </div>
         ))}
       </dl>
+
+      {workload ? (
+        <section className="mt-10 rounded-lg border border-white/10 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Researcher workload</h2>
+            <p className="text-xs text-dim">
+              {workload.totals.cases} cases · counts only · time spent is not tracked
+            </p>
+          </div>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
+            Open and closed Disclosure Desk cases by assignee. No minutes, last-active,
+            ranking, or billing fields.
+          </p>
+          {workload.researchers.length === 0 ? (
+            <p className="mt-4 text-sm text-dim">No cases yet.</p>
+          ) : (
+            <ul className="mt-5 divide-y divide-white/8">
+              {workload.researchers.map((row) => (
+                <li
+                  key={row.assignee ?? "unassigned"}
+                  className="flex flex-wrap items-baseline justify-between gap-3 py-3"
+                >
+                  <p className="text-sm text-snow">{row.assignee ?? "Unassigned"}</p>
+                  <p className="font-mono text-xs text-dim">
+                    {row.cases} cases · {row.signal} signal · {row.verifying} verifying ·{" "}
+                    {row.verified} verified · {row.pendingReview} pending review ·{" "}
+                    {row.deadlineMissed} deadline missed
+                    {row.falsePositive || row.duplicate
+                      ? ` · ${row.falsePositive} false positive · ${row.duplicate} duplicate`
+                      : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       {queue ? (
         <section className="mt-10 rounded-lg border border-white/10 p-5">

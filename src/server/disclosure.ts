@@ -742,6 +742,100 @@ export function deadlineMissed(
   return Number.isFinite(ms) && ms < now;
 }
 
+export type ResearcherWorkloadCounts = {
+  cases: number;
+  signal: number;
+  verifying: number;
+  verified: number;
+  falsePositive: number;
+  duplicate: number;
+  pendingReview: number;
+  deadlineMissed: number;
+};
+
+export type ResearcherWorkloadRow = ResearcherWorkloadCounts & {
+  assignee: string | null;
+};
+
+export type ResearcherWorkload = {
+  researchers: ResearcherWorkloadRow[];
+  totals: ResearcherWorkloadCounts;
+  policy: {
+    timeTracking: false;
+    productivitySurveillance: false;
+    sent: false;
+  };
+};
+
+function emptyWorkloadCounts(): ResearcherWorkloadCounts {
+  return {
+    cases: 0,
+    signal: 0,
+    verifying: 0,
+    verified: 0,
+    falsePositive: 0,
+    duplicate: 0,
+    pendingReview: 0,
+    deadlineMissed: 0,
+  };
+}
+
+function countDisclosureCase(
+  counts: ResearcherWorkloadCounts,
+  row: Pick<
+    DisclosureCaseRow,
+    "state" | "review_state" | "deadline_at" | "acknowledged_at"
+  >,
+  now: number,
+): void {
+  counts.cases += 1;
+  if (row.state === "signal") counts.signal += 1;
+  else if (row.state === "verifying") counts.verifying += 1;
+  else if (row.state === "verified") counts.verified += 1;
+  else if (row.state === "false_positive") counts.falsePositive += 1;
+  else if (row.state === "duplicate") counts.duplicate += 1;
+  if (row.review_state === "pending") counts.pendingReview += 1;
+  if (deadlineMissed(row.deadline_at, row.acknowledged_at, now)) counts.deadlineMissed += 1;
+}
+
+export function researcherWorkloadFromCases(
+  cases: Array<
+    Pick<
+      DisclosureCaseRow,
+      "assignee" | "state" | "review_state" | "deadline_at" | "acknowledged_at"
+    >
+  >,
+  now = Date.now(),
+): ResearcherWorkload {
+  const totals = emptyWorkloadCounts();
+  const byKey = new Map<string, ResearcherWorkloadRow>();
+  for (const row of cases) {
+    const login = row.assignee?.trim() || null;
+    const key = login ? login.toLowerCase() : "";
+    let bucket = byKey.get(key);
+    if (!bucket) {
+      bucket = { assignee: login, ...emptyWorkloadCounts() };
+      byKey.set(key, bucket);
+    }
+    countDisclosureCase(bucket, row, now);
+    countDisclosureCase(totals, row, now);
+  }
+  const researchers = [...byKey.values()].sort((left, right) => {
+    if (left.assignee == null) return 1;
+    if (right.assignee == null) return -1;
+    return left.assignee.localeCompare(right.assignee);
+  });
+  return {
+    researchers,
+    totals,
+    policy: {
+      timeTracking: false,
+      productivitySurveillance: false,
+      sent: false,
+    },
+  };
+}
+
 export function resolveDisclosureState(input: {
   current: DisclosureState;
   checklist: DisclosureChecklist;

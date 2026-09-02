@@ -352,6 +352,9 @@ Internal staff running acquisition and disclosure work.
   No message is sent. Reports omit operator notes and attachment bytes.
 - Maintain owner-only disclosure templates and do-not-contact entries
   (`/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
+- Read owner-only researcher workload (`GET /api/internal/disclosure/workload`):
+  case counts per assignee and unassigned, including state, pending review, and
+  missed deadlines. Minutes, last-active, ranking, and billing fields are omitted.
 - Read owner-only verified-critical and deadline-missed notifications on Artifact Leads
   (`GET /api/internal/notifications`). Unverified scans do not notify. Missed deadlines
   create an internal reminder only. Nothing is mailed.
@@ -393,6 +396,7 @@ These are never customer features:
 | Artifact Leads | `/internal/prospects`, `/api/internal/prospects*` |
 | Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` including replies, attachments, assign, review, and report |
 | Disclosure templates | `/api/internal/disclosure/templates`; `disclosure_templates`; owner-only |
+| Researcher workload | `/api/internal/disclosure/workload`; case counts per assignee; no time tracking |
 | Do-not-contact | `/api/internal/disclosure/do-not-contact`; `disclosure_do_not_contact`; owner-only |
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
@@ -451,8 +455,9 @@ a missed deadline creates one `deadline_missed` internal notification, and custo
 sessions stay 401 on template and do-not-contact routes.
 `tests/disclosure-workflow.test.ts` proves vendor replies and encrypted attachments
 are owner-only, archives are rejected, replies and attachments are append-only,
-`contacted` waits for review approval, and JSON/HTML/PDF reports omit operator notes,
-attachment bytes, and finding values.
+`contacted` waits for review approval, JSON/HTML/PDF reports omit operator notes,
+attachment bytes, and finding values, and researcher workload is owner-only case
+counts per assignee with no time tracking and no worker wake.
 `tests/disclosure-expiry.test.ts` proves expired attachment ciphertext is zeroed
 and expired notes ciphertext is nulled, the row stays, unexpired ciphertext
 cannot be cleared, DELETE stays rejected, remigrate keeps the empty ciphertext,
@@ -467,7 +472,7 @@ campaigns, remigrate keeps rows, and no prospect job is enqueued. Live Neon:
 rows; prospect count unchanged; tunnel matched.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
-cannot open Disclosure Desk, template, do-not-contact, or notification routes,
+cannot open Disclosure Desk, template, do-not-contact, workload, or notification routes,
 that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
 unpack aggregates, that nested workspace member discovery is metadata-only (private

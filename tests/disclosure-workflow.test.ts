@@ -6,6 +6,7 @@ import {
   DISCLOSURE_REVIEW_ERROR,
   attachmentLooksPacked,
   attachmentNameLooksPacked,
+  researcherWorkloadFromCases,
 } from "../src/server/disclosure.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
@@ -55,6 +56,72 @@ describe("Disclosure Desk workflow helpers", () => {
     expect(attachmentNameLooksPacked("evil.tgz")).toBe(true);
     expect(attachmentNameLooksPacked("vendor-note.txt")).toBe(false);
   });
+
+  it("counts cases per assignee without time tracking", () => {
+    const now = Date.parse("2026-09-02T12:00:00.000Z");
+    const workload = researcherWorkloadFromCases(
+      [
+        {
+          assignee: "EmotiveImpact",
+          state: "verified",
+          review_state: "pending",
+          deadline_at: "2026-09-01T00:00:00.000Z",
+          acknowledged_at: null,
+        },
+        {
+          assignee: "emotiveimpact",
+          state: "signal",
+          review_state: "none",
+          deadline_at: null,
+          acknowledged_at: null,
+        },
+        {
+          assignee: "octo",
+          state: "false_positive",
+          review_state: "none",
+          deadline_at: null,
+          acknowledged_at: null,
+        },
+        {
+          assignee: null,
+          state: "verifying",
+          review_state: "none",
+          deadline_at: "2026-09-03T00:00:00.000Z",
+          acknowledged_at: null,
+        },
+      ],
+      now,
+    );
+    expect(workload.policy).toEqual({
+      timeTracking: false,
+      productivitySurveillance: false,
+      sent: false,
+    });
+    expect(workload.totals).toEqual({
+      cases: 4,
+      signal: 1,
+      verifying: 1,
+      verified: 1,
+      falsePositive: 1,
+      duplicate: 0,
+      pendingReview: 1,
+      deadlineMissed: 1,
+    });
+    expect(workload.researchers.map((row) => row.assignee)).toEqual([
+      "EmotiveImpact",
+      "octo",
+      null,
+    ]);
+    expect(workload.researchers[0]).toMatchObject({
+      assignee: "EmotiveImpact",
+      cases: 2,
+      signal: 1,
+      verified: 1,
+      pendingReview: 1,
+      deadlineMissed: 1,
+    });
+    expect(JSON.stringify(workload)).not.toMatch(/Ms|minutes|lastActive|timeTo/i);
+  });
 });
 
 describe("Disclosure Desk replies, review, and redacted reports", () => {
@@ -78,6 +145,7 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         findings: [PRETTIER_FINDING],
       });
 
+      let wakes = 0;
       const app = createApp({
         config: loadConfig({
           adminToken: "desk3-admin-token",
@@ -86,6 +154,9 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         }),
         store,
         github: unusedGithub(),
+        wakeWorker: () => {
+          wakes += 1;
+        },
       });
 
       const unauth = await app.request(`/api/internal/prospects/${prospect.id}/disclosure/replies`, {
@@ -94,6 +165,8 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         body: JSON.stringify({ channel: "security_email", summary: "Vendor replied by email." }),
       });
       expect(unauth.status).toBe(401);
+      const unauthWorkload = await app.request("/api/internal/disclosure/workload");
+      expect(unauthWorkload.status).toBe(401);
 
       await store.upsertUser({ id: "u1", login: "octo" });
       const cookie = `ns_session=${signSession("desk3-session-secret", await store.createSession("u1"))}`;
@@ -101,6 +174,10 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         headers: { cookie },
       });
       expect(customer.status).toBe(401);
+      const customerWorkload = await app.request("/api/internal/disclosure/workload", {
+        headers: { cookie },
+      });
+      expect(customerWorkload.status).toBe(401);
 
       await app.request(`/api/internal/prospects/${prospect.id}/disclosure`, {
         method: "POST",
@@ -256,6 +333,32 @@ describe("Disclosure Desk replies, review, and redacted reports", () => {
         /append-only/,
       );
       await expect(sql.query(`DELETE FROM disclosure_attachments`)).rejects.toThrow(/append-only/);
+
+      const workload = await app.request("/api/internal/disclosure/workload", {
+        headers: admin,
+      });
+      expect(workload.status).toBe(200);
+      const workloadBody = (await workload.json()) as {
+        researchers: { assignee: string | null; verified: number; pendingReview: number }[];
+        totals: { cases: number; verified: number };
+        policy: { timeTracking: boolean; productivitySurveillance: boolean; sent: boolean };
+      };
+      expect(workloadBody.policy).toEqual({
+        timeTracking: false,
+        productivitySurveillance: false,
+        sent: false,
+      });
+      expect(workloadBody.totals.cases).toBe(1);
+      expect(workloadBody.totals.verified).toBe(1);
+      expect(workloadBody.researchers).toEqual([
+        expect.objectContaining({
+          assignee: "EmotiveImpact",
+          verified: 1,
+          pendingReview: 0,
+        }),
+      ]);
+      expect(wakes).toBe(0);
+      expect(JSON.stringify(workloadBody)).not.toMatch(/Ms|minutes|lastActive|timeTo/i);
     } finally {
       await sql.close();
     }

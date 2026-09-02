@@ -527,10 +527,14 @@ ciphertext is nulled. Live Neon: `048` applied; unauth and non-admin 401;
 owner desk GET ran the sweep; no rows were expired so ciphertext stayed.
 Redacted JSON/HTML/PDF reports
 omit notes and attachment bytes. A missed deadline creates an internal reminder
-only. Nothing is sent. Client projects, billing, and aggregate research stay out.
+only. Nothing is sent. Researcher workload is owner-only case counts per
+assignee. Time spent is not tracked. Client projects, billing, and aggregate
+research stay out.
 Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive
 name/magic rejected, assigned to EmotiveImpact, review approved, JSON/HTML/PDF
 reports omitted notes and attachment bytes. Customer 401. Nothing mailed.
+Owner-only researcher workload counts cases per assignee. Time spent is
+not tracked. No migration.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.
