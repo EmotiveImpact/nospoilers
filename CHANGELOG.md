@@ -6,8 +6,11 @@
   per assignee (`GET /api/internal/disclosure/workload`). States, pending
   review, and missed deadlines only. Minutes, last-active, ranking, and
   billing fields are omitted. Customer sessions stay 401. No worker wake
-  and no migration. Nothing is mailed. Not a customer product and not a
-  Pricing change.
+  and no migration. Nothing is mailed. Live Neon: unauth and `not-admin`
+  401; owner GET 200 counted EmotiveImpact’s verified prettier case and
+  one unassigned signal (left-pad deadline missed); no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
 
 - Package Identity registry cache: public npm packuments, including 404s, are
   cached for one hour per process (cap 256). Private-registry tokens bypass

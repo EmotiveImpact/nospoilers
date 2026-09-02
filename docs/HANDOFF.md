@@ -534,7 +534,10 @@ Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive
 name/magic rejected, assigned to EmotiveImpact, review approved, JSON/HTML/PDF
 reports omitted notes and attachment bytes. Customer 401. Nothing mailed.
 Owner-only researcher workload counts cases per assignee. Time spent is
-not tracked. No migration.
+not tracked. No migration. Live Neon: unauth and `not-admin` 401; owner
+GET 200 counted EmotiveImpact’s verified prettier case and one unassigned
+left-pad signal (deadline missed); no open jobs; campaigns 0; watches 0;
+Cloudflare tunnel matched.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.

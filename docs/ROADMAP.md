@@ -209,7 +209,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   schedule; nothing sent), and
   owner-only notifications for verified critical findings and missed deadlines
   (never mailed), and owner-only researcher workload as case counts per
-  assignee (no time tracking).
+  assignee (no time tracking). Live Neon: unauth/`not-admin` 401; owner
+  200 counted the prettier and left-pad cases; tunnel matched.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.
 - GitHub App authorization revoke: HMAC webhook drops that user’s sessions and stored OAuth

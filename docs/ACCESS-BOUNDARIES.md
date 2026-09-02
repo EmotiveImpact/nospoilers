@@ -457,7 +457,9 @@ sessions stay 401 on template and do-not-contact routes.
 are owner-only, archives are rejected, replies and attachments are append-only,
 `contacted` waits for review approval, JSON/HTML/PDF reports omit operator notes,
 attachment bytes, and finding values, and researcher workload is owner-only case
-counts per assignee with no time tracking and no worker wake.
+counts per assignee with no time tracking and no worker wake. Live Neon:
+unauth and `not-admin` 401; owner GET 200 counted EmotiveImpact’s verified
+prettier case and one unassigned signal; no open jobs; tunnel matched.
 `tests/disclosure-expiry.test.ts` proves expired attachment ciphertext is zeroed
 and expired notes ciphertext is nulled, the row stays, unexpired ciphertext
 cannot be cleared, DELETE stays rejected, remigrate keeps the empty ciphertext,
