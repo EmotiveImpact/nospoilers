@@ -104,7 +104,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Fair-use hosted unpacks: Solo one concurrent heavy job per install; Team and trial three.
   Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. A GitHub Release job
   that never downloads (no pack, Electron skip, or every pack over the size cap) refunds
-  the slot. Live Echo job 47 / alert 36 left daily usage at 9.
+  the slot. An npm scan that never downloads refunds the slot. A website crawl that
+  never scans (unchanged sha256, or crawl error before scan) refunds the slot.
+  Live Echo job 47 / alert 36 left daily usage at 9.
   `release.published` with no scannable pack enqueues light. Watch shows
   warning or paused copy, not remaining credits. Owner queue lists aggregate usage counts.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
@@ -187,7 +189,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   zip fixture example. Not a Pricing change.
 - Production website crawls: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
   exposed files, credentials, and linked internal paths, private/local/metadata hosts blocked,
-  never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.
+  never executed. Connect enqueues immediately. Hourly poller enqueues. Unchanged or
+  failed-before-scan crawls refund the daily unpack slot. Not a Pricing change.
 - Sentry/Bugsnag map custody: matching debug ID (Sentry) or release version (Bugsnag), private
   lookup, public map absent. Encrypted tokens. Event-driven light job (no unpack slot).
   Not a Pricing change. Bugsnag cannot look up a debug ID.

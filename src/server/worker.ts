@@ -601,6 +601,7 @@ export async function handleJob(
       const crawled = await crawlOrigin(url || origin.origin_url, crawlOpts);
       if (origin.last_sha256 && origin.last_sha256 === crawled.sha256 && !crawled.truncated) {
         await deps.store.touchWatchedOrigin(origin.id);
+        await refundUnusedHostedUnpack();
         return;
       }
       for (const file of crawled.files) {
@@ -700,6 +701,9 @@ export async function handleJob(
           report,
           channel: "stable",
         });
+      }
+      if (error instanceof WebCrawlError) {
+        await refundUnusedHostedUnpack();
       }
       await deps.notifier.send({
         ...alertBase,

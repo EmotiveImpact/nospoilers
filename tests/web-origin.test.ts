@@ -299,6 +299,304 @@ describe("hosted website watch", () => {
       const listed = await app.request("/api/origins", { headers: { cookie } });
       const listedBody = (await listed.json()) as { origins: { origin_url: string }[] };
       expect(listedBody.origins.map((row) => row.origin_url)).toEqual([ORIGIN]);
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(1);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("refunds an unchanged website crawl that never scans", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const webFetch = await siteFetch(CLEAN);
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch,
+        webLookup: publicLookup,
+      });
+      await worker.tick();
+      await worker.stop();
+      const usageAfterFirst = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usageAfterFirst.rows[0]?.n ?? 0)).toBe(1);
+      const queued = await runWebOriginPoll({ store });
+      expect(queued.queued).toBe(1);
+      const usageAfterPoll = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usageAfterPoll.rows[0]?.n ?? 0)).toBe(2);
+      const again = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch,
+        webLookup: publicLookup,
+      });
+      await again.tick();
+      await again.stop();
+      const usageAfterUnchanged = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usageAfterUnchanged.rows[0]?.n ?? 0)).toBe(1);
+      const { rows: alerts } = await sql.query<{ title: string }>("SELECT title FROM alerts");
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.title).toMatch(/app.example.com is allowed to ship/);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("refunds a website crawl that fails before scan", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        receiptSecret: "web-origin-receipt-secret",
+        webFetch: (async () => {
+          throw new Error("website mock: unexpected fetch");
+        }) as typeof fetch,
+        webLookup: async () => [{ address: "127.0.0.1", family: 4 }],
+      });
+      await worker.tick();
+      await worker.stop();
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(0);
+      const { rows: alerts } = await sql.query<{ title: string; body: string }>(
+        "SELECT title, body FROM alerts",
+      );
+      expect(alerts[0]?.title).toMatch(/Inconclusive crawl of app.example.com/);
+      expect(alerts[0]?.body).toMatch(/private or reserved/);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("keeps the unpack slot when a website crawl scans", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan: async () => {
+          throw new Error("scanner exploded after the crawl wrote files");
+        },
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch: await siteFetch(CLEAN),
+        webLookup: publicLookup,
+      });
+      await worker.tick();
+      await worker.stop();
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(1);
+      const { rows: jobs } = await sql.query<{ error: string | null }>(
+        "SELECT error FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(jobs[0]?.error).toMatch(/scanner exploded/);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("keeps the unpack slot when a later website crawl finds new bytes", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const first = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch: await siteFetch(CLEAN),
+        webLookup: publicLookup,
+      });
+      await first.tick();
+      await first.stop();
+      const queued = await runWebOriginPoll({ store });
+      expect(queued.queued).toBe(1);
+      const second = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch: await siteFetch(DIRTY),
+        webLookup: publicLookup,
+      });
+      await second.tick();
+      await second.stop();
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(2);
+      const { rows: alerts } = await sql.query<{ title: string }>(
+        "SELECT title FROM alerts ORDER BY id",
+      );
+      expect(alerts).toHaveLength(2);
+      expect(alerts[1]?.title).toMatch(/Spoilers on app.example.com/);
     } finally {
       await sql.close();
     }

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- A hosted website crawl that never scans refunds its daily unpack slot.
+  The hourly poller still enqueues a heavy job; an unchanged sha256
+  (not truncated) returns after touching the origin and refunds. A
+  `WebCrawlError` before scan (private DNS, blocked host, HTTP failure)
+  also refunds. A crawl that scans — first crawl, changed bytes, or a
+  truncated crawl — keeps the slot. A scanner throw after files are
+  written keeps the slot. Live Neon: `watched_origins` 0; owner list
+  empty; unauth 401; no invented website watch; open jobs 0. Not a
+  scan-credit meter and not a Pricing change.
+
 - Sentry/Bugsnag map custody checks enqueue as light jobs. They look up
   debug IDs or release names and never download map source, so they do
   not consume a daily hosted unpack slot. An npm scan that never
