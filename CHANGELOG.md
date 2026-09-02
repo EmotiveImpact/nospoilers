@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
-- Product CI fail-closes every dirty fixture pack (`sourcemap.*`, `dotenv.tgz`) and passes every `clean.*` pack plus `workspace.tgz` after rebuild. An unclassified fixture fails the gate. The generated customer Action is unchanged. Not a Pricing change.
+- Inconclusive encryption fixtures (`inconclusive.encrypted.zip`, `inconclusive.crx`,
+  `inconclusive.encrypted.oci.tar`) are first-class Scan examples. CLI exit 2 is not a
+  passing receipt. Product CI classifies `inconclusive.*` as exit 2. This repo’s GitHub
+  Action is dogfooded: clean pack must pass, dirty pack must fail closed. Not a Pricing change.
 - Connected the application runtime to Neon `NoSpoilers` / `production` / `neondb`.
 - Documented access boundaries; customer sessions cannot read Artifact Leads.
 - Allowed the Cloudflare tunnel host so GitHub can reach `/api/webhooks/github`.

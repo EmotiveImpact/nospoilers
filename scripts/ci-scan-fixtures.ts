@@ -6,9 +6,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = path.join(root, "fixtures");
 
-export function expectedFixtureExit(name: string): 0 | 1 | null {
+export function expectedFixtureExit(name: string): 0 | 1 | 2 | null {
   if (name.startsWith("clean.") || name === "workspace.tgz") return 0;
   if (name.startsWith("sourcemap.") || name === "dotenv.tgz") return 1;
+  if (name.startsWith("inconclusive.")) return 2;
   return null;
 }
 
@@ -46,7 +47,7 @@ export async function scanFixtureMatrix(): Promise<void> {
   const unclassified = packs.filter((name) => expectedFixtureExit(name) === null);
   if (unclassified.length > 0) {
     throw new Error(
-      `Unclassified fixture packs (add a clean.* / sourcemap.* / dotenv / workspace rule): ${unclassified.join(", ")}`,
+      `Unclassified fixture packs (add a clean.* / sourcemap.* / dotenv / workspace / inconclusive.* rule): ${unclassified.join(", ")}`,
     );
   }
   const failed: string[] = [];
@@ -66,7 +67,9 @@ export async function scanFixtureMatrix(): Promise<void> {
 
 async function main(): Promise<void> {
   await scanFixtureMatrix();
-  process.stdout.write("Fixture CI gate: every dirty pack failed closed; every clean pack passed.\n");
+  process.stdout.write(
+    "Fixture CI gate: every dirty pack failed closed; every inconclusive pack was not a passing receipt; every clean pack passed.\n",
+  );
 }
 
 const invoked = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

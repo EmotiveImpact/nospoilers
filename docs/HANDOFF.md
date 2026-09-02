@@ -110,8 +110,10 @@ Read in this order:
   still completes.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
-  `workspace.tgz` must pass. An unclassified fixture fails the gate. The generated customer
-  Action is unchanged.
+  `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
+  receipt). An unclassified fixture fails the gate. The same job then runs the GitHub
+  Action (`uses: ./`) on `fixtures/clean.tgz` (must pass) and `fixtures/sourcemap.tgz`
+  (must fail closed). The generated customer Action is unchanged.
 - Watch **Remediation PR** opens a reviewable PR on `nospoilers/remediate` with ignore rules,
   an empty `.nospoilers.yml` (no silent allowlist), bundler hints, a `package.json` `files`
   snippet, and the packed-artifact workflow if missing. Existing customer ignore/policy/workflow
@@ -311,8 +313,10 @@ idempotency). `unpublished` / `deleted` are light Watch alerts and never downloa
 Not a Pricing change.
 Generated setup CI lists existing `package.tgz` and `dist/` packs (cap 8), scans each, and fails
 closed if none exist. Source pushes are not unpacked. Reviewable, never merged.
-This repository’s GitHub Actions fail-closes every dirty fixture pack and passes every clean pack
-after rebuild (`npm run ci:fixtures`). An unclassified fixture fails the gate.
+This repository’s GitHub Actions fail-closes every dirty fixture pack, treats inconclusive
+encryption fixtures as CLI exit 2, and passes every clean pack after rebuild
+(`npm run ci:fixtures`). It also runs `uses: ./` on a clean pack (pass) and a dirty pack
+(fail closed). An unclassified fixture fails the gate.
 GitHub `repository.deleted` removes the Watch row and does not resurrect it. `renamed` updates
 name/URL in place. `privatized` updates the private flag. No extra job.
 GitHub App authorization revoke (`github_app_authorization` / `revoked`) drops that user’s

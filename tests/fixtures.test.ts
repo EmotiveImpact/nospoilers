@@ -4,6 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { scan, toSarif } from "../src/scanner/index.ts";
+import {
+  CRX_INCONCLUSIVE,
+  ENCRYPTION_INCONCLUSIVE,
+  IMAGE_ENCRYPTION_INCONCLUSIVE,
+} from "../src/scanner/formats.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = path.join(root, "fixtures");
@@ -240,6 +245,37 @@ describe("packed fixtures", () => {
     expect(rules("dotenv.tgz", report)).toContain("SEC-001");
   });
 
+  it("marks advertised encryption fixtures inconclusive and never a passing receipt", async () => {
+    const zip = await scan(path.join(fixtures, "inconclusive.encrypted.zip"));
+    expect(zip.kind).toBe("zip");
+    expect(zip.ok).toBe(false);
+    expect(zip.status).toBe("inconclusive");
+    expect(zip.inconclusiveReason).toBe(ENCRYPTION_INCONCLUSIVE);
+
+    const crx = await scan(path.join(fixtures, "inconclusive.crx"));
+    expect(crx.kind).toBe("crx");
+    expect(crx.ok).toBe(false);
+    expect(crx.status).toBe("inconclusive");
+    expect(crx.inconclusiveReason).toBe(CRX_INCONCLUSIVE);
+
+    const oci = await scan(path.join(fixtures, "inconclusive.encrypted.oci.tar"));
+    expect(oci.kind).toBe("oci");
+    expect(oci.ok).toBe(false);
+    expect(oci.status).toBe("inconclusive");
+    expect(oci.inconclusiveReason).toBe(IMAGE_ENCRYPTION_INCONCLUSIVE);
+    expect(oci.findings).toEqual([]);
+  });
+
+  it("lists inconclusive encryption fixtures on Scan", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/inconclusive.encrypted.zip"/);
+    expect(page).toMatch(/Not decrypted/);
+    expect(page).toMatch(/path: "fixtures\/inconclusive.crx"/);
+    expect(page).toMatch(/Signing wrapper is not executed/);
+    expect(page).toMatch(/path: "fixtures\/inconclusive.encrypted.oci.tar"/);
+    expect(page).toMatch(/Layers are not decrypted or executed/);
+  });
+
   it("marks a tarball that exceeds the unpacked budget as inconclusive", async () => {
     const report = await scan(path.join(fixtures, "clean.tgz"), { maxUnpackedBytes: 1 });
     expect(report.ok).toBe(false);
@@ -303,5 +339,9 @@ describe("cli exit codes", () => {
 
   it("exits 1 on the source-map asar", async () => {
     expect(await runScan("sourcemap.asar")).toBe(1);
+  });
+
+  it("exits 2 on an encrypted zip, never a passing receipt", async () => {
+    expect(await runScan("inconclusive.encrypted.zip")).toBe(2);
   });
 });

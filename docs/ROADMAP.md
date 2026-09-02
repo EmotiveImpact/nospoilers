@@ -17,12 +17,14 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Additional critical paths: database dumps, crash dumps/minidumps/ELF cores, and escaping
   symlinks and archive entry paths (ARC-002). Nested tgz/zip/asar/vsix/crx/xpi/whl/jar/nupkg/gem
   and Docker/OCI layers, APK/AAB, IPA, and serverless zips are unpacked for inspection (never executed) up to three
-  levels. Encrypted zip, CRX wrappers without a ZIP payload, and encrypted image layers are
-  inconclusive. Overlay whiteouts are not applied. APK and Apple signatures are not verified.
+  levels.   Encrypted zip, CRX wrappers without a ZIP payload, and encrypted image layers are
+  inconclusive. Scan lists `inconclusive.encrypted.zip`, `inconclusive.crx`, and
+  `inconclusive.encrypted.oci.tar`. Overlay whiteouts are not applied. APK and Apple signatures are not verified.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
-- Product CI: after rebuilding fixtures, fail-closes every dirty pack and passes every clean
-  pack plus `workspace.tgz`. An unclassified fixture fails the gate.
+- Product CI: after rebuilding fixtures, fail-closes every dirty pack, treats `inconclusive.*`
+  as CLI exit 2, and passes every clean pack plus `workspace.tgz`. Dogfoods the GitHub Action
+  on a clean pack (pass) and a dirty pack (fail closed). An unclassified fixture fails the gate.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
   release scans, alerts, and Watch desk.
 - Event-driven worker wake-up with a 15-minute recovery check.

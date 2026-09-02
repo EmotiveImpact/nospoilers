@@ -50,7 +50,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |
 | npm/pnpm/Yarn/Bun monorepo discovery | Built: packed artifacts list roots and members; never executed; not auto-watched | NoSpoilers |
-| Pre-publish CI gate | Partial: this repo’s GitHub Actions rebuilds fixtures, fail-closes every dirty pack (sourcemap.* / dotenv.tgz) and passes every clean pack plus workspace.tgz; generated customer workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked; live customer PRs wait on Contents+PR write | NoSpoilers |
+| Pre-publish CI gate | Partial: this repo’s GitHub Actions rebuilds fixtures, fail-closes every dirty pack, treats `inconclusive.*` as CLI exit 2 (not a passing receipt), and passes every clean pack plus workspace.tgz; dogfoods `uses: ./` on clean.tgz (pass) and sourcemap.tgz (fail closed); generated customer workflow lists existing `package.tgz` and `dist/` packs (cap 8), scans each, fails closed if none; source pushes are not unpacked; live customer PRs wait on Contents+PR write | NoSpoilers |
 | App-generated setup PR | Partial: reviewable PR, never merged; generated CI scans each existing pack under package.tgz and dist/; 409 YAML copy-paste until Contents+PR write | NoSpoilers |
 | GitHub Checks and annotations | Partial: hosted release scans post Checks with rule/path annotations; skipped on 403/404 | NoSpoilers |
 | Required-check setup guidance | Partial: setup PR body and Watch copy tell maintainers to mark NoSpoilers required; App does not set branch protection | NoSpoilers |
@@ -72,7 +72,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Internal documentation and roadmaps | Built: ROADMAP/HANDOFF/TODO/PRD plus architecture/design/rfc/spec/product/month1/feature-inventory/electron, `docs/internal/`, `adr/NNNN-*.md` | NoSpoilers |
 | AI prompts, memory, transcripts and MCP policy pack | Built: AI-001 for agent dirs, MCP configs, prompts, memory, transcripts | NoSpoilers |
 | Signed scan receipt with artifact SHA-256 | Built: HMAC-SHA256 JSON, SHA-256 and SHA-512 | NoSpoilers |
-| Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt | NoSpoilers |
+| Explicit inconclusive status for limits, malformed/encrypted/partial scans | Built: never clean, never a passing receipt; Scan lists encrypted zip, CRX-without-ZIP, and encrypted OCI fixtures; CLI exit 2 | NoSpoilers |
 | External scanning API | Built: hashed per-install `nsp_` tokens; `POST /api/v1/scan` mints a receipt and deletes bytes | NoSpoilers |
 
 ## Release Ledger module
@@ -118,12 +118,12 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
 | Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, clean and dirty fixtures, GitHub Release asset, Scan example | NoSpoilers |
-| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; Chrome ZIP WebExtension layout (root manifest.json, not a CRX header) classified as xpi; clean and dirty Scan examples | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive (`fixtures/inconclusive.crx` Scan example); XPI as ZIP; Chrome ZIP WebExtension layout (root manifest.json, not a CRX header) classified as xpi; clean and dirty Scan examples | NoSpoilers |
 | Python wheel and source distribution | Built: `.whl` as ZIP; sdist tar.gz PKG-INFO layout sniff (not a generic npm tarball); Python is not executed; clean and dirty Scan examples | NoSpoilers |
 | Java JAR/WAR | Built: ZIP magic; clean and dirty JAR and WAR Scan examples | NoSpoilers |
 | NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; clean and dirty nupkg and snupkg Scan examples | NoSpoilers |
 | Ruby gems | Built: tar + nested `data.tar.gz`, never executed; clean and dirty Scan examples | NoSpoilers |
-| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; clean and dirty docker-save and OCI examples | NoSpoilers |
+| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive (`fixtures/inconclusive.encrypted.oci.tar` Scan example); clean and dirty docker-save and OCI examples | NoSpoilers |
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
 | Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; clean and dirty Scan APK/AAB examples; XAPK is a nested APK zip | NoSpoilers |
 | iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; clean and dirty Scan IPA examples | NoSpoilers |

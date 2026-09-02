@@ -136,6 +136,21 @@ const EXAMPLES = [
     label: "npm workspace pack",
     hint: "Lists members. Does not execute them.",
   },
+  {
+    path: "fixtures/inconclusive.encrypted.zip",
+    label: "Encrypted zip",
+    hint: "Not decrypted. Inconclusive, not a passing receipt.",
+  },
+  {
+    path: "fixtures/inconclusive.crx",
+    label: "CRX without a ZIP payload",
+    hint: "Signing wrapper is not executed. Inconclusive, not a passing receipt.",
+  },
+  {
+    path: "fixtures/inconclusive.encrypted.oci.tar",
+    label: "OCI image with encrypted layers",
+    hint: "Layers are not decrypted or executed. Inconclusive, not a passing receipt.",
+  },
 ] as const
 
 async function scanPath(path: string): Promise<ScanReport> {

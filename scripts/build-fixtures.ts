@@ -66,6 +66,32 @@ async function writeCrxPack(dest: string, files: Record<string, string | Buffer>
   await writeFile(dest, buf);
 }
 
+function encryptedZipStub(): Buffer {
+  const name = Buffer.from("x");
+  const buf = Buffer.alloc(30 + name.length);
+  buf.writeUInt32LE(0x04034b50, 0);
+  buf.writeUInt16LE(20, 4);
+  buf.writeUInt16LE(1, 6);
+  buf.writeUInt16LE(0, 8);
+  buf.writeUInt16LE(0, 10);
+  buf.writeUInt16LE(0, 12);
+  buf.writeUInt32LE(0, 14);
+  buf.writeUInt32LE(0, 18);
+  buf.writeUInt32LE(0, 22);
+  buf.writeUInt16LE(name.length, 26);
+  buf.writeUInt16LE(0, 28);
+  name.copy(buf, 30);
+  return buf;
+}
+
+function crxWithoutZipStub(): Buffer {
+  const buf = Buffer.alloc(16);
+  buf.write("Cr24", 0, 4, "latin1");
+  buf.writeUInt32LE(3, 4);
+  buf.writeUInt32LE(0, 8);
+  return buf;
+}
+
 async function writeGemPack(
   dest: string,
   files: Record<string, string>,
@@ -352,6 +378,11 @@ async function main(): Promise<void> {
       "index.js.map": sourceMap,
       "package.json": '{"name":"spoiler-fn"}',
     });
+    await writeFile(path.join(fixtures, "inconclusive.encrypted.zip"), encryptedZipStub());
+    await writeFile(path.join(fixtures, "inconclusive.crx"), crxWithoutZipStub());
+    await writeOciArchive(path.join(fixtures, "inconclusive.encrypted.oci.tar"), {
+      "index.js": minified,
+    }, { encrypted: true });
   } finally {
     await rm(cleanDir, { recursive: true, force: true });
     await rm(dirtyDir, { recursive: true, force: true });

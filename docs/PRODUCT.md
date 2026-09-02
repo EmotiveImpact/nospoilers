@@ -28,7 +28,8 @@ GitHub secret scanning does **not** catch packed maps. Making the git repo priva
 
 ## What is already built (this repo)
 
-Single package, **local only**. Not a hosted platform.
+Hosted GitHub App on Neon (sign-in, install, webhook → queue → worker, Watch/Scan). Scanner, CLI,
+and Action still run locally. Stripe, Resend, and production deploy are not live.
 
 | Piece | Where |
 | --- | --- |
@@ -46,11 +47,11 @@ GIT-001, SRC-001, SIZE-001/002/003. Credential values never appear in reports.
 25 MiB per file, and 90 seconds. `.dmg`, `.exe`, `.msi`, and `.AppImage` are future isolated-job
 formats, not current claims; see `docs/ELECTRON.md`.
 
-**Exit codes:** 0 clean, 1 critical, 2 error.
+**Exit codes:** 0 clean, 1 failed-policy, 2 error or inconclusive (never a passing receipt).
 
 **Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
-**Not built / Phase B:** Stripe, custom domain, Resend, Fly/Railway production deploy, Slack, make-private, Marketplace.
+**Not built / Phase B:** Stripe, custom domain, Resend, Fly/Railway production deploy, Marketplace.
 
 ---
 

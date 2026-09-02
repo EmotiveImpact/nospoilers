@@ -18,5 +18,22 @@ jobs:
       - run: npm run fixtures
       - name: Fixture packs must pass or fail closed
         run: npm run ci:fixtures
+      - name: Action must pass a clean pack
+        uses: ./
+        with:
+          path: fixtures/clean.tgz
+          sarif: ""
+      - name: Action must fail a dirty pack
+        id: dirty-action
+        continue-on-error: true
+        uses: ./
+        with:
+          path: fixtures/sourcemap.tgz
+          sarif: ""
+      - name: Require dirty Action failure
+        if: steps.dirty-action.outcome != 'failure'
+        run: |
+          echo "expected the GitHub Action to fail closed on fixtures/sourcemap.tgz" >&2
+          exit 1
       - name: Clean pack SARIF
         run: npx tsx src/cli.ts scan fixtures/clean.tgz --sarif nospoilers.sarif
