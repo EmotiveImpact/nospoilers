@@ -10,7 +10,8 @@ import path from "node:path"
 
 const ROOT = path.resolve(process.cwd(), "docs/mockups")
 const PORT = Number(process.env.PORT ?? 3000)
-const HOST = "0.0.0.0"
+// Dual-stack: Cursor's IDE preview often connects to ::1, not 127.0.0.1.
+const HOST = "::"
 
 const TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -31,6 +32,7 @@ function safeJoin(urlPath) {
 }
 
 const server = createServer(async (req, res) => {
+  process.stdout.write(`${req.method} ${req.url} host=${req.headers.host ?? "-"}\n`)
   res.setHeader("Access-Control-Allow-Origin", "*")
   res.setHeader("Cache-Control", "no-store")
   if (req.method === "OPTIONS") {
@@ -57,7 +59,10 @@ const server = createServer(async (req, res) => {
     if (info?.isDirectory()) target = path.join(target, "index.html")
     const data = await readFile(target)
     const ext = path.extname(target).toLowerCase()
-    res.writeHead(200, { "Content-Type": TYPES[ext] ?? "application/octet-stream" })
+    res.writeHead(200, {
+      "Content-Type": TYPES[ext] ?? "application/octet-stream",
+      "Content-Length": String(data.length),
+    })
     res.end(data)
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" })
@@ -65,6 +70,6 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, HOST, () => {
-  process.stdout.write(`mockups on http://${HOST}:${PORT}/\n`)
+server.listen({ port: PORT, host: HOST, ipv6Only: false }, () => {
+  process.stdout.write(`mockups on http://localhost:${PORT}/ (dual-stack)\n`)
 })
