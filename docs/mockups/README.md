@@ -15,7 +15,7 @@ Only the default surface and information architecture differ.
 
 | # | Default | What changes | What does not change |
 | --- | --- | --- | --- |
-| [2A](2a-full-overview.html) | Overview | Balanced console; verdict and four numbers first | All routes, settings, states, and alert actions |
+| [2A](2a-full-overview.html) | Split console | Separate Desk and Settings walls; verdict and four numbers first | All routes, settings, states, and alert actions |
 | [2B](2b-full-guided.html) | Overview | One grouped sidebar for Work, Evidence, and Settings | All routes, settings, states, and alert actions |
 | [2C](2c-full-triage.html) | Overview | Horizontal tab rail over one working surface | All routes, settings, states, and source actions |
 | [2D](2d-full-sources.html) | Repository | Object-first repo/source context, then global work | All routes, settings, states, and incident actions |
