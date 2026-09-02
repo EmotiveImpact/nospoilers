@@ -38,7 +38,25 @@ export type AppConfig = {
   stripePriceTeamYearly: string;
   resendApiKey: string;
   resendFromEmail: string;
+  processRole: ProcessRole;
+  uiRoot: string;
 };
+
+export type ProcessRole = "all" | "web" | "worker";
+
+export function parseProcessRole(raw: string): ProcessRole {
+  const value = raw.trim().toLowerCase();
+  if (value === "web" || value === "worker") return value;
+  return "all";
+}
+
+export function processRunsHttp(role: ProcessRole): boolean {
+  return role === "all" || role === "web";
+}
+
+export function processRunsJobs(role: ProcessRole): boolean {
+  return role === "all" || role === "worker";
+}
 
 function loadDotEnv(): void {
   const file = path.resolve(process.cwd(), ".env");
@@ -131,6 +149,8 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     stripePriceTeamYearly: env("STRIPE_PRICE_TEAM_YEARLY"),
     resendApiKey: env("RESEND_API_KEY"),
     resendFromEmail: env("RESEND_FROM_EMAIL"),
+    processRole: parseProcessRole(env("NOSPOILERS_ROLE", "all")),
+    uiRoot: env("NOSPOILERS_UI_ROOT", path.resolve("dist")),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;

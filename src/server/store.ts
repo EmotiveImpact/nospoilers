@@ -38,6 +38,7 @@ import type {
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
+import { notifyJobQueued } from "./job-wake.ts";
 import { num, type SqlClient } from "./sql.ts";
 import { heavyFairUseCaseSql } from "./fair-use.ts";
 import {
@@ -2331,7 +2332,7 @@ export function createStore(
       installationId?: number | null;
     }): Promise<{ id: number | null; inserted: boolean; skipped?: "fair_use" }> {
       const installationId = input.installationId ?? installationIdFromPayload(input.payload);
-      return await sql.transaction(async (tx) => {
+      const result = await sql.transaction(async (tx) => {
         const countsTowardUsage =
           input.priority === "heavy" &&
           input.kind !== "prospect_scan" &&
@@ -2401,6 +2402,8 @@ export function createStore(
         }
         return { id, inserted: id !== null };
       });
+      if (result.inserted) await notifyJobQueued(sql, input.kind);
+      return result;
     },
 
     async consumeHostedUnpack(installationId: number): Promise<boolean> {

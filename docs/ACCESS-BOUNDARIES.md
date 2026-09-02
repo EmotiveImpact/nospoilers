@@ -18,7 +18,8 @@ Unauthenticated browser traffic.
 - Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
 - Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. The CLI (`nospoilers verify --receipt`) can re-hash a local file or stream-hash a `--url` with the same hop/SSRF rules as Watch; that does not call Watch and does not need coverage. Coverage ended still allows the Scan check. Authentic failed-policy or inconclusive is not a passing result.
-- Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
+- Hit `/api/health` and `/api/ready` (no connection strings, no tenant data). Health may
+  include `role` (`all` / `web` / `worker`) and `ui` (whether a built SPA is on disk).
 - View a customer-published verification page (`/verify/:token` and `GET /api/verify/:token`) when that page is enabled. Digests, receipt status, delivery hostnames, and last match only. Query strings, pack bytes, CI URLs, signed URLs, and unpublished revisions are omitted. Failed-policy and inconclusive are not a clean result. The read does not enqueue a delivery download.
 - Call GitHub App webhooks with a valid HMAC.
 
@@ -758,4 +759,7 @@ admin can start them, members and other tenants are 403, unpaid installs can sub
 already-subscribed Checkout returns the portal, signed lifecycle events set and clear plan
 idempotently, a failed payment stops hosted work, a stolen customer cannot move to another
 install, and API bodies never include Stripe object IDs or secrets.
+`tests/production-runtime.test.ts` proves the built SPA is served from the API process,
+path traversal cannot leave the UI root, `/api` stays JSON, enqueue NOTIFY does not throw
+on PGlite, and `NOSPOILERS_ROLE=web` does not claim jobs.
 Keep those tests green when adding internal routes.

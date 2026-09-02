@@ -20,13 +20,13 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Card-on-file 14-day trial | Built: Checkout always collects a payment method; remaining trial days become `trial_period_days` | NoSpoilers |
 | Stripe lifecycle webhooks | Built: signed `checkout.session.completed`, subscription updated/deleted, `invoice.paid` / `invoice.payment_failed`; idempotent `stripe_events`; failed payment or cancel clears plan and stops hosted work | NoSpoilers |
 | Billing portal | Built: install admin opens portal when a customer exists; already-subscribed Checkout returns the portal | NoSpoilers |
-| Railway web/API and worker deployment | Planned | NoSpoilers |
+| Railway web/API and worker deployment | Partial: `npm run build` + `npm run host` serves the built SPA with the API; `NOSPOILERS_ROLE=web|worker|all` splits HTTP from job claim; enqueue `NOTIFY nospoilers_jobs` so a split worker wakes without 500 ms polling; recovery stays 15 min; this host is not on Railway and no account was created | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
 | Resend email delivery | Built: Watch email destinations encrypt the address; AlertNotifier POSTs to Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set; test and send stay 503 / `failed` without keys; this host has no keys (`resend: false`); Live Neon `060` applied, email destinations 0; Disclosure Desk `sent` stays false; invites stay GitHub-login only | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
 | Upload/API rate limiting | Built: hosted scan, GitHub OAuth, and owner discovery per address; GitHub webhooks are not limited | NoSpoilers |
-| Readiness/health checks and structured logs | Built: `/api/health` liveness, `/api/ready` DB ping, JSON logs | NoSpoilers |
+| Readiness/health checks and structured logs | Built: `/api/health` liveness (`role`, `ui`, stripe, resend), `/api/ready` DB ping, JSON logs | NoSpoilers |
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
@@ -187,7 +187,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
-| Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
+| Public status page | Built: `/status` from `/api/health` (no tenant data, no URL); shows GitHub App, Stripe, Resend, process role, built UI on disk, Neon mode | Operations |
 | Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; map custody is light; website crawls are light until they scan; no-download GitHub/npm jobs refund; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one email (covered installs), one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers |
 
