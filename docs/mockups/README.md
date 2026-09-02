@@ -15,6 +15,14 @@ node scripts/serve-mockups.mjs   # http://localhost:3000/
 Use that script, not `npx serve` — Cursor's in-IDE preview needs the dual-stack bind. Or open
 `docs/mockups/index.html` directly. Start with [1F](1f-click-desk.html).
 
+To put them on a public `*.workers.dev` URL (so the Cursor browser can open them):
+
+```bash
+cd docs/mockups && npx wrangler@4 deploy --temporary
+```
+
+That is a 60-minute preview unless you open the claim URL Wrangler prints. After the account is yours, `npx wrangler@4 deploy` from the same directory publishes for real.
+
 ## State presets
 
 Every mockup carries a switcher in a bar at the bottom of the page with five presets:

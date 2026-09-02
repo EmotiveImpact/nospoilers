@@ -1,0 +1,14 @@
+{
+  "name": "nospoilers-watch-desk-mockups",
+  "compatibility_date": "2026-09-02",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": ".",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

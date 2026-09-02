@@ -34,6 +34,16 @@ and any Content-Security-Policy on the pages produce a white pane while the same
 on the Desktop tab. The script binds `0.0.0.0:3000`, never redirects, and sends
 `Access-Control-Allow-Origin: *`. After changing the server, refresh that tab.
 
+If the IDE preview still will not load, deploy the static folder:
+
+```bash
+cd docs/mockups && npx wrangler@4 deploy --temporary
+```
+
+`wrangler.jsonc` is assets-only (`html_handling: auto-trailing-slash`). `--temporary` lasts 60
+minutes unless the printed claim URL is used. `.assetsignore` keeps `.wrangler` and markdown out
+of the upload.
+
 ## The state system
 
 Five radio inputs sit immediately before `.app` in every mockup, and `mockup.css` drives
