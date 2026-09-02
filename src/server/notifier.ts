@@ -11,6 +11,7 @@ import {
 } from "./siem.ts";
 import { postJiraIssue } from "./jira.ts";
 import { postPagerDutyAlert } from "./pagerduty.ts";
+import { emailAlertText, postResendEmail } from "./email.ts";
 import {
   alertSeverity,
   destinationReceives,
@@ -143,6 +144,44 @@ export async function deliverPagerDutyAlert(
   });
 }
 
+export async function deliverEmailAlert(
+  store: Store,
+  input: {
+    installationId: number;
+    alertId: number | null;
+    kind: string;
+    title: string;
+    body: string;
+  },
+  opts: { fetch?: typeof fetch; apiKey?: string; fromEmail?: string } = {},
+): Promise<void> {
+  const dest = await store.getDestinationWebhookForInstallation(input.installationId, "email");
+  if (!dest) return;
+  const posted = await postResendEmail(
+    {
+      apiKey: opts.apiKey ?? "",
+      from: opts.fromEmail ?? "",
+      to: dest.url,
+      ...emailAlertText({ title: input.title, body: input.body, kind: input.kind }),
+    },
+    opts.fetch ?? fetch,
+  );
+  await store.recordNotificationDelivery({
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    kind: "email",
+    status: posted.ok ? "sent" : "failed",
+    error: posted.error,
+  });
+  logJson(posted.ok ? "info" : "error", posted.ok ? "alert.email_sent" : "alert.email_failed", {
+    installationId: input.installationId,
+    destinationId: dest.id,
+    alertId: input.alertId,
+    status: posted.status,
+  });
+}
+
 export async function deliverJiraAlert(
   store: Store,
   input: {
@@ -194,7 +233,11 @@ async function sampleForAlert(store: Store, alert: AlertInput): Promise<RouteSam
 
 export function createLogNotifier(
   store: Store,
-  opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
+  opts: {
+    fetch?: typeof fetch;
+    lookup?: WebhookHostLookup;
+    resend?: { apiKey: string; fromEmail: string };
+  } = {},
 ): AlertNotifier {
   const fetchImpl = opts.fetch ?? fetch;
   return {
@@ -270,6 +313,28 @@ export function createLogNotifier(
           id,
           installationId: alert.installationId,
           error: error instanceof Error ? error.message : "Jira delivery failed.",
+        });
+      }
+      try {
+        const dest = await store.getDestinationWebhookForInstallation(alert.installationId, "email");
+        if (
+          dest &&
+          destinationReceives(
+            routes.filter((row) => row.destinationId === dest.id),
+            sample,
+          )
+        ) {
+          await deliverEmailAlert(store, payload, {
+            fetch: fetchImpl,
+            apiKey: opts.resend?.apiKey,
+            fromEmail: opts.resend?.fromEmail,
+          });
+        }
+      } catch (error) {
+        logJson("error", "alert.email_failed", {
+          id,
+          installationId: alert.installationId,
+          error: error instanceof Error ? error.message : "Email delivery failed.",
         });
       }
       try {

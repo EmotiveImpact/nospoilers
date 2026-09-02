@@ -10,7 +10,20 @@ import { validateExceptionInput } from "../policy.ts";
 import { verifyReceipt } from "../receipt.ts";
 import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
 import type { AppConfig } from "./config.ts";
-import { databaseMode, githubAppConfigured, stripeConfigured, stripePriceMap } from "./config.ts";
+import {
+  databaseMode,
+  githubAppConfigured,
+  resendConfigured,
+  stripeConfigured,
+  stripePriceMap,
+} from "./config.ts";
+import {
+  EMAIL_ADDRESS_ERROR,
+  emailPlanDeniedFromBilling,
+  emailTestText,
+  parseEmailAddress,
+  postResendEmail,
+} from "./email.ts";
 import {
   STRIPE_ADMIN_ERROR,
   STRIPE_NOT_LIVE_ERROR,
@@ -531,6 +544,7 @@ function destinationKindLabel(kind: NotificationKind): string {
   if (kind === "jira") return "Jira";
   if (kind === "siem") return "SIEM";
   if (kind === "pagerduty") return "PagerDuty";
+  if (kind === "email") return "Email";
   return "Slack";
 }
 
@@ -550,7 +564,7 @@ function publicDestination(row: {
     installationId: row.installationId,
     kind: row.kind,
     host: row.host,
-    projectKey: row.kind === "jira" ? (row.projectKey ?? null) : null,
+    projectKey: row.kind === "jira" || row.kind === "email" ? (row.projectKey ?? null) : null,
     lastDeliveryAt: row.lastDeliveryAt,
     lastDeliveryStatus: row.lastDeliveryStatus,
     lastDeliveryError: row.lastDeliveryError,
@@ -563,7 +577,15 @@ export function createApp(deps: AppDeps): Hono {
   const scanFn = deps.scan ?? scan;
   const hostedOrigin = hostedScanOrigin(deps.config.appBaseUrl);
   const npm = deps.npm ?? createNpmPort();
-  const notifier = deps.notifier ?? createLogNotifier(deps.store);
+  const notifier =
+    deps.notifier ??
+    createLogNotifier(deps.store, {
+      fetch: deps.slackFetch,
+      lookup: deps.webhookLookup,
+      resend: resendConfigured(deps.config)
+        ? { apiKey: deps.config.resendApiKey, fromEmail: deps.config.resendFromEmail }
+        : undefined,
+    });
   const stripe =
     deps.stripe ??
     (deps.config.stripeSecretKey ? createStripePort(deps.config.stripeSecretKey) : null);
@@ -647,6 +669,25 @@ export function createApp(deps: AppDeps): Hono {
           auth.routingKey,
           install?.account_login ?? "",
           outbound,
+        );
+      }
+    } else if (destination.kind === "email") {
+      const dest = await deps.store.getDestinationWebhookForInstallation(
+        destination.installationId,
+        "email",
+      );
+      if (!dest || dest.id !== destination.id) {
+        posted = { ok: false, status: 0, error: "Unknown destination." };
+      } else {
+        posted = await postResendEmail(
+          {
+            apiKey: deps.config.resendApiKey,
+            from: deps.config.resendFromEmail,
+            to: dest.url,
+            subject: "NoSpoilers delivery test",
+            text: emailTestText(install?.account_login ?? ""),
+          },
+          outbound.fetch,
         );
       }
     } else {
@@ -772,6 +813,7 @@ export function createApp(deps: AppDeps): Hono {
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
       stripe: stripeConfigured(deps.config),
+      resend: resendConfigured(deps.config),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
       },
@@ -793,6 +835,7 @@ export function createApp(deps: AppDeps): Hono {
       ready: databaseOk,
       githubApp: githubAppConfigured(deps.config),
       stripe: stripeConfigured(deps.config),
+      resend: resendConfigured(deps.config),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
         ok: databaseOk,
@@ -1951,6 +1994,7 @@ export function createApp(deps: AppDeps): Hono {
         user: null,
         githubApp: githubAppConfigured(deps.config),
         stripe: stripeConfigured(deps.config),
+        resend: resendConfigured(deps.config),
       });
     }
     const installations = await deps.store.listInstallationsForUser(user.userId);
@@ -1960,6 +2004,7 @@ export function createApp(deps: AppDeps): Hono {
       installations,
       githubApp: githubAppConfigured(deps.config),
       stripe: stripeConfigured(deps.config),
+      resend: resendConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
       hostedOrigin: hostedOrigin.origin,
       githubRunnersReachable: hostedOrigin.githubRunnersReachable,
@@ -5401,6 +5446,55 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/destinations/email", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation to attach email to." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = emailPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const parsed = parseEmailAddress(String(body.email ?? body.address ?? ""));
+    if (!parsed) return c.json({ error: EMAIL_ADDRESS_ERROR }, 400);
+    try {
+      const destination = await deps.store.upsertEmailDestination({
+        installationId,
+        address: parsed.address,
+        domain: parsed.domain,
+        redacted: parsed.redacted,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "destination.save",
+        summary: `Saved email destination ${parsed.domain}`,
+        targetKind: "destination",
+        targetId: parsed.domain,
+      });
+      return c.json({ ok: true, destination: publicDestination(destination) }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that email address." },
+        errorStatus(error),
+      );
+    }
+  });
+
   app.post("/api/destinations/pagerduty", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -5497,14 +5591,17 @@ export function createApp(deps: AppDeps): Hono {
         ? "Jira received a delivery test. This talked to Jira (myself and the project) and never created a ticket or Watch alert. This is not a security incident."
         : destination.kind === "pagerduty"
           ? "PagerDuty received a change-event delivery test. This never created an incident or Watch alert. This is not a security incident."
+          : destination.kind === "email"
+            ? "Email received a delivery test. This never created a Watch alert. This is not a security incident."
           : `${label} received a delivery test. This is not a security incident.`;
+    const status = posted.ok ? 200 : posted.status === 503 ? 503 : 502;
     return c.json({
       ok: posted.ok,
       inventedIncident: false,
       status: posted.status,
       error: posted.ok ? null : posted.error,
       detail: posted.ok ? detail : posted.error,
-    }, posted.ok ? 200 : 502);
+    }, status);
   });
 
   return app;

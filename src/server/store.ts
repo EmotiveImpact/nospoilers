@@ -230,7 +230,7 @@ export type NpmRegistryRow = {
   updated_at: string;
 };
 
-export type NotificationKind = "slack" | "siem" | "jira" | "pagerduty";
+export type NotificationKind = "slack" | "siem" | "jira" | "pagerduty" | "email";
 
 export type NotificationDestinationRow = {
   id: number;
@@ -796,7 +796,7 @@ function optionalInstallId(id?: number | null): number | null {
 }
 
 function asNotificationKind(value: string): NotificationKind {
-  if (value === "siem" || value === "jira" || value === "pagerduty") return value;
+  if (value === "siem" || value === "jira" || value === "pagerduty" || value === "email") return value;
   return "slack";
 }
 
@@ -6123,6 +6123,21 @@ export function createStore(
         kind: "pagerduty",
         webhookUrl: input.routingKey,
         host: "events.pagerduty.com",
+      });
+    },
+
+    async upsertEmailDestination(input: {
+      installationId: number;
+      address: string;
+      domain: string;
+      redacted: string;
+    }): Promise<NotificationDestinationRow> {
+      return await this.upsertNotificationDestination({
+        installationId: input.installationId,
+        kind: "email",
+        webhookUrl: input.address,
+        host: input.domain,
+        projectKey: input.redacted,
       });
     },
 

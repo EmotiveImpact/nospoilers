@@ -335,17 +335,21 @@ Read in this order:
   resolved with a note, and reopened. Exposure duration and a SEC/MAP rotation checklist
   are shown. Watch can export that activity as JSON. Incident actions stay available when
   unpaid or GitHub-suspended.
+- Covered installs can save one Watch email destination (encrypted address, domain + redacted
+  local returned, audit stores the domain). Test and send stay 503 / `failed` until
+  `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set. This host has no Resend keys. Unpaid 402.
+  Members 403. A test never invents a Watch alert and never mails a disclosure or invite.
 - Trial and Team installs can save a Slack incoming webhook, a SIEM HTTPS webhook, a Jira
   Cloud destination, and a PagerDuty Events API routing key (encrypted, never returned). New
   Watch alerts POST to those destinations after they are stored. Watch **Test delivery** talks
-  to Slack, SIEM, Jira, or PagerDuty and never inserts an alert. A Jira test GETs
+  to email, Slack, SIEM, Jira, or PagerDuty and never inserts an alert. A Jira test GETs
   myself+project and never creates a ticket. A PagerDuty test POSTs a change event and never
-  creates an incident. Solo paid does not get Slack, SIEM, Jira, or PagerDuty. Email still
-  needs Resend. SIEM hosts cannot be private, local, metadata, or hooks.slack.com. Jira is
-  `*.atlassian.net` only. PagerDuty is `events.pagerduty.com` only. Trial and Team installs
-  can save routing rules (min severity, repository, package, teammate assign) per destination.
-  Destinations without a route still receive every Watch alert. A routed test talks to matching
-  destinations and never inserts an alert.
+  creates an incident. Solo paid does not get Slack, SIEM, Jira, or PagerDuty. SIEM hosts
+  cannot be private, local, metadata, or hooks.slack.com. Jira is `*.atlassian.net` only.
+  PagerDuty is `events.pagerduty.com` only. Trial and Team installs can save routing rules
+  (min severity, repository, package, teammate assign) per destination. Destinations without
+  a route still receive every Watch alert. A routed test talks to matching destinations and
+  never inserts an alert.
 - Trial and Team installs get a Watch **audit log** of admin writes plus a titles-only export of
   alerts and notification deliveries. Destructive deletes require typing the public identifier.
   Solo 403. Unpaid 402. Members may read/export. Append-only. Never stores URLs, emails, tokens,
@@ -356,9 +360,9 @@ Read in this order:
 - Trial and Team installs get Watch **Team** roles. The first GitHub user to connect is
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
-  delivery tests. Admins save Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, scan tokens, allowlists, baselines,
-  and open setup/remediation PRs. Trial/Team can invite by GitHub login. No email (Resend is
-  benched). They become that role when they sign in after GitHub lists them on this App.
+  delivery tests. Admins save email on covered installs and Slack/SIEM/Jira/PagerDuty on trial/Team, plus map custody, routes, registries, scan tokens, allowlists, baselines,
+  and open setup/remediation PRs. Trial/Team can invite by GitHub login. Invites stay
+  GitHub-login only and never send mail. They become that role when they sign in after GitHub lists them on this App.
   First-user-admin still wins if a member invite would leave zero admins.
 - Watch one-click GitHub responses are in (make-private, delete latest Release pack assets,
   disable a workflow that is not `.github/workflows/nospoilers.yml`). Install admin, typed
@@ -394,7 +398,8 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
   done → “Spoilers in EmotiveImpact/nospoilers-throwaway phase1-fixture” plus receipt
   `github:EmotiveImpact/nospoilers-throwaway@phase1-fixture#sourcemap.tgz` (`failed-policy`,
   MAP-001/002/003). `npm run phase1:throwaway` is idempotent and skips Actions YAML.
-  Stripe Checkout is wired and stays 503 without keys. Resend is benched.
+  Stripe Checkout is wired and stays 503 without keys. Resend Watch email is wired and stays
+  503 without keys.
 - Production deployment does not exist. Slack, SIEM, Jira, and PagerDuty destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
@@ -408,6 +413,8 @@ docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md fi
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
 Milestone 3 Checkout/portal/webhooks are wired and stay 503 without Stripe keys.
 This host has no Stripe keys. Do not create a Stripe account or prices without approval.
+Resend Watch email is wired and stays 503 without `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
+Do not create a Resend account or sending domain without approval. Do not mail disclosures or invites.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
@@ -459,6 +466,7 @@ that test; alert ack/assign/resolve; exposure duration; rotation checklist; appe
 Multiple GitHub organizations are in (Watch install switcher; `installationId` list filter;
 writes require an id when two+ installs exist; coverage/suspend per install).
 Public `/status` is in (health liveness only).
+Watch email destinations are in (covered installs; encrypted address; test/send 503 without Resend keys; this host has no keys; never mails disclosures or invites).
 Slack incoming webhooks are in (trial/Team, encrypted, event-driven, test never invents an incident).
 SIEM HTTPS webhooks are in (trial/Team, encrypted, SSRF-blocked, event-driven, test never invents an incident).
 Jira Cloud tickets are in (trial/Team, `*.atlassian.net` only, encrypted email+token, test never
@@ -472,7 +480,7 @@ Team audit log is in (trial/Team, append-only, typed confirm on destructive writ
 includes secrets; Solo 403; unpaid 402; members may read/export).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
-GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/PagerDuty/routes/registries/tokens/allowlists/PRs).
+GitHub suspend does not block; GitHub-login invite with no email; members cannot save email/Slack/SIEM/Jira/PagerDuty/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump,
 new dependency toward a package first published within 14 days, packument unpacked-size
 jumps (2× or ≥5 MiB versus the last snapshot, metadata only), and npm attestation
@@ -723,7 +731,7 @@ Unpaid 402. Members 403. Live on install `158159401`: unauth 401, invalid key
 (`inventedIncident: false`, no Watch alert, PagerDuty HTTP 400), typed-confirm
 delete 200, leftover destination 0. Delivery rows stayed with a null
 destination id. Cloudflare tunnel matched. The dummy key was deleted.
-Stripe Checkout is wired; this host has no Stripe keys. Resend is benched. The normal worker classifies and skips Electron
+Stripe Checkout is wired; this host has no Stripe keys. Resend Watch email is wired; this host has no Resend keys. The normal worker classifies and skips Electron
 installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```

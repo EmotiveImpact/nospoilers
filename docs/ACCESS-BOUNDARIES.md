@@ -163,11 +163,14 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Solo paid returns 403. Unpaid returns 402. Another tenant’s installation is empty.
   Query strings, pack bytes, and receipt bodies are not included.
 - List Slack, SIEM, Jira, and PagerDuty destination hosts on a trial or Team install (URLs,
-  emails, tokens, and routing keys are never returned). Jira lists the project key. PagerDuty
-  lists `events.pagerduty.com`. A delivery test talks to the destination and never inserts an
-  alert. A Jira test never creates a ticket. A PagerDuty test POSTs a change event and never
-  creates an incident. List routing rules for those destinations. A routed test talks to
-  matching destinations and never inserts an alert.
+  emails, tokens, and routing keys are never returned). List one email destination on a
+  covered install (domain + redacted local; the mailbox is never returned). Jira lists the
+  project key. PagerDuty lists `events.pagerduty.com`. A delivery test talks to the
+  destination and never inserts an alert. An email test never invents a Watch alert. A Jira
+  test never creates a ticket. A PagerDuty test POSTs a change event and never creates an
+  incident. Email test and send stay 503 until Resend keys exist. List routing rules for
+  those destinations. A routed test talks to matching destinations and never inserts an
+  alert.
 - Read this install’s 90-day timeline (alerts, acknowledgement activity, and notification
   deliveries) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Titles only; webhook URLs and secret values
@@ -183,7 +186,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
+- Change roles, remove members, invite or revoke a GitHub login, save or delete email/Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, watch or stop watching an npm scope, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
   verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
@@ -192,7 +195,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
-- See other tenants’ registry tokens, Slack, SIEM, Jira, or PagerDuty destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
+- See other tenants’ registry tokens, email, Slack, SIEM, Jira, or PagerDuty destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
 - Edit or delete scan receipts, release revisions, release approvals, legal-hold events, jobs, alert events, or audit events. Receipts, revisions, approvals, holds, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -206,7 +209,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 A member who can manage the customer’s GitHub installation membership and product settings
 on a trial or Team install. The first GitHub user to connect an install is admin; later
 users become members. Solo paid returns 403 for role changes and invites. Unpaid returns 402. GitHub
-suspend does not block role changes or GitHub-login invites. Email invite waits on Resend.
+suspend does not block role changes or GitHub-login invites. Invites stay GitHub-login only and never send mail.
 
 This is not GitHub App **Administration**. That GitHub permission is repo-admin (make the
 repository private, delete Release assets, disable workflows, change settings). It is not
@@ -224,6 +227,12 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   Administration. If applying a member invite would leave zero admins, they stay admin and
   the invite is consumed. Upserts a pending invite when the login is not yet a member (409
   if they already are).
+- Save and delete one encrypted Watch email destination on a covered install (trial, Solo,
+  or Team). Unpaid returns 402. The full address is encrypted and never returned. The API
+  lists the domain and a redacted local part. Audit `target_id` is the domain only. Deletes
+  require typing that domain. Test and send stay 503 until `RESEND_API_KEY` and
+  `RESEND_FROM_EMAIL` are set. A test never invents a Watch alert and never mails a
+  disclosure or invite. The from address is the host mailbox, never a customer address.
 - Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, Jira Cloud
   destinations, and PagerDuty Events API routing keys on a trial or Team install. URLs,
   emails, API tokens, and routing keys are never returned after save. Deletes require typing
@@ -690,6 +699,11 @@ writes without an install id return 400 when two installs exist, unpaid or GitHu
 suspended coverage on one org does not lock a sibling trial org, last-delivery on
 the permission test comes from a real customer job and never inserts an alert, and
 `/api/health` still omits `DATABASE_URL` and tenant data.
+`tests/email.test.ts` proves Watch email destinations encrypt the address, never return the
+mailbox, allow Solo paid, return 402 when unpaid, return 403 for members and other tenants,
+return 401 when signed out, record domain + redacted local, keep audit off the mailbox,
+return 503 with `inventedIncident: false` until Resend keys exist, and POST to Resend for
+a real alert or delivery test only when keys are set.
 `tests/notifications.test.ts` proves Slack incoming webhooks are encrypted, never returned,
 tenant-scoped, unpaid saves return 402, Solo paid returns 403, a delivery test never inserts
 an alert, real alerts POST after insert, and `notification_deliveries` are append-only.
@@ -717,7 +731,7 @@ returns 402 when unpaid, returns 403 for members and other tenants, and that app
 typed confirmation is required for destructive deletes, export never includes webhook URLs
 or alert bodies, members can read/export, and `audit_events` cannot be updated or deleted.
 `tests/roles.test.ts` proves the first linked user is admin and later users are members,
-members can watch and test but cannot save Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, scan tokens, allowlists,
+members can watch and test but cannot save email/Slack/SIEM/Jira/PagerDuty, map custody, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
 `tests/github-response.test.ts` proves make-private, delete-pack-assets, and disable-workflow
@@ -738,7 +752,7 @@ and Bugsnag without a release is inconclusive (debug ID lookup is not available)
 `tests/secrets.test.ts` proves hosted `/api/scan`, GitHub OAuth start, and owner discovery
 return 429 after the configured cap, that anonymous 401s do not consume the discovery budget,
 and that GitHub webhooks are not rate-limited. `tests/docs.test.ts` proves `/docs` states we
-never execute packages or retain source, email is not live yet, and Electron stays later.
+never execute packages or retain source, email delivery is not live yet without Resend keys, and Electron stays later.
 `tests/stripe.test.ts` proves Checkout and the portal stay 503 without keys, only an install
 admin can start them, members and other tenants are 403, unpaid installs can subscribe,
 already-subscribed Checkout returns the portal, signed lifecycle events set and clear plan

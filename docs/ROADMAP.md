@@ -125,8 +125,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Multiple GitHub organizations: Watch switches installs; coverage and GitHub suspend
   apply to the selected org only. Live permission tests include the last customer job.
 - Public `/status` page from `/api/health` (no tenant data, no connection string).
-- Slack incoming webhooks for trial/Team: encrypted URL, event-driven delivery, test that
-  never invents an incident. Email still waits on Resend.
+-   Slack incoming webhooks for trial/Team: encrypted URL, event-driven delivery, test that
+  never invents an incident. Email destinations are wired on covered installs; send waits
+  on Resend keys.
 - SIEM HTTPS webhooks for trial/Team: encrypted URL, private/local/metadata/Slack hosts
   blocked, DNS-resolved SSRF check, event-driven JSON POST, test that never invents an incident.
 - Jira Cloud tickets for trial/Team: `*.atlassian.net` only, encrypted email+token, listed
@@ -198,7 +199,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira/PagerDuty, routes, registries, tokens, allowlists,
   baselines, and open setup/remediation PRs. Trial/Team can invite by GitHub login (no email;
-  Resend is benched). They get that role on sign-in if GitHub already lists them on this App.
+  invites stay GitHub-login only). They get that role on sign-in if GitHub already lists them on this App.
   First-user-admin still wins if a member invite would leave zero admins.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.
@@ -266,7 +267,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 ### Missing before launch
 
 - Stripe checkout/subscription webhooks and card-on-file trial (wired; live when keys exist).
-- Production deployment, email delivery (Resend, benched), and monitoring.
+- Production deployment, Resend keys plus a from address (adapter is wired; this host has no keys), and monitoring.
 
 ## Milestone 0 — prove Neon runtime
 
@@ -283,7 +284,7 @@ and `fixtures/sourcemap.tgz` on tag `phase1-fixture`. GitHub delivered `release.
 (HTTP 200) → job `release_scan` done → alert **Spoilers in EmotiveImpact/nospoilers-throwaway
 phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Contents write is live on
 this install only. Do not grant Administration. Do not publicize a product repository.
-Resend is benched. Stripe checkout is wired and stays 503 until keys exist.
+Resend Watch email is wired and stays 503 until keys exist. Stripe checkout is wired and stays 503 until keys exist.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.
@@ -325,7 +326,7 @@ Exit: customer one can pay without GitHub Marketplace once keys exist. Marketpla
 
 - Railway web/API and normal worker; Neon Postgres; Cloudflare DNS.
 - Before customers: Railway warning near $25 and hard stop near $50; review before production.
-- Resend email. Serve built frontend and API together or document the production split.
+- Set Resend keys when a sending domain exists. Serve built frontend and API together or document the production split.
 
 ## Milestone 5 — repeatable acquisition
 
