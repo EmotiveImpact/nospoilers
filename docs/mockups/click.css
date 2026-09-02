@@ -266,8 +266,7 @@
 #ov-plans:checked ~ .scrim,
 #ov-source:checked ~ .scrim,
 #ov-assign:checked ~ .scrim,
-#ov-repo:checked ~ .scrim,
-#ov-install:checked ~ .scrim {
+#ov-repo:checked ~ .scrim {
   display: block;
 }
 
@@ -367,14 +366,14 @@
 .inst-pop {
   display: none;
   position: absolute;
-  z-index: 20;
+  z-index: 30;
   left: 12px;
   right: 12px;
-  top: 86px;
+  top: 92px;
   padding: 6px;
   border-radius: var(--r);
   border: 1px solid var(--line-strong);
-  background: #141416;
+  background: #1a1a1e;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 #ov-install:checked ~ .app .inst-pop {

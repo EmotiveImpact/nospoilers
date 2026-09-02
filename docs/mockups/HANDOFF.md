@@ -58,7 +58,7 @@ Click-through extras in `click.css` (1F–1I only):
 | `name="view"` `#v-*` | Sidebar routes. Alert saved views are `v-alerts`, `v-alerts-wait`, `v-alerts-mine`, `v-alerts-done` so they share a radio group with Overview and can actually navigate. |
 | `name="alert"` `#a-*` | Selected alert in the inbox |
 | `#ack-map` `#res-map` (checkboxes) | Acknowledge / resolve. Classes `.show-map-ack` `.hide-map-res` `.show-both-res` etc. |
-| `name="overlay"` `#ov-*` | Palette, plans, add-source, assign, install menu. Scrim is `label for="ov-none"`. |
+| `name="overlay"` `#ov-*` | Palette, plans, add-source, assign. Scrim is `label for="ov-none"`. `#ov-install` is a sidebar dropdown and must **not** dim the page — the scrim sits at z-index 40 and would hide the menu. |
 | `name="scene"` / `name="incident"` | Walkthrough steps on 1G / 1H |
 | `name="mode"` `#m-desk` `#m-settings` | 1I chrome switch |
 
