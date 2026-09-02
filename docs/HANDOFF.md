@@ -115,7 +115,11 @@ Read in this order:
   GitHub owner and append-only vendor domains from policy URL or contact
   email. Matching uses stored hosts after contact/policy is cleared.
   Live Neon: `056` applied; prettier has `prettier.io`; stevemao has no
-  vendor domain; leftover extra orgs 0. Next unused id is `057_*`.
+  vendor domain; leftover extra orgs 0.
+  `057_disclosure_contacts_policies` stores append-only security contacts
+  and policy URLs on the organization. Live Neon: `057` applied; prettier
+  has `security@prettier.io` and `https://prettier.io/security`; stevemao
+  has none. Next unused id is `058_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.

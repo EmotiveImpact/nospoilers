@@ -11,11 +11,13 @@ import {
   type DisclosureAttachmentRow,
   type DisclosureCaseRow,
   type DisclosureChecklist,
+  type DisclosureContactRow,
   type DisclosureConversion,
   type DisclosureDomainRow,
   type DisclosureEventRow,
   type DisclosureOrganizationRow,
   type DisclosureOrganizationView,
+  type DisclosurePolicyRow,
   type DisclosureReviewState,
   type DisclosureState,
   type DisclosureTemplateRow,
@@ -1216,6 +1218,40 @@ function organizationRow(row: {
     id: num(row.id),
     github_owner: row.github_owner,
     github_owner_key: row.github_owner_key,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function contactRow(row: {
+  id: unknown;
+  organization_id: unknown;
+  contact: string;
+  contact_key: string;
+  source_url: string | null;
+  created_at: string | Date;
+}): DisclosureContactRow {
+  return {
+    id: num(row.id),
+    organization_id: num(row.organization_id),
+    contact: row.contact,
+    contact_key: row.contact_key,
+    source_url: row.source_url,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function policyRow(row: {
+  id: unknown;
+  organization_id: unknown;
+  policy_url: string;
+  policy_url_key: string;
+  created_at: string | Date;
+}): DisclosurePolicyRow {
+  return {
+    id: num(row.id),
+    organization_id: num(row.organization_id),
+    policy_url: row.policy_url,
+    policy_url_key: row.policy_url_key,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -3234,6 +3270,54 @@ export function createStore(
       return rows.map(domainRow);
     },
 
+    async addDisclosureContact(
+      organizationId: number,
+      contact: string,
+      sourceUrl: string | null,
+    ): Promise<boolean> {
+      const value = contact.trim();
+      const key = value.toLowerCase();
+      if (!key) return false;
+      const row = await sql.query<{ id: unknown }>(
+        `INSERT INTO disclosure_security_contacts (organization_id, contact, contact_key, source_url)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (organization_id, contact_key) DO NOTHING
+         RETURNING id`,
+        [organizationId, value, key, sourceUrl],
+      );
+      return Boolean(row.rows[0]);
+    },
+
+    async addDisclosurePolicy(organizationId: number, policyUrl: string): Promise<boolean> {
+      const value = policyUrl.trim();
+      const key = value.toLowerCase();
+      if (!key) return false;
+      const row = await sql.query<{ id: unknown }>(
+        `INSERT INTO disclosure_policies (organization_id, policy_url, policy_url_key)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (organization_id, policy_url_key) DO NOTHING
+         RETURNING id`,
+        [organizationId, value, key],
+      );
+      return Boolean(row.rows[0]);
+    },
+
+    async listDisclosureContacts(organizationId: number): Promise<DisclosureContactRow[]> {
+      const { rows } = await sql.query<Parameters<typeof contactRow>[0]>(
+        `SELECT * FROM disclosure_security_contacts WHERE organization_id = $1 ORDER BY id ASC`,
+        [organizationId],
+      );
+      return rows.map(contactRow);
+    },
+
+    async listDisclosurePolicies(organizationId: number): Promise<DisclosurePolicyRow[]> {
+      const { rows } = await sql.query<Parameters<typeof policyRow>[0]>(
+        `SELECT * FROM disclosure_policies WHERE organization_id = $1 ORDER BY id ASC`,
+        [organizationId],
+      );
+      return rows.map(policyRow);
+    },
+
     async listDisclosureDomainHosts(): Promise<{ github_owner_key: string; host: string }[]> {
       const { rows } = await sql.query<{ github_owner_key: string; host: string }>(
         `SELECT o.github_owner_key, d.host
@@ -3276,6 +3360,12 @@ export function createStore(
       const countByOwner = new Map(
         counts.rows.map((row) => [row.owner_key, Number(row.n)] as const),
       );
+      const contacts = await sql.query<Parameters<typeof contactRow>[0]>(
+        `SELECT * FROM disclosure_security_contacts ORDER BY id ASC`,
+      );
+      const policies = await sql.query<Parameters<typeof policyRow>[0]>(
+        `SELECT * FROM disclosure_policies ORDER BY id ASC`,
+      );
       const domainsByOrg = new Map<number, DisclosureDomainRow[]>();
       for (const row of domains.rows) {
         const parsed = domainRow(row);
@@ -3283,12 +3373,28 @@ export function createStore(
         list.push(parsed);
         domainsByOrg.set(parsed.organization_id, list);
       }
+      const contactsByOrg = new Map<number, DisclosureContactRow[]>();
+      for (const row of contacts.rows) {
+        const parsed = contactRow(row);
+        const list = contactsByOrg.get(parsed.organization_id) ?? [];
+        list.push(parsed);
+        contactsByOrg.set(parsed.organization_id, list);
+      }
+      const policiesByOrg = new Map<number, DisclosurePolicyRow[]>();
+      for (const row of policies.rows) {
+        const parsed = policyRow(row);
+        const list = policiesByOrg.get(parsed.organization_id) ?? [];
+        list.push(parsed);
+        policiesByOrg.set(parsed.organization_id, list);
+      }
       return orgs.rows.map((row) => {
         const org = organizationRow(row);
         return toOrganizationView(
           org,
           domainsByOrg.get(org.id) ?? [],
           countByOwner.get(org.github_owner_key) ?? 0,
+          contactsByOrg.get(org.id) ?? [],
+          policiesByOrg.get(org.id) ?? [],
         );
       });
     },

@@ -61,6 +61,8 @@ type DeskOrganization = {
   id: number
   githubOwner: string
   domains: { host: string; source: string }[]
+  contacts: { contact: string; sourceUrl: string | null }[]
+  policies: { policyUrl: string }[]
   caseCount: number
 }
 type DeskTemplate = { id: number; name: string; subject: string; body: string }
@@ -835,9 +837,9 @@ export function ProspectsPage() {
         <section className="mt-10 rounded-lg border border-white/10 p-5">
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Organizations</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-            GitHub owners from Disclosure Desk cases, with vendor domains recorded from a
-            stored policy URL or security contact. Forge and registry hosts are not vendor
-            domains. This is not a commercial workspace.
+            GitHub owners from Disclosure Desk cases, with vendor domains, policy URLs,
+            and security contacts recorded from the case. Forge and registry hosts are
+            not vendor domains. This is not a commercial workspace.
           </p>
           <ul className="mt-5 divide-y divide-white/8">
             {organizations.map((row) => (
@@ -848,6 +850,12 @@ export function ProspectsPage() {
                   {row.domains.length
                     ? ` · ${row.domains.map((domain) => domain.host).join(", ")}`
                     : " · no vendor domain"}
+                  {row.policies.length
+                    ? ` · ${row.policies.map((policy) => policy.policyUrl).join(", ")}`
+                    : ""}
+                  {row.contacts.length
+                    ? ` · ${row.contacts.map((entry) => entry.contact).join(", ")}`
+                    : ""}
                 </p>
               </li>
             ))}

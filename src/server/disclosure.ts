@@ -202,10 +202,38 @@ export type DisclosureDomainView = {
   source: DomainSource;
 };
 
+export type DisclosureContactRow = {
+  id: number;
+  organization_id: number;
+  contact: string;
+  contact_key: string;
+  source_url: string | null;
+  created_at: string;
+};
+
+export type DisclosurePolicyRow = {
+  id: number;
+  organization_id: number;
+  policy_url: string;
+  policy_url_key: string;
+  created_at: string;
+};
+
+export type DisclosureContactView = {
+  contact: string;
+  sourceUrl: string | null;
+};
+
+export type DisclosurePolicyView = {
+  policyUrl: string;
+};
+
 export type DisclosureOrganizationView = {
   id: number;
   githubOwner: string;
   domains: DisclosureDomainView[];
+  contacts: DisclosureContactView[];
+  policies: DisclosurePolicyView[];
   caseCount: number;
 };
 
@@ -1612,20 +1640,32 @@ export async function syncDisclosureOrganization(
   if (policyHost) await store.addDisclosureDomain(org.id, policyHost, "policy");
   const contactHost = vendorHostFromContact(input.securityContact);
   if (contactHost) await store.addDisclosureDomain(org.id, contactHost, "contact");
-  const domains = await store.listDisclosureDomains(org.id);
-  const caseCount = await store.countDisclosureCasesForOwner(owner);
-  return toOrganizationView(org, domains, caseCount);
+  const policyUrl = input.policyUrl?.trim() || null;
+  const contact = input.securityContact?.trim() || null;
+  if (policyUrl) await store.addDisclosurePolicy(org.id, policyUrl);
+  if (contact) await store.addDisclosureContact(org.id, contact, policyUrl);
+  const [domains, contacts, policies, caseCount] = await Promise.all([
+    store.listDisclosureDomains(org.id),
+    store.listDisclosureContacts(org.id),
+    store.listDisclosurePolicies(org.id),
+    store.countDisclosureCasesForOwner(owner),
+  ]);
+  return toOrganizationView(org, domains, caseCount, contacts, policies);
 }
 
 export function toOrganizationView(
   org: DisclosureOrganizationRow,
   domains: DisclosureDomainRow[],
   caseCount = 0,
+  contacts: DisclosureContactRow[] = [],
+  policies: DisclosurePolicyRow[] = [],
 ): DisclosureOrganizationView {
   return {
     id: org.id,
     githubOwner: org.github_owner,
     domains: domains.map((row) => ({ host: row.host, source: row.source })),
+    contacts: contacts.map((row) => ({ contact: row.contact, sourceUrl: row.source_url })),
+    policies: policies.map((row) => ({ policyUrl: row.policy_url })),
     caseCount,
   };
 }

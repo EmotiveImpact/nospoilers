@@ -368,8 +368,8 @@ Internal staff running acquisition and disclosure work.
   case counts per assignee and unassigned, including state, pending review, and
   missed deadlines. Minutes, last-active, ranking, and billing fields are omitted.
 - Read first-class Disclosure Desk organizations (`GET /api/internal/disclosure/organizations`):
-  GitHub owners from cases plus recorded vendor domains. No create form; rows
-  come from real cases only.
+  GitHub owners from cases plus recorded vendor domains, policy URLs, and
+  security contacts. No create form; rows come from real cases only.
 - Save, test, and delete owner-only Disclosure Desk destinations
   (`/api/internal/disclosure/destinations`): one HTTPS webhook and one Jira Cloud
   project. Secrets are never returned. A test never invents an incident or

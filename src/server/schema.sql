@@ -367,6 +367,54 @@ CREATE TRIGGER disclosure_domains_no_delete
   BEFORE DELETE ON disclosure_domains
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_domain_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_security_contacts (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id BIGINT NOT NULL REFERENCES disclosure_organizations (id) ON DELETE CASCADE,
+  contact TEXT NOT NULL,
+  contact_key TEXT NOT NULL,
+  source_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, contact_key)
+);
+
+CREATE TABLE IF NOT EXISTS disclosure_policies (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id BIGINT NOT NULL REFERENCES disclosure_organizations (id) ON DELETE CASCADE,
+  policy_url TEXT NOT NULL,
+  policy_url_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, policy_url_key)
+);
+
+CREATE INDEX IF NOT EXISTS disclosure_security_contacts_org_idx
+  ON disclosure_security_contacts (organization_id, id ASC);
+CREATE INDEX IF NOT EXISTS disclosure_policies_org_idx
+  ON disclosure_policies (organization_id, id ASC);
+
+CREATE OR REPLACE FUNCTION reject_disclosure_contact_policy_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'disclosure security contacts and policies are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS disclosure_security_contacts_no_update ON disclosure_security_contacts;
+CREATE TRIGGER disclosure_security_contacts_no_update
+  BEFORE UPDATE ON disclosure_security_contacts
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+DROP TRIGGER IF EXISTS disclosure_security_contacts_no_delete ON disclosure_security_contacts;
+CREATE TRIGGER disclosure_security_contacts_no_delete
+  BEFORE DELETE ON disclosure_security_contacts
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+DROP TRIGGER IF EXISTS disclosure_policies_no_update ON disclosure_policies;
+CREATE TRIGGER disclosure_policies_no_update
+  BEFORE UPDATE ON disclosure_policies
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+DROP TRIGGER IF EXISTS disclosure_policies_no_delete ON disclosure_policies;
+CREATE TRIGGER disclosure_policies_no_delete
+  BEFORE DELETE ON disclosure_policies
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+
 CREATE TABLE IF NOT EXISTS disclosure_vendor_replies (
   id BIGSERIAL PRIMARY KEY,
   case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,

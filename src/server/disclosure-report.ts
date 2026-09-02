@@ -61,6 +61,10 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
           report.organization.domains.length
             ? ` · ${escapeHtml(report.organization.domains.map((row) => row.host).join(", "))}`
             : ""
+        }${
+          report.organization.policies.length
+            ? ` · ${escapeHtml(report.organization.policies.map((row) => row.policyUrl).join(", "))}`
+            : ""
         }`
       : "not recorded"
   }</p>

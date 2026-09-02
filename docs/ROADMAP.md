@@ -213,7 +213,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   match so leftover links stay 0; left-pad `contacted` 409 verify;
   prettier stays `fixed`) — first-class GitHub-owner organizations and
   append-only vendor domains from policy/contact (live Neon prettier
-  `prettier.io`, stevemao no vendor domain; extra orgs 0) —
+  `prettier.io`, stevemao no vendor domain; extra orgs 0) — first-class
+  append-only security contacts and policy URLs on that organization
+  (live Neon prettier `security@prettier.io` + `https://prettier.io/security`;
+  stevemao none) —
   live Neon prettier vs left-pad still no match,
   templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before

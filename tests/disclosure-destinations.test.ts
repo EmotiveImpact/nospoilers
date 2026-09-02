@@ -388,6 +388,8 @@ describe("Disclosure Desk destinations", () => {
               id: 1,
               githubOwner: "prettier",
               domains: [{ host: "prettier.io", source: "policy" }],
+              contacts: [],
+              policies: [{ policyUrl: "https://prettier.io/security" }],
               caseCount: 1,
             },
           }),

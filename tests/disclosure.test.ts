@@ -537,9 +537,19 @@ describe("Disclosure Desk Phase 1", () => {
           sent: boolean;
           artifact: { sha256: string | null; version: string | null };
           reproducibilitySteps: string | null;
+          organization: {
+            contacts: { contact: string }[];
+            policies: { policyUrl: string }[];
+          } | null;
         };
       };
       expect(saved.case.state).toBe("verified");
+      expect(saved.case.organization?.policies).toEqual([
+        expect.objectContaining({ policyUrl: "https://prettier.io/security" }),
+      ]);
+      expect(saved.case.organization?.contacts).toEqual([
+        expect.objectContaining({ contact: "security@prettier.io" }),
+      ]);
       expect(saved.case.reproducibilitySteps).toBe(REPRO_STEPS);
       expect(saved.case.artifact.sha256).toBe(SOURCEMAP_DIGESTS.sha256);
       expect(saved.case.artifact.version).toBe("3.9.6");
@@ -857,12 +867,34 @@ describe("Disclosure Desk organization and domain matching", () => {
           organization: {
             githubOwner: string;
             domains: { host: string; source: string }[];
+            policies: { policyUrl: string }[];
           } | null;
         };
       };
       expect(policyBody.case.organization?.githubOwner).toBe("prettier");
       expect(policyBody.case.organization?.domains).toEqual([
         expect.objectContaining({ host: "prettier.io", source: "policy" }),
+      ]);
+      expect(policyBody.case.organization?.policies).toEqual([
+        expect.objectContaining({ policyUrl: "https://prettier.io/security" }),
+      ]);
+      const contactSaved = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        method: "PATCH",
+        headers: admin,
+        body: JSON.stringify({ securityContact: "security@prettier.io" }),
+      });
+      expect(contactSaved.status).toBe(200);
+      expect(
+        (
+          (await contactSaved.json()) as {
+            case: { organization: { contacts: { contact: string; sourceUrl: string | null }[] } };
+          }
+        ).case.organization.contacts,
+      ).toEqual([
+        expect.objectContaining({
+          contact: "security@prettier.io",
+          sourceUrl: "https://prettier.io/security",
+        }),
       ]);
       const category = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
         method: "PATCH",
@@ -995,12 +1027,23 @@ describe("Disclosure Desk organization and domain matching", () => {
         organizations: {
           githubOwner: string;
           domains: { host: string; source: string }[];
+          contacts: { contact: string; sourceUrl: string | null }[];
+          policies: { policyUrl: string }[];
           caseCount: number;
         }[];
       };
       const prettierOrg = listedBody.organizations.find((row) => row.githubOwner === "prettier");
       expect(prettierOrg?.domains).toEqual([
         expect.objectContaining({ host: "prettier.io", source: "policy" }),
+      ]);
+      expect(prettierOrg?.policies).toEqual([
+        expect.objectContaining({ policyUrl: "https://prettier.io/security" }),
+      ]);
+      expect(prettierOrg?.contacts).toEqual([
+        expect.objectContaining({
+          contact: "security@prettier.io",
+          sourceUrl: "https://prettier.io/security",
+        }),
       ]);
       expect(prettierOrg?.caseCount).toBe(2);
       expect(listedBody.organizations.some((row) => row.githubOwner === "stevemao")).toBe(true);
@@ -1014,6 +1057,10 @@ describe("Disclosure Desk organization and domain matching", () => {
         /append-only/,
       );
       await expect(sql.query(`DELETE FROM disclosure_domains`)).rejects.toThrow(/append-only/);
+      await expect(
+        sql.query(`UPDATE disclosure_security_contacts SET contact = 'mutated'`),
+      ).rejects.toThrow(/append-only/);
+      await expect(sql.query(`DELETE FROM disclosure_policies`)).rejects.toThrow(/append-only/);
       expect(wakes).toBe(before);
     } finally {
       await sql.close();

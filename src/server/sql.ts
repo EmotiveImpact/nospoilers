@@ -814,6 +814,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureReproducibilitySteps(sql);
   await migrateDisclosureDuplicateLinks(sql);
   await migrateDisclosureOrganizations(sql);
+  await migrateDisclosureContactsPolicies(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1627,6 +1628,57 @@ async function migrateDisclosureOrganizations(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "056_disclosure_organizations",
+  ]);
+}
+
+async function migrateDisclosureContactsPolicies(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS disclosure_security_contacts (
+      id BIGSERIAL PRIMARY KEY,
+      organization_id BIGINT NOT NULL REFERENCES disclosure_organizations (id) ON DELETE CASCADE,
+      contact TEXT NOT NULL,
+      contact_key TEXT NOT NULL,
+      source_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (organization_id, contact_key)
+    );
+    CREATE TABLE IF NOT EXISTS disclosure_policies (
+      id BIGSERIAL PRIMARY KEY,
+      organization_id BIGINT NOT NULL REFERENCES disclosure_organizations (id) ON DELETE CASCADE,
+      policy_url TEXT NOT NULL,
+      policy_url_key TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (organization_id, policy_url_key)
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_security_contacts_org_idx
+      ON disclosure_security_contacts (organization_id, id ASC);
+    CREATE INDEX IF NOT EXISTS disclosure_policies_org_idx
+      ON disclosure_policies (organization_id, id ASC);
+    CREATE OR REPLACE FUNCTION reject_disclosure_contact_policy_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'disclosure security contacts and policies are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS disclosure_security_contacts_no_update ON disclosure_security_contacts;
+    CREATE TRIGGER disclosure_security_contacts_no_update
+      BEFORE UPDATE ON disclosure_security_contacts
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+    DROP TRIGGER IF EXISTS disclosure_security_contacts_no_delete ON disclosure_security_contacts;
+    CREATE TRIGGER disclosure_security_contacts_no_delete
+      BEFORE DELETE ON disclosure_security_contacts
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+    DROP TRIGGER IF EXISTS disclosure_policies_no_update ON disclosure_policies;
+    CREATE TRIGGER disclosure_policies_no_update
+      BEFORE UPDATE ON disclosure_policies
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+    DROP TRIGGER IF EXISTS disclosure_policies_no_delete ON disclosure_policies;
+    CREATE TRIGGER disclosure_policies_no_delete
+      BEFORE DELETE ON disclosure_policies
+      FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "057_disclosure_contacts_policies",
   ]);
 }
 

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- Disclosure Desk security contacts and policies: each organization
+  stores append-only contact and policy-URL records when a case saves
+  those fields. The policy URL is the source on the contact when both
+  are present. Case views and the organization list show them. Destination
+  payloads include policy URLs, not contact emails. Customer sessions stay
+  401. No worker wake. Nothing is mailed. Live Neon: `057` applied; unauth
+  and `not-admin` 401; prettier has `security@prettier.io` and
+  `https://prettier.io/security`; stevemao has none; leftover extra
+  contacts/policies 0; leftover extra orgs 0; leftover links 0; leftover
+  grants 0; leftover destinations 0; no open jobs; campaigns 0; watches 0;
+  Cloudflare tunnel matched. Not a customer product and not a Pricing change.
+
 - Disclosure Desk organizations and vendor domains: each case upserts a
   first-class organization from the GitHub owner. Saving a policy URL or
   security contact records an append-only vendor domain (forge and registry
