@@ -17,7 +17,11 @@ import {
   zipUsesEncryption,
 } from "../src/scanner/formats.ts";
 import { scan } from "../src/scanner/index.ts";
-import { isPackAssetName } from "../src/server/paths.ts";
+import {
+  isElectronInstallerName,
+  isPackAssetName,
+  isScannablePackAssetName,
+} from "../src/server/paths.ts";
 
 const MAP = JSON.stringify({
   version: 3,
@@ -146,6 +150,22 @@ describe("extra packed formats", () => {
     expect(isPackAssetName("dist/spoiler-1.0.0.tar.gz")).toBe(true);
     expect(isPackAssetName("dist/theme.chrome.zip")).toBe(true);
     expect(isPackAssetName("README.md")).toBe(false);
+    expect(isElectronInstallerName("Hearback-0.1.7-arm64-mac.zip")).toBe(true);
+    expect(isElectronInstallerName("Hearback-0.1.7-x64-mac.zip")).toBe(true);
+    expect(isElectronInstallerName("Hearback-0.1.7-x86_64.AppImage")).toBe(true);
+    expect(isElectronInstallerName("App-darwin-arm64.zip")).toBe(true);
+    expect(isElectronInstallerName("App-1.0.0-mac-arm64.zip")).toBe(true);
+    expect(isElectronInstallerName("Setup.dmg")).toBe(true);
+    expect(isElectronInstallerName("Setup.exe")).toBe(true);
+    expect(isElectronInstallerName("Setup.msi")).toBe(true);
+    expect(isElectronInstallerName("dist/app.zip")).toBe(false);
+    expect(isElectronInstallerName("dist/theme.chrome.zip")).toBe(false);
+    expect(isElectronInstallerName("dist/fn.lambda.zip")).toBe(false);
+    expect(isElectronInstallerName("sourcemap.tgz")).toBe(false);
+    expect(isScannablePackAssetName("Hearback-0.1.7-arm64-mac.zip")).toBe(false);
+    expect(isScannablePackAssetName("dist/app.zip")).toBe(true);
+    expect(isScannablePackAssetName("sourcemap.tgz")).toBe(true);
+    expect(isPackAssetName("Hearback-0.1.7-arm64-mac.zip")).toBe(true);
   });
 
   it("classifies a Chrome extension ZIP by WebExtension layout, not a CRX header", async () => {

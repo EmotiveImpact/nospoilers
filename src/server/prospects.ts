@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import type { ScanReport } from "../scanner/index.ts";
 import { workspaceGlobsFromManifests } from "../scanner/workspaces.ts";
-import { isPackAssetName } from "./paths.ts";
+import { isScannablePackAssetName } from "./paths.ts";
 import type { Store } from "./store.ts";
 
 export const MAX_PROSPECT_WORKSPACE_PACKS = 8;
@@ -271,7 +271,7 @@ export async function inspectGithubRepository(
     allow404: true,
   });
   for (const asset of release?.assets ?? []) {
-    if (!isPackAssetName(asset.name) || asset.size > maxAssetBytes) continue;
+    if (!isScannablePackAssetName(asset.name) || asset.size > maxAssetBytes) continue;
     artifacts.push({
       source: "github_release",
       owner: parsed.owner,

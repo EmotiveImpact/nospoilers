@@ -10,7 +10,11 @@ import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
 import type { NpmAuth, NpmPort } from "./npm.ts";
 import { isPublicNpmOrigin, PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
-import { isPackAssetName } from "./paths.ts";
+import {
+  ELECTRON_INSTALLER_SKIP_NOTE,
+  isElectronInstallerName,
+  isScannablePackAssetName,
+} from "./paths.ts";
 import { applyHostedPolicy } from "./hosted-policy.ts";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
@@ -260,13 +264,23 @@ export async function handleJob(
       repo.name,
       releaseId,
     );
-    const packs = assets.filter((asset) => isPackAssetName(asset.name));
+    const packs = assets.filter((asset) => isScannablePackAssetName(asset.name));
+    const installers = assets.filter((asset) => isElectronInstallerName(asset.name));
+    if (packs.length === 0 && installers.length > 0) {
+      await deps.notifier.send({
+        ...alertBase,
+        kind: job.kind,
+        title: `Release ${tag} has Electron installer assets we do not scan`,
+        body: `Skipped ${installers.map((asset) => asset.name).join(", ")}. ${ELECTRON_INSTALLER_SKIP_NOTE}`,
+      });
+      return;
+    }
     if (packs.length === 0) {
       await deps.notifier.send({
         ...alertBase,
         kind: job.kind,
         title: `Release ${tag} has no pack we can scan`,
-        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .tar, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .snupkg, .gem, .apk, .aab, .ipa, .xapk). Python sdists are tar.gz with PKG-INFO (Python is not executed). Chrome extension ZIPs are WebExtension layout (root manifest.json), not a CRX header; extension code is not executed. Docker save and OCI archives are tar layouts (manifest.json or oci-layout). APK/AAB/IPA/XAPK are ZIP layouts (AndroidManifest, BundleConfig, Payload/*.app, or a nested APK). Serverless bundles are ZIP layouts (host.json, serverless.yml, .aws-sam, netlify/functions, or .vercel/output). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt. Encrypted image layers and zip entries are not decrypted. Image, APK, and Apple signatures are not verified. DEX, native libraries, Mach-O, serverless handlers, and Python are never executed.",
+        body: "NoSpoilers looks for packed release assets (.tgz, .tar.gz, .tar, .zip, .asar, .vsix, .crx, .xpi, .whl, .jar, .war, .nupkg, .snupkg, .gem, .apk, .aab, .ipa, .xapk). DMG, EXE, MSI, AppImage, and mac/win desktop zip bundles are not packs on this worker. Python sdists are tar.gz with PKG-INFO (Python is not executed). Chrome extension ZIPs are WebExtension layout (root manifest.json), not a CRX header; extension code is not executed. Docker save and OCI archives are tar layouts (manifest.json or oci-layout). APK/AAB/IPA/XAPK are ZIP layouts (AndroidManifest, BundleConfig, Payload/*.app, or a nested APK). Serverless bundles are ZIP layouts (host.json, serverless.yml, .aws-sam, netlify/functions, or .vercel/output). Source trees are not scanned on push. Encrypted or signed wrappers that are not a readable ZIP/tar are inconclusive, never a passing receipt. Encrypted image layers and zip entries are not decrypted. Image, APK, and Apple signatures are not verified. DEX, native libraries, Mach-O, serverless handlers, and Python are never executed.",
       });
       return;
     }
@@ -274,6 +288,11 @@ export async function handleJob(
     const allFindings: ScanReport["findings"] = [];
     const notes: string[] = [];
     const statuses: ScanStatus[] = [];
+    if (installers.length > 0) {
+      notes.push(
+        `Skipped ${installers.map((asset) => asset.name).join(", ")} (Electron installer; isolated worker).`,
+      );
+    }
     for (const asset of packs) {
       const coordinate = `github:${repo.fullName}@${tag}#${asset.name}`;
       let report: ScanReport;

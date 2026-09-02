@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Store } from "./store.ts";
 import { logJson } from "./log.ts";
-import { cheapSensitivePaths, isPackAssetName, pathsFromPushPayload } from "./paths.ts";
+import { cheapSensitivePaths, isScannablePackAssetName, pathsFromPushPayload } from "./paths.ts";
 import {
   describeInstallHealth,
   namesFromRepoList,
@@ -30,7 +30,7 @@ export function packAssetFingerprint(assets: unknown): string {
   if (!Array.isArray(assets)) return "empty";
   const rows = assets
     .filter((asset): asset is Record<string, unknown> => Boolean(asset) && typeof asset === "object")
-    .filter((asset) => isPackAssetName(String(asset.name ?? "")))
+    .filter((asset) => isScannablePackAssetName(String(asset.name ?? "")))
     .map((asset) => ({
       id: asset.id ?? "",
       name: String(asset.name ?? ""),

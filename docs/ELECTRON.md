@@ -3,6 +3,13 @@
 NoSpoilers currently scans an `app.asar` directly. It does **not** claim to unpack `.dmg`, `.exe`,
 `.msi`, `.AppImage`, or platform application bundles.
 
+The normal worker classifies those names (including electron-builder `*-mac.zip` /
+`*-win.zip` / `*-darwin-*.zip` desktop bundles) and skips them. It writes a Watch
+alert, does not download, and does not mint an inconclusive receipt. A later
+`release.edited` that only changes installer assets does not enqueue another
+heavy scan. A Release that also has a scannable pack (`.tgz`, a zip that is not
+a desktop installer, …) still scans that pack and notes the skipped installers.
+
 Those inputs are usually 150–300 MB and can expand into several gigabytes. They also require
 platform-specific parsers. Running them inside the API or the normal queue worker would let an
 untrusted installer consume customer capacity, memory, or disk.

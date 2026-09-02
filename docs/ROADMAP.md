@@ -21,6 +21,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   inconclusive. Scan lists `inconclusive.encrypted.zip`, `inconclusive.crx`, and
   `inconclusive.encrypted.oci.tar`. Overlay whiteouts are not applied. APK and Apple signatures are not verified.
 - Hard defaults: 80 MiB input, 500 MiB unpacked, 25,000 files, 25 MiB/file, 90 seconds.
+  Electron DMG/EXE/MSI/AppImage and mac/win desktop zip bundles are classified and
+  skipped on the normal worker (Watch alert, no download). The isolated installer
+  worker stays on ice.
 - CLI, JSON/SARIF, GitHub Action, fixtures, real browser scanning.
 - Product CI: after rebuilding fixtures, fail-closes every dirty pack, treats `inconclusive.*`
   as CLI exit 2, and passes every clean pack plus `workspace.tgz`. Dogfoods the GitHub Action

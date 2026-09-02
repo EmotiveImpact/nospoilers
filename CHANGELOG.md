@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Hosted `release_scan` classifies Electron installer assets (DMG, EXE, MSI,
+  AppImage, and mac/win desktop zip bundles such as
+  `Hearback-0.1.7-arm64-mac.zip`) and skips them on the normal worker. The
+  Watch alert names the skipped files. The worker does not download, unpack,
+  or mint an inconclusive receipt for those assets. A later `release.edited`
+  that only changes installer assets does not enqueue another heavy scan. A
+  Release that also has a scannable pack still scans that pack. This is not
+  the isolated Electron worker and not a Pricing change.
+
 - Hosted `release_scan` resolves GitHub Checks against the tag name and
   `target_commitish`, not `tags/<tag>` as a commit SHA. A missing commit
   (GitHub 422/404) skips the Check and still writes the Watch alert.

@@ -233,7 +233,13 @@ Read in this order:
   **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
   still completes. The Check looks up the tag name (then `target_commitish`), not
   `tags/<tag>` as a commit SHA. GitHub 422/404 skips the Check and still writes
-  the Watch alert.
+  the Watch alert. Hosted `release_scan` classifies Electron installer assets
+  (DMG, EXE, MSI, AppImage, and mac/win desktop zip bundles) and skips them:
+  Watch alert, no download, no inconclusive receipt. `release.edited` that only
+  changes those assets does not enqueue another heavy scan. Live Echo `v0.1.7`
+  Hearback mac.zip / AppImage assets were previously titled inconclusive because
+  they matched `.zip` over the 80 MiB cap. That is not the isolated Electron
+  worker.
 - This repository’s GitHub Actions rebuilds fixtures then `npm run ci:fixtures`. Every
   `sourcemap.*` pack and `dotenv.tgz` must fail closed; every `clean.*` pack and
   `workspace.tgz` must pass; every `inconclusive.*` pack must exit 2 (not a passing
@@ -696,7 +702,8 @@ Unpaid 402. Members 403. Live on install `158159401`: unauth 401, invalid key
 (`inventedIncident: false`, no Watch alert, PagerDuty HTTP 400), typed-confirm
 delete 200, leftover destination 0. Delivery rows stayed with a null
 destination id. Cloudflare tunnel matched. The dummy key was deleted.
-Stripe and Resend are benched. Do not start the Electron installer worker yet.
+Stripe and Resend are benched. The normal worker classifies and skips Electron
+installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
 

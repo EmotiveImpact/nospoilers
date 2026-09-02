@@ -137,10 +137,10 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
 | Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; clean and dirty Scan APK/AAB examples; XAPK is a nested APK zip | NoSpoilers |
 | iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; clean and dirty Scan IPA examples | NoSpoilers |
-| Electron DMG | Deferred isolated worker | NoSpoilers |
-| Electron EXE/NSIS | Deferred isolated worker | NoSpoilers |
-| Electron AppImage | Deferred isolated worker | NoSpoilers |
-| Electron MSI | Deferred isolated worker | NoSpoilers |
+| Electron DMG | Deferred isolated worker: normal worker classifies and skips with a Watch alert; does not download or unpack | NoSpoilers |
+| Electron EXE/NSIS | Deferred isolated worker: normal worker classifies and skips with a Watch alert; does not download or unpack | NoSpoilers |
+| Electron AppImage | Deferred isolated worker: normal worker classifies and skips with a Watch alert; does not download or unpack | NoSpoilers |
+| Electron MSI | Deferred isolated worker: normal worker classifies and skips with a Watch alert; does not download or unpack | NoSpoilers |
 
 ## GitHub visibility and incident response
 

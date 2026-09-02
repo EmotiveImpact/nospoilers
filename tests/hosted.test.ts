@@ -921,6 +921,18 @@ describe("GitHub webhooks", () => {
     expect(withUrls).toBe(withoutUrls);
     expect(withUrls).not.toBe("empty");
     expect(packAssetFingerprint([{ name: "notes.txt", size: 1 }])).toBe("empty");
+    expect(
+      packAssetFingerprint([{ id: 1, name: "Hearback-0.1.7-arm64-mac.zip", size: 138007237 }]),
+    ).toBe("empty");
+    expect(
+      packAssetFingerprint([{ id: 2, name: "Hearback-0.1.7-x86_64.AppImage", size: 137102339 }]),
+    ).toBe("empty");
+    expect(
+      packAssetFingerprint([
+        { id: 3, name: "sourcemap.tgz", size: 401 },
+        { id: 1, name: "Hearback-0.1.7-arm64-mac.zip", size: 138007237 },
+      ]),
+    ).toBe(packAssetFingerprint([{ id: 3, name: "sourcemap.tgz", size: 401 }]));
     expect(releaseScanDeliveryId(7, 55, withUrls)).toBe(`release-scan:7:55:${withUrls}`);
   });
 
@@ -980,6 +992,45 @@ describe("GitHub webhooks", () => {
       const payloads = JSON.stringify(rows.map((row) => row.payload));
       expect(payloads).not.toMatch(/browser_download_url|releases\/assets|ghs_secret|token=/i);
       expect(payloads).not.toContain('"assets"');
+    });
+  });
+
+  it("does not rescan an edited release that only changes Electron installers", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const installer = {
+        id: 1,
+        name: "Hearback-0.1.7-arm64-mac.zip",
+        size: 138007237,
+      };
+      const published = await postWebhook(app, "release", "d-rel-electron-pub", {
+        action: "published",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: { id: 83, tag_name: "v0.1.7", name: "v0.1.7", assets: [installer] },
+      });
+      const edited = await postWebhook(app, "release", "d-rel-electron-edit", {
+        action: "edited",
+        installation: { id: 7 },
+        repository: sampleRepo,
+        release: {
+          id: 83,
+          tag_name: "v0.1.7",
+          name: "v0.1.7",
+          assets: [
+            installer,
+            { id: 2, name: "Hearback-0.1.7-x86_64.AppImage", size: 137102339 },
+          ],
+        },
+      });
+      expect(published.status).toBe(200);
+      expect(((await published.json()) as { queued: boolean }).queued).toBe(true);
+      expect(edited.status).toBe(200);
+      expect(((await edited.json()) as { queued: boolean }).queued).toBe(false);
+      const { rows } = await store.sql.query<{ delivery_id: string }>(
+        "SELECT delivery_id FROM jobs ORDER BY id",
+      );
+      expect(rows).toEqual([{ delivery_id: releaseScanDeliveryId(7, 83, "empty") }]);
     });
   });
 
@@ -1302,6 +1353,162 @@ describe("scan latest release", () => {
       expect(rows[0]?.title).toMatch(/no pack we can scan/i);
       expect(rows[0]?.body).toMatch(/Source trees are not scanned on push/);
       expect(downloads).toBe(0);
+    });
+  });
+
+  it("alerts when the latest Release is only Electron installers, without downloading", async () => {
+    await withStore(async ({ store }) => {
+      await seedWatch(store);
+      let downloads = 0;
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "scan_latest_release",
+        payload: {
+          installationId: 7,
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          getLatestRelease: async () => ({
+            id: 55,
+            tag_name: "v0.1.7",
+            name: "v0.1.7",
+            target_commitish: "main",
+          }),
+          listReleaseAssets: async () => [
+            {
+              id: 1,
+              name: "Hearback-0.1.7-arm64-mac.zip",
+              size: 138007237,
+              url: "https://api.github.com/asset/1",
+            },
+            {
+              id: 2,
+              name: "Hearback-0.1.7-x64-mac.zip",
+              size: 141717155,
+              url: "https://api.github.com/asset/2",
+            },
+            {
+              id: 3,
+              name: "Hearback-0.1.7-x86_64.AppImage",
+              size: 137102339,
+              url: "https://api.github.com/asset/3",
+            },
+          ],
+          downloadAsset: async () => {
+            downloads += 1;
+            throw new Error("Electron installer assets must not download");
+          },
+        }),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      await waitFor(store, "SELECT count(*)::text AS n FROM alerts", 1, "electron skip alert");
+      await worker.stop();
+      const { rows } = await store.sql.query<{ kind: string; title: string; body: string }>(
+        "SELECT kind, title, body FROM alerts",
+      );
+      expect(rows[0]?.kind).toBe("release_scan");
+      expect(rows[0]?.title).toMatch(/Electron installer assets we do not scan/i);
+      expect(rows[0]?.title).not.toMatch(/Inconclusive scan/i);
+      expect(rows[0]?.title).not.toMatch(/allowed to ship/i);
+      expect(rows[0]?.body).toMatch(/Hearback-0\.1\.7-arm64-mac\.zip/);
+      expect(rows[0]?.body).toMatch(/Hearback-0\.1\.7-x86_64\.AppImage/);
+      expect(rows[0]?.body).toMatch(/isolated installer worker/i);
+      expect(downloads).toBe(0);
+      const { rows: receipts } = await store.sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM scan_receipts",
+      );
+      expect(Number(receipts[0]?.n)).toBe(0);
+    });
+  });
+
+  it("scans a packed asset and skips Electron installers on the same Release", async () => {
+    await withStore(async ({ store }) => {
+      await seedWatch(store);
+      const bytes = await readFile(FIXTURE);
+      const downloaded: string[] = [];
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "release_scan",
+        payload: {
+          installationId: 7,
+          releaseId: 55,
+          tag: "v0.1.7",
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          listReleaseAssets: async () => [
+            {
+              id: 1,
+              name: "sourcemap.tgz",
+              size: bytes.length,
+              url: "https://api.github.com/asset/tgz",
+            },
+            {
+              id: 2,
+              name: "Hearback-0.1.7-arm64-mac.zip",
+              size: 138007237,
+              url: "https://api.github.com/asset/mac",
+            },
+          ],
+          downloadAsset: async (_installationId, url) => {
+            downloaded.push(url);
+            if (url.includes("mac")) throw new Error("Electron installer assets must not download");
+            return bytes;
+          },
+        }),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 10_000,
+        receiptSecret: RECEIPT_SECRET,
+      });
+      await worker.tick();
+      await waitFor(
+        store,
+        "SELECT count(*)::text AS n FROM scan_receipts WHERE status = 'failed-policy'",
+        1,
+        "packed receipt",
+      );
+      await worker.stop();
+      expect(downloaded).toEqual(["https://api.github.com/asset/tgz"]);
+      const { rows: alerts } = await store.sql.query<{ title: string; body: string }>(
+        "SELECT title, body FROM alerts",
+      );
+      expect(alerts[0]?.title).toMatch(/Spoilers in octo\/throwaway v0\.1\.7/);
+      expect(alerts[0]?.body).toMatch(/Hearback-0\.1\.7-arm64-mac\.zip/);
+      expect(alerts[0]?.body).toMatch(/isolated worker/);
+      const { rows: receipts } = await store.sql.query<{ coordinate: string }>(
+        "SELECT coordinate FROM scan_receipts",
+      );
+      expect(receipts).toHaveLength(1);
+      expect(receipts[0]?.coordinate).toMatch(/sourcemap\.tgz/);
     });
   });
 
