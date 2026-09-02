@@ -105,7 +105,9 @@ Read in this order:
   `package.tgz` and `dist/` packs (cap 8), POSTs each to hosted `/api/v1/scan`, and fails closed
   if none exist. Source pushes are not unpacked. Customer CI cannot `uses:` this private product
   repo. After merge, set repository variable `NOSPOILERS_API_URL` and secret `NOSPOILERS_API_TOKEN`
-  from a Watch-minted token. The App never merges the PR. Watch and the PR body tell maintainers
+  from a Watch-minted token. Watch Scan API shows the current `APP_BASE_URL` as
+  `NOSPOILERS_API_URL` and whether GitHub-hosted runners can reach it (HTTPS, not loopback).
+  Anonymous `/api/me` omits that origin. The App never merges the PR. Watch and the PR body tell maintainers
   to mark the NoSpoilers check required; the App does not set branch protection. If GitHub
   returns 403/404, the API returns 409 plus copy-paste files. Hosted `release_scan` jobs post a
   **NoSpoilers** Check with rule/path annotations when Checks write is granted; otherwise the job
@@ -254,7 +256,7 @@ Nested packs, backups, dumps, internal docs, and escaping symlinks are flagged.
 Nested tgz/zip/asar/docker/oci/apk/ipa/serverless layers are unpacked for inspection (never executed).
 `.nospoilers.yml`, expiring allowlists, and baseline approval are in.
 Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped on 403).
-Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing package.tgz and dist/ packs to hosted `/api/v1/scan`; fails closed if none.
+Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing package.tgz and dist/ packs to hosted `/api/v1/scan`; fails closed if none. Watch shows the current hosted origin for `NOSPOILERS_API_URL` when signed in.
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
 Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).

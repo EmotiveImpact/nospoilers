@@ -38,6 +38,7 @@ import {
   setupFiles,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
+import { hostedScanOrigin } from "./hosted-origin.ts";
 import { verifyGitHubSignature } from "./hmac.ts";
 import { createNpmPort, type NpmPort } from "./npm.ts";
 import { checkWatchedPackage, connectWatchedPackage, protectWatchedPackage } from "./npm-watch.ts";
@@ -326,6 +327,7 @@ function publicDestination(row: {
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const scanFn = deps.scan ?? scan;
+  const hostedOrigin = hostedScanOrigin(deps.config.appBaseUrl);
   const npm = deps.npm ?? createNpmPort();
   const notifier = deps.notifier ?? createLogNotifier(deps.store);
   const cookieName = "ns_session";
@@ -853,6 +855,8 @@ export function createApp(deps: AppDeps): Hono {
       installations,
       githubApp: githubAppConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
+      hostedOrigin: hostedOrigin.origin,
+      githubRunnersReachable: hostedOrigin.githubRunnersReachable,
     });
   });
 
@@ -1366,6 +1370,8 @@ export function createApp(deps: AppDeps): Hono {
       workflow: setupWorkflowYaml(),
       files: setupFiles(),
       permissions: SETUP_PERMISSIONS,
+      hostedOrigin: hostedOrigin.origin,
+      githubRunnersReachable: hostedOrigin.githubRunnersReachable,
     });
   });
 
@@ -1401,6 +1407,8 @@ export function createApp(deps: AppDeps): Hono {
           workflow: setupWorkflowYaml(),
           files: setupFiles(),
           permissions: SETUP_PERMISSIONS,
+          hostedOrigin: hostedOrigin.origin,
+          githubRunnersReachable: hostedOrigin.githubRunnersReachable,
         },
         409,
       );

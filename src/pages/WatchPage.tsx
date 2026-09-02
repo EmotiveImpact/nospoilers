@@ -51,6 +51,8 @@ type Me = {
   }[];
   githubApp: boolean;
   installUrl?: string;
+  hostedOrigin?: string;
+  githubRunnersReachable?: boolean;
 };
 
 type Repo = {
@@ -1399,7 +1401,8 @@ export function WatchPage({ search }: { search: string }) {
     );
   }
 
-  const { user, githubApp, installUrl, coverage: sessionCoverage } = me.data;
+  const { user, githubApp, installUrl, coverage: sessionCoverage, hostedOrigin, githubRunnersReachable } =
+    me.data;
   const installations = me.data.installations ?? [];
   const queryCoverage = coverageFromQuery(search);
   const previewing = !user;
@@ -1570,7 +1573,18 @@ export function WatchPage({ search }: { search: string }) {
             package.tgz. The workflow vendors{" "}
             <code className="text-snow">.github/actions/nospoilers</code> and POSTs packed bytes
             to hosted scan. It needs a Watch token plus repository variable{" "}
-            <code className="text-snow">NOSPOILERS_API_URL</code>. If none exist, that workflow
+            <code className="text-snow">NOSPOILERS_API_URL</code>
+            {hostedOrigin ? (
+              <>
+                {" "}
+                (currently <code className="text-snow">{hostedOrigin}</code>
+                {githubRunnersReachable
+                  ? ", which GitHub-hosted runners can reach"
+                  : "; GitHub-hosted runners cannot reach loopback or HTTP"}
+                )
+              </>
+            ) : null}
+            . If none exist, that workflow
             fails closed. Remediation PR adds ignore
             rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
             workflow if it is missing. Both PRs need Contents write and Pull requests write. They
@@ -3988,6 +4002,21 @@ export function WatchPage({ search }: { search: string }) {
           <code className="text-snow">NOSPOILERS_API_URL</code>. This product repository still
           scans locally with <code className="text-snow">uses: ./</code>.
         </p>
+        {!previewing && hostedOrigin ? (
+          <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+              Repository variable NOSPOILERS_API_URL
+            </p>
+            <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+              {hostedOrigin}
+            </pre>
+            <p className="mt-3 text-sm leading-relaxed text-mute">
+              {githubRunnersReachable
+                ? "GitHub-hosted runners can POST packed bytes here. If this origin changes, update the repository variable. Do not use localhost."
+                : "GitHub-hosted runners cannot reach this origin (loopback or not HTTPS). Set NOSPOILERS_API_URL to the HTTPS origin GitHub already uses for webhooks once that host is public. Do not grant Administration."}
+            </p>
+          </div>
+        ) : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
         ) : (
@@ -4049,9 +4078,22 @@ export function WatchPage({ search }: { search: string }) {
                 <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
                   Copy now. We will not show this again.
                 </p>
+                <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-dim">
+                  Repository secret NOSPOILERS_API_TOKEN
+                </p>
                 <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
                   {revealedScanToken}
                 </pre>
+                {hostedOrigin ? (
+                  <>
+                    <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-dim">
+                      Repository variable NOSPOILERS_API_URL
+                    </p>
+                    <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+                      {hostedOrigin}
+                    </pre>
+                  </>
+                ) : null}
               </div>
             ) : null}
             {scanTokens.length === 0 ? (

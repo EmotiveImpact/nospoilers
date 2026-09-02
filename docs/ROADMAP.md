@@ -58,7 +58,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   pnpm-workspace.yaml / lockfile presence. Never execute. Never auto-watch discovered names.
 - Hosted scan API: hashed `nsp_` tokens per install; `POST /api/v1/scan` returns a signed receipt
   and deletes the upload. Unpaid mint/scan return 402. This repository’s local Action remains
-  `uses: ./`. Customer Setup CI uses the vendored hosted-scan Action.
+  `uses: ./`. Customer Setup CI uses the vendored hosted-scan Action. Watch shows the current
+  `APP_BASE_URL` as `NOSPOILERS_API_URL` when signed in; loopback/HTTP is not reachable from
+  GitHub-hosted runners.
 - Release Ledger foundations: append-only `release_revisions` with stable/beta/canary channels,
   SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
   Watch Releases view with linked receipt status (`passed` / `failed-policy` / `inconclusive`).

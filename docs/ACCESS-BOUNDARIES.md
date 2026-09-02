@@ -102,6 +102,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.
   They may export that same activity as JSON for their installs.
+- Read the current hosted scan origin when signed in, to set repository variable
+  `NOSPOILERS_API_URL` for Setup CI. Anonymous `/api/me` does not include it. GitHub-hosted
+  runners cannot reach loopback or HTTP. The origin is `APP_BASE_URL`, not a connection string.
 - Use a scan API token an install admin already minted. `POST /api/v1/scan` with that
   Bearer token unpacks a packed artifact, applies the installation allowlist, mints a
   receipt, and deletes the bytes.
@@ -312,7 +315,10 @@ the row, unrelated rules stay unsuppressed, and Release Diff uses the approved b
 permission skips return copy-paste files instead of failing the worker, the merge API
 is never called, the generated workflow vendors `.github/actions/nospoilers` instead of
 `uses:` on this private repository, and the workflow lists only existing `package.tgz` / `dist/` packs
-(skips source-tree tarballs and symlinks, caps at 8, fails closed when none exist). `tests/remediation.test.ts` proves remediation files are tenant-scoped,
+(skips source-tree tarballs and symlinks, caps at 8, fails closed when none exist).
+`tests/hosted-origin.test.ts` proves signed-in `/api/me` and setup-workflow return `APP_BASE_URL`
+as the hosted scan origin, anonymous `/api/me` omits it, and loopback/HTTP is not reachable from
+GitHub-hosted runners. `tests/remediation.test.ts` proves remediation files are tenant-scoped,
 unpaid POST returns 402, GitHub-suspended POST returns 409, permission skips return
 copy-paste files, required permissions are listed before write, customer ignore/policy
 files are not overwritten, empty `.nospoilers.yml` has no allowlist, and the merge API

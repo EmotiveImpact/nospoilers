@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Watch Scan API shows the current hosted origin (`APP_BASE_URL`) for repository variable
+  `NOSPOILERS_API_URL`. Signed-in `/api/me` includes it; anonymous omits it. Loopback and HTTP
+  are not reachable from GitHub-hosted runners. Not a Pricing change.
 - Customer Setup PR vendors `.github/actions/nospoilers` and POSTs packed bytes to hosted
   `/api/v1/scan` instead of `uses:` on this private product repository. Missing origin/token is
   CLI exit 2. Failed-policy is 1. Inconclusive or HTTP error is 2. 409 copy-paste returns both
