@@ -245,6 +245,7 @@ import {
 } from "./audit.ts";
 import {
   identityPlanDeniedFromBilling,
+  loadIdentityRiskScore,
   parseAllowlistReason,
 } from "./identity-signals.ts";
 import {
@@ -3392,6 +3393,10 @@ export function createApp(deps: AppDeps): Hono {
     }
     const protection = await deps.store.getPackageProtection(pkg.id);
     const snapshot = await deps.store.latestPackageIdentitySnapshot(pkg.id);
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    const risk =
+      protection && !planDenied ? await loadIdentityRiskScore(deps.store, pkg) : null;
     return c.json({
       protection: protection
         ? {
@@ -3420,6 +3425,7 @@ export function createApp(deps: AppDeps): Hono {
             createdAt: snapshot.created_at,
           }
         : null,
+      risk,
     });
   });
 

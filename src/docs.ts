@@ -51,7 +51,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     heading: "Package identity",
     paragraphs: [
-      "Protect a watched npm package only after the npm scope or GitHub repository field matches this install. Naming an arbitrary pack is not ownership. Trial and Team installs can watch the npm scope that matches this GitHub login. New names on the public search are a Watch fact. The tarball is not downloaded and the name is not auto-watched. Trial and Team admins can assemble a human-reviewed identity evidence pack and publish a consumer advisory page. Members may download the pack. The public page shows the package name, repository host, and registered lookalike names. It is not a malware verdict. NoSpoilers does not send the pack to npm or GitHub. Other registries stay out.",
+      "Protect a watched npm package only after the npm scope or GitHub repository field matches this install. Naming an arbitrary pack is not ownership. Trial and Team installs can watch the npm scope that matches this GitHub login. New names on the public search are a Watch fact. The tarball is not downloaded and the name is not auto-watched. Watch shows a deterministic signal total for a protected pack, decomposed into those identity facts. It is not a malware verdict. Trial and Team admins can assemble a human-reviewed identity evidence pack and publish a consumer advisory page. Members may download the pack. The public page shows the package name, repository host, and registered lookalike names. It is not a malware verdict. NoSpoilers does not send the pack to npm or GitHub. Other registries stay out.",
     ],
   },
   {

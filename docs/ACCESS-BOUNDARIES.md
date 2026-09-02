@@ -77,9 +77,12 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   only; no download). Losing npm packument attestations, a provenance predicateType
   change, or a registry signature keyid change is a Watch alert (presence only; the
   attestation URL is not fetched; signature values are not stored or verified). First
-  snapshot and missing size do not alert. Solo paid
-  returns 403. Unpaid returns 402. Another tenant’s package is 404. Alerts are facts, not a
-  malware verdict, and never auto-advisory or takedown.
+  snapshot and missing size do not alert. On the same trial or Team install, read a
+  deterministic 0–100 identity signal total for that protected pack (`GET /api/packages/:id/identity`
+  `risk`). The total is decomposed into current snapshot facts, registered non-allowlisted
+  lookalikes, and open burst / lookalike-version / new-dependency / unpublished alerts. Solo
+  paid and unpaid still return identity snapshots with `risk: null`. Another tenant’s package
+  is 404. Alerts are facts, not a malware verdict, and never auto-advisory or takedown.
 - On a trial or Team install, read assembled identity evidence for a protected pack on
   that install. Members may download the JSON. Unpublished or missing packs return
   `evidence: null`. Solo paid returns 403. Unpaid returns 402. Another tenant’s package
@@ -525,7 +528,9 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   402), registration/version/dormant/burst/jump/new-dependency/packument-size/provenance
   alerts never download lookalike or dependency tarballs, never fetch attestation URLs,
   never store signature values or claim malware, first snapshot and missing packument size
-  do not alert, publishing-identity changes are Solo-allowed facts, and allowlisting skips further lookalike alerts.
+  do not alert, publishing-identity changes are Solo-allowed facts, allowlisting skips further lookalike alerts,
+  and the identity risk score is deterministic, decomposable, omitted for Solo/unpaid (`risk: null`),
+  tenant-scoped, and never a malware verdict.
   Batch import (`POST /api/protections/import`) protects an owned name and snapshots
   identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,
   re-imports as `already_protected`, protects an existing watch in place, returns

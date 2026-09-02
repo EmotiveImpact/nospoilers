@@ -20,8 +20,14 @@ import {
 import {
   generateIdentityCandidates,
   identityPlanDenied,
+  identityRiskSignalsFromFacts,
+  scoreIdentityRisk,
   unpackedSizeJump,
   IDENTITY_CANDIDATE_CAP,
+  IDENTITY_RISK_LOOKALIKE_CAP,
+  IDENTITY_RISK_MAX,
+  IDENTITY_RISK_NOT_MALWARE,
+  IDENTITY_RISK_POINTS,
 } from "../src/server/identity-signals.ts";
 import { ADMIN_REQUIRED_ERROR } from "../src/server/roles.ts";
 import {
@@ -47,7 +53,7 @@ import {
   normalizeNpmScope,
 } from "../src/server/namespace-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
-import { createStore, signSession } from "../src/server/store.ts";
+import { createStore, signSession, type PackageIdentitySnapshotRow } from "../src/server/store.ts";
 import { coverageFrom } from "../src/coverage.ts";
 
 const TARBALL = "https://registry.npmjs.org/@octo/app/-/@octo/app-1.0.0.tgz";
@@ -354,6 +360,9 @@ describe("protected package identity", () => {
       };
       expect(protectedBody.protection.verifiedVia).toBe("scope_match");
 
+      const anonymousIdentity = await app.request(`/api/packages/${packageId}/identity`);
+      expect(anonymousIdentity.status).toBe(401);
+
       const foreignProtect = await app.request(`/api/packages/${packageId}/protect`, {
         method: "POST",
         headers: { cookie: otherCookie },
@@ -374,6 +383,7 @@ describe("protected package identity", () => {
           publisherName: string | null;
           trustedPublisher: string | null;
         };
+        risk: { total: number; malwareVerdict: false; signals: { kind: string }[] } | null;
       };
       expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
       expect(identityBody.snapshot.dependencyNames).toEqual([]);
@@ -382,6 +392,9 @@ describe("protected package identity", () => {
       expect(identityBody.snapshot.signatureKeyids).toEqual([]);
       expect(identityBody.snapshot.publisherName).toBeNull();
       expect(identityBody.snapshot.trustedPublisher).toBeNull();
+      expect(identityBody.risk?.total).toBe(0);
+      expect(identityBody.risk?.malwareVerdict).toBe(false);
+      expect(identityBody.risk?.signals).toEqual([]);
       const foreignIdentity = await app.request(`/api/packages/${packageId}/identity`, {
         headers: { cookie: otherCookie },
       });
@@ -417,6 +430,24 @@ describe("protected package identity", () => {
         true,
       );
       expect(JSON.stringify(alertBody)).not.toContain("secret@");
+
+      const scored = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const scoredBody = (await scored.json()) as {
+        risk: { total: number; malwareVerdict: false; note: string; signals: { kind: string }[] } | null;
+      };
+      expect(scoredBody.risk?.malwareVerdict).toBe(false);
+      expect(scoredBody.risk?.note).toBe(IDENTITY_RISK_NOT_MALWARE);
+      expect(scoredBody.risk?.total).toBeGreaterThan(0);
+      expect(scoredBody.risk?.signals.map((row) => row.kind)).toEqual(
+        expect.arrayContaining([
+          "package_maintainer_changed",
+          "package_repository_mismatch",
+          "package_homepage_mismatch",
+          "package_shape_anomaly",
+        ]),
+      );
 
       const { rows: before } = await sql.query<{ n: string }>(
         "SELECT count(*)::text AS n FROM package_identity_snapshots",
@@ -744,6 +775,126 @@ describe("bounded identity candidates", () => {
   });
 });
 
+function identitySnapshot(overrides: Partial<PackageIdentitySnapshotRow> = {}): PackageIdentitySnapshotRow {
+  return {
+    id: 1,
+    installation_id: 7,
+    package_id: 1,
+    version: "1.0.0",
+    maintainers: ["octo"],
+    repository_url: "https://github.com/octo/app",
+    homepage: null,
+    bin_names: [],
+    lifecycle_scripts: [],
+    published_at: "2024-01-01T00:00:00.000Z",
+    dependency_names: [],
+    unpacked_bytes: 100,
+    has_attestations: false,
+    attestation_predicate: null,
+    signature_keyids: [],
+    publisher_name: "octo",
+    trusted_publisher: null,
+    created_at: "2024-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("identity risk score", () => {
+  it("is deterministic, decomposable, and never a malware verdict", () => {
+    const empty = scoreIdentityRisk([]);
+    expect(empty).toEqual({
+      total: 0,
+      max: IDENTITY_RISK_MAX,
+      malwareVerdict: false,
+      note: IDENTITY_RISK_NOT_MALWARE,
+      signals: [],
+    });
+    const first = scoreIdentityRisk([
+      { kind: "package_maintainer_changed" },
+      { kind: "identity_lookalike_registered", count: 5 },
+      { kind: "unknown_kind" },
+    ]);
+    const second = scoreIdentityRisk([
+      { kind: "identity_lookalike_registered", count: 5 },
+      { kind: "package_maintainer_changed" },
+    ]);
+    expect(first).toEqual(second);
+    expect(first.malwareVerdict).toBe(false);
+    expect(first.total).toBe(
+      IDENTITY_RISK_POINTS.package_maintainer_changed +
+        IDENTITY_RISK_POINTS.identity_lookalike_registered * IDENTITY_RISK_LOOKALIKE_CAP,
+    );
+    expect(first.signals.map((row) => row.kind)).toEqual([
+      "identity_lookalike_registered",
+      "package_maintainer_changed",
+    ]);
+    expect(first.signals[0]?.count).toBe(IDENTITY_RISK_LOOKALIKE_CAP);
+    expect(first.total).toBeLessThanOrEqual(IDENTITY_RISK_MAX);
+  });
+
+  it("scores current snapshot facts and open event alerts without inventing kinds", () => {
+    const previous = identitySnapshot();
+    const latest = identitySnapshot({
+      id: 2,
+      version: "5.0.0",
+      maintainers: ["octo", "intruder"],
+      repository_url: "https://github.com/evil/app",
+      unpacked_bytes: 10_000_000,
+      has_attestations: false,
+      publisher_name: "intruder",
+      published_at: "2026-08-01T00:00:00.000Z",
+    });
+    const previousProvenance = identitySnapshot({
+      has_attestations: true,
+      attestation_predicate: "https://slsa.dev/provenance/v1",
+      signature_keyids: ["SHA256:old"],
+    });
+    const lostProvenance = identitySnapshot({
+      id: 2,
+      has_attestations: false,
+      attestation_predicate: null,
+      signature_keyids: ["SHA256:new"],
+    });
+    const fromSnapshots = identityRiskSignalsFromFacts({
+      previous,
+      latest,
+      registeredLookalikes: 2,
+      openAlertKinds: ["identity_burst", "identity_new_dependency", "repo_publicized"],
+    });
+    expect(fromSnapshots.map((row) => row.kind).sort()).toEqual(
+      [
+        "identity_burst",
+        "identity_dormant",
+        "identity_jump",
+        "identity_lookalike_registered",
+        "identity_new_dependency",
+        "identity_size_jump",
+        "package_maintainer_changed",
+        "package_publisher_changed",
+        "package_repository_mismatch",
+      ].sort(),
+    );
+    expect(fromSnapshots.find((row) => row.kind === "identity_lookalike_registered")?.count).toBe(2);
+    expect(fromSnapshots.some((row) => row.kind === "repo_publicized")).toBe(false);
+    const provenance = identityRiskSignalsFromFacts({
+      previous: previousProvenance,
+      latest: lostProvenance,
+      registeredLookalikes: 0,
+      openAlertKinds: [],
+    });
+    expect(provenance.map((row) => row.kind).sort()).toEqual(
+      ["identity_provenance_lost", "identity_signature_changed"].sort(),
+    );
+    const baselineOnly = identityRiskSignalsFromFacts({
+      previous: null,
+      latest,
+      registeredLookalikes: 0,
+      openAlertKinds: [],
+    });
+    expect(baselineOnly).toEqual([]);
+  });
+});
+
 describe("Team identity signals", () => {
   it("persists lookalikes, alerts without downloading, allowlists, and gates Solo/unpaid", async () => {
     const sql = await openSql("pglite://:memory:");
@@ -850,6 +1001,16 @@ describe("Team identity signals", () => {
       expect(alertBody.alerts.every((row) => !/is malware/i.test(row.body))).toBe(true);
       expect(JSON.stringify(alertBody)).not.toContain("secret@");
 
+      const riskBeforeAllow = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const riskBeforeAllowBody = (await riskBeforeAllow.json()) as {
+        risk: { total: number; signals: { kind: string; count: number }[] } | null;
+      };
+      expect(riskBeforeAllowBody.risk?.signals.some((row) => row.kind === "identity_lookalike_registered")).toBe(
+        true,
+      );
+
       const memberAllow = await app.request(
         `/api/packages/${packageId}/candidates/${lookalike?.id}/allowlist`,
         {
@@ -880,6 +1041,16 @@ describe("Team identity signals", () => {
       );
       expect(allowlisted.status).toBe(200);
 
+      const riskAfterAllow = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const riskAfterAllowBody = (await riskAfterAllow.json()) as {
+        risk: { signals: { kind: string }[] } | null;
+      };
+      expect(riskAfterAllowBody.risk?.signals.some((row) => row.kind === "identity_lookalike_registered")).toBe(
+        false,
+      );
+
       current.byName["@0cto/app"] = ownedPack({ name: "@0cto/app", version: "0.0.2" });
       await app.request(`/api/packages/${packageId}/check`, {
         method: "POST",
@@ -897,12 +1068,18 @@ describe("Team identity signals", () => {
       await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
       const solo = await app.request(`/api/packages/${packageId}/candidates`, { headers: { cookie } });
       expect(solo.status).toBe(403);
+      const soloIdentity = await app.request(`/api/packages/${packageId}/identity`, { headers: { cookie } });
+      expect(soloIdentity.status).toBe(200);
+      expect(((await soloIdentity.json()) as { risk: unknown }).risk).toBeNull();
 
       await sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );
       const unpaid = await app.request(`/api/packages/${packageId}/candidates`, { headers: { cookie } });
       expect(unpaid.status).toBe(402);
+      const unpaidIdentity = await app.request(`/api/packages/${packageId}/identity`, { headers: { cookie } });
+      expect(unpaidIdentity.status).toBe(200);
+      expect(((await unpaidIdentity.json()) as { risk: unknown }).risk).toBeNull();
       expect(downloads).toEqual([]);
     } finally {
       await sql.close();

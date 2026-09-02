@@ -9,7 +9,13 @@ import {
   type NpmPort,
 } from "./npm.ts";
 import type { AlertNotifier } from "./notifier.ts";
-import type { PackageIdentitySnapshotRow, Store, WatchedPackageRow } from "./store.ts";
+import {
+  diffPackageIdentity,
+  publisherChangeAlertable,
+  type PackageIdentityFacts,
+  type PackagePublisherFacts,
+} from "./package-identity.ts";
+import type { IdentityCandidateRow, PackageIdentitySnapshotRow, Store, WatchedPackageRow } from "./store.ts";
 
 export const IDENTITY_CANDIDATE_CAP = 40;
 export const IDENTITY_CANDIDATES_PER_PASS = 8;
@@ -20,6 +26,71 @@ export const VERSION_JUMP_MAJOR = 3;
 export const NEW_DEPENDENCY_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 export const NEW_DEPENDENCY_CHECKS_PER_PASS = 8;
 export const MAX_ALLOWLIST_REASON = 200;
+export const IDENTITY_RISK_MAX = 100;
+export const IDENTITY_RISK_LOOKALIKE_CAP = 3;
+export const IDENTITY_RISK_NOT_MALWARE =
+  "Identity signal total from current facts. Not a malware verdict.";
+
+/** Event-only signals that snapshots cannot recompute without another registry fetch. */
+export const IDENTITY_RISK_OPEN_ALERT_KINDS = [
+  "identity_burst",
+  "identity_lookalike_version",
+  "identity_new_dependency",
+  "package_unpublished",
+] as const;
+
+export const IDENTITY_RISK_POINTS: Record<string, number> = {
+  identity_lookalike_registered: 12,
+  identity_lookalike_version: 6,
+  identity_dormant: 16,
+  identity_burst: 8,
+  identity_jump: 8,
+  identity_new_dependency: 10,
+  identity_size_jump: 8,
+  identity_provenance_lost: 14,
+  identity_provenance_changed: 8,
+  identity_signature_changed: 8,
+  package_maintainer_changed: 14,
+  package_publisher_changed: 14,
+  package_repository_mismatch: 10,
+  package_homepage_mismatch: 6,
+  package_shape_anomaly: 10,
+  package_unpublished: 16,
+};
+
+export const IDENTITY_RISK_TITLES: Record<string, string> = {
+  identity_lookalike_registered: "Registered lookalike names",
+  identity_lookalike_version: "Lookalike published a new version",
+  identity_dormant: "Dormant package published again",
+  identity_burst: "Many versions in seven days",
+  identity_jump: "Major version jumped",
+  identity_new_dependency: "New dependency first published recently",
+  identity_size_jump: "Packument unpacked size jumped",
+  identity_provenance_lost: "npm provenance disappeared",
+  identity_provenance_changed: "npm provenance predicate changed",
+  identity_signature_changed: "Registry signature keyids changed",
+  package_maintainer_changed: "Maintainer added or removed",
+  package_publisher_changed: "Publishing identity changed",
+  package_repository_mismatch: "Repository field changed",
+  package_homepage_mismatch: "Homepage field changed",
+  package_shape_anomaly: "New bin or install script",
+  package_unpublished: "Package missing from the registry",
+};
+
+export type IdentityRiskSignal = {
+  kind: string;
+  count: number;
+  points: number;
+  title: string;
+};
+
+export type IdentityRiskScore = {
+  total: number;
+  max: typeof IDENTITY_RISK_MAX;
+  malwareVerdict: false;
+  note: typeof IDENTITY_RISK_NOT_MALWARE;
+  signals: IdentityRiskSignal[];
+};
 
 export const IDENTITY_TRANSFORMATIONS = [
   "homoglyph",
@@ -123,6 +194,169 @@ export function parseAllowlistReason(raw: unknown): string | null {
 }
 
 export { parseRegistryTimes };
+
+export function scoreIdentityRisk(
+  signals: Array<{ kind: string; count?: number }>,
+): IdentityRiskScore {
+  const byKind = new Map<string, number>();
+  for (const signal of signals) {
+    if (!(signal.kind in IDENTITY_RISK_POINTS)) continue;
+    const add = Math.max(1, signal.count ?? 1);
+    byKind.set(signal.kind, (byKind.get(signal.kind) ?? 0) + add);
+  }
+  const rows: IdentityRiskSignal[] = [...byKind.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([kind, count]) => {
+      const unit = IDENTITY_RISK_POINTS[kind] ?? 0;
+      const used =
+        kind === "identity_lookalike_registered"
+          ? Math.min(count, IDENTITY_RISK_LOOKALIKE_CAP)
+          : 1;
+      return {
+        kind,
+        count: used,
+        points: unit * used,
+        title: IDENTITY_RISK_TITLES[kind] ?? kind,
+      };
+    })
+    .filter((row) => row.points > 0);
+  const total = Math.min(
+    IDENTITY_RISK_MAX,
+    rows.reduce((sum, row) => sum + row.points, 0),
+  );
+  return {
+    total,
+    max: IDENTITY_RISK_MAX,
+    malwareVerdict: false,
+    note: IDENTITY_RISK_NOT_MALWARE,
+    signals: rows,
+  };
+}
+
+function snapshotIdentityFacts(row: PackageIdentitySnapshotRow): PackageIdentityFacts {
+  return {
+    maintainers: row.maintainers,
+    repositoryUrl: row.repository_url,
+    homepage: row.homepage,
+    binNames: row.bin_names,
+    lifecycleScripts: row.lifecycle_scripts,
+  };
+}
+
+function snapshotPublisherFacts(row: PackageIdentitySnapshotRow): PackagePublisherFacts {
+  return {
+    publisherName: row.publisher_name,
+    trustedPublisher: row.trusted_publisher,
+  };
+}
+
+export function identityRiskSignalsFromFacts(input: {
+  previous: PackageIdentitySnapshotRow | null;
+  latest: PackageIdentitySnapshotRow | null;
+  registeredLookalikes: number;
+  openAlertKinds: string[];
+}): Array<{ kind: string; count?: number }> {
+  const signals: Array<{ kind: string; count?: number }> = [];
+  if (input.registeredLookalikes > 0) {
+    signals.push({
+      kind: "identity_lookalike_registered",
+      count: input.registeredLookalikes,
+    });
+  }
+  const open = new Set(input.openAlertKinds);
+  for (const kind of IDENTITY_RISK_OPEN_ALERT_KINDS) {
+    if (open.has(kind)) signals.push({ kind });
+  }
+  if (!input.latest || !input.previous) return signals;
+  const changes = diffPackageIdentity(
+    snapshotIdentityFacts(input.previous),
+    snapshotIdentityFacts(input.latest),
+  );
+  const seen = new Set<string>();
+  for (const change of changes) {
+    const kind =
+      change.kind === "maintainers"
+        ? "package_maintainer_changed"
+        : change.kind === "repository"
+          ? "package_repository_mismatch"
+          : change.kind === "homepage"
+            ? "package_homepage_mismatch"
+            : "package_shape_anomaly";
+    if (seen.has(kind)) continue;
+    seen.add(kind);
+    signals.push({ kind });
+  }
+  if (publisherChangeAlertable(snapshotPublisherFacts(input.previous), snapshotPublisherFacts(input.latest))) {
+    signals.push({ kind: "package_publisher_changed" });
+  }
+  if (unpackedSizeJump(input.previous.unpacked_bytes, input.latest.unpacked_bytes)) {
+    signals.push({ kind: "identity_size_jump" });
+  }
+  const previousHas = input.previous.has_attestations;
+  const nextHas = input.latest.has_attestations;
+  if (previousHas === true && nextHas === false) {
+    signals.push({ kind: "identity_provenance_lost" });
+  } else if (
+    previousHas === true &&
+    nextHas === true &&
+    input.previous.attestation_predicate &&
+    input.latest.attestation_predicate &&
+    input.previous.attestation_predicate !== input.latest.attestation_predicate
+  ) {
+    signals.push({ kind: "identity_provenance_changed" });
+  }
+  const previousKeys = [...(input.previous.signature_keyids ?? [])].sort();
+  const nextKeys = [...(input.latest.signature_keyids ?? [])].sort();
+  if (previousKeys.length > 0 && !sameKeyids(previousKeys, nextKeys)) {
+    signals.push({ kind: "identity_signature_changed" });
+  }
+  const previousPublished = snapshotPublishedAt(input.previous);
+  const latestPublished = snapshotPublishedAt(input.latest);
+  const versionChanged = Boolean(
+    input.previous.version && input.latest.version && input.previous.version !== input.latest.version,
+  );
+  if (previousPublished && versionChanged) {
+    const end = latestPublished ?? new Date(input.latest.created_at);
+    if (end.getTime() - previousPublished.getTime() >= DORMANT_IDLE_MS) {
+      signals.push({ kind: "identity_dormant" });
+    }
+  }
+  if (input.previous.version && input.latest.version) {
+    const fromMajor = majorVersion(input.previous.version);
+    const toMajor = majorVersion(input.latest.version);
+    if (fromMajor !== null && toMajor !== null && toMajor >= fromMajor + VERSION_JUMP_MAJOR) {
+      signals.push({ kind: "identity_jump" });
+    }
+  }
+  return signals;
+}
+
+export function registeredLookalikeCount(candidates: IdentityCandidateRow[]): number {
+  return candidates.filter((row) => row.registered_at && !row.allowlisted_at).length;
+}
+
+export async function loadIdentityRiskScore(
+  store: Store,
+  pkg: Pick<WatchedPackageRow, "id" | "installation_id" | "package_name">,
+): Promise<IdentityRiskScore | null> {
+  const protection = await store.getPackageProtection(pkg.id);
+  if (!protection) return null;
+  const snapshots = await store.listRecentPackageIdentitySnapshots(pkg.id, 2);
+  const candidates = await store.listIdentityCandidates(pkg.id);
+  const openAlertKinds = await store.listOpenIdentityAlertsForPackage(
+    pkg.installation_id,
+    pkg.package_name,
+    IDENTITY_RISK_OPEN_ALERT_KINDS,
+  );
+  return scoreIdentityRisk(
+    identityRiskSignalsFromFacts({
+      latest: snapshots[0] ?? null,
+      previous: snapshots[1] ?? null,
+      registeredLookalikes: registeredLookalikeCount(candidates),
+      openAlertKinds,
+    }),
+  );
+}
 
 export function majorVersion(version: string): number | null {
   const match = version.trim().replace(/^v/i, "").match(/^(\d+)/);

@@ -138,7 +138,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   first published within 14 days, and packument unpacked-size jumps (2× or ≥5 MiB versus
   the last snapshot’s claimed `dist.unpackedSize`, no download), and npm attestation
   presence / registry signature keyid changes (packument fields only; no fetch, no
-  verify, no stored signature values). Metadata-only candidate
+  verify, no stored signature values). Watch shows a deterministic 0–100 signal
+  total on a protected pack, decomposed into those facts plus open event alerts.
+  Metadata-only candidate
   and dependency-name checks. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - Package Identity human-reviewed evidence: trial/Team admin assembles a frozen takedown

@@ -55,6 +55,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/watch the npm scope/i);
     expect(text).toMatch(/not auto-watched/i);
     expect(text).toMatch(/not a malware verdict/i);
+    expect(text).toMatch(/deterministic signal total/i);
     expect(text).toMatch(/does not send the pack/i);
     expect(text).toMatch(/failed-policy/i);
     expect(text).toMatch(/renamed/i);

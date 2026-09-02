@@ -4136,6 +4136,15 @@ export function createStore(
     async latestPackageIdentitySnapshot(
       packageId: number,
     ): Promise<PackageIdentitySnapshotRow | null> {
+      const rows = await this.listRecentPackageIdentitySnapshots(packageId, 1);
+      return rows[0] ?? null;
+    },
+
+    async listRecentPackageIdentitySnapshots(
+      packageId: number,
+      limit: number,
+    ): Promise<PackageIdentitySnapshotRow[]> {
+      const take = Number.isFinite(limit) ? Math.max(1, Math.min(8, Math.floor(limit))) : 1;
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -4156,10 +4165,31 @@ export function createStore(
         trusted_publisher?: string | null;
         created_at: string | Date;
       }>(
-        `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT 1`,
-        [packageId],
+        `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT $2`,
+        [packageId, take],
       );
-      return rows[0] ? packageIdentitySnapshotRow(rows[0]) : null;
+      return rows.map(packageIdentitySnapshotRow);
+    },
+
+    async listOpenIdentityAlertsForPackage(
+      installationId: number,
+      packageName: string,
+      kinds: readonly string[],
+    ): Promise<string[]> {
+      if (kinds.length === 0) return [];
+      const placeholders = kinds.map((_, index) => `$${index + 3}`).join(", ");
+      const { rows } = await sql.query<{ kind: string }>(
+        `SELECT DISTINCT kind
+         FROM alerts
+         WHERE installation_id = $1
+           AND resolved_at IS NULL
+           AND (position($2 in title) > 0 OR position($2 in body) > 0)
+           AND kind IN (${placeholders})
+           AND row_within_retention(installation_id, created_at)
+         ORDER BY kind ASC`,
+        [installationId, packageName, ...kinds],
+      );
+      return rows.map((row) => row.kind);
     },
 
     async insertPackageIdentitySnapshot(input: {

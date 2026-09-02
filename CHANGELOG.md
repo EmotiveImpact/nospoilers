@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Package Identity risk score: trial and Team Watch shows a deterministic 0–100
+  signal total on a protected npm name (`GET /api/packages/:id/identity` `risk`).
+  The total decomposes into current snapshot facts, registered non-allowlisted
+  lookalikes, and open burst / lookalike-version / new-dependency / unpublished
+  alerts. Same facts always produce the same total. Solo and unpaid keep the
+  identity snapshot and omit the score. Another tenant 404. Never a malware
+  verdict. No extra registry fetch and no worker wake. Not a Pricing change.
+
 - Artifact Leads discovery campaigns: owner saves GitHub search queries
   (`GET`/`POST`/`PATCH`/`DELETE /api/internal/prospects/campaigns`). The
   hourly poller rotates one enabled campaign (three public repos) after

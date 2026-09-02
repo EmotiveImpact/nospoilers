@@ -418,6 +418,10 @@ jumps (2× or ≥5 MiB versus the last snapshot, metadata only), and npm attesta
 presence / signature keyid changes (packument only; no fetch, no verify); trial/Team; metadata-only
 candidate and dependency-name checks; typed allowlist; no malware verdict; no tarball
 download of the added dependency).
+Watch shows a deterministic 0–100 identity signal total on a protected pack
+(`GET /api/packages/:id/identity` `risk`), decomposed into current snapshot facts,
+registered non-allowlisted lookalikes, and open event alerts. Solo and unpaid
+omit the score. Never a malware verdict. No extra registry fetch.
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
 allowed; unpaid 402; append-only evidence never deleted).
 Extra packed formats are in (VSIX/CRX/XPI/Chrome ZIP/wheel/sdist/JAR/nupkg/gem; ZIP/tar magic; CRX header

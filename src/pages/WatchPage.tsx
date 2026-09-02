@@ -291,6 +291,14 @@ type IdentityEvidenceView = {
   takedown: Record<string, unknown>;
 };
 
+type IdentityRiskView = {
+  total: number;
+  max: number;
+  malwareVerdict: false;
+  note: string;
+  signals: Array<{ kind: string; count: number; points: number; title: string }>;
+};
+
 type ProtectedNamespace = {
   id: number;
   installationId: number;
@@ -1205,6 +1213,7 @@ export function WatchPage({ search }: { search: string }) {
   const [evidenceByPackage, setEvidenceByPackage] = useState<Record<number, IdentityEvidenceView | null>>(
     {},
   );
+  const [riskByPackage, setRiskByPackage] = useState<Record<number, IdentityRiskView | null>>({});
   const [downloadingEvidenceId, setDownloadingEvidenceId] = useState<number | null>(null);
   const [namespaces, setNamespaces] = useState<ProtectedNamespace[]>([]);
   const [namespaceScope, setNamespaceScope] = useState("");
@@ -1340,6 +1349,7 @@ export function WatchPage({ search }: { search: string }) {
       }
       const nextCandidates: Record<number, IdentityCandidateView[]> = {};
       const nextEvidence: Record<number, IdentityEvidenceView | null> = {};
+      const nextRisk: Record<number, IdentityRiskView | null> = {};
       let identityStatus: IdentitySignalsView = { status: "ready" };
       for (const row of protectionBody.protections) {
         const candidatesResponse = await fetch(q(`/api/packages/${row.packageId}/candidates`), {
@@ -1388,10 +1398,20 @@ export function WatchPage({ search }: { search: string }) {
           break;
         }
         nextEvidence[row.packageId] = evidenceBody.evidence ?? null;
+        const identityResponse = await fetch(q(`/api/packages/${row.packageId}/identity`), {
+          credentials: "include",
+        });
+        if (identityResponse.ok) {
+          const identityBody = (await identityResponse.json()) as {
+            risk?: IdentityRiskView | null;
+          };
+          nextRisk[row.packageId] = identityBody.risk ?? null;
+        }
       }
       setIdentitySignals(identityStatus);
       setCandidatesByPackage(nextCandidates);
       setEvidenceByPackage(nextEvidence);
+      setRiskByPackage(nextRisk);
       const namespaceResponse = await fetch(q("/api/namespaces"), { credentials: "include" });
       const namespaceBody = (await namespaceResponse.json()) as {
         error?: string;
@@ -1430,7 +1450,9 @@ export function WatchPage({ search }: { search: string }) {
       setAudit({ status: "error", message });
       setRetention({ status: "error", message });
       setIdentitySignals({ status: "error", message });
+      setCandidatesByPackage({});
       setEvidenceByPackage({});
+      setRiskByPackage({});
       setNamespaces([]);
       setMembers([]);
       setInvites([]);
@@ -4101,9 +4123,11 @@ export function WatchPage({ search }: { search: string }) {
           lookalike names and watch dormant resurrection, release bursts, new dependencies that
           point at newly created packages, packument unpacked-size jumps, and whether npm
           attestations or registry signature keyids disappear or change. Those last facts are
-          packument presence only — we do not fetch or verify attestations. That is not a malware
-          verdict. Trial and Team admins can assemble a human-reviewed evidence pack and publish a
-          consumer advisory page. We never send that pack to npm or GitHub and never call it malware.
+          packument presence only — we do not fetch or verify attestations. Watch shows a
+          deterministic signal total for a protected pack, decomposed into those facts. That is
+          not a malware verdict. Trial and Team admins can assemble a human-reviewed evidence pack
+          and publish a consumer advisory page. We never send that pack to npm or GitHub and never
+          call it malware.
         </p>
         {previewing ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -4527,6 +4551,7 @@ export function WatchPage({ search }: { search: string }) {
               const protection = protections.find((row) => row.packageId === pkg.id);
               const candidates = candidatesByPackage[pkg.id] ?? [];
               const evidence = evidenceByPackage[pkg.id] ?? null;
+              const risk = riskByPackage[pkg.id] ?? null;
               return (
                 <li key={pkg.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -4696,6 +4721,32 @@ export function WatchPage({ search }: { search: string }) {
                     </div>
                   </div>
                   {confirmForm(confirming?.kind === "package" && confirming.id === pkg.id)}
+                  {protection && identitySignals.status === "ready" && risk ? (
+                    <div className="mt-4 max-w-xl">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        Identity signals {risk.total} / {risk.max}
+                      </p>
+                      <p className="mt-1 text-xs text-mute">{risk.note}</p>
+                      {risk.signals.length > 0 ? (
+                        <ul className="mt-2 divide-y divide-white/5">
+                          {risk.signals.map((signal) => (
+                            <li
+                              key={signal.kind}
+                              className="flex flex-wrap items-baseline justify-between gap-2 py-2"
+                            >
+                              <p className="text-xs text-snow">{signal.title}</p>
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                                {signal.count > 1 ? `${signal.count} · ` : ""}
+                                {signal.points}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-xs text-mute">No open identity signals.</p>
+                      )}
+                    </div>
+                  ) : null}
                   {protection && identitySignals.status === "ready" && candidates.length > 0 ? (
                     <div className="mt-4 max-w-xl">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Lookalike names</p>
