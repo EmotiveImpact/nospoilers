@@ -8,8 +8,11 @@
   an incident or Watch alert. Real alerts POST `/v2/enqueue` with
   `event_action: trigger`. Solo 403. Unpaid 402. Members 403. Another tenant
   403. Email still waits on Resend. Removing a destination after a delivery
-  test keeps the delivery row and nulls the destination id. Not a Pricing
-  change.
+  test keeps the delivery row and nulls the destination id. Live on install
+  `158159401`: unauth 401, invalid key 400, save 201 without the key, dummy
+  test 502 with `inventedIncident: false` and no Watch alert, typed-confirm
+  delete 200, leftover destination 0; Cloudflare tunnel matched. The dummy
+  key was deleted. Not a Pricing change.
 
 - Release Ledger public verification page: an install admin publishes
   `/verify/:token` for a sealed revision. Visitors see digests, receipt status,

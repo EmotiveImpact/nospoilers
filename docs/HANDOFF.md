@@ -543,9 +543,13 @@ CDN, SBOM, and Sigstore stay out.
 PagerDuty destinations are in (`POST /api/destinations/pagerduty`). Encrypted
 routing key, host locked to `events.pagerduty.com`. Test POSTs a change event
 and never creates an incident. Real alerts trigger Events API. Solo 403.
-Unpaid 402. Members 403. Stripe and Resend are benched. Do not start the
-Electron installer worker yet. Do not start SBOM, Sigstore, or scheduled CDN
-verification yet.
+Unpaid 402. Members 403. Live on install `158159401`: unauth 401, invalid key
+400, save 201 without the key, dummy change-event test 502
+(`inventedIncident: false`, no Watch alert, PagerDuty HTTP 400), typed-confirm
+delete 200, leftover destination 0. Delivery rows stayed with a null
+destination id. Cloudflare tunnel matched. The dummy key was deleted.
+Stripe and Resend are benched. Do not start the Electron installer worker yet.
+Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
 
 ## Cleanup
