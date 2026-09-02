@@ -189,9 +189,12 @@ Read in this order:
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
   delivery tests. Admins save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Email invite is not built.
-- The GitHub App today is Contents/Members/Metadata **read**. Grant optional Contents write,
-  Pull requests write, and Checks write on the App to make live PRs/Checks work. Do **not**
-  grant Administration on all repositories.
+- The GitHub App today is Contents/Metadata **read** (Members read is listed on the App
+  checklist but the live install token currently reports contents+metadata only). Grant
+  optional Contents write, Pull requests write, and Checks write on the App to seed the
+  throwaway fixture, upload Release packs, and make live PRs/Checks work. Do **not**
+  grant Administration. Administration is GitHub repo-admin (make-private, delete assets,
+  disable workflows, change settings). It is a later one-click response feature, not Phase 1.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
@@ -203,10 +206,11 @@ Read in this order:
 The scanner, UI, and Neon runtime work. The commercial hosted product is not launch-ready:
 
 - `EmotiveImpact/nospoilers-throwaway` produced a real Watch alert: GitHub `repository.created`
-  (HTTP 200) → job `repo_created_public` done → “was created public”. Fixture release scan is not
-  proven yet.
-- Stripe, production deployment, and email (Resend) do not exist. Slack, SIEM, and Jira
-  destinations are live on trial/Team.
+  (HTTP 200) → job `repo_created_public` done → “was created public”. The GitHub repo is still
+  empty. Fixture files live in this repository under `throwaway/`. `npm run phase1:throwaway`
+  seeds them and attaches `fixtures/sourcemap.tgz` once Contents write exists. Stripe and
+  Resend are benched.
+- Production deployment does not exist. Slack, SIEM, and Jira destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
 
@@ -311,13 +315,13 @@ DEX, Mach-O, and extension payloads are not executed.
 Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
 the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
 alerts without download, and a packed asset that fails policy and is not allowed to ship.
-Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
-Do not grant Administration.
+Grant Contents write on the GitHub App so `npm run phase1:throwaway` can seed
+`throwaway/` onto EmotiveImpact/nospoilers-throwaway and attach sourcemap.tgz.
+Also grant Pull requests write and Checks write for live PRs/Checks.
+Do not grant Administration (make-private / delete assets / disable workflows).
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
-Still needed: a GitHub Release on that repo with fixtures/sourcemap.tgz attached.
-`npm run phase1:throwaway` creates that release, or attaches the fixture if the tag already
-exists without the asset. It still requires `GITHUB_PROOF_TOKEN`.
-Do not start Stripe or the Electron installer worker yet.
+The GitHub repo is still empty; content is authored here in `throwaway/`.
+Stripe and Resend are benched. Do not start the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
 

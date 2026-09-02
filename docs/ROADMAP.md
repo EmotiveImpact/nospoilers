@@ -151,9 +151,10 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Missing before launch
 
-- Fixture release-asset scan on `EmotiveImpact/nospoilers-throwaway` (attach `fixtures/sourcemap.tgz`).
-- Stripe checkout/subscription webhooks and card-on-file trial.
-- Production deployment, email delivery, and monitoring.
+- Seed `throwaway/` onto `EmotiveImpact/nospoilers-throwaway` and attach `fixtures/sourcemap.tgz`
+  (needs Contents write, not Administration). Live GitHub repo is still empty.
+- Stripe checkout/subscription webhooks and card-on-file trial (benched).
+- Production deployment, email delivery (Resend, benched), and monitoring.
 
 ## Milestone 0 — prove Neon runtime
 
@@ -165,8 +166,10 @@ empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARI
 
 In progress. OAuth user, App install, HMAC webhook 200s, and a real Watch alert are proven.
 `EmotiveImpact/nospoilers-throwaway` was created public. GitHub delivered `repository.created`
-(HTTP 200) → job `repo_created_public` → alert **Created public**. Missing: a fixture
-release-asset scan on that same disposable repo. Do not publicize a product repository.
+(HTTP 200) → job `repo_created_public` → alert **Created public**. The GitHub repo is still
+empty. Fixture git files are in `throwaway/` in this repository. Missing: Contents write so
+`npm run phase1:throwaway` can seed those files and attach `sourcemap.tgz`. Do not grant
+Administration. Do not publicize a product repository. Stripe and Resend are benched.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.

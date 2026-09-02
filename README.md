@@ -93,13 +93,25 @@ stored and never fetched.
 3. In the UI, **Sign in with GitHub**, then **Install on GitHub**. Choose only that throwaway repo.
 4. In GitHub: Settings → General → Danger zone → **Change visibility** → Public.
 5. Within about a minute the Watch page should show **Went public**.
-6. (Optional) Create a Release and attach `fixtures/sourcemap.tgz`. Publishing with no pack yet,
-   then uploading the asset, still scans (`release.edited`). Or click **Scan latest release**.
+6. Seed the disposable git files and publish the hostile pack: `npm run phase1:throwaway`.
+   That writes `throwaway/` onto `EmotiveImpact/nospoilers-throwaway` and attaches
+   `fixtures/sourcemap.tgz` as GitHub Release `phase1-fixture`. Or create that Release by
+   hand. Publishing with no pack yet, then uploading the asset, still scans (`release.edited`).
+   Watch **Scan latest release** unpacks that pack, not the git tree.
 
-An agent cannot create or publicize that repo with the GitHub App’s read-only token. To let an
-agent finish the proof, create `EmotiveImpact/nospoilers-throwaway` yourself, then add a
-**fine-grained** PAT for **only that repo** (Administration + Contents write) as
-`GITHUB_PROOF_TOKEN` and run `npm run phase1:throwaway`. Do not grant a classic `repo` PAT.
+The GitHub App today is **Contents: read**. That can download a Release. It cannot create
+commits or Release assets. Grant **Contents: write** on the App (not Administration), then
+re-run `npm run phase1:throwaway`. Optional **Pull requests write** and **Checks write** open
+setup/remediation PRs and hosted Checks.
+
+**Administration** is a different GitHub permission. It is repo-admin: make a repository
+private, delete Release assets, disable workflows, change settings. NoSpoilers does not use
+it. One-click make-private / asset delete / workflow disable stays planned until that
+permission is deliberately granted later. Do not grant Administration to finish Phase 1.
+
+Or set `GITHUB_PROOF_TOKEN` to a **fine-grained** PAT for **only**
+`EmotiveImpact/nospoilers-throwaway` with Contents: write. Do not use a classic `repo` PAT.
+Do not publicize a product repository. Stripe and Resend stay benched.
 
 If GitHub cannot reach your laptop, start a webhook relay (leave `npm run dev` running):
 
@@ -133,16 +145,19 @@ GitHub → your profile → **Settings** → **Developer settings** → **GitHub
 **Permissions** (Repository):
 
 - **Metadata** — Read-only (required)
-- **Contents** — Read-only to download release assets. Optional **Read and write** to open a
-  setup PR (writes `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`) or a
-  remediation PR (ignore rules, empty `.nospoilers.yml`, bundler hints, and that workflow on
-  branch `nospoilers/remediate`)
+- **Contents** — Read-only to download release assets. Optional **Read and write** to seed the
+  throwaway fixture, upload Release packs, and open a setup PR (writes
+  `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`) or a remediation PR
+  (ignore rules, empty `.nospoilers.yml`, bundler hints, and that workflow on branch
+  `nospoilers/remediate`)
 - **Pull requests** — Optional **Read and write** to open those PRs. The App **never merges** them
 - **Checks** — Optional **Read and write** to report hosted release-scan results on the tag SHA
 - **Members** — Read-only (collaborator added)
 
-Do **not** grant Administration on all repositories. Branch protection / required checks stay a
-maintainer action after they merge the setup PR.
+Do **not** grant **Administration**. That permission is GitHub repo-admin (visibility,
+collaborators, delete assets, disable workflows, change settings). It is not required for
+Watch, Release scans, or setup PRs. Branch protection / required checks stay a maintainer
+action after they merge the setup PR.
 
 **Subscribe to events:** `Meta`, `Installation`, `Installation repositories`, `Installation target`, `Repository`, `Public`, `Push`, `Release`, `Member`, `Fork`, `GitHub App authorization`.
 

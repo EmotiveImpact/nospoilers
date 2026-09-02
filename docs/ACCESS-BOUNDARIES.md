@@ -142,6 +142,10 @@ on a trial or Team install. The first GitHub user to connect an install is admin
 users become members. Solo paid returns 403 for role changes. Unpaid returns 402. GitHub
 suspend does not block role changes. Email invite is not built.
 
+This is not GitHub App **Administration**. That GitHub permission is repo-admin (make the
+repository private, delete Release assets, disable workflows, change settings). It is not
+granted. Contents write is enough to seed the throwaway fixture and open reviewable PRs.
+
 **May**
 
 - Promote, demote, and remove people on that install. The last admin cannot be demoted

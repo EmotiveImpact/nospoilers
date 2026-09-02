@@ -126,6 +126,32 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/path: "fixtures\/sourcemap.docker.tar"/);
   });
 
+  it("lets extra packed-format fixtures without source maps ship", async () => {
+    const cases = [
+      ["clean.vsix", "vsix"],
+      ["clean.crx", "crx"],
+      ["clean.xpi", "xpi"],
+      ["clean.whl", "wheel"],
+      ["clean.jar", "jar"],
+      ["clean.nupkg", "nupkg"],
+      ["clean.gem", "gem"],
+      ["clean.oci.tar", "oci"],
+      ["clean.aab", "aab"],
+      ["clean.ipa", "ipa"],
+    ] as const;
+    for (const [file, kind] of cases) {
+      const report = await scan(path.join(fixtures, file));
+      expect(report.kind, file).toBe(kind);
+      expect(report.ok, file).toBe(true);
+      expect(report.status, file).toBe("passed");
+      if (file === "clean.gem") {
+        expect(report.findings.map((row) => row.rule), file).toEqual(["ARC-001"]);
+      } else {
+        expect(report.findings, file).toEqual([]);
+      }
+    }
+  });
+
   it("fails extra packed-format fixtures that contain a source map", async () => {
     const cases = [
       ["sourcemap.crx", "crx"],

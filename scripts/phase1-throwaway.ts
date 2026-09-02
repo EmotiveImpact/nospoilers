@@ -1,15 +1,52 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { createAppJwt } from "../src/server/github.ts";
 import { loadConfig } from "../src/server/config.ts";
 
-const OWNER = "EmotiveImpact";
-const REPO = "nospoilers-throwaway";
-const FULL = `${OWNER}/${REPO}`;
+export const THROWAWAY_OWNER = "EmotiveImpact";
+export const THROWAWAY_REPO = "nospoilers-throwaway";
+export const THROWAWAY_FULL = `${THROWAWAY_OWNER}/${THROWAWAY_REPO}`;
+export const THROWAWAY_RELEASE_TAG = "phase1-fixture";
+export const THROWAWAY_ASSET = "sourcemap.tgz";
 
-function proofToken(): string {
-  loadConfig();
-  return (process.env.GITHUB_PROOF_TOKEN ?? "").trim();
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+export function writeDeniedMessage(): string {
+  return [
+    `Cannot write ${THROWAWAY_FULL}.`,
+    "The GitHub App currently has Contents: read. That can download a Release pack;",
+    "it cannot create commits or Release assets.",
+    "",
+    "Grant Contents: write on the GitHub App (NoSpoilers-dev), then re-run",
+    "`npm run phase1:throwaway`. Also grant Pull requests write and Checks write if you",
+    "want live setup/remediation PRs and hosted Checks.",
+    "",
+    "Do not grant Administration. Administration is GitHub repo-admin (make private,",
+    "delete Release assets, disable workflows, change settings). NoSpoilers does not",
+    "use that permission.",
+    "",
+    "Or set GITHUB_PROOF_TOKEN to a fine-grained PAT for only this throwaway repo",
+    "with Contents: write. Do not use a classic repo PAT. Do not publicize a product repository.",
+    "",
+  ].join("\n");
+}
+
+export async function listThrowawayFiles(): Promise<{ path: string; bytes: Buffer }[]> {
+  return walk(path.join(root, "throwaway"));
+}
+
+async function walk(dir: string, prefix = ""): Promise<{ path: string; bytes: Buffer }[]> {
+  const out: { path: string; bytes: Buffer }[] = [];
+  for (const name of await readdir(dir)) {
+    if (name === ".DS_Store") continue;
+    const rel = prefix ? `${prefix}/${name}` : name;
+    const abs = path.join(dir, name);
+    const st = await stat(abs);
+    if (st.isDirectory()) out.push(...(await walk(abs, rel)));
+    else out.push({ path: rel, bytes: await readFile(abs) });
+  }
+  return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 async function github(
@@ -37,13 +74,82 @@ async function github(
   return { status: res.status, body };
 }
 
-async function attachFixture(
-  token: string,
-  uploadUrl: string,
-  bytes: Buffer,
-): Promise<void> {
+async function installationWriteToken(): Promise<string | null> {
+  const config = loadConfig();
+  if (!config.githubAppId || !config.githubPrivateKey) return null;
+  const jwt = createAppJwt(config.githubAppId, config.githubPrivateKey);
+  const listed = await github(jwt, "https://api.github.com/app/installations?per_page=100");
+  if (listed.status >= 300 || !Array.isArray(listed.body)) return null;
+  const install = (
+    listed.body as {
+      id: number;
+      account?: { login?: string };
+      permissions?: Record<string, string>;
+    }[]
+  ).find((row) => row.account?.login?.toLowerCase() === THROWAWAY_OWNER.toLowerCase());
+  if (!install) return null;
+  if ((install.permissions?.contents ?? "none") !== "write") return null;
+  const minted = await github(
+    jwt,
+    `https://api.github.com/app/installations/${install.id}/access_tokens`,
+    { method: "POST" },
+  );
+  const token = (minted.body as { token?: string }).token;
+  return minted.status < 300 && token ? token : null;
+}
+
+function proofToken(): string {
+  loadConfig();
+  return (process.env.GITHUB_PROOF_TOKEN ?? "").trim();
+}
+
+async function writeToken(): Promise<string | null> {
+  const proof = proofToken();
+  if (proof) return proof;
+  return installationWriteToken();
+}
+
+async function putFile(token: string, rel: string, bytes: Buffer): Promise<"created" | "updated" | "same"> {
+  const api = `https://api.github.com/repos/${THROWAWAY_FULL}/contents/${rel}`;
+  const existing = await github(token, `${api}?ref=main`);
+  const content = bytes.toString("base64");
+  if (existing.status === 200) {
+    const row = existing.body as { sha?: string; content?: string; encoding?: string };
+    const current = row.encoding === "base64" ? Buffer.from(row.content ?? "", "base64") : null;
+    if (current && current.equals(bytes)) return "same";
+    const put = await github(token, api, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `Update ${rel} for Phase 1 throwaway fixture.`,
+        content,
+        sha: row.sha,
+        branch: "main",
+      }),
+    });
+    if (put.status >= 300) {
+      throw new Error(`Could not update ${rel}: ${put.status} ${JSON.stringify(put.body).slice(0, 200)}`);
+    }
+    return "updated";
+  }
+  const put = await github(token, api, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: `Add ${rel} for Phase 1 throwaway fixture.`,
+      content,
+      branch: "main",
+    }),
+  });
+  if (put.status >= 300) {
+    throw new Error(`Could not create ${rel}: ${put.status} ${JSON.stringify(put.body).slice(0, 200)}`);
+  }
+  return "created";
+}
+
+async function attachFixture(token: string, uploadUrl: string, bytes: Buffer): Promise<void> {
   const uploadBase = uploadUrl.replace(/\{.*\}$/, "");
-  const upload = await fetch(`${uploadBase}?name=sourcemap.tgz`, {
+  const upload = await fetch(`${uploadBase}?name=${THROWAWAY_ASSET}`, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
@@ -62,114 +168,105 @@ async function attachFixture(
 async function existingRelease(
   token: string,
 ): Promise<{ upload_url?: string; assets?: { name?: string }[] } | null> {
-  const listed = await github(token, `https://api.github.com/repos/${FULL}/releases/tags/phase1-fixture`);
+  const listed = await github(
+    token,
+    `https://api.github.com/repos/${THROWAWAY_FULL}/releases/tags/${THROWAWAY_RELEASE_TAG}`,
+  );
   if (listed.status === 404) return null;
   if (listed.status >= 300) {
     const message = (listed.body as { message?: string }).message ?? String(listed.status);
-    throw new Error(`Could not read release phase1-fixture: ${message}`);
+    throw new Error(`Could not read release ${THROWAWAY_RELEASE_TAG}: ${message}`);
   }
   return listed.body as { upload_url?: string; assets?: { name?: string }[] };
 }
 
-async function main(): Promise<void> {
-  const token = proofToken();
-  if (!token) {
-    process.stderr.write(
-      [
-        "GITHUB_PROOF_TOKEN is missing.",
-        `Create private ${FULL} on GitHub, or add a fine-grained PAT for only that repo`,
-        "(Administration + Contents write) as GITHUB_PROOF_TOKEN.",
-        "Do not use a classic repo PAT. Do not publicize a product repository.",
-        "",
-      ].join("\n"),
-    );
-    process.exit(2);
-  }
-
-  const got = await github(token, `https://api.github.com/repos/${FULL}`);
-  const existing = got.body as { message?: string; private?: boolean; full_name?: string };
-  if (got.status === 404) {
-    const created = await github(token, "https://api.github.com/user/repos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: REPO,
-        private: true,
-        auto_init: true,
-        description: "Disposable NoSpoilers Phase 1 proof. Safe to publicize.",
-      }),
-    });
-    if (created.status >= 300) {
-      const message = (created.body as { message?: string }).message ?? String(created.status);
-      throw new Error(`Could not create ${FULL}: ${message}`);
-    }
-    process.stdout.write(`created private ${FULL}\n`);
-  } else if (got.status !== 200) {
-    throw new Error(`Could not read ${FULL}: ${existing.message ?? got.status}`);
-  } else if (existing.full_name && existing.full_name.toLowerCase() !== FULL.toLowerCase()) {
-    throw new Error("Refusing to operate on any repository except EmotiveImpact/nospoilers-throwaway.");
-  }
-
-  const current = await github(token, `https://api.github.com/repos/${FULL}`);
-  const repo = current.body as { private?: boolean };
-  if (repo.private) {
-    const pub = await github(token, `https://api.github.com/repos/${FULL}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ private: false }),
-    });
-    if (pub.status >= 300) {
-      const message = (pub.body as { message?: string }).message ?? String(pub.status);
-      throw new Error(`Could not publicize ${FULL}: ${message}`);
-    }
-    process.stdout.write(`publicized ${FULL}\n`);
-  } else {
-    process.stdout.write(`${FULL} is already public\n`);
-  }
-
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const fixture = path.join(root, "fixtures", "sourcemap.tgz");
-  const bytes = await readFile(fixture);
-  const release = await github(token, `https://api.github.com/repos/${FULL}/releases`, {
+async function publishRelease(token: string): Promise<void> {
+  const bytes = await readFile(path.join(root, "fixtures", THROWAWAY_ASSET));
+  const release = await github(token, `https://api.github.com/repos/${THROWAWAY_FULL}/releases`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      tag_name: "phase1-fixture",
-      name: "phase1-fixture",
+      tag_name: THROWAWAY_RELEASE_TAG,
+      name: THROWAWAY_RELEASE_TAG,
       body: "NoSpoilers throwaway fixture. Not a product release.",
     }),
   });
   const releaseBody = release.body as {
     message?: string;
-    errors?: unknown;
     upload_url?: string;
-    id?: number;
     assets?: { name?: string }[];
   };
   let uploadUrl = releaseBody.upload_url;
   if (release.status === 422) {
     const found = await existingRelease(token);
     if (!found?.upload_url) {
-      throw new Error("Release phase1-fixture already exists but has no upload URL.");
+      throw new Error(`Release ${THROWAWAY_RELEASE_TAG} already exists but has no upload URL.`);
     }
     const names = (found.assets ?? []).map((asset) => asset.name ?? "");
-    if (names.includes("sourcemap.tgz")) {
-      process.stdout.write("release phase1-fixture already has sourcemap.tgz\n");
+    if (names.includes(THROWAWAY_ASSET)) {
+      process.stdout.write(`release ${THROWAWAY_RELEASE_TAG} already has ${THROWAWAY_ASSET}\n`);
       return;
     }
     uploadUrl = found.upload_url;
-    process.stdout.write("release phase1-fixture exists; attaching missing fixture\n");
+    process.stdout.write(`release ${THROWAWAY_RELEASE_TAG} exists; attaching missing fixture\n`);
   } else if (release.status >= 300 || !uploadUrl) {
     throw new Error(`Could not create release: ${releaseBody.message ?? release.status}`);
   }
-  if (!uploadUrl) {
-    throw new Error("Release upload URL missing.");
-  }
+  if (!uploadUrl) throw new Error("Release upload URL missing.");
   await attachFixture(token, uploadUrl, bytes);
-  process.stdout.write(`attached fixtures/sourcemap.tgz to ${FULL} release phase1-fixture\n`);
+  process.stdout.write(`attached fixtures/${THROWAWAY_ASSET} to ${THROWAWAY_FULL} release ${THROWAWAY_RELEASE_TAG}\n`);
 }
 
-void main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+export async function main(): Promise<void> {
+  const token = await writeToken();
+  if (!token) {
+    process.stderr.write(writeDeniedMessage());
+    process.exitCode = 2;
+    return;
+  }
+
+  const got = await github(token, `https://api.github.com/repos/${THROWAWAY_FULL}`);
+  const existing = got.body as { message?: string; private?: boolean; full_name?: string };
+  if (got.status === 404) {
+    process.stderr.write(
+      [
+        `${THROWAWAY_FULL} does not exist.`,
+        "Create that public disposable repo on GitHub (do not publicize a product repository),",
+        "then re-run `npm run phase1:throwaway`.",
+        "",
+      ].join("\n"),
+    );
+    process.exitCode = 2;
+    return;
+  }
+  if (got.status !== 200) {
+    throw new Error(`Could not read ${THROWAWAY_FULL}: ${existing.message ?? got.status}`);
+  }
+  if (existing.full_name && existing.full_name.toLowerCase() !== THROWAWAY_FULL.toLowerCase()) {
+    throw new Error(`Refusing to operate on any repository except ${THROWAWAY_FULL}.`);
+  }
+  if (existing.private) {
+    process.stdout.write(
+      `${THROWAWAY_FULL} is still private. Change visibility to public in GitHub yourself.\n`,
+    );
+    process.stdout.write("That uses your account. The App does not need Administration.\n");
+  } else {
+    process.stdout.write(`${THROWAWAY_FULL} is already public\n`);
+  }
+
+  const files = await listThrowawayFiles();
+  for (const file of files) {
+    const result = await putFile(token, file.path, file.bytes);
+    process.stdout.write(`${result} ${file.path}\n`);
+  }
+
+  await publishRelease(token);
+}
+
+const invoked = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invoked) {
+  void main().catch((error: unknown) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exit(1);
+  });
+}

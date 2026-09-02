@@ -62,13 +62,17 @@ async function writeCrxPack(dest: string, files: Record<string, string | Buffer>
   await writeFile(dest, buf);
 }
 
-async function writeGemPack(dest: string, files: Record<string, string>): Promise<void> {
+async function writeGemPack(
+  dest: string,
+  files: Record<string, string>,
+  name = "spoiler",
+): Promise<void> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "ns-gem-"));
   const inner = path.join(dir, "inner");
   try {
     await writeTree(inner, files);
     await tarCreate({ gzip: true, file: path.join(dir, "data.tar.gz"), cwd: inner }, ["."]);
-    await writeFile(path.join(dir, "metadata.gz"), gzipSync("---\nname: spoiler\nversion: 1.0.0\n"));
+    await writeFile(path.join(dir, "metadata.gz"), gzipSync(`---\nname: ${name}\nversion: 1.0.0\n`));
     await tarCreate({ file: dest, cwd: dir }, ["data.tar.gz", "metadata.gz"]);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -151,6 +155,38 @@ async function main(): Promise<void> {
     });
     await writeGemPack(path.join(fixtures, "sourcemap.gem"), dirtyJs);
 
+    const cleanJs = { "index.js": minified };
+    const cleanVsix = new JSZip();
+    cleanVsix.file("[Content_Types].xml", '<?xml version="1.0"?><Types></Types>');
+    cleanVsix.file(
+      "extension.vsixmanifest",
+      '<?xml version="1.0"?><PackageManifest Version="2.0.0"></PackageManifest>',
+    );
+    cleanVsix.file("extension/index.js", minified);
+    await writeFile(
+      path.join(fixtures, "clean.vsix"),
+      await cleanVsix.generateAsync({ type: "nodebuffer" }),
+    );
+    await writeCrxPack(path.join(fixtures, "clean.crx"), cleanJs);
+    await writeZipPack(path.join(fixtures, "clean.xpi"), {
+      "manifest.json": '{"manifest_version":2,"name":"clean"}',
+      ...cleanJs,
+    });
+    await writeZipPack(path.join(fixtures, "clean.whl"), {
+      "pkg-1.0.0.dist-info/METADATA": "Name: pkg\nVersion: 1.0.0\n",
+      "pkg/static/index.js": minified,
+    });
+    await writeZipPack(path.join(fixtures, "clean.jar"), {
+      "META-INF/MANIFEST.MF": "Manifest-Version: 1.0\n",
+      ...cleanJs,
+    });
+    await writeZipPack(path.join(fixtures, "clean.nupkg"), {
+      "[Content_Types].xml": '<?xml version="1.0"?><Types></Types>',
+      "App.nuspec": "<package></package>",
+      ...cleanJs,
+    });
+    await writeGemPack(path.join(fixtures, "clean.gem"), cleanJs, "clean");
+
     const workspaceDir = await mkdtemp(path.join(os.tmpdir(), "ns-workspace-"));
     try {
       await writeTree(workspaceDir, {
@@ -183,6 +219,9 @@ async function main(): Promise<void> {
         "index.js.map": sourceMap,
       },
     ]);
+    await writeOciArchive(path.join(fixtures, "clean.oci.tar"), {
+      "index.js": minified,
+    });
     await writeOciArchive(path.join(fixtures, "sourcemap.oci.tar"), {
       "index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "index.js.map": sourceMap,
@@ -201,6 +240,13 @@ async function main(): Promise<void> {
       "assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "assets/www/index.js.map": sourceMap,
     });
+    await writeZipPack(path.join(fixtures, "clean.aab"), {
+      "BundleConfig.pb": Buffer.from("pb"),
+      "base/manifest/AndroidManifest.xml":
+        '<?xml version="1.0"?><manifest package="app.clean"></manifest>',
+      "base/dex/classes.dex": dexStub,
+      "base/assets/www/index.js": minified,
+    });
     await writeZipPack(path.join(fixtures, "sourcemap.aab"), {
       "BundleConfig.pb": Buffer.from("pb"),
       "base/manifest/AndroidManifest.xml":
@@ -208,6 +254,10 @@ async function main(): Promise<void> {
       "base/dex/classes.dex": dexStub,
       "base/assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "base/assets/www/index.js.map": sourceMap,
+    });
+    await writeZipPack(path.join(fixtures, "clean.ipa"), {
+      "Payload/Clean.app/Info.plist": '<?xml version="1.0"?><plist></plist>',
+      "Payload/Clean.app/www/index.js": minified,
     });
     await writeZipPack(path.join(fixtures, "sourcemap.ipa"), {
       "Payload/Spoiler.app/Info.plist": '<?xml version="1.0"?><plist></plist>',

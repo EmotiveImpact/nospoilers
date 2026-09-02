@@ -20,6 +20,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/rate-limited/i);
     expect(text).toMatch(/webhooks are not/i);
     expect(text).toMatch(/Administration/);
+    expect(text).toMatch(/make-private, delete assets, disable workflows/);
     expect(text).toMatch(/signed receipt/i);
     expect(text).toMatch(/hashed in the browser/i);
     expect(text).toMatch(/Watch lists the linked receipt status/i);

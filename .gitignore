@@ -16,6 +16,7 @@ data
 .env
 .env.*
 !.env.example
+!throwaway/.env
 
 # Editor directories and files
 .vscode/*

@@ -1,0 +1,31 @@
+name: phase1-fixture-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack hostile fixture
+        run: |
+          mkdir -p dist
+          tar -czf dist/sourcemap.tgz -C pack .
+          tar -tzf dist/sourcemap.tgz
+      - name: Publish phase1-fixture release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view phase1-fixture >/dev/null 2>&1; then
+            gh release upload phase1-fixture dist/sourcemap.tgz --clobber
+          else
+            gh release create phase1-fixture dist/sourcemap.tgz \
+              --title phase1-fixture \
+              --notes "NoSpoilers throwaway fixture. Not a product release."
+          fi

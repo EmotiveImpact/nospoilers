@@ -13,16 +13,16 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub OAuth login | Built: real GitHub user session on Neon; `github_app_authorization` revoked drops that user’s sessions and stored OAuth token | NoSpoilers |
 | GitHub App installation | Built: live App install and HMAC webhooks; `installation_target` renamed updates the stored account login in place | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |
-| Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert | NoSpoilers |
+| Real throwaway-repository proof | Partial: created-public webhook → job → Watch alert. Git content authored in `throwaway/`. Live seed/release still needs Contents write (not Administration); the GitHub repo is still empty | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
 | Complete unpaid webhook/worker/poller/scan enforcement | Built: webhook 200, work skipped | NoSpoilers |
-| Stripe monthly/yearly checkout | Planned | NoSpoilers |
-| Card-on-file 14-day trial | Planned | NoSpoilers |
-| Stripe lifecycle webhooks | Planned | NoSpoilers |
-| Billing portal | Planned | NoSpoilers |
+| Stripe monthly/yearly checkout | Planned, benched until throwaway Release scan is live | NoSpoilers |
+| Card-on-file 14-day trial | Planned, benched | NoSpoilers |
+| Stripe lifecycle webhooks | Planned, benched | NoSpoilers |
+| Billing portal | Planned, benched | NoSpoilers |
 | Railway web/API and worker deployment | Planned | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
-| Resend email delivery | Planned | NoSpoilers |
+| Resend email delivery | Planned, benched | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
 | Upload/API rate limiting | Built: hosted scan, GitHub OAuth, and owner discovery per address; GitHub webhooks are not limited | NoSpoilers |
@@ -117,16 +117,16 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for exposed files, credentials, and linked internal paths, SSRF blocked, never executed | NoSpoilers |
 | Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
 | Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
-| VS Code `.vsix` | Built: ZIP magic, hostile fixture, GitHub Release asset, Scan example | NoSpoilers |
-| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; Scan CRX and XPI examples | NoSpoilers |
-| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path; Scan wheel example | NoSpoilers |
-| Java JAR/WAR | Built: ZIP magic; Scan JAR example | NoSpoilers |
-| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; Scan nupkg example | NoSpoilers |
-| Ruby gems | Built: tar + nested `data.tar.gz`, never executed; Scan gem example | NoSpoilers |
-| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; Scan docker-save and OCI examples | NoSpoilers |
+| VS Code `.vsix` | Built: ZIP magic, clean and dirty fixtures, GitHub Release asset, Scan example | NoSpoilers |
+| Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive; XPI as ZIP; clean and dirty Scan examples | NoSpoilers |
+| Python wheel and source distribution | Built: `.whl` as ZIP; sdist is the existing tarball path; clean and dirty Scan examples | NoSpoilers |
+| Java JAR/WAR | Built: ZIP magic; clean and dirty Scan examples | NoSpoilers |
+| NuGet `.nupkg` and `.snupkg` | Built: ZIP magic; clean and dirty Scan examples | NoSpoilers |
+| Ruby gems | Built: tar + nested `data.tar.gz`, never executed; clean and dirty Scan examples | NoSpoilers |
+| Docker/OCI image layers | Built: docker save + OCI layout sniff, layer tars and gzip blobs, overlay whiteouts not applied, encrypted layers inconclusive; clean and dirty docker-save and OCI examples | NoSpoilers |
 | Serverless deployment bundles | Built: ZIP magic plus host.json / serverless.yml / .aws-sam / netlify/functions / .vercel/output layout, or `.lambda.zip` name; handlers never executed; encrypted zip inconclusive | NoSpoilers |
-| Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; Scan APK and AAB examples | NoSpoilers |
-| iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; Scan IPA example | NoSpoilers |
+| Android APK/AAB | Built: ZIP magic, AndroidManifest/BundleConfig layout, DEX never executed, signatures not verified; clean and dirty Scan APK/AAB examples | NoSpoilers |
+| iOS IPA | Built: ZIP magic, Payload/*.app layout, Mach-O never executed, FairPlay not decrypted, signatures not verified; clean and dirty Scan IPA examples | NoSpoilers |
 | Electron DMG | Deferred isolated worker | NoSpoilers |
 | Electron EXE/NSIS | Deferred isolated worker | NoSpoilers |
 | Electron AppImage | Deferred isolated worker | NoSpoilers |
@@ -153,9 +153,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Resolution notes/evidence | Built: resolve requires a note; files are not stored | NoSpoilers |
 | Exposure-duration timer | Built: open until resolved, shown on Watch | NoSpoilers |
 | Credential-rotation checklist | Built: SEC/MAP rules; secret values are not copied | NoSpoilers |
-| One-click make repository private | Planned, high permission | NoSpoilers |
-| Remove/suspend bad GitHub Release asset | Planned, high permission | NoSpoilers |
-| Disable unsafe release workflow | Planned, high permission | NoSpoilers |
+| One-click make repository private | Planned: needs GitHub App **Administration** (repo-admin). Not granted. Not required for Phase 1 | NoSpoilers |
+| Remove/suspend bad GitHub Release asset | Planned: needs GitHub App **Administration**. Not granted | NoSpoilers |
+| Disable unsafe release workflow | Planned: needs GitHub App **Administration**. Not granted | NoSpoilers |
 | Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
 | Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; never invents an incident | NoSpoilers |
