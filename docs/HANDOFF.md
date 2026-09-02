@@ -151,7 +151,7 @@ Read in this order:
   `classes.dex`, `BundleConfig.pb`, or `Payload/*.app`. ZIP magic, not the extension. Encrypted zip
   is inconclusive. APK Signature Scheme v1–v4, Play App Signing, and Apple code signatures are not
   verified. FairPlay-encrypted Mach-O is not decrypted. DEX, native libraries, and Mach-O are never
-  executed. Scan lists an APK fixture example. Not a Pricing extras change.
+  executed. Scan lists APK, AAB, and IPA fixture examples. Not a Pricing extras change.
 - Packed scans also cover serverless deployment zips (AWS Lambda, Azure Functions, Netlify
   Functions, Vercel output). Layout sniff uses `host.json`, `serverless.yml`, `.aws-sam`,
   `netlify/functions`, or `.vercel/output`, or a `.lambda.zip` name. ZIP magic, not the extension
@@ -259,8 +259,8 @@ Docker/OCI image layers are in (docker save + OCI layout sniff; layer tars and g
 overlay whiteouts not applied; encrypted layers inconclusive; signatures not verified; Scan
 docker-save and OCI examples). Not advertised as a Pricing change.
 APK/AAB/IPA are in (ZIP magic; AndroidManifest/BundleConfig/Payload layout; DEX/Mach-O never
-executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK
-and IPA examples). Not advertised as a Pricing change.
+executed; signatures not verified; FairPlay not decrypted; encrypted zip inconclusive; Scan APK,
+AAB, and IPA examples). Not advertised as a Pricing change.
 Serverless deployment bundles are in (ZIP magic; host.json / serverless.yml / .aws-sam /
 netlify/functions / .vercel/output layout or `.lambda.zip` name; handlers never executed;
 encrypted zip inconclusive; Scan Lambda zip example). Not advertised as a Pricing change.
@@ -306,8 +306,11 @@ Scan page checks a signed receipt without unpacking (pack hashed in-browser). Co
 still allows that check. Authentic failed-policy/inconclusive is not clean. Watch lists the
 linked receipt status on Releases and downloads the signed receipt JSON; unpaid still allowed.
 Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save, OCI, VSIX,
-CRX, XPI, wheel, JAR, nupkg, and gem fixture examples. Layers, bytecode, Python, Ruby, and
-extension payloads are not executed.
+CRX, XPI, wheel, JAR, nupkg, gem, APK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
+DEX, Mach-O, and extension payloads are not executed.
+Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
+the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
+alerts without download, and a packed asset that fails policy and is not allowed to ship.
 Grant Contents write, Pull requests write, and Checks write on the GitHub App to go live.
 Do not grant Administration.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).

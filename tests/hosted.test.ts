@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { createApp } from "../src/server/app.ts";
 import { databaseMode, loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort, type GithubRepo } from "../src/server/github.ts";
@@ -316,6 +319,44 @@ describe("GitHub webhooks", () => {
         "SELECT kind, priority FROM jobs",
       );
       expect(rows).toEqual([{ kind: "repo_transferred", priority: "light" }]);
+    });
+  });
+
+  it("alerts when a transferred repository job runs", async () => {
+    await withStore(async ({ store }) => {
+      const { app } = appFor(store);
+      const res = await postWebhook(app, "repository", "d-xfer-alert", {
+        action: "transferred",
+        installation: { id: 7 },
+        repository: sampleRepo,
+      });
+      expect(res.status).toBe(200);
+      const worker = createWorker({
+        store,
+        github: mockGithub(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 4,
+        maxAssetBytes: 1000,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      const started = Date.now();
+      while (Date.now() - started < 4000) {
+        const { rows } = await store.sql.query<{ n: string }>(
+          "SELECT count(*)::text AS n FROM alerts WHERE kind = 'repo_transferred'",
+        );
+        if (Number(rows[0]?.n) === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await worker.stop();
+      const { rows: alerts } = await store.sql.query<{ title: string; body: string }>(
+        "SELECT title, body FROM alerts WHERE kind = 'repo_transferred'",
+      );
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.title).toMatch(/transferred/i);
+      expect(alerts[0]?.body).toMatch(/visibility/i);
+      expect(`${alerts[0]?.title} ${alerts[0]?.body}`).not.toMatch(/ghs_|token=/i);
     });
   });
 
@@ -1074,6 +1115,278 @@ describe("GitHub webhooks", () => {
       expect(alerts.every((row) => !/github\.com|token=/i.test(`${row.title} ${row.body}`))).toBe(true);
       expect(downloads).toBe(0);
     });
+  });
+});
+
+describe("scan latest release", () => {
+  const FIXTURE = path.resolve("fixtures/sourcemap.tgz");
+  const RECEIPT_SECRET = "receipt-test-secret";
+
+  async function seedWatch(store: Store): Promise<string> {
+    await store.upsertUser({ id: "u1", login: "octo" });
+    await store.upsertInstallation({
+      id: 7,
+      accountLogin: "octo",
+      accountType: "User",
+      accountId: 1,
+    });
+    await store.linkUserInstallation(7, "u1");
+    await store.upsertRepo({
+      id: 99,
+      installationId: 7,
+      owner: "octo",
+      name: "throwaway",
+      fullName: "octo/throwaway",
+      private: false,
+      htmlUrl: "https://github.com/octo/throwaway",
+    });
+    return `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+  }
+
+  async function waitFor(store: Store, sql: string, n: number, label: string): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 4000) {
+      const { rows } = await store.sql.query<{ n: string }>(sql);
+      if (Number(rows[0]?.n) >= n) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`timed out waiting for ${label}`);
+  }
+
+  it("refuses anonymous, unknown, and stolen repository scans", async () => {
+    await withStore(async ({ store }) => {
+      const cookie = await seedWatch(store);
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(9, "u2");
+      const stolen = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const { app } = appFor(store);
+      expect((await app.request("/api/repos/99/scan-latest-release", { method: "POST" })).status).toBe(
+        401,
+      );
+      expect(
+        (await app.request("/api/repos/404/scan-latest-release", { method: "POST", headers: { cookie } }))
+          .status,
+      ).toBe(404);
+      expect(
+        (await app.request("/api/repos/99/scan-latest-release", { method: "POST", headers: { cookie: stolen } }))
+          .status,
+      ).toBe(403);
+    });
+  });
+
+  it("queues a heavy job and wakes the worker without downloading yet", async () => {
+    await withStore(async ({ store }) => {
+      const cookie = await seedWatch(store);
+      let wakes = 0;
+      const { app } = appFor(store, mockGithub(), () => {
+        wakes += 1;
+      });
+      const res = await app.request("/api/repos/99/scan-latest-release", {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { ok: boolean; queued: boolean };
+      expect(body.ok).toBe(true);
+      expect(body.queued).toBe(true);
+      expect(wakes).toBe(1);
+      const { rows } = await store.sql.query<{ kind: string; priority: string; status: string }>(
+        "SELECT kind, priority, status FROM jobs",
+      );
+      expect(rows).toEqual([{ kind: "scan_latest_release", priority: "heavy", status: "queued" }]);
+    });
+  });
+
+  it("alerts when the latest GitHub Release does not exist, without downloading", async () => {
+    await withStore(async ({ store }) => {
+      await seedWatch(store);
+      let downloads = 0;
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "scan_latest_release",
+        payload: {
+          installationId: 7,
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          getLatestRelease: async () => null,
+          downloadAsset: async () => {
+            downloads += 1;
+            throw new Error("no-release jobs must not download");
+          },
+        }),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      await waitFor(store, "SELECT count(*)::text AS n FROM alerts", 1, "no-release alert");
+      await worker.stop();
+      const { rows } = await store.sql.query<{ kind: string; title: string }>(
+        "SELECT kind, title FROM alerts",
+      );
+      expect(rows[0]?.kind).toBe("scan_latest_release");
+      expect(rows[0]?.title).toMatch(/No release on octo\/throwaway/);
+      expect(rows[0]?.title).not.toMatch(/allowed to ship/);
+      expect(downloads).toBe(0);
+    });
+  });
+
+  it("alerts when the latest Release has no packed asset, without downloading", async () => {
+    await withStore(async ({ store }) => {
+      await seedWatch(store);
+      let downloads = 0;
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "scan_latest_release",
+        payload: {
+          installationId: 7,
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          getLatestRelease: async () => ({
+            id: 55,
+            tag_name: "v1.0.0",
+            name: "v1.0.0",
+            target_commitish: "main",
+          }),
+          listReleaseAssets: async () => [
+            { id: 1, name: "notes.txt", size: 12, url: "https://api.github.com/asset/1" },
+          ],
+          downloadAsset: async () => {
+            downloads += 1;
+            throw new Error("non-pack assets must not download");
+          },
+        }),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 10_000,
+      });
+      await worker.tick();
+      await waitFor(store, "SELECT count(*)::text AS n FROM alerts", 1, "no-pack alert");
+      await worker.stop();
+      const { rows } = await store.sql.query<{ kind: string; title: string; body: string }>(
+        "SELECT kind, title, body FROM alerts",
+      );
+      expect(rows[0]?.kind).toBe("release_scan");
+      expect(rows[0]?.title).toMatch(/no pack we can scan/i);
+      expect(rows[0]?.body).toMatch(/Source trees are not scanned on push/);
+      expect(downloads).toBe(0);
+    });
+  });
+
+  it("scans the latest packed Release asset and does not call it clean", async () => {
+    await withStore(async ({ store }) => {
+      await seedWatch(store);
+      const bytes = await readFile(FIXTURE);
+      let downloads = 0;
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "scan_latest_release",
+        payload: {
+          installationId: 7,
+          repo: {
+            id: 99,
+            owner: "octo",
+            name: "throwaway",
+            fullName: "octo/throwaway",
+            private: false,
+            htmlUrl: "https://github.com/octo/throwaway",
+          },
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: mockGithub({
+          getLatestRelease: async () => ({
+            id: 55,
+            tag_name: "phase1-fixture",
+            name: "phase1-fixture",
+            target_commitish: "main",
+          }),
+          listReleaseAssets: async () => [
+            {
+              id: 1,
+              name: "sourcemap.tgz",
+              size: bytes.length,
+              url: "https://api.github.com/asset/1",
+            },
+          ],
+          downloadAsset: async () => {
+            downloads += 1;
+            return bytes;
+          },
+        }),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 2,
+        lightConcurrency: 2,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 10_000,
+        receiptSecret: RECEIPT_SECRET,
+      });
+      await worker.tick();
+      await waitFor(
+        store,
+        "SELECT count(*)::text AS n FROM scan_receipts WHERE status = 'failed-policy'",
+        1,
+        "failed-policy receipt",
+      );
+      await worker.stop();
+      const { rows: jobs } = await store.sql.query<{ kind: string; status: string }>(
+        "SELECT kind, status FROM jobs",
+      );
+      expect(jobs).toEqual([{ kind: "scan_latest_release", status: "done" }]);
+      const { rows: alerts } = await store.sql.query<{ kind: string; title: string }>(
+        "SELECT kind, title FROM alerts",
+      );
+      expect(alerts[0]?.kind).toBe("release_scan");
+      expect(alerts[0]?.title).toMatch(/Spoilers in octo\/throwaway phase1-fixture/);
+      expect(alerts[0]?.title).not.toMatch(/allowed to ship/);
+      expect(downloads).toBe(1);
+      const { rows: receipts } = await store.sql.query<{ status: string; coordinate: string }>(
+        "SELECT status, coordinate FROM scan_receipts",
+      );
+      expect(receipts[0]?.status).toBe("failed-policy");
+      expect(receipts[0]?.coordinate).toMatch(/sourcemap\.tgz/);
+    });
+  });
+
+  it("says Scan latest release unpacks the Release pack, not git, and is not the hourly poller", () => {
+    const page = readFileSync(path.resolve("src/pages/WatchPage.tsx"), "utf8");
+    expect(page).toMatch(/Scan latest release/);
+    expect(page).toMatch(/current Release pack, not the git tree/);
+    expect(page).toMatch(/hourly poller does\s+not download every latest release/);
   });
 });
 

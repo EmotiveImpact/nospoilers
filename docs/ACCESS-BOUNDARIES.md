@@ -62,9 +62,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   malware verdict, and never auto-advisory or takedown.
 - Watch packs from private HTTPS registries already saved on those installations. Token
   values are never returned.
-- Trigger a latest-release scan on those repositories while coverage is active. GitHub
-  `release.published` and later pack-asset edits enqueue the same hosted unpack; unpublishing
-  or deleting a release is an alert only.
+- Trigger a latest-release scan on those repositories while coverage is active. That scan
+  unpacks the repo’s current GitHub Release pack, not the git tree, and is not the hourly
+  visibility poller. Anonymous is 401, unknown repo 404, another tenant 403, unpaid 402.
+  GitHub `release.published` and later pack-asset edits enqueue the same hosted unpack;
+  unpublishing or deleting a release is an alert only.
 - Read the packed-artifact setup workflow YAML and the remediation file bundle on those
   repositories. Opening the reviewable PRs is an install admin action.
 - Read signed scan receipts for those installations and diff against an approved baseline

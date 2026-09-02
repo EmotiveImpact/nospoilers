@@ -103,6 +103,22 @@ describe("packed fixtures", () => {
     expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
   });
 
+  it("fails an AAB that contains a source map", async () => {
+    const report = await scan(path.join(fixtures, "sourcemap.aab"));
+    expect(report.kind).toBe("aab");
+    expect(report.ok).toBe(false);
+    expect(rules("sourcemap.aab", report)).toEqual(
+      expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
+    );
+  });
+
+  it("lists the AAB fixture on Scan next to APK", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).toMatch(/path: "fixtures\/sourcemap.aab"/);
+    expect(page).toMatch(/BundleConfig layout/);
+    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
+  });
+
   it("lists the OCI fixture on Scan next to docker save", () => {
     const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
     expect(page).toMatch(/path: "fixtures\/sourcemap.oci.tar"/);

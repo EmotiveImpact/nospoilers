@@ -30,7 +30,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     heading: "GitHub Watch",
     paragraphs: [
       "Webhooks acknowledge HTTP 200 without unpacking. Work is queued and the worker wakes immediately. Light jobs cover private→public, born-public, transfer, collaborator added, fork, and cheap push hits on *.map / .env. Heavy jobs unpack GitHub Release packs when a release is published, and again when pack assets change. Unpublishing or deleting a release is an alert only; gone assets are not downloaded. If the user or org the App is installed on is renamed, Watch updates that account login in place. No extra job.",
-      "An hourly poller re-checks visibility if a webhook was missed. It does not download every latest release every hour. Watch Setup PR adds CI that scans each existing package.tgz and dist/ pack (cap 8) and fails closed if none exist. Source pushes are not unpacked. After you merge, mark the NoSpoilers check required if you want CI to block.",
+      "An hourly poller re-checks visibility if a webhook was missed. It does not download every latest release every hour. Scan latest release unpacks that repository’s current Release pack, not the git tree. Watch Setup PR adds CI that scans each existing package.tgz and dist/ pack (cap 8) and fails closed if none exist. Source pushes are not unpacked. After you merge, mark the NoSpoilers check required if you want CI to block.",
     ],
   },
   {

@@ -25,6 +25,8 @@
 - Scan lists the iOS IPA fixture next to APK. Mach-O is not executed.
 - Scan lists the OCI image fixture next to docker save. Layers are not executed.
 - Scan lists CRX, XPI, wheel, JAR, nupkg, and gem fixtures next to VSIX. Payloads are not executed.
+- Scan lists the Android AAB fixture next to APK. BundleConfig layout. DEX is not executed.
+- Watch Scan latest release queues a heavy job, unpacks that repo’s current GitHub Release pack (not the git tree), and is not the hourly poller. No release or no packed asset is an alert without a download. A packed asset writes a failed-policy receipt when spoilers are present and is not allowed to ship. Anonymous is 401, unknown repo 404, another tenant 403.
 - GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue light Watch jobs and the worker writes alerts. Other member actions and pushes without those paths do not. HMAC required. Unpaid still HTTP 200 with no job. The GitHub `public` event queues the same publicized job. `repository.privatized` updates the Watch row and does not enqueue. Real GitHub proof is still outstanding.
 - Record per-file manifests, signed HMAC scan receipts, explicit inconclusive status, and Release Diff.
 - SIZE-003: hosted scans flag a 2× or ≥5 MiB unpacked jump versus the previous receipt or approved baseline. First scans do not. Warn, allowlistable, Checks warning. Not a Pricing change.

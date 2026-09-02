@@ -201,6 +201,14 @@ async function main(): Promise<void> {
       "assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
       "assets/www/index.js.map": sourceMap,
     });
+    await writeZipPack(path.join(fixtures, "sourcemap.aab"), {
+      "BundleConfig.pb": Buffer.from("pb"),
+      "base/manifest/AndroidManifest.xml":
+        '<?xml version="1.0"?><manifest package="app.spoiler"></manifest>',
+      "base/dex/classes.dex": dexStub,
+      "base/assets/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,
+      "base/assets/www/index.js.map": sourceMap,
+    });
     await writeZipPack(path.join(fixtures, "sourcemap.ipa"), {
       "Payload/Spoiler.app/Info.plist": '<?xml version="1.0"?><plist></plist>',
       "Payload/Spoiler.app/www/index.js": `${minified}//# sourceMappingURL=index.js.map\n`,

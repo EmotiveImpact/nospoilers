@@ -1460,7 +1460,9 @@ export function WatchPage({ search }: { search: string }) {
             the repository private or delete a Release asset. After you merge the setup PR, mark the
             NoSpoilers check required in branch protection if you want CI to block; the App does
             not change branch protection. A GitHub Release is scanned when it
-            is published, and again when pack assets are added or replaced. Unpublishing or deleting
+            is published, and again when pack assets are added or replaced. Scan latest release
+            unpacks that repo’s current Release pack, not the git tree. The hourly poller does
+            not download every latest release. Unpublishing or deleting
             a release is an alert only; gone assets are not downloaded.
           </p>
           {previewing ? (

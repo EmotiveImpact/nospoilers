@@ -87,6 +87,11 @@ const EXAMPLES = [
     hint: "ZIP magic. DEX is not executed.",
   },
   {
+    path: "fixtures/sourcemap.aab",
+    label: "Android AAB with a source map",
+    hint: "BundleConfig layout. DEX is not executed.",
+  },
+  {
     path: "fixtures/sourcemap.ipa",
     label: "iOS IPA with a source map",
     hint: "ZIP magic. Mach-O is not executed.",
