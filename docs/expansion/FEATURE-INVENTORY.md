@@ -107,6 +107,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Suspicious release burst/version jump | Built: ≥5 versions in 7 days or major +3; facts, not a malware verdict | NoSpoilers Team |
 | Dependency graph toward newly created packages | Built: new `dependencies` / `optionalDependencies` vs last snapshot; alert only if the added name’s npm `time.created` is within 14 days; metadata only, not a malware verdict | NoSpoilers Team |
 | Packument unpacked-size jump | Built: `identity_size_jump` when latest `dist.unpackedSize` is 2× or ≥5 MiB versus the last identity snapshot; first snapshot / missing size is baseline; metadata only, no download; trial/Team; not SIZE-003 (that stays on hosted receipts) | NoSpoilers Team |
+| npm provenance / signature presence | Built: snapshot `dist.attestations` presence + predicateType and `dist.signatures` keyids; alert on loss, predicate change, or keyid change; first snapshot baseline; never fetch attestation URL; never verify or store signature values; trial/Team; not a Sigstore/attestation adapter | NoSpoilers Team |
 | Artifact hash/shape anomaly | Built: new `bin` or install lifecycle scripts vs last snapshot | NoSpoilers |
 | Human-reviewed advisory/takedown evidence | Planned, later | NoSpoilers Team |
 | Automatic malware verdict/takedown | Do not build | None |

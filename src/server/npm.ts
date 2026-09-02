@@ -10,6 +10,7 @@ import {
   dependencyNamesFromManifest,
   lifecycleScriptsFromManifest,
   normalizeMaintainerNames,
+  provenanceFromDist,
   type PackageIdentityFacts,
 } from "./package-identity.ts";
 
@@ -43,6 +44,9 @@ export type NpmPack = {
   /** First publish of this package name (`time.created`), not the latest version stamp. */
   createdAt?: Date | null;
   dependencyNames?: string[];
+  hasAttestations?: boolean;
+  attestationPredicate?: string | null;
+  signatureKeyids?: string[];
   recentVersions?: Array<{ version: string; publishedAt: Date }>;
   /** next/beta/canary (and rc/alpha/preview) tarballs that are not `latest`. */
   channelTarballs?: NpmChannelTarball[];
@@ -167,6 +171,8 @@ type RegistryBody = {
         shasum?: string;
         integrity?: string;
         unpackedSize?: number;
+        attestations?: unknown;
+        signatures?: unknown;
       };
       bin?: unknown;
       scripts?: unknown;
@@ -253,6 +259,7 @@ export function packFromRegistry(
     shasum: typeof dist.shasum === "string" ? dist.shasum : null,
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
     bytes: unpackedBytesFromClaim(dist.unpackedSize),
+    ...provenanceFromDist(dist),
     publishedAt: times.publishedAt,
     createdAt: parseRegistryCreatedAt(body.time),
     dependencyNames: [...new Set(dependencyNames)].sort(),

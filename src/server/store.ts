@@ -357,6 +357,9 @@ export type PackageIdentitySnapshotRow = {
   published_at: string | null;
   dependency_names: string[];
   unpacked_bytes: number | null;
+  has_attestations: boolean | null;
+  attestation_predicate: string | null;
+  signature_keyids: string[];
   created_at: string;
 };
 
@@ -434,6 +437,9 @@ function packageIdentitySnapshotRow(row: {
   published_at?: string | Date | null;
   dependency_names?: unknown;
   unpacked_bytes?: unknown;
+  has_attestations?: boolean | null;
+  attestation_predicate?: string | null;
+  signature_keyids?: unknown;
   created_at: string | Date;
 }): PackageIdentitySnapshotRow {
   return {
@@ -450,6 +456,10 @@ function packageIdentitySnapshotRow(row: {
     dependency_names: asStringArray(row.dependency_names),
     unpacked_bytes:
       row.unpacked_bytes === null || row.unpacked_bytes === undefined ? null : num(row.unpacked_bytes),
+    has_attestations:
+      row.has_attestations === true ? true : row.has_attestations === false ? false : null,
+    attestation_predicate: row.attestation_predicate ?? null,
+    signature_keyids: asStringArray(row.signature_keyids),
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -2673,6 +2683,9 @@ export function createStore(
         published_at: string | Date | null;
         dependency_names?: unknown;
         unpacked_bytes?: unknown;
+        has_attestations?: boolean | null;
+        attestation_predicate?: string | null;
+        signature_keyids?: unknown;
         created_at: string | Date;
       }>(
         `SELECT * FROM package_identity_snapshots WHERE package_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -2693,6 +2706,9 @@ export function createStore(
       publishedAt?: string | Date | null;
       dependencyNames?: string[];
       unpackedBytes?: number | null;
+      hasAttestations?: boolean | null;
+      attestationPredicate?: string | null;
+      signatureKeyids?: string[];
     }): Promise<PackageIdentitySnapshotRow> {
       const { rows } = await sql.query<{
         id: unknown;
@@ -2707,13 +2723,17 @@ export function createStore(
         published_at: string | Date | null;
         dependency_names?: unknown;
         unpacked_bytes?: unknown;
+        has_attestations?: boolean | null;
+        attestation_predicate?: string | null;
+        signature_keyids?: unknown;
         created_at: string | Date;
       }>(
         `INSERT INTO package_identity_snapshots (
            installation_id, package_id, version, maintainers, repository_url, homepage,
-           bin_names, lifecycle_scripts, published_at, dependency_names, unpacked_bytes
+           bin_names, lifecycle_scripts, published_at, dependency_names, unpacked_bytes,
+           has_attestations, attestation_predicate, signature_keyids
          )
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz, $10::jsonb, $11)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz, $10::jsonb, $11, $12, $13, $14::jsonb)
          RETURNING *`,
         [
           input.installationId,
@@ -2727,6 +2747,9 @@ export function createStore(
           input.publishedAt ? iso(input.publishedAt) : null,
           JSON.stringify(input.dependencyNames ?? []),
           input.unpackedBytes ?? null,
+          input.hasAttestations ?? null,
+          input.attestationPredicate ?? null,
+          JSON.stringify(input.signatureKeyids ?? []),
         ],
       );
       if (!rows[0]) throw new Error("package identity snapshot insert returned no row");

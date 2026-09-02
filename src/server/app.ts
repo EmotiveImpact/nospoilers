@@ -2519,6 +2519,9 @@ export function createApp(deps: AppDeps): Hono {
             publishedAt: snapshot.published_at,
             dependencyNames: snapshot.dependency_names,
             unpackedBytes: snapshot.unpacked_bytes,
+            hasAttestations: snapshot.has_attestations,
+            attestationPredicate: snapshot.attestation_predicate,
+            signatureKeyids: snapshot.signature_keyids,
             createdAt: snapshot.created_at,
           }
         : null,

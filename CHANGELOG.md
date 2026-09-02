@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Trial and Team Package Identity alerts when a protected pack loses npm packument
+  attestations, changes provenance `predicateType`, or changes registry signature keyids.
+  First snapshot is baseline. The attestation URL is not fetched. Signature values are
+  not stored or verified. This is not a Sigstore/attestation adapter. Solo 403. Unpaid
+  402. Not a malware verdict. Not a Pricing change.
+
 - Trial and Team Package Identity alerts when a protected pack’s npm `dist.unpackedSize`
   is twice as large, or at least 5 MiB larger, than the last identity snapshot. First
   snapshot and missing size are baseline. Metadata only; the tarball is not downloaded.

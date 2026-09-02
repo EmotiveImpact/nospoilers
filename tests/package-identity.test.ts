@@ -11,6 +11,7 @@ import {
 import {
   emptyPackageIdentity,
   githubRepoFromNpmRepository,
+  provenanceFromDist,
   verifyPackageOwnership,
 } from "../src/server/package-identity.ts";
 import { packFromRegistry, unpackedBytesFromClaim, type NpmPack, type NpmPort } from "../src/server/npm.ts";
@@ -94,7 +95,21 @@ describe("package identity parsing", () => {
       },
       versions: {
         "1.0.0": {
-          dist: { tarball: TARBALL, shasum: "abc123", unpackedSize: 4096 },
+          dist: {
+            tarball: TARBALL,
+            shasum: "abc123",
+            unpackedSize: 4096,
+            attestations: {
+              url: "https://registry.npmjs.org/-/npm/v1/attestations/@octo/app@1.0.0",
+              provenance: { predicateType: "https://slsa.dev/provenance/v1" },
+            },
+            signatures: [
+              {
+                keyid: "SHA256:test-key",
+                sig: "super-secret-signature-value",
+              },
+            ],
+          },
           bin: { app: "bin/app.js" },
           scripts: { postinstall: "node scripts/leak.js", test: "echo ok" },
           dependencies: { lodash: "^4.17.21" },
@@ -127,6 +142,16 @@ describe("package identity parsing", () => {
     });
     expect(unpackedSizeJump(null, 10_000)).toBeNull();
     expect(unpackedSizeJump(100, null)).toBeNull();
+    expect(parsed?.hasAttestations).toBe(true);
+    expect(parsed?.attestationPredicate).toBe("https://slsa.dev/provenance/v1");
+    expect(parsed?.signatureKeyids).toEqual(["SHA256:test-key"]);
+    expect(JSON.stringify(parsed)).not.toContain("super-secret-signature-value");
+    expect(JSON.stringify(parsed)).not.toContain("/-/npm/v1/attestations/");
+    expect(provenanceFromDist(undefined)).toEqual({
+      hasAttestations: false,
+      attestationPredicate: null,
+      signatureKeyids: [],
+    });
     expect(parsed?.recentVersions?.map((row) => row.version)).not.toContain("created");
   });
 
@@ -247,11 +272,15 @@ describe("protected package identity", () => {
           binNames: string[];
           dependencyNames: string[];
           unpackedBytes: number | null;
+          hasAttestations: boolean | null;
+          signatureKeyids: string[];
         };
       };
       expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
       expect(identityBody.snapshot.dependencyNames).toEqual([]);
       expect(identityBody.snapshot.unpackedBytes).toBe(100);
+      expect(identityBody.snapshot.hasAttestations).toBe(false);
+      expect(identityBody.snapshot.signatureKeyids).toEqual([]);
       const foreignIdentity = await app.request(`/api/packages/${packageId}/identity`, {
         headers: { cookie: otherCookie },
       });
@@ -1030,6 +1059,209 @@ describe("Team identity signals", () => {
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );
       current.pack = ownedPack({ bytes: 201 + 5 * 1024 * 1024 });
+      const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(unpaidCheck.status).toBe(402);
+      expect(downloads).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("alerts when npm attestations disappear or signature keyids change, without fetching", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const downloads: string[] = [];
+      const current: { pack: NpmPack | null; downloads: string[] } = {
+        pack: ownedPack({
+          hasAttestations: true,
+          attestationPredicate: "https://slsa.dev/provenance/v1",
+          signatureKeyids: ["SHA256:old-key"],
+        }),
+        downloads,
+      };
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+      });
+
+      const connected = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ packageName: "@octo/app", installationId: 7 }),
+      });
+      const packageId = ((await connected.json()) as { package: { id: number } }).package.id;
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/protect`, {
+            method: "POST",
+            headers: { cookie },
+          })
+        ).status,
+      ).toBe(201);
+
+      const baseline = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      const baselineSnap = (
+        (await baseline.json()) as {
+          snapshot: {
+            hasAttestations: boolean | null;
+            attestationPredicate: string | null;
+            signatureKeyids: string[];
+          };
+        }
+      ).snapshot;
+      expect(baselineSnap.hasAttestations).toBe(true);
+      expect(baselineSnap.attestationPredicate).toBe("https://slsa.dev/provenance/v1");
+      expect(baselineSnap.signatureKeyids).toEqual(["SHA256:old-key"]);
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterBaseline = await app.request("/api/alerts", { headers: { cookie } });
+      const afterBaselineKinds = (
+        (await afterBaseline.json()) as { alerts: { kind: string }[] }
+      ).alerts.map((row) => row.kind);
+      expect(afterBaselineKinds).not.toContain("identity_provenance_lost");
+      expect(afterBaselineKinds).not.toContain("identity_provenance_changed");
+      expect(afterBaselineKinds).not.toContain("identity_signature_changed");
+
+      current.pack = ownedPack({
+        hasAttestations: true,
+        attestationPredicate: "https://slsa.dev/provenance/v0.2",
+        signatureKeyids: ["SHA256:old-key"],
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterPredicate = await app.request("/api/alerts", { headers: { cookie } });
+      const predicateAlerts = (
+        (await afterPredicate.json()) as { alerts: { kind: string; body: string }[] }
+      ).alerts.filter((row) => row.kind === "identity_provenance_changed");
+      expect(predicateAlerts).toHaveLength(1);
+      expect(predicateAlerts[0]?.body).toMatch(/v0\.2/);
+      expect(predicateAlerts[0]?.body).toMatch(/not a signature verification/);
+
+      current.pack = ownedPack({
+        hasAttestations: true,
+        attestationPredicate: "https://slsa.dev/provenance/v0.2",
+        signatureKeyids: ["SHA256:new-key"],
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterKey = await app.request("/api/alerts", { headers: { cookie } });
+      const keyAlerts = (
+        (await afterKey.json()) as { alerts: { kind: string; body: string }[] }
+      ).alerts.filter((row) => row.kind === "identity_signature_changed");
+      expect(keyAlerts).toHaveLength(1);
+      expect(keyAlerts[0]?.body).toMatch(/SHA256:new-key/);
+      expect(keyAlerts[0]?.body).toMatch(/not a signature verification or malware verdict/);
+
+      current.pack = ownedPack({
+        version: "1.0.1",
+        distTags: { latest: "1.0.1" },
+        hasAttestations: false,
+        attestationPredicate: null,
+        signatureKeyids: ["SHA256:new-key"],
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterLost = await app.request("/api/alerts", { headers: { cookie } });
+      const lost = (
+        (await afterLost.json()) as { alerts: { kind: string; body: string }[] }
+      ).alerts.filter((row) => row.kind === "identity_provenance_lost");
+      expect(lost).toHaveLength(1);
+      expect(lost[0]?.body).toMatch(/not fetched/);
+      expect(lost[0]?.body).toMatch(/not a signature verification or malware verdict/);
+      expect(downloads).toEqual([]);
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterDedup = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterDedup.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_provenance_lost",
+        ),
+      ).toHaveLength(1);
+
+      const foreign = await app.request("/api/alerts", { headers: { cookie: otherCookie } });
+      expect(
+        ((await foreign.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("identity_provenance_lost");
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      current.pack = ownedPack({
+        version: "1.0.2",
+        distTags: { latest: "1.0.2" },
+        hasAttestations: true,
+        attestationPredicate: "https://slsa.dev/provenance/v1",
+        signatureKeyids: ["SHA256:solo-key"],
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      current.pack = ownedPack({
+        version: "1.0.3",
+        distTags: { latest: "1.0.3" },
+        hasAttestations: false,
+        attestationPredicate: null,
+        signatureKeyids: ["SHA256:solo-key"],
+      });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterSolo = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterSolo.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_provenance_lost",
+        ),
+      ).toHaveLength(1);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
       const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
         method: "POST",
         headers: { cookie },

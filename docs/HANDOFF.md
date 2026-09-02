@@ -35,11 +35,14 @@ Read in this order:
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
   `025_hosted_usage`, `026_github_response`,   `027_team_invites`,
-  `028_identity_dependencies`, and `029_identity_unpacked_bytes` are applied. `026_github_response` only
+  `028_identity_dependencies`, `029_identity_unpacked_bytes`, and
+  `030_identity_provenance` are applied. `026_github_response` only
   extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
   `installation_invites`. `028_identity_dependencies` adds
   `package_identity_snapshots.dependency_names`. `029_identity_unpacked_bytes` adds
-  `package_identity_snapshots.unpacked_bytes`. `hosted_usage_days` counts heavy hosted unpacks per
+  `package_identity_snapshots.unpacked_bytes`. `030_identity_provenance` adds
+  `has_attestations`, `attestation_predicate`, and `signature_keyids` on identity snapshots.
+  `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -150,8 +153,10 @@ Read in this order:
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
   generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
   resurrection, release-burst/version-jump alerts, new-dependency alerts when a protected
-  pack starts depending on a package first published within 14 days, and packument unpacked-size
-  jumps (2× or ≥5 MiB versus the last snapshot’s `dist.unpackedSize`, no download). Admins allowlist with a reason and typed
+  pack starts depending on a package first published within 14 days, packument unpacked-size
+  jumps (2× or ≥5 MiB versus the last snapshot’s `dist.unpackedSize`, no download), and npm
+  attestation presence / registry signature keyid changes (packument fields only; the
+  attestation URL is not fetched and signatures are not verified). Admins allowlist with a reason and typed
   candidate name. This is not a malware verdict and not auto advisory/takedown.
 - Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
   permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
@@ -289,8 +294,9 @@ includes secrets; Solo 403; unpaid 402; members may read/export).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
 GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump,
-new dependency toward a package first published within 14 days, and packument unpacked-size
-jumps (2× or ≥5 MiB versus the last snapshot, metadata only); trial/Team; metadata-only
+new dependency toward a package first published within 14 days, packument unpacked-size
+jumps (2× or ≥5 MiB versus the last snapshot, metadata only), and npm attestation
+presence / signature keyid changes (packument only; no fetch, no verify); trial/Team; metadata-only
 candidate and dependency-name checks; typed allowlist; no malware verdict; no tarball
 download of the added dependency).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
@@ -333,6 +339,11 @@ download; 5xx is not unpublish; unpaid skips). Event-driven. Not a Pricing chang
 A protected pack’s packument `dist.unpackedSize` that is 2× or ≥5 MiB versus the last
 identity snapshot writes `identity_size_jump` (no download; first snapshot / missing size
 is baseline; trial/Team; Solo 403). Event-driven. Not SIZE-003. Not a Pricing change.
+A protected pack that loses npm packument attestations, changes provenance predicateType,
+or changes registry signature keyids writes `identity_provenance_lost` /
+`identity_provenance_changed` / `identity_signature_changed` (no fetch, no verify, no
+signature values stored; first snapshot is baseline; trial/Team; Solo 403). Event-driven.
+This is not a Sigstore/attestation adapter. Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.

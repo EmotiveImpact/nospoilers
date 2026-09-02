@@ -493,6 +493,9 @@ CREATE TABLE IF NOT EXISTS package_identity_snapshots (
   published_at TIMESTAMPTZ,
   dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb,
   unpacked_bytes BIGINT,
+  has_attestations BOOLEAN,
+  attestation_predicate TEXT,
+  signature_keyids JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

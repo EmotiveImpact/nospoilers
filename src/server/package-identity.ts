@@ -222,6 +222,81 @@ export function dependencyNamesFromManifest(
   return [...names].sort().slice(0, cap);
 }
 
+export const IDENTITY_SIGNATURE_KEYID_CAP = 8;
+export const MAX_ATTESTATION_PREDICATE = 200;
+export const MAX_SIGNATURE_KEYID = 128;
+
+export type PackageProvenanceFacts = {
+  hasAttestations: boolean;
+  attestationPredicate: string | null;
+  signatureKeyids: string[];
+};
+
+export function emptyPackageProvenance(): PackageProvenanceFacts {
+  return { hasAttestations: false, attestationPredicate: null, signatureKeyids: [] };
+}
+
+/** Packument `dist.attestations` / `dist.signatures` only. Never fetches or verifies. */
+export function provenanceFromDist(dist: unknown): PackageProvenanceFacts {
+  if (!dist || typeof dist !== "object" || Array.isArray(dist)) return emptyPackageProvenance();
+  const record = dist as Record<string, unknown>;
+  const attestations = record.attestations;
+  let hasAttestations = false;
+  let attestationPredicate: string | null = null;
+  if (attestations && typeof attestations === "object" && !Array.isArray(attestations)) {
+    hasAttestations = true;
+    const provenance = (attestations as { provenance?: unknown }).provenance;
+    if (provenance && typeof provenance === "object" && !Array.isArray(provenance)) {
+      const raw = (provenance as { predicateType?: unknown }).predicateType;
+      if (typeof raw === "string") {
+        const predicate = raw.trim();
+        if (
+          predicate &&
+          predicate.length <= MAX_ATTESTATION_PREDICATE &&
+          !predicate.includes(" ") &&
+          !predicate.includes("\n")
+        ) {
+          attestationPredicate = predicate;
+        }
+      }
+    }
+  }
+  const keyids = new Set<string>();
+  const signatures = record.signatures;
+  if (Array.isArray(signatures)) {
+    for (const entry of signatures) {
+      if (keyids.size >= IDENTITY_SIGNATURE_KEYID_CAP) break;
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+      const keyid = (entry as { keyid?: unknown }).keyid;
+      if (typeof keyid !== "string") continue;
+      const cleaned = keyid.trim();
+      if (!cleaned || cleaned.length > MAX_SIGNATURE_KEYID) continue;
+      if (cleaned.includes(" ") || cleaned.includes("\n")) continue;
+      keyids.add(cleaned);
+    }
+  }
+  return {
+    hasAttestations,
+    attestationPredicate,
+    signatureKeyids: [...keyids].sort(),
+  };
+}
+
+export function provenanceFactsChanged(
+  previous: {
+    hasAttestations: boolean | null;
+    attestationPredicate: string | null;
+    signatureKeyids: string[];
+  } | null,
+  next: PackageProvenanceFacts,
+): boolean {
+  if (!previous) return true;
+  if (previous.hasAttestations !== next.hasAttestations) return true;
+  if ((previous.attestationPredicate ?? "") !== (next.attestationPredicate ?? "")) return true;
+  if (previous.signatureKeyids.length !== next.signatureKeyids.length) return true;
+  return next.signatureKeyids.some((keyid) => !previous.signatureKeyids.includes(keyid));
+}
+
 export function asHttpsMetadataUrl(raw: string | null | undefined): string | null {
   if (!raw || !raw.trim()) return null;
   const trimmed = raw.trim();

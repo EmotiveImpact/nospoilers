@@ -260,6 +260,9 @@ export async function migrate(sql: SqlClient): Promise<void> {
       published_at TIMESTAMPTZ,
       dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb,
       unpacked_bytes BIGINT,
+      has_attestations BOOLEAN,
+      attestation_predicate TEXT,
+      signature_keyids JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS package_identity_snapshots_pkg_idx
@@ -734,6 +737,15 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "029_identity_unpacked_bytes",
+  ]);
+  await sql.exec(`
+    ALTER TABLE package_identity_snapshots
+      ADD COLUMN IF NOT EXISTS has_attestations BOOLEAN,
+      ADD COLUMN IF NOT EXISTS attestation_predicate TEXT,
+      ADD COLUMN IF NOT EXISTS signature_keyids JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "030_identity_provenance",
   ]);
 }
 

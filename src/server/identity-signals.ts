@@ -94,13 +94,14 @@ export function identityPlanDenied(coverage: Coverage): { error: string; status:
   if (coverage.status === "ended") {
     return {
       error:
-        "Coverage ended. Subscribe to Team for lookalike, dormant, new-dependency, and packument-size package signals.",
+        "Coverage ended. Subscribe to Team for lookalike, dormant, new-dependency, packument-size, and provenance package signals.",
       status: 402,
     };
   }
   if (coverage.plan === "solo") {
     return {
-      error: "Lookalike, dormant, burst, new-dependency, and packument-size signals are on Team.",
+      error:
+        "Lookalike, dormant, burst, new-dependency, packument-size, and provenance signals are on Team.",
       status: 403,
     };
   }
@@ -344,6 +345,67 @@ function addedDependencyNames(previous: string[], current: string[]): string[] {
   return current.filter((name) => !seen.has(name)).sort();
 }
 
+function sameKeyids(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((keyid, index) => keyid === right[index]);
+}
+
+async function checkProvenancePresence(input: {
+  store: Store;
+  notifier?: AlertNotifier;
+  pkg: WatchedPackageRow;
+  pack: NpmPack;
+  previous: PackageIdentitySnapshotRow | null;
+}): Promise<number> {
+  if (!input.previous) return 0;
+  let alerts = 0;
+  const previousHas = input.previous.has_attestations;
+  const nextHas = input.pack.hasAttestations ?? false;
+  const previousPredicate = input.previous.attestation_predicate ?? null;
+  const nextPredicate = input.pack.attestationPredicate ?? null;
+  if (previousHas === true && nextHas === false) {
+    await emitAlert(input.store, input.notifier, {
+      installationId: input.pkg.installation_id,
+      packageName: input.pkg.package_name,
+      kind: "identity_provenance_lost",
+      title: `npm provenance disappeared from ${input.pkg.package_name}`,
+      body: `${input.pkg.package_name} ${input.pack.version} no longer lists npm attestations on the packument. This is a presence fact, not a signature verification or malware verdict. The attestation URL was not fetched.`,
+      githubDeliveryId: `identity-provenance-lost:${input.pkg.installation_id}:${input.pkg.package_name}:${input.pack.version}`,
+    });
+    alerts += 1;
+  } else if (
+    previousHas === true &&
+    nextHas === true &&
+    previousPredicate &&
+    nextPredicate &&
+    previousPredicate !== nextPredicate
+  ) {
+    await emitAlert(input.store, input.notifier, {
+      installationId: input.pkg.installation_id,
+      packageName: input.pkg.package_name,
+      kind: "identity_provenance_changed",
+      title: `npm provenance predicate changed on ${input.pkg.package_name}`,
+      body: `${input.pkg.package_name} packument provenance predicate was ${previousPredicate} and is now ${nextPredicate}. This is a metadata fact, not a signature verification or malware verdict. The attestation URL was not fetched.`,
+      githubDeliveryId: `identity-provenance:${input.pkg.installation_id}:${input.pkg.package_name}:${previousPredicate}->${nextPredicate}`,
+    });
+    alerts += 1;
+  }
+  const previousKeys = [...(input.previous.signature_keyids ?? [])].sort();
+  const nextKeys = [...(input.pack.signatureKeyids ?? [])].sort();
+  if (previousKeys.length > 0 && !sameKeyids(previousKeys, nextKeys)) {
+    await emitAlert(input.store, input.notifier, {
+      installationId: input.pkg.installation_id,
+      packageName: input.pkg.package_name,
+      kind: "identity_signature_changed",
+      title: `npm registry signature key changed on ${input.pkg.package_name}`,
+      body: `${input.pkg.package_name} packument signature keyids were ${previousKeys.join(", ")} and are now ${nextKeys.length > 0 ? nextKeys.join(", ") : "(none)"}. This is a keyid presence fact, not a signature verification or malware verdict. Signature values were not stored.`,
+      githubDeliveryId: `identity-sig:${input.pkg.installation_id}:${input.pkg.package_name}:${previousKeys.join(",") || "none"}->${nextKeys.join(",") || "none"}`,
+    });
+    alerts += 1;
+  }
+  return alerts;
+}
+
 async function checkPackumentSize(input: {
   store: Store;
   notifier?: AlertNotifier;
@@ -527,6 +589,7 @@ export async function checkIdentitySignals(input: {
       alerts += 1;
     }
   }
+  alerts += await checkProvenancePresence(input);
   alerts += await checkPackumentSize(input);
   alerts += await checkNewDependencies(input);
   alerts += await checkLookalikeCandidates(input);

@@ -114,7 +114,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   separator, token-order, scope confusion, edit-distance; cap 40), dormant resurrection after
   180 days, burst/major-jump cadence alerts, new dependencies that point at a package
   first published within 14 days, and packument unpacked-size jumps (2× or ≥5 MiB versus
-  the last snapshot’s claimed `dist.unpackedSize`, no download). Metadata-only candidate
+  the last snapshot’s claimed `dist.unpackedSize`, no download), and npm attestation
+  presence / registry signature keyid changes (packument fields only; no fetch, no
+  verify, no stored signature values). Metadata-only candidate
   and dependency-name checks. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification

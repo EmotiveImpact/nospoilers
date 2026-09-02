@@ -15,6 +15,8 @@ import {
   diffPackageIdentity,
   describeIdentityChange,
   emptyPackageIdentity,
+  emptyPackageProvenance,
+  provenanceFactsChanged,
   verifyPackageOwnership,
   type PackageIdentityFacts,
 } from "./package-identity.ts";
@@ -90,7 +92,29 @@ export async function syncProtectedIdentity(
   const unpackedBytes = pack.bytes ?? null;
   const prevBytes = previous?.unpacked_bytes ?? null;
   const sizeChanged = unpackedBytes !== prevBytes;
-  if (prevFacts && changes.length === 0 && !versionChanged && !depsChanged && !sizeChanged) {
+  const provenance = {
+    hasAttestations: pack.hasAttestations ?? false,
+    attestationPredicate: pack.attestationPredicate ?? null,
+    signatureKeyids: pack.signatureKeyids ?? emptyPackageProvenance().signatureKeyids,
+  };
+  const provenanceChanged = provenanceFactsChanged(
+    previous
+      ? {
+          hasAttestations: previous.has_attestations,
+          attestationPredicate: previous.attestation_predicate,
+          signatureKeyids: previous.signature_keyids,
+        }
+      : null,
+    provenance,
+  );
+  if (
+    prevFacts &&
+    changes.length === 0 &&
+    !versionChanged &&
+    !depsChanged &&
+    !sizeChanged &&
+    !provenanceChanged
+  ) {
     return { snapshot: false, alerts: 0 };
   }
   await store.insertPackageIdentitySnapshot({
@@ -105,6 +129,9 @@ export async function syncProtectedIdentity(
     publishedAt: pack.publishedAt ?? null,
     dependencyNames,
     unpackedBytes,
+    hasAttestations: provenance.hasAttestations,
+    attestationPredicate: provenance.attestationPredicate,
+    signatureKeyids: provenance.signatureKeyids,
   });
   let alerts = 0;
   for (const change of changes) {
