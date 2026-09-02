@@ -1,4 +1,5 @@
 import { signOut } from "@/auth.ts"
+import { isWatchDeskPath } from "@/watch/routes.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
@@ -220,6 +221,7 @@ export function SiteChrome({
         </div>
       </header>
       <div className="flex-1">{children}</div>
+      {isWatchDeskPath(path) ? null : (
       <footer className="border-t border-white/5">
         <div className="mx-auto grid max-w-5xl gap-10 px-5 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -270,6 +272,7 @@ export function SiteChrome({
           </p>
         </div>
       </footer>
+      )}
     </div>
   )
 }
