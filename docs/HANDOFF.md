@@ -125,7 +125,8 @@ Read in this order:
   prettier has SEC-003 from the existing case; leftover extra findings 0.
   `059_stripe_billing` adds Stripe customer/subscription/status/price/period
   columns on `billing_accounts`, unique customer index, and `stripe_events`.
-  Next unused id is `060_*`.
+  `060_email_destinations` adds email destination/delivery kinds.
+  Next unused id is `061_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -587,7 +588,14 @@ GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue 
 Other member actions and pushes without those paths do not. HMAC required. Unpaid is HTTP 200
 with no job. The worker writes Watch alerts for those jobs. The GitHub `public` event is the
 same light publicized job. `repository.privatized` updates the Watch row and does not enqueue.
-Real GitHub proof is still outstanding.
+Real GitHub proof is still outstanding for publicize, transfer, collaborator, and fork.
+Cheap `.env` / `*.map` push is proven again: job 51 `done` → Watch alert 40
+`Sensitive path in EmotiveImpact/nospoilers-throwaway` after pointing the App
+webhook at this host’s trycloudflare URL. `npm run phase1:visibility` points
+`/app/hook/config` at `APP_BASE_URL/api/webhooks/github` and tries to publicize
+`EmotiveImpact/nospoilers-throwaway-vis` only. Contents write is not enough
+(404/403). Set `GITHUB_PROOF_TOKEN` on that disposable repo. Do not grant the
+App Administration. Do not publicize a product repository. Do not transfer.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
 Artifact Leads inspect also queues up to eight public npm workspace member packs named

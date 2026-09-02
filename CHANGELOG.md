@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- `npm run phase1:visibility` points the GitHub App webhook at
+  `APP_BASE_URL/api/webhooks/github` and tries to publicize only
+  `EmotiveImpact/nospoilers-throwaway-vis`. Contents write cannot change
+  visibility (404/403). Live this session: App webhook pointed at the
+  trycloudflare tunnel; cheap `.env.visibility-proof` push on
+  `EmotiveImpact/nospoilers-throwaway` → job 51 `done` → Watch alert 40
+  `Sensitive path in EmotiveImpact/nospoilers-throwaway`. Publicize,
+  transfer, collaborator, and fork stay unproven. Do not grant the App
+  Administration. Do not publicize a product repository.
+
 - Production process split is in code. `npm run build` then `npm run host`
   serves the built SPA with the API. `NOSPOILERS_ROLE=web` serves HTTP and
   does not claim jobs. `NOSPOILERS_ROLE=worker` claims jobs and does not bind
