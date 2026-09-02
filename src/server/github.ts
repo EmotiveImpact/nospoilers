@@ -75,12 +75,14 @@ export type GithubPort = {
   exchangeCode: (code: string) => Promise<string>;
   getUser: (accessToken: string) => Promise<{ id: number; login: string; avatar_url: string }>;
   listUserInstallations: (accessToken: string) => Promise<number[]>;
+  getApp?: () => Promise<{ permissions: Record<string, string> }>;
   getInstallation: (installationId: number) => Promise<{
     id: number;
     account: { login: string; type?: string; id: number };
     suspended_at: string | null;
     permissions?: Record<string, string>;
     repository_selection?: string | null;
+    html_url?: string | null;
   }>;
   getRepo: (installationId: number, owner: string, repo: string) => Promise<GithubRepo>;
   listReleaseAssets: (
@@ -264,6 +266,15 @@ export function createGithubPort(config: AppConfig): GithubPort {
       return body.installations.map((row) => row.id);
     },
 
+    async getApp() {
+      const jwt = createAppJwt(config.githubAppId, config.githubPrivateKey);
+      const body = await githubJson<{ permissions?: Record<string, string> }>(
+        "https://api.github.com/app",
+        jwt,
+      );
+      return { permissions: body.permissions ?? {} };
+    },
+
     async getInstallation(installationId: number) {
       const jwt = createAppJwt(config.githubAppId, config.githubPrivateKey);
       const body = await githubJson<{
@@ -272,6 +283,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
         suspended_at: string | null;
         permissions?: Record<string, string>;
         repository_selection?: string | null;
+        html_url?: string | null;
       }>(`https://api.github.com/app/installations/${installationId}`, jwt);
       return {
         id: body.id,
@@ -279,6 +291,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
         suspended_at: body.suspended_at,
         permissions: body.permissions ?? {},
         repository_selection: body.repository_selection ?? null,
+        html_url: body.html_url ?? null,
       };
     },
 

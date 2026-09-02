@@ -26,6 +26,8 @@ export type PermissionTestResult = {
   optionalReads: { name: string; granted: boolean }[];
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
+  pendingAccepts: string[];
+  installUrl: string | null;
   repoProbe: RepoProbe | null;
   lastDelivery: LastDelivery | null;
   testedAt: string;
@@ -47,11 +49,64 @@ export function hasWrite(permissions: PermissionMap, name: string): boolean {
   return level === "write" || level === "admin";
 }
 
+function permissionRank(level: string): number {
+  const value = level.toLowerCase();
+  if (value === "admin") return 3;
+  if (value === "write") return 2;
+  if (value === "read") return 1;
+  return 0;
+}
+
+/** Permissions we never ask a customer to Accept, even if the App requested them. */
+const NEVER_REQUEST_ACCEPT = new Set(["administration"]);
+
+export function pendingAccepts(
+  appPermissions: PermissionMap | null | undefined,
+  installPermissions: PermissionMap,
+): string[] {
+  if (!appPermissions) return [];
+  const pending: string[] = [];
+  for (const [name, appLevel] of Object.entries(appPermissions)) {
+    const key = name.toLowerCase();
+    if (NEVER_REQUEST_ACCEPT.has(key)) continue;
+    if (permissionRank(appLevel) > permissionRank(levelOf(installPermissions, name))) {
+      pending.push(key);
+    }
+  }
+  return pending.sort();
+}
+
+function pendingPermissionLabel(name: string, appLevel: string): string {
+  const rank = permissionRank(appLevel);
+  switch (name) {
+    case "members":
+      return "Members read";
+    case "contents":
+      return rank >= 2 ? "Contents write" : "Contents read";
+    case "pull_requests":
+      return rank >= 2 ? "Pull requests write" : "Pull requests read";
+    case "checks":
+      return rank >= 2 ? "Checks write" : "Checks read";
+    case "metadata":
+      return "Metadata read";
+    default:
+      return rank >= 2 ? `${name.replace(/_/g, " ")} write` : name.replace(/_/g, " ");
+  }
+}
+
+function joinEnglish(names: string[]): string {
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
 export function summarizePermissionTest(input: {
   accountLogin: string;
   suspended: boolean;
   repositorySelection?: string | null;
   permissions?: PermissionMap | null;
+  appPermissions?: PermissionMap | null;
+  installUrl?: string | null;
   repoProbe?: RepoProbe | null;
   lastDelivery?: LastDelivery | null;
   testedAt?: string;
@@ -67,6 +122,8 @@ export function summarizePermissionTest(input: {
     granted: hasWrite(permissions, name),
   }));
   const administrationGranted = hasWrite(permissions, "administration") || levelOf(permissions, "administration") === "admin";
+  const pending = pendingAccepts(input.appPermissions, permissions);
+  const pendingSet = new Set(pending);
   const suspended = input.suspended;
   const repoProbe = input.repoProbe ?? null;
   const lastDelivery = input.lastDelivery ?? null;
@@ -78,16 +135,26 @@ export function summarizePermissionTest(input: {
   if (missingReads.length > 0) {
     bits.push(`Missing read: ${missingReads.join(", ")}.`);
   }
-  if (!hasRead(permissions, "members")) {
+  if (pending.length > 0) {
+    const labels = pending.map((name) =>
+      pendingPermissionLabel(name, input.appPermissions?.[name] ?? ""),
+    );
+    const noun = pending.length === 1 ? "it" : "them";
+    const verb = pending.length === 1 ? "is" : "are";
+    bits.push(
+      `${joinEnglish(labels)} ${verb} requested on the App. Accept ${noun} at the GitHub install page.`,
+    );
+  }
+  if (!hasRead(permissions, "members") && !pendingSet.has("members")) {
     bits.push("Members read is off; collaborator-added Watch will miss GitHub member events.");
   }
-  if (!hasWrite(permissions, "contents")) {
+  if (!hasWrite(permissions, "contents") && !pendingSet.has("contents")) {
     bits.push("Contents write is off; setup and remediation PRs stay copy-paste.");
   }
-  if (!hasWrite(permissions, "pull_requests")) {
+  if (!hasWrite(permissions, "pull_requests") && !pendingSet.has("pull_requests")) {
     bits.push("Pull requests write is off; the App cannot open PRs.");
   }
-  if (!hasWrite(permissions, "checks")) {
+  if (!hasWrite(permissions, "checks") && !pendingSet.has("checks")) {
     bits.push("Checks write is off; hosted release scans skip GitHub Checks.");
   }
   if (repoProbe && !repoProbe.ok) {
@@ -115,6 +182,8 @@ export function summarizePermissionTest(input: {
     optionalReads,
     optionalWrites,
     administrationGranted,
+    pendingAccepts: pending,
+    installUrl: input.installUrl ?? null,
     repoProbe,
     lastDelivery,
     testedAt: input.testedAt ?? new Date().toISOString(),

@@ -170,11 +170,13 @@ Read in this order:
   served. Bugsnag cannot look up a debug ID. Not a Pricing extras change.
 - Watch **Test install** runs a live GitHub permission/read probe. It never creates an
   alert. It reports Members read and optional Contents/Pull requests/Checks write, and
-  warns if Administration was granted. Missing optional grants do not fail the test.
-  Watch alerts can be acknowledged, assigned to an install member, resolved with a
-  note, and reopened. Exposure duration and a SEC/MAP rotation checklist are shown.
-  Watch can export that activity as JSON. Incident actions stay available when unpaid
-  or GitHub-suspended.
+  warns if Administration was granted. If the App requested a permission the install has
+  not accepted (live: Members read), Test install names it and links to GitHub’s Accept
+  page. It never asks the customer to grant Administration. Missing optional grants do
+  not fail the test. Watch alerts can be acknowledged, assigned to an install member,
+  resolved with a note, and reopened. Exposure duration and a SEC/MAP rotation checklist
+  are shown. Watch can export that activity as JSON. Incident actions stay available when
+  unpaid or GitHub-suspended.
 - Trial and Team installs can save a Slack incoming webhook, a SIEM HTTPS webhook, and a Jira
   Cloud destination (encrypted, never returned). New Watch alerts POST to those destinations
   after they are stored. Watch **Test delivery** talks to Slack, SIEM, or Jira and never
@@ -326,7 +328,9 @@ Failed-policy and inconclusive are not allowed to ship. Scan lists docker-save, 
 CRX, XPI, Chrome ZIP, wheel, sdist, JAR, WAR, nupkg, snupkg, gem, APK, XAPK, AAB, and IPA fixture examples. Layers, bytecode, Python, Ruby,
 DEX, Mach-O, and extension payloads are not executed.
 Watch Test install reports Members read and optional Contents/PR/Checks write, and warns if
-Administration is granted. Missing optional grants do not fail the test.
+Administration is granted. Missing optional grants do not fail the test. If the App requested
+a permission the install has not accepted, Test install names it and links to GitHub’s Accept
+page. It does not ask for Administration.
 Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
 the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
 alerts without download, and a packed asset that fails policy and is not allowed to ship.

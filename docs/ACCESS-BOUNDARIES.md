@@ -93,10 +93,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Run a live GitHub permission test on installations they belong to. The test never
   inserts an alert and never claims a security incident. It reports Contents/Metadata
   reads, Members read (collaborator alerts), optional Contents/Pull requests/Checks write,
-  whether Administration was granted (it should not be), a repo probe, and the last
-  customer job (kind, status, time) for that install, or that none exist. Missing Members
-  read or optional writes do not fail the test. It stays available when coverage has ended
-  or GitHub has suspended the App.
+  whether Administration was granted (it should not be), App-requested permissions this
+  install has not accepted (with a link to GitHub’s Accept page; never Administration),
+  a repo probe, and the last customer job (kind, status, time) for that install, or that
+  none exist. Missing Members read or optional writes do not fail the test. It stays
+  available when coverage has ended or GitHub has suspended the App.
 - Acknowledge, assign (to a GitHub login on that install), resolve with a note, and
   reopen alerts on installations they belong to. Incident state stays available when
   coverage has ended or GitHub has suspended the App. Alert events are append-only.
@@ -358,9 +359,11 @@ another tenant is 404. `tests/receipts.test.ts` also
 proves anonymous `POST /api/receipts/verify` does not consume the hosted unpack budget, does
 not call a failed-policy receipt clean, and never requires a session.
 `tests/incident-response.test.ts` proves live permission tests never insert an alert,
-alert acknowledgement/assignment/resolution is tenant-scoped, off-install assignees
-are rejected, unpaid and GitHub-suspended installs can still acknowledge and test,
-`alert_events` cannot be updated or deleted, and activity export is tenant-scoped.
+never ask the customer to Accept Administration, name App-requested permissions the
+install has not accepted, alert acknowledgement/assignment/resolution is tenant-scoped,
+off-install assignees are rejected, unpaid and GitHub-suspended installs can still
+acknowledge and test, `alert_events` cannot be updated or deleted, and activity export
+is tenant-scoped.
 `tests/multi-org.test.ts` proves one user with two GitHub installs sees each org’s
 repos/alerts/jobs only when `installationId` is set, another tenant’s id is empty,
 writes without an install id return 400 when two installs exist, unpaid or GitHub-

@@ -158,7 +158,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Disable unsafe release workflow | Built: path under `.github/workflows/`; cannot disable `.github/workflows/nospoilers.yml`. Same Administration 409/typed-confirm gates as make-private | NoSpoilers |
 | Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
-| Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; reports Members read and optional Contents/PR/Checks write; Administration granted is a warning; never invents an incident | NoSpoilers |
+| Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; reports Members read and optional Contents/PR/Checks write; names App-requested permissions the install has not accepted and links to GitHub Accept; Administration granted is a warning (never asked); never invents an incident | NoSpoilers |
 
 ## Alerts, team and trust
 

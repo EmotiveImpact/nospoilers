@@ -26,7 +26,7 @@
 - Scan lists the OCI image fixture next to docker save. Layers are not executed.
 - Scan lists CRX, XPI, wheel, JAR, nupkg, and gem fixtures next to VSIX. Payloads are not executed.
 - Authored disposable `throwaway/` content for `EmotiveImpact/nospoilers-throwaway` (hostile pack, `.env` cheap-push path, release workflow). `npm run phase1:throwaway` seeds those files and attaches `sourcemap.tgz` using Contents write, not Administration. The live repo is still empty until that write is granted.
-- Watch Test install reports Members read (collaborator alerts), optional Contents/Pull requests/Checks write, and whether Administration was granted (it should not be). Missing optional grants do not fail the test and do not invent an incident.
+- Watch Test install reports Members read (collaborator alerts), optional Contents/Pull requests/Checks write, and whether Administration was granted (it should not be). If the App requested a permission this install has not accepted, Test install names it and links to GitHub’s Accept page. It does not ask for Administration. Missing optional grants do not fail the test and do not invent an incident.
 - Scan lists WAR, snupkg, and XAPK fixtures. Nested APKs are not executed.
 - Scan lists Python sdist (PKG-INFO layout) and Chrome extension ZIP (WebExtension layout, not a CRX header) fixtures. Python and extension workers are not executed.
 - Scan lists the Android AAB fixture next to APK. BundleConfig layout. DEX is not executed.

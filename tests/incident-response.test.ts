@@ -5,6 +5,7 @@ import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort, type GithubRepo } from "../src/server/github.ts";
 import {
   exposureMs,
+  pendingAccepts,
   rotationChecklist,
   summarizePermissionTest,
 } from "../src/server/install-test.ts";
@@ -71,6 +72,8 @@ describe("permission test copy", () => {
     expect(ok.detail).toMatch(/Checks write is off/);
     expect(ok.optionalReads).toEqual([{ name: "members", granted: false }]);
     expect(ok.administrationGranted).toBe(false);
+    expect(ok.pendingAccepts).toEqual([]);
+    expect(ok.installUrl).toBeNull();
 
     const full = summarizePermissionTest({
       accountLogin: "octo",
@@ -120,11 +123,68 @@ describe("permission test copy", () => {
     expect(missing.detail.toLowerCase()).toContain("not a security incident");
   });
 
+  it("names App-requested permissions the install has not accepted and never asks for Administration", () => {
+    expect(
+      pendingAccepts(
+        { contents: "read", metadata: "read", members: "read", administration: "write" },
+        { contents: "read", metadata: "read" },
+      ),
+    ).toEqual(["members"]);
+
+    const pending = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: { contents: "read", metadata: "read" },
+      appPermissions: { contents: "read", metadata: "read", members: "read" },
+      installUrl: "https://github.com/settings/installations/7",
+    });
+    expect(pending.pendingAccepts).toEqual(["members"]);
+    expect(pending.installUrl).toBe("https://github.com/settings/installations/7");
+    expect(pending.ok).toBe(true);
+    expect(pending.inventedIncident).toBe(false);
+    expect(pending.detail).toMatch(/Members read is requested on the App/);
+    expect(pending.detail).toMatch(/Accept it at the GitHub install page/);
+    expect(pending.detail).not.toMatch(/Members read is off/);
+    expect(pending.detail.toLowerCase()).not.toContain("administration is requested");
+    expect(pending.detail.toLowerCase()).toContain("not a security incident");
+
+    const writes = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: { contents: "read", metadata: "read", members: "read" },
+      appPermissions: {
+        contents: "write",
+        metadata: "read",
+        members: "read",
+        pull_requests: "write",
+        checks: "write",
+      },
+    });
+    expect(writes.pendingAccepts).toEqual(["checks", "contents", "pull_requests"]);
+    expect(writes.detail).toMatch(/Checks write, Contents write, and Pull requests write are requested/);
+    expect(writes.detail).not.toMatch(/Contents write is off/);
+    expect(writes.detail).not.toMatch(/Pull requests write is off/);
+    expect(writes.detail).not.toMatch(/Checks write is off/);
+
+    const adminOnly = summarizePermissionTest({
+      accountLogin: "octo",
+      suspended: false,
+      permissions: { contents: "read", metadata: "read" },
+      appPermissions: { contents: "read", metadata: "read", administration: "write" },
+    });
+    expect(adminOnly.pendingAccepts).toEqual([]);
+    expect(adminOnly.detail).not.toMatch(/Administration is requested/);
+    expect(adminOnly.detail).toMatch(/Members read is off/);
+  });
+
   it("says Test install reports Members read and that Administration should not be granted", () => {
     const page = readFileSync("src/pages/WatchPage.tsx", "utf8");
     expect(page).toMatch(/Members read \(collaborator alerts\)/);
     expect(page).toMatch(/Administration was granted/);
     expect(page).toMatch(/it should\s+not be/);
+    expect(page).toMatch(/links to GitHub’s Accept page/);
+    expect(page).toMatch(/It does not ask for Administration/);
+    expect(page).toMatch(/Accept requested permissions/);
   });
 
   it("builds rotation checklists without secret values and measures exposure", () => {
@@ -361,9 +421,21 @@ describe("incident response", () => {
 
       let getInstallationCalls = 0;
       let getRepoCalls = 0;
+      let getAppCalls = 0;
       const app = appFor(
         store,
         mockGithub({
+          getApp: async () => {
+            getAppCalls += 1;
+            return {
+              permissions: {
+                contents: "read",
+                metadata: "read",
+                members: "read",
+                administration: "write",
+              },
+            };
+          },
           getInstallation: async (installationId) => {
             getInstallationCalls += 1;
             return {
@@ -372,6 +444,7 @@ describe("incident response", () => {
               suspended_at: null,
               permissions: { contents: "read", metadata: "read", checks: "write" },
               repository_selection: "selected",
+              html_url: "https://github.com/settings/installations/7",
             };
           },
           getRepo: async () => {
@@ -399,6 +472,8 @@ describe("incident response", () => {
           missingReads: string[];
           repoProbe: { ok: boolean; fullName: string } | null;
           optionalWrites: { name: string; granted: boolean }[];
+          pendingAccepts: string[];
+          installUrl: string | null;
           lastDelivery: { kind: string; status: string; at: string } | null;
           detail: string;
         };
@@ -408,9 +483,15 @@ describe("incident response", () => {
       expect(testBody.test.ok).toBe(true);
       expect(testBody.test.repoProbe).toEqual({ fullName: "octo/app", ok: true });
       expect(testBody.test.optionalWrites.find((row) => row.name === "checks")?.granted).toBe(true);
+      expect(testBody.test.pendingAccepts).toEqual(["members"]);
+      expect(testBody.test.installUrl).toBe("https://github.com/settings/installations/7");
       expect(testBody.test.lastDelivery).toBeNull();
+      expect(testBody.test.detail).toContain("Members read is requested on the App");
+      expect(testBody.test.detail).not.toContain("Members read is off");
+      expect(testBody.test.detail.toLowerCase()).not.toContain("administration is requested");
       expect(testBody.test.detail).toContain("No webhook jobs recorded yet.");
       expect(testBody.test.detail.toLowerCase()).toContain("not a security incident");
+      expect(getAppCalls).toBe(1);
       expect(getInstallationCalls).toBe(1);
       expect(getRepoCalls).toBe(1);
 
@@ -472,6 +553,54 @@ describe("incident response", () => {
         "SELECT count(*)::text AS n FROM alerts",
       );
       expect(finalAlerts[0]?.n).toBe(before[0]?.n);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("still tests an install when GitHub GET /app fails", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const app = appFor(
+        store,
+        mockGithub({
+          getApp: async () => {
+            throw new Error("GitHub GET /app failed");
+          },
+          getInstallation: async (installationId) => ({
+            id: installationId,
+            account: { login: "octo", type: "User", id: 1 },
+            suspended_at: null,
+            permissions: { contents: "read", metadata: "read" },
+            repository_selection: "all",
+            html_url: "https://github.com/settings/installations/7",
+          }),
+        }),
+      );
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const tested = await app.request("/api/installations/7/test", {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(tested.status).toBe(200);
+      const body = (await tested.json()) as {
+        inventedIncident: boolean;
+        test: { pendingAccepts: string[]; detail: string; inventedIncident: boolean };
+      };
+      expect(body.inventedIncident).toBe(false);
+      expect(body.test.inventedIncident).toBe(false);
+      expect(body.test.pendingAccepts).toEqual([]);
+      expect(body.test.detail).toMatch(/Members read is off/);
     } finally {
       await sql.close();
     }

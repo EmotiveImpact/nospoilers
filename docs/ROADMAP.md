@@ -80,9 +80,11 @@ the immediate operational sequence. The exhaustive expansion plan is
   discovered incident.
 - Owner queue health: Artifact Leads shows customer vs prospect queue counts, stale locks,
   oldest wait, and daily unpack aggregates. Payloads are not listed. Not a customer page.
-- Incident response: live GitHub permission test without inventing an incident; Watch
-  acknowledgement, assignment to install members, resolution notes, reopen, exposure
-  duration, and a credential/source-map rotation checklist. `alert_events` are append-only.
+- Incident response: live GitHub permission test without inventing an incident; names
+  App-requested permissions the install has not accepted and links to GitHub Accept
+  (never Administration); Watch acknowledgement, assignment to install members, resolution
+  notes, reopen, exposure duration, and a credential/source-map rotation checklist.
+  `alert_events` are append-only.
 - Multiple GitHub organizations: Watch switches installs; coverage and GitHub suspend
   apply to the selected org only. Live permission tests include the last customer job.
 - Public `/status` page from `/api/health` (no tenant data, no connection string).

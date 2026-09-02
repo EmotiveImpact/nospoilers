@@ -1172,11 +1172,21 @@ export function createApp(deps: AppDeps): Hono {
     const lastDelivery = lastJob
       ? { kind: lastJob.kind, status: lastJob.status, at: lastJob.createdAt }
       : null;
+    let appPermissions: Record<string, string> | undefined;
+    if (deps.github.getApp) {
+      try {
+        appPermissions = (await deps.github.getApp()).permissions;
+      } catch {
+        appPermissions = undefined;
+      }
+    }
     const test = summarizePermissionTest({
       accountLogin: githubInstall.account.login,
       suspended: Boolean(githubInstall.suspended_at) || local.suspended,
       repositorySelection: githubInstall.repository_selection,
       permissions: githubInstall.permissions,
+      appPermissions,
+      installUrl: githubInstall.html_url ?? null,
       repoProbe,
       lastDelivery,
     });

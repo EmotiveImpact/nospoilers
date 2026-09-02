@@ -27,6 +27,8 @@ type PermissionTest = {
   optionalReads: { name: string; granted: boolean }[];
   optionalWrites: { name: string; granted: boolean }[];
   administrationGranted: boolean;
+  pendingAccepts?: string[];
+  installUrl?: string | null;
   repoProbe: { fullName: string; ok: boolean } | null;
   lastDelivery: { kind: string; status: string; at: string } | null;
   testedAt: string;
@@ -2342,8 +2344,10 @@ export function WatchPage({ search }: { search: string }) {
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
           reports Contents and Metadata reads, Members read (collaborator alerts), optional
           Contents/Pull requests/Checks write, and whether Administration was granted — it should
-          not be. This install’s recent jobs stay listed until they succeed or hit the retry cap.
-          Global queues stay owner-only.
+          not be. If the App requested a permission this install has not accepted, Test install
+          names it and links to GitHub’s Accept page. It does not ask for Administration. This
+          install’s recent jobs stay listed until they succeed or hit the retry cap. Global
+          queues stay owner-only.
         </p>
         {githubPaused ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-danger">
@@ -2426,10 +2430,24 @@ export function WatchPage({ search }: { search: string }) {
                     </Button>
                   </div>
                   {test ? (
-                    <p className="mt-2 text-sm leading-relaxed text-mute">
-                      {test.ok ? "Reads reachable. " : ""}
-                      {test.detail} Last test {new Date(test.testedAt).toLocaleString()}.
-                    </p>
+                    <>
+                      <p className="mt-2 text-sm leading-relaxed text-mute">
+                        {test.ok ? "Reads reachable. " : ""}
+                        {test.detail} Last test {new Date(test.testedAt).toLocaleString()}.
+                      </p>
+                      {test.pendingAccepts && test.pendingAccepts.length > 0 && test.installUrl ? (
+                        <p className="mt-2">
+                          <a
+                            href={test.installUrl}
+                            className="text-sm text-snow underline-offset-4 hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Accept requested permissions
+                          </a>
+                        </p>
+                      ) : null}
+                    </>
                   ) : (
                     <p className="mt-2 text-xs text-dim">No live permission test yet.</p>
                   )}
