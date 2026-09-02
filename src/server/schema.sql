@@ -783,6 +783,24 @@ CREATE TRIGGER release_legal_holds_no_delete
   BEFORE DELETE ON release_legal_holds
   FOR EACH ROW EXECUTE PROCEDURE reject_release_legal_hold_mutation();
 
+CREATE TABLE IF NOT EXISTS release_public_pages (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  revision_id BIGINT NOT NULL UNIQUE REFERENCES release_revisions (id) ON DELETE CASCADE,
+  public_token TEXT NOT NULL UNIQUE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by_login TEXT NOT NULL,
+  updated_by_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS release_public_pages_token_idx
+  ON release_public_pages (public_token);
+
+CREATE INDEX IF NOT EXISTS release_public_pages_install_idx
+  ON release_public_pages (installation_id, enabled, id DESC);
+
 CREATE TABLE IF NOT EXISTS package_protections (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -906,7 +924,9 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'release.approve',
     'release.reject',
     'release.hold',
-    'release.release_hold'
+    'release.release_hold',
+    'release.publish_verify',
+    'release.unpublish_verify'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

@@ -79,7 +79,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   delivery-URL attacher cannot approve that row) or reject it. Legal hold keeps a
   revision listed after the retention window; another admin must release the hold.
   Members export the ledger JSON (query strings and pack bytes omitted). Solo 403.
-  Unpaid 402. Development
+  Unpaid 402. An install admin can publish `/verify/:token` for a sealed revision
+  (Solo allowed; unpaid 402 to change; public GET is redacted and does not enqueue
+  verify). Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

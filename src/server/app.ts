@@ -221,6 +221,18 @@ import {
   parseAllowlistReason,
 } from "./identity-signals.ts";
 import { createLogNotifier, type AlertNotifier } from "./notifier.ts";
+import {
+  MAX_PUBLIC_PAGES_PER_INSTALL,
+  PUBLIC_PAGE_ALREADY_ERROR,
+  PUBLIC_PAGE_CAP_ERROR,
+  PUBLIC_PAGE_MISSING_ERROR,
+  PUBLIC_PAGE_UNKNOWN_ERROR,
+  PUBLIC_PAGE_UNPAID_ERROR,
+  buildPublicVerificationView,
+  mintPublicToken,
+  parsePublicToken,
+  publicPageSummary,
+} from "./release-public.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -385,6 +397,7 @@ function publicRelease(
   locations: ReturnType<typeof publicDeliveryLocation>[] = [],
   approval: ReleaseApprovalRow | null = null,
   hold: ReleaseLegalHoldRow | null = null,
+  page: { enabled: boolean; public_token: string } | null = null,
 ) {
   return {
     id: row.id,
@@ -407,6 +420,7 @@ function publicRelease(
     locations,
     approval: approval ? publicApproval(approval) : null,
     legalHold: publicLegalHold(hold),
+    publicPage: publicPageSummary(page),
   };
 }
 
@@ -3533,6 +3547,38 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ ok: true, exception: publicException(row) });
   });
 
+  app.get("/api/verify/:token", async (c) => {
+    const verifyLimited = rateLimited(
+      c,
+      scanLimiter,
+      `verify:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many verification page reads from this address. Wait and try again.",
+    );
+    if (verifyLimited) return verifyLimited;
+    const token = parsePublicToken(c.req.param("token") ?? "");
+    if (!token) return c.json({ error: PUBLIC_PAGE_UNKNOWN_ERROR }, 404);
+    const page = await deps.store.getReleasePublicPageByToken(token);
+    if (!page || !page.enabled) return c.json({ error: PUBLIC_PAGE_UNKNOWN_ERROR }, 404);
+    const revision = await deps.store.getReleaseRevision(page.revision_id);
+    if (!revision || revision.installation_id !== page.installation_id) {
+      return c.json({ error: PUBLIC_PAGE_UNKNOWN_ERROR }, 404);
+    }
+    const locations = await deps.store.listDeliveryLocationsForRevisions([revision.id]);
+    const approval =
+      latestByRevision(await deps.store.listReleaseApprovalsForRevisions([revision.id])).get(
+        revision.id,
+      ) ?? null;
+    return c.json({
+      verification: buildPublicVerificationView({
+        token: page.public_token,
+        revision,
+        locations,
+        approval,
+      }),
+    });
+  });
+
   app.get("/api/releases", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -3543,6 +3589,12 @@ export function createApp(deps: AppDeps): Hono {
     const locations = await deps.store.listDeliveryLocationsForRevisions(revisionIds);
     const approvals = latestByRevision(await deps.store.listReleaseApprovalsForRevisions(revisionIds));
     const holds = latestByRevision(await deps.store.listReleaseLegalHoldsForRevisions(revisionIds));
+    const pages = new Map(
+      (await deps.store.listReleasePublicPagesForRevisions(revisionIds)).map((page) => [
+        page.revision_id,
+        page,
+      ]),
+    );
     const byRevision = new Map<number, ReturnType<typeof publicDeliveryLocation>[]>();
     for (const location of locations) {
       const list = byRevision.get(location.revision_id) ?? [];
@@ -3556,6 +3608,7 @@ export function createApp(deps: AppDeps): Hono {
           byRevision.get(row.id) ?? [],
           approvals.get(row.id) ?? null,
           holds.get(row.id) ?? null,
+          pages.get(row.id) ?? null,
         ),
       ),
     });
@@ -3599,6 +3652,12 @@ export function createApp(deps: AppDeps): Hono {
     const holdsByRevision = groupedByRevision(holds);
     const latestApproval = latestByRevision(approvals);
     const latestHold = latestByRevision(holds);
+    const pages = new Map(
+      (await deps.store.listReleasePublicPagesForRevisions(revisionIds)).map((page) => [
+        page.revision_id,
+        page,
+      ]),
+    );
     return c.json({
       exportedAt: new Date().toISOString(),
       installationId,
@@ -3626,6 +3685,7 @@ export function createApp(deps: AppDeps): Hono {
           reason: hold.reason,
           createdAt: hold.created_at,
         })),
+        publicPage: publicPageSummary(pages.get(row.id) ?? null),
         locations: (locationsByRevision.get(row.id) ?? []).map((location) => ({
           url: redactDeliveryUrl(location.url),
           host: location.host,
@@ -3651,14 +3711,66 @@ export function createApp(deps: AppDeps): Hono {
     const locations = await deps.store.listDeliveryLocationsForRevisions([row.id]);
     const approvals = await deps.store.listReleaseApprovalsForRevisions([row.id]);
     const holds = await deps.store.listReleaseLegalHoldsForRevisions([row.id]);
+    const page = await deps.store.getReleasePublicPageByRevision(row.id);
     return c.json({
       release: publicRelease(
         row,
         locations.map(publicDeliveryLocation),
         latestByRevision(approvals).get(row.id) ?? null,
         latestByRevision(holds).get(row.id) ?? null,
+        page,
       ),
     });
+  });
+
+  app.post("/api/releases/:id/public", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const publishDenied = await hostedWorkDenied(deps.store, row.installation_id, PUBLIC_PAGE_UNPAID_ERROR);
+    if (publishDenied) return c.json({ error: publishDenied.error }, publishDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, row.coordinate);
+    if (confirmError) return c.json(confirmError, 400);
+    const enabled = body.enabled === true;
+    if (body.enabled !== true && body.enabled !== false) {
+      return c.json({ error: "Set enabled to true or false." }, 400);
+    }
+    const existing = await deps.store.getReleasePublicPageByRevision(row.id);
+    if (enabled) {
+      if (existing?.enabled) return c.json({ error: PUBLIC_PAGE_ALREADY_ERROR }, 409);
+      if (!existing) {
+        const enabledCount = await deps.store.countEnabledPublicPages(row.installation_id);
+        if (enabledCount >= MAX_PUBLIC_PAGES_PER_INSTALL) {
+          return c.json({ error: PUBLIC_PAGE_CAP_ERROR }, 400);
+        }
+      }
+    } else if (!existing?.enabled) {
+      return c.json({ error: PUBLIC_PAGE_MISSING_ERROR }, 400);
+    }
+    const page = await deps.store.upsertReleasePublicPage({
+      installationId: row.installation_id,
+      revisionId: row.id,
+      publicToken: existing?.public_token ?? mintPublicToken(),
+      enabled,
+      actorLogin: user.login,
+    });
+    await recordAudit({
+      installationId: row.installation_id,
+      actorLogin: user.login,
+      action: enabled ? "release.publish_verify" : "release.unpublish_verify",
+      summary: enabled
+        ? `Published verification page for ${row.coordinate}`
+        : `Unpublished verification page for ${row.coordinate}`,
+      targetKind: "release",
+      targetId: row.coordinate,
+    });
+    return c.json({ ok: true, publicPage: publicPageSummary(page) }, enabled && !existing ? 201 : 200);
   });
 
   app.post("/api/releases/:id/approvals", async (c) => {

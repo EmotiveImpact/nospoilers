@@ -8,6 +8,7 @@ import { PricingPage } from "@/pages/PricingPage.tsx"
 import { ProspectsPage } from "@/pages/ProspectsPage.tsx"
 import { ScanPage } from "@/pages/ScanPage.tsx"
 import { StatusPage } from "@/pages/StatusPage.tsx"
+import { VerifyPage } from "@/pages/VerifyPage.tsx"
 import { WatchPage } from "@/pages/WatchPage.tsx"
 import { useEffect, useState } from "react"
 
@@ -27,9 +28,10 @@ function useLoc(): { path: string; search: string } {
 
 function pageFor(
   path: string,
-): "home" | "watch" | "scan" | "pricing" | "docs" | "mockups" | "prospects" | "legal" | "status" {
+): "home" | "watch" | "scan" | "pricing" | "docs" | "mockups" | "prospects" | "legal" | "status" | "verify" {
   if (legalSlugFromPath(path)) return "legal"
   if (path === "/internal/prospects") return "prospects"
+  if (path === "/verify" || path.startsWith("/verify/")) return "verify"
   if (path === "/status" || path.startsWith("/status/")) return "status"
   if (path === "/docs" || path.startsWith("/docs/")) return "docs"
   if (path === "/scan" || path.startsWith("/scan/")) return "scan"
@@ -60,7 +62,9 @@ export default function App() {
                 ? path.replace(/\/$/, "") || "/"
                 : page === "status"
                   ? "/status"
-                  : "/internal/prospects"
+                  : page === "verify"
+                    ? path.replace(/\/$/, "") || "/verify"
+                    : "/internal/prospects"
 
   return (
     <SiteChrome path={chromePath} search={search}>
@@ -73,6 +77,7 @@ export default function App() {
       {page === "prospects" && <ProspectsPage />}
       {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}
       {page === "status" && <StatusPage />}
+      {page === "verify" && <VerifyPage path={path} />}
     </SiteChrome>
   )
 }

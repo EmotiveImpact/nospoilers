@@ -19,6 +19,7 @@ Unauthenticated browser traffic.
 - Use the local pack drop zone (`POST /api/scan`) within hard size limits.
 - Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. The CLI (`nospoilers verify --receipt`) can re-hash a local file or stream-hash a `--url` with the same hop/SSRF rules as Watch; that does not call Watch and does not need coverage. Coverage ended still allows the Scan check. Authentic failed-policy or inconclusive is not a passing result.
 - Hit `/api/health` and `/api/ready` (no connection strings, no tenant data).
+- View a customer-published verification page (`/verify/:token` and `GET /api/verify/:token`) when that page is enabled. Digests, receipt status, delivery hostnames, and last match only. Query strings, pack bytes, CI URLs, signed URLs, and unpublished revisions are omitted. Failed-policy and inconclusive are not a clean result. The read does not enqueue a delivery download.
 - Call GitHub App webhooks with a valid HMAC.
 
 **Must not**
@@ -95,6 +96,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Read signed scan receipts for those installations and diff against an approved baseline
   (or the last two receipts if none is approved). SIZE-003 is a warning on a 2× or ≥5 MiB
   unpacked jump versus that comparison; it stores byte counts, not source.
+- See whether a sealed revision on those installations has a published verification page
+  and its `/verify/:token` path. Members cannot publish or unpublish. Unpublished tokens
+  404. Another tenant is 404.
 - View their own coverage status.
 - See GitHub App suspend, unsuspend, permission-change, and repository add/remove
   alerts on installations they belong to. Uninstall drops the tenant; there is no
@@ -166,7 +170,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
-  verify a release delivery URL, approve or reject a sealed revision, place or release a legal hold, open setup or
+  verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
@@ -265,6 +269,12 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   the coordinate. Reason required. The admin who placed the hold cannot release it.
   Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404.
   Hold events are append-only. Audit records the coordinate only.
+- Publish or unpublish a verification page for a sealed revision. Type the coordinate.
+  Solo paid is allowed. Unpaid returns 402. Members return 403. Another tenant is 404.
+  The public token is unguessable and is not the revision id. Audit records the
+  coordinate only, never the public path or token. Publishing does not enqueue a
+  delivery download. Unpublish makes the public GET 404; republish keeps the same path.
+  Cap 40 enabled pages per install. This is not scheduled CDN verification.
 
 **Must not**
 
@@ -455,6 +465,11 @@ digest-changed revisions cannot be approved, the delivery-URL attacher cannot
 approve that revision, another admin must release a hold, held revisions stay
 listed after the retention window, export is member-readable and redacts query
 strings, and approval/hold rows are append-only.
+`tests/release-public.test.ts` proves a published verification page is public when
+enabled, redacts query strings / CI URLs / pack bytes, treats failed-policy as not
+clean, refuses members and other tenants on publish, allows Solo, returns 402 when
+unpaid while the existing page still reads, uses an unguessable token, records the
+coordinate only on audit, and does not enqueue a delivery-verify job on public GET.
 `tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
 tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
 storing bytes, alerts on mismatch and disappearance, follows only the GitHub

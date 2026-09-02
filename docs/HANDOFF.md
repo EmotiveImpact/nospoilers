@@ -66,7 +66,10 @@ Read in this order:
   append-only `disclosure_vendor_replies` and encrypted expiring
   `disclosure_attachments`.
   `042_disclosure_sla_backfill` sets `verified_at` on already-verified cases.
-  Next unused id is `043_*`.
+  `043_release_public_pages` adds customer-controlled `release_public_pages`
+  (unguessable token, enable/disable) and extends `audit_events.action` with
+  `release.publish_verify` and `release.unpublish_verify`.
+  Next unused id is `044_*`.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
@@ -81,11 +84,17 @@ Read in this order:
   same-bucket S3 and same-account R2 hops are followed the same way. Other
   cross-host redirects are not fetched. Each verification stores hop hosts, a
   short cache token, and a host-derived region. This is not added to the
-  hourly poller. Trial and Team admins approve a passing revision to ship
+  hourly poller.   Trial and Team admins approve a passing revision to ship
   or reject it (typed coordinate; the delivery-URL attacher cannot approve
   that row). Legal hold keeps a revision on the list after the query-time
   retention window; another admin must release the hold. Members export the
   ledger JSON (redacted URLs, no pack bytes). Solo 403. Unpaid 402.
+  An install admin can publish a verification page for a sealed revision
+  (`/verify/:token`). Visitors see digests, receipt status, and last delivery
+  host match. Query strings, pack bytes, CI URLs, and signed URLs are omitted.
+  Failed-policy is not clean. Solo may publish. Unpaid 402 to publish or
+  unpublish; an already-published page still reads. Public GET does not
+  enqueue a verify job. This is not scheduled CDN verification.
   Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
@@ -339,6 +348,9 @@ sourcemap.tgz; not scheduled CDN).
 Release Ledger governance is in (trial/Team approve-to-ship / reject with SoD versus the
 delivery-URL attacher; legal hold that survives the list retention window; another admin
 must release the hold; member ledger export; Solo 403; unpaid 402; append-only).
+Release Ledger public verification pages are in (install admin publishes `/verify/:token`;
+redacted digests / receipt status / delivery host; Solo allowed; unpaid 402 to change;
+public GET does not enqueue verify; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).
 Package Identity batch import is in (`POST /api/protections/import`, cap 20, metadata only,
@@ -507,6 +519,8 @@ Package Identity batch import is live: `POST /api/protections/import` on install
 prettier, left-pad, a missing name, and an invalid token. `queued` was false.
 No watches were added. Anonymous 401. Cloudflare tunnel matched. There is no
 EmotiveImpact-owned npm pack to protect. Other registries stay out.
+Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
+`GET /api/verify/:token`). Scheduled CDN, SBOM, and Sigstore stay out.
 Stripe and Resend are benched. Do not start the Electron installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```

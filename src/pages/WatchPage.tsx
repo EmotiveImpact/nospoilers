@@ -303,7 +303,9 @@ type Confirming =
   | { kind: "release-approve"; id: number; expected: string; reason: string }
   | { kind: "release-reject"; id: number; expected: string; reason: string }
   | { kind: "release-hold"; id: number; expected: string; reason: string }
-  | { kind: "release-hold-release"; id: number; expected: string; reason: string };
+  | { kind: "release-hold-release"; id: number; expected: string; reason: string }
+  | { kind: "release-publish"; id: number; expected: string }
+  | { kind: "release-unpublish"; id: number; expected: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -351,6 +353,10 @@ function confirmActionLabel(row: Confirming): string {
       return "place a legal hold on this release";
     case "release-hold-release":
       return "release this legal hold";
+    case "release-publish":
+      return "publish a verification page for this release";
+    case "release-unpublish":
+      return "unpublish this verification page";
   }
 }
 
@@ -407,6 +413,7 @@ type ReleaseRevision = {
     reason: string;
     createdAt: string;
   } | null;
+  publicPage?: { enabled: boolean; path: string } | null;
 };
 
 function formatSealedBytes(bytes: number): string {
@@ -1522,6 +1529,16 @@ export function WatchPage({ search }: { search: string }) {
               confirm,
             }),
           });
+        } else if (confirming.kind === "release-publish" || confirming.kind === "release-unpublish") {
+          response = await fetch(`/api/releases/${confirming.id}/public`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              enabled: confirming.kind === "release-publish",
+              confirm,
+            }),
+          });
         } else {
           throw new Error("Unknown confirmation.");
         }
@@ -1720,6 +1737,7 @@ export function WatchPage({ search }: { search: string }) {
     !previewing &&
     !ended &&
     (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const canPublishVerify = Boolean(installAdmin) && !ended && !previewing;
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
@@ -4679,7 +4697,11 @@ export function WatchPage({ search }: { search: string }) {
           Failed-policy, inconclusive, and digest-changed rows cannot be approved. Legal hold
           keeps a revision on the list after the retention window; another admin must release
           the hold. Members can export the ledger JSON. Query strings and pack bytes stay off
-          that export. Solo is 403. Unpaid is 402. This is not scheduled CDN verification.
+          that export. Solo is 403. Unpaid is 402. An install admin can publish a verification
+          page for a sealed revision — type the coordinate. Visitors see digests, receipt
+          status, and last delivery host match. Query strings, pack bytes, CI URLs, and signed
+          URLs stay off that page. Failed-policy is not clean. Solo may publish. Unpaid is 402.
+          Unpublish hides the page. This is not scheduled CDN verification.
         </p>
         {previewing ? (
           <p className="mt-4 text-sm leading-relaxed text-mute">
@@ -4941,6 +4963,54 @@ export function WatchPage({ search }: { search: string }) {
                     Legal hold by {release.legalHold.actorLogin}
                     {release.legalHold.reason ? ` · ${release.legalHold.reason}` : ""}
                   </p>
+                ) : null}
+                {release.publicPage?.enabled ? (
+                  <p className="mt-2 text-xs text-mute">
+                    Public verification{" "}
+                    <a href={release.publicPage.path} className="text-snow underline-offset-2 hover:underline">
+                      {release.publicPage.path}
+                    </a>
+                  </p>
+                ) : null}
+                {canPublishVerify ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {release.publicPage?.enabled ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "release-unpublish",
+                            id: release.id,
+                            expected: release.coordinate,
+                          })
+                        }
+                      >
+                        Unpublish verification
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          beginConfirm({
+                            kind: "release-publish",
+                            id: release.id,
+                            expected: release.coordinate,
+                          })
+                        }
+                      >
+                        Publish verification
+                      </Button>
+                    )}
+                    {confirmForm(
+                      (confirming?.kind === "release-publish" ||
+                        confirming?.kind === "release-unpublish") &&
+                        confirming.id === release.id,
+                    )}
+                  </div>
                 ) : null}
                 {canGovernReleases ? (
                   <div className="mt-3 max-w-xl">

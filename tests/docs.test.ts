@@ -33,6 +33,8 @@ describe("public documentation", () => {
     expect(text).toMatch(/approve a passing revision to ship/i);
     expect(text).toMatch(/legal hold/i);
     expect(text).toMatch(/export the ledger/i);
+    expect(text).toMatch(/publish a verification page/i);
+    expect(text).toMatch(/Solo may publish/i);
     expect(text).toMatch(/verify it now/i);
     expect(text).toMatch(/not scheduled CDN verification/i);
     expect(text).toMatch(/GitHub Release download hop/i);

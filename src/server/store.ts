@@ -421,6 +421,18 @@ export type ReleaseLegalHoldRow = {
   created_at: string;
 };
 
+export type ReleasePublicPageRow = {
+  id: number;
+  installation_id: number;
+  revision_id: number;
+  public_token: string;
+  enabled: boolean;
+  created_by_login: string;
+  updated_by_login: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PackageProtectionRow = {
   id: number;
   installation_id: number;
@@ -1206,6 +1218,32 @@ function releaseLegalHoldRow(row: ReleaseLegalHoldSqlRow): ReleaseLegalHoldRow {
     reason: row.reason,
     actor_login: row.actor_login,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+type ReleasePublicPageSqlRow = {
+  id: unknown;
+  installation_id: unknown;
+  revision_id: unknown;
+  public_token: string;
+  enabled: boolean | unknown;
+  created_by_login: string;
+  updated_by_login: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
+function releasePublicPageRow(row: ReleasePublicPageSqlRow): ReleasePublicPageRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    revision_id: num(row.revision_id),
+    public_token: row.public_token,
+    enabled: Boolean(row.enabled),
+    created_by_login: row.created_by_login,
+    updated_by_login: row.updated_by_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
@@ -5930,6 +5968,69 @@ export function createStore(
         revisionIds,
       );
       return rows.map(deliveryLocationRow);
+    },
+
+    async listReleasePublicPagesForRevisions(revisionIds: number[]): Promise<ReleasePublicPageRow[]> {
+      if (revisionIds.length === 0) return [];
+      const placeholders = revisionIds.map((_, index) => `$${index + 1}`).join(", ");
+      const { rows } = await sql.query<ReleasePublicPageSqlRow>(
+        `SELECT * FROM release_public_pages WHERE revision_id IN (${placeholders})`,
+        revisionIds,
+      );
+      return rows.map(releasePublicPageRow);
+    },
+
+    async getReleasePublicPageByToken(token: string): Promise<ReleasePublicPageRow | null> {
+      const { rows } = await sql.query<ReleasePublicPageSqlRow>(
+        `SELECT * FROM release_public_pages WHERE public_token = $1`,
+        [token],
+      );
+      return rows[0] ? releasePublicPageRow(rows[0]) : null;
+    },
+
+    async getReleasePublicPageByRevision(revisionId: number): Promise<ReleasePublicPageRow | null> {
+      const { rows } = await sql.query<ReleasePublicPageSqlRow>(
+        `SELECT * FROM release_public_pages WHERE revision_id = $1`,
+        [revisionId],
+      );
+      return rows[0] ? releasePublicPageRow(rows[0]) : null;
+    },
+
+    async countEnabledPublicPages(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM release_public_pages WHERE installation_id = $1 AND enabled = TRUE`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async upsertReleasePublicPage(input: {
+      installationId: number;
+      revisionId: number;
+      publicToken: string;
+      enabled: boolean;
+      actorLogin: string;
+    }): Promise<ReleasePublicPageRow> {
+      const { rows } = await sql.query<ReleasePublicPageSqlRow>(
+        `INSERT INTO release_public_pages (
+           installation_id, revision_id, public_token, enabled, created_by_login, updated_by_login
+         )
+         VALUES ($1, $2, $3, $4, $5, $5)
+         ON CONFLICT (revision_id) DO UPDATE SET
+           enabled = EXCLUDED.enabled,
+           updated_by_login = EXCLUDED.updated_by_login,
+           updated_at = now()
+         RETURNING *`,
+        [
+          input.installationId,
+          input.revisionId,
+          input.publicToken,
+          input.enabled,
+          input.actorLogin,
+        ],
+      );
+      if (!rows[0]) throw new Error("release public page upsert returned no row");
+      return releasePublicPageRow(rows[0]);
     },
 
     async insertDeliveryVerification(input: {

@@ -786,6 +786,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosurePhase2(sql);
   await migrateDisclosureWorkflow(sql);
   await migrateDisclosureSlaBackfill(sql);
+  await migrateReleasePublicPages(sql);
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1248,6 +1249,66 @@ async function migrateDisclosureSlaBackfill(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "042_disclosure_sla_backfill",
+  ]);
+}
+
+async function migrateReleasePublicPages(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS release_public_pages (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      revision_id BIGINT NOT NULL UNIQUE REFERENCES release_revisions (id) ON DELETE CASCADE,
+      public_token TEXT NOT NULL UNIQUE,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by_login TEXT NOT NULL,
+      updated_by_login TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS release_public_pages_token_idx
+      ON release_public_pages (public_token);
+    CREATE INDEX IF NOT EXISTS release_public_pages_install_idx
+      ON release_public_pages (installation_id, enabled, id DESC);
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'invite.create',
+      'invite.revoke',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'origin.unwatch',
+      'map_destination.save',
+      'map_destination.delete',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save',
+      'repo.make_private',
+      'repo.delete_pack_assets',
+      'repo.disable_workflow',
+      'delivery_location.save',
+      'release.approve',
+      'release.reject',
+      'release.hold',
+      'release.release_hold',
+      'release.publish_verify',
+      'release.unpublish_verify'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "043_release_public_pages",
   ]);
 }
 

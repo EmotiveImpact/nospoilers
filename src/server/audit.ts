@@ -36,6 +36,8 @@ export const AUDIT_ACTIONS = [
   "release.reject",
   "release.hold",
   "release.release_hold",
+  "release.publish_verify",
+  "release.unpublish_verify",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

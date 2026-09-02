@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Release Ledger public verification page: an install admin publishes
+  `/verify/:token` for a sealed revision. Visitors see digests, receipt status,
+  and last delivery host match. Query strings, pack bytes, CI URLs, and signed
+  URLs are omitted. Failed-policy is not clean. Solo may publish. Unpaid 402 to
+  publish or unpublish; an already-published page still reads. Members 403.
+  Another tenant 404. The token is not the revision id. Audit records the
+  coordinate only. Public GET does not enqueue a delivery download. Unpublish
+  404s; republish keeps the same path. Not scheduled CDN, SBOM, or Sigstore.
+  Not a Pricing change.
+
 - Disclosure Desk internal workflow: vendor replies, encrypted expiring
   attachments (text/PDF/image only; archives rejected), assignment, review
   approval before `contacted`, service-level timestamps, and redacted
