@@ -406,6 +406,8 @@ Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
 docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
+Milestone 3 Checkout/portal/webhooks are wired and stay 503 without Stripe keys.
+This host has no Stripe keys. Do not create a Stripe account or prices without approval.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
