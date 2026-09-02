@@ -469,7 +469,9 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   identity, returns `not_owned` / `not_found` / `invalid` without inserting a watch,
   re-imports as `already_protected`, protects an existing watch in place, returns
   `watch_cap` at 25 watches without inserting, never downloads or enqueues `npm_scan`,
-  is 401 anonymous, 403 off-tenant, and 402 unpaid.
+  is 401 anonymous, 403 off-tenant, and 402 unpaid. Live Neon import on install
+  `158159401` refused prettier, left-pad, a missing name, and an invalid token,
+  added no watches, and stayed `queued: false`; the Cloudflare tunnel matched.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and
