@@ -4,11 +4,21 @@ Branch: `cursor/watch-desk-ux-mockups-71d1` · PR: EmotiveImpact/nospoilers#3
 
 ## State
 
-Ten static HTML mockups in this directory plus `index.html` (gallery), `mockup.css` (shared
-tokens and the state system), `README.md`, and `PROMPT.md` (the prompt that generates these).
+Ten static HTML mockups plus five `1x-` variants built on 01, `index.html` (gallery), `mockup.css`
+(tokens and the state system), `console.css` (the 01 shell plus every borrowed component),
+`README.md`, and `PROMPT.md` (the prompt that generates these).
 
-All ten are built and all ten are wired for the five state presets. Nothing in `src/` is touched
-and nothing here ships in the app build — `docs/` is outside `public/`.
+All fifteen are wired for the five state presets. Nothing in `src/` is touched and nothing here
+ships in the app build — `docs/` is outside `public/`.
+
+The user picked **01** as the base. The `1a`–`1e` files compose it with parts of the others; `1e`
+is the composite and the current front-runner. Anything new built on 01 should link `console.css`
+rather than copying shell styles, and should tag borrowed pieces with
+`<span class="added">from 0X</span>` so the provenance stays visible.
+
+Do not add `<link>` tags to Google Fonts and do not add a Content-Security-Policy meta tag. Both
+break Cursor's in-IDE `localhost:3000` preview, which iframes the port. The system font stack is
+the fallback and looks fine.
 
 ## Serve them
 

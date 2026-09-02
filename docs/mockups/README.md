@@ -53,6 +53,24 @@ Every panel opens with a paragraph before any data. An active critical leak and 
 dropdown have the same visual weight. Plan gating and admin-only controls are scattered across all
 of it, and members see panels with the controls silently removed.
 
+## Built on 01
+
+Five variants keep 01's sidebar console as the chassis and bolt on the strongest part of each other
+direction. Borrowed pieces carry a dashed `from 0X` tag in place, so you can see what came from
+where. They share `console.css`, which is the 01 shell plus every borrowed component, so these are
+real compositions rather than copies.
+
+| # | Variant | Borrows | Best if |
+| --- | --- | --- | --- |
+| [1E](1e-console-composite.html) | Console composite | 05 verdict · 09 tiles · 08 exposure · 04 sources · 10 steps · 02 palette | You want one screen that answers the question, shows the numbers, and still admits what is not set up |
+| [1A](1a-console-verdict-steps.html) | Console + verdict + steps | 05 verdict and folds · 10 steps and coverage ring | The desk should read like a person telling you what to do next |
+| [1B](1b-console-charts.html) | Console + charts | 09 tiles, donut, sparkline · 08 gantt and incident spine | You want the numbers that prove the product works on the first screen |
+| [1C](1c-console-triage.html) | Console + triage | 03 panes, checklist, thread · 08 exposure clock | Clearing alerts is the daily job |
+| [1D](1d-console-sources-settings.html) | Console + sources + settings | 04 unified source list · 07 settings rows | The clutter you most want gone is configuration |
+
+1D ends with an explicit table mapping all fifteen of today's panels to their new home, so nothing
+is quietly dropped.
+
 ## The ten
 
 | # | Direction | Optimises for | Cost |
