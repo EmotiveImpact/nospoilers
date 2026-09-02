@@ -180,6 +180,13 @@ type RegistryBody = {
   >;
 };
 
+/** Packument `dist.unpackedSize` only. Never a downloaded measurement. */
+export function unpackedBytesFromClaim(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
+  if (raw > Number.MAX_SAFE_INTEGER) return null;
+  return Math.floor(raw);
+}
+
 export function parseRegistryCreatedAt(time: Record<string, string> | undefined): Date | null {
   const raw = time?.created;
   if (!raw) return null;
@@ -245,7 +252,7 @@ export function packFromRegistry(
     tarballUrl: dist.tarball,
     shasum: typeof dist.shasum === "string" ? dist.shasum : null,
     integrity: typeof dist.integrity === "string" ? dist.integrity : null,
-    bytes: typeof dist.unpackedSize === "number" ? dist.unpackedSize : null,
+    bytes: unpackedBytesFromClaim(dist.unpackedSize),
     publishedAt: times.publishedAt,
     createdAt: parseRegistryCreatedAt(body.time),
     dependencyNames: [...new Set(dependencyNames)].sort(),

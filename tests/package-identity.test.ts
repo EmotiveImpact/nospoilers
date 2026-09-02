@@ -5,6 +5,7 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import {
   generateIdentityCandidates,
   identityPlanDenied,
+  unpackedSizeJump,
   IDENTITY_CANDIDATE_CAP,
 } from "../src/server/identity-signals.ts";
 import {
@@ -12,7 +13,7 @@ import {
   githubRepoFromNpmRepository,
   verifyPackageOwnership,
 } from "../src/server/package-identity.ts";
-import { packFromRegistry, type NpmPack, type NpmPort } from "../src/server/npm.ts";
+import { packFromRegistry, unpackedBytesFromClaim, type NpmPack, type NpmPort } from "../src/server/npm.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { coverageFrom } from "../src/coverage.ts";
@@ -93,7 +94,7 @@ describe("package identity parsing", () => {
       },
       versions: {
         "1.0.0": {
-          dist: { tarball: TARBALL, shasum: "abc123" },
+          dist: { tarball: TARBALL, shasum: "abc123", unpackedSize: 4096 },
           bin: { app: "bin/app.js" },
           scripts: { postinstall: "node scripts/leak.js", test: "echo ok" },
           dependencies: { lodash: "^4.17.21" },
@@ -113,6 +114,19 @@ describe("package identity parsing", () => {
     expect(parsed?.createdAt?.toISOString()).toBe("2024-01-01T00:00:00.000Z");
     expect(parsed?.dependencyNames).toEqual(["left-pad", "lodash"]);
     expect(parsed?.dependencyNames).not.toContain("typescript");
+    expect(parsed?.bytes).toBe(4096);
+    expect(unpackedBytesFromClaim(-1)).toBeNull();
+    expect(unpackedBytesFromClaim(Number.NaN)).toBeNull();
+    expect(unpackedBytesFromClaim(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(unpackedSizeJump(100, 200)).toBeNull();
+    expect(unpackedSizeJump(100, 201)).toEqual({ from: 100, to: 201, delta: 101 });
+    expect(unpackedSizeJump(100, 100 + 5 * 1024 * 1024)).toEqual({
+      from: 100,
+      to: 100 + 5 * 1024 * 1024,
+      delta: 5 * 1024 * 1024,
+    });
+    expect(unpackedSizeJump(null, 10_000)).toBeNull();
+    expect(unpackedSizeJump(100, null)).toBeNull();
     expect(parsed?.recentVersions?.map((row) => row.version)).not.toContain("created");
   });
 
@@ -228,10 +242,16 @@ describe("protected package identity", () => {
         headers: { cookie },
       });
       const identityBody = (await identity.json()) as {
-        snapshot: { maintainers: string[]; binNames: string[]; dependencyNames: string[] };
+        snapshot: {
+          maintainers: string[];
+          binNames: string[];
+          dependencyNames: string[];
+          unpackedBytes: number | null;
+        };
       };
       expect(identityBody.snapshot.maintainers).toEqual(["octo"]);
       expect(identityBody.snapshot.dependencyNames).toEqual([]);
+      expect(identityBody.snapshot.unpackedBytes).toBe(100);
       const foreignIdentity = await app.request(`/api/packages/${packageId}/identity`, {
         headers: { cookie: otherCookie },
       });
@@ -832,6 +852,184 @@ describe("Team identity signals", () => {
         name: "unpaid-new",
         createdAt: new Date(now),
       });
+      const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(unpaidCheck.status).toBe(402);
+      expect(downloads).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("alerts on a packument unpacked-size jump without downloading", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u2");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const downloads: string[] = [];
+      const current: {
+        pack: NpmPack | null;
+        downloads: string[];
+      } = {
+        pack: ownedPack({ bytes: 100 }),
+        downloads,
+      };
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+      });
+
+      const connected = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ packageName: "@octo/app", installationId: 7 }),
+      });
+      const packageId = ((await connected.json()) as { package: { id: number } }).package.id;
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/protect`, {
+            method: "POST",
+            headers: { cookie },
+          })
+        ).status,
+      ).toBe(201);
+
+      const baseline = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      expect(
+        ((await baseline.json()) as { snapshot: { unpackedBytes: number | null } }).snapshot
+          .unpackedBytes,
+      ).toBe(100);
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterBaseline = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterBaseline.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("identity_size_jump");
+
+      current.pack = ownedPack({ bytes: 150 });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterSmall = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterSmall.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("identity_size_jump");
+
+      current.pack = ownedPack({ bytes: 301 });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const alerts = await app.request("/api/alerts", { headers: { cookie } });
+      const sizeAlerts = (
+        (await alerts.json()) as { alerts: { kind: string; body: string }[] }
+      ).alerts.filter((row) => row.kind === "identity_size_jump");
+      expect(sizeAlerts).toHaveLength(1);
+      expect(sizeAlerts[0]?.body).toMatch(/301/);
+      expect(sizeAlerts[0]?.body).toMatch(/not a malware verdict/);
+      expect(sizeAlerts[0]?.body).toMatch(/unpackedSize/);
+      expect(downloads).toEqual([]);
+
+      const identity = await app.request(`/api/packages/${packageId}/identity`, {
+        headers: { cookie },
+      });
+      expect(
+        ((await identity.json()) as { snapshot: { unpackedBytes: number | null } }).snapshot
+          .unpackedBytes,
+      ).toBe(301);
+
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterDedup = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterDedup.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_size_jump",
+        ),
+      ).toHaveLength(1);
+
+      current.pack = ownedPack({ bytes: null });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterMissing = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterMissing.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_size_jump",
+        ),
+      ).toHaveLength(1);
+
+      current.pack = ownedPack({ bytes: 301 });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterRestore = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterRestore.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_size_jump",
+        ),
+      ).toHaveLength(1);
+
+      const foreign = await app.request("/api/alerts", { headers: { cookie: otherCookie } });
+      expect(
+        ((await foreign.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("identity_size_jump");
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      current.pack = ownedPack({ bytes: 201 + 5 * 1024 * 1024 });
+      await app.request(`/api/packages/${packageId}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      const afterSolo = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterSolo.json()) as { alerts: { kind: string; body: string }[] }).alerts.filter(
+          (row) => row.kind === "identity_size_jump" && /5243085|5242880/.test(row.body),
+        ),
+      ).toHaveLength(0);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      current.pack = ownedPack({ bytes: 201 + 5 * 1024 * 1024 });
       const unpaidCheck = await app.request(`/api/packages/${packageId}/check`, {
         method: "POST",
         headers: { cookie },

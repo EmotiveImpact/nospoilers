@@ -34,11 +34,12 @@ Read in this order:
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
-  `025_hosted_usage`, `026_github_response`, `027_team_invites`, and
-  `028_identity_dependencies` are applied. `026_github_response` only
+  `025_hosted_usage`, `026_github_response`,   `027_team_invites`,
+  `028_identity_dependencies`, and `029_identity_unpacked_bytes` are applied. `026_github_response` only
   extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
   `installation_invites`. `028_identity_dependencies` adds
-  `package_identity_snapshots.dependency_names`. `hosted_usage_days` counts heavy hosted unpacks per
+  `package_identity_snapshots.dependency_names`. `029_identity_unpacked_bytes` adds
+  `package_identity_snapshots.unpacked_bytes`. `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -148,8 +149,9 @@ Read in this order:
   and receipt download. Failed-policy and inconclusive are not clean. Watch **Protect identity** verifies npm scope or GitHub
   repository ownership before snapshotting maintainers and metadata. Trial and Team installs
   generate bounded lookalike names (metadata only, never download lookalike tarballs), dormant
-  resurrection, release-burst/version-jump alerts, and new-dependency alerts when a protected
-  pack starts depending on a package first published within 14 days. Admins allowlist with a reason and typed
+  resurrection, release-burst/version-jump alerts, new-dependency alerts when a protected
+  pack starts depending on a package first published within 14 days, and packument unpacked-size
+  jumps (2× or ≥5 MiB versus the last snapshot’s `dist.unpackedSize`, no download). Admins allowlist with a reason and typed
   candidate name. This is not a malware verdict and not auto advisory/takedown.
 - Covered installs get Watch alerts when GitHub suspends/unsuspends the App, accepts new
   permissions, or adds/removes repositories. Uninstall still deletes the tenant. Watch
@@ -287,7 +289,8 @@ includes secrets; Solo 403; unpaid 402; members may read/export).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
 GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump,
-new dependency toward a package first published within 14 days; trial/Team; metadata-only
+new dependency toward a package first published within 14 days, and packument unpacked-size
+jumps (2× or ≥5 MiB versus the last snapshot, metadata only); trial/Team; metadata-only
 candidate and dependency-name checks; typed allowlist; no malware verdict; no tarball
 download of the added dependency).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo
@@ -325,8 +328,11 @@ baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a
 Prerelease npm channel tarballs are in (`next`/`beta`/`canary`/`rc`/`alpha`/`preview` when those
 tags point at another version, cap three extras; other dist-tags stay tag-only). Event-driven.
 Not a Pricing change.
-A watched npm name that 404s after a recorded version writes `package_unpublished` (no
+  A watched npm name that 404s after a recorded version writes `package_unpublished` (no
 download; 5xx is not unpublish; unpaid skips). Event-driven. Not a Pricing change.
+A protected pack’s packument `dist.unpackedSize` that is 2× or ≥5 MiB versus the last
+identity snapshot writes `identity_size_jump` (no download; first snapshot / missing size
+is baseline; trial/Team; Solo 403). Event-driven. Not SIZE-003. Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.

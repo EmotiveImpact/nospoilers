@@ -112,8 +112,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   Members may read/export. Never stores URLs, emails, tokens, or secret values.
 - Package Identity Team signals: bounded lookalike candidates (homoglyph, adjacent-key,
   separator, token-order, scope confusion, edit-distance; cap 40), dormant resurrection after
-  180 days, burst/major-jump cadence alerts, and new dependencies that point at a package
-  first published within 14 days. Metadata-only candidate and dependency-name checks. Typed
+  180 days, burst/major-jump cadence alerts, new dependencies that point at a package
+  first published within 14 days, and packument unpacked-size jumps (2× or ≥5 MiB versus
+  the last snapshot’s claimed `dist.unpackedSize`, no download). Metadata-only candidate
+  and dependency-name checks. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for the install list window (default 90 days). Solo 403. Unpaid 402. No invented rows.

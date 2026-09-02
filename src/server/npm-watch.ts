@@ -87,7 +87,10 @@ export async function syncProtectedIdentity(
   const depsChanged =
     prevDeps.length !== dependencyNames.length ||
     dependencyNames.some((name) => !prevDeps.includes(name));
-  if (prevFacts && changes.length === 0 && !versionChanged && !depsChanged) {
+  const unpackedBytes = pack.bytes ?? null;
+  const prevBytes = previous?.unpacked_bytes ?? null;
+  const sizeChanged = unpackedBytes !== prevBytes;
+  if (prevFacts && changes.length === 0 && !versionChanged && !depsChanged && !sizeChanged) {
     return { snapshot: false, alerts: 0 };
   }
   await store.insertPackageIdentitySnapshot({
@@ -101,6 +104,7 @@ export async function syncProtectedIdentity(
     lifecycleScripts: identity.lifecycleScripts,
     publishedAt: pack.publishedAt ?? null,
     dependencyNames,
+    unpackedBytes,
   });
   let alerts = 0;
   for (const change of changes) {

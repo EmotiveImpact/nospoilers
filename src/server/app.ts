@@ -2518,6 +2518,7 @@ export function createApp(deps: AppDeps): Hono {
             lifecycleScripts: snapshot.lifecycle_scripts,
             publishedAt: snapshot.published_at,
             dependencyNames: snapshot.dependency_names,
+            unpackedBytes: snapshot.unpacked_bytes,
             createdAt: snapshot.created_at,
           }
         : null,

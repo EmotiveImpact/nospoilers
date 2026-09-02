@@ -3618,8 +3618,9 @@ export function WatchPage({ search }: { search: string }) {
           larger unpacked, raises SIZE-003 against the
           approved baseline or the previous receipt. Protect identity only after the npm scope or
           GitHub repository field matches this install. Trial and Team installs then generate bounded
-          lookalike names and watch dormant resurrection, release bursts, and new dependencies that
-          point at newly created packages. That is not a malware verdict.
+          lookalike names and watch dormant resurrection, release bursts, new dependencies that
+          point at newly created packages, and packument unpacked-size jumps (the registry
+          dist.unpackedSize claim, without downloading). That is not a malware verdict.
         </p>
         {previewing ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -3627,7 +3628,7 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-            Lookalike, dormant, burst, and new-dependency signals are on Team.
+            Lookalike, dormant, burst, new-dependency, and packument-size signals are on Team.
           </p>
         ) : ended ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">

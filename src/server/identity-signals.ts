@@ -1,7 +1,9 @@
 import { coverageFrom, type Coverage } from "../coverage.ts";
+import { SIZE_JUMP_BYTES, SIZE_JUMP_RATIO } from "../release-diff.ts";
 import {
   normalizePackageName,
   parseRegistryTimes,
+  unpackedBytesFromClaim,
   type NpmAuth,
   type NpmPack,
   type NpmPort,
@@ -92,13 +94,13 @@ export function identityPlanDenied(coverage: Coverage): { error: string; status:
   if (coverage.status === "ended") {
     return {
       error:
-        "Coverage ended. Subscribe to Team for lookalike, dormant, and new-dependency package signals.",
+        "Coverage ended. Subscribe to Team for lookalike, dormant, new-dependency, and packument-size package signals.",
       status: 402,
     };
   }
   if (coverage.plan === "solo") {
     return {
-      error: "Lookalike, dormant, burst, and new-dependency signals are on Team.",
+      error: "Lookalike, dormant, burst, new-dependency, and packument-size signals are on Team.",
       status: 403,
     };
   }
@@ -323,9 +325,43 @@ function snapshotDependencyNames(row: PackageIdentitySnapshotRow | null): string
   return row?.dependency_names ?? [];
 }
 
+export function unpackedSizeJump(
+  previousBytes: number | null | undefined,
+  nextBytes: number | null | undefined,
+): { from: number; to: number; delta: number } | null {
+  const from = unpackedBytesFromClaim(previousBytes);
+  const to = unpackedBytesFromClaim(nextBytes);
+  if (from === null || to === null || from <= 0) return null;
+  const delta = to - from;
+  if (to > from * SIZE_JUMP_RATIO || delta >= SIZE_JUMP_BYTES) {
+    return { from, to, delta };
+  }
+  return null;
+}
+
 function addedDependencyNames(previous: string[], current: string[]): string[] {
   const seen = new Set(previous);
   return current.filter((name) => !seen.has(name)).sort();
+}
+
+async function checkPackumentSize(input: {
+  store: Store;
+  notifier?: AlertNotifier;
+  pkg: WatchedPackageRow;
+  pack: NpmPack;
+  previous: PackageIdentitySnapshotRow | null;
+}): Promise<number> {
+  const jump = unpackedSizeJump(input.previous?.unpacked_bytes, input.pack.bytes);
+  if (!jump) return 0;
+  await emitAlert(input.store, input.notifier, {
+    installationId: input.pkg.installation_id,
+    packageName: input.pkg.package_name,
+    kind: "identity_size_jump",
+    title: `npm ${input.pkg.package_name} unpacked size jumped`,
+    body: `${input.pkg.package_name} registry unpacked size went from ${jump.from} to ${jump.to} bytes (${jump.delta >= 0 ? "+" : ""}${jump.delta}). This is the packument dist.unpackedSize claim, not a downloaded measurement. This is not a malware verdict.`,
+    githubDeliveryId: `identity-size:${input.pkg.installation_id}:${input.pkg.package_name}:${jump.from}->${jump.to}`,
+  });
+  return 1;
 }
 
 async function checkNewDependencies(input: {
@@ -491,6 +527,7 @@ export async function checkIdentitySignals(input: {
       alerts += 1;
     }
   }
+  alerts += await checkPackumentSize(input);
   alerts += await checkNewDependencies(input);
   alerts += await checkLookalikeCandidates(input);
   return alerts;

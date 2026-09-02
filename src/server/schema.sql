@@ -492,6 +492,7 @@ CREATE TABLE IF NOT EXISTS package_identity_snapshots (
   lifecycle_scripts JSONB NOT NULL,
   published_at TIMESTAMPTZ,
   dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb,
+  unpacked_bytes BIGINT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

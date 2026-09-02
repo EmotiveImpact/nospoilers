@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Trial and Team Package Identity alerts when a protected pack’s npm `dist.unpackedSize`
+  is twice as large, or at least 5 MiB larger, than the last identity snapshot. First
+  snapshot and missing size are baseline. Metadata only; the tarball is not downloaded.
+  This is not SIZE-003 (hosted receipt unpack). Solo 403. Unpaid 402. Not a malware
+  verdict. Not a Pricing change.
+
 - Watch records `package_unpublished` when a watched npm name 404s after we already
   recorded a version. No tarball download. A 5xx or network error is not an unpublish.
   Unpaid skips. Another tenant cannot see it. Not a malware verdict. Not a Pricing change.
