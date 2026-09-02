@@ -731,6 +731,13 @@ Unpaid 402. Members 403. Live on install `158159401`: unauth 401, invalid key
 (`inventedIncident: false`, no Watch alert, PagerDuty HTTP 400), typed-confirm
 delete 200, leftover destination 0. Delivery rows stayed with a null
 destination id. Cloudflare tunnel matched. The dummy key was deleted.
+Watch email destinations are wired (`POST /api/destinations/email`). Encrypted
+address, domain + redacted local returned, audit stores the domain. Test and
+send stay 503 without Resend keys. Live Neon: `060_email_destinations` applied,
+email destinations 0, email deliveries 0, unauth POST/list 401, `/api/health`
+`resend: false`. Watch preview has no save-email form. No invented destination.
+Do not create a Resend account or sending domain without approval. Do not mail
+disclosures or invites.
 Stripe Checkout is wired; this host has no Stripe keys. Resend Watch email is wired; this host has no Resend keys. The normal worker classifies and skips Electron
 installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.

@@ -22,7 +22,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Billing portal | Built: install admin opens portal when a customer exists; already-subscribed Checkout returns the portal | NoSpoilers |
 | Railway web/API and worker deployment | Planned | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
-| Resend email delivery | Built: Watch email destinations encrypt the address; AlertNotifier POSTs to Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set; test and send stay 503 / `failed` without keys; this host has no keys; Disclosure Desk `sent` stays false; invites stay GitHub-login only | NoSpoilers |
+| Resend email delivery | Built: Watch email destinations encrypt the address; AlertNotifier POSTs to Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set; test and send stay 503 / `failed` without keys; this host has no keys (`resend: false`); Live Neon `060` applied, email destinations 0; Disclosure Desk `sent` stays false; invites stay GitHub-login only | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
 | Upload/API rate limiting | Built: hosted scan, GitHub OAuth, and owner discovery per address; GitHub webhooks are not limited | NoSpoilers |
