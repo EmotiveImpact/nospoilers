@@ -392,6 +392,7 @@ describe("Disclosure Desk destinations", () => {
               policies: [{ policyUrl: "https://prettier.io/security" }],
               caseCount: 1,
             },
+            findings: [],
           }),
         ),
       ).not.toMatch(/security@|timeTo|Ms/i);

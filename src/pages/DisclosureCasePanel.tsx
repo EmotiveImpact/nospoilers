@@ -135,6 +135,13 @@ type DisclosureCase = {
     contacts: { contact: string; sourceUrl: string | null }[]
     policies: { policyUrl: string }[]
   } | null
+  findings: Array<{
+    fingerprint: string
+    rule: string
+    severity: string
+    path: string
+    title: string
+  }>
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -674,7 +681,15 @@ export function DisclosureCasePanel({
                     : ""}
                 </p>
               ) : null}
-              {desk.fingerprints.length > 0 ? (
+              {desk.findings?.length ? (
+                <ul className="font-mono text-xs text-dim">
+                  {desk.findings.map((row) => (
+                    <li key={row.fingerprint}>
+                      {row.rule} · {row.severity} · {row.path} · {row.title}
+                    </li>
+                  ))}
+                </ul>
+              ) : desk.fingerprints.length > 0 ? (
                 <ul className="font-mono text-xs text-dim">
                   {desk.fingerprints.map((fp) => (
                     <li key={fp}>{fp}</li>

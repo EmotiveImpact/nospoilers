@@ -22,6 +22,7 @@ import {
   categoryFromRule,
   DISCLOSURE_CATEGORY_ERROR,
   fingerprintsFromFindings,
+  parseFingerprintParts,
   matchDoNotContact,
   matchDuplicateReasons,
   ownerMatchesVendorHost,
@@ -111,6 +112,14 @@ describe("Disclosure Desk helpers", () => {
   it("fingerprints omit finding values and policy URLs are stored never fetched", () => {
     const fingerprints = fingerprintsFromFindings([PRETTIER_FINDING]);
     expect(fingerprints).toEqual([findingFingerprint({ ...PRETTIER_FINDING, detail: "" })]);
+    expect(parseFingerprintParts(fingerprints[0] ?? "")).toEqual({
+      fingerprint: fingerprints[0],
+      rule: "MAP-001",
+      severity: "critical",
+      path: "package/dist/index.js.map",
+      title: "Source map ships in the artifact",
+    });
+    expect(parseFingerprintParts("MAP-001")).toBeNull();
     expect(fingerprints.join(" ")).not.toContain("AKIA");
     expect(fingerprints.join(" ")).not.toContain("SECRET_VALUE");
     expect(parsePolicyUrl("https://prettier.io/security")).toBe("https://prettier.io/security");
@@ -376,9 +385,42 @@ describe("Disclosure Desk Phase 1", () => {
           sent: boolean;
           notes: string | null;
           duplicateLinks: unknown[];
+          findings: { rule: string; title: string }[];
         };
       };
       expect(createdBody.case.state).toBe("signal");
+      expect(createdBody.case.findings).toEqual([
+        expect.objectContaining({
+          rule: "MAP-001",
+          severity: "critical",
+          path: "package/dist/index.js.map",
+          title: "Source map ships in the artifact",
+        }),
+      ]);
+      expect(JSON.stringify(createdBody.case.findings)).not.toContain("AKIA");
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_findings")).rows[0]
+            ?.n,
+        ),
+      ).toBe(1);
+      expect(
+        (
+          await sql.query<{ title: string; fingerprint: string }>(
+            "SELECT title, fingerprint FROM disclosure_findings",
+          )
+        ).rows.some((row) => `${row.title} ${row.fingerprint}`.includes("AKIA")),
+      ).toBe(false);
+      const createdAgain = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        headers: admin,
+      });
+      expect(createdAgain.status).toBe(200);
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_findings")).rows[0]
+            ?.n,
+        ),
+      ).toBe(1);
       expect(createdBody.case.findingCategory).toBe("sourcemap");
       expect(createdBody.case.sent).toBe(false);
       expect(createdBody.case.duplicateLinks).toEqual([]);
@@ -439,8 +481,21 @@ describe("Disclosure Desk Phase 1", () => {
         case: {
           duplicateLinks: { owner: string; repo: string; reasons: string[] }[];
           events: { summary: string }[];
+          findings: { rule: string; title: string }[];
         };
       };
+      expect(confirmedLeftPadBody.case.findings).toEqual([
+        expect.objectContaining({
+          rule: "MAP-001",
+          title: "Source map ships in the artifact",
+        }),
+      ]);
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_findings")).rows[0]
+            ?.n,
+        ),
+      ).toBe(2);
       expect(confirmedLeftPadBody.case.duplicateLinks).toEqual([
         expect.objectContaining({
           owner: "prettier",
@@ -717,9 +772,13 @@ describe("Disclosure Desk Phase 1", () => {
         report: {
           duplicateLinks: { owner: string; repo: string; reasons: string[] }[];
           notesIncluded: boolean;
+          findings: { rule: string }[];
         };
       };
       expect(linkedReportBody.report.notesIncluded).toBe(false);
+      expect(linkedReportBody.report.findings).toEqual([
+        expect.objectContaining({ rule: "MAP-001" }),
+      ]);
       expect(linkedReportBody.report.duplicateLinks).toEqual([
         expect.objectContaining({
           owner: "left-pad",
@@ -772,6 +831,10 @@ describe("Disclosure Desk Phase 1", () => {
         /append-only/,
       );
       await expect(sql.query(`DELETE FROM disclosure_events`)).rejects.toThrow(/append-only/);
+      await expect(sql.query(`UPDATE disclosure_findings SET title = 'mutated'`)).rejects.toThrow(
+        /append-only/,
+      );
+      await expect(sql.query(`DELETE FROM disclosure_findings`)).rejects.toThrow(/append-only/);
 
       const ungated = await store.updateProspectStatus(leftPadId, "contacted");
       expect(ungated?.status).toBe("contacted");
@@ -1296,12 +1359,20 @@ describe("Disclosure Desk organization and domain matching", () => {
           reproducibilitySteps: string | null;
           notesIncluded: boolean;
           duplicateLinks: unknown[];
+          findings: { rule: string; title: string }[];
         };
       };
       expect(reportBody.sent).toBe(false);
       expect(reportBody.report.notesIncluded).toBe(false);
       expect(reportBody.report.reproducibilitySteps).toBe(REPRO_STEPS);
       expect(reportBody.report.duplicateLinks).toEqual([]);
+      expect(reportBody.report.findings).toEqual([
+        expect.objectContaining({
+          rule: "MAP-001",
+          title: "Source map ships in the artifact",
+        }),
+      ]);
+      expect(JSON.stringify(reportBody)).not.toContain("AKIA");
       expect(wakes).toBe(0);
     } finally {
       await sql.close();

@@ -350,7 +350,9 @@ Internal staff running acquisition and disclosure work.
   other owner/repo and reasons; a 409 without `confirmDuplicate` writes
   no row), first-class GitHub-owner organizations with append-only vendor
   domains from a stored policy URL or security contact (forge/registry hosts
-  are omitted; not a commercial workspace), encrypted expiring notes, stored (never fetched) security contact or https
+  are omitted; not a commercial workspace), append-only `disclosure_findings`
+  rows parsed from fingerprints (`rule|severity|path|title`, never finding
+  values), encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
   (text/PDF/image only; expired ciphertext is zeroed on desk read and the
@@ -369,7 +371,8 @@ Internal staff running acquisition and disclosure work.
   missed deadlines. Minutes, last-active, ranking, and billing fields are omitted.
 - Read first-class Disclosure Desk organizations (`GET /api/internal/disclosure/organizations`):
   GitHub owners from cases plus recorded vendor domains, policy URLs, and
-  security contacts. No create form; rows come from real cases only.
+  security contacts. No create form; rows come from real cases only. Case
+  GET materializes append-only finding rows from existing fingerprints.
 - Save, test, and delete owner-only Disclosure Desk destinations
   (`/api/internal/disclosure/destinations`): one HTTPS webhook and one Jira Cloud
   project. Secrets are never returned. A test never invents an incident or
@@ -430,7 +433,7 @@ These are never customer features:
 | Disclosure destinations | `/api/internal/disclosure/destinations`; webhook + Jira; encrypted; owner-only |
 | Do-not-contact | `/api/internal/disclosure/do-not-contact`; `disclosure_do_not_contact`; owner-only |
 | Prospect companies and artifacts | `prospects` table |
-| Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
+| Disclosure records | `disclosure_cases` plus append-only `disclosure_events` and `disclosure_findings`; never customer-visible |
 | Verified-critical and deadline-missed notifications | `/api/internal/notifications`; `internal_notifications`; owner-only; never mailed |
 | Global job/queue operations | `GET /api/internal/queue` counts on Artifact Leads; owner-only; granted operators 403; job bodies are not listed; usage aggregates are counts only |
 | Infrastructure costs | billing of *our* cloud, not customer invoices |
@@ -495,10 +498,13 @@ package name, or fingerprint overlap unless confirmed, fingerprints
 are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are
 encrypted and expire from reads, drafts and acknowledgements stay `sent: false`,
 `disclosure_events` are append-only, confirmed `disclosure_duplicate_links`
-are append-only, and vendor domains on `disclosure_organizations` stay after
-contact/policy is cleared. Live Neon: `056` applied; unauth and `not-admin` 401; owner
-desk 200; prettier org + `prettier.io`; stevemao org, no vendor domain;
-prettier vs left-pad still no duplicate; leftover extra orgs 0; leftover links 0; no open jobs; tunnel matched.
+are append-only, vendor domains on `disclosure_organizations` stay after
+contact/policy is cleared, and `disclosure_findings` stay append-only
+fingerprint rows without values. Live Neon: `058` applied; unauth and
+`not-admin` 401; owner desk 200; prettier findings from existing SEC-003
+fingerprints; left-pad findings from its recorded fingerprints; leftover
+extra findings 0; leftover extra orgs 0; leftover links 0; leftover grants
+0; no open jobs; tunnel matched.
 Existing feed tests still call
 `store.updateProspectStatus` directly.
 `tests/disclosure-phase2.test.ts` proves human-edited templates substitute placeholders

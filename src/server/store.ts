@@ -15,6 +15,7 @@ import {
   type DisclosureConversion,
   type DisclosureDomainRow,
   type DisclosureEventRow,
+  type DisclosureFindingRow,
   type DisclosureOrganizationRow,
   type DisclosureOrganizationView,
   type DisclosurePolicyRow,
@@ -1236,6 +1237,28 @@ function contactRow(row: {
     contact: row.contact,
     contact_key: row.contact_key,
     source_url: row.source_url,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function findingRow(row: {
+  id: unknown;
+  case_id: unknown;
+  fingerprint: string;
+  rule: string;
+  severity: string;
+  path: string;
+  title: string;
+  created_at: string | Date;
+}): DisclosureFindingRow {
+  return {
+    id: num(row.id),
+    case_id: num(row.case_id),
+    fingerprint: row.fingerprint,
+    rule: row.rule,
+    severity: row.severity,
+    path: row.path,
+    title: row.title,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -3316,6 +3339,32 @@ export function createStore(
         [organizationId],
       );
       return rows.map(policyRow);
+    },
+
+    async addDisclosureFinding(input: {
+      caseId: number;
+      fingerprint: string;
+      rule: string;
+      severity: string;
+      path: string;
+      title: string;
+    }): Promise<boolean> {
+      const row = await sql.query<{ id: unknown }>(
+        `INSERT INTO disclosure_findings (case_id, fingerprint, rule, severity, path, title)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (case_id, fingerprint) DO NOTHING
+         RETURNING id`,
+        [input.caseId, input.fingerprint, input.rule, input.severity, input.path, input.title],
+      );
+      return Boolean(row.rows[0]);
+    },
+
+    async listDisclosureFindings(caseId: number): Promise<DisclosureFindingRow[]> {
+      const { rows } = await sql.query<Parameters<typeof findingRow>[0]>(
+        `SELECT * FROM disclosure_findings WHERE case_id = $1 ORDER BY id ASC`,
+        [caseId],
+      );
+      return rows.map(findingRow);
     },
 
     async listDisclosureDomainHosts(): Promise<{ github_owner_key: string; host: string }[]> {

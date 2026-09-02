@@ -29,6 +29,12 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
     .map((row) => `<li>${escapeHtml(row.summary)} · ${escapeHtml(row.actor)}</li>`)
     .join("");
   const fingerprints = report.fingerprints.map((fp) => `<li><code>${escapeHtml(fp)}</code></li>`).join("");
+  const findings = report.findings
+    .map(
+      (row) =>
+        `<li><code>${escapeHtml(row.rule)}</code> · ${escapeHtml(row.severity)} · ${escapeHtml(row.path)} · ${escapeHtml(row.title)}</li>`,
+    )
+    .join("");
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -77,6 +83,8 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
       )
       .join("") || "<li>none</li>"
   }</ul>
+  <h2>Findings</h2>
+  <ul>${findings || "<li>none</li>"}</ul>
   <h2>Fingerprints</h2>
   <ul>${fingerprints || "<li>none</li>"}</ul>
   <h2>Vendor replies</h2>
@@ -113,6 +121,9 @@ export function renderDisclosureReportPdf(report: DisclosureReport): Buffer {
     `verified ${report.sla.verifiedAt ?? "not yet"}`,
     `acknowledged ${report.sla.acknowledgedAt ?? "not yet"}`,
     "Never sent. Notes and attachment bytes omitted.",
+    ...report.findings
+      .slice(0, 8)
+      .map((row) => `finding ${row.rule} ${row.severity} ${row.path} ${row.title}`),
     ...report.fingerprints.slice(0, 12).map((fp) => `fp ${fp}`),
     ...report.replies.slice(0, 8).map((row) => `reply ${row.channel} ${row.summary.slice(0, 80)}`),
     ...report.attachments.slice(0, 8).map((row) => `file ${row.filename} ${row.byteLength}b`),

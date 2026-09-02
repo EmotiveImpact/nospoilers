@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- Disclosure Desk findings: each case stores append-only
+  `disclosure_findings` rows parsed from `rule|severity|path|title`
+  fingerprints. Finding values are never stored. Case views and reports
+  expose the structured rows. Customer sessions stay 401. No worker wake.
+  Nothing is mailed. Live Neon: `058` applied; unauth and `not-admin` 401;
+  prettier case has SEC-003 rows from existing fingerprints; left-pad has
+  its recorded fingerprints; leftover extra findings 0; leftover extra
+  orgs/contacts 0; leftover links 0; leftover grants 0; leftover
+  destinations 0; no open jobs; campaigns 0; watches 0; Cloudflare tunnel
+  matched. Not a customer product and not a Pricing change.
+
 - Disclosure Desk security contacts and policies: each organization
   stores append-only contact and policy-URL records when a case saves
   those fields. The policy URL is the source on the contact when both

@@ -415,6 +415,37 @@ CREATE TRIGGER disclosure_policies_no_delete
   BEFORE DELETE ON disclosure_policies
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_contact_policy_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_findings (
+  id BIGSERIAL PRIMARY KEY,
+  case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+  fingerprint TEXT NOT NULL,
+  rule TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  path TEXT NOT NULL,
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (case_id, fingerprint)
+);
+
+CREATE INDEX IF NOT EXISTS disclosure_findings_case_idx
+  ON disclosure_findings (case_id, id ASC);
+
+CREATE OR REPLACE FUNCTION reject_disclosure_finding_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'disclosure_findings are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS disclosure_findings_no_update ON disclosure_findings;
+CREATE TRIGGER disclosure_findings_no_update
+  BEFORE UPDATE ON disclosure_findings
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_finding_mutation();
+DROP TRIGGER IF EXISTS disclosure_findings_no_delete ON disclosure_findings;
+CREATE TRIGGER disclosure_findings_no_delete
+  BEFORE DELETE ON disclosure_findings
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_finding_mutation();
+
 CREATE TABLE IF NOT EXISTS disclosure_vendor_replies (
   id BIGSERIAL PRIMARY KEY,
   case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,

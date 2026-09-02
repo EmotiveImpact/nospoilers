@@ -119,7 +119,11 @@ Read in this order:
   `057_disclosure_contacts_policies` stores append-only security contacts
   and policy URLs on the organization. Live Neon: `057` applied; prettier
   has `security@prettier.io` and `https://prettier.io/security`; stevemao
-  has none. Next unused id is `058_*`.
+  has none.
+  `058_disclosure_findings` stores append-only fingerprint rows
+  (rule/severity/path/title, never values). Live Neon: `058` applied;
+  prettier has SEC-003 from the existing case; leftover extra findings 0.
+  Next unused id is `059_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.

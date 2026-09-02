@@ -237,6 +237,36 @@ export type DisclosureOrganizationView = {
   caseCount: number;
 };
 
+export type DisclosureFindingRow = {
+  id: number;
+  case_id: number;
+  fingerprint: string;
+  rule: string;
+  severity: string;
+  path: string;
+  title: string;
+  created_at: string;
+};
+
+export type DisclosureFindingView = {
+  fingerprint: string;
+  rule: string;
+  severity: string;
+  path: string;
+  title: string;
+};
+
+export function parseFingerprintParts(fingerprint: string): DisclosureFindingView | null {
+  const parts = fingerprint.split("|");
+  if (parts.length < 4) return null;
+  const rule = parts[0]?.trim() ?? "";
+  const severity = parts[1]?.trim() ?? "";
+  const path = parts[2]?.trim() ?? "";
+  const title = parts.slice(3).join("|").trim();
+  if (!rule || !severity || !path || !title) return null;
+  return { fingerprint, rule, severity, path, title };
+}
+
 export function parseDomainSource(value: unknown): DomainSource | null {
   return typeof value === "string" && DOMAIN_SOURCES.includes(value as DomainSource)
     ? (value as DomainSource)
@@ -411,6 +441,7 @@ export type DisclosureCaseView = {
   attachments: DisclosureAttachmentView[];
   duplicateLinks: DuplicateLinkView[];
   organization: DisclosureOrganizationView | null;
+  findings: DisclosureFindingView[];
   createdAt: string;
   updatedAt: string;
   events: DisclosureEventView[];
@@ -470,6 +501,7 @@ export type DisclosureReport = {
   events: DisclosureEventView[];
   duplicateLinks: DuplicateLinkView[];
   organization: DisclosureOrganizationView | null;
+  findings: DisclosureFindingView[];
 };
 
 export type DisclosureEventView = {
@@ -1403,6 +1435,7 @@ export function toDisclosureView(
   artifact: ArtifactEvidence,
   duplicateLinks: DuplicateLinkView[] = [],
   organization: DisclosureOrganizationView | null = null,
+  findings: DisclosureFindingView[] = [],
 ): DisclosureCaseView {
   return {
     id: row.id,
@@ -1443,6 +1476,7 @@ export function toDisclosureView(
     attachments: attachments.map(toAttachmentView),
     duplicateLinks,
     organization,
+    findings,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map((event) => ({
@@ -1682,6 +1716,33 @@ export async function listDisclosureOrganizations(store: Store): Promise<Disclos
   return store.listDisclosureOrganizationViews();
 }
 
+export async function syncDisclosureFindings(
+  store: Store,
+  caseId: number,
+  fingerprints: string[],
+): Promise<DisclosureFindingView[]> {
+  for (const fingerprint of fingerprints) {
+    const parsed = parseFingerprintParts(fingerprint);
+    if (!parsed) continue;
+    await store.addDisclosureFinding({
+      caseId,
+      fingerprint: parsed.fingerprint,
+      rule: parsed.rule,
+      severity: parsed.severity,
+      path: parsed.path,
+      title: parsed.title,
+    });
+  }
+  const rows = await store.listDisclosureFindings(caseId);
+  return rows.map((row) => ({
+    fingerprint: row.fingerprint,
+    rule: row.rule,
+    severity: row.severity,
+    path: row.path,
+    title: row.title,
+  }));
+}
+
 async function loadedView(store: Store, row: DisclosureCaseRow): Promise<DisclosureCaseView> {
   const [events, replies, attachments, prospect, links] = await Promise.all([
     store.listDisclosureEvents(row.id),
@@ -1691,11 +1752,14 @@ async function loadedView(store: Store, row: DisclosureCaseRow): Promise<Disclos
     store.listDuplicateLinks(row.id),
   ]);
   if (!prospect) throw new DisclosureError("Prospect not found.", 404);
-  const organization = await syncDisclosureOrganization(store, {
-    owner: prospect.owner,
-    policyUrl: row.policy_url,
-    securityContact: row.security_contact,
-  });
+  const [organization, findings] = await Promise.all([
+    syncDisclosureOrganization(store, {
+      owner: prospect.owner,
+      policyUrl: row.policy_url,
+      securityContact: row.security_contact,
+    }),
+    syncDisclosureFindings(store, row.id, row.fingerprints),
+  ]);
   return toDisclosureView(
     row,
     store.readDisclosureNotes(row),
@@ -1705,6 +1769,7 @@ async function loadedView(store: Store, row: DisclosureCaseRow): Promise<Disclos
     artifactEvidence(prospect),
     links.map((link) => toDuplicateLinkView(link, row.id)),
     organization,
+    findings,
   );
 }
 
@@ -2367,5 +2432,6 @@ export async function buildDisclosureReport(
     events: view.events,
     duplicateLinks: view.duplicateLinks,
     organization: view.organization,
+    findings: view.findings,
   };
 }
