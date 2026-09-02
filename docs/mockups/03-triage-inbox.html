@@ -286,12 +286,17 @@
           <div class="pane-head between">
             <div class="row gap8">
               <strong class="small">Needs triage</strong>
-              <span class="pill">2</span>
+              <span class="pill has-data">2</span>
+              <span class="pill s-empty">0</span>
             </div>
-            <span class="small dim">Newest ⌄</span>
+            <span class="small dim has-data">Newest ⌄</span>
           </div>
           <div class="pane-body scroll">
-            <div class="item unread" aria-selected="true">
+            <p class="empty s-empty">
+              <strong>Inbox is clear.</strong>
+              Nothing on this install yet. Once a repo is connected, anything we find lands here.
+            </p>
+            <div class="item unread has-data" aria-selected="true">
               <div class="row gap8 wrap">
                 <span class="dot crit pulse"></span>
                 <strong class="grow truncate">Original source in published pack</strong>
@@ -302,7 +307,7 @@
               </div>
             </div>
 
-            <div class="item unread">
+            <div class="item unread has-data">
               <div class="row gap8 wrap">
                 <span class="dot warn"></span>
                 <strong class="grow truncate">Internal docs in release asset</strong>
@@ -313,7 +318,7 @@
               </div>
             </div>
 
-            <div class="item">
+            <div class="item has-data team-only">
               <div class="row gap8 wrap">
                 <span class="dot"></span>
                 <strong class="grow truncate">Lookalike package registered</strong>
@@ -324,7 +329,7 @@
               </div>
             </div>
 
-            <div class="item">
+            <div class="item has-data">
               <div class="row gap8 wrap">
                 <span class="dot ok"></span>
                 <strong class="grow truncate">Repository went public</strong>
@@ -338,17 +343,21 @@
         </section>
 
         <section class="pane">
-          <div class="actionbar">
+          <div class="actionbar has-data">
             <button class="btn sm">Acknowledge</button>
             <button class="btn sm outline">Resolve…</button>
-            <button class="btn sm outline">Assign</button>
+            <button class="btn sm outline team-only">Assign</button>
             <div class="grow"></div>
             <button class="btn sm ghost">↑</button>
             <button class="btn sm ghost">↓</button>
             <span class="tiny dim">1 of 2</span>
           </div>
           <div class="pane-body scroll">
-            <div class="detail">
+            <div class="empty s-empty" style="padding-top: 90px">
+              <strong>Nothing selected.</strong>
+              When an alert arrives, its findings, rotation checklist, and activity open here.
+            </div>
+            <div class="detail has-data">
               <div class="row gap8 wrap">
                 <span class="pill crit">critical</span>
                 <span class="pill">MAP-002</span>
@@ -387,6 +396,21 @@
                 <p class="tiny dim" style="margin-top: 8px">
                   Credential values are never stored or shown. Paths and rule ids only.
                 </p>
+                <div class="gate admin-only" style="margin-top: 12px">
+                  <span class="tagword">Admin</span>
+                  <span
+                    >You can allow <code class="path">dist/*.map</code> for this repo with a reason
+                    and an expiry, instead of resolving this by hand every release.
+                    <a href="#" class="snow">Write an exception →</a></span
+                  >
+                </div>
+                <div class="gate s-member" style="margin-top: 12px">
+                  <span class="tagword">Member</span>
+                  <span
+                    >Writing a policy exception is admin-only, so that control is not shown here.
+                    Triage, notes, and resolution are yours.</span
+                  >
+                </div>
               </div>
 
               <div class="block">

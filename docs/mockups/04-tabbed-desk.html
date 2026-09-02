@@ -178,7 +178,11 @@
           <option>ryan-personal (Solo)</option>
         </select>
         <div class="grow"></div>
-        <span class="pill">Trial · 11 days left</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
         <button class="btn sm outline">Install on GitHub</button>
         <button class="btn sm">Subscribe</button>
       </header>
@@ -186,30 +190,45 @@
       <div class="statusstrip">
         <div class="sit">
           <span class="kicker">Coverage</span>
-          <div class="v"><span class="dot ok"></span> Watching · full trial</div>
+          <div class="v s-trial"><span class="dot ok"></span> Watching · full trial</div>
+          <div class="v s-solo"><span class="dot ok"></span> Watching · Solo</div>
+          <div class="v s-member"><span class="dot ok"></span> Watching · Team</div>
+          <div class="v s-ended"><span class="dot crit"></span> Stopped · unpaid</div>
+          <div class="v s-empty"><span class="dot"></span> Nothing connected</div>
         </div>
         <div class="sit">
           <span class="kicker">Open alerts</span>
-          <div class="v"><span class="dot crit pulse"></span> 1 critical, 1 warn</div>
+          <div class="v has-data"><span class="dot crit pulse"></span> 1 critical, 1 warn</div>
+          <div class="v s-empty"><span class="dot"></span> None</div>
         </div>
         <div class="sit">
           <span class="kicker">Queue</span>
-          <div class="v"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-trial"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-solo"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-member"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-ended"><span class="dot crit"></span> Stopped</div>
+          <div class="v s-empty"><span class="dot"></span> Idle</div>
         </div>
         <div class="sit">
           <span class="kicker">Last pack read</span>
-          <div class="v"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-trial"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-solo"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-member"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-ended"><span class="dot"></span> 6 days ago</div>
+          <div class="v s-empty"><span class="dot"></span> Never</div>
         </div>
       </div>
 
       <nav class="tabbar">
         <a href="#">Overview</a>
-        <a href="#">Alerts <span class="b crit">2</span></a>
-        <a href="#" aria-current="page">Sources <span class="b">12</span></a>
+        <a href="#">Alerts <span class="b crit has-data">2</span></a>
+        <a href="#" aria-current="page">Sources <span class="b has-data">12</span></a>
         <a href="#">Releases</a>
         <a href="#">Policy</a>
-        <a href="#">Notifications</a>
-        <a href="#">Team &amp; audit</a>
+        <a href="#" class="team-only">Notifications</a>
+        <a href="#" class="team-only">Team &amp; audit</a>
+        <a href="#">Install health</a>
+        <a href="#" class="admin-only">Tokens &amp; registries</a>
       </nav>
 
       <div class="body">
@@ -225,16 +244,45 @@
           <button class="btn">+ Add a source</button>
         </div>
 
-        <div class="subtabs">
+        <div class="subtabs has-data">
           <span class="chip on">All <span class="dim">12</span></span>
           <span class="chip">GitHub repos <span class="dim">6</span></span>
           <span class="chip">npm packages <span class="dim">3</span></span>
           <span class="chip">Websites <span class="dim">2</span></span>
           <span class="chip">Map custody <span class="dim">1</span></span>
-          <span class="chip" style="margin-left: auto">Needs attention <span class="bad">2</span></span>
+          <span class="chip" style="margin-left: auto"
+            >Needs attention <span class="bad">2</span></span
+          >
         </div>
 
-        <div class="card">
+        <div class="card s-empty" style="margin-top: 18px">
+          <div class="empty" style="padding: 40px 24px">
+            <strong>No sources yet.</strong>
+            Nothing on this install yet. Install NoSpoilers on a private throwaway repo, or connect
+            a public npm package by name — neither needs a token.
+          </div>
+          <div class="addrow" style="justify-content: center">
+            <button class="btn sm">GitHub repos</button>
+            <button class="btn sm outline">npm package</button>
+            <button class="btn sm outline">Website origin</button>
+            <button class="btn sm outline">Sentry / Bugsnag</button>
+          </div>
+        </div>
+
+        <div class="card has-data lockable">
+          <div class="lockveil">
+            <span class="kicker">Hosted coverage is off</span>
+            <h2>Subscribe to keep watching.</h2>
+            <p class="small muted" style="max-width: 52ch">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos
+              stay listed. Existing alerts can still be acknowledged and resolved. The CLI on your
+              machine still runs.
+            </p>
+            <div class="row gap8" style="margin-top: 4px">
+              <button class="btn sm">See plans</button>
+              <button class="btn sm outline">Locked scan</button>
+            </div>
+          </div>
           <div class="srccard">
             <span class="glyph">⌥</span>
             <div>
@@ -328,21 +376,41 @@
             </div>
           </div>
 
-          <div class="addrow">
+          <div class="addrow admin-only">
             <span class="small dim">Add:</span>
             <button class="btn sm outline">GitHub repos</button>
             <button class="btn sm outline">npm package</button>
             <button class="btn sm outline">Website origin</button>
             <button class="btn sm outline">Sentry / Bugsnag</button>
             <span class="tiny dim" style="margin-left: auto"
-              >Private registries and tokens live in Policy → Registries</span
+              >Private registries and tokens live in Tokens &amp; registries</span
             >
           </div>
         </div>
 
-        <div class="between" style="margin-top: 26px">
+        <div class="gate s-solo has-data" style="margin-top: 20px">
+          <span class="tagword">Solo</span>
+          <span
+            >Notifications and Team &amp; audit are not in the tab bar on Solo — routing to Slack,
+            SIEM, and Jira, the install timeline, the audit log, and lookalike-name signals are all
+            Team. Watching and pack reads are unchanged.
+            <a href="#" class="snow">Compare Solo and Team →</a></span
+          >
+        </div>
+
+        <div class="gate s-member has-data" style="margin-top: 20px">
+          <span class="tagword">Member</span>
+          <span
+            >Tokens &amp; registries is admin-only, and the add-a-source row is hidden rather than
+            shown failing. Every tab you can see is fully readable, and you can still scan a latest
+            release and triage alerts.</span
+          >
+        </div>
+
+        <div class="between has-data" style="margin-top: 26px">
           <p class="small dim">
-            Solo plan hides lookalike-name signals and per-source routing. Trial shows everything.
+            Nine tabs hold all fifteen of today's panels. Releases and Policy absorb the allowlist,
+            baseline, and receipt sections; Install health keeps the permission test and job queue.
           </p>
           <a href="#" class="small snow">Compare Solo and Team →</a>
         </div>

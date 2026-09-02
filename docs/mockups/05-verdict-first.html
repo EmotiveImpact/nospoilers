@@ -155,22 +155,63 @@
         <span class="logo">NoSpoilers</span>
         <div class="grow"></div>
         <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
-        <span class="pill">Trial · 11 days</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
         <button class="btn sm ghost">Settings</button>
         <button class="btn sm">Subscribe</button>
       </header>
 
       <div class="wrapc">
         <div class="hero">
-          <div class="halo">!</div>
-          <h1>Two things are exposed right now.</h1>
-          <p class="muted" style="margin-top: 12px">
+          <div class="halo has-data s-trial">!</div>
+          <div class="halo has-data s-solo">!</div>
+          <div class="halo has-data s-member">!</div>
+          <div class="halo s-ended" style="color: var(--danger)">✕</div>
+          <div class="halo s-empty" style="color: var(--mute); border-color: var(--line-strong); background: none">
+            ○
+          </div>
+
+          <h1 class="has-data s-trial">Two things are exposed right now.</h1>
+          <h1 class="has-data s-solo">Two things are exposed right now.</h1>
+          <h1 class="has-data s-member">Two things are exposed right now.</h1>
+          <h1 class="s-ended">We stopped looking six days ago.</h1>
+          <h1 class="s-empty">Nothing is being watched yet.</h1>
+
+          <p class="muted has-data s-trial" style="margin-top: 12px">
             Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
             4 minutes.
           </p>
+          <p class="muted has-data s-solo" style="margin-top: 12px">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes.
+          </p>
+          <p class="muted has-data s-member" style="margin-top: 12px">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes.
+          </p>
+          <p class="muted s-ended" style="margin-top: 12px">
+            Trial ended, so we stopped new jobs and scans. The two problems below were real when we
+            last looked, and we cannot tell you whether anything has changed since.
+          </p>
+          <p class="muted s-empty" style="margin-top: 12px">
+            Install NoSpoilers on one private repo and this sentence starts telling you the truth
+            about your releases.
+          </p>
+
+          <div class="row gap8 s-ended" style="justify-content: center; margin-top: 20px">
+            <button class="btn">See plans</button>
+            <button class="btn outline">Locked scan</button>
+          </div>
+          <div class="row gap8 s-empty" style="justify-content: center; margin-top: 20px">
+            <button class="btn">Install on GitHub</button>
+            <button class="btn outline">Scan a pack by hand</button>
+          </div>
         </div>
 
-        <div class="todo">
+        <div class="todo has-data">
           <div class="todo-item crit">
             <span class="num">1</span>
             <div class="grow">
@@ -186,7 +227,7 @@
               <div class="row gap8 wrap" style="margin-top: 12px">
                 <button class="btn sm">Show me how</button>
                 <button class="btn sm outline">See the 3 findings</button>
-                <button class="btn sm ghost">Not a problem — allow this path</button>
+                <button class="btn sm ghost admin-only">Not a problem — allow this path</button>
               </div>
             </div>
           </div>
@@ -203,15 +244,22 @@
                 <code class="path">docs/internal/ROADMAP.md</code> and 2 similar paths.
               </p>
               <div class="row gap8 wrap" style="margin-top: 12px">
-                <button class="btn sm outline">Open remediation PR</button>
-                <button class="btn sm ghost">Allow <code>docs/internal/**</code></button>
+                <button class="btn sm outline admin-only">Open remediation PR</button>
+                <button class="btn sm ghost admin-only">
+                  Allow <code>docs/internal/**</code>
+                </button>
+                <span class="small dim s-member"
+                  >Both fixes here write to the repo or to policy, so an admin has to do them. You
+                  can still resolve this with a note.</span
+                >
               </div>
             </div>
           </div>
         </div>
 
         <div class="quiet-head">
-          <span class="kicker">Quiet and working</span>
+          <span class="kicker has-data">Quiet and working</span>
+          <span class="kicker s-empty">Available once you connect something</span>
         </div>
 
         <details class="fold">
@@ -258,7 +306,22 @@
           </div>
         </details>
 
-        <details class="fold">
+        <details class="fold s-solo">
+          <summary>
+            <span class="dot"></span> Delivery
+            <span class="summary-val">On Team</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <p class="small muted">
+              Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend. Alerts
+              still open here in the desk — they just do not leave it.
+            </p>
+            <button class="btn sm" style="margin-top: 12px">Compare Solo and Team</button>
+          </div>
+        </details>
+
+        <details class="fold team-only">
           <summary>
             <span class="dot ok"></span> Delivery
             <span class="summary-val">Slack + Jira · last delivery 41 m ago, ok</span>
@@ -286,7 +349,17 @@
             <div class="kv"><span>@ryan</span><span class="summary-val">admin</span></div>
             <div class="kv"><span>@dana</span><span class="summary-val">admin</span></div>
             <div class="kv"><span>@sam</span><span class="summary-val">member</span></div>
-            <div class="kv"><span>List retention</span><span class="summary-val">180 days</span></div>
+            <div class="kv">
+              <span>List retention</span><span class="summary-val">180 days</span>
+            </div>
+            <div class="row gap8 admin-only" style="margin-top: 13px">
+              <button class="btn sm outline">Change window</button>
+              <button class="btn sm outline">Manage roles</button>
+            </div>
+            <p class="tiny dim s-member" style="margin-top: 13px">
+              An install admin has to change this window. The first GitHub user to connect an
+              install is admin; later users become members.
+            </p>
           </div>
         </details>
 
