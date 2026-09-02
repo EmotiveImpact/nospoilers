@@ -6,8 +6,11 @@
   channel, do-not-contact (create is research-only unless confirmed; `contacted`
   is always blocked), credit/CVE/outcome notes, and an internal
   `deadline_missed` reminder. Preview still shows recipients, subject, and body
-  and never sends. Resend stays benched. Customer sessions stay 401. Not a
-  customer product and not a Pricing change.
+  and never sends. Resend stays benched. Customer sessions stay 401. Live-saved
+  `security_email` plus credit/CVE notes on the public prettier case, previewed
+  the `researcher-note` template (`sent: false`), blocked prettier `contacted`
+  with do-not-contact, and emitted `Disclosure deadline missed for
+  stevemao/left-pad`. Not a customer product and not a Pricing change.
 
 - Artifact Leads notifies the owner only after a Disclosure Desk case is
   verified and has critical fingerprints. Unverified scans and warn-only cases

@@ -449,6 +449,12 @@ Owner-only verified-critical notifications fire when a case becomes verified
 and has critical fingerprints. Unverified scans do not notify. Nothing is mailed.
 Live-emitted `Verified critical findings in prettier/prettier` with rule
 `SEC-003` after re-verifying that public case.
+Live Phase 2 minus send on those same public leads: prettier vendor channel
+`security_email`, credit/CVE/outcome notes, `researcher-note` template preview
+(`sent: false`, recipient `security@prettier.io`), `sent: true` stayed 400,
+do-not-contact blocked prettier `contacted` (entry removed after the proof),
+and `Disclosure deadline missed for stevemao/left-pad` as an internal
+reminder. No companies were seeded. Nothing was mailed.
 The hourly poller, after customer work, checks up to eight known npm leads for a new
 latest and can run a three-repo discover when GITHUB_DISCOVERY_TOKEN is set. Both skip
 if customer jobs are out or three prospect jobs are already queued/running. Owner
