@@ -691,41 +691,47 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     CREATE INDEX IF NOT EXISTS installation_invites_install_idx
       ON installation_invites (installation_id);
   `);
-  await sql.exec(`
-    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
-    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
-      'destination.save',
-      'destination.delete',
-      'route.save',
-      'route.delete',
-      'registry.save',
-      'registry.delete',
-      'scan_token.mint',
-      'scan_token.revoke',
-      'exception.save',
-      'exception.revoke',
-      'baseline.save',
-      'member.role_change',
-      'member.remove',
-      'invite.create',
-      'invite.revoke',
-      'setup_pr.create',
-      'remediation_pr.create',
-      'package.unwatch',
-      'origin.unwatch',
-      'map_destination.save',
-      'map_destination.delete',
-      'identity.allowlist',
-      'identity.revoke_allowlist',
-      'retention.save',
-      'repo.make_private',
-      'repo.delete_pack_assets',
-      'repo.disable_workflow'
-    ));
-  `);
-  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
-    "027_team_invites",
-  ]);
+  const { rows: inviteMigration } = await sql.query<{ id: string }>(
+    `SELECT id FROM schema_migrations WHERE id = $1`,
+    ["027_team_invites"],
+  );
+  if (!inviteMigration[0]) {
+    await sql.exec(`
+      ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+      ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+        'destination.save',
+        'destination.delete',
+        'route.save',
+        'route.delete',
+        'registry.save',
+        'registry.delete',
+        'scan_token.mint',
+        'scan_token.revoke',
+        'exception.save',
+        'exception.revoke',
+        'baseline.save',
+        'member.role_change',
+        'member.remove',
+        'invite.create',
+        'invite.revoke',
+        'setup_pr.create',
+        'remediation_pr.create',
+        'package.unwatch',
+        'origin.unwatch',
+        'map_destination.save',
+        'map_destination.delete',
+        'identity.allowlist',
+        'identity.revoke_allowlist',
+        'retention.save',
+        'repo.make_private',
+        'repo.delete_pack_assets',
+        'repo.disable_workflow'
+      ));
+    `);
+    await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+      "027_team_invites",
+    ]);
+  }
   await sql.exec(`
     ALTER TABLE package_identity_snapshots
       ADD COLUMN IF NOT EXISTS dependency_names JSONB NOT NULL DEFAULT '[]'::jsonb;
@@ -770,6 +776,94 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "033_prospect_npm_feed",
+  ]);
+  await migrateDeliveryVerify(sql);
+}
+
+async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS release_delivery_locations (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+      url TEXT NOT NULL,
+      host TEXT NOT NULL,
+      expected_media_type TEXT,
+      created_by_login TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (revision_id, url)
+    );
+    CREATE INDEX IF NOT EXISTS release_delivery_locations_install_idx
+      ON release_delivery_locations (installation_id, id DESC);
+    CREATE INDEX IF NOT EXISTS release_delivery_locations_revision_idx
+      ON release_delivery_locations (revision_id, id ASC);
+    CREATE TABLE IF NOT EXISTS release_delivery_verifications (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      location_id BIGINT NOT NULL REFERENCES release_delivery_locations (id) ON DELETE CASCADE,
+      revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK (status IN (
+        'matched', 'mismatch', 'missing', 'redirect', 'content_type', 'blocked', 'error'
+      )),
+      observed_sha256 TEXT,
+      observed_sha512 TEXT,
+      observed_bytes BIGINT,
+      observed_media_type TEXT,
+      final_host TEXT,
+      redirect_count INTEGER NOT NULL DEFAULT 0,
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS release_delivery_verifications_location_idx
+      ON release_delivery_verifications (location_id, id DESC);
+    CREATE OR REPLACE FUNCTION reject_delivery_verification_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'release_delivery_verifications are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS release_delivery_verifications_no_update ON release_delivery_verifications;
+    CREATE TRIGGER release_delivery_verifications_no_update
+      BEFORE UPDATE ON release_delivery_verifications
+      FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
+    DROP TRIGGER IF EXISTS release_delivery_verifications_no_delete ON release_delivery_verifications;
+    CREATE TRIGGER release_delivery_verifications_no_delete
+      BEFORE DELETE ON release_delivery_verifications
+      FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'invite.create',
+      'invite.revoke',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'origin.unwatch',
+      'map_destination.save',
+      'map_destination.delete',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save',
+      'repo.make_private',
+      'repo.delete_pack_assets',
+      'repo.disable_workflow',
+      'delivery_location.save'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "034_delivery_verify",
   ]);
 }
 

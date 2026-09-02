@@ -67,7 +67,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   SHA-256/SHA-512 identity, source revision, stored HTTPS CI run URL (never fetched), and a
   Watch Releases view with linked receipt status (`passed` / `failed-policy` / `inconclusive`).
   Failed-policy and inconclusive are not clean. Digest mismatch appends a new row and an
-  explainable alert. Development
+  explainable alert. An install admin can attach an HTTPS delivery URL and verify it now
+  (stream-hash, no stored bytes, not the hourly poller). Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

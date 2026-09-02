@@ -46,12 +46,19 @@ Read in this order:
   `031_identity_publisher` adds `publisher_name` and `trusted_publisher`.
   `032_prospect_workspaces` adds `prospects.workspace_members`.
   `033_prospect_npm_feed` adds `prospects.feed_checked_at`.
+  `034_delivery_verify` adds `release_delivery_locations` and append-only
+  `release_delivery_verifications`, and extends `audit_events.action` with
+  `delivery_location.save`. The 027 audit-action check is applied only on first
+  migrate so later `delivery_location.save` rows are not rejected.
   `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
   append-only (`stable` / `beta` / `canary`, SHA-256/SHA-512, source revision, stored CI URL).
-  UPDATE/DELETE on `release_revisions` is rejected. Private registry tokens are
+  UPDATE/DELETE on `release_revisions` is rejected. Install admins can attach HTTPS delivery
+  URLs to a sealed revision and verify them now (`delivery_verify` light job, enqueue wakes
+  the worker). The worker stream-hashes and deletes the download. This is not added to the
+  hourly poller. Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save. Slack incoming webhooks,
   SIEM HTTPS webhooks, and Jira Cloud email+token are the same ciphertext and are never returned
   after save. Jira stores a plaintext project key for the list UI. Notification deliveries are
@@ -286,7 +293,8 @@ Setup PR + GitHub Checks are in code (reviewable, never merged; Checks skipped o
 Generated setup CI vendors `.github/actions/nospoilers` and POSTs existing package.tgz and dist/ packs to hosted `/api/v1/scan`; fails closed if none. Watch shows the current hosted origin for `NOSPOILERS_API_URL` when signed in.
 Packed npm/pnpm/Yarn/Bun workspace discovery is in (list only; never execute; never auto-watch).
 Hosted scan API tokens + POST /api/v1/scan are in (hashed, shown once, 402 when unpaid).
-Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL).
+Release Ledger foundations are in (append-only revisions, channels, source revision, stored CI URL,
+on-demand delivery URL verify against the sealed digest; not scheduled CDN).
 Package Identity foundations are in (verified protect, maintainer snapshots, repo/homepage/shape,
 publishing identity / trusted publisher).
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).

@@ -34,6 +34,8 @@ const CRITICAL_KINDS = new Set([
   "package_repository_mismatch",
   "package_unpublished",
   "release_digest_mismatch",
+  "delivery_mismatch",
+  "delivery_missing",
   "identity_lookalike_registered",
   "identity_dormant",
 ]);

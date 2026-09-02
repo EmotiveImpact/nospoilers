@@ -31,6 +31,7 @@ export const AUDIT_ACTIONS = [
   "repo.make_private",
   "repo.delete_pack_assets",
   "repo.disable_workflow",
+  "delivery_location.save",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

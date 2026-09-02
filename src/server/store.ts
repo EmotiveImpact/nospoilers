@@ -335,6 +335,46 @@ export type ReleaseRevisionRow = {
   created_at: string;
 };
 
+export type DeliveryVerifyStatus =
+  | "matched"
+  | "mismatch"
+  | "missing"
+  | "redirect"
+  | "content_type"
+  | "blocked"
+  | "error";
+
+export type DeliveryLocationRow = {
+  id: number;
+  installation_id: number;
+  revision_id: number;
+  url: string;
+  host: string;
+  expected_media_type: string | null;
+  created_by_login: string;
+  created_at: string;
+  last_status: DeliveryVerifyStatus | null;
+  last_sha256: string | null;
+  last_media_type: string | null;
+  last_checked_at: string | null;
+};
+
+export type DeliveryVerificationRow = {
+  id: number;
+  installation_id: number;
+  location_id: number;
+  revision_id: number;
+  status: DeliveryVerifyStatus;
+  observed_sha256: string | null;
+  observed_sha512: string | null;
+  observed_bytes: number | null;
+  observed_media_type: string | null;
+  final_host: string | null;
+  redirect_count: number;
+  error: string | null;
+  created_at: string;
+};
+
 export type PackageProtectionRow = {
   id: number;
   installation_id: number;
@@ -777,6 +817,83 @@ function releaseRevisionRow(row: ReleaseRevisionSqlRow): ReleaseRevisionRow {
     previous_sha256: row.previous_sha256,
     mismatch: Boolean(row.mismatch),
     receipt_status: parseReceiptStatus(row.receipt_status),
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function parseDeliveryVerifyStatus(value: unknown): DeliveryVerifyStatus | null {
+  if (
+    value === "matched" ||
+    value === "mismatch" ||
+    value === "missing" ||
+    value === "redirect" ||
+    value === "content_type" ||
+    value === "blocked" ||
+    value === "error"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function deliveryLocationRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  revision_id: unknown;
+  url: string;
+  host: string;
+  expected_media_type: string | null;
+  created_by_login: string;
+  created_at: string | Date;
+  last_status?: string | null;
+  last_sha256?: string | null;
+  last_media_type?: string | null;
+  last_checked_at?: string | Date | null;
+}): DeliveryLocationRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    revision_id: num(row.revision_id),
+    url: row.url,
+    host: row.host,
+    expected_media_type: row.expected_media_type,
+    created_by_login: row.created_by_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    last_status: parseDeliveryVerifyStatus(row.last_status ?? null),
+    last_sha256: row.last_sha256 ?? null,
+    last_media_type: row.last_media_type ?? null,
+    last_checked_at: iso(row.last_checked_at ?? null),
+  };
+}
+
+function deliveryVerificationRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  location_id: unknown;
+  revision_id: unknown;
+  status: string;
+  observed_sha256: string | null;
+  observed_sha512: string | null;
+  observed_bytes: unknown;
+  observed_media_type: string | null;
+  final_host: string | null;
+  redirect_count: unknown;
+  error: string | null;
+  created_at: string | Date;
+}): DeliveryVerificationRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    location_id: num(row.location_id),
+    revision_id: num(row.revision_id),
+    status: parseDeliveryVerifyStatus(row.status) ?? "error",
+    observed_sha256: row.observed_sha256,
+    observed_sha512: row.observed_sha512,
+    observed_bytes: row.observed_bytes == null ? null : num(row.observed_bytes),
+    observed_media_type: row.observed_media_type,
+    final_host: row.final_host,
+    redirect_count: num(row.redirect_count),
+    error: row.error,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -4561,6 +4678,220 @@ export function createStore(
         [id, userId],
       );
       return rows[0] ? releaseRevisionRow(rows[0]) : null;
+    },
+
+    async getReleaseRevision(id: number): Promise<ReleaseRevisionRow | null> {
+      const { rows } = await sql.query<ReleaseRevisionSqlRow>(
+        `SELECT rr.*, sr.status AS receipt_status
+         FROM release_revisions rr
+         LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
+         WHERE rr.id = $1`,
+        [id],
+      );
+      return rows[0] ? releaseRevisionRow(rows[0]) : null;
+    },
+
+    async countDeliveryLocations(input: {
+      installationId: number;
+      revisionId?: number;
+    }): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        input.revisionId
+          ? `SELECT count(*)::int AS n FROM release_delivery_locations
+             WHERE installation_id = $1 AND revision_id = $2`
+          : `SELECT count(*)::int AS n FROM release_delivery_locations
+             WHERE installation_id = $1`,
+        input.revisionId ? [input.installationId, input.revisionId] : [input.installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async insertDeliveryLocation(input: {
+      installationId: number;
+      revisionId: number;
+      url: string;
+      host: string;
+      expectedMediaType?: string | null;
+      createdByLogin: string;
+    }): Promise<DeliveryLocationRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        revision_id: unknown;
+        url: string;
+        host: string;
+        expected_media_type: string | null;
+        created_by_login: string;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO release_delivery_locations (
+           installation_id, revision_id, url, host, expected_media_type, created_by_login
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.revisionId,
+          input.url,
+          input.host,
+          input.expectedMediaType ?? null,
+          input.createdByLogin,
+        ],
+      );
+      if (!rows[0]) throw new Error("delivery location insert returned no row");
+      return deliveryLocationRow(rows[0]);
+    },
+
+    async getDeliveryLocation(id: number): Promise<DeliveryLocationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        revision_id: unknown;
+        url: string;
+        host: string;
+        expected_media_type: string | null;
+        created_by_login: string;
+        created_at: string | Date;
+      }>(`SELECT * FROM release_delivery_locations WHERE id = $1`, [id]);
+      return rows[0] ? deliveryLocationRow(rows[0]) : null;
+    },
+
+    async getDeliveryLocationForUser(
+      id: number,
+      userId: string,
+    ): Promise<DeliveryLocationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        revision_id: unknown;
+        url: string;
+        host: string;
+        expected_media_type: string | null;
+        created_by_login: string;
+        created_at: string | Date;
+      }>(
+        `SELECT l.*
+         FROM release_delivery_locations l
+         JOIN installation_users iu ON iu.installation_id = l.installation_id
+         WHERE l.id = $1 AND iu.user_id = $2`,
+        [id, userId],
+      );
+      return rows[0] ? deliveryLocationRow(rows[0]) : null;
+    },
+
+    async listDeliveryLocationsForRevisions(revisionIds: number[]): Promise<DeliveryLocationRow[]> {
+      if (revisionIds.length === 0) return [];
+      const placeholders = revisionIds.map((_, index) => `$${index + 1}`).join(", ");
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        revision_id: unknown;
+        url: string;
+        host: string;
+        expected_media_type: string | null;
+        created_by_login: string;
+        created_at: string | Date;
+        last_status: string | null;
+        last_sha256: string | null;
+        last_media_type: string | null;
+        last_checked_at: string | Date | null;
+      }>(
+        `SELECT l.*,
+                v.status AS last_status,
+                v.observed_sha256 AS last_sha256,
+                v.observed_media_type AS last_media_type,
+                v.created_at AS last_checked_at
+         FROM release_delivery_locations l
+         LEFT JOIN LATERAL (
+           SELECT status, observed_sha256, observed_media_type, created_at
+           FROM release_delivery_verifications
+           WHERE location_id = l.id
+           ORDER BY id DESC
+           LIMIT 1
+         ) v ON true
+         WHERE l.revision_id IN (${placeholders})
+         ORDER BY l.id ASC`,
+        revisionIds,
+      );
+      return rows.map(deliveryLocationRow);
+    },
+
+    async insertDeliveryVerification(input: {
+      installationId: number;
+      locationId: number;
+      revisionId: number;
+      status: DeliveryVerifyStatus;
+      observedSha256?: string | null;
+      observedSha512?: string | null;
+      observedBytes?: number | null;
+      observedMediaType?: string | null;
+      finalHost?: string | null;
+      redirectCount?: number;
+      error?: string | null;
+    }): Promise<DeliveryVerificationRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        location_id: unknown;
+        revision_id: unknown;
+        status: string;
+        observed_sha256: string | null;
+        observed_sha512: string | null;
+        observed_bytes: unknown;
+        observed_media_type: string | null;
+        final_host: string | null;
+        redirect_count: unknown;
+        error: string | null;
+        created_at: string | Date;
+      }>(
+        `INSERT INTO release_delivery_verifications (
+           installation_id, location_id, revision_id, status,
+           observed_sha256, observed_sha512, observed_bytes, observed_media_type,
+           final_host, redirect_count, error
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.locationId,
+          input.revisionId,
+          input.status,
+          input.observedSha256 ?? null,
+          input.observedSha512 ?? null,
+          input.observedBytes ?? null,
+          input.observedMediaType ?? null,
+          input.finalHost ?? null,
+          input.redirectCount ?? 0,
+          input.error ?? null,
+        ],
+      );
+      if (!rows[0]) throw new Error("delivery verification insert returned no row");
+      return deliveryVerificationRow(rows[0]);
+    },
+
+    async latestDeliveryVerification(locationId: number): Promise<DeliveryVerificationRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        location_id: unknown;
+        revision_id: unknown;
+        status: string;
+        observed_sha256: string | null;
+        observed_sha512: string | null;
+        observed_bytes: unknown;
+        observed_media_type: string | null;
+        final_host: string | null;
+        redirect_count: unknown;
+        error: string | null;
+        created_at: string | Date;
+      }>(
+        `SELECT * FROM release_delivery_verifications
+         WHERE location_id = $1
+         ORDER BY id DESC
+         LIMIT 1`,
+        [locationId],
+      );
+      return rows[0] ? deliveryVerificationRow(rows[0]) : null;
     },
 
     async listActiveExceptions(

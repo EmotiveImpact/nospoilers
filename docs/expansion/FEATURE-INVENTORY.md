@@ -89,7 +89,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | npm/GitHub attestation adapters | Planned | NoSpoilers |
 | Stable/beta/canary release channels | Built: `stable` / `beta` / `canary` on each revision | NoSpoilers |
 | Scheduled registry/CDN delivery verification | Planned | NoSpoilers Team |
-| Replacement/disappearance/redirect/content-type drift incidents | Planned | NoSpoilers Team |
+| Replacement/disappearance/redirect/content-type drift incidents | Built: on-demand Watch attach + Verify now stream-hashes a customer HTTPS URL against the sealed revision; mismatch / missing / unexpected cross-host redirect / content-type change write one fact alert; query strings redacted; bytes not stored; not the hourly poller. Scheduled CDN verification stays Planned | NoSpoilers |
 | Offline signed-receipt verification | Built: `nospoilers verify <file> --receipt` HMAC check; Scan page checks JSON you already have (optional pack hashed in-browser, never uploaded); Watch lists receipt status and downloads the signed JSON for a sealed release; authentic failed-policy/inconclusive is not clean | NoSpoilers |
 | Public verification page controlled by customer | Planned, later | NoSpoilers |
 

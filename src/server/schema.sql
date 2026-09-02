@@ -469,6 +469,62 @@ CREATE TRIGGER release_revisions_no_delete
   BEFORE DELETE ON release_revisions
   FOR EACH ROW EXECUTE PROCEDURE reject_release_revision_mutation();
 
+CREATE TABLE IF NOT EXISTS release_delivery_locations (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  host TEXT NOT NULL,
+  expected_media_type TEXT,
+  created_by_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (revision_id, url)
+);
+
+CREATE INDEX IF NOT EXISTS release_delivery_locations_install_idx
+  ON release_delivery_locations (installation_id, id DESC);
+
+CREATE INDEX IF NOT EXISTS release_delivery_locations_revision_idx
+  ON release_delivery_locations (revision_id, id ASC);
+
+CREATE TABLE IF NOT EXISTS release_delivery_verifications (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  location_id BIGINT NOT NULL REFERENCES release_delivery_locations (id) ON DELETE CASCADE,
+  revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN (
+    'matched', 'mismatch', 'missing', 'redirect', 'content_type', 'blocked', 'error'
+  )),
+  observed_sha256 TEXT,
+  observed_sha512 TEXT,
+  observed_bytes BIGINT,
+  observed_media_type TEXT,
+  final_host TEXT,
+  redirect_count INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS release_delivery_verifications_location_idx
+  ON release_delivery_verifications (location_id, id DESC);
+
+CREATE OR REPLACE FUNCTION reject_delivery_verification_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'release_delivery_verifications are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS release_delivery_verifications_no_update ON release_delivery_verifications;
+CREATE TRIGGER release_delivery_verifications_no_update
+  BEFORE UPDATE ON release_delivery_verifications
+  FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
+
+DROP TRIGGER IF EXISTS release_delivery_verifications_no_delete ON release_delivery_verifications;
+CREATE TRIGGER release_delivery_verifications_no_delete
+  BEFORE DELETE ON release_delivery_verifications
+  FOR EACH ROW EXECUTE PROCEDURE reject_delivery_verification_mutation();
+
 CREATE TABLE IF NOT EXISTS package_protections (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -587,7 +643,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'retention.save',
     'repo.make_private',
     'repo.delete_pack_assets',
-    'repo.disable_workflow'
+    'repo.disable_workflow',
+    'delivery_location.save'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

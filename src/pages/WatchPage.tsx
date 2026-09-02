@@ -354,6 +354,18 @@ type ScanApiToken = {
 
 type ReceiptScanStatus = "passed" | "failed-policy" | "inconclusive";
 
+type DeliveryLocation = {
+  id: number;
+  revisionId: number;
+  url: string;
+  host: string;
+  expectedMediaType: string | null;
+  lastStatus: "matched" | "mismatch" | "missing" | "redirect" | "content_type" | "blocked" | "error" | null;
+  lastSha256: string | null;
+  lastMediaType: string | null;
+  lastCheckedAt: string | null;
+};
+
 type ReleaseRevision = {
   id: number;
   receiptId: number;
@@ -365,6 +377,7 @@ type ReleaseRevision = {
   mismatch: boolean;
   receiptStatus: ReceiptScanStatus | null;
   createdAt: string;
+  locations?: DeliveryLocation[];
 };
 
 function receiptStatusMark(status: ReceiptScanStatus | null) {
@@ -955,6 +968,10 @@ export function WatchPage({ search }: { search: string }) {
   const [releases, setReleases] = useState<ReleaseRevision[]>([]);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<number | null>(null);
   const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [deliveryUrlByRelease, setDeliveryUrlByRelease] = useState<Record<number, string>>({});
+  const [attachingReleaseId, setAttachingReleaseId] = useState<number | null>(null);
+  const [verifyingLocationId, setVerifyingLocationId] = useState<number | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [protections, setProtections] = useState<PackageProtection[]>([]);
   const [jobs, setJobs] = useState<TenantJob[]>([]);
   const [jobSummary, setJobSummary] = useState<JobSummary>({
@@ -4352,9 +4369,14 @@ export function WatchPage({ search }: { search: string }) {
           inconclusive are not clean and are not allowed to ship. Download the signed receipt JSON
           and check it on Scan or with{" "}
           <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
-          . That check is not hosted unpack. Coverage ended still allows the download.
+          . That check is not hosted unpack. Coverage ended still allows the download. An install
+          admin can attach an HTTPS delivery URL and verify it now. We stream-hash the bytes,
+          compare them to the sealed digest, and drop the download. Cross-host redirects are not
+          followed. Query strings never appear on Watch. This is not the hourly poller and not a
+          hosted unpack.
         </p>
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
+        {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
         ) : releases.length === 0 ? (
@@ -4362,62 +4384,179 @@ export function WatchPage({ search }: { search: string }) {
         ) : (
           <ul className="mt-6 divide-y divide-white/5">
             {releases.map((release) => (
-              <li key={release.id} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
-                <div className="min-w-0">
-                  <p className="font-mono text-sm text-snow">{release.coordinate}</p>
-                  <p className="mt-1 text-xs text-dim">
-                    {release.channel}
-                    {release.sourceRevision ? ` · ${release.sourceRevision}` : ""}
-                    {` · ${release.artifactSha256.slice(0, 12)}`}
-                    {release.createdAt ? ` · ${release.createdAt.slice(0, 10)}` : ""}
-                  </p>
+              <li key={release.id} className="py-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm text-snow">{release.coordinate}</p>
+                    <p className="mt-1 text-xs text-dim">
+                      {release.channel}
+                      {release.sourceRevision ? ` · ${release.sourceRevision}` : ""}
+                      {` · ${release.artifactSha256.slice(0, 12)}`}
+                      {release.createdAt ? ` · ${release.createdAt.slice(0, 10)}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {release.mismatch ? (
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                        digest changed
+                      </span>
+                    ) : null}
+                    {receiptStatusMark(release.receiptStatus)}
+                    {!release.mismatch && !release.receiptStatus ? (
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={downloadingReceiptId === release.receiptId}
+                      onClick={() => {
+                        setReceiptError(null);
+                        setDownloadingReceiptId(release.receiptId);
+                        void (async () => {
+                          try {
+                            const body = await loadJson<{ receipt: unknown; id: number }>(
+                              `/api/receipts/${release.receiptId}`,
+                            );
+                            const blob = new Blob([`${JSON.stringify(body.receipt, null, 2)}\n`], {
+                              type: "application/json",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            const safe = release.coordinate.replace(/[^a-zA-Z0-9._@+-]+/g, "-").slice(0, 80);
+                            link.download = `nospoilers-receipt-${safe || "artifact"}-${body.id}.json`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                          } catch (error) {
+                            setReceiptError(
+                              error instanceof Error ? error.message : "Could not download that receipt.",
+                            );
+                          } finally {
+                            setDownloadingReceiptId(null);
+                          }
+                        })();
+                      }}
+                    >
+                      {downloadingReceiptId === release.receiptId ? "Saving…" : "Receipt JSON"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {release.mismatch ? (
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
-                      digest changed
-                    </span>
-                  ) : null}
-                  {receiptStatusMark(release.receiptStatus)}
-                  {!release.mismatch && !release.receiptStatus ? (
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
-                  ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={downloadingReceiptId === release.receiptId}
-                    onClick={() => {
-                      setReceiptError(null);
-                      setDownloadingReceiptId(release.receiptId);
+                {(release.locations ?? []).length > 0 ? (
+                  <ul className="mt-3 space-y-2">
+                    {(release.locations ?? []).map((location) => (
+                      <li key={location.id} className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="min-w-0 font-mono text-xs text-mute">
+                          {location.url}
+                          {location.lastStatus ? ` · ${location.lastStatus.replace("_", " ")}` : ""}
+                          {location.lastSha256 ? ` · ${location.lastSha256.slice(0, 12)}` : ""}
+                        </p>
+                        {!previewing && installAdmin ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={locked || verifyingLocationId === location.id}
+                            onClick={() => {
+                              setDeliveryError(null);
+                              setVerifyingLocationId(location.id);
+                              void (async () => {
+                                try {
+                                  const response = await fetch(
+                                    `/api/releases/${release.id}/locations/${location.id}/verify`,
+                                    {
+                                      method: "POST",
+                                      credentials: "include",
+                                      headers: { "content-type": "application/json" },
+                                      body: JSON.stringify({ installationId: activeInstallId }),
+                                    },
+                                  );
+                                  const body = (await response.json()) as { error?: string };
+                                  if (!response.ok) {
+                                    throw new Error(body.error ?? "Could not verify that URL.");
+                                  }
+                                  await refreshSignedIn(selectedInstallId);
+                                } catch (error) {
+                                  setDeliveryError(
+                                    error instanceof Error ? error.message : "Could not verify that URL.",
+                                  );
+                                } finally {
+                                  setVerifyingLocationId(null);
+                                }
+                              })();
+                            }}
+                          >
+                            {verifyingLocationId === location.id ? "Verifying…" : "Verify now"}
+                          </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {!previewing && installAdmin ? (
+                  <form
+                    className="mt-3 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-end"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (locked || attachingReleaseId === release.id) return;
+                      setDeliveryError(null);
+                      setAttachingReleaseId(release.id);
                       void (async () => {
                         try {
-                          const body = await loadJson<{ receipt: unknown; id: number }>(
-                            `/api/receipts/${release.receiptId}`,
-                          );
-                          const blob = new Blob([`${JSON.stringify(body.receipt, null, 2)}\n`], {
-                            type: "application/json",
+                          const response = await fetch(`/api/releases/${release.id}/locations`, {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({
+                              url: deliveryUrlByRelease[release.id] ?? "",
+                              installationId: activeInstallId,
+                            }),
                           });
-                          const url = URL.createObjectURL(blob);
-                          const link = document.createElement("a");
-                          link.href = url;
-                          const safe = release.coordinate.replace(/[^a-zA-Z0-9._@+-]+/g, "-").slice(0, 80);
-                          link.download = `nospoilers-receipt-${safe || "artifact"}-${body.id}.json`;
-                          link.click();
-                          URL.revokeObjectURL(url);
+                          const body = (await response.json()) as { error?: string };
+                          if (!response.ok) {
+                            throw new Error(body.error ?? "Could not attach that URL.");
+                          }
+                          setDeliveryUrlByRelease((current) => ({ ...current, [release.id]: "" }));
+                          await refreshSignedIn(selectedInstallId);
                         } catch (error) {
-                          setReceiptError(
-                            error instanceof Error ? error.message : "Could not download that receipt.",
+                          setDeliveryError(
+                            error instanceof Error ? error.message : "Could not attach that URL.",
                           );
                         } finally {
-                          setDownloadingReceiptId(null);
+                          setAttachingReleaseId(null);
                         }
                       })();
                     }}
                   >
-                    {downloadingReceiptId === release.receiptId ? "Saving…" : "Receipt JSON"}
-                  </Button>
-                </div>
+                    <label className="min-w-0 flex-1">
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        Delivery URL
+                      </span>
+                      <input
+                        value={deliveryUrlByRelease[release.id] ?? ""}
+                        onChange={(event) =>
+                          setDeliveryUrlByRelease((current) => ({
+                            ...current,
+                            [release.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="https://cdn.example.com/app.tgz"
+                        autoComplete="off"
+                        spellCheck={false}
+                        disabled={locked}
+                        className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                      />
+                    </label>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="outline"
+                      disabled={locked || attachingReleaseId === release.id}
+                    >
+                      {attachingReleaseId === release.id ? "Attaching…" : "Attach URL"}
+                    </Button>
+                  </form>
+                ) : null}
               </li>
             ))}
           </ul>

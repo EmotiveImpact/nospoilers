@@ -81,12 +81,23 @@ import {
   ReleaseLedgerError,
 } from "./release-ledger.ts";
 import {
+  DeliveryVerifyError,
+  MAX_DELIVERY_LOCATIONS_PER_INSTALL,
+  MAX_DELIVERY_LOCATIONS_PER_REVISION,
+  enqueueDeliveryVerify,
+  parseDeliveryMediaType,
+  parseDeliveryUrl,
+  redactDeliveryUrl,
+} from "./delivery-verify.ts";
+import {
   parseSlackWebhook,
   postSlackWebhook,
   slackPlanDeniedFromBilling,
   slackTestText,
 } from "./slack.ts";
 import {
+  assertPublicWebhookHost,
+  lookupWebhookHost,
   parseSiemWebhook,
   postSiemWebhook,
   siemPlanDeniedFromBilling,
@@ -263,7 +274,34 @@ function publicAlertEvent(row: AlertEventRow) {
   };
 }
 
-function publicRelease(row: ReleaseRevisionRow) {
+function publicDeliveryLocation(row: {
+  id: number;
+  revision_id: number;
+  url: string;
+  host: string;
+  expected_media_type: string | null;
+  last_status: string | null;
+  last_sha256: string | null;
+  last_media_type: string | null;
+  last_checked_at: string | null;
+}) {
+  return {
+    id: row.id,
+    revisionId: row.revision_id,
+    url: redactDeliveryUrl(row.url),
+    host: row.host,
+    expectedMediaType: row.expected_media_type,
+    lastStatus: row.last_status,
+    lastSha256: row.last_sha256,
+    lastMediaType: row.last_media_type,
+    lastCheckedAt: row.last_checked_at,
+  };
+}
+
+function publicRelease(
+  row: ReleaseRevisionRow,
+  locations: ReturnType<typeof publicDeliveryLocation>[] = [],
+) {
   return {
     id: row.id,
     installationId: row.installation_id,
@@ -280,6 +318,7 @@ function publicRelease(row: ReleaseRevisionRow) {
     mismatch: row.mismatch,
     receiptStatus: row.receipt_status,
     createdAt: row.created_at,
+    locations,
   };
 }
 
@@ -2950,7 +2989,16 @@ export function createApp(deps: AppDeps): Hono {
     const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
       installationId: queryInstallationId(c),
     });
-    return c.json({ releases: releases.map(publicRelease) });
+    const locations = await deps.store.listDeliveryLocationsForRevisions(releases.map((row) => row.id));
+    const byRevision = new Map<number, ReturnType<typeof publicDeliveryLocation>[]>();
+    for (const location of locations) {
+      const list = byRevision.get(location.revision_id) ?? [];
+      list.push(publicDeliveryLocation(location));
+      byRevision.set(location.revision_id, list);
+    }
+    return c.json({
+      releases: releases.map((row) => publicRelease(row, byRevision.get(row.id) ?? [])),
+    });
   });
 
   app.get("/api/releases/:id", async (c) => {
@@ -2960,7 +3008,123 @@ export function createApp(deps: AppDeps): Hono {
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
     const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
     if (!row) return c.json({ error: "Unknown release." }, 404);
-    return c.json({ release: publicRelease(row) });
+    const locations = await deps.store.listDeliveryLocationsForRevisions([row.id]);
+    return c.json({ release: publicRelease(row, locations.map(publicDeliveryLocation)) });
+  });
+
+  app.post("/api/releases/:id/locations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const attachDenied = await hostedWorkDenied(
+      deps.store,
+      row.installation_id,
+      "Coverage ended. Subscribe to verify delivery URLs.",
+    );
+    if (attachDenied) return c.json({ error: attachDenied.error }, attachDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const parsed = parseDeliveryUrl(String(body.url ?? ""));
+    if (!parsed) {
+      return c.json({ error: "Delivery URL must be https and a public hostname." }, 400);
+    }
+    let mediaType: string | null;
+    try {
+      mediaType = parseDeliveryMediaType(typeof body.mediaType === "string" ? body.mediaType : null);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Media type is not allowed." },
+        error instanceof DeliveryVerifyError ? error.status : 400,
+      );
+    }
+    const publicHost = await assertPublicWebhookHost(
+      parsed.host,
+      deps.webhookLookup ?? lookupWebhookHost,
+    );
+    if (!publicHost) {
+      return c.json({ error: "Delivery URL resolved to a private address." }, 400);
+    }
+    const existing = await deps.store.listDeliveryLocationsForRevisions([row.id]);
+    if (existing.some((location) => location.url === parsed.url)) {
+      return c.json({ error: "That URL is already attached to this release." }, 409);
+    }
+    if (existing.length >= MAX_DELIVERY_LOCATIONS_PER_REVISION) {
+      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_REVISION} delivery URLs per release.` }, 400);
+    }
+    const installCount = await deps.store.countDeliveryLocations({
+      installationId: row.installation_id,
+    });
+    if (installCount >= MAX_DELIVERY_LOCATIONS_PER_INSTALL) {
+      return c.json({ error: `At most ${MAX_DELIVERY_LOCATIONS_PER_INSTALL} delivery URLs on this install.` }, 400);
+    }
+    const location = await deps.store.insertDeliveryLocation({
+      installationId: row.installation_id,
+      revisionId: row.id,
+      url: parsed.url,
+      host: parsed.host,
+      expectedMediaType: mediaType,
+      createdByLogin: user.login,
+    });
+    await recordAudit({
+      installationId: row.installation_id,
+      actorLogin: user.login,
+      action: "delivery_location.save",
+      summary: `Attached delivery URL ${parsed.redacted} on ${row.coordinate}`,
+      targetKind: "delivery_location",
+      targetId: parsed.redacted,
+    });
+    const queued = await enqueueDeliveryVerify(deps.store, {
+      installationId: row.installation_id,
+      locationId: location.id,
+      revisionId: row.id,
+    });
+    if (queued.queued) deps.wakeWorker?.();
+    return c.json(
+      { ok: true, queued: queued.queued, location: publicDeliveryLocation(location) },
+      201,
+    );
+  });
+
+  app.post("/api/releases/:id/locations/:locationId/verify", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const locationId = Number(c.req.param("locationId"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    if (!Number.isFinite(locationId) || locationId <= 0) return c.json({ error: "Unknown delivery URL." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const location = await deps.store.getDeliveryLocationForUser(locationId, user.userId);
+    if (!location || location.revision_id !== row.id) {
+      return c.json({ error: "Unknown delivery URL." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const verifyDenied = await hostedWorkDenied(
+      deps.store,
+      row.installation_id,
+      "Coverage ended. Subscribe to verify delivery URLs.",
+    );
+    if (verifyDenied) return c.json({ error: verifyDenied.error }, verifyDenied.status);
+    const verifyLimited = rateLimited(
+      c,
+      scanLimiter,
+      `scan:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many hosted scans from this address. Wait and try again.",
+    );
+    if (verifyLimited) return verifyLimited;
+    const queued = await enqueueDeliveryVerify(deps.store, {
+      installationId: row.installation_id,
+      locationId: location.id,
+      revisionId: row.id,
+    });
+    if (queued.queued) deps.wakeWorker?.();
+    return c.json({ ok: true, queued: queued.queued, location: publicDeliveryLocation(location) });
   });
 
   app.get("/api/receipts", async (c) => {

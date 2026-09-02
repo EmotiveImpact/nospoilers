@@ -122,10 +122,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   Bearer token unpacks a packed artifact, applies the installation allowlist, mints a
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
-  revision, stored CI run URL, linked receipt status). Failed-policy and inconclusive are
+  revision, stored CI run URL, linked receipt status, attached delivery URLs with query
+  strings redacted). Failed-policy and inconclusive are
   not a passing result. Historical rows cannot be edited or deleted. Download the
   linked signed receipt JSON (`GET /api/receipts/:id`). Unpaid still allowed. Another tenant
-  is 404. Pack bytes are not included.
+  is 404. Pack bytes are not included. Delivery verification rows are append-only.
 - List Slack, SIEM, and Jira destination hosts on a trial or Team install (URLs, emails, and
   tokens are never returned). Jira lists the project key. A delivery test talks to the
   destination and never inserts an alert. A Jira test never creates a ticket. List routing
@@ -148,13 +149,14 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, open setup or
+  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
+  verify a release delivery URL, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
-- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, or release revisions.
+- See other tenants’ registry tokens, Slack, SIEM, or Jira destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
 - Edit or delete scan receipts, release revisions, jobs, alert events, or audit events. Receipts, revisions, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
@@ -224,6 +226,11 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   exists. Type `90`, `180`, `365`, or `keep`. Solo paid is allowed. Unpaid returns 402.
   GitHub suspend does not block. Audit summaries are public only. Append-only evidence is
   never deleted.
+- Attach an HTTPS delivery URL to a sealed release and verify it now. The worker
+  stream-hashes the bytes, compares them to the sealed digest, and deletes the download.
+  Cross-host redirects are not fetched. Query strings are stored only to fetch and are
+  redacted on Watch, alerts, and audit. Unpaid returns 402. Members return 403. Another
+  tenant is 404. This is not the hourly poller and not scheduled CDN verification.
 
 **Must not**
 
@@ -365,7 +372,11 @@ proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan r
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject
 SSRF CI URLs, keep older HMAC receipts verifiable, and return the signed receipt JSON for
-a sealed release even after coverage ends (another tenant is 404). `tests/package-identity.test.ts`
+a sealed release even after coverage ends (another tenant is 404).
+`tests/delivery-verify.test.ts` proves on-demand delivery URL attach/verify is
+tenant-scoped, admin-only, unpaid 402, redacts query strings, stream-hashes without
+storing bytes, alerts on mismatch and disappearance, does not follow a cross-host
+redirect, rejects private DNS, and keeps the list after coverage ends. `tests/package-identity.test.ts`
 proves arbitrary npm names cannot be protected, identity snapshots are append-only,
 maintainer/repository/shape/publisher alerts never store emails, OIDC config ids, or issue a malware verdict, lookalike
 generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 403, unpaid

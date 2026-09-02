@@ -15,6 +15,7 @@ import { applyHostedPolicy } from "./hosted-policy.ts";
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { inferReleaseChannel } from "./release-ledger.ts";
+import { DELIVERY_VERIFY_KIND, runDeliveryVerifyJob } from "./delivery-verify.ts";
 import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 import type { WebhookHostLookup } from "./siem.ts";
@@ -632,6 +633,25 @@ export async function handleJob(
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  }
+
+  if (job.kind === DELIVERY_VERIFY_KIND) {
+    const locationId = Number(payload.locationId);
+    const revisionId = Number(payload.revisionId);
+    if (!Number.isFinite(locationId) || locationId <= 0) return;
+    if (!Number.isFinite(revisionId) || revisionId <= 0) return;
+    await runDeliveryVerifyJob({
+      store: deps.store,
+      notifier: deps.notifier,
+      installationId,
+      locationId,
+      revisionId,
+      githubDeliveryId: deliveryId,
+      maxBytes: deps.maxAssetBytes,
+      fetch: deps.webFetch,
+      lookup: deps.webLookup,
+    });
+    return;
   }
 
   if (job.kind === "map_custody_check") {
