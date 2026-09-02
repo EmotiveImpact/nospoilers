@@ -5,6 +5,7 @@ import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
 import {
   asFindingCategory,
+  parseDuplicateReasons,
   type DisclosureAttachmentRow,
   type DisclosureCaseRow,
   type DisclosureChecklist,
@@ -15,6 +16,8 @@ import {
   type DisclosureTemplateRow,
   type DisclosureVendorReplyRow,
   type DoNotContactRow,
+  type DuplicateLinkRow,
+  type DuplicateMatch,
   type FindingCategory,
   type VendorChannel,
   type VendorReplyChannel,
@@ -1195,6 +1198,55 @@ function disclosureEventRow(row: {
     summary: row.summary,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
+}
+
+function duplicateLinkRow(row: {
+  id: unknown;
+  case_id: unknown;
+  other_case_id: unknown;
+  reasons: unknown;
+  created_by: string;
+  created_at: string | Date;
+}): DuplicateLinkRow {
+  return {
+    id: num(row.id),
+    case_id: num(row.case_id),
+    other_case_id: num(row.other_case_id),
+    reasons: parseDuplicateReasons(row.reasons),
+    created_by: row.created_by,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+async function writeDuplicateLinks(
+  tx: { query: SqlClient["query"] },
+  caseId: number,
+  matches: DuplicateMatch[],
+  actor: string,
+): Promise<number> {
+  let inserted = 0;
+  for (const match of matches) {
+    if (match.caseId === caseId) continue;
+    const reasons = parseDuplicateReasons(match.reasons);
+    if (reasons.length === 0) continue;
+    const left = Math.min(caseId, match.caseId);
+    const right = Math.max(caseId, match.caseId);
+    const row = await tx.query<{ id: unknown }>(
+      `INSERT INTO disclosure_duplicate_links (case_id, other_case_id, reasons, created_by)
+       VALUES ($1, $2, $3::jsonb, $4)
+       ON CONFLICT (case_id, other_case_id) DO NOTHING
+       RETURNING id`,
+      [left, right, JSON.stringify(reasons), actor],
+    );
+    if (!row.rows[0]) continue;
+    inserted += 1;
+    await tx.query(
+      `INSERT INTO disclosure_events (case_id, action, actor, summary)
+       VALUES ($1, 'updated', $2, $3)`,
+      [caseId, actor, "Recorded a confirmed duplicate link."],
+    );
+  }
+  return inserted;
 }
 
 function prospectRow(row: ProspectRow & { workspace_members?: unknown; feed_checked_at?: string | Date | null }): ProspectRow {
@@ -3096,6 +3148,7 @@ export function createStore(
       findingCategory: FindingCategory;
       actor: string;
       summary: string;
+      duplicates?: DuplicateMatch[];
     }): Promise<DisclosureCaseRow> {
       return await sql.transaction(async (tx) => {
         const inserted = await tx.query<Parameters<typeof disclosureCaseRow>[0]>(
@@ -3111,8 +3164,53 @@ export function createStore(
            VALUES ($1, 'created', $2, $3)`,
           [row.id, input.actor, input.summary],
         );
+        if (input.duplicates?.length) {
+          await writeDuplicateLinks(tx, num(row.id), input.duplicates, input.actor);
+        }
         return disclosureCaseRow(row);
       });
+    },
+
+    async recordDuplicateLinks(input: {
+      caseId: number;
+      matches: DuplicateMatch[];
+      actor: string;
+    }): Promise<number> {
+      if (input.matches.length === 0) return 0;
+      return await sql.transaction(async (tx) =>
+        writeDuplicateLinks(tx, input.caseId, input.matches, input.actor),
+      );
+    },
+
+    async listDuplicateLinks(caseId: number): Promise<
+      (DuplicateLinkRow & { owner: string; repo: string; package_name: string | null; prospect_id: number })[]
+    > {
+      const { rows } = await sql.query<
+        Parameters<typeof duplicateLinkRow>[0] & {
+          owner: string;
+          repo: string;
+          package_name: string | null;
+          prospect_id: unknown;
+        }
+      >(
+        `SELECT l.*, p.owner, p.repo, p.package_name, p.id AS prospect_id
+         FROM disclosure_duplicate_links l
+         JOIN disclosure_cases c ON c.id = CASE
+           WHEN l.case_id = $1 THEN l.other_case_id
+           ELSE l.case_id
+         END
+         JOIN prospects p ON p.id = c.prospect_id
+         WHERE l.case_id = $1 OR l.other_case_id = $1
+         ORDER BY l.id ASC`,
+        [caseId],
+      );
+      return rows.map((row) => ({
+        ...duplicateLinkRow(row),
+        owner: row.owner,
+        repo: row.repo,
+        package_name: row.package_name,
+        prospect_id: num(row.prospect_id),
+      }));
     },
 
     async updateDisclosureCase(input: {

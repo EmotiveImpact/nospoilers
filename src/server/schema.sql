@@ -297,6 +297,38 @@ CREATE TRIGGER disclosure_events_no_delete
   BEFORE DELETE ON disclosure_events
   FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_event_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_duplicate_links (
+  id BIGSERIAL PRIMARY KEY,
+  case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+  other_case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,
+  reasons JSONB NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (case_id <> other_case_id),
+  UNIQUE (case_id, other_case_id)
+);
+
+CREATE INDEX IF NOT EXISTS disclosure_duplicate_links_case_idx
+  ON disclosure_duplicate_links (case_id, id ASC);
+CREATE INDEX IF NOT EXISTS disclosure_duplicate_links_other_idx
+  ON disclosure_duplicate_links (other_case_id, id ASC);
+
+CREATE OR REPLACE FUNCTION reject_disclosure_duplicate_link_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'disclosure_duplicate_links are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS disclosure_duplicate_links_no_update ON disclosure_duplicate_links;
+CREATE TRIGGER disclosure_duplicate_links_no_update
+  BEFORE UPDATE ON disclosure_duplicate_links
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_duplicate_link_mutation();
+DROP TRIGGER IF EXISTS disclosure_duplicate_links_no_delete ON disclosure_duplicate_links;
+CREATE TRIGGER disclosure_duplicate_links_no_delete
+  BEFORE DELETE ON disclosure_duplicate_links
+  FOR EACH ROW EXECUTE PROCEDURE reject_disclosure_duplicate_link_mutation();
+
 CREATE TABLE IF NOT EXISTS disclosure_vendor_replies (
   id BIGSERIAL PRIMARY KEY,
   case_id BIGINT NOT NULL REFERENCES disclosure_cases (id) ON DELETE CASCADE,

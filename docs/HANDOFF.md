@@ -104,7 +104,13 @@ Read in this order:
   reproducibility steps on each Disclosure Desk case. A new `reproduced`
   check and a new `verified` state require that text. Historical verified
   rows without steps stay verified. Live Neon: `054` applied; prettier and
-  left-pad steps stay null (no case rewrite). Next unused id is `055_*`.
+  left-pad steps stay null (no case rewrite).
+  `055_disclosure_duplicate_links` stores an append-only confirmed
+  duplicate pair after `confirmDuplicate` on case create or `contacted`.
+  A 409 without confirm writes no row. First confirm wins. Both cases
+  see the other owner/repo and reasons. Live Neon: `055` applied;
+  prettier vs left-pad still no match so both cases keep
+  `duplicateLinks: []`; leftover links 0. Next unused id is `056_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -541,16 +547,20 @@ the hash; historical verified prettier stays verified with a null hash),
 operator-written reproducibility steps (new `reproduced`/`verified`
 require the text; historical prettier steps stay null),
 duplicate warning (owner/repo, GitHub owner, vendor domain,
-package, fingerprints; live Neon prettier vs left-pad still no match),
+package, fingerprints; confirmed pairs persist on
+`disclosure_duplicate_links`; live Neon prettier vs left-pad still no
+match so leftover links stay 0),
 encrypted expiring notes, stored (never fetched)
 policy URL, human-edited templates, preferred vendor channel, draft preview,
 simulated acknowledgement, internal deadline, conversion attribution,
 credit/CVE/outcome notes, do-not-contact, and a fix-version rescan.
 `contacted`/`fixed` are gated on the API. Do-not-contact always blocks
 `contacted`. `contacted` also requires an approved review and warns on a
-possible duplicate unless `confirmDuplicate` is sent. Live Neon: unauth
-and `not-admin` 401; left-pad `contacted` 409 verify; prettier stays
-`fixed`/`verified`; leftover grants 0; no open jobs; tunnel matched.
+possible duplicate unless `confirmDuplicate` is sent. Confirming stores
+one append-only `disclosure_duplicate_links` pair. Live Neon: `055`
+applied; unauth and `not-admin` 401; left-pad `contacted` 409 verify;
+prettier stays `fixed`/`verified`; prettier vs left-pad still no match;
+leftover links 0; leftover grants 0; no open jobs; tunnel matched.
 Vendor replies and
 encrypted expiring attachments are on the case. Expired attachment ciphertext
 is zeroed on desk read and the hourly poller; the row stays. Expired notes

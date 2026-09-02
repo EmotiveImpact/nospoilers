@@ -323,6 +323,7 @@ describe("Disclosure Desk Phase 1", () => {
         releaseTag: "3.8.0",
       });
 
+      let wakes = 0;
       const app = createApp({
         config: loadConfig({
           adminToken: "desk-admin-token",
@@ -331,6 +332,9 @@ describe("Disclosure Desk Phase 1", () => {
         }),
         store,
         github: unusedGithub(),
+        wakeWorker: () => {
+          wakes += 1;
+        },
       });
 
       await store.upsertUser({ id: "customer-1", login: "acme-founder" });
@@ -371,11 +375,13 @@ describe("Disclosure Desk Phase 1", () => {
           findingCategory: string;
           sent: boolean;
           notes: string | null;
+          duplicateLinks: unknown[];
         };
       };
       expect(createdBody.case.state).toBe("signal");
       expect(createdBody.case.findingCategory).toBe("sourcemap");
       expect(createdBody.case.sent).toBe(false);
+      expect(createdBody.case.duplicateLinks).toEqual([]);
       expect(createdBody.case.fingerprints.join(" ")).not.toContain("AKIA");
       expect(JSON.stringify(createdBody)).not.toContain("AKIA");
       expect(JSON.stringify(createdBody)).not.toContain("notes_ciphertext");
@@ -412,6 +418,16 @@ describe("Disclosure Desk Phase 1", () => {
       expect(duplicateFpBody.duplicates.some((row) => row.reasons.includes("fingerprint"))).toBe(
         true,
       );
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(0);
+      const leftPadMissing = await app.request(`/api/internal/prospects/${leftPadId}/disclosure`, {
+        headers: admin,
+      });
+      expect(leftPadMissing.status).toBe(404);
 
       const confirmedLeftPad = await app.request(`/api/internal/prospects/${leftPadId}/disclosure`, {
         method: "POST",
@@ -419,6 +435,48 @@ describe("Disclosure Desk Phase 1", () => {
         body: JSON.stringify({ confirmDuplicate: true }),
       });
       expect(confirmedLeftPad.status).toBe(201);
+      const confirmedLeftPadBody = (await confirmedLeftPad.json()) as {
+        case: {
+          duplicateLinks: { owner: string; repo: string; reasons: string[] }[];
+          events: { summary: string }[];
+        };
+      };
+      expect(confirmedLeftPadBody.case.duplicateLinks).toEqual([
+        expect.objectContaining({
+          owner: "prettier",
+          repo: "prettier",
+          reasons: expect.arrayContaining(["fingerprint"]),
+        }),
+      ]);
+      expect(
+        confirmedLeftPadBody.case.events.some(
+          (event) => event.summary === "Recorded a confirmed duplicate link.",
+        ),
+      ).toBe(true);
+      const prettierLinked = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        headers: admin,
+      });
+      expect(prettierLinked.status).toBe(200);
+      expect(
+        (
+          (await prettierLinked.json()) as {
+            case: { duplicateLinks: { owner: string; repo: string; reasons: string[] }[] };
+          }
+        ).case.duplicateLinks,
+      ).toEqual([
+        expect.objectContaining({
+          owner: "left-pad",
+          repo: "left-pad",
+          reasons: expect.arrayContaining(["fingerprint"]),
+        }),
+      ]);
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(1);
+      expect(wakes).toBe(0);
 
       const duplicateCompany = await app.request(
         `/api/internal/prospects/${prettierAgain}/disclosure`,
@@ -610,6 +668,13 @@ describe("Disclosure Desk Phase 1", () => {
       expect(contactedDupBody.duplicates.some((row) => row.reasons.includes("fingerprint"))).toBe(
         true,
       );
+      const wakesAfterRescan = wakes;
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(1);
 
       const contacted = await app.request(`/api/internal/prospects/${prettierId}`, {
         method: "PATCH",
@@ -617,6 +682,48 @@ describe("Disclosure Desk Phase 1", () => {
         body: JSON.stringify({ status: "contacted", confirmDuplicate: true }),
       });
       expect(contacted.status).toBe(200);
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(1);
+      const contactedLinks = await app.request(`/api/internal/prospects/${prettierId}/disclosure`, {
+        headers: admin,
+      });
+      const contactedLinkBody = (await contactedLinks.json()) as {
+        case: { duplicateLinks: { owner: string; repo: string; reasons: string[] }[] };
+      };
+      expect(contactedLinkBody.case.duplicateLinks).toHaveLength(1);
+      expect(contactedLinkBody.case.duplicateLinks[0]?.owner).toBe("left-pad");
+      expect(wakes).toBe(wakesAfterRescan);
+
+      const linkedReport = await app.request(
+        `/api/internal/prospects/${prettierId}/disclosure/report?format=json`,
+        { headers: admin },
+      );
+      expect(linkedReport.status).toBe(200);
+      const linkedReportBody = (await linkedReport.json()) as {
+        report: {
+          duplicateLinks: { owner: string; repo: string; reasons: string[] }[];
+          notesIncluded: boolean;
+        };
+      };
+      expect(linkedReportBody.report.notesIncluded).toBe(false);
+      expect(linkedReportBody.report.duplicateLinks).toEqual([
+        expect.objectContaining({
+          owner: "left-pad",
+          repo: "left-pad",
+          reasons: expect.arrayContaining(["fingerprint"]),
+        }),
+      ]);
+      expect(JSON.stringify(linkedReportBody)).not.toContain("AKIA");
+      await expect(
+        sql.query(`UPDATE disclosure_duplicate_links SET created_by = 'mutated'`),
+      ).rejects.toThrow(/append-only/);
+      await expect(sql.query(`DELETE FROM disclosure_duplicate_links`)).rejects.toThrow(
+        /append-only/,
+      );
 
       const fixed = await app.request(`/api/internal/prospects/${prettierId}`, {
         method: "PATCH",
@@ -763,6 +870,37 @@ describe("Disclosure Desk organization and domain matching", () => {
       );
       expect(orgBody.duplicates[0]?.reasons).not.toContain("owner_repo");
       expect(orgBody.duplicates[0]?.reasons).not.toContain("fingerprint");
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(0);
+      const confirmedOrg = await app.request(`/api/internal/prospects/${pluginId}/disclosure`, {
+        method: "POST",
+        headers: admin,
+        body: JSON.stringify({ confirmDuplicate: true }),
+      });
+      expect(confirmedOrg.status).toBe(201);
+      expect(
+        (
+          (await confirmedOrg.json()) as {
+            case: { duplicateLinks: { owner: string; repo: string; reasons: string[] }[] };
+          }
+        ).case.duplicateLinks,
+      ).toEqual([
+        expect.objectContaining({
+          owner: "prettier",
+          repo: "prettier",
+          reasons: expect.arrayContaining(["organization", "domain"]),
+        }),
+      ]);
+      expect(
+        Number(
+          (await sql.query<{ n: unknown }>("SELECT count(*) AS n FROM disclosure_duplicate_links"))
+            .rows[0]?.n,
+        ),
+      ).toBe(1);
       const unrelated = await app.request(`/api/internal/prospects/${unrelatedId}/disclosure`, {
         method: "POST",
         headers: admin,
@@ -1000,11 +1138,16 @@ describe("Disclosure Desk organization and domain matching", () => {
       expect(report.status).toBe(200);
       const reportBody = (await report.json()) as {
         sent: boolean;
-        report: { reproducibilitySteps: string | null; notesIncluded: boolean };
+        report: {
+          reproducibilitySteps: string | null;
+          notesIncluded: boolean;
+          duplicateLinks: unknown[];
+        };
       };
       expect(reportBody.sent).toBe(false);
       expect(reportBody.report.notesIncluded).toBe(false);
       expect(reportBody.report.reproducibilitySteps).toBe(REPRO_STEPS);
+      expect(reportBody.report.duplicateLinks).toEqual([]);
       expect(wakes).toBe(0);
     } finally {
       await sql.close();

@@ -99,6 +99,11 @@ export function disclosureDestinationPayload(report: DisclosureReport): Record<s
       sha256: report.artifact.sha256,
     },
     reproducibilitySteps: report.reproducibilitySteps,
+    duplicateLinks: report.duplicateLinks.map((row) => ({
+      owner: row.owner,
+      repo: row.repo,
+      reasons: row.reasons,
+    })),
     state: report.state,
     fingerprints: report.fingerprints,
     findingCategory: report.findingCategory,

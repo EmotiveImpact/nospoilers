@@ -156,6 +156,48 @@ export type DuplicateMatch = {
   reasons: DuplicateReason[];
 };
 
+export type DuplicateLinkRow = {
+  id: number;
+  case_id: number;
+  other_case_id: number;
+  reasons: DuplicateReason[];
+  created_by: string;
+  created_at: string;
+};
+
+export type DuplicateLinkView = {
+  id: number;
+  caseId: number;
+  otherCaseId: number;
+  prospectId: number;
+  owner: string;
+  repo: string;
+  packageName: string | null;
+  reasons: DuplicateReason[];
+  createdBy: string;
+  createdAt: string;
+};
+
+export const DUPLICATE_REASONS: DuplicateReason[] = [
+  "owner_repo",
+  "organization",
+  "package",
+  "fingerprint",
+  "domain",
+];
+
+export function parseDuplicateReasons(value: unknown): DuplicateReason[] {
+  const raw = Array.isArray(value) ? value : [];
+  const allowed = new Set<string>(DUPLICATE_REASONS);
+  const out: DuplicateReason[] = [];
+  for (const entry of raw) {
+    if (typeof entry === "string" && allowed.has(entry) && !out.includes(entry as DuplicateReason)) {
+      out.push(entry as DuplicateReason);
+    }
+  }
+  return out;
+}
+
 export type DisclosureCaseRow = {
   id: number;
   prospect_id: number;
@@ -302,6 +344,7 @@ export type DisclosureCaseView = {
   sla: DisclosureSla;
   replies: DisclosureVendorReplyView[];
   attachments: DisclosureAttachmentView[];
+  duplicateLinks: DuplicateLinkView[];
   createdAt: string;
   updatedAt: string;
   events: DisclosureEventView[];
@@ -359,6 +402,7 @@ export type DisclosureReport = {
   replies: DisclosureVendorReplyView[];
   attachments: DisclosureAttachmentView[];
   events: DisclosureEventView[];
+  duplicateLinks: DuplicateLinkView[];
 };
 
 export type DisclosureEventView = {
@@ -1271,6 +1315,7 @@ export function toDisclosureView(
   replies: DisclosureVendorReplyRow[] = [],
   attachments: DisclosureAttachmentRow[] = [],
   artifact: ArtifactEvidence,
+  duplicateLinks: DuplicateLinkView[] = [],
 ): DisclosureCaseView {
   return {
     id: row.id,
@@ -1309,6 +1354,7 @@ export function toDisclosureView(
     sla: disclosureSla(row),
     replies: replies.map(toVendorReplyView),
     attachments: attachments.map(toAttachmentView),
+    duplicateLinks,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     events: events.map((event) => ({
@@ -1471,16 +1517,26 @@ export async function createDisclosureCase(
         : duplicates.length > 0
           ? "Opened a private signal after confirming a possible duplicate."
           : "Opened a private signal.",
+    duplicates: duplicates.length > 0 ? duplicates : undefined,
   });
   return await loadedView(store, row);
 }
 
+export async function persistConfirmedDuplicates(
+  store: Store,
+  input: { caseId: number; matches: DuplicateMatch[]; actor: string },
+): Promise<number> {
+  if (input.matches.length === 0) return 0;
+  return store.recordDuplicateLinks(input);
+}
+
 async function loadedView(store: Store, row: DisclosureCaseRow): Promise<DisclosureCaseView> {
-  const [events, replies, attachments, prospect] = await Promise.all([
+  const [events, replies, attachments, prospect, links] = await Promise.all([
     store.listDisclosureEvents(row.id),
     store.listDisclosureVendorReplies(row.id),
     store.listDisclosureAttachments(row.id),
     store.getProspect(row.prospect_id),
+    store.listDuplicateLinks(row.id),
   ]);
   if (!prospect) throw new DisclosureError("Prospect not found.", 404);
   return toDisclosureView(
@@ -1490,7 +1546,26 @@ async function loadedView(store: Store, row: DisclosureCaseRow): Promise<Disclos
     replies,
     attachments,
     artifactEvidence(prospect),
+    links.map((link) => toDuplicateLinkView(link, row.id)),
   );
+}
+
+export function toDuplicateLinkView(
+  row: DuplicateLinkRow & { owner: string; repo: string; package_name: string | null; prospect_id: number },
+  caseId: number,
+): DuplicateLinkView {
+  return {
+    id: row.id,
+    caseId,
+    otherCaseId: row.case_id === caseId ? row.other_case_id : row.case_id,
+    prospectId: row.prospect_id,
+    owner: row.owner,
+    repo: row.repo,
+    packageName: row.package_name,
+    reasons: row.reasons,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  };
 }
 
 export async function updateDisclosureCase(
@@ -2132,5 +2207,6 @@ export async function buildDisclosureReport(
     replies: view.replies,
     attachments: view.attachments,
     events: view.events,
+    duplicateLinks: view.duplicateLinks,
   };
 }

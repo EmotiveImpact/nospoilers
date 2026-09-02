@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+- Disclosure Desk duplicate links: a confirmed duplicate on case create or
+  `contacted` stores an append-only `disclosure_duplicate_links` pair
+  (owner/repo, organization, package, fingerprint, or domain). A 409
+  without `confirmDuplicate` writes no row. The pair is stored once;
+  a later confirm is idempotent. Case views, redacted reports, and
+  destination payloads show the other owner/repo and reasons, never
+  finding values. Customer sessions stay 401. No worker wake. Nothing
+  is mailed. Live Neon: `055` applied; unauth and `not-admin` 401;
+  owner desk 200; prettier vs left-pad still no match so both cases
+  keep `duplicateLinks: []`; prettier stays `fixed`/`verified`; leftover
+  links 0; leftover grants 0; leftover destinations 0; no open jobs;
+  campaigns 0; watches 0; Cloudflare tunnel matched. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk reproducibility steps: a case stores operator-written steps
   for how the public artifact finding was reproduced. A new `reproduced`
   checklist item and a new `verified` state require that text. Historical

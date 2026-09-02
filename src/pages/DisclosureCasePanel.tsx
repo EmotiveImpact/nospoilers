@@ -122,6 +122,13 @@ type DisclosureCase = {
     sha512: string | null
   }
   reproducibilitySteps: string | null
+  duplicateLinks: Array<{
+    otherCaseId: number
+    owner: string
+    repo: string
+    packageName: string | null
+    reasons: string[]
+  }>
   securityContact: string | null
   policyUrl: string | null
   notes: string | null
@@ -546,6 +553,7 @@ export function DisclosureCasePanel({
             <Badge variant="muted">{summary.artifactSha256.slice(0, 12)}</Badge>
           ) : null}
           {summary?.hasReproducibilitySteps ? <Badge variant="muted">steps</Badge> : null}
+          {desk?.duplicateLinks?.length ? <Badge variant="muted">linked</Badge> : null}
           {summary?.conversion && summary.conversion !== "none" ? (
             <Badge variant="muted">{summary.conversion}</Badge>
           ) : null}
@@ -655,6 +663,16 @@ export function DisclosureCasePanel({
               ) : (
                 <p className="text-xs text-dim">No fingerprints yet. Complete a scan first.</p>
               )}
+              {desk.duplicateLinks?.length ? (
+                <ul className="text-xs text-mute">
+                  {desk.duplicateLinks.map((link) => (
+                    <li key={link.otherCaseId}>
+                      Confirmed duplicate · {link.owner}/{link.repo}
+                      {link.packageName ? ` · ${link.packageName}` : ""} · {link.reasons.join(", ")}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <Field>
                 <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                   Finding category

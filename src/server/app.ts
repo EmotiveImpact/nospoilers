@@ -92,6 +92,7 @@ import {
   findDuplicateMatches,
   loadDisclosureCase,
   outreachBlocked,
+  persistConfirmedDuplicates,
   previewDisclosureCase,
   readDisclosureAttachment,
   recordVendorReply,
@@ -1524,6 +1525,13 @@ export function createApp(deps: AppDeps): Hono {
       });
       if (duplicates.length > 0 && body.confirmDuplicate !== true) {
         return c.json({ error: DISCLOSURE_DUPLICATE_ERROR, duplicates }, 409);
+      }
+      if (duplicates.length > 0 && desk) {
+        await persistConfirmedDuplicates(deps.store, {
+          caseId: desk.id,
+          matches: duplicates,
+          actor: await internalActor(c),
+        });
       }
     }
     const prospect = await deps.store.updateProspectStatus(id, status as ProspectStatus);

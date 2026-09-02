@@ -382,6 +382,7 @@ describe("Disclosure Desk destinations", () => {
             replies: [],
             attachments: [],
             events: [],
+            duplicateLinks: [],
           }),
         ),
       ).not.toMatch(/security@|timeTo|Ms/i);

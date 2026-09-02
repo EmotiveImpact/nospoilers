@@ -54,6 +54,15 @@ export function renderDisclosureReportHtml(report: DisclosureReport): string {
   <p>Verified ${report.sla.verifiedAt ? escapeHtml(report.sla.verifiedAt) : "not yet"}</p>
   <p>Acknowledged ${report.sla.acknowledgedAt ? escapeHtml(report.sla.acknowledgedAt) : "not yet"}</p>
   <p>Assignee ${report.assignee ? escapeHtml(report.assignee) : "unassigned"} · review ${escapeHtml(report.reviewState)}</p>
+  <h2>Duplicate links</h2>
+  <ul>${
+    report.duplicateLinks
+      .map(
+        (row) =>
+          `<li><code>${escapeHtml(row.owner)}/${escapeHtml(row.repo)}</code> · ${escapeHtml(row.reasons.join(", "))}</li>`,
+      )
+      .join("") || "<li>none</li>"
+  }</ul>
   <h2>Fingerprints</h2>
   <ul>${fingerprints || "<li>none</li>"}</ul>
   <h2>Vendor replies</h2>
@@ -76,6 +85,7 @@ export function renderDisclosureReportPdf(report: DisclosureReport): Buffer {
     report.reproducibilitySteps
       ? `reproduced ${report.reproducibilitySteps.slice(0, 120)}`
       : "reproduced not recorded",
+    ...report.duplicateLinks.slice(0, 6).map((row) => `dup ${row.owner}/${row.repo} ${row.reasons.join(",")}`),
     `state ${report.state} · ${report.findingCategory} · review ${report.reviewState}`,
     `assignee ${report.assignee ?? "unassigned"}`,
     `opened ${report.sla.openedAt}`,

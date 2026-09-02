@@ -346,7 +346,9 @@ Internal staff running acquisition and disclosure work.
   operator-written reproducibility steps (a new `reproduced` check and a new
   `verified` state require the text; historical verified cases without steps
   stay verified), duplicate
-  warning, encrypted expiring notes, stored (never fetched) security contact or https
+  warning and confirmed append-only `duplicate_links` (both cases see the
+  other owner/repo and reasons; a 409 without `confirmDuplicate` writes
+  no row), encrypted expiring notes, stored (never fetched) security contact or https
   policy URL, human-edited templates, preferred vendor channel, draft preview,
   simulated acknowledgement, vendor replies, encrypted expiring attachments
   (text/PDF/image only; expired ciphertext is zeroed on desk read and the
@@ -355,7 +357,8 @@ Internal staff running acquisition and disclosure work.
   credit/CVE/outcome notes, and a fix-version rescan. `contacted` requires a verified
   case, an approved review, and is blocked when a do-not-contact entry matches
   owner/repo, package, contact, or vendor domain. A duplicate warning also appears
-  before `contacted` unless `confirmDuplicate` is sent. `fixed` requires a recorded fix version and rescan.
+  before `contacted` unless `confirmDuplicate` is sent; confirming stores the
+  pair once. `fixed` requires a recorded fix version and rescan.
   No message is sent. Reports omit operator notes and attachment bytes.
 - Maintain owner-only disclosure templates and do-not-contact entries
   (`/api/internal/disclosure/templates`, `/api/internal/disclosure/do-not-contact`).
@@ -470,23 +473,25 @@ verified without the checklist, a new verified state also requires a repeatable
 artifact SHA-256 and reproducibility steps, a historical verified case without a
 hash or steps can stay verified,
 a new case derives finding category from fingerprints
-and rejects an unknown category. Live Neon: `054` applied; unauth and
+and rejects an unknown category. Live Neon: `055` applied; unauth and
 `not-admin` 401; prettier and left-pad hashes and steps stay null (no
-rescan/rewrite); prettier stays `fixed`/`verified`; leftover grants 0; no
-open jobs; tunnel matched.
+rescan/rewrite); prettier stays `fixed`/`verified`; leftover links 0;
+leftover grants 0; no open jobs; tunnel matched.
 `PATCH /api/internal/prospects/:id` cannot record
 `contacted` before a verified case or `fixed` before a fix-version rescan, and
 `contacted` also warns on a possible duplicate unless `confirmDuplicate` is sent.
+Confirming stores one append-only pair; a 409 without confirm writes no row.
 Live Neon: unauth and `not-admin` 401; left-pad `contacted` 409 verify;
 prettier stays `fixed`/`verified`; prettier vs left-pad still no match;
-leftover grants 0; no open jobs; tunnel matched.
+leftover links 0; leftover grants 0; no open jobs; tunnel matched.
 Duplicates
 warn on owner/repo, same GitHub owner, vendor domain (policy URL or contact email),
 package name, or fingerprint overlap unless confirmed, fingerprints
 are `rule|severity|path|title` only, policy URLs are stored and never fetched, notes are
-encrypted and expire from reads, drafts and acknowledgements stay `sent: false`, and
-`disclosure_events` are append-only. Live Neon: unauth and `not-admin` 401; owner
-desk 200; prettier vs left-pad still no duplicate; no open jobs; tunnel matched.
+encrypted and expire from reads, drafts and acknowledgements stay `sent: false`,
+`disclosure_events` are append-only, and confirmed `disclosure_duplicate_links`
+are append-only. Live Neon: unauth and `not-admin` 401; owner
+desk 200; prettier vs left-pad still no duplicate; leftover links 0; no open jobs; tunnel matched.
 Existing feed tests still call
 `store.updateProspectStatus` directly.
 `tests/disclosure-phase2.test.ts` proves human-edited templates substitute placeholders

@@ -208,8 +208,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   stays null) — operator-written reproducibility steps (new
   `reproduced`/`verified` require the text; historical prettier steps stay
   null) — duplicates including GitHub owner and vendor domain
-  on create and before `contacted` (live Neon prettier vs left-pad still no
-  match; left-pad `contacted` 409 verify; prettier stays `fixed`) —
+  on create and before `contacted`, with confirmed pairs stored on
+  `disclosure_duplicate_links` (live Neon prettier vs left-pad still no
+  match so leftover links stay 0; left-pad `contacted` 409 verify;
+  prettier stays `fixed`) —
   live Neon prettier vs left-pad still no match,
   templates, vendor channel, do-not-contact,
   outcomes, vendor replies, encrypted attachments, assignment, review before
