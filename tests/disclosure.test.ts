@@ -944,10 +944,10 @@ describe("Disclosure Desk organization and domain matching", () => {
         fileCount: 1,
         findings: [
           {
-            rule: "SEC-003",
+            rule: "GIT-001",
             severity: "critical",
-            path: "package/token.json",
-            title: "Provider token material",
+            path: "package/.git/config",
+            title: "Git directory packed in the artifact",
             detail: "must not be stored",
           },
         ],
@@ -970,10 +970,10 @@ describe("Disclosure Desk organization and domain matching", () => {
         fileCount: 1,
         findings: [
           {
-            rule: "SIZE-001",
+            rule: "SRC-001",
             severity: "warn",
-            path: "package/index.js",
-            title: "Unusually large packed file",
+            path: "package/src/index.ts",
+            title: "Original TypeScript ships in the artifact",
             detail: "must not be stored",
           },
         ],
