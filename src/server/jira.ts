@@ -122,16 +122,18 @@ export function jiraIssuePayload(input: {
   issueType: string;
   summary: string;
   body: string;
+  preface?: string;
 }): Record<string, unknown> {
   const summary = input.summary.replace(/\s+/g, " ").trim().slice(0, 200) || "NoSpoilers alert";
+  const preface =
+    input.preface?.replace(/\s+/g, " ").trim() ||
+    "NoSpoilers Watch alert. This is not an invented incident.";
   return {
     fields: {
       project: { key: input.projectKey },
       issuetype: { name: input.issueType },
       summary,
-      description: jiraAdf(
-        `NoSpoilers Watch alert. This is not an invented incident. ${input.body.replace(/\s+/g, " ").trim().slice(0, 500)}`,
-      ),
+      description: jiraAdf(`${preface} ${input.body.replace(/\s+/g, " ").trim().slice(0, 500)}`),
     },
   };
 }
@@ -206,7 +208,7 @@ export async function postJiraIssue(
   host: string,
   projectKey: string,
   secret: JiraSecret,
-  input: { title: string; body: string; kind: string },
+  input: { title: string; body: string; kind: string; preface?: string },
   opts: { fetch?: typeof fetch; lookup?: WebhookHostLookup } = {},
 ): Promise<{ ok: boolean; status: number; error: string | null }> {
   const key = parseJiraProjectKey(projectKey);
@@ -216,6 +218,7 @@ export async function postJiraIssue(
     issueType: secret.issueType,
     summary: input.title,
     body: `${input.kind}: ${input.body}`,
+    preface: input.preface,
   });
   return await jiraFetch(
     host,

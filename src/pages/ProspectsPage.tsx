@@ -86,6 +86,13 @@ type DeskWorkload = {
   }
 }
 
+type DeskDestination = {
+  id: number
+  kind: "webhook" | "jira"
+  host: string
+  projectKey: string | null
+}
+
 type ProspectData = {
   prospects: Prospect[]
   stats: { total: number; actionable: number; queued: number; contacted: number }
@@ -149,7 +156,9 @@ export function ProspectsPage() {
   const [query, setQuery] = useState(DEFAULT_QUERY)
   const [campaignName, setCampaignName] = useState("")
   const [repository, setRepository] = useState("")
-  const [working, setWorking] = useState<"discover" | "repository" | "feed" | "campaign" | null>(null)
+  const [working, setWorking] = useState<
+    "discover" | "repository" | "feed" | "campaign" | "destination" | null
+  >(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<OwnerQueueHealth | null>(null)
   const [templates, setTemplates] = useState<DeskTemplate[]>([])
@@ -163,6 +172,13 @@ export function ProspectsPage() {
   const [dncPackage, setDncPackage] = useState("")
   const [dncContact, setDncContact] = useState("")
   const [dncReason, setDncReason] = useState("")
+  const [destinations, setDestinations] = useState<DeskDestination[]>([])
+  const [webhookUrl, setWebhookUrl] = useState("")
+  const [webhookConfirm, setWebhookConfirm] = useState("")
+  const [jiraSite, setJiraSite] = useState("")
+  const [jiraEmail, setJiraEmail] = useState("")
+  const [jiraToken, setJiraToken] = useState("")
+  const [jiraProject, setJiraProject] = useState("")
 
   const request = useCallback(
     async <T,>(url: string, options: RequestInit = {}): Promise<T> => {
@@ -214,18 +230,21 @@ export function ProspectsPage() {
         setQueue(null)
       }
       try {
-        const [templateBody, dncBody, workloadBody] = await Promise.all([
+        const [templateBody, dncBody, workloadBody, destinationBody] = await Promise.all([
           request<{ templates: DeskTemplate[] }>("/api/internal/disclosure/templates"),
           request<{ entries: DeskDnc[] }>("/api/internal/disclosure/do-not-contact"),
           request<DeskWorkload>("/api/internal/disclosure/workload"),
+          request<{ destinations: DeskDestination[] }>("/api/internal/disclosure/destinations"),
         ])
         setTemplates(templateBody.templates)
         setDncEntries(dncBody.entries)
         setWorkload(workloadBody)
+        setDestinations(destinationBody.destinations)
       } catch {
         setTemplates([])
         setDncEntries([])
         setWorkload(null)
+        setDestinations([])
       }
     } catch (error) {
       setState((current) =>
@@ -451,6 +470,91 @@ export function ProspectsPage() {
     }
   }
 
+  async function saveWebhookDestination() {
+    setWorking("destination")
+    setNotice(null)
+    try {
+      await request("/api/internal/disclosure/destinations/webhook", {
+        method: "POST",
+        body: JSON.stringify({ url: webhookUrl, confirm: webhookConfirm }),
+      })
+      setWebhookUrl("")
+      setWebhookConfirm("")
+      setNotice("Saved the disclosure webhook. The URL is not shown again.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save that webhook.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function saveJiraDestination() {
+    setWorking("destination")
+    setNotice(null)
+    try {
+      await request("/api/internal/disclosure/destinations/jira", {
+        method: "POST",
+        body: JSON.stringify({
+          site: jiraSite,
+          email: jiraEmail,
+          token: jiraToken,
+          projectKey: jiraProject,
+          confirm: jiraProject.trim().toUpperCase(),
+        }),
+      })
+      setJiraSite("")
+      setJiraEmail("")
+      setJiraToken("")
+      setJiraProject("")
+      setNotice("Saved the disclosure Jira destination. The token is not shown again.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save that Jira destination.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function testDestination(id: number) {
+    setWorking("destination")
+    setNotice(null)
+    try {
+      const result = await request<{ ok: boolean; inventedIncident: boolean; error: string | null }>(
+        `/api/internal/disclosure/destinations/${id}/test`,
+        { method: "POST" },
+      )
+      setNotice(
+        result.ok
+          ? "Destination test returned ok. No incident was invented."
+          : result.error ?? "Destination test failed. No incident was invented.",
+      )
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Destination test failed.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  async function removeDestination(destination: DeskDestination) {
+    setWorking("destination")
+    setNotice(null)
+    try {
+      await request(`/api/internal/disclosure/destinations/${destination.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({
+          confirm: destination.kind === "jira" ? destination.projectKey : destination.host,
+        }),
+      })
+      setNotice("Removed the disclosure destination.")
+      await load()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not remove that destination.")
+    } finally {
+      setWorking(null)
+    }
+  }
+
   async function rescan(id: number) {
     try {
       await request(`/api/internal/prospects/${id}/rescan`, { method: "POST" })
@@ -539,7 +643,9 @@ export function ProspectsPage() {
             or secret values are retained. Disclosure Desk verifies a finding, previews a draft,
             records a simulated acknowledgement, and enforces do-not-contact. Missed
             deadlines stay as internal reminders. Researcher workload is case counts
-            by assignee. Time spent is not tracked. Nothing is sent or publicly named.
+            by assignee. Time spent is not tracked. A verified case can be filed to an
+            owner webhook or Jira Cloud project after typed confirm. Nothing is mailed
+            or publicly named.
           </p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
@@ -919,6 +1025,120 @@ export function ProspectsPage() {
         </div>
       </section>
 
+      <section className="mt-10 rounded-lg border border-white/10 p-5">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-dim">Disclosure destinations</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
+          One HTTPS webhook and one Jira Cloud project. Tests never invent an incident or create a
+          Jira issue. Filing a case posts a redacted verified report after you type the
+          coordinate. Secrets are never returned.
+        </p>
+        {destinations.length > 0 ? (
+          <ul className="mt-4 divide-y divide-white/8">
+            {destinations.map((destination) => (
+              <li
+                key={destination.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <p className="font-mono text-xs text-snow">
+                  {destination.kind}
+                  {destination.kind === "jira"
+                    ? ` · ${destination.host} · ${destination.projectKey}`
+                    : ` · ${destination.host}`}
+                </p>
+                <span className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={Boolean(working)}
+                    onClick={() => void testDestination(destination.id)}
+                  >
+                    Test
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={Boolean(working)}
+                    onClick={() => void removeDestination(destination)}
+                  >
+                    Remove
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-dim">No destinations saved.</p>
+        )}
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-dim">Webhook</p>
+            <Input
+              value={webhookUrl}
+              onChange={(event) => setWebhookUrl(event.target.value)}
+              placeholder="https://hooks.example.com/desk"
+              className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+            <Input
+              value={webhookConfirm}
+              onChange={(event) => setWebhookConfirm(event.target.value)}
+              placeholder="type the host"
+              className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+            />
+            <Button
+              type="button"
+              size="sm"
+              className="mt-3"
+              disabled={Boolean(working) || !webhookUrl.trim() || !webhookConfirm.trim()}
+              onClick={() => void saveWebhookDestination()}
+            >
+              Save webhook
+            </Button>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-dim">Jira Cloud</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <Input
+                value={jiraSite}
+                onChange={(event) => setJiraSite(event.target.value)}
+                placeholder="site.atlassian.net"
+                className="h-10 rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+              />
+              <Input
+                value={jiraProject}
+                onChange={(event) => setJiraProject(event.target.value)}
+                placeholder="PROJECT"
+                className="h-10 rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+              />
+              <Input
+                value={jiraEmail}
+                onChange={(event) => setJiraEmail(event.target.value)}
+                placeholder="email"
+                className="h-10 rounded-md border border-white/15 bg-transparent px-3 text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+              />
+              <Input
+                type="password"
+                value={jiraToken}
+                onChange={(event) => setJiraToken(event.target.value)}
+                placeholder="API token"
+                className="h-10 rounded-md border border-white/15 bg-transparent px-3 text-xs text-snow outline-none placeholder:text-dim data-focus:border-white/40"
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-3"
+              disabled={Boolean(working) || !jiraSite.trim() || !jiraProject.trim()}
+              onClick={() => void saveJiraDestination()}
+            >
+              Save Jira
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <section className="mt-14">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Private outreach queue</h2>
@@ -977,6 +1197,9 @@ export function ProspectsPage() {
                       {prospect.error && <p className="mt-3 text-sm text-danger">{prospect.error}</p>}
                       <DisclosureCasePanel
                         prospectId={prospect.id}
+                        owner={prospect.owner}
+                        repo={prospect.repo}
+                        destinations={destinations}
                         summary={prospect.disclosure}
                         request={request}
                         token={token}

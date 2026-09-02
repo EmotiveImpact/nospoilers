@@ -85,7 +85,9 @@ Read in this order:
   expired attachment ciphertext (row and metadata stay). Notes ciphertext
   is nulled after `notes_expires_at`.
   `049_discovery_campaigns` adds owner-only `discovery_campaigns` for
-  scheduled GitHub search queries. Next unused id is `050_*`.
+  scheduled GitHub search queries.
+  `050_disclosure_destinations` adds owner-only webhook and Jira Cloud
+  destinations for redacted Disclosure Desk filings. Next unused id is `051_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -528,8 +530,9 @@ owner desk GET ran the sweep; no rows were expired so ciphertext stayed.
 Redacted JSON/HTML/PDF reports
 omit notes and attachment bytes. A missed deadline creates an internal reminder
 only. Nothing is sent. Researcher workload is owner-only case counts per
-assignee. Time spent is not tracked. Client projects, billing, and aggregate
-research stay out.
+assignee. Time spent is not tracked. Owner-only webhook and Jira destinations
+file a redacted verified case after typed confirm. Tests never invent an
+incident. Client projects, billing, and aggregate research stay out.
 Live prettier case: vendor reply recorded, `vendor-note.txt` stored, archive
 name/magic rejected, assigned to EmotiveImpact, review approved, JSON/HTML/PDF
 reports omitted notes and attachment bytes. Customer 401. Nothing mailed.
@@ -538,6 +541,10 @@ not tracked. No migration. Live Neon: unauth and `not-admin` 401; owner
 GET 200 counted EmotiveImpact’s verified prettier case and one unassigned
 left-pad signal (deadline missed); no open jobs; campaigns 0; watches 0;
 Cloudflare tunnel matched.
+Owner-only Disclosure Desk destinations are in (one HTTPS webhook and one
+Jira Cloud project). Secrets never return. Tests never invent an incident
+or create a Jira issue. Filing a verified case posts a redacted report
+after typed confirm. Unverified stays 409. Customer 401. Nothing mailed.
 Live-opened a private case on the public prettier npm artifact from
 `prettier/prettier` (verified, draft preview, simulated acknowledgement,
 fix-version `3.9.7` rescan). No companies were seeded.

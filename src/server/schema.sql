@@ -1065,3 +1065,17 @@ CREATE TRIGGER audit_events_no_delete
   BEFORE DELETE ON audit_events
   FOR EACH ROW EXECUTE PROCEDURE reject_audit_event_mutation();
 
+CREATE TABLE IF NOT EXISTS disclosure_destinations (
+  id BIGSERIAL PRIMARY KEY,
+  kind TEXT NOT NULL UNIQUE CHECK (kind IN ('webhook', 'jira')),
+  host TEXT NOT NULL,
+  project_key TEXT,
+  secret_ciphertext TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS disclosure_destinations_kind_idx
+  ON disclosure_destinations (kind);
+

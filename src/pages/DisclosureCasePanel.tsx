@@ -127,15 +127,34 @@ const CHECKS: { key: keyof Checklist; label: string }[] = [
   { key: "contact_or_policy", label: "Contact or policy on file" },
 ]
 
+type DeskDestination = {
+  id: number
+  kind: "webhook" | "jira"
+  host: string
+  projectKey: string | null
+}
+
 type Props = {
   prospectId: number
+  owner: string
+  repo: string
+  destinations: DeskDestination[]
   summary: DisclosureSummary | null
   request: <T>(url: string, options?: RequestInit) => Promise<T>
   token?: string
   onChanged: () => Promise<void>
 }
 
-export function DisclosureCasePanel({ prospectId, summary, request, token, onChanged }: Props) {
+export function DisclosureCasePanel({
+  prospectId,
+  owner,
+  repo,
+  destinations,
+  summary,
+  request,
+  token,
+  onChanged,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [desk, setDesk] = useState<DisclosureCase | null>(null)
   const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null)
@@ -164,6 +183,8 @@ export function DisclosureCasePanel({ prospectId, summary, request, token, onCha
   const [replySummary, setReplySummary] = useState("")
   const [attachmentName, setAttachmentName] = useState("vendor-note.txt")
   const [attachmentBytes, setAttachmentBytes] = useState<string>("")
+  const [notifyId, setNotifyId] = useState<number | "">("")
+  const [notifyConfirm, setNotifyConfirm] = useState("")
 
   const loadCase = useCallback(async () => {
     try {
@@ -325,6 +346,30 @@ export function DisclosureCasePanel({ prospectId, summary, request, token, onCha
       await onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not record the review.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function notifyDestination() {
+    if (notifyId === "") return
+    setBusy("notify")
+    setError(null)
+    try {
+      const result = await request<{ ok: boolean; sent: false; inventedIncident: false; error: string | null }>(
+        `/api/internal/prospects/${prospectId}/disclosure/notify`,
+        {
+          method: "POST",
+          body: JSON.stringify({ destinationId: notifyId, confirm: notifyConfirm }),
+        },
+      )
+      if (!result.ok) {
+        setError(result.error ?? "Filing the redacted case failed.")
+      }
+      await onChanged()
+      await loadCase()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not file the redacted case.")
     } finally {
       setBusy(null)
     }
@@ -703,6 +748,58 @@ export function DisclosureCasePanel({ prospectId, summary, request, token, onCha
                   {desk.reviewState} {desk.sla.verifiedAt ? `· verified ${desk.sla.verifiedAt.slice(0, 10)}` : ""}
                 </p>
               </div>
+              {destinations.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field>
+                    <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                      File redacted case
+                    </Label>
+                    <select
+                      value={notifyId}
+                      onChange={(event) =>
+                        setNotifyId(event.target.value ? Number(event.target.value) : "")
+                      }
+                      className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
+                    >
+                      <option value="">Choose destination</option>
+                      {destinations.map((destination) => (
+                        <option key={destination.id} value={destination.id}>
+                          {destination.kind === "jira"
+                            ? `jira ${destination.projectKey}`
+                            : `webhook ${destination.host}`}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field>
+                    <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
+                      Type {owner}/{repo}
+                    </Label>
+                    <Input
+                      value={notifyConfirm}
+                      onChange={(event) => setNotifyConfirm(event.target.value)}
+                      className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 font-mono text-xs text-snow outline-none data-focus:border-white/40"
+                    />
+                  </Field>
+                  <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        Boolean(busy) ||
+                        notifyId === "" ||
+                        desk.state !== "verified" ||
+                        notifyConfirm.trim() !== `${owner}/${repo}`
+                      }
+                      onClick={() => void notifyDestination()}
+                    >
+                      {busy === "notify" ? "Filing…" : "File redacted case"}
+                    </Button>
+                    <p className="text-xs text-dim">Verified cases only. Nothing is mailed.</p>
+                  </div>
+                </div>
+              ) : null}
               <div className="grid gap-3 md:grid-cols-2">
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">

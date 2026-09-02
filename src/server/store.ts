@@ -51,6 +51,11 @@ import {
 import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
 import { githubLoginKey, type NotificationRouteRow, type RouteMinSeverity } from "./routing.ts";
 import { IDENTITY_EVIDENCE_ALERT_KINDS } from "./identity-evidence.ts";
+import {
+  asDisclosureDestinationKind,
+  type DisclosureDestinationKind,
+  type DisclosureDestinationRow,
+} from "./disclosure-destinations.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -1122,6 +1127,28 @@ function doNotContactRow(row: {
     reason: row.reason,
     created_by: row.created_by,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function disclosureDestinationRow(row: {
+  id: unknown;
+  kind: string;
+  host: string;
+  project_key: string | null;
+  secret_ciphertext: string;
+  created_by: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): DisclosureDestinationRow {
+  return {
+    id: num(row.id),
+    kind: asDisclosureDestinationKind(row.kind),
+    host: row.host,
+    project_key: row.project_key,
+    secret_ciphertext: row.secret_ciphertext,
+    created_by: row.created_by,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
@@ -3366,6 +3393,79 @@ export function createStore(
          VALUES ($1, $2, $3, $4)`,
         [input.caseId, input.action, input.actor, input.summary],
       );
+    },
+
+    async listDisclosureDestinations(): Promise<DisclosureDestinationRow[]> {
+      const { rows } = await sql.query<Parameters<typeof disclosureDestinationRow>[0]>(
+        `SELECT * FROM disclosure_destinations ORDER BY kind ASC, id ASC`,
+      );
+      return rows.map((row) => disclosureDestinationRow(row));
+    },
+
+    async getDisclosureDestination(id: number): Promise<DisclosureDestinationRow | null> {
+      const { rows } = await sql.query<Parameters<typeof disclosureDestinationRow>[0]>(
+        `SELECT * FROM disclosure_destinations WHERE id = $1`,
+        [id],
+      );
+      return rows[0] ? disclosureDestinationRow(rows[0]) : null;
+    },
+
+    async upsertDisclosureDestination(input: {
+      kind: DisclosureDestinationKind;
+      host: string;
+      projectKey: string | null;
+      secret: string;
+      createdBy: string;
+    }): Promise<DisclosureDestinationRow> {
+      if (!tokenSecret) {
+        throw Object.assign(new Error("This instance cannot encrypt disclosure destinations."), {
+          status: 400,
+        });
+      }
+      const ciphertext = encryptSecret(input.secret, tokenSecret);
+      const { rows } = await sql.query<Parameters<typeof disclosureDestinationRow>[0]>(
+        `INSERT INTO disclosure_destinations (
+           kind, host, project_key, secret_ciphertext, created_by
+         )
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (kind) DO UPDATE SET
+           host = excluded.host,
+           project_key = excluded.project_key,
+           secret_ciphertext = excluded.secret_ciphertext,
+           created_by = excluded.created_by,
+           updated_at = now()
+         RETURNING *`,
+        [input.kind, input.host, input.projectKey, ciphertext, input.createdBy],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("Could not save that destination.");
+      return disclosureDestinationRow(row);
+    },
+
+    async deleteDisclosureDestination(id: number): Promise<boolean> {
+      const { rows } = await sql.query<{ id: unknown }>(
+        `DELETE FROM disclosure_destinations WHERE id = $1 RETURNING id`,
+        [id],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async openDisclosureDestination(id: number): Promise<{
+      id: number;
+      kind: DisclosureDestinationKind;
+      host: string;
+      projectKey: string | null;
+      secret: string;
+    } | null> {
+      const row = await this.getDisclosureDestination(id);
+      if (!row || !tokenSecret) return null;
+      return {
+        id: row.id,
+        kind: row.kind,
+        host: row.host,
+        projectKey: row.project_key,
+        secret: decryptSecret(row.secret_ciphertext, tokenSecret),
+      };
     },
 
     async listDisclosureVendorReplies(caseId: number): Promise<DisclosureVendorReplyRow[]> {

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Disclosure Desk destinations: owner saves one HTTPS webhook and one Jira
+  Cloud project (`GET`/`POST`/`DELETE /api/internal/disclosure/destinations`).
+  Secrets are encrypted and never returned. A test never invents an incident
+  or creates a Jira issue. Filing a verified case
+  (`POST /api/internal/prospects/:id/disclosure/notify`) posts a redacted
+  report after typed coordinate confirm. Unverified cases stay 409. Customer
+  sessions stay 401. No worker wake. Nothing is mailed. Not a customer
+  product and not a Pricing change.
+
 - Disclosure Desk researcher workload: owner Artifact Leads shows case counts
   per assignee (`GET /api/internal/disclosure/workload`). States, pending
   review, and missed deadlines only. Minutes, last-active, ranking, and

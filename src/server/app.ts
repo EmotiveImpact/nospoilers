@@ -104,6 +104,15 @@ import {
   updateDisclosureTemplate,
 } from "./disclosure.ts";
 import { renderDisclosureReportHtml, renderDisclosureReportPdf } from "./disclosure-report.ts";
+import {
+  DISCLOSURE_DESTINATION_UNKNOWN_ERROR,
+  disclosureDestinationConfirmValue,
+  notifyDisclosureDestination,
+  publicDisclosureDestination,
+  saveDisclosureJira,
+  saveDisclosureWebhook,
+  testDisclosureDestination,
+} from "./disclosure-destinations.ts";
 import { remindMissedDisclosureDeadlines, toNotificationView } from "./internal-notify.ts";
 import {
   discoverAndQueueProspects,
@@ -852,6 +861,79 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(researcherWorkloadFromCases(cases));
   });
 
+  app.get("/api/internal/disclosure/destinations", async (c) => {
+    const rows = await deps.store.listDisclosureDestinations();
+    return c.json({
+      destinations: rows.map(publicDisclosureDestination),
+      policy: { sent: false, inventedIncident: false },
+    });
+  });
+
+  app.post("/api/internal/disclosure/destinations/webhook", async (c) => {
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const destination = await saveDisclosureWebhook(deps.store, {
+        actor: await internalActor(c),
+        url: body.url,
+        confirm: body.confirm,
+        lookup: deps.webhookLookup,
+      });
+      return c.json({ destination, sent: false }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/disclosure/destinations/jira", async (c) => {
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const destination = await saveDisclosureJira(deps.store, {
+        actor: await internalActor(c),
+        site: body.site,
+        email: body.email,
+        token: body.token,
+        projectKey: body.projectKey ?? body.project_key,
+        issueType: body.issueType ?? body.issue_type,
+        confirm: body.confirm,
+      });
+      return c.json({ destination, sent: false }, 201);
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/disclosure/destinations/:id/test", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) {
+      return c.json({ error: DISCLOSURE_DESTINATION_UNKNOWN_ERROR }, 404);
+    }
+    try {
+      const result = await testDisclosureDestination(deps.store, id, {
+        fetch: deps.slackFetch,
+        lookup: deps.webhookLookup,
+      });
+      return c.json({ ...result, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.delete("/api/internal/disclosure/destinations/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) {
+      return c.json({ error: DISCLOSURE_DESTINATION_UNKNOWN_ERROR }, 404);
+    }
+    const existing = await deps.store.getDisclosureDestination(id);
+    if (!existing) return c.json({ error: DISCLOSURE_DESTINATION_UNKNOWN_ERROR }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, disclosureDestinationConfirmValue(existing));
+    if (confirmError) return c.json(confirmError, 400);
+    const removed = await deps.store.deleteDisclosureDestination(id);
+    return removed
+      ? c.json({ ok: true, sent: false })
+      : c.json({ error: DISCLOSURE_DESTINATION_UNKNOWN_ERROR }, 404);
+  });
+
   app.get("/api/internal/disclosure/do-not-contact", async (c) => {
     const entries = await deps.store.listDoNotContact();
     return c.json({ entries: entries.map(toDncView) });
@@ -1223,6 +1305,27 @@ export function createApp(deps: AppDeps): Hono {
         note: body.note,
       });
       return c.json({ case: view, sent: false });
+    } catch (error) {
+      return disclosureFailed(c, error);
+    }
+  });
+
+  app.post("/api/internal/prospects/:id/disclosure/notify", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Invalid prospect." }, 400);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    try {
+      const result = await notifyDisclosureDestination(
+        deps.store,
+        {
+          prospectId: id,
+          destinationId: Number(body.destinationId ?? body.destination_id),
+          actor: await internalActor(c),
+          confirm: body.confirm,
+        },
+        { fetch: deps.slackFetch, lookup: deps.webhookLookup },
+      );
+      return c.json(result);
     } catch (error) {
       return disclosureFailed(c, error);
     }

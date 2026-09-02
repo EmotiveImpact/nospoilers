@@ -208,8 +208,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   fix-version rescan; expired attachment and notes ciphertext is zeroed on
   schedule; nothing sent), and
   owner-only notifications for verified critical findings and missed deadlines
-  (never mailed), and owner-only researcher workload as case counts per
-  assignee (no time tracking). Live Neon: unauth/`not-admin` 401; owner
+  (never mailed), owner-only researcher workload as case counts per
+  assignee (no time tracking), and owner-only webhook/Jira destinations
+  that file a redacted verified case after typed confirm (test never
+  invents an incident). Live Neon: unauth/`not-admin` 401; owner
   200 counted the prettier and left-pad cases; tunnel matched.
 - Application runtime on Neon project `NoSpoilers`, branch `production`, database `neondb`.
 - Access boundaries document and tests that customer sessions cannot read Artifact Leads.

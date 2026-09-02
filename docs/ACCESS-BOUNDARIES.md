@@ -355,6 +355,11 @@ Internal staff running acquisition and disclosure work.
 - Read owner-only researcher workload (`GET /api/internal/disclosure/workload`):
   case counts per assignee and unassigned, including state, pending review, and
   missed deadlines. Minutes, last-active, ranking, and billing fields are omitted.
+- Save, test, and delete owner-only Disclosure Desk destinations
+  (`/api/internal/disclosure/destinations`): one HTTPS webhook and one Jira Cloud
+  project. Secrets are never returned. A test never invents an incident or
+  creates a Jira issue. Filing a verified case posts a redacted report after
+  typed coordinate confirm. Unverified cases stay 409.
 - Read owner-only verified-critical and deadline-missed notifications on Artifact Leads
   (`GET /api/internal/notifications`). Unverified scans do not notify. Missed deadlines
   create an internal reminder only. Nothing is mailed.
@@ -397,6 +402,7 @@ These are never customer features:
 | Disclosure Desk | `/internal/prospects` case workflow; `/api/internal/prospects/:id/disclosure*` including replies, attachments, assign, review, and report |
 | Disclosure templates | `/api/internal/disclosure/templates`; `disclosure_templates`; owner-only |
 | Researcher workload | `/api/internal/disclosure/workload`; case counts per assignee; no time tracking |
+| Disclosure destinations | `/api/internal/disclosure/destinations`; webhook + Jira; encrypted; owner-only |
 | Do-not-contact | `/api/internal/disclosure/do-not-contact`; `disclosure_do_not_contact`; owner-only |
 | Prospect companies and artifacts | `prospects` table |
 | Disclosure records | `disclosure_cases` plus append-only `disclosure_events`; never customer-visible |
@@ -453,6 +459,11 @@ and still stay `sent: false`, do-not-contact blocks case create unless `research
 and always blocks `contacted`, vendor channel and credit/CVE/outcome notes persist,
 a missed deadline creates one `deadline_missed` internal notification, and customer
 sessions stay 401 on template and do-not-contact routes.
+`tests/disclosure-destinations.test.ts` proves webhook and Jira destinations are
+owner-only, secrets never return, private/Slack URLs 400, tests never invent an
+incident or create a Jira issue, unverified notify is 409, a verified prettier
+case files a redacted payload without notes or secret values, remigrate keeps
+the table, and no worker wake. Customer sessions stay 401.
 `tests/disclosure-workflow.test.ts` proves vendor replies and encrypted attachments
 are owner-only, archives are rejected, replies and attachments are append-only,
 `contacted` waits for review approval, JSON/HTML/PDF reports omit operator notes,
@@ -474,7 +485,7 @@ campaigns, remigrate keeps rows, and no prospect job is enqueued. Live Neon:
 rows; prospect count unchanged; tunnel matched.
 `tests/prospects.test.ts` proves anonymous and ordinary customer sessions cannot list or
 mutate Artifact Leads, cannot read `/api/internal/queue` or `POST /api/internal/prospects/feed`,
-cannot open Disclosure Desk, template, do-not-contact, workload, or notification routes,
+cannot open Disclosure Desk, template, do-not-contact, workload, destination, or notification routes,
 that owner queue JSON is
 counts only (no payloads, URLs, credential values, or tenant names), including daily
 unpack aggregates, that nested workspace member discovery is metadata-only (private

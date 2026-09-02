@@ -807,6 +807,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateProtectedNamespaces(sql);
   await migrateDisclosureEvidenceExpiry(sql);
   await migrateDiscoveryCampaigns(sql);
+  await migrateDisclosureDestinations(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1468,6 +1469,26 @@ async function migrateDiscoveryCampaigns(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "049_discovery_campaigns",
+  ]);
+}
+
+async function migrateDisclosureDestinations(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS disclosure_destinations (
+      id BIGSERIAL PRIMARY KEY,
+      kind TEXT NOT NULL UNIQUE CHECK (kind IN ('webhook', 'jira')),
+      host TEXT NOT NULL,
+      project_key TEXT,
+      secret_ciphertext TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS disclosure_destinations_kind_idx
+      ON disclosure_destinations (kind);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "050_disclosure_destinations",
   ]);
 }
 
