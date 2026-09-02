@@ -80,6 +80,10 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   snapshot and missing size do not alert. Solo paid
   returns 403. Unpaid returns 402. Another tenant’s package is 404. Alerts are facts, not a
   malware verdict, and never auto-advisory or takedown.
+- On a trial or Team install, read assembled identity evidence for a protected pack on
+  that install. Members may download the JSON. Unpublished or missing packs return
+  `evidence: null`. Solo paid returns 403. Unpaid returns 402. Another tenant’s package
+  is 404. The public advisory token 404s when disabled.
 - Watch packs from private HTTPS registries already saved on those installations. Token
   values are never returned.
 - Trigger a latest-release scan on those repositories while coverage is active. That scan
@@ -170,7 +174,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
+  lookalike names, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
   verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
@@ -278,6 +282,12 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   coordinate only, never the public path or token. Publishing does not enqueue a
   delivery download. Unpublish makes the public GET 404; republish keeps the same path.
   Cap 40 enabled pages per install. This is not scheduled CDN verification.
+- Assemble identity evidence for a protected pack on a trial or Team install, and
+  publish or unpublish its consumer advisory page. Type the package name. Members
+  return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404. The
+  public token is unguessable and is not the package id. Audit records the package
+  name only. Assembling does not download a tarball and does not send mail or registry
+  tickets. Cap 40 enabled advisory pages per install. Not a malware verdict.
 
 **Must not**
 
@@ -500,6 +510,12 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   is 401 anonymous, 403 off-tenant, and 402 unpaid. Live Neon import on install
   `158159401` refused prettier, left-pad, a missing name, and an invalid token,
   added no watches, and stayed `queued: false`; the Cloudflare tunnel matched.
+  Human-reviewed evidence (`POST /api/packages/:id/evidence`, `POST /api/packages/:id/advisory`,
+  `GET /api/advisory/:token`) requires a protected pack, typed confirm, and Team/trial;
+  members may read; Solo 403; unpaid 402 to change; public GET is redacted hosts and
+  lookalike names only; never sends; never a malware verdict; remigrate keeps
+  `identity.evidence` rows. Live Neon gates: unauth 401, missing package 404; no
+  owned npm pack on `158159401` to assemble.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
 alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and

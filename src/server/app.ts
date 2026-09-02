@@ -226,6 +226,22 @@ import {
   identityPlanDeniedFromBilling,
   parseAllowlistReason,
 } from "./identity-signals.ts";
+import {
+  ADVISORY_ALREADY_ERROR,
+  ADVISORY_CAP_ERROR,
+  ADVISORY_MISSING_ERROR,
+  ADVISORY_UNKNOWN_ERROR,
+  EVIDENCE_MISSING_ERROR,
+  EVIDENCE_UNPROTECTED_ERROR,
+  MAX_ADVISORY_PAGES_PER_INSTALL,
+  assembleIdentityEvidence,
+  buildEvidenceSummary,
+  buildPublicAdvisoryView,
+  identityEvidencePlanDeniedFromBilling,
+  mintAdvisoryToken,
+  parseAdvisoryToken,
+  parseStoredEvidencePayload,
+} from "./identity-evidence.ts";
 import { createLogNotifier, type AlertNotifier } from "./notifier.ts";
 import {
   MAX_PUBLIC_PAGES_PER_INSTALL,
@@ -3299,6 +3315,146 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ ok: true, candidate: publicIdentityCandidate(updated) });
   });
 
+  app.get("/api/packages/:id/evidence", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityEvidencePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const pack = await deps.store.getIdentityEvidencePackByPackage(pkg.id);
+    if (!pack) return c.json({ evidence: null });
+    const payload = parseStoredEvidencePayload(pack.payload);
+    if (!payload) return c.json({ evidence: null });
+    return c.json({
+      evidence: buildEvidenceSummary({
+        enabled: pack.enabled,
+        token: pack.public_token,
+        payload,
+      }),
+    });
+  });
+
+  app.post("/api/packages/:id/evidence", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, pkg.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityEvidencePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, pkg.package_name);
+    if (confirmError) return c.json(confirmError, 400);
+    const protection = await deps.store.getPackageProtection(pkg.id);
+    if (!protection) return c.json({ error: EVIDENCE_UNPROTECTED_ERROR }, 409);
+    const existing = await deps.store.getIdentityEvidencePackByPackage(pkg.id);
+    const payload = assembleIdentityEvidence({
+      packageName: pkg.package_name,
+      actorLogin: user.login,
+      protection,
+      snapshot: await deps.store.latestPackageIdentitySnapshot(pkg.id),
+      candidates: await deps.store.listIdentityCandidates(pkg.id),
+      alerts: await deps.store.listIdentityEvidenceAlerts(pkg.installation_id, pkg.package_name),
+    });
+    const pack = await deps.store.upsertIdentityEvidencePack({
+      installationId: pkg.installation_id,
+      packageId: pkg.id,
+      packageName: pkg.package_name,
+      publicToken: existing?.public_token ?? mintAdvisoryToken(),
+      payload,
+      actorLogin: user.login,
+    });
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: "identity.evidence",
+      summary: `Assembled identity evidence for ${pkg.package_name}`,
+      targetKind: "package",
+      targetId: pkg.package_name,
+    });
+    return c.json(
+      {
+        evidence: buildEvidenceSummary({
+          enabled: pack.enabled,
+          token: pack.public_token,
+          payload,
+        }),
+      },
+      existing ? 200 : 201,
+    );
+  });
+
+  app.post("/api/packages/:id/advisory", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const pkg = await deps.store.getWatchedPackage(id);
+    if (!pkg || !(await deps.store.userOwnsInstallation(user.userId, pkg.installation_id))) {
+      return c.json({ error: "Unknown package." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, pkg.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(pkg.installation_id);
+    const planDenied = identityEvidencePlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, pkg.package_name);
+    if (confirmError) return c.json(confirmError, 400);
+    if (body.enabled !== true && body.enabled !== false) {
+      return c.json({ error: "Set enabled to true or false." }, 400);
+    }
+    const enabled = body.enabled === true;
+    const existing = await deps.store.getIdentityEvidencePackByPackage(pkg.id);
+    if (!existing) return c.json({ error: EVIDENCE_MISSING_ERROR }, 400);
+    const payload = parseStoredEvidencePayload(existing.payload);
+    if (!payload) return c.json({ error: EVIDENCE_MISSING_ERROR }, 400);
+    if (enabled) {
+      if (existing.enabled) return c.json({ error: ADVISORY_ALREADY_ERROR }, 409);
+      const enabledCount = await deps.store.countEnabledAdvisoryPages(pkg.installation_id);
+      if (enabledCount >= MAX_ADVISORY_PAGES_PER_INSTALL) {
+        return c.json({ error: ADVISORY_CAP_ERROR }, 400);
+      }
+    } else if (!existing.enabled) {
+      return c.json({ error: ADVISORY_MISSING_ERROR }, 400);
+    }
+    const pack = await deps.store.setIdentityEvidenceEnabled({
+      packageId: pkg.id,
+      enabled,
+      actorLogin: user.login,
+    });
+    if (!pack) return c.json({ error: EVIDENCE_MISSING_ERROR }, 400);
+    await recordAudit({
+      installationId: pkg.installation_id,
+      actorLogin: user.login,
+      action: enabled ? "identity.publish_advisory" : "identity.unpublish_advisory",
+      summary: enabled
+        ? `Published consumer advisory for ${pkg.package_name}`
+        : `Unpublished consumer advisory for ${pkg.package_name}`,
+      targetKind: "package",
+      targetId: pkg.package_name,
+    });
+    return c.json(
+      {
+        evidence: buildEvidenceSummary({
+          enabled: pack.enabled,
+          token: pack.public_token,
+          payload,
+        }),
+      },
+      enabled && !existing.enabled ? 201 : 200,
+    );
+  });
+
   app.get("/api/packages/:id/diff", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -3593,6 +3749,29 @@ export function createApp(deps: AppDeps): Hono {
         revision,
         locations,
         approval,
+      }),
+    });
+  });
+
+  app.get("/api/advisory/:token", async (c) => {
+    const advisoryLimited = rateLimited(
+      c,
+      scanLimiter,
+      `verify:${requestIp(c)}`,
+      deps.config.scanRateWindowMs,
+      "Too many verification page reads from this address. Wait and try again.",
+    );
+    if (advisoryLimited) return advisoryLimited;
+    const token = parseAdvisoryToken(c.req.param("token") ?? "");
+    if (!token) return c.json({ error: ADVISORY_UNKNOWN_ERROR }, 404);
+    const pack = await deps.store.getIdentityEvidencePackByToken(token);
+    if (!pack || !pack.enabled) return c.json({ error: ADVISORY_UNKNOWN_ERROR }, 404);
+    const payload = parseStoredEvidencePayload(pack.payload);
+    if (!payload) return c.json({ error: ADVISORY_UNKNOWN_ERROR }, 404);
+    return c.json({
+      advisory: buildPublicAdvisoryView({
+        token: pack.public_token,
+        payload,
       }),
     });
   });

@@ -141,6 +141,11 @@ the immediate operational sequence. The exhaustive expansion plan is
   verify, no stored signature values). Metadata-only candidate
   and dependency-name checks. Typed
   allowlist. Trial/Team. Solo 403. Unpaid 402. Not a malware verdict. No auto advisory/takedown.
+- Package Identity human-reviewed evidence: trial/Team admin assembles a frozen takedown
+  pack for a protected npm name and may publish `/advisory/:token`. Members may
+  download. Solo 403. Unpaid 402 to change; an already-published page still reads.
+  Public page is hosts and lookalike names only. Never sent to npm or GitHub. Not a
+  malware verdict. Not other registries.
 - 90-day Team timeline: this install’s alerts, acknowledgement activity, and notification
   deliveries for the install list window (default 90 days). Solo 403. Unpaid 402. No invented rows.
 - Configurable data retention: 90, 180, or 365 days, or keep while this install exists.

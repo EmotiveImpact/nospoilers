@@ -282,6 +282,15 @@ type IdentitySignalsView =
   | { status: "ended" }
   | { status: "error"; message: string };
 
+type IdentityEvidenceView = {
+  packageName: string;
+  assembledAt: string;
+  advisory: { enabled: boolean; path: string | null };
+  sent: false;
+  malwareVerdict: false;
+  takedown: Record<string, unknown>;
+};
+
 type Confirming =
   | { kind: "destination"; id: number; expected: string }
   | { kind: "route"; id: number; expected: string }
@@ -306,7 +315,10 @@ type Confirming =
   | { kind: "release-hold"; id: number; expected: string; reason: string }
   | { kind: "release-hold-release"; id: number; expected: string; reason: string }
   | { kind: "release-publish"; id: number; expected: string }
-  | { kind: "release-unpublish"; id: number; expected: string };
+  | { kind: "release-unpublish"; id: number; expected: string }
+  | { kind: "identity-evidence"; id: number; expected: string }
+  | { kind: "identity-publish-advisory"; id: number; expected: string }
+  | { kind: "identity-unpublish-advisory"; id: number; expected: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -358,6 +370,12 @@ function confirmActionLabel(row: Confirming): string {
       return "publish a verification page for this release";
     case "release-unpublish":
       return "unpublish this verification page";
+    case "identity-evidence":
+      return "assemble identity evidence for this package";
+    case "identity-publish-advisory":
+      return "publish a consumer advisory for this package";
+    case "identity-unpublish-advisory":
+      return "unpublish this consumer advisory";
   }
 }
 
@@ -1171,6 +1189,10 @@ export function WatchPage({ search }: { search: string }) {
   const [candidatesByPackage, setCandidatesByPackage] = useState<Record<number, IdentityCandidateView[]>>(
     {},
   );
+  const [evidenceByPackage, setEvidenceByPackage] = useState<Record<number, IdentityEvidenceView | null>>(
+    {},
+  );
+  const [downloadingEvidenceId, setDownloadingEvidenceId] = useState<number | null>(null);
   const [allowReasonByCandidate, setAllowReasonByCandidate] = useState<Record<number, string>>({});
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [confirmText, setConfirmText] = useState("");
@@ -1299,6 +1321,7 @@ export function WatchPage({ search }: { search: string }) {
         setRetentionDraft(days);
       }
       const nextCandidates: Record<number, IdentityCandidateView[]> = {};
+      const nextEvidence: Record<number, IdentityEvidenceView | null> = {};
       let identityStatus: IdentitySignalsView = { status: "ready" };
       for (const row of protectionBody.protections) {
         const candidatesResponse = await fetch(q(`/api/packages/${row.packageId}/candidates`), {
@@ -1324,9 +1347,33 @@ export function WatchPage({ search }: { search: string }) {
           break;
         }
         nextCandidates[row.packageId] = candidatesBody.candidates ?? [];
+        const evidenceResponse = await fetch(q(`/api/packages/${row.packageId}/evidence`), {
+          credentials: "include",
+        });
+        const evidenceBody = (await evidenceResponse.json()) as {
+          error?: string;
+          evidence?: IdentityEvidenceView | null;
+        };
+        if (evidenceResponse.status === 402) {
+          identityStatus = { status: "ended" };
+          break;
+        }
+        if (evidenceResponse.status === 403) {
+          identityStatus = { status: "solo" };
+          break;
+        }
+        if (!evidenceResponse.ok) {
+          identityStatus = {
+            status: "error",
+            message: evidenceBody.error ?? "Could not load identity evidence.",
+          };
+          break;
+        }
+        nextEvidence[row.packageId] = evidenceBody.evidence ?? null;
       }
       setIdentitySignals(identityStatus);
       setCandidatesByPackage(nextCandidates);
+      setEvidenceByPackage(nextEvidence);
       const baselines = await Promise.all(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
@@ -1347,6 +1394,7 @@ export function WatchPage({ search }: { search: string }) {
       setAudit({ status: "error", message });
       setRetention({ status: "error", message });
       setIdentitySignals({ status: "error", message });
+      setEvidenceByPackage({});
       setMembers([]);
       setInvites([]);
       setMembersError(message);
@@ -1542,6 +1590,26 @@ export function WatchPage({ search }: { search: string }) {
               confirm,
             }),
           });
+        } else if (confirming.kind === "identity-evidence") {
+          response = await fetch(`/api/packages/${confirming.id}/evidence`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (
+          confirming.kind === "identity-publish-advisory" ||
+          confirming.kind === "identity-unpublish-advisory"
+        ) {
+          response = await fetch(`/api/packages/${confirming.id}/advisory`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              enabled: confirming.kind === "identity-publish-advisory",
+              confirm,
+            }),
+          });
         } else {
           throw new Error("Unknown confirmation.");
         }
@@ -1624,6 +1692,7 @@ export function WatchPage({ search }: { search: string }) {
           setScanTokens([]);
           setReleases([]);
           setProtections([]);
+          setEvidenceByPackage({});
           setJobs([]);
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setFairUse(null);
@@ -1741,6 +1810,16 @@ export function WatchPage({ search }: { search: string }) {
     !ended &&
     (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
   const canPublishVerify = Boolean(installAdmin) && !ended && !previewing;
+  const canManageEvidence =
+    Boolean(installAdmin) &&
+    !ended &&
+    !previewing &&
+    (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
+  const canReadEvidence =
+    !ended &&
+    !previewing &&
+    identitySignals.status === "ready" &&
+    (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
@@ -3977,7 +4056,8 @@ export function WatchPage({ search }: { search: string }) {
           point at newly created packages, packument unpacked-size jumps, and whether npm
           attestations or registry signature keyids disappear or change. Those last facts are
           packument presence only — we do not fetch or verify attestations. That is not a malware
-          verdict.
+          verdict. Trial and Team admins can assemble a human-reviewed evidence pack and publish a
+          consumer advisory page. We never send that pack to npm or GitHub and never call it malware.
         </p>
         {previewing ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -3985,12 +4065,12 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-            Lookalike, dormant, burst, new-dependency, packument-size, and provenance signals are on
-            Team.
+            Lookalike, dormant, burst, new-dependency, packument-size, provenance, identity evidence,
+            and consumer advisories are on Team.
           </p>
         ) : ended ? (
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-            Subscribe to Team to watch lookalike names.
+            Subscribe to Team to watch lookalike names and assemble identity evidence.
           </p>
         ) : identitySignals.status === "error" ? (
           <p className="mt-4 max-w-xl text-sm text-danger">{identitySignals.message}</p>
@@ -4269,6 +4349,7 @@ export function WatchPage({ search }: { search: string }) {
               const diffState = diffByPackage[pkg.id];
               const protection = protections.find((row) => row.packageId === pkg.id);
               const candidates = candidatesByPackage[pkg.id] ?? [];
+              const evidence = evidenceByPackage[pkg.id] ?? null;
               return (
                 <li key={pkg.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -4529,6 +4610,136 @@ export function WatchPage({ search }: { search: string }) {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  ) : null}
+                  {protection && canReadEvidence ? (
+                    <div className="mt-4 max-w-xl">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                        Identity evidence
+                      </p>
+                      {evidence ? (
+                        <>
+                          <p className="mt-2 text-xs text-mute">
+                            Assembled {new Date(evidence.assembledAt).toLocaleString()}. Not a malware
+                            verdict. Not sent to npm or GitHub.
+                          </p>
+                          {evidence.advisory.enabled && evidence.advisory.path ? (
+                            <p className="mt-2 text-xs text-mute">
+                              Public advisory{" "}
+                              <a
+                                href={evidence.advisory.path}
+                                className="text-snow underline-offset-2 hover:underline"
+                              >
+                                {evidence.advisory.path}
+                              </a>
+                            </p>
+                          ) : null}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={downloadingEvidenceId === pkg.id}
+                              onClick={() => {
+                                setDownloadingEvidenceId(pkg.id);
+                                try {
+                                  const blob = new Blob(
+                                    [JSON.stringify(evidence.takedown, null, 2)],
+                                    { type: "application/json" },
+                                  );
+                                  const url = URL.createObjectURL(blob);
+                                  const link = document.createElement("a");
+                                  link.href = url;
+                                  link.download = `nospoilers-identity-${pkg.package_name.replaceAll("/", "-")}.json`;
+                                  link.click();
+                                  URL.revokeObjectURL(url);
+                                } finally {
+                                  setDownloadingEvidenceId(null);
+                                }
+                              }}
+                            >
+                              {downloadingEvidenceId === pkg.id ? "Saving…" : "Download evidence"}
+                            </Button>
+                            {canManageEvidence ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={previewing || locked || confirmBusy}
+                                  onClick={() =>
+                                    beginConfirm({
+                                      kind: "identity-evidence",
+                                      id: pkg.id,
+                                      expected: pkg.package_name,
+                                    })
+                                  }
+                                >
+                                  Reassemble
+                                </Button>
+                                {evidence.advisory.enabled ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={previewing || locked || confirmBusy}
+                                    onClick={() =>
+                                      beginConfirm({
+                                        kind: "identity-unpublish-advisory",
+                                        id: pkg.id,
+                                        expected: pkg.package_name,
+                                      })
+                                    }
+                                  >
+                                    Unpublish advisory
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={previewing || locked || confirmBusy}
+                                    onClick={() =>
+                                      beginConfirm({
+                                        kind: "identity-publish-advisory",
+                                        id: pkg.id,
+                                        expected: pkg.package_name,
+                                      })
+                                    }
+                                  >
+                                    Publish advisory
+                                  </Button>
+                                )}
+                              </>
+                            ) : null}
+                          </div>
+                        </>
+                      ) : canManageEvidence ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          disabled={previewing || locked || confirmBusy}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "identity-evidence",
+                              id: pkg.id,
+                              expected: pkg.package_name,
+                            })
+                          }
+                        >
+                          Assemble evidence
+                        </Button>
+                      ) : (
+                        <p className="mt-2 text-xs text-mute">No evidence pack yet.</p>
+                      )}
+                      {confirmForm(
+                        (confirming?.kind === "identity-evidence" ||
+                          confirming?.kind === "identity-publish-advisory" ||
+                          confirming?.kind === "identity-unpublish-advisory") &&
+                          confirming.id === pkg.id,
+                      )}
                     </div>
                   ) : null}
                   {diffState && "error" in diffState ? (

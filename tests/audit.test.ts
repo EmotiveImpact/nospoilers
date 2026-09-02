@@ -73,6 +73,9 @@ describe("Team audit log", () => {
     expect(AUDIT_ACTIONS).toContain("release.release_hold");
     expect(AUDIT_ACTIONS).toContain("release.publish_verify");
     expect(AUDIT_ACTIONS).toContain("release.unpublish_verify");
+    expect(AUDIT_ACTIONS).toContain("identity.evidence");
+    expect(AUDIT_ACTIONS).toContain("identity.publish_advisory");
+    expect(AUDIT_ACTIONS).toContain("identity.unpublish_advisory");
   });
 
   it("records admin writes, requires typed confirmation, exports titles only, and hides other tenants", async () => {
@@ -306,11 +309,20 @@ describe("Team audit log", () => {
         targetKind: "release",
         targetId: "owner/name@tag#file",
       });
+      await store.insertAuditEvent({
+        installationId: 7,
+        actorLogin: "octo",
+        action: "identity.evidence",
+        summary: "Assembled identity evidence for @octo/app",
+        targetKind: "package",
+        targetId: "@octo/app",
+      });
       await migrate(sql);
       const { rows } = await sql.query<{ n: string }>(
-        "SELECT count(*)::text AS n FROM audit_events WHERE action = 'release.publish_verify'",
+        `SELECT count(*)::text AS n FROM audit_events
+         WHERE action IN ('release.publish_verify', 'identity.evidence')`,
       );
-      expect(rows[0]?.n).toBe("1");
+      expect(rows[0]?.n).toBe("2");
     } finally {
       await sql.close();
     }

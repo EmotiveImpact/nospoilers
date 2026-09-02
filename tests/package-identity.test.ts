@@ -1,13 +1,29 @@
 import { describe, expect, it } from "vitest";
+import { AUDIT_ACTIONS, CONFIRM_MISSING_ERROR } from "../src/server/audit.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
+import {
+  ADVISORY_UNKNOWN_ERROR,
+  EVIDENCE_NOT_MALWARE,
+  EVIDENCE_UNPROTECTED_ERROR,
+  MAX_ADVISORY_PAGES_PER_INSTALL,
+  advisoryViewLeaksSecrets,
+  assembleIdentityEvidence,
+  identityEvidencePlanDenied,
+  mintAdvisoryToken,
+  parseAdvisoryToken,
+  publicAdvisoryPath,
+  publicHostFromUrl,
+  type PublicAdvisoryView,
+} from "../src/server/identity-evidence.ts";
 import {
   generateIdentityCandidates,
   identityPlanDenied,
   unpackedSizeJump,
   IDENTITY_CANDIDATE_CAP,
 } from "../src/server/identity-signals.ts";
+import { ADMIN_REQUIRED_ERROR } from "../src/server/roles.ts";
 import {
   emptyPackageIdentity,
   githubRepoFromNpmRepository,
@@ -1672,6 +1688,396 @@ describe("Team identity signals", () => {
       });
       expect(unpaidCheck.status).toBe(402);
       expect(downloads).toEqual([]);
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
+describe("identity evidence and consumer advisory", () => {
+  it("mints unguessable tokens and redacts public advisory facts", () => {
+    const token = mintAdvisoryToken();
+    expect(parseAdvisoryToken(token)).toBe(token);
+    expect(token).toHaveLength(32);
+    expect(parseAdvisoryToken("short")).toBeNull();
+    expect(publicAdvisoryPath(token)).toBe(`/advisory/${token}`);
+    expect(publicHostFromUrl("git+https://github.com/octo/app.git")).toBe("github.com");
+    expect(publicHostFromUrl("https://octo.example/app")).toBe("octo.example");
+    expect(publicHostFromUrl("https://127.0.0.1/secret")).toBeNull();
+    expect(AUDIT_ACTIONS).toContain("identity.evidence");
+    expect(AUDIT_ACTIONS).toContain("identity.publish_advisory");
+    expect(AUDIT_ACTIONS).toContain("identity.unpublish_advisory");
+    expect(identityEvidencePlanDenied(coverageFrom("2000-01-01T00:00:00Z", null))?.status).toBe(402);
+    expect(identityEvidencePlanDenied(coverageFrom(null, "solo"))?.status).toBe(403);
+    const assembled = assembleIdentityEvidence({
+      packageName: "@octo/app",
+      actorLogin: "octo",
+      protection: {
+        id: 1,
+        installation_id: 7,
+        package_id: 1,
+        verified_via: "scope_match",
+        github_repo: "octo/app",
+        created_at: "2026-09-02T00:00:00.000Z",
+      },
+      snapshot: {
+        id: 1,
+        installation_id: 7,
+        package_id: 1,
+        version: "1.0.0",
+        maintainers: ["octo"],
+        repository_url: "https://github.com/octo/app",
+        homepage: "https://octo.example/app",
+        bin_names: ["app"],
+        lifecycle_scripts: [],
+        published_at: null,
+        dependency_names: [],
+        unpacked_bytes: 100,
+        has_attestations: false,
+        attestation_predicate: null,
+        signature_keyids: [],
+        publisher_name: "octo",
+        trusted_publisher: "github",
+        created_at: "2026-09-02T00:00:00.000Z",
+      },
+      candidates: [
+        {
+          id: 1,
+          installation_id: 7,
+          package_id: 1,
+          candidate_name: "@oct0/app",
+          transformation: "homoglyph",
+          first_seen_at: "2026-09-01T00:00:00.000Z",
+          last_checked_at: null,
+          registered_at: "2026-09-01T00:00:00.000Z",
+          last_version: "9.9.9",
+          last_published_at: "2026-09-01T00:00:00.000Z",
+          allowlisted_at: null,
+          allowlist_reason: null,
+          allowlisted_by_login: null,
+        },
+      ],
+      alerts: [
+        {
+          kind: "identity_lookalike_registered",
+          title: "Lookalike @oct0/app registered against @octo/app",
+        },
+      ],
+      assembledAt: "2026-09-02T00:00:00.000Z",
+    });
+    expect(assembled.sent).toBe(false);
+    expect(assembled.malwareVerdict).toBe(false);
+    expect(assembled.repositoryHost).toBe("github.com");
+    expect(assembled.lookalikes[0]?.lastVersion).toBe("9.9.9");
+    expect(
+      advisoryViewLeaksSecrets({
+        path: `/advisory/${token}`,
+        packageName: "@octo/app",
+        repositoryHost: "github.com",
+        homepageHost: "octo.example",
+        lookalikes: [{ name: "@oct0/app", transformation: "homoglyph" }],
+        assembledAt: "2026-09-02T00:00:00.000Z",
+        malwareVerdict: false,
+        sent: false,
+        disclaimer: EVIDENCE_NOT_MALWARE,
+      }),
+    ).toBe(false);
+    expect(MAX_ADVISORY_PAGES_PER_INSTALL).toBe(40);
+  });
+
+  it("assembles redacted evidence, publishes a customer advisory, and never sends it", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "teammate" });
+      await store.upsertUser({ id: "u3", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "Organization",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 11,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 3,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(7, "u2");
+      await store.linkUserInstallation(11, "u3");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const memberCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u3"))}`;
+      const downloads: string[] = [];
+      const current = {
+        pack: ownedPack({
+          identity: {
+            ...emptyPackageIdentity(),
+            maintainers: ["octo"],
+            repositoryUrl: "https://github.com/octo/app",
+            homepage: "https://octo.example/app",
+          },
+          publisherName: "octo",
+          trustedPublisher: "github",
+        }),
+        downloads,
+      };
+      let woke = 0;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm: stubNpm(current),
+        wakeWorker: () => {
+          woke += 1;
+        },
+      });
+
+      expect((await app.request("/api/packages/1/evidence")).status).toBe(401);
+      expect((await app.request("/api/packages/1/evidence", { method: "POST" })).status).toBe(401);
+      expect((await app.request("/api/advisory/short")).status).toBe(404);
+
+      const connected = await app.request("/api/packages", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ packageName: "@octo/app", installationId: 7 }),
+      });
+      const packageId = ((await connected.json()) as { package: { id: number } }).package.id;
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/protect`, {
+            method: "POST",
+            headers: { cookie },
+          })
+        ).status,
+      ).toBe(201);
+
+      const unprotected = await store.insertWatchedPackage(7, "left-pad");
+      const beforeProtect = await app.request(`/api/packages/${unprotected?.id}/evidence`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "left-pad" }),
+      });
+      expect(beforeProtect.status).toBe(409);
+      expect(((await beforeProtect.json()) as { error: string }).error).toBe(EVIDENCE_UNPROTECTED_ERROR);
+
+      const candidates = await store.listIdentityCandidates(packageId);
+      const lookalike = candidates[0];
+      expect(lookalike).toBeTruthy();
+      await store.recordIdentityCandidatePack({
+        id: lookalike!.id,
+        registeredAt: "2026-08-01T00:00:00.000Z",
+        lastVersion: "9.9.9",
+        lastPublishedAt: "2026-08-01T00:00:00.000Z",
+      });
+      await store.insertAlert({
+        installationId: 7,
+        kind: "identity_lookalike_registered",
+        title: `Lookalike ${lookalike!.candidate_name} registered against @octo/app`,
+        body: `Secret tarball ${TARBALL} and email secret@example.com must not appear.`,
+      });
+
+      const empty = await app.request(`/api/packages/${packageId}/evidence`, { headers: { cookie } });
+      expect(empty.status).toBe(200);
+      expect(((await empty.json()) as { evidence: null }).evidence).toBeNull();
+
+      const missingConfirm = await app.request(`/api/packages/${packageId}/evidence`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(missingConfirm.status).toBe(400);
+      expect(((await missingConfirm.json()) as { error: string }).error).toBe(CONFIRM_MISSING_ERROR);
+
+      const memberWrite = await app.request(`/api/packages/${packageId}/evidence`, {
+        method: "POST",
+        headers: { cookie: memberCookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "@octo/app" }),
+      });
+      expect(memberWrite.status).toBe(403);
+      expect(((await memberWrite.json()) as { error: string }).error).toBe(ADMIN_REQUIRED_ERROR);
+
+      const otherWrite = await app.request(`/api/packages/${packageId}/evidence`, {
+        method: "POST",
+        headers: { cookie: otherCookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "@octo/app" }),
+      });
+      expect(otherWrite.status).toBe(404);
+
+      const assembled = await app.request(`/api/packages/${packageId}/evidence`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "@octo/app" }),
+      });
+      expect(assembled.status).toBe(201);
+      const assembledBody = (await assembled.json()) as {
+        evidence: {
+          packageName: string;
+          sent: false;
+          malwareVerdict: false;
+          advisory: { enabled: boolean; path: string | null };
+          takedown: {
+            maintainers: string[];
+            publisherName: string | null;
+            trustedPublisher: string | null;
+            repositoryHost: string | null;
+            lookalikes: Array<{ name: string; lastVersion: string | null }>;
+            alerts: Array<{ kind: string; title: string; body?: string }>;
+            sent: false;
+          };
+        };
+      };
+      expect(assembledBody.evidence.packageName).toBe("@octo/app");
+      expect(assembledBody.evidence.sent).toBe(false);
+      expect(assembledBody.evidence.malwareVerdict).toBe(false);
+      expect(assembledBody.evidence.advisory.enabled).toBe(false);
+      expect(assembledBody.evidence.takedown.maintainers).toEqual(["octo"]);
+      expect(assembledBody.evidence.takedown.publisherName).toBe("octo");
+      expect(assembledBody.evidence.takedown.trustedPublisher).toBe("github");
+      expect(assembledBody.evidence.takedown.repositoryHost).toBe("github.com");
+      expect(assembledBody.evidence.takedown.lookalikes[0]?.lastVersion).toBe("9.9.9");
+      expect(assembledBody.evidence.takedown.alerts[0]?.kind).toBe("identity_lookalike_registered");
+      expect(assembledBody.evidence.takedown.alerts[0]?.body).toBeUndefined();
+      expect(JSON.stringify(assembledBody)).not.toContain(TARBALL);
+      expect(JSON.stringify(assembledBody)).not.toContain("secret@example.com");
+      expect(downloads).toEqual([]);
+
+      const memberRead = await app.request(`/api/packages/${packageId}/evidence`, {
+        headers: { cookie: memberCookie },
+      });
+      expect(memberRead.status).toBe(200);
+      expect(
+        ((await memberRead.json()) as { evidence: { packageName: string } }).evidence.packageName,
+      ).toBe("@octo/app");
+      expect(
+        (await app.request(`/api/packages/${packageId}/evidence`, { headers: { cookie: otherCookie } }))
+          .status,
+      ).toBe(404);
+
+      const publishMissing = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      });
+      expect(publishMissing.status).toBe(400);
+
+      const memberPublish = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie: memberCookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true, confirm: "@octo/app" }),
+      });
+      expect(memberPublish.status).toBe(403);
+
+      const wokeBeforePublish = woke;
+      const published = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true, confirm: "@octo/app" }),
+      });
+      expect(published.status).toBe(201);
+      const publishedBody = (await published.json()) as {
+        evidence: { advisory: { enabled: boolean; path: string | null } };
+      };
+      const path = publishedBody.evidence.advisory.path;
+      expect(path?.startsWith("/advisory/")).toBe(true);
+      const token = path!.slice("/advisory/".length);
+      expect(woke).toBe(wokeBeforePublish);
+
+      const publicPage = await app.request(`/api/advisory/${token}`);
+      expect(publicPage.status).toBe(200);
+      const publicBody = (await publicPage.json()) as { advisory: PublicAdvisoryView };
+      expect(publicBody.advisory.packageName).toBe("@octo/app");
+      expect(publicBody.advisory.repositoryHost).toBe("github.com");
+      expect(publicBody.advisory.lookalikes[0]?.name).toBe(lookalike!.candidate_name);
+      expect(publicBody.advisory.malwareVerdict).toBe(false);
+      expect(publicBody.advisory.sent).toBe(false);
+      expect(publicBody.advisory.disclaimer).toBe(EVIDENCE_NOT_MALWARE);
+      expect(JSON.stringify(publicBody)).not.toContain(TARBALL);
+      expect(JSON.stringify(publicBody)).not.toContain("://");
+      expect(JSON.stringify(publicBody)).not.toContain("secret@example.com");
+      expect(JSON.stringify(publicBody)).not.toContain("9.9.9");
+      expect(advisoryViewLeaksSecrets(publicBody.advisory)).toBe(false);
+      expect(woke).toBe(wokeBeforePublish);
+      expect((await app.request(`/api/advisory/${mintAdvisoryToken()}`)).status).toBe(404);
+      expect(((await (await app.request("/api/advisory/1")).json()) as { error: string }).error).toBe(
+        ADVISORY_UNKNOWN_ERROR,
+      );
+
+      const unpublished = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: false, confirm: "@octo/app" }),
+      });
+      expect(unpublished.status).toBe(200);
+      expect((await app.request(`/api/advisory/${token}`)).status).toBe(404);
+
+      const republished = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: true, confirm: "@octo/app" }),
+      });
+      expect(republished.status).toBe(201);
+      expect(
+        ((await republished.json()) as { evidence: { advisory: { path: string | null } } }).evidence
+          .advisory.path,
+      ).toBe(path);
+      expect((await app.request(`/api/advisory/${token}`)).status).toBe(200);
+
+      const audit = await app.request("/api/audit?installationId=7", { headers: { cookie } });
+      const auditBody = (await audit.json()) as {
+        rows: Array<{ action: string; targetId: string | null; summary: string }>;
+      };
+      const actions = auditBody.rows.map((row) => row.action);
+      expect(actions).toEqual(
+        expect.arrayContaining([
+          "identity.evidence",
+          "identity.publish_advisory",
+          "identity.unpublish_advisory",
+        ]),
+      );
+      expect(auditBody.rows.every((row) => row.targetId !== token && !row.summary.includes(token))).toBe(
+        true,
+      );
+
+      await migrate(sql);
+
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      expect(
+        (
+          await app.request(`/api/packages/${packageId}/evidence`, {
+            method: "POST",
+            headers: { cookie, "content-type": "application/json" },
+            body: JSON.stringify({ confirm: "@octo/app" }),
+          })
+        ).status,
+      ).toBe(403);
+      expect((await app.request(`/api/packages/${packageId}/evidence`, { headers: { cookie } })).status).toBe(
+        403,
+      );
+      expect((await app.request(`/api/advisory/${token}`)).status).toBe(200);
+
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const unpaid = await app.request(`/api/packages/${packageId}/advisory`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: false, confirm: "@octo/app" }),
+      });
+      expect(unpaid.status).toBe(402);
+      expect((await app.request(`/api/advisory/${token}`)).status).toBe(200);
+      expect(downloads).toEqual([]);
+      expect(woke).toBe(wokeBeforePublish);
     } finally {
       await sql.close();
     }

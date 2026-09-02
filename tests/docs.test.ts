@@ -50,6 +50,10 @@ describe("public documentation", () => {
     expect(text).toMatch(/does not send email/i);
     expect(text).toMatch(/not a scan-credit purchase/);
     expect(text).toMatch(/not the git tree/i);
+    expect(text).toMatch(/identity evidence/i);
+    expect(text).toMatch(/consumer advisory/i);
+    expect(text).toMatch(/not a malware verdict/i);
+    expect(text).toMatch(/does not send the pack/i);
     expect(text).toMatch(/failed-policy/i);
     expect(text).toMatch(/renamed/i);
     expect(text).toContain(SUPPORT_EMAIL);

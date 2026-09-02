@@ -74,7 +74,11 @@ Read in this order:
   `045_destination_delete_keeps_deliveries` lets an admin remove a destination
   after a delivery: `destination_id` becomes nullable and SET NULL, and the
   append-only trigger allows only that nulling. Delivery rows stay.
-  Next unused id is `046_*`.
+  `046_identity_evidence` adds customer-controlled `identity_evidence_packs`
+  (frozen payload, unguessable advisory token, enable/disable) and extends
+  `audit_events.action` with `identity.evidence`, `identity.publish_advisory`,
+  and `identity.unpublish_advisory`.
+  Next unused id is `047_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -372,6 +376,10 @@ are not watched. Solo allowed. Unpaid 402. Other registries stay out.
 Live import on install `158159401` refused prettier / left-pad / a missing name / an
 invalid token and did not add watches. Tunnel matched. There is no EmotiveImpact-owned
 npm pack to protect.
+Package Identity human-reviewed evidence is in (`POST /api/packages/:id/evidence`,
+`POST /api/packages/:id/advisory`, `GET /api/advisory/:token`). Trial/Team admin.
+Typed package-name confirm. Members may read. Solo 403. Unpaid 402 to change.
+Never sends to npm or GitHub. Never a malware verdict. Other registries stay out.
 Install health is in (suspend/unsuspend/permissions/repo-change alerts; tenant job list).
 Incident response is in (live permission test with no invented incident; last customer job on
 that test; alert ack/assign/resolve; exposure duration; rotation checklist; append-only alert_events).
@@ -535,6 +543,10 @@ Package Identity batch import is live: `POST /api/protections/import` on install
 prettier, left-pad, a missing name, and an invalid token. `queued` was false.
 No watches were added. Anonymous 401. Cloudflare tunnel matched. There is no
 EmotiveImpact-owned npm pack to protect. Other registries stay out.
+Package Identity evidence/advisory is in. Live Neon gates on install
+`158159401`: unauth evidence 401, missing package 404. There is no
+EmotiveImpact-owned npm pack to assemble. Do not watch or protect prettier or
+left-pad on that install. Auto-send and other registries stay out.
 Release Ledger public verification pages are in (`POST /api/releases/:id/public`,
 `GET /api/verify/:token`). Live throwaway `phase1-fixture` published:
 unauth 401, public GET 200 failed-policy / not clean, host `github.com`

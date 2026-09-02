@@ -50,6 +50,7 @@ import {
 } from "./roles.ts";
 import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
 import { githubLoginKey, type NotificationRouteRow, type RouteMinSeverity } from "./routing.ts";
+import { IDENTITY_EVIDENCE_ALERT_KINDS } from "./identity-evidence.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -433,6 +434,20 @@ export type ReleasePublicPageRow = {
   updated_at: string;
 };
 
+export type IdentityEvidencePackRow = {
+  id: number;
+  installation_id: number;
+  package_id: number;
+  package_name: string;
+  public_token: string;
+  enabled: boolean;
+  payload: unknown;
+  created_by_login: string;
+  updated_by_login: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PackageProtectionRow = {
   id: number;
   installation_id: number;
@@ -573,6 +588,34 @@ function packageIdentitySnapshotRow(row: {
         ? row.trusted_publisher
         : null,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+function identityEvidencePackRow(row: {
+  id: unknown;
+  installation_id: unknown;
+  package_id: unknown;
+  package_name: string;
+  public_token: string;
+  enabled: boolean;
+  payload: unknown;
+  created_by_login: string;
+  updated_by_login: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+}): IdentityEvidencePackRow {
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    package_id: num(row.package_id),
+    package_name: row.package_name,
+    public_token: row.public_token,
+    enabled: row.enabled === true,
+    payload: row.payload,
+    created_by_login: row.created_by_login,
+    updated_by_login: row.updated_by_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+    updated_at: iso(row.updated_at) ?? new Date().toISOString(),
   };
 }
 
@@ -4125,6 +4168,143 @@ export function createStore(
         [input.id, input.packageId],
       );
       return rows[0] ? identityCandidateRow(rows[0]) : null;
+    },
+
+    async listIdentityEvidenceAlerts(
+      installationId: number,
+      packageName: string,
+    ): Promise<Array<{ kind: string; title: string }>> {
+      const placeholders = IDENTITY_EVIDENCE_ALERT_KINDS.map((_, index) => `$${index + 3}`).join(
+        ", ",
+      );
+      const { rows } = await sql.query<{ kind: string; title: string }>(
+        `SELECT kind, title
+         FROM alerts
+         WHERE installation_id = $1
+           AND (position($2 in title) > 0 OR position($2 in body) > 0)
+           AND kind IN (${placeholders})
+           AND row_within_retention(installation_id, created_at)
+         ORDER BY created_at DESC, id DESC
+         LIMIT 40`,
+        [installationId, packageName, ...IDENTITY_EVIDENCE_ALERT_KINDS],
+      );
+      return rows.map((row) => ({ kind: row.kind, title: row.title }));
+    },
+
+    async getIdentityEvidencePackByPackage(packageId: number): Promise<IdentityEvidencePackRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        package_name: string;
+        public_token: string;
+        enabled: boolean;
+        payload: unknown;
+        created_by_login: string;
+        updated_by_login: string;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(`SELECT * FROM identity_evidence_packs WHERE package_id = $1`, [packageId]);
+      return rows[0] ? identityEvidencePackRow(rows[0]) : null;
+    },
+
+    async getIdentityEvidencePackByToken(token: string): Promise<IdentityEvidencePackRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        package_name: string;
+        public_token: string;
+        enabled: boolean;
+        payload: unknown;
+        created_by_login: string;
+        updated_by_login: string;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(`SELECT * FROM identity_evidence_packs WHERE public_token = $1`, [token]);
+      return rows[0] ? identityEvidencePackRow(rows[0]) : null;
+    },
+
+    async countEnabledAdvisoryPages(installationId: number): Promise<number> {
+      const { rows } = await sql.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM identity_evidence_packs WHERE installation_id = $1 AND enabled = TRUE`,
+        [installationId],
+      );
+      return num(rows[0]?.n ?? 0);
+    },
+
+    async upsertIdentityEvidencePack(input: {
+      installationId: number;
+      packageId: number;
+      packageName: string;
+      publicToken: string;
+      payload: unknown;
+      actorLogin: string;
+    }): Promise<IdentityEvidencePackRow> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        package_name: string;
+        public_token: string;
+        enabled: boolean;
+        payload: unknown;
+        created_by_login: string;
+        updated_by_login: string;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `INSERT INTO identity_evidence_packs (
+           installation_id, package_id, package_name, public_token, enabled, payload,
+           created_by_login, updated_by_login
+         )
+         VALUES ($1, $2, $3, $4, FALSE, $5::jsonb, $6, $6)
+         ON CONFLICT (package_id) DO UPDATE SET
+           package_name = EXCLUDED.package_name,
+           payload = EXCLUDED.payload,
+           updated_by_login = EXCLUDED.updated_by_login,
+           updated_at = now()
+         RETURNING *`,
+        [
+          input.installationId,
+          input.packageId,
+          input.packageName,
+          input.publicToken,
+          JSON.stringify(input.payload),
+          input.actorLogin,
+        ],
+      );
+      if (!rows[0]) throw new Error("identity evidence upsert returned no row");
+      return identityEvidencePackRow(rows[0]);
+    },
+
+    async setIdentityEvidenceEnabled(input: {
+      packageId: number;
+      enabled: boolean;
+      actorLogin: string;
+    }): Promise<IdentityEvidencePackRow | null> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        installation_id: unknown;
+        package_id: unknown;
+        package_name: string;
+        public_token: string;
+        enabled: boolean;
+        payload: unknown;
+        created_by_login: string;
+        updated_by_login: string;
+        created_at: string | Date;
+        updated_at: string | Date;
+      }>(
+        `UPDATE identity_evidence_packs
+         SET enabled = $2,
+             updated_by_login = $3,
+             updated_at = now()
+         WHERE package_id = $1
+         RETURNING *`,
+        [input.packageId, input.enabled, input.actorLogin],
+      );
+      return rows[0] ? identityEvidencePackRow(rows[0]) : null;
     },
 
     async countWatchedPackages(installationId: number): Promise<number> {

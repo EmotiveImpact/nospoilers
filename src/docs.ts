@@ -49,6 +49,12 @@ export const DOCS_SECTIONS: DocsSection[] = [
     ],
   },
   {
+    heading: "Package identity",
+    paragraphs: [
+      "Protect a watched npm package only after the npm scope or GitHub repository field matches this install. Naming an arbitrary pack is not ownership. Trial and Team admins can assemble a human-reviewed identity evidence pack and publish a consumer advisory page. Members may download the pack. The public page shows the package name, repository host, and registered lookalike names. It is not a malware verdict. NoSpoilers does not send the pack to npm or GitHub. Other registries stay out.",
+    ],
+  },
+  {
     heading: "Help",
     paragraphs: [
       `Public status is /status (liveness only, no tenant data). Privacy, Terms, Retention, Disclosure, Support, and Refunds are linked in the footer. Contact ${SUPPORT_EMAIL}.`,

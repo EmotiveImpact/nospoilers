@@ -903,6 +903,26 @@ CREATE INDEX IF NOT EXISTS identity_candidates_check_idx
 CREATE INDEX IF NOT EXISTS identity_candidates_install_idx
   ON identity_candidates (installation_id, package_id);
 
+CREATE TABLE IF NOT EXISTS identity_evidence_packs (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  package_id BIGINT NOT NULL UNIQUE REFERENCES watched_packages (id) ON DELETE CASCADE,
+  package_name TEXT NOT NULL,
+  public_token TEXT NOT NULL UNIQUE,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  payload JSONB NOT NULL,
+  created_by_login TEXT NOT NULL,
+  updated_by_login TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS identity_evidence_packs_token_idx
+  ON identity_evidence_packs (public_token);
+
+CREATE INDEX IF NOT EXISTS identity_evidence_packs_install_idx
+  ON identity_evidence_packs (installation_id, enabled, id DESC);
+
 CREATE TABLE IF NOT EXISTS audit_events (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -941,7 +961,10 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'release.hold',
     'release.release_hold',
     'release.publish_verify',
-    'release.unpublish_verify'
+    'release.unpublish_verify',
+    'identity.evidence',
+    'identity.publish_advisory',
+    'identity.unpublish_advisory'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

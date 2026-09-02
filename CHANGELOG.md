@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+- Package Identity human-reviewed evidence: trial and Team install admins
+  assemble a frozen evidence pack for a protected npm name and may publish
+  `/advisory/:token`. Members may read and download the JSON. The public page
+  shows the package name, repository/homepage host, and registered lookalike
+  names. Takedown JSON adds maintainer names, publisher/trusted-publisher,
+  lookalike versions, and identity alert titles. Typed package-name confirm.
+  Solo 403. Unpaid 402 to change; an already-published page still reads.
+  Another tenant 404. The token is not the package id. Audit records the
+  package name only. Never sent to npm or GitHub. Never a malware verdict.
+  Never downloads a tarball. Live Neon gates on install `158159401`: unauth
+  401, missing package 404. No EmotiveImpact-owned npm pack exists to assemble
+  on that install. Other registries stay out. Not a Pricing change.
+
 - PagerDuty destination: trial and Team installs save one encrypted Events API
   routing key per install. Host is locked to `events.pagerduty.com`. The key is
   never returned. A delivery test POSTs `/v2/change/enqueue` and never creates

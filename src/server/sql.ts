@@ -803,6 +803,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateReleasePublicPages(sql);
   await migratePagerDutyDestinations(sql);
   await migrateDestinationDeleteKeepsDeliveries(sql);
+  await migrateIdentityEvidence(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1264,7 +1265,10 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'release.hold',
       'release.release_hold',
       'release.publish_verify',
-      'release.unpublish_verify'
+      'release.unpublish_verify',
+      'identity.evidence',
+      'identity.publish_advisory',
+      'identity.unpublish_advisory'
     ));
   `);
 }
@@ -1321,6 +1325,31 @@ async function migrateDestinationDeleteKeepsDeliveries(sql: SqlClient): Promise<
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "045_destination_delete_keeps_deliveries",
+  ]);
+}
+
+async function migrateIdentityEvidence(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS identity_evidence_packs (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      package_id BIGINT NOT NULL UNIQUE REFERENCES watched_packages (id) ON DELETE CASCADE,
+      package_name TEXT NOT NULL,
+      public_token TEXT NOT NULL UNIQUE,
+      enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      payload JSONB NOT NULL,
+      created_by_login TEXT NOT NULL,
+      updated_by_login TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS identity_evidence_packs_token_idx
+      ON identity_evidence_packs (public_token);
+    CREATE INDEX IF NOT EXISTS identity_evidence_packs_install_idx
+      ON identity_evidence_packs (installation_id, enabled, id DESC);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "046_identity_evidence",
   ]);
 }
 
