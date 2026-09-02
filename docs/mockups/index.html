@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NoSpoilers watch desk — 10 UX directions</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      .body {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 54px 24px 90px;
+      }
+      .lede {
+        max-width: 68ch;
+      }
+      .problem {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 30px 0 8px;
+      }
+      .problem div {
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--panel);
+      }
+      .problem .n {
+        font-family: var(--display);
+        font-size: 26px;
+        letter-spacing: -0.03em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 30px;
+      }
+      .mk {
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition:
+          border-color 0.15s ease,
+          transform 0.15s ease;
+      }
+      .mk:hover {
+        border-color: var(--line-strong);
+        transform: translateY(-2px);
+      }
+      .shot {
+        position: relative;
+        height: 260px;
+        border-bottom: 1px solid var(--line);
+        overflow: hidden;
+        background: var(--ink);
+      }
+      .shot iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1440px;
+        height: 940px;
+        border: 0;
+        transform: scale(0.42);
+        transform-origin: top left;
+        pointer-events: none;
+      }
+      .shot::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 60%, rgba(9, 9, 11, 0.55));
+        pointer-events: none;
+      }
+      .mk-body {
+        padding: 16px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .mk-no {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+      }
+      .tagrow {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .mk .foot {
+        margin-top: auto;
+        padding-top: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .verdict-line {
+        font-size: 12.5px;
+        color: var(--dim);
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+      .verdict-line b {
+        color: var(--mute);
+        font-weight: 500;
+      }
+
+      @media (max-width: 900px) {
+        .grid,
+        .problem {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="body">
+        <span class="logo">NoSpoilers</span>
+        <h1 style="margin-top: 22px; font-size: 40px">Ten ways the watch desk could work.</h1>
+        <p class="muted lede" style="margin-top: 14px">
+          Static HTML comps, no framework and no build step. Each one takes the same real data
+          — repos, packs, rule ids, receipts, routes — and answers the same question differently:
+          <strong class="snow"
+            >how does a person find the one thing that is exposed without scrolling past thirteen
+            configuration panels?</strong
+          >
+        </p>
+
+        <div class="problem">
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">15</div>
+            <p class="small dim" style="margin-top: 5px">
+              panels stacked on one page, no in-page navigation
+            </p>
+          </div>
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">~4,000</div>
+            <p class="small dim" style="margin-top: 5px">
+              lines in <code class="path">WatchPage.tsx</code>, one component
+            </p>
+          </div>
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">1</div>
+            <p class="small dim" style="margin-top: 5px">
+              visual weight shared by alerts and retention settings
+            </p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <a class="mk" href="01-console-sidebar.html">
+            <div class="shot"><iframe src="01-console-sidebar.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">01</span>
+              <h2 style="margin-top: 4px">Console sidebar</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The fourteen sections become a grouped left nav — Overview and Alerts on top, then
+                Watched, Evidence, Settings. The landing view is a verdict plus four numbers.
+              </p>
+              <div class="tagrow">
+                <span class="pill">familiar</span><span class="pill">scales</span
+                ><span class="pill">low risk</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want the safest large rewrite that keeps every existing feature
+                addressable.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="02-command-stream.html">
+            <div class="shot"><iframe src="02-command-stream.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">02</span>
+              <h2 style="margin-top: 4px">Command stream</h2>
+              <p class="small muted" style="margin-top: 7px">
+                One reverse-chronological feed is the whole desk. Configuration has no page at all
+                — it lives behind ⌘K. Loud events get full cards, routine ones get one line.
+              </p>
+              <div class="tagrow">
+                <span class="pill">opinionated</span><span class="pill">keyboard-first</span
+                ><span class="pill">minimal chrome</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the product is for engineers who live in Linear and never want a
+                settings tour.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="03-triage-inbox.html">
+            <div class="shot"><iframe src="03-triage-inbox.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">03</span>
+              <h2 style="margin-top: 4px">Triage inbox</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Three panes: saved views, alert list, alert detail. The rotation checklist becomes
+                real tasks and the alert gets a comment thread. Settings are a separate tab.
+              </p>
+              <div class="tagrow">
+                <span class="pill">workflow-first</span><span class="pill">fast triage</span
+                ><span class="pill">j/k navigation</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the daily job is clearing alerts, and everything else is rare.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="04-tabbed-desk.html">
+            <div class="shot"><iframe src="04-tabbed-desk.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">04</span>
+              <h2 style="margin-top: 4px">Tabbed desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Keeps the single-page shape but cuts it into seven tabs under a permanent status
+                strip. The big idea: repos, npm packages, websites, and map custody collapse into
+                one <em>Sources</em> list with identical rows.
+              </p>
+              <div class="tagrow">
+                <span class="pill">smallest diff</span><span class="pill">unifies 4 sections</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want most of the win without rebuilding navigation.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="05-verdict-first.html">
+            <div class="shot"><iframe src="05-verdict-first.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">05</span>
+              <h2 style="margin-top: 4px">Verdict first</h2>
+              <p class="small muted" style="margin-top: 7px">
+                A single sentence answers “am I leaking?”, then a numbered to-do list. Everything
+                quiet is collapsed into folds you can actually open — try them, they work.
+              </p>
+              <div class="tagrow">
+                <span class="pill">calmest</span><span class="pill">plain language</span
+                ><span class="pill">demo-friendly</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> buyers include a founder or manager who wants an answer, not a
+                console.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="06-repo-drilldown.html">
+            <div class="shot"><iframe src="06-repo-drilldown.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">06</span>
+              <h2 style="margin-top: 4px">Repo drill-down</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The repository is the object you navigate. One page holds its watch state, release
+                history with per-version verdicts, linked npm pack and map destination, and its own
+                scoped policy.
+              </p>
+              <div class="tagrow">
+                <span class="pill">object-oriented</span><span class="pill">per-repo policy</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> customers think “what is the state of <em>this</em> repo”, and
+                installs get large.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="07-desk-settings-split.html">
+            <div class="shot">
+              <iframe src="07-desk-settings-split.html" loading="lazy" title=""></iframe>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">07</span>
+              <h2 style="margin-top: 4px">Desk / Settings split</h2>
+              <p class="small muted" style="margin-top: 7px">
+                A hard wall. The desk is only work; a real settings app holds retention, roles,
+                policy, registries, tokens, and routing — label-left, control-right rows with one
+                sticky save bar.
+              </p>
+              <div class="tagrow">
+                <span class="pill">removes 8 panels</span><span class="pill">admin clarity</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the fastest fix is simply moving configuration off the desk.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="08-exposure-timeline.html">
+            <div class="shot">
+              <iframe src="08-exposure-timeline.html" loading="lazy" title=""></iframe>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">08</span>
+              <h2 style="margin-top: 4px">Exposure timeline</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Time is the primary axis. Bars show exactly how long each leak was publicly
+                reachable, an incident spine shows detect-to-notify-to-resolve, and the whole thing
+                exports for a write-up.
+              </p>
+              <div class="tagrow">
+                <span class="pill">sells the value</span><span class="pill">incident-ready</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the number you want customers to repeat is “caught in 38 seconds”.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="09-bento-overview.html">
+            <div class="shot"><iframe src="09-bento-overview.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">09</span>
+              <h2 style="margin-top: 4px">Bento overview</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Every section becomes a sized tile — the critical alert takes four columns, audit
+                takes one. Density with hierarchy, and no prose paragraph before any data.
+              </p>
+              <div class="tagrow">
+                <span class="pill">scannable</span><span class="pill">customisable</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want one screen that shows the whole install at a glance.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="10-guided-setup.html">
+            <div class="shot"><iframe src="10-guided-setup.html" loading="lazy" title=""></iframe></div>
+            <div class="mk-body">
+              <span class="mk-no">10</span>
+              <h2 style="margin-top: 4px">Guided setup</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The desk only renders what you have connected. Coverage is framed as five leak
+                paths, three closed. Unconfigured features sit in a quiet “available when you need
+                it” list instead of shipping as empty panels.
+              </p>
+              <div class="tagrow">
+                <span class="pill">best first run</span><span class="pill">kills empty states</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> trial-to-paid conversion is the problem you are actually solving.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 34px">
+          <h2>How to pick</h2>
+          <p class="small muted" style="margin-top: 9px; max-width: 74ch">
+            They are not mutually exclusive. A likely end state is
+            <strong class="snow">07</strong> (move configuration out) as the structural move,
+            <strong class="snow">01</strong> or <strong class="snow">04</strong> as the shell,
+            <strong class="snow">03</strong> for the alert experience,
+            <strong class="snow">05</strong>’s opening sentence at the top of the overview, and
+            <strong class="snow">10</strong> for the first session. Tell me the numbers you like and
+            I will build the combination for real against the existing API routes.
+          </p>
+          <p class="tiny dim" style="margin-top: 14px">
+            These files are design comps only. The sample content mirrors the real entities and rule
+            ids in this repo so the layouts are honest about density — no component here is wired to
+            data, and none of it ships in the app build.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
