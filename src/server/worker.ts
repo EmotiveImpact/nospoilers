@@ -449,6 +449,7 @@ export async function handleJob(
     if (!isPublicNpmOrigin(registryOrigin)) {
       const saved = await deps.store.getNpmRegistryAuth(installationId, registryOrigin);
       if (!saved) {
+        await refundUnusedHostedUnpack();
         await deps.notifier.send({
           ...alertBase,
           kind: job.kind,
@@ -565,6 +566,7 @@ export async function handleJob(
             sourceRevision: version,
           });
         }
+        await refundUnusedHostedUnpack();
         await deps.notifier.send({
           ...alertBase,
           kind: job.kind,
@@ -586,7 +588,10 @@ export async function handleJob(
     const origin = Number.isFinite(originId) && originId > 0
       ? await deps.store.getWatchedOrigin(originId)
       : null;
-    if (!origin) return;
+    if (!origin) {
+      await refundUnusedHostedUnpack();
+      return;
+    }
     const crawlOpts: WebCrawlOpts = {
       fetch: deps.webFetch,
       lookup: deps.webLookup,

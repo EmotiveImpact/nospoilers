@@ -508,8 +508,9 @@ Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps plus bou
 exposed files, credentials, and linked internal paths, SSRF-blocked, never executed, event-driven
 enqueue, hourly poller enqueues only). Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
-encrypted tokens never returned or written onto jobs, event-driven). Not advertised as a Pricing
-change. Bugsnag matches a release version; it cannot look up a debug ID.
+encrypted tokens never returned or written onto jobs, event-driven, light job so it does not
+consume a daily unpack slot). Not advertised as a Pricing change. Bugsnag matches a release
+version; it cannot look up a debug ID.
 Automatic remediation PRs are in (reviewable, never merged; empty policy; no overwrite of customer
 ignore/policy/workflow/Action files; workflow YAML stays copy-paste; 409 until Pull requests write).
 DOC-001 expansion is in (architecture/PRD/internal docs/ADRs).

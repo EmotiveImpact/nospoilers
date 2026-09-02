@@ -35,7 +35,7 @@ export async function enqueueMapCustodyChecks(
     const result = await store.enqueueJob({
       deliveryId: mapCustodyDeliveryId(installationId, destination.id, token),
       installationId,
-      priority: "heavy",
+      priority: "light",
       kind: "map_custody_check",
       payload: {
         installationId,
@@ -62,7 +62,7 @@ export async function checkMapDestination(
   const result = await store.enqueueJob({
     deliveryId: mapCustodyDeliveryId(destination.installation_id, destination.id, token),
     installationId: destination.installation_id,
-    priority: "heavy",
+    priority: "light",
     kind: "map_custody_check",
     payload: {
       installationId: destination.installation_id,
@@ -86,7 +86,7 @@ export async function enqueueMapCustodyAfterConnect(
   const result = await store.enqueueJob({
     deliveryId: mapCustodyDeliveryId(destination.installation_id, destination.id, "initial"),
     installationId: destination.installation_id,
-    priority: "heavy",
+    priority: "light",
     kind: "map_custody_check",
     payload: {
       installationId: destination.installation_id,
@@ -111,7 +111,7 @@ export async function runMapCustodyPoll(deps: { store: Store }): Promise<{ queue
         `hour:${hour}`,
       ),
       installationId: destination.installation_id,
-      priority: "heavy",
+      priority: "light",
       kind: "map_custody_check",
       payload: {
         installationId: destination.installation_id,

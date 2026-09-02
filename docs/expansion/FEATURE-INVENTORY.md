@@ -31,7 +31,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
 | Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe/Electron not claimed live) | NoSpoilers |
-| Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; a GitHub Release job that never downloads (no pack, Electron installer skip, or every pack over the size cap) refunds the slot; `release.published` with no scannable pack enqueues light; live Echo job 47 / alert 36 left usage at 9; not a scan-credit meter; not a Pricing change | Infrastructure |
+| Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; a GitHub Release job that never downloads (no pack, Electron installer skip, or every pack over the size cap) refunds the slot; an npm scan that never downloads (missing private-registry token or oversize tarball) refunds the slot; `release.published` with no scannable pack enqueues light; Sentry/Bugsnag map custody is light (no unpack); live Echo job 47 / alert 36 left usage at 9; not a scan-credit meter; not a Pricing change | Infrastructure |
 
 ## Scanner and release automation
 
@@ -125,8 +125,8 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | GitHub Release assets | Built: published plus edited/prereleased/released when pack assets change; unpublished/deleted are light alerts with no download. Watch Scan latest release queues a heavy unpack of the current Release pack (not git) and is not the hourly poller. Throwaway `phase1-fixture` `sourcemap.tgz` produced `release_scan` + `failed-policy` MAP-001/002/003 | NoSpoilers |
 | npm registry packages | Built: customer watch of public `latest` plus prerelease-channel tarballs | NoSpoilers |
 | Production website JS/CSS/assets | Built: HTTPS origin, same-origin JS/CSS/maps plus bounded probes for exposed files, credentials, and linked internal paths, SSRF blocked, never executed | NoSpoilers |
-| Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011 | NoSpoilers |
-| Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API | NoSpoilers |
+| Sentry source-map custody | Built: debug ID lookup, encrypted token, public map MAP-012, missing private MAP-011; light job (no unpack, does not consume the daily hosted unpack cap) | NoSpoilers |
+| Bugsnag source-map custody | Built: release-version match; debug ID lookup is not available on this API; light job (no unpack) | NoSpoilers |
 | VS Code `.vsix` | Built: ZIP magic, clean and dirty fixtures, GitHub Release asset, Scan example | NoSpoilers |
 | Chrome `.crx` and Firefox `.xpi`/extension ZIPs | Built: CRX header stripped; CRX without ZIP inconclusive (`fixtures/inconclusive.crx` Scan example); XPI as ZIP; Chrome ZIP WebExtension layout (root manifest.json, not a CRX header) classified as xpi; clean and dirty Scan examples | NoSpoilers |
 | Python wheel and source distribution | Built: `.whl` as ZIP; sdist tar.gz PKG-INFO layout sniff (not a generic npm tarball); Python is not executed; clean and dirty Scan examples | NoSpoilers |
@@ -188,7 +188,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL) | Operations |
-| Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; job list is counts not credits | NoSpoilers |
+| Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; map custody is light; no-download GitHub/npm jobs refund; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers Team |
 
 ## Internal acquisition and responsible disclosure

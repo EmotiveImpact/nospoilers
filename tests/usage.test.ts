@@ -5,8 +5,11 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { githubSignature } from "../src/server/hmac.ts";
+import { createLogNotifier } from "../src/server/notifier.ts";
+import type { NpmPort } from "../src/server/npm.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
+import { createWorker } from "../src/server/worker.ts";
 import {
   FAIR_USE_ALERT_KIND,
   FAIR_USE_EXHAUSTED,
@@ -99,6 +102,29 @@ async function seedSoloInstall(
   });
   await store.linkUserInstallation(input.id, input.userId);
   await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = $1`, [input.id]);
+}
+
+function unusedNpm(): NpmPort {
+  return {
+    getPack: async () => {
+      throw new Error("npm mock: unexpected getPack");
+    },
+    downloadTarball: async () => {
+      throw new Error("npm mock: unexpected download");
+    },
+    searchScope: async () => {
+      throw new Error("npm mock: unexpected search");
+    },
+  };
+}
+
+async function usageOf(sql: SqlClient, installationId = 7): Promise<number> {
+  const { rows } = await sql.query<{ n: string }>(
+    `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+     WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
+    [installationId],
+  );
+  return Number(rows[0]?.n ?? 0);
 }
 
 async function fillHeavyJobs(store: Store, installationId: number, count: number): Promise<void> {
@@ -445,6 +471,77 @@ describe("daily hosted unpack cap", () => {
       });
       expect(scan.status).toBe(429);
       expect(((await scan.json()) as { error: string }).error).toBe(FAIR_USE_EXHAUSTED);
+    });
+  });
+
+  it("refunds an npm scan that never downloads a tarball", async () => {
+    await withStore(async ({ sql, store }) => {
+      await seedSoloInstall(store, sql, { id: 7, login: "octo", userId: "u1", accountId: 1 });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "npm_scan",
+        payload: {
+          installationId: 7,
+          packageName: "private-pack",
+          version: "1.0.0",
+          tarballUrl: "https://npm.pkg.github.com/octo/private-pack/-/private-pack-1.0.0.tgz",
+          registryOrigin: "https://npm.pkg.github.com",
+        },
+      });
+      expect(await usageOf(sql)).toBe(1);
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        npm: unusedNpm(),
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+      });
+      await worker.tick();
+      await worker.stop();
+      expect(await usageOf(sql)).toBe(0);
+      const { rows } = await sql.query<{ title: string }>("SELECT title FROM alerts");
+      expect(rows[0]?.title).toMatch(/Missing registry token/);
+    });
+  });
+
+  it("refunds an oversize npm tarball that is not unpacked", async () => {
+    await withStore(async ({ sql, store }) => {
+      await seedSoloInstall(store, sql, { id: 7, login: "octo", userId: "u1", accountId: 1 });
+      await store.enqueueJob({
+        priority: "heavy",
+        kind: "npm_scan",
+        payload: {
+          installationId: 7,
+          packageName: "demo-pack",
+          version: "1.0.0",
+          tarballUrl: "https://registry.npmjs.org/demo-pack/-/demo-pack-1.0.0.tgz",
+          registryOrigin: "https://registry.npmjs.org",
+        },
+      });
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        npm: {
+          ...unusedNpm(),
+          downloadTarball: async () => {
+            throw new Error("demo-pack is larger than the 100 byte scan limit.");
+          },
+        },
+        notifier: createLogNotifier(store),
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 100,
+        intervalMs: 60_000,
+        receiptSecret: "usage-receipt-secret",
+      });
+      await worker.tick();
+      await worker.stop();
+      expect(await usageOf(sql)).toBe(0);
+      const { rows } = await sql.query<{ title: string }>("SELECT title FROM alerts");
+      expect(rows[0]?.title).toMatch(/Inconclusive scan of npm demo-pack/);
     });
   });
 });

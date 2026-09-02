@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Sentry/Bugsnag map custody checks enqueue as light jobs. They look up
+  debug IDs or release names and never download map source, so they do
+  not consume a daily hosted unpack slot. An npm scan that never
+  downloads (missing private-registry token, or a tarball over the size
+  cap) refunds its slot. Not a scan-credit meter and not a Pricing change.
+
 - Hosted unpack fair use refunds a GitHub Release job that never downloads
   (no Release, no scannable pack, Electron installer skip, or every pack
   over the size cap). `release.published` with no scannable pack enqueues

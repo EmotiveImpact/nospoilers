@@ -231,11 +231,17 @@ describe("hosted map custody", () => {
       );
       expect(looksEncrypted(cipher[0]?.token_ciphertext ?? "")).toBe(true);
       expect(cipher[0]?.token_ciphertext).not.toContain(TOKEN);
-      const { rows: jobs } = await sql.query<{ payload: unknown; kind: string }>(
-        "SELECT kind, payload FROM jobs WHERE kind = 'map_custody_check'",
+      const { rows: jobs } = await sql.query<{ payload: unknown; kind: string; priority: string }>(
+        "SELECT kind, payload, priority FROM jobs WHERE kind = 'map_custody_check'",
       );
       expect(jobs.length).toBeGreaterThan(0);
+      expect(jobs.every((row) => row.priority === "light")).toBe(true);
       expect(JSON.stringify(jobs)).not.toMatch(/sntrys_/);
+      const { rows: usage } = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usage[0]?.n ?? 0)).toBe(1);
       const { rows: origins } = await sql.query<{ last_debug_ids: unknown; last_public_map: boolean }>(
         "SELECT last_debug_ids, last_public_map FROM watched_origins",
       );

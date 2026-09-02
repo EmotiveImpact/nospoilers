@@ -189,8 +189,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   exposed files, credentials, and linked internal paths, private/local/metadata hosts blocked,
   never executed. Connect enqueues immediately. Hourly poller enqueues. Not a Pricing change.
 - Sentry/Bugsnag map custody: matching debug ID (Sentry) or release version (Bugsnag), private
-  lookup, public map absent. Encrypted tokens. Event-driven. Not a Pricing change. Bugsnag cannot
-  look up a debug ID.
+  lookup, public map absent. Encrypted tokens. Event-driven light job (no unpack slot).
+  Not a Pricing change. Bugsnag cannot look up a debug ID.
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira/PagerDuty, routes, registries, tokens, allowlists,
