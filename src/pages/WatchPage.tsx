@@ -189,6 +189,13 @@ type TeamMember = {
   role: "admin" | "member";
 };
 
+type TeamInvite = {
+  id: number;
+  githubLogin: string;
+  role: "admin" | "member";
+  createdAt: string;
+};
+
 type TimelineEntry = {
   at: string;
   type: "alert" | "alert_event" | "delivery";
@@ -287,6 +294,8 @@ type Confirming =
   | { kind: "identity-revoke"; packageId: number; id: number; expected: string }
   | { kind: "member"; userId: string; expected: string }
   | { kind: "role"; userId: string; expected: string; role: "admin" | "member" }
+  | { kind: "invite"; login: string; expected: string; role: "admin" | "member" }
+  | { kind: "invite-revoke"; id: number; expected: string }
   | { kind: "retention"; days: RetentionDays; expected: string }
   | { kind: "make-private"; id: number; expected: string }
   | { kind: "delete-pack-assets"; id: number; expected: string }
@@ -318,6 +327,10 @@ function confirmActionLabel(row: Confirming): string {
       return "remove this member";
     case "role":
       return row.role === "admin" ? "make this person an admin" : "make this person a member";
+    case "invite":
+      return "invite this GitHub login";
+    case "invite-revoke":
+      return "revoke this invite";
     case "retention":
       return "set this retention window";
     case "make-private":
@@ -969,6 +982,9 @@ export function WatchPage({ search }: { search: string }) {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
+  const [invites, setInvites] = useState<TeamInvite[]>([]);
+  const [inviteLogin, setInviteLogin] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
 
   const refreshSignedIn = useCallback(async (installationId: number | null) => {
@@ -1022,16 +1038,20 @@ export function WatchPage({ search }: { search: string }) {
         const membersBody = (await membersResponse.json()) as {
           error?: string;
           members?: TeamMember[];
+          invites?: TeamInvite[];
         };
         if (!membersResponse.ok) {
           setMembers([]);
+          setInvites([]);
           setMembersError(membersBody.error ?? "Could not load members.");
         } else {
           setMembers(membersBody.members ?? []);
+          setInvites(membersBody.invites ?? []);
           setMembersError(null);
         }
       } else {
         setMembers([]);
+        setInvites([]);
         setMembersError(null);
       }
       const timelineResponse = await fetch(q("/api/timeline"), { credentials: "include" });
@@ -1132,6 +1152,7 @@ export function WatchPage({ search }: { search: string }) {
       setRetention({ status: "error", message });
       setIdentitySignals({ status: "error", message });
       setMembers([]);
+      setInvites([]);
       setMembersError(message);
     }
   }, []);
@@ -1269,7 +1290,23 @@ export function WatchPage({ search }: { search: string }) {
             headers,
             body: JSON.stringify({ confirm, workflow: confirming.workflow }),
           });
-        } else {
+        } else if (confirming.kind === "invite") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch(`/api/installations/${installId}/invites`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ login: confirming.login, role: confirming.role, confirm }),
+          });
+        } else if (confirming.kind === "invite-revoke") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch(`/api/installations/${installId}/invites/${confirming.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "role") {
           if (!installId) throw new Error("Choose a GitHub installation.");
           response = await fetch(`/api/installations/${installId}/members`, {
             method: "POST",
@@ -1277,6 +1314,8 @@ export function WatchPage({ search }: { search: string }) {
             headers,
             body: JSON.stringify({ userId: confirming.userId, role: confirming.role, confirm }),
           });
+        } else {
+          throw new Error("Unknown confirmation.");
         }
         const body = (await response.json()) as {
           error?: string;
@@ -1312,6 +1351,10 @@ export function WatchPage({ search }: { search: string }) {
         }
         if (confirming.kind === "token") {
           setRevealedScanToken(null);
+        }
+        if (confirming.kind === "invite") {
+          setInviteLogin("");
+          setInviteRole("member");
         }
         setConfirming(null);
         setConfirmText("");
@@ -1357,6 +1400,7 @@ export function WatchPage({ search }: { search: string }) {
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setFairUse(null);
           setMembers([]);
+          setInvites([]);
           setMembersError(null);
           setAudit({ status: "ready", rows: [] });
           setAuditExportError(null);
@@ -2276,8 +2320,10 @@ export function WatchPage({ search }: { search: string }) {
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
-          change roles and remove people. The last admin stays. GitHub suspend does not block this.
-          Email invite is not built. An install admin also saves Slack, SIEM, Jira, routes,
+          change roles, remove people, and invite by GitHub login. They get that role the next time
+          they sign in, if they can already see this App install. This does not send email. Email
+          waits on Resend. This does not grant GitHub Administration. The last admin stays. GitHub
+          suspend does not block this. An install admin also saves Slack, SIEM, Jira, routes,
           registries, scan
           tokens, allowlists, and baselines, and opens setup or remediation PRs.
         </p>
@@ -2296,79 +2342,166 @@ export function WatchPage({ search }: { search: string }) {
         ) : null}
         {previewing ? null : membersError ? (
           <p className="mt-6 text-sm text-danger">{membersError}</p>
-        ) : members.length === 0 ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">Nobody linked on this install yet.</p>
         ) : (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5">
-            {members.map((member) => (
-              <li key={member.userId} className="py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-snow">{member.login}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
-                </div>
-                {canManageRoles ? (
-                  <div className="flex flex-wrap gap-2">
-                    {member.role === "member" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={confirmBusy}
-                        onClick={() =>
-                          beginConfirm({
-                            kind: "role",
-                            userId: member.userId,
-                            expected: member.login,
-                            role: "admin",
-                          })
-                        }
-                      >
-                        Make admin
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={confirmBusy || adminCount <= 1}
-                        onClick={() =>
-                          beginConfirm({
-                            kind: "role",
-                            userId: member.userId,
-                            expected: member.login,
-                            role: "member",
-                          })
-                        }
-                      >
-                        Make member
-                      </Button>
+          <>
+            {canManageRoles ? (
+              <form
+                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const login = inviteLogin.trim();
+                  if (!login || confirmBusy) return;
+                  beginConfirm({
+                    kind: "invite",
+                    login,
+                    role: inviteRole,
+                    expected: login,
+                  });
+                }}
+              >
+                <label className="min-w-0 flex-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    GitHub login
+                  </span>
+                  <input
+                    value={inviteLogin}
+                    onChange={(event) => setInviteLogin(event.target.value)}
+                    placeholder="octocat"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+                  />
+                </label>
+                <label>
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Role</span>
+                  <select
+                    value={inviteRole}
+                    onChange={(event) =>
+                      setInviteRole(event.target.value === "admin" ? "admin" : "member")
+                    }
+                    className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
+                  >
+                    <option value="member">member</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </label>
+                <Button type="submit" size="sm" disabled={confirmBusy || !inviteLogin.trim()}>
+                  Invite
+                </Button>
+              </form>
+            ) : null}
+            {confirmForm(confirming?.kind === "invite")}
+            {invites.length > 0 ? (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {invites.map((invite) => (
+                  <li key={invite.id} className="py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-snow">{invite.githubLogin}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                          pending {invite.role}
+                        </p>
+                      </div>
+                      {canManageRoles ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={confirmBusy}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "invite-revoke",
+                              id: invite.id,
+                              expected: invite.githubLogin,
+                            })
+                          }
+                        >
+                          Revoke
+                        </Button>
+                      ) : null}
+                    </div>
+                    {confirmForm(confirming?.kind === "invite-revoke" && confirming.id === invite.id)}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {members.length === 0 ? (
+              <p className="mt-6 text-sm leading-relaxed text-mute">
+                Nobody linked on this install yet.
+              </p>
+            ) : (
+              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+                {members.map((member) => (
+                  <li key={member.userId} className="py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-snow">{member.login}</p>
+                      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
+                    </div>
+                    {canManageRoles ? (
+                      <div className="flex flex-wrap gap-2">
+                        {member.role === "member" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={confirmBusy}
+                            onClick={() =>
+                              beginConfirm({
+                                kind: "role",
+                                userId: member.userId,
+                                expected: member.login,
+                                role: "admin",
+                              })
+                            }
+                          >
+                            Make admin
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={confirmBusy || adminCount <= 1}
+                            onClick={() =>
+                              beginConfirm({
+                                kind: "role",
+                                userId: member.userId,
+                                expected: member.login,
+                                role: "member",
+                              })
+                            }
+                          >
+                            Make member
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={confirmBusy || (member.role === "admin" && adminCount <= 1)}
+                          onClick={() =>
+                            beginConfirm({
+                              kind: "member",
+                              userId: member.userId,
+                              expected: member.login,
+                            })
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ) : null}
+                    </div>
+                    {confirmForm(
+                      (confirming?.kind === "member" && confirming.userId === member.userId) ||
+                        (confirming?.kind === "role" && confirming.userId === member.userId),
                     )}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={confirmBusy || (member.role === "admin" && adminCount <= 1)}
-                      onClick={() =>
-                        beginConfirm({
-                          kind: "member",
-                          userId: member.userId,
-                          expected: member.login,
-                        })
-                      }
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : null}
-                </div>
-                {confirmForm(
-                  (confirming?.kind === "member" && confirming.userId === member.userId) ||
-                    (confirming?.kind === "role" && confirming.userId === member.userId),
-                )}
-              </li>
-            ))}
-          </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 

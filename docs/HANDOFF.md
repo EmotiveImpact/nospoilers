@@ -210,7 +210,9 @@ Read in this order:
   admin; later users are members. Admins can promote, demote, and remove. The last admin
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
   delivery tests. Admins save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists, baselines,
-  and open setup/remediation PRs. Email invite is not built.
+  and open setup/remediation PRs. Trial/Team can invite by GitHub login. No email (Resend is
+  benched). They become that role when they sign in after GitHub lists them on this App.
+  First-user-admin still wins if a member invite would leave zero admins.
 - Watch one-click GitHub responses are in (make-private, delete latest Release pack assets,
   disable a workflow that is not `.github/workflows/nospoilers.yml`). Install admin, typed
   confirm, unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not
@@ -277,7 +279,7 @@ Team audit log is in (trial/Team, append-only, typed confirm on destructive writ
 includes secrets; Solo 403; unpaid 402; members may read/export).
 90-day Team timeline is in (tenant-scoped, Solo 403, unpaid 402, no invented rows).
 Team members and roles are in (first user admin; later members; trial/Team; last admin stays;
-GitHub suspend does not block; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
+GitHub suspend does not block; GitHub-login invite with no email; members cannot save Slack/SIEM/Jira/routes/registries/tokens/allowlists/PRs).
 Package Identity Team signals are in (bounded lookalikes, dormant resurrection, burst/jump;
 trial/Team; metadata-only candidate checks; typed allowlist; no malware verdict).
 Configurable data retention is in (90/180/365/keep; query-time lists; typed confirm; Solo

@@ -17,6 +17,8 @@ export const AUDIT_ACTIONS = [
   "baseline.save",
   "member.role_change",
   "member.remove",
+  "invite.create",
+  "invite.revoke",
   "setup_pr.create",
   "remediation_pr.create",
   "package.unwatch",

@@ -39,6 +39,19 @@ CREATE TABLE IF NOT EXISTS installation_users (
   PRIMARY KEY (installation_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS installation_invites (
+  id BIGSERIAL PRIMARY KEY,
+  installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+  github_login TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('member', 'admin')),
+  created_by_user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (installation_id, github_login)
+);
+
+CREATE INDEX IF NOT EXISTS installation_invites_install_idx
+  ON installation_invites (installation_id);
+
 CREATE TABLE IF NOT EXISTS billing_accounts (
   installation_id BIGINT PRIMARY KEY REFERENCES installations (id) ON DELETE CASCADE,
   trial_ends_at TIMESTAMPTZ,
@@ -552,6 +565,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'baseline.save',
     'member.role_change',
     'member.remove',
+    'invite.create',
+    'invite.revoke',
     'setup_pr.create',
     'remediation_pr.create',
     'package.unwatch',

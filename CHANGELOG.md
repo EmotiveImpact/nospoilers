@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Trial and Team Watch can invite a teammate by GitHub login. They get that role the next
+  time they sign in, if GitHub already lists them on this App install. Typed confirm. Solo
+  403. Unpaid 402. GitHub suspend does not block. Members cannot invite. Already a member is
+  409. First-user-admin still wins if a member invite would leave zero admins. Does not send
+  email (Resend is benched). Does not grant GitHub Administration. Not a Pricing change.
+
 - Watch Scan API shows the current hosted origin (`APP_BASE_URL`) for repository variable
   `NOSPOILERS_API_URL`. Signed-in `/api/me` includes it; anonymous omits it. Loopback and HTTP
   are not reachable from GitHub-hosted runners. Not a Pricing change.

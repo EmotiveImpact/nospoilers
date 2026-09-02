@@ -143,7 +143,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Team members and roles: first GitHub user on an install is admin; later users are members.
   Trial/Team role changes. Solo 403. Unpaid 402. Last admin stays. GitHub suspend does not
   block. Members keep Watch/ack/test. Admins save Slack/SIEM/Jira, routes, registries, tokens, allowlists,
-  baselines, and open setup/remediation PRs.
+  baselines, and open setup/remediation PRs. Trial/Team can invite by GitHub login (no email;
+  Resend is benched). They get that role on sign-in if GitHub already lists them on this App.
+  First-user-admin still wins if a member invite would leave zero admins.
 - Automatic remediation PRs: ignore rules, empty `.nospoilers.yml`, bundler hints, `files`
   snippet, and packed-artifact CI on branch `nospoilers/remediate`. Reviewable, never merged.
   Customer files are not overwritten. 409 copy-paste until Contents write and Pull requests

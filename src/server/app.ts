@@ -125,12 +125,15 @@ import {
 } from "./retention.ts";
 import {
   ADMIN_REQUIRED_ERROR,
+  GITHUB_LOGIN_ERROR,
   parseInstallationRole,
   rolesPlanDeniedFromBilling,
 } from "./roles.ts";
 import {
   MAX_NOTIFICATION_ROUTES,
   destinationReceives,
+  githubLoginKey,
+  parseGithubLogin,
   parseRouteMinSeverity,
   parseRoutePackageName,
   parseRouteRepoFullName,
@@ -1208,7 +1211,97 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: "Unknown GitHub installation." }, 404);
     }
     const members = await deps.store.listInstallationMembersForUser(user.userId, installationId);
-    return c.json({ members });
+    const invites = await deps.store.listInstallationInvitesForUser(user.userId, installationId);
+    return c.json({ members, invites });
+  });
+
+  app.post("/api/installations/:id/invites", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const loginRaw = typeof body.login === "string" ? body.login : "";
+    const login = parseGithubLogin(loginRaw);
+    if (!login) return c.json({ error: GITHUB_LOGIN_ERROR }, 400);
+    const role = parseInstallationRole(body.role);
+    if (!role) return c.json({ error: "Role must be admin or member." }, 400);
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const confirmError = typedConfirm(body, login);
+    if (confirmError) return c.json(confirmError, 400);
+    try {
+      const invite = await deps.store.upsertInstallationInviteForUser({
+        actorUserId: user.userId,
+        installationId,
+        githubLogin: githubLoginKey(login),
+        role,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "invite.create",
+        summary: `Invited ${invite.githubLogin} as ${invite.role}`,
+        targetKind: "invite",
+        targetId: invite.githubLogin,
+      });
+      return c.json({ ok: true, invite });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not save that invite." },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/installations/:id/invites/:inviteId", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = Number(c.req.param("id"));
+    const inviteId = Number(c.req.param("inviteId"));
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Unknown GitHub installation." }, 404);
+    }
+    if (!Number.isFinite(inviteId) || inviteId <= 0) {
+      return c.json({ error: "Unknown invite." }, 404);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = rolesPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const invites = await deps.store.listInstallationInvitesForUser(user.userId, installationId);
+    const target = invites.find((row) => row.id === inviteId);
+    if (!target) return c.json({ error: "Unknown invite." }, 404);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, target.githubLogin);
+    if (confirmError) return c.json(confirmError, 400);
+    try {
+      const invite = await deps.store.revokeInstallationInviteForUser({
+        actorUserId: user.userId,
+        installationId,
+        inviteId,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "invite.revoke",
+        summary: `Revoked invite for ${invite.githubLogin}`,
+        targetKind: "invite",
+        targetId: invite.githubLogin,
+      });
+      return c.json({ ok: true });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not revoke that invite." },
+        errorStatus(error),
+      );
+    }
   });
 
   app.post("/api/installations/:id/members", async (c) => {

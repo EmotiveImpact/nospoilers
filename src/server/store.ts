@@ -21,14 +21,17 @@ import type { PermissionTestResult } from "./install-test.ts";
 import { TIMELINE_LIMIT } from "./timeline.ts";
 import {
   ADMIN_REQUIRED_ERROR,
+  ALREADY_MEMBER_ERROR,
   LAST_ADMIN_ERROR,
+  UNKNOWN_INVITE_ERROR,
   UNKNOWN_MEMBER_ERROR,
   asInstallationRole,
+  type InstallationInvite,
   type InstallationMember,
   type InstallationRole,
 } from "./roles.ts";
 import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
-import type { NotificationRouteRow, RouteMinSeverity } from "./routing.ts";
+import { githubLoginKey, type NotificationRouteRow, type RouteMinSeverity } from "./routing.ts";
 
 export type JobPriority = "light" | "heavy";
 
@@ -606,6 +609,69 @@ function iso(value: string | Date | null | undefined): string | null {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function inviteRow(row: {
+  id: unknown;
+  github_login: string;
+  role: string;
+  created_at: string | Date;
+}): InstallationInvite {
+  return {
+    id: num(row.id),
+    githubLogin: row.github_login,
+    role: asInstallationRole(row.role),
+    createdAt: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+async function applyPendingInvite(
+  db: SqlClient,
+  installationId: number,
+  userId: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const { rows: userRows } = await tx.query<{ login: string }>(
+      `SELECT login FROM users WHERE id = $1`,
+      [userId],
+    );
+    const login = userRows[0]?.login ? githubLoginKey(userRows[0].login) : "";
+    if (!login) return;
+    const { rows: inviteRows } = await tx.query<{ id: unknown; role: string }>(
+      `SELECT id, role FROM installation_invites
+       WHERE installation_id = $1 AND github_login = $2
+       FOR UPDATE`,
+      [installationId, login],
+    );
+    const invite = inviteRows[0];
+    if (!invite) return;
+    const { rows: memberRows } = await tx.query<{ role: string }>(
+      `SELECT role FROM installation_users
+       WHERE installation_id = $1 AND user_id = $2
+       FOR UPDATE`,
+      [installationId, userId],
+    );
+    const member = memberRows[0];
+    if (!member) return;
+    const wanted = asInstallationRole(invite.role);
+    if (wanted === "member" && asInstallationRole(member.role) === "admin") {
+      const { rows: adminRows } = await tx.query<{ n: unknown }>(
+        `SELECT count(*)::int AS n FROM installation_users
+         WHERE installation_id = $1 AND role = 'admin' AND user_id <> $2`,
+        [installationId, userId],
+      );
+      if (num(adminRows[0]?.n ?? 0) === 0) {
+        await tx.query(`DELETE FROM installation_invites WHERE id = $1`, [invite.id]);
+        return;
+      }
+    }
+    await tx.query(
+      `UPDATE installation_users SET role = $3
+       WHERE installation_id = $1 AND user_id = $2`,
+      [installationId, userId, wanted],
+    );
+    await tx.query(`DELETE FROM installation_invites WHERE id = $1`, [invite.id]);
+  });
+}
+
 function prospectRow(row: ProspectRow): ProspectRow {
   return {
     ...row,
@@ -1171,6 +1237,7 @@ export function createStore(
          ON CONFLICT DO NOTHING`,
         [installationId, userId],
       );
+      await applyPendingInvite(sql, installationId, userId);
     },
 
     async linkUserToAccountInstallations(userId: string, githubUserId: number): Promise<void> {
@@ -1189,6 +1256,18 @@ export function createStore(
          ON CONFLICT DO NOTHING`,
         [userId, githubUserId],
       );
+      const { rows } = await sql.query<{ installation_id: unknown }>(
+        `SELECT iu.installation_id
+         FROM installation_users iu
+         JOIN installation_invites inv ON inv.installation_id = iu.installation_id
+         JOIN users u ON u.id = iu.user_id
+         WHERE iu.user_id = $1
+           AND inv.github_login = lower(u.login)`,
+        [userId],
+      );
+      for (const row of rows) {
+        await applyPendingInvite(sql, num(row.installation_id), userId);
+      }
     },
 
     async upsertRepo(input: {
@@ -2326,6 +2405,123 @@ export function createStore(
           [input.installationId, input.targetUserId],
         );
         return Boolean(deleted[0]);
+      });
+    },
+
+    async listInstallationInvitesForUser(
+      userId: string,
+      installationId: number,
+    ): Promise<InstallationInvite[]> {
+      const { rows } = await sql.query<{
+        id: unknown;
+        github_login: string;
+        role: string;
+        created_at: string | Date;
+      }>(
+        `SELECT i.id, i.github_login, i.role, i.created_at
+         FROM installation_invites i
+         WHERE i.installation_id = $1
+           AND EXISTS (
+             SELECT 1 FROM installation_users mine
+             WHERE mine.installation_id = $1 AND mine.user_id = $2
+           )
+         ORDER BY i.github_login`,
+        [installationId, userId],
+      );
+      return rows.map(inviteRow);
+    },
+
+    async upsertInstallationInviteForUser(input: {
+      actorUserId: string;
+      installationId: number;
+      githubLogin: string;
+      role: InstallationRole;
+    }): Promise<InstallationInvite> {
+      return await sql.transaction(async (tx) => {
+        const { rows: actorRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.actorUserId],
+        );
+        const actor = actorRows[0];
+        if (!actor) {
+          throw Object.assign(new Error("That GitHub installation is not on your account."), {
+            status: 403,
+          });
+        }
+        if (asInstallationRole(actor.role) !== "admin") {
+          throw Object.assign(new Error(ADMIN_REQUIRED_ERROR), { status: 403 });
+        }
+        const login = githubLoginKey(input.githubLogin);
+        const { rows: memberRows } = await tx.query<{ login: string }>(
+          `SELECT u.login
+           FROM installation_users iu
+           JOIN users u ON u.id = iu.user_id
+           WHERE iu.installation_id = $1 AND lower(u.login) = $2`,
+          [input.installationId, login],
+        );
+        if (memberRows[0]) {
+          throw Object.assign(new Error(ALREADY_MEMBER_ERROR), { status: 409 });
+        }
+        const { rows } = await tx.query<{
+          id: unknown;
+          github_login: string;
+          role: string;
+          created_at: string | Date;
+        }>(
+          `INSERT INTO installation_invites (installation_id, github_login, role, created_by_user_id)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (installation_id, github_login)
+           DO UPDATE SET
+             role = excluded.role,
+             created_by_user_id = excluded.created_by_user_id
+           RETURNING id, github_login, role, created_at`,
+          [input.installationId, login, input.role, input.actorUserId],
+        );
+        const invite = rows[0];
+        if (!invite) throw new Error("Could not save that invite.");
+        return inviteRow(invite);
+      });
+    },
+
+    async revokeInstallationInviteForUser(input: {
+      actorUserId: string;
+      installationId: number;
+      inviteId: number;
+    }): Promise<InstallationInvite> {
+      return await sql.transaction(async (tx) => {
+        const { rows: actorRows } = await tx.query<{ role: string }>(
+          `SELECT role FROM installation_users
+           WHERE installation_id = $1 AND user_id = $2
+           FOR UPDATE`,
+          [input.installationId, input.actorUserId],
+        );
+        const actor = actorRows[0];
+        if (!actor) {
+          throw Object.assign(new Error("That GitHub installation is not on your account."), {
+            status: 403,
+          });
+        }
+        if (asInstallationRole(actor.role) !== "admin") {
+          throw Object.assign(new Error(ADMIN_REQUIRED_ERROR), { status: 403 });
+        }
+        const { rows } = await tx.query<{
+          id: unknown;
+          github_login: string;
+          role: string;
+          created_at: string | Date;
+        }>(
+          `DELETE FROM installation_invites
+           WHERE id = $1 AND installation_id = $2
+           RETURNING id, github_login, role, created_at`,
+          [input.inviteId, input.installationId],
+        );
+        const invite = rows[0];
+        if (!invite) {
+          throw Object.assign(new Error(UNKNOWN_INVITE_ERROR), { status: 404 });
+        }
+        return inviteRow(invite);
       });
     },
 

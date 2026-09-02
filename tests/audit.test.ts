@@ -64,6 +64,8 @@ describe("Team audit log", () => {
     expect(AUDIT_ACTIONS).toContain("repo.make_private");
     expect(AUDIT_ACTIONS).toContain("repo.delete_pack_assets");
     expect(AUDIT_ACTIONS).toContain("repo.disable_workflow");
+    expect(AUDIT_ACTIONS).toContain("invite.create");
+    expect(AUDIT_ACTIONS).toContain("invite.revoke");
   });
 
   it("records admin writes, requires typed confirmation, exports titles only, and hides other tenants", async () => {

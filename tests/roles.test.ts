@@ -122,24 +122,30 @@ describe("installation roles", () => {
       expect(listed.status).toBe(200);
       const listedBody = (await listed.json()) as {
         members: { userId: string; login: string; role: string; avatarUrl: string | null }[];
+        invites: unknown[];
       };
       expect(listedBody.members.map((row) => `${row.login}:${row.role}`)).toEqual([
         "octo:admin",
         "teammate:member",
       ]);
       expect(listedBody.members[0]?.avatarUrl).toBe("https://example.com/octo.png");
+      expect(listedBody.invites).toEqual([]);
 
       const asMember = await app.request("/api/installations/7/members", {
         headers: { cookie: memberCookie },
       });
       expect(asMember.status).toBe(200);
-      expect(((await asMember.json()) as { members: unknown[] }).members).toHaveLength(2);
+      const asMemberBody = (await asMember.json()) as { members: unknown[]; invites: unknown[] };
+      expect(asMemberBody.members).toHaveLength(2);
+      expect(asMemberBody.invites).toEqual([]);
 
       const otherTenant = await app.request("/api/installations/7/members", {
         headers: { cookie: otherCookie },
       });
       expect(otherTenant.status).toBe(200);
-      expect(((await otherTenant.json()) as { members: unknown[] }).members).toEqual([]);
+      const otherBody = (await otherTenant.json()) as { members: unknown[]; invites: unknown[] };
+      expect(otherBody.members).toEqual([]);
+      expect(otherBody.invites).toEqual([]);
 
       const me = await app.request("/api/me", { headers: { cookie: memberCookie } });
       expect(me.status).toBe(200);

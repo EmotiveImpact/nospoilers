@@ -126,13 +126,14 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   and alert titles) on a trial or Team install. Solo paid returns 403. Unpaid returns 402.
   Another tenant’s installation is empty. Webhook URLs, emails, tokens, ciphertext, and
   alert bodies are not included. Members may read/export; only admins create entries.
-- List people on this install (GitHub login and admin/member role). Other tenants are empty.
+- List people on this install (GitHub login and admin/member role) and pending GitHub-login
+  invites. Other tenants are empty.
 
 **Must not**
 
 - Link an arbitrary GitHub installation ID they do not own. Setup verifies the signed-in
   user owns that install on this App.
-- Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
+- Change roles, remove members, invite or revoke a GitHub login, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
@@ -153,8 +154,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 
 A member who can manage the customer’s GitHub installation membership and product settings
 on a trial or Team install. The first GitHub user to connect an install is admin; later
-users become members. Solo paid returns 403 for role changes. Unpaid returns 402. GitHub
-suspend does not block role changes. Email invite is not built.
+users become members. Solo paid returns 403 for role changes and invites. Unpaid returns 402. GitHub
+suspend does not block role changes or GitHub-login invites. Email invite waits on Resend.
 
 This is not GitHub App **Administration**. That GitHub permission is repo-admin (make the
 repository private, delete Release assets, disable workflows, change settings). It is not
@@ -164,6 +165,13 @@ granted. Contents write is enough to seed the throwaway fixture and open reviewa
 
 - Promote, demote, and remove people on that install. The last admin cannot be demoted
   or removed (409). Role changes and member removal require typing that GitHub login.
+- Invite a GitHub login on a trial or Team install. Typed confirm is that login. They get
+  that role the next time they sign in, if GitHub already lists them on this App install.
+  Pending invites are listed on Watch. Revoke requires typing the stored login. Does not
+  send email. Does not auto-link someone GitHub did not list. Does not grant GitHub
+  Administration. If applying a member invite would leave zero admins, they stay admin and
+  the invite is consumed. Upserts a pending invite when the login is not yet a member (409
+  if they already are).
 - Save and delete encrypted Slack incoming webhooks, SIEM HTTPS webhooks, and Jira Cloud
   destinations on a trial or Team install. URLs, emails, and API tokens are never returned
   after save. Deletes require typing the destination host. Jira is `*.atlassian.net` only (site name, host, or https URL). Private, local,
@@ -206,6 +214,7 @@ granted. Contents write is enough to seed the throwaway fixture and open reviewa
 
 - Anything on the internal operator list below.
 - Demote or remove the last admin.
+- Send email, or link a GitHub login that GitHub has not listed on this App install.
 
 ### Billing Administrator
 

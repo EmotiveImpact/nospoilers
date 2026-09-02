@@ -65,11 +65,19 @@ export function parseRoutePackageName(raw: string): string | null {
   return value;
 }
 
-export function parseRouteTeamLogin(raw: string): string | null {
+export function parseGithubLogin(raw: string): string | null {
   const value = raw.trim();
   if (!value) return null;
   if (!TEAM_LOGIN_RE.test(value)) return null;
   return value;
+}
+
+export function githubLoginKey(login: string): string {
+  return login.trim().toLowerCase();
+}
+
+export function parseRouteTeamLogin(raw: string): string | null {
+  return parseGithubLogin(raw);
 }
 
 export function alertSeverity(input: { kind: string; findings?: Finding[] }): AlertSeverity {
