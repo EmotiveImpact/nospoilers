@@ -265,7 +265,7 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 ### Missing before launch
 
-- Stripe checkout/subscription webhooks and card-on-file trial (benched).
+- Stripe checkout/subscription webhooks and card-on-file trial (wired; live when keys exist).
 - Production deployment, email delivery (Resend, benched), and monitoring.
 
 ## Milestone 0 — prove Neon runtime
@@ -283,7 +283,7 @@ and `fixtures/sourcemap.tgz` on tag `phase1-fixture`. GitHub delivered `release.
 (HTTP 200) → job `release_scan` done → alert **Spoilers in EmotiveImpact/nospoilers-throwaway
 phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Contents write is live on
 this install only. Do not grant Administration. Do not publicize a product repository.
-Stripe and Resend are benched.
+Resend is benched. Stripe checkout is wired and stays 503 until keys exist.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
 2. Install only on a disposable private repository.
@@ -301,20 +301,25 @@ are done.
 Done. Billing accounts attach to GitHub installation IDs. New installs start a 14-day trial.
 Unpaid or suspended installs still receive webhook HTTP 200, but enqueue, worker, visibility
 poller, hosted upload, and latest-release scan skip their work. Anonymous `POST /api/scan`
-stays a size-limited acquisition surface (80 MiB). Stripe is still Milestone 3.
+stays a size-limited acquisition surface (80 MiB). Stripe is Milestone 3.
 
 Exit: unpaid installations cannot receive hosted coverage through any path.
 
 ## Milestone 3 — charge on our site
 
-1. Create Stripe monthly/yearly Solo and Team prices.
-2. Collect payment method through Checkout before the 14-day trial.
-3. Store customer, subscription, plan, status, and period end on the billing account.
-4. Process Stripe lifecycle webhooks idempotently.
-5. Connect Pricing/Subscribe to Checkout and Billing Portal.
-6. Test expiry, failed payment, cancellation, renewal, and reactivation.
+Code is in. Checkout, portal, and signed lifecycle webhooks are tested. This host has
+no Stripe keys, so it does not take cards and `/api/health` reports `stripe: false`.
 
-Exit: customer one can pay without GitHub Marketplace. Marketplace is optional after 100 installs.
+1. Create Stripe monthly/yearly Solo and Team prices in the Stripe Dashboard (not in git).
+2. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the four price IDs.
+3. Point the Stripe webhook at `/api/webhooks/stripe`.
+4. Collect payment method through Checkout; remaining trial days stay on the subscription.
+5. Store customer, subscription, plan, status, and period end on the billing account.
+6. Process Stripe lifecycle webhooks idempotently.
+7. Pricing/Subscribe starts Checkout; Watch Manage billing opens the portal.
+8. Failed payment, cancellation, and replay are covered by `tests/stripe.test.ts`.
+
+Exit: customer one can pay without GitHub Marketplace once keys exist. Marketplace is optional after 100 installs.
 
 ## Milestone 4 — production reliability
 

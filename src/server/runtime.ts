@@ -1,4 +1,4 @@
-import { githubAppConfigured, loadConfig, databaseMode, type AppConfig } from "./config.ts";
+import { githubAppConfigured, loadConfig, databaseMode, stripeConfigured, type AppConfig } from "./config.ts";
 import { createGithubPort } from "./github.ts";
 import { logJson } from "./log.ts";
 import { createNpmPort } from "./npm.ts";
@@ -71,6 +71,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       logJson("info", "runtime.start", {
         database: databaseMode(config.databaseUrl),
         githubApp: githubAppConfigured(config),
+        stripe: stripeConfigured(config),
         recoveryIntervalMs: config.workerIntervalMs,
         visibilityPollIntervalMs: config.pollIntervalMs,
       });

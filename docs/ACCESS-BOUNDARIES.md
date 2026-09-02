@@ -313,16 +313,18 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
 
 ### Billing Administrator
 
-A member who can change plan, payment method, and invoices. **Planned** with Stripe.
+The install admin is the billing administrator. A separate billing-only role is not invented.
 
-**May (when built)**
+**May**
 
-- Start Checkout, open Billing Portal, see invoices for their billing account.
+- Start Checkout and open the Billing Portal for their installation when Stripe keys are set.
+- See plan, Stripe status, and period end (never customer, subscription, or price IDs).
 
 **Must not**
 
 - See other customers’ Stripe objects or NoSpoilers revenue totals.
 - Toggle coverage for installations they do not administer.
+- Start Checkout or open the portal as a member (403).
 
 ### NoSpoilers Operator
 
@@ -736,5 +738,10 @@ and Bugsnag without a release is inconclusive (debug ID lookup is not available)
 `tests/secrets.test.ts` proves hosted `/api/scan`, GitHub OAuth start, and owner discovery
 return 429 after the configured cap, that anonymous 401s do not consume the discovery budget,
 and that GitHub webhooks are not rate-limited. `tests/docs.test.ts` proves `/docs` states we
-never execute packages or retain source, Stripe is not live, and Electron stays later.
+never execute packages or retain source, email is not live yet, and Electron stays later.
+`tests/stripe.test.ts` proves Checkout and the portal stay 503 without keys, only an install
+admin can start them, members and other tenants are 403, unpaid installs can subscribe,
+already-subscribed Checkout returns the portal, signed lifecycle events set and clear plan
+idempotently, a failed payment stops hosted work, a stolen customer cannot move to another
+install, and API bodies never include Stripe object IDs or secrets.
 Keep those tests green when adding internal routes.

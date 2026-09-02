@@ -50,6 +50,7 @@ type Me = {
     lastPermissionTest?: PermissionTest | null;
   }[];
   githubApp: boolean;
+  stripe?: boolean;
   installUrl?: string;
   hostedOrigin?: string;
   githubRunnersReachable?: boolean;
@@ -1231,6 +1232,13 @@ export function WatchPage({ search }: { search: string }) {
   const [inviteLogin, setInviteLogin] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
+  const [billing, setBilling] = useState<{
+    stripe: boolean;
+    hasCustomer: boolean;
+    subscribed: boolean;
+  } | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   const refreshSignedIn = useCallback(async (installationId: number | null) => {
     setRepos({ status: "loading" });
@@ -1791,6 +1799,33 @@ export function WatchPage({ search }: { search: string }) {
     };
   }, [refreshSignedIn, search]);
 
+  useEffect(() => {
+    if (!selectedInstallId) {
+      setBilling(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const body = await loadJson<{
+          stripe: boolean;
+          billing: { hasCustomer: boolean; subscribed: boolean };
+        }>(`/api/billing?installationId=${selectedInstallId}`);
+        if (cancelled) return;
+        setBilling({
+          stripe: body.stripe,
+          hasCustomer: body.billing.hasCustomer,
+          subscribed: body.billing.subscribed,
+        });
+      } catch {
+        if (!cancelled) setBilling(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInstallId]);
+
   if (me.status === "loading") {
     return (
       <main className="flex min-h-[70svh] items-center justify-center px-5">
@@ -1810,6 +1845,7 @@ export function WatchPage({ search }: { search: string }) {
 
   const { user, githubApp, installUrl, coverage: sessionCoverage, hostedOrigin, githubRunnersReachable } =
     me.data;
+  const stripeLive = Boolean(me.data.stripe);
   const installations = me.data.installations ?? [];
   const queryCoverage = coverageFromQuery(search);
   const previewing = !user;
@@ -1982,8 +2018,40 @@ export function WatchPage({ search }: { search: string }) {
               Subscribe
             </Button>
           )}
+          {!previewing && stripeLive && installAdmin && billing?.hasCustomer && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={billingBusy}
+              onClick={() => {
+                if (!activeInstallId) return;
+                setBillingBusy(true);
+                setBillingError(null);
+                void (async () => {
+                  try {
+                    const response = await fetch("/api/billing/portal", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ installationId: activeInstallId }),
+                    });
+                    const body = (await response.json()) as { url?: string; error?: string };
+                    if (!response.ok || !body.url) {
+                      throw new Error(body.error ?? "Could not open billing.");
+                    }
+                    window.location.assign(body.url);
+                  } catch (error) {
+                    setBillingError(error instanceof Error ? error.message : "Could not open billing.");
+                    setBillingBusy(false);
+                  }
+                })();
+              }}
+            >
+              Manage billing
+            </Button>
+          )}
         </div>
       </div>
+      {billingError ? <p className="mt-3 text-sm text-danger">{billingError}</p> : null}
 
       <div className="mt-14 grid min-h-72 gap-16 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="relative min-h-72">

@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS billing_accounts (
   trial_ends_at TIMESTAMPTZ,
   plan TEXT,
   retention_days INTEGER NOT NULL DEFAULT 90 CHECK (retention_days IN (0, 90, 180, 365)),
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  stripe_status TEXT,
+  stripe_price_id TEXT,
+  stripe_current_period_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -1196,7 +1201,9 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'identity.publish_advisory',
     'identity.unpublish_advisory',
     'namespace.protect',
-    'namespace.unprotect'
+    'namespace.unprotect',
+    'billing.checkout',
+    'billing.portal'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

@@ -16,10 +16,10 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Real throwaway-repository proof | Built: created-public + cheap `.env`/`.map` push + `release.published` → `release_scan` done → Watch “Spoilers in … phase1-fixture” + `failed-policy` receipt (MAP-001/002/003) on `EmotiveImpact/nospoilers-throwaway`. Contents write on this install only; Workflows write not requested; Administration not granted | NoSpoilers |
 | Installation-scoped billing account | Built: 14-day trial per GitHub install | NoSpoilers |
 | Complete unpaid webhook/worker/poller/scan enforcement | Built: webhook 200, work skipped | NoSpoilers |
-| Stripe monthly/yearly checkout | Planned, benched | NoSpoilers |
-| Card-on-file 14-day trial | Planned, benched | NoSpoilers |
-| Stripe lifecycle webhooks | Planned, benched | NoSpoilers |
-| Billing portal | Planned, benched | NoSpoilers |
+| Stripe monthly/yearly checkout | Built: install admin starts Checkout; 503 until Stripe keys and four price IDs are set; this host has no keys | NoSpoilers |
+| Card-on-file 14-day trial | Built: Checkout always collects a payment method; remaining trial days become `trial_period_days` | NoSpoilers |
+| Stripe lifecycle webhooks | Built: signed `checkout.session.completed`, subscription updated/deleted, `invoice.paid` / `invoice.payment_failed`; idempotent `stripe_events`; failed payment or cancel clears plan and stops hosted work | NoSpoilers |
+| Billing portal | Built: install admin opens portal when a customer exists; already-subscribed Checkout returns the portal | NoSpoilers |
 | Railway web/API and worker deployment | Planned | NoSpoilers |
 | Cloudflare DNS/custom domain | Planned | NoSpoilers |
 | Resend email delivery | Planned, benched | NoSpoilers |
@@ -30,7 +30,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Secure cookies and strong secret validation | Built: Secure cookies on https; Neon/https refuse weak secrets | NoSpoilers |
 | Encryption for GitHub OAuth/integration tokens | Built: AES-GCM at rest, plaintext rows migrated on read | NoSpoilers |
 | Privacy, Terms, retention, refund and support pages | Built | NoSpoilers |
-| Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe/Electron not claimed live) | NoSpoilers |
+| Public documentation | Built: `/docs` (Watch, packed scans, coverage, what we never do; Stripe live only when keys exist; Electron not claimed live) | NoSpoilers |
 | Cloud usage warnings and hard budget controls | Built: daily hosted heavy-unpack cap (Solo 8 / Team and trial 24 per UTC day); Watch warning and pause copy; owner aggregate counts; webhooks stay HTTP 200; customer APIs 429 + Retry-After; a GitHub Release job that never downloads (no pack, Electron installer skip, or every pack over the size cap) refunds the slot; an npm scan that never downloads (missing private-registry token or oversize tarball) refunds the slot; website crawls enqueue light and consume a slot only when they scan; unchanged or failed-before-scan crawls never take a slot; `release.published` with no scannable pack enqueues light; Sentry/Bugsnag map custody is light (no unpack); live Echo job 47 / alert 36 left usage at 9; not a scan-credit meter; not a Pricing change | Infrastructure |
 
 ## Scanner and release automation

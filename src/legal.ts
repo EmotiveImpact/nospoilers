@@ -107,7 +107,7 @@ const TERMS: LegalDoc = {
       paragraphs: [
         "New installations start a 14-day full trial. Solo is $29 per month. Team is $99 per month. Yearly is 10 months for the price of 12. Fair use lives in these terms: we cap concurrent unpacks, not a visible scan counter. Abuse may be queued or moved to Team.",
         "When the trial ends unpaid, or a paid plan lapses, we still acknowledge GitHub webhooks with HTTP 200 so deliveries stay healthy, but we do not enqueue hosted work, scan, poll, or alert for that installation. Watch will tell you to subscribe to keep watching.",
-        "Card checkout through Stripe on our site is the intended billing path. It is not live yet. GitHub Marketplace is optional later; it is not the only way we will charge.",
+        "Card checkout through Stripe on our site is the billing path. An install admin starts Checkout or the billing portal. Checkout is live only when Stripe keys are configured. GitHub Marketplace is optional later; it is not the only way we will charge.",
       ],
     },
     {
@@ -210,7 +210,7 @@ const SUPPORT: LegalDoc = {
       heading: "What we can help with",
       paragraphs: [
         "GitHub App install, Watch alerts that should have fired, hosted scan failures, trial and coverage state, and deletion requests. CLI and Action issues on your machine are in scope when you can share a pack you are allowed to send — never paste secrets.",
-        "Stripe billing, custom domains, and email delivery are not live yet. If you write about those, you will get an honest “not built” rather than a fake ticket number.",
+        "Custom domains and email delivery are not live yet. Stripe checkout is live only when keys are configured. If you write about a host that cannot charge, you will get an honest “not live” rather than a fake ticket number.",
       ],
     },
     {

@@ -2038,6 +2038,116 @@ export function createStore(
       );
     },
 
+    async installationStripeState(installationId: number): Promise<{
+      trialEndsAt: string | null;
+      plan: string | null;
+      stripeCustomerId: string | null;
+      stripeSubscriptionId: string | null;
+      stripeStatus: string | null;
+      periodEnd: string | null;
+    } | null> {
+      const { rows } = await sql.query<{
+        trial_ends_at: string | Date | null;
+        plan: string | null;
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        stripe_status: string | null;
+        stripe_current_period_end: string | Date | null;
+      }>(
+        `SELECT b.trial_ends_at, b.plan, b.stripe_customer_id, b.stripe_subscription_id,
+                b.stripe_status, b.stripe_current_period_end
+         FROM installations i
+         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         WHERE i.id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        trialEndsAt: iso(row.trial_ends_at),
+        plan: row.plan,
+        stripeCustomerId: row.stripe_customer_id,
+        stripeSubscriptionId: row.stripe_subscription_id,
+        stripeStatus: row.stripe_status,
+        periodEnd: iso(row.stripe_current_period_end),
+      };
+    },
+
+    async claimStripeEvent(id: string, type: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: string }>(
+        `INSERT INTO stripe_events (id, type) VALUES ($1, $2)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [id, type],
+      );
+      return Boolean(rows[0]);
+    },
+
+    async applyStripeBillingPatch(input: {
+      installationId: number | null;
+      customerId: string | null;
+      subscriptionId: string | null;
+      status: string | null;
+      priceId: string | null;
+      periodEnd: string | null;
+      plan: string | null;
+      clearPlan: boolean;
+    }): Promise<{ applied: boolean; installationId: number | null }> {
+      return await sql.transaction(async (tx) => {
+        let installationId = input.installationId && input.installationId > 0 ? input.installationId : null;
+        if (input.customerId) {
+          const { rows } = await tx.query<{ installation_id: unknown }>(
+            `SELECT installation_id FROM billing_accounts WHERE stripe_customer_id = $1`,
+            [input.customerId],
+          );
+          if (rows[0]) {
+            const existing = num(rows[0].installation_id);
+            if (installationId && existing !== installationId) {
+              return { applied: false, installationId: null };
+            }
+            installationId = existing;
+          }
+        }
+        if (!installationId && input.subscriptionId) {
+          const { rows } = await tx.query<{ installation_id: unknown }>(
+            `SELECT installation_id FROM billing_accounts WHERE stripe_subscription_id = $1`,
+            [input.subscriptionId],
+          );
+          if (rows[0]) installationId = num(rows[0].installation_id);
+        }
+        if (!installationId) return { applied: false, installationId: null };
+
+        const { rows: current } = await tx.query<{ plan: string | null }>(
+          `SELECT plan FROM billing_accounts WHERE installation_id = $1 FOR UPDATE`,
+          [installationId],
+        );
+        if (!current[0]) return { applied: false, installationId: null };
+        const plan = input.clearPlan ? null : (input.plan ?? current[0].plan);
+        await tx.query(
+          `UPDATE billing_accounts
+              SET stripe_customer_id = COALESCE($2, stripe_customer_id),
+                  stripe_subscription_id = COALESCE($3, stripe_subscription_id),
+                  stripe_status = COALESCE($4, stripe_status),
+                  stripe_price_id = COALESCE($5, stripe_price_id),
+                  stripe_current_period_end = COALESCE($6::timestamptz, stripe_current_period_end),
+                  plan = $7,
+                  trial_ends_at = CASE WHEN $8 THEN now() ELSE trial_ends_at END
+            WHERE installation_id = $1`,
+          [
+            installationId,
+            input.customerId,
+            input.subscriptionId,
+            input.status,
+            input.priceId,
+            input.periodEnd,
+            plan,
+            input.clearPlan,
+          ],
+        );
+        return { applied: true, installationId };
+      });
+    },
+
     async deleteInstallation(id: number): Promise<void> {
       await sql.query(`DELETE FROM jobs WHERE installation_id = $1`, [id]);
       await sql.query(`DELETE FROM installations WHERE id = $1`, [id]);

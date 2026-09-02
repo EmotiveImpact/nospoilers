@@ -29,6 +29,12 @@ export type AppConfig = {
   authRateWindowMs: number;
   discoveryRateLimit: number;
   discoveryRateWindowMs: number;
+  stripeSecretKey: string;
+  stripeWebhookSecret: string;
+  stripePriceSoloMonthly: string;
+  stripePriceSoloYearly: string;
+  stripePriceTeamMonthly: string;
+  stripePriceTeamYearly: string;
 };
 
 function loadDotEnv(): void {
@@ -114,6 +120,12 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     authRateWindowMs: Math.max(1000, envInt("AUTH_RATE_WINDOW_MS", 60 * 60 * 1000)),
     discoveryRateLimit: Math.max(0, envInt("DISCOVERY_RATE_LIMIT", 20)),
     discoveryRateWindowMs: Math.max(1000, envInt("DISCOVERY_RATE_WINDOW_MS", 60 * 60 * 1000)),
+    stripeSecretKey: env("STRIPE_SECRET_KEY"),
+    stripeWebhookSecret: env("STRIPE_WEBHOOK_SECRET"),
+    stripePriceSoloMonthly: env("STRIPE_PRICE_SOLO_MONTHLY"),
+    stripePriceSoloYearly: env("STRIPE_PRICE_SOLO_YEARLY"),
+    stripePriceTeamMonthly: env("STRIPE_PRICE_TEAM_MONTHLY"),
+    stripePriceTeamYearly: env("STRIPE_PRICE_TEAM_YEARLY"),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;
@@ -128,4 +140,24 @@ export function githubAppConfigured(config: AppConfig): boolean {
       config.githubClientId &&
       config.githubClientSecret,
   );
+}
+
+export function stripeConfigured(config: AppConfig): boolean {
+  return Boolean(
+    config.stripeSecretKey &&
+      config.stripeWebhookSecret &&
+      config.stripePriceSoloMonthly &&
+      config.stripePriceSoloYearly &&
+      config.stripePriceTeamMonthly &&
+      config.stripePriceTeamYearly,
+  );
+}
+
+export function stripePriceMap(config: AppConfig) {
+  return {
+    soloMonthly: config.stripePriceSoloMonthly,
+    soloYearly: config.stripePriceSoloYearly,
+    teamMonthly: config.stripePriceTeamMonthly,
+    teamYearly: config.stripePriceTeamYearly,
+  };
 }

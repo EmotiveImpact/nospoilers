@@ -10,7 +10,25 @@ import { validateExceptionInput } from "../policy.ts";
 import { verifyReceipt } from "../receipt.ts";
 import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
 import type { AppConfig } from "./config.ts";
-import { databaseMode, githubAppConfigured } from "./config.ts";
+import { databaseMode, githubAppConfigured, stripeConfigured, stripePriceMap } from "./config.ts";
+import {
+  STRIPE_ADMIN_ERROR,
+  STRIPE_NOT_LIVE_ERROR,
+  STRIPE_PLAN_ERROR,
+  STRIPE_SUBSCRIBE_FIRST_ERROR,
+  STRIPE_UNAVAILABLE_ERROR,
+  StripeApiError,
+  createStripePort,
+  parseStripeEvent,
+  parseStripeInterval,
+  parseStripePlan,
+  remainingTrialDays,
+  stripeEventPatch,
+  stripePriceId,
+  stripeSubscriptionCovers,
+  verifyStripeSignature,
+  type StripePort,
+} from "./stripe.ts";
 import { cookieSettings } from "./cookies.ts";
 import { GithubApiError, type GithubPort } from "./github.ts";
 import {
@@ -314,6 +332,7 @@ export type AppDeps = {
   slackFetch?: typeof fetch;
   webhookLookup?: WebhookHostLookup;
   notifier?: AlertNotifier;
+  stripe?: StripePort;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -545,6 +564,10 @@ export function createApp(deps: AppDeps): Hono {
   const hostedOrigin = hostedScanOrigin(deps.config.appBaseUrl);
   const npm = deps.npm ?? createNpmPort();
   const notifier = deps.notifier ?? createLogNotifier(deps.store);
+  const stripe =
+    deps.stripe ??
+    (deps.config.stripeSecretKey ? createStripePort(deps.config.stripeSecretKey) : null);
+  const prices = stripePriceMap(deps.config);
   const cookieName = "ns_session";
   const scanLimiter = createRateLimiter({
     limit: deps.config.scanRateLimit,
@@ -748,6 +771,7 @@ export function createApp(deps: AppDeps): Hono {
       ok: true,
       name: "nospoilers",
       githubApp: githubAppConfigured(deps.config),
+      stripe: stripeConfigured(deps.config),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
       },
@@ -768,6 +792,7 @@ export function createApp(deps: AppDeps): Hono {
     const body = {
       ready: databaseOk,
       githubApp: githubAppConfigured(deps.config),
+      stripe: stripeConfigured(deps.config),
       database: {
         mode: databaseMode(deps.config.databaseUrl),
         ok: databaseOk,
@@ -1634,6 +1659,178 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/webhooks/stripe", async (c) => {
+    if (!stripeConfigured(deps.config)) {
+      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+    }
+    const raw = await c.req.text();
+    if (!verifyStripeSignature(deps.config.stripeWebhookSecret, raw, c.req.header("stripe-signature"))) {
+      return c.json({ error: "Invalid signature." }, 400);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch {
+      return c.json({ error: "Invalid JSON." }, 400);
+    }
+    const event = parseStripeEvent(parsed);
+    if (!event) return c.json({ error: "Invalid event." }, 400);
+    const claimed = await deps.store.claimStripeEvent(event.id, event.type);
+    if (!claimed) return c.json({ ok: true, duplicate: true });
+    const patch = stripeEventPatch(event, prices);
+    if (!patch) return c.json({ ok: true, skipped: true });
+    const applied = await deps.store.applyStripeBillingPatch(patch);
+    return c.json({ ok: true, applied: applied.applied });
+  });
+
+  function publicStripeBilling(state: {
+    trialEndsAt: string | null;
+    plan: string | null;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
+    stripeStatus: string | null;
+    periodEnd: string | null;
+  }) {
+    return {
+      plan: state.plan,
+      trialEndsAt: state.trialEndsAt,
+      status: state.stripeStatus,
+      periodEnd: state.periodEnd,
+      hasCustomer: Boolean(state.stripeCustomerId),
+      subscribed: stripeSubscriptionCovers(state.stripeStatus),
+    };
+  }
+
+  app.get("/api/billing", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installationId = queryInstallationId(c);
+    if (!installationId) return c.json({ error: "Choose a GitHub installation." }, 400);
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ error: "That GitHub installation is not on your account." }, 403);
+    }
+    const state = await deps.store.installationStripeState(installationId);
+    if (!state) return c.json({ error: "Unknown installation." }, 404);
+    return c.json({
+      stripe: stripeConfigured(deps.config),
+      billing: publicStripeBilling(state),
+    });
+  });
+
+  app.post("/api/billing/checkout", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    if (!stripeConfigured(deps.config) || !stripe) {
+      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+    }
+    const limited = rateLimited(
+      c,
+      authLimiter,
+      `billing:${requestIp(c)}`,
+      deps.config.authRateWindowMs,
+      "Too many billing attempts from this address. Wait and try again.",
+    );
+    if (limited) return limited;
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installationId = Number(body.installationId);
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation." }, 400);
+    }
+    const denied = await requireInstallAdmin(user.userId, installationId);
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const plan = parseStripePlan(body.plan);
+    const interval = parseStripeInterval(body.interval);
+    if (!plan || !interval) return c.json({ error: STRIPE_PLAN_ERROR }, 400);
+    const state = await deps.store.installationStripeState(installationId);
+    if (!state) return c.json({ error: "Unknown installation." }, 404);
+    if (state.stripeCustomerId && stripeSubscriptionCovers(state.stripeStatus)) {
+      try {
+        const portal = await stripe.createPortalSession({
+          customerId: state.stripeCustomerId,
+          returnUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}`,
+        });
+        return c.json({ url: portal.url, kind: "portal" });
+      } catch (error) {
+        const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+        return c.json({ error: message }, 502);
+      }
+    }
+    const priceId = stripePriceId(prices, plan, interval);
+    const trialPeriodDays = remainingTrialDays(state.trialEndsAt);
+    try {
+      const session = await stripe.createCheckoutSession({
+        customerId: state.stripeCustomerId,
+        priceId,
+        successUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}&billing=ok`,
+        cancelUrl: `${deps.config.appBaseUrl}/pricing?canceled=1`,
+        clientReferenceId: String(installationId),
+        trialPeriodDays,
+        metadata: {
+          installationId: String(installationId),
+          plan,
+          interval,
+          priceId,
+        },
+      });
+      await deps.store.insertAuditEvent({
+        installationId,
+        actorLogin: user.login,
+        action: "billing.checkout",
+        summary: `${plan} ${interval}`,
+        targetKind: "billing",
+        targetId: `${plan}:${interval}`,
+      });
+      return c.json({ url: session.url, kind: "checkout" });
+    } catch (error) {
+      const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+      return c.json({ error: message }, 502);
+    }
+  });
+
+  app.post("/api/billing/portal", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    if (!stripeConfigured(deps.config) || !stripe) {
+      return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
+    }
+    const limited = rateLimited(
+      c,
+      authLimiter,
+      `billing:${requestIp(c)}`,
+      deps.config.authRateWindowMs,
+      "Too many billing attempts from this address. Wait and try again.",
+    );
+    if (limited) return limited;
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installationId = Number(body.installationId);
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation." }, 400);
+    }
+    const denied = await requireInstallAdmin(user.userId, installationId);
+    if (denied) return c.json({ error: denied.error === ADMIN_REQUIRED_ERROR ? STRIPE_ADMIN_ERROR : denied.error }, denied.status);
+    const state = await deps.store.installationStripeState(installationId);
+    if (!state) return c.json({ error: "Unknown installation." }, 404);
+    if (!state.stripeCustomerId) return c.json({ error: STRIPE_SUBSCRIBE_FIRST_ERROR }, 409);
+    try {
+      const portal = await stripe.createPortalSession({
+        customerId: state.stripeCustomerId,
+        returnUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}`,
+      });
+      await deps.store.insertAuditEvent({
+        installationId,
+        actorLogin: user.login,
+        action: "billing.portal",
+        summary: "Billing portal",
+        targetKind: "billing",
+        targetId: "portal",
+      });
+      return c.json({ url: portal.url, kind: "portal" });
+    } catch (error) {
+      const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
+      return c.json({ error: message }, 502);
+    }
+  });
+
   app.get("/api/auth/github", (c) => {
     if (!githubAppConfigured(deps.config)) {
       return c.json(
@@ -1749,13 +1946,20 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/api/me", async (c) => {
     const user = await currentUser(c);
-    if (!user) return c.json({ user: null, githubApp: githubAppConfigured(deps.config) });
+    if (!user) {
+      return c.json({
+        user: null,
+        githubApp: githubAppConfigured(deps.config),
+        stripe: stripeConfigured(deps.config),
+      });
+    }
     const installations = await deps.store.listInstallationsForUser(user.userId);
     return c.json({
       user: { id: user.userId, login: user.login, avatarUrl: user.avatarUrl },
       coverage: await hostedCoverageForUser(user),
       installations,
       githubApp: githubAppConfigured(deps.config),
+      stripe: stripeConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
       hostedOrigin: hostedOrigin.origin,
       githubRunnersReachable: hostedOrigin.githubRunnersReachable,

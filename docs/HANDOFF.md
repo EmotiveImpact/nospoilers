@@ -123,7 +123,9 @@ Read in this order:
   `058_disclosure_findings` stores append-only fingerprint rows
   (rule/severity/path/title, never values). Live Neon: `058` applied;
   prettier has SEC-003 from the existing case; leftover extra findings 0.
-  Next unused id is `059_*`.
+  `059_stripe_billing` adds Stripe customer/subscription/status/price/period
+  columns on `billing_accounts`, unique customer index, and `stripe_events`.
+  Next unused id is `060_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -198,8 +200,9 @@ Read in this order:
   Neon and https origins refuse to boot with short or default `SESSION_SECRET` / webhook secrets.
   `/api/ready` pings the database. Logs are JSON lines (`event`, `level`, `ts`) with secrets redacted.
 - Public Privacy, Terms, Retention, Disclosure, Support, and Refunds pages are live.
-- Public `/docs` covers Watch, packed scans, coverage, and what we never do. It does not claim
-  Stripe or Electron are live.
+- Public `/docs` covers Watch, packed scans, coverage, and what we never do. Stripe checkout
+  is wired and live only when keys exist. It does not claim this host takes cards or that
+  Electron scanning is live.
 - Customers can watch public npm packages on a covered install. Connecting a name scans `latest`
   plus `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs when those tags point at another
   version (cap three extras). Public packuments, including 404s, are cached for one hour;
@@ -391,7 +394,7 @@ The scanner, UI, and Neon runtime work. The commercial hosted product is not lau
   done → “Spoilers in EmotiveImpact/nospoilers-throwaway phase1-fixture” plus receipt
   `github:EmotiveImpact/nospoilers-throwaway@phase1-fixture#sourcemap.tgz` (`failed-policy`,
   MAP-001/002/003). `npm run phase1:throwaway` is idempotent and skips Actions YAML.
-  Stripe and Resend are benched.
+  Stripe Checkout is wired and stays 503 without keys. Resend is benched.
 - Production deployment does not exist. Slack, SIEM, Jira, and PagerDuty destinations are live on trial/Team.
 
 Do not describe these as complete because the UI exists.
@@ -403,6 +406,8 @@ Continue NoSpoilers from the repository handoff. Read docs/PRODUCT.md,
 docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md, docs/expansion/FEATURE-INVENTORY.md,
 docs/ROADMAP.md, docs/HANDOFF.md, docs/ACCESS-BOUNDARIES.md, and CHANGELOG.md first.
 Phase 0 is done. Milestone 2 (installation billing + unpaid enforcement) is done.
+Milestone 3 Checkout/portal/webhooks are wired and stay 503 without Stripe keys.
+This host has no Stripe keys. Do not create a Stripe account or prices without approval.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
 Private npm registries (encrypted tokens, same-host tarballs) are in.
@@ -718,7 +723,7 @@ Unpaid 402. Members 403. Live on install `158159401`: unauth 401, invalid key
 (`inventedIncident: false`, no Watch alert, PagerDuty HTTP 400), typed-confirm
 delete 200, leftover destination 0. Delivery rows stayed with a null
 destination id. Cloudflare tunnel matched. The dummy key was deleted.
-Stripe and Resend are benched. The normal worker classifies and skips Electron
+Stripe Checkout is wired; this host has no Stripe keys. Resend is benched. The normal worker classifies and skips Electron
 installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.
 ```
