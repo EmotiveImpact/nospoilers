@@ -726,8 +726,9 @@ Watch alert that is a confirmed response, not a discovered incident.
 `tests/web-origin.test.ts` proves website watches are tenant-scoped, unpaid POST returns 402,
 SSRF skips fetch, unwatch audit stores the host only, exposed `.env` and `.git` files alert
 without storing secret values, SPA catch-all HTML is not treated as a secret file,
-off-origin credential hrefs are not fetched, an unchanged or failed-before-scan crawl
-refunds the daily unpack slot, and a crawl that scans keeps the slot.
+off-origin credential hrefs are not fetched, website crawl jobs are light, an
+unchanged poll does not take a daily unpack slot or block a Release scan, and a
+crawl that scans consumes one slot.
 `tests/map-custody.test.ts` proves Sentry/Bugsnag tokens are encrypted, never returned, never
 written onto jobs, tenant-scoped, unpaid saves return 402, members cannot save, Solo paid may
 save, private DNS skips fetch, missing private artifacts flag MAP-011, public maps flag MAP-012,

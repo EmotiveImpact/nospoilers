@@ -506,9 +506,10 @@ netlify/functions / .vercel/output layout or `.lambda.zip` name; handlers never 
 encrypted zip inconclusive; Scan Lambda zip example). Not advertised as a Pricing change.
 Production website crawls are in (HTTPS origin, same-origin JS/CSS/maps plus bounded probes for
 exposed files, credentials, and linked internal paths, SSRF-blocked, never executed, event-driven
-enqueue, hourly poller enqueues only). An unchanged crawl (same sha256, not truncated) or a
-crawl error before scan refunds the daily unpack slot so the hourly poller does not burn the
-cap. A crawl that scans, including truncated, keeps the slot. Live Neon: watched origins 0;
+enqueue, hourly poller enqueues only). Website crawl jobs are light. The worker consumes a
+daily unpack slot only when it is about to scan. Unchanged sha256 and crawl errors never
+take a slot, so the hourly poller cannot block a GitHub Release scan. A crawl that scans,
+including truncated, consumes one slot. Live Neon: watched origins 0;
 `web_origin_scan` jobs 0; owner list empty; unauth 401; usage stayed 9; open jobs 0;
 do not invent a website watch. Not advertised as a Pricing change.
 Sentry/Bugsnag map custody is in (matching debug ID or release, private lookup, public map absent,
@@ -523,9 +524,9 @@ Extra inspect is in (cloud/service-account, PKCS12, CACHE-001, broader AI/MCP pa
 Fair-use hosted unpacks are in (Solo 1 concurrent heavy job and 8 per UTC day per install;
 Team/trial 3 concurrent and 24/day; global heavy cap still applies; Watch warning/pause copy;
 owner queue usage aggregates; a GitHub Release job that never downloads refunds the
-slot; an npm scan that never downloads refunds the slot; a website crawl that never
-scans refunds the slot; `release.published` with no scannable pack is light; no
-scan-credit meter).
+slot; an npm scan that never downloads refunds the slot; website crawls enqueue light
+and consume a slot only when they scan; `release.published` with no scannable pack is
+light; no scan-credit meter).
 Not advertised as a Pricing change.
 Owner queue health is in (`GET /api/internal/queue` counts on Artifact Leads; customer vs prospect;
 stale locks; daily unpack aggregates; no payloads). Not a customer page.

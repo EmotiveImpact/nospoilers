@@ -5,8 +5,8 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
-import { migrate, openSql } from "../src/server/sql.ts";
-import { createStore, signSession } from "../src/server/store.ts";
+import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
+import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
 import {
@@ -17,6 +17,7 @@ import {
   WebCrawlError,
 } from "../src/server/web-origin.ts";
 import { runWebOriginPoll } from "../src/server/web-watch.ts";
+import { SOLO_HEAVY_PER_UTC_DAY } from "../src/server/usage.ts";
 
 const DIRTY = path.resolve("fixtures/web/dirty");
 const CLEAN = path.resolve("fixtures/web/clean");
@@ -93,6 +94,27 @@ async function siteFetch(root: string): Promise<typeof fetch> {
 }
 
 const publicLookup = async () => [{ address: "1.1.1.1", family: 4 as const }];
+
+async function usageOf(sql: SqlClient, installationId = 7): Promise<number> {
+  const { rows } = await sql.query<{ n: string }>(
+    `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+     WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
+    [installationId],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+async function fillHeavyJobs(store: Store, installationId: number, count: number): Promise<void> {
+  for (let i = 0; i < count; i += 1) {
+    const result = await store.enqueueJob({
+      deliveryId: `heavy:${installationId}:${crypto.randomUUID()}`,
+      priority: "heavy",
+      kind: "release_scan",
+      payload: { installationId, release: i },
+    });
+    expect(result.inserted).toBe(true);
+  }
+}
 
 describe("website origin parsing", () => {
   it("accepts public https URLs and rejects local, private, and http", () => {
@@ -309,7 +331,7 @@ describe("hosted website watch", () => {
     }
   });
 
-  it("refunds an unchanged website crawl that never scans", async () => {
+  it("does not consume an unpack slot for an unchanged website crawl", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
       await migrate(sql);
@@ -364,11 +386,15 @@ describe("hosted website watch", () => {
       expect(Number(usageAfterFirst.rows[0]?.n ?? 0)).toBe(1);
       const queued = await runWebOriginPoll({ store });
       expect(queued.queued).toBe(1);
+      const { rows: pollJobs } = await sql.query<{ priority: string }>(
+        "SELECT priority FROM jobs WHERE kind = 'web_origin_scan' ORDER BY id DESC LIMIT 1",
+      );
+      expect(pollJobs[0]?.priority).toBe("light");
       const usageAfterPoll = await sql.query<{ n: string }>(
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
       );
-      expect(Number(usageAfterPoll.rows[0]?.n ?? 0)).toBe(2);
+      expect(Number(usageAfterPoll.rows[0]?.n ?? 0)).toBe(1);
       const again = createWorker({
         store,
         github: unusedGithub(),
@@ -396,7 +422,7 @@ describe("hosted website watch", () => {
     }
   });
 
-  it("refunds a website crawl that fails before scan", async () => {
+  it("does not consume an unpack slot when a website crawl fails before scan", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
       await migrate(sql);
@@ -429,6 +455,11 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      const usageAfterCreate = await sql.query<{ n: string }>(
+        `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
+         WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
+      );
+      expect(Number(usageAfterCreate.rows[0]?.n ?? 0)).toBe(0);
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -602,6 +633,81 @@ describe("hosted website watch", () => {
     }
   });
 
+  it("lets an unchanged website poll leave a daily unpack slot for a Release scan", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await sql.query(`UPDATE billing_accounts SET plan = 'solo' WHERE installation_id = 7`);
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const webFetch = await siteFetch(CLEAN);
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const createdBody = (await created.json()) as { origin: { id: number } };
+      const first = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan,
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        webFetch,
+        webLookup: publicLookup,
+      });
+      await first.tick();
+      await first.stop();
+      expect(await usageOf(sql)).toBe(1);
+      await fillHeavyJobs(store, 7, SOLO_HEAVY_PER_UTC_DAY - 2);
+      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY - 1);
+      const queued = await runWebOriginPoll({ store });
+      expect(queued.queued).toBe(1);
+      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY - 1);
+      const release = await store.enqueueJob({
+        deliveryId: `release:7:${crypto.randomUUID()}`,
+        priority: "heavy",
+        kind: "release_scan",
+        payload: { installationId: 7, release: "keep" },
+      });
+      expect(release.inserted).toBe(true);
+      expect(release.skipped).toBeUndefined();
+      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY);
+      const check = await app.request(`/api/origins/${createdBody.origin.id}/check`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(check.status).toBe(200);
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("refuses unpaid installs and other tenants", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -719,6 +825,10 @@ describe("hosted website watch", () => {
       await store.insertWatchedOrigin(7, ORIGIN, "app.example.com");
       const queued = await runWebOriginPoll({ store });
       expect(queued.queued).toBe(1);
+      const { rows: jobs } = await sql.query<{ priority: string }>(
+        "SELECT priority FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(jobs[0]?.priority).toBe("light");
       await store.sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );

@@ -604,6 +604,13 @@ export async function handleJob(
         await refundUnusedHostedUnpack();
         return;
       }
+      if (job.priority === "light") {
+        const consumed = await deps.store.consumeHostedUnpack(installationId);
+        if (!consumed) {
+          await deps.store.noteFairUseExhausted(installationId);
+          return;
+        }
+      }
       for (const file of crawled.files) {
         const dest = path.join(dir, file.rel);
         await mkdir(path.dirname(dest), { recursive: true });

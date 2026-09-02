@@ -2,16 +2,17 @@
 
 ## [Unreleased]
 
-- A hosted website crawl that never scans refunds its daily unpack slot.
-  The hourly poller still enqueues a heavy job; an unchanged sha256
-  (not truncated) returns after touching the origin and refunds. A
-  `WebCrawlError` before scan (private DNS, blocked host, HTTP failure)
-  also refunds. A crawl that scans — first crawl, changed bytes, or a
-  truncated crawl — keeps the slot. A scanner throw after files are
-  written keeps the slot. Live Neon: `watched_origins` 0; owner list
-  empty; unauth 401; `web_origin_scan` jobs 0; no invented website
-  watch; daily usage stayed 9; open jobs 0; Cloudflare tunnel
-  matched. Not a scan-credit meter and not a Pricing change.
+- Hosted website crawls enqueue as light jobs. The hourly poller and
+  Check now no longer take a daily unpack slot at enqueue, so an
+  unchanged site cannot block a GitHub Release scan. The worker
+  consumes a slot only when it is about to scan (first crawl, changed
+  bytes, or truncated). Unchanged sha256 and crawl errors never
+  consume. A leftover heavy website job still refunds if it never
+  scans. Check now is allowed at the daily cap so an unchanged check
+  can finish. Live Neon: `watched_origins` 0; owner list empty;
+  unauth 401; `web_origin_scan` jobs 0; no invented website watch;
+  daily usage stayed 9; open jobs 0; Cloudflare tunnel matched. Not a
+  scan-credit meter and not a Pricing change.
 
 - Sentry/Bugsnag map custody checks enqueue as light jobs. They look up
   debug IDs or release names and never download map source, so they do

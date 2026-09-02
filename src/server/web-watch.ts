@@ -51,7 +51,7 @@ export async function connectWatchedOrigin(
   }
   const result = await store.enqueueJob({
     deliveryId: webOriginScanDeliveryId(input.installationId, inserted.id, "initial"),
-    priority: "heavy",
+    priority: "light",
     kind: "web_origin_scan",
     payload: {
       installationId: input.installationId,
@@ -76,7 +76,7 @@ export async function checkWatchedOrigin(
   const token = `check:${new Date().toISOString().slice(0, 16)}`;
   const result = await store.enqueueJob({
     deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, token),
-    priority: "heavy",
+    priority: "light",
     kind: "web_origin_scan",
     payload: {
       installationId: origin.installation_id,
@@ -98,7 +98,7 @@ export async function runWebOriginPoll(deps: {
     if (!(await deps.store.installationWorkAllowed(origin.installation_id))) continue;
     const result = await deps.store.enqueueJob({
       deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, `hour:${hour}`),
-      priority: "heavy",
+      priority: "light",
       kind: "web_origin_scan",
       payload: {
         installationId: origin.installation_id,

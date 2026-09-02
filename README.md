@@ -148,10 +148,10 @@ GitHub → your profile → **Settings** → **Developer settings** → **GitHub
 
 - **Metadata** — Read-only (required)
 - **Contents** — Read-only to download release assets. Optional **Read and write** to seed the
-  throwaway fixture, upload Release packs, and open a setup PR (writes
-  `.github/workflows/nospoilers.yml` on branch `nospoilers/setup`) or a remediation PR
-  (ignore rules, empty `.nospoilers.yml`, bundler hints, and that workflow on branch
-  `nospoilers/remediate`)
+  throwaway fixture, upload Release packs, and commit the vendored setup/remediation
+  Action (non-workflow files). GitHub Actions workflow YAML stays copy-paste;
+  Workflows write is not requested. A setup or remediation PR still needs
+  **Pull requests** write.
 - **Pull requests** — Optional **Read and write** to open those PRs. The App **never merges** them
 - **Checks** — Optional **Read and write** to report hosted release-scan results on the tag SHA
 - **Members** — Read-only (collaborator added)

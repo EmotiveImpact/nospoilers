@@ -3407,11 +3407,6 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching production websites.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
-    const originUsage = await deps.store.hostedUsageStatus(origin.installation_id);
-    if (originUsage.exhausted) {
-      await deps.store.noteFairUseExhausted(origin.installation_id);
-      return fairUseResponse(c);
-    }
     const originLimited = rateLimited(
       c,
       scanLimiter,
