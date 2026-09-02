@@ -1,5 +1,15 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
 import { FAIR_USE_EXHAUSTED, FAIR_USE_WARNING } from "@/fair-use-copy.ts";
+import {
+  ADMINISTRATION_DENIED,
+  DELETE_PACK_ASSETS_COPY,
+  DISABLE_WORKFLOW_COPY,
+  MAKE_PRIVATE_COPY,
+  deletePackAssetsConfirm,
+  makePrivateConfirm,
+  parseWorkflowPath,
+  workflowIsNoSpoilersScan,
+} from "@/github-response-copy.ts";
 import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
@@ -273,7 +283,10 @@ type Confirming =
   | { kind: "identity-revoke"; packageId: number; id: number; expected: string }
   | { kind: "member"; userId: string; expected: string }
   | { kind: "role"; userId: string; expected: string; role: "admin" | "member" }
-  | { kind: "retention"; days: RetentionDays; expected: string };
+  | { kind: "retention"; days: RetentionDays; expected: string }
+  | { kind: "make-private"; id: number; expected: string }
+  | { kind: "delete-pack-assets"; id: number; expected: string }
+  | { kind: "disable-workflow"; id: number; expected: string; workflow: string };
 
 function confirmActionLabel(row: Confirming): string {
   switch (row.kind) {
@@ -303,6 +316,12 @@ function confirmActionLabel(row: Confirming): string {
       return row.role === "admin" ? "make this person an admin" : "make this person a member";
     case "retention":
       return "set this retention window";
+    case "make-private":
+      return "make this repository private";
+    case "delete-pack-assets":
+      return "delete packed Release assets";
+    case "disable-workflow":
+      return "disable this workflow";
   }
 }
 
@@ -548,6 +567,12 @@ function kindLabel(kind: string): string {
       return "Repos removed";
     case "fair_use_budget":
       return "Fair use";
+    case "repo_made_private":
+      return "Made private";
+    case "release_assets_removed":
+      return "Pack assets removed";
+    case "workflow_disabled":
+      return "Workflow disabled";
     default:
       return kind;
   }
@@ -569,6 +594,11 @@ type RemediationFileView = { path: string; content: string };
 type RemediationPrView =
   | { status: "opened"; htmlUrl: string; number: number; existing: boolean }
   | { status: "copy"; reason: string; files: RemediationFileView[] }
+  | { status: "error"; message: string };
+
+type GithubResponseView =
+  | { status: "ok"; detail: string }
+  | { status: "copy"; reason: string }
   | { status: "error"; message: string };
 
 function SetupPrResult({ view }: { view: SetupPrView }) {
@@ -638,6 +668,16 @@ function RemediationPrResult({ view }: { view: RemediationPrView }) {
         ))}
       </div>
     );
+  }
+  return <p className="mt-3 text-sm text-danger">{view.message}</p>;
+}
+
+function GithubResponseResult({ view }: { view: GithubResponseView }) {
+  if (view.status === "ok") {
+    return <p className="mt-3 text-sm leading-relaxed text-mute">{view.detail}</p>;
+  }
+  if (view.status === "copy") {
+    return <p className="mt-3 text-sm leading-relaxed text-mute">{view.reason}</p>;
   }
   return <p className="mt-3 text-sm text-danger">{view.message}</p>;
 }
@@ -864,6 +904,8 @@ export function WatchPage({ search }: { search: string }) {
   const [setupByRepo, setSetupByRepo] = useState<Record<number, SetupPrView>>({});
   const [remediatingId, setRemediatingId] = useState<number | null>(null);
   const [remediateByRepo, setRemediateByRepo] = useState<Record<number, RemediationPrView>>({});
+  const [githubByRepo, setGithubByRepo] = useState<Record<number, GithubResponseView>>({});
+  const [workflowDraft, setWorkflowDraft] = useState<Record<number, string>>({});
   const [packageName, setPackageName] = useState("");
   const [watchingPackage, setWatchingPackage] = useState(false);
   const [originUrl, setOriginUrl] = useState("");
@@ -1196,6 +1238,27 @@ export function WatchPage({ search }: { search: string }) {
               confirm,
             }),
           });
+        } else if (confirming.kind === "make-private") {
+          response = await fetch(`/api/repos/${confirming.id}/make-private`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "delete-pack-assets") {
+          response = await fetch(`/api/repos/${confirming.id}/delete-pack-assets`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
+          });
+        } else if (confirming.kind === "disable-workflow") {
+          response = await fetch(`/api/repos/${confirming.id}/disable-workflow`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm, workflow: confirming.workflow }),
+          });
         } else {
           if (!installId) throw new Error("Choose a GitHub installation.");
           response = await fetch(`/api/installations/${installId}/members`, {
@@ -1205,8 +1268,38 @@ export function WatchPage({ search }: { search: string }) {
             body: JSON.stringify({ userId: confirming.userId, role: confirming.role, confirm }),
           });
         }
-        const body = (await response.json()) as { error?: string };
+        const body = (await response.json()) as {
+          error?: string;
+          reason?: string;
+          skipped?: string;
+          detail?: string;
+        };
+        const githubResponseKind =
+          confirming.kind === "make-private" ||
+          confirming.kind === "delete-pack-assets" ||
+          confirming.kind === "disable-workflow";
+        if (githubResponseKind && response.status === 409) {
+          setGithubByRepo((current) => ({
+            ...current,
+            [confirming.id]: {
+              status: "copy",
+              reason: body.reason ?? body.error ?? ADMINISTRATION_DENIED,
+            },
+          }));
+          setConfirming(null);
+          setConfirmText("");
+          return;
+        }
         if (!response.ok) throw new Error(body.error ?? "Could not confirm that action.");
+        if (githubResponseKind) {
+          setGithubByRepo((current) => ({
+            ...current,
+            [confirming.id]: {
+              status: "ok",
+              detail: body.detail ?? "GitHub updated. This is a confirmed response, not a discovered incident.",
+            },
+          }));
+        }
         if (confirming.kind === "token") {
           setRevealedScanToken(null);
         }
@@ -1478,9 +1571,14 @@ export function WatchPage({ search }: { search: string }) {
             not download every latest release. Unpublishing or deleting
             a release is an alert only; gone assets are not downloaded.
           </p>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+            {MAKE_PRIVATE_COPY} {DELETE_PACK_ASSETS_COPY} {DISABLE_WORKFLOW_COPY} Setup and
+            remediation PRs do not need Administration. A confirmed GitHub response is not a
+            discovered incident.
+          </p>
           {previewing ? (
             <p className="mt-3 text-sm leading-relaxed text-mute">
-              Preview cannot open GitHub PRs. No invented incident.
+              Preview cannot open GitHub PRs or change GitHub visibility. No invented incident.
             </p>
           ) : null}
           {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
@@ -1676,9 +1774,128 @@ export function WatchPage({ search }: { search: string }) {
                     >
                       {remediatingId === repo.id ? "Opening…" : "Remediation PR"}
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || locked || confirmBusy}
+                      onClick={() => {
+                        if (previewing) return;
+                        setGithubByRepo((current) => {
+                          const next = { ...current };
+                          delete next[repo.id];
+                          return next;
+                        });
+                        beginConfirm({
+                          kind: "make-private",
+                          id: repo.id,
+                          expected: makePrivateConfirm(repo.full_name),
+                        });
+                      }}
+                    >
+                      Make private
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={previewing || locked || confirmBusy}
+                      onClick={() => {
+                        if (previewing) return;
+                        setGithubByRepo((current) => {
+                          const next = { ...current };
+                          delete next[repo.id];
+                          return next;
+                        });
+                        beginConfirm({
+                          kind: "delete-pack-assets",
+                          id: repo.id,
+                          expected: deletePackAssetsConfirm(repo.full_name),
+                        });
+                      }}
+                    >
+                      Remove pack assets
+                    </Button>
                     </>
                     ) : null}
                   </div>
+                  {previewing || installAdmin ? (
+                    <div className="mt-3 max-w-xl">
+                      <label className="block text-xs leading-relaxed text-dim">
+                        Workflow path
+                        <input
+                          value={workflowDraft[repo.id] ?? ""}
+                          onChange={(event) =>
+                            setWorkflowDraft((current) => ({
+                              ...current,
+                              [repo.id]: event.target.value,
+                            }))
+                          }
+                          placeholder=".github/workflows/release.yml"
+                          autoComplete="off"
+                          spellCheck={false}
+                          disabled={previewing || locked || confirmBusy}
+                          className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40 disabled:opacity-50"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        disabled={previewing || locked || confirmBusy}
+                        onClick={() => {
+                          if (previewing) return;
+                          const parsed = parseWorkflowPath(workflowDraft[repo.id] ?? "");
+                          if (!parsed) {
+                            setGithubByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "error",
+                                message:
+                                  "Type a workflow path under .github/workflows/, like .github/workflows/release.yml.",
+                              },
+                            }));
+                            return;
+                          }
+                          if (workflowIsNoSpoilersScan(parsed)) {
+                            setGithubByRepo((current) => ({
+                              ...current,
+                              [repo.id]: {
+                                status: "error",
+                                message:
+                                  "That workflow is the NoSpoilers packed scan. Disable a release publisher, not the scanner.",
+                              },
+                            }));
+                            return;
+                          }
+                          setGithubByRepo((current) => {
+                            const next = { ...current };
+                            delete next[repo.id];
+                            return next;
+                          });
+                          beginConfirm({
+                            kind: "disable-workflow",
+                            id: repo.id,
+                            expected: parsed,
+                            workflow: parsed,
+                          });
+                        }}
+                      >
+                        Disable workflow
+                      </Button>
+                    </div>
+                  ) : null}
+                  {confirmForm(confirming?.kind === "make-private" && confirming.id === repo.id)}
+                  {confirmForm(
+                    confirming?.kind === "delete-pack-assets" && confirming.id === repo.id,
+                  )}
+                  {confirmForm(
+                    confirming?.kind === "disable-workflow" && confirming.id === repo.id,
+                  )}
+                  {githubByRepo[repo.id] ? (
+                    <GithubResponseResult view={githubByRepo[repo.id]!} />
+                  ) : null}
                   {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
                   {remediateByRepo[repo.id] ? (
                     <RemediationPrResult view={remediateByRepo[repo.id]!} />

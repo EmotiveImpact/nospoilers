@@ -22,7 +22,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     heading: "Sign in and install",
     paragraphs: [
-      "Sign in with GitHub OAuth, then install the App on a user or organization. Setup only links installs GitHub says you own for this App. Contents, Members, and Metadata read are enough for Watch. Optional Contents write, Pull requests write, and Checks write seed the throwaway fixture, open setup/remediation PRs, and post hosted Checks. Do not grant Administration. Administration is GitHub repo-admin (make-private, delete assets, disable workflows). The App never merges a PR and never changes branch protection.",
+      "Sign in with GitHub OAuth, then install the App on a user or organization. Setup only links installs GitHub says you own for this App. Contents, Members, and Metadata read are enough for Watch. Optional Contents write, Pull requests write, and Checks write seed the throwaway fixture, open setup/remediation PRs, and post hosted Checks. Do not grant Administration. Administration is GitHub repo-admin (make-private, delete assets, disable workflows). Watch can confirm those three from the desk; they 409 with GitHub UI steps until Administration is granted. Contents write is not that permission. The App never merges a PR and never changes branch protection.",
       "Revoking the GitHub App authorization on GitHub drops every NoSpoilers session for that user and discards the stored OAuth token. Uninstalling the App is separate and stops hosted watching for that installation. Sign out deletes only this browser’s session.",
     ],
   },

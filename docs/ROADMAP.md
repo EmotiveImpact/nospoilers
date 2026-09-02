@@ -73,6 +73,11 @@ the immediate operational sequence. The exhaustive expansion plan is
   Daily cap Solo 8 / Team and trial 24 heavy unpacks per UTC day. Watch shows warning or
   paused copy, not remaining credits. Owner queue lists aggregate usage counts.
   Global heavy cap still applies. Job lists are counts, not scan credits. Not a Pricing change.
+- Watch one-click GitHub responses: make-private, delete latest Release pack assets, disable
+  a workflow that is not `.github/workflows/nospoilers.yml`. Install admin, typed confirm.
+  Unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not granted).
+  Contents write is not enough. Success is audit plus a confirmed Watch alert, not a
+  discovered incident.
 - Owner queue health: Artifact Leads shows customer vs prospect queue counts, stale locks,
   oldest wait, and daily unpack aggregates. Payloads are not listed. Not a customer page.
 - Incident response: live GitHub permission test without inventing an incident; Watch

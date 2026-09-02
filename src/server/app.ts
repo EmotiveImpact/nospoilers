@@ -14,6 +14,19 @@ import { databaseMode, githubAppConfigured } from "./config.ts";
 import { cookieSettings } from "./cookies.ts";
 import { GithubApiError, type GithubPort } from "./github.ts";
 import {
+  ADMINISTRATION_DENIED,
+  DELETE_PACK_ASSETS_COPY,
+  DISABLE_WORKFLOW_COPY,
+  MAKE_PRIVATE_COPY,
+  RESPONSE_PERMISSIONS,
+  deletePackAssetsConfirm,
+  disableWorkflowConfirm,
+  makePrivateConfirm,
+  parseWorkflowPath,
+  workflowIsNoSpoilersScan,
+} from "./github-response.ts";
+import { hasWrite } from "./install-test.ts";
+import {
   REMEDIATION_BRANCH,
   REMEDIATION_PERMISSIONS,
   remediationBundle,
@@ -1472,6 +1485,192 @@ export function createApp(deps: AppDeps): Hono {
       },
       result.existing ? 200 : 201,
     );
+  });
+
+  app.get("/api/repos/:id/github-response", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    let administrationGranted = false;
+    try {
+      const install = await deps.github.getInstallation(repo.installation_id);
+      administrationGranted = hasWrite(install.permissions ?? {}, "administration");
+    } catch {
+      administrationGranted = false;
+    }
+    return c.json({
+      permissions: RESPONSE_PERMISSIONS,
+      administrationGranted,
+      private: repo.private,
+      reason: ADMINISTRATION_DENIED,
+      copy: {
+        makePrivate: MAKE_PRIVATE_COPY,
+        deletePackAssets: DELETE_PACK_ASSETS_COPY,
+        disableWorkflow: DISABLE_WORKFLOW_COPY,
+      },
+      confirm: {
+        makePrivate: makePrivateConfirm(repo.full_name),
+        deletePackAssets: deletePackAssetsConfirm(repo.full_name),
+      },
+    });
+  });
+
+  app.post("/api/repos/:id/make-private", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to change GitHub visibility from Watch.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, makePrivateConfirm(repo.full_name));
+    if (confirmError) return c.json(confirmError, 400);
+    const result = await deps.github.makeRepoPrivate(repo.installation_id, repo.owner, repo.name);
+    if ("skipped" in result) {
+      return c.json({ ok: false, skipped: result.skipped, reason: result.reason, error: result.reason }, 409);
+    }
+    await deps.store.updateRepoCheck(repo.id, true);
+    await recordAudit({
+      installationId: repo.installation_id,
+      actorLogin: user.login,
+      action: "repo.make_private",
+      summary: `Made ${repo.full_name} private`,
+      targetKind: "repo",
+      targetId: repo.full_name,
+    });
+    await deps.store.insertAlert({
+      installationId: repo.installation_id,
+      repoId: repo.id,
+      kind: "repo_made_private",
+      title: `Made ${repo.full_name} private`,
+      body: `${result.detail} This is a Watch response you confirmed, not a discovered incident.`,
+    });
+    return c.json({ ok: true, detail: result.detail, private: true });
+  });
+
+  app.post("/api/repos/:id/delete-pack-assets", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to remove Release pack assets from Watch.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, deletePackAssetsConfirm(repo.full_name));
+    if (confirmError) return c.json(confirmError, 400);
+    const result = await deps.github.deleteLatestPackAssets(
+      repo.installation_id,
+      repo.owner,
+      repo.name,
+    );
+    if ("skipped" in result) {
+      return c.json({ ok: false, skipped: result.skipped, reason: result.reason, error: result.reason }, 409);
+    }
+    await recordAudit({
+      installationId: repo.installation_id,
+      actorLogin: user.login,
+      action: "repo.delete_pack_assets",
+      summary: `Removed pack assets from ${repo.full_name}`,
+      targetKind: "repo",
+      targetId: repo.full_name,
+    });
+    await deps.store.insertAlert({
+      installationId: repo.installation_id,
+      repoId: repo.id,
+      kind: "release_assets_removed",
+      title: `Removed pack assets on ${repo.full_name}`,
+      body: `${result.detail} This is a Watch response you confirmed, not a discovered incident.`,
+    });
+    return c.json({ ok: true, detail: result.detail, names: result.names ?? [] });
+  });
+
+  app.post("/api/repos/:id/disable-workflow", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const repo = await deps.store.getRepo(repoId);
+    if (!repo) return c.json({ error: "Unknown repository." }, 404);
+    const allowed = await deps.store.listReposForUser(user.userId);
+    if (!allowed.some((row) => row.id === repo.id)) {
+      return c.json({ error: "That repository is not on your install." }, 403);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const denied = await hostedWorkDenied(
+      deps.store,
+      repo.installation_id,
+      "Coverage ended. Subscribe to disable a GitHub workflow from Watch.",
+    );
+    if (denied) return c.json({ error: denied.error }, denied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const workflowPath = parseWorkflowPath(String(body.workflow ?? body.confirm ?? ""));
+    if (!workflowPath) {
+      return c.json(
+        { error: "Type a workflow path under .github/workflows/, like .github/workflows/release.yml." },
+        400,
+      );
+    }
+    if (workflowIsNoSpoilersScan(workflowPath)) {
+      return c.json(
+        { error: "That workflow is the NoSpoilers packed scan. Disable a release publisher, not the scanner." },
+        400,
+      );
+    }
+    const confirmError = typedConfirm(body, disableWorkflowConfirm(workflowPath));
+    if (confirmError) return c.json(confirmError, 400);
+    const result = await deps.github.disableWorkflow(
+      repo.installation_id,
+      repo.owner,
+      repo.name,
+      workflowPath,
+    );
+    if ("skipped" in result) {
+      return c.json({ ok: false, skipped: result.skipped, reason: result.reason, error: result.reason }, 409);
+    }
+    await recordAudit({
+      installationId: repo.installation_id,
+      actorLogin: user.login,
+      action: "repo.disable_workflow",
+      summary: `Disabled ${workflowPath} on ${repo.full_name}`,
+      targetKind: "repo",
+      targetId: workflowPath,
+    });
+    await deps.store.insertAlert({
+      installationId: repo.installation_id,
+      repoId: repo.id,
+      kind: "workflow_disabled",
+      title: `Disabled ${workflowPath} on ${repo.full_name}`,
+      body: `${result.detail} This is a Watch response you confirmed, not a discovered incident.`,
+    });
+    return c.json({ ok: true, detail: result.detail, workflow: workflowPath });
   });
 
   app.get("/api/registries", async (c) => {

@@ -756,6 +756,43 @@ async function migrateHostedUsage(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "025_hosted_usage",
   ]);
+  await migrateGithubResponseAudit(sql);
+}
+
+async function migrateGithubResponseAudit(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
+    ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'destination.save',
+      'destination.delete',
+      'route.save',
+      'route.delete',
+      'registry.save',
+      'registry.delete',
+      'scan_token.mint',
+      'scan_token.revoke',
+      'exception.save',
+      'exception.revoke',
+      'baseline.save',
+      'member.role_change',
+      'member.remove',
+      'setup_pr.create',
+      'remediation_pr.create',
+      'package.unwatch',
+      'origin.unwatch',
+      'map_destination.save',
+      'map_destination.delete',
+      'identity.allowlist',
+      'identity.revoke_allowlist',
+      'retention.save',
+      'repo.make_private',
+      'repo.delete_pack_assets',
+      'repo.disable_workflow'
+    ));
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "026_github_response",
+  ]);
 }
 
 export function num(value: unknown): number {

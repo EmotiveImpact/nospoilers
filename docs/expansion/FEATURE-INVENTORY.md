@@ -153,9 +153,9 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Resolution notes/evidence | Built: resolve requires a note; files are not stored | NoSpoilers |
 | Exposure-duration timer | Built: open until resolved, shown on Watch | NoSpoilers |
 | Credential-rotation checklist | Built: SEC/MAP rules; secret values are not copied | NoSpoilers |
-| One-click make repository private | Planned: needs GitHub App **Administration** (repo-admin). Not granted. Not required for Phase 1 | NoSpoilers |
-| Remove/suspend bad GitHub Release asset | Planned: needs GitHub App **Administration**. Not granted | NoSpoilers |
-| Disable unsafe release workflow | Planned: needs GitHub App **Administration**. Not granted | NoSpoilers |
+| One-click make repository private | Built: install admin, typed `owner/repo`, unpaid 402, GitHub suspend 409, members 403. 409 until GitHub App **Administration** (not granted). Contents write is not enough. Success writes audit plus a Watch alert that is a confirmed response, not a discovered incident | NoSpoilers |
+| Remove/suspend bad GitHub Release asset | Built: deletes packed assets on the latest Release only (`isPackAssetName`); source trees are not touched. Same Administration 409/typed-confirm gates as make-private | NoSpoilers |
+| Disable unsafe release workflow | Built: path under `.github/workflows/`; cannot disable `.github/workflows/nospoilers.yml`. Same Administration 409/typed-confirm gates as make-private | NoSpoilers |
 | Automatic remediation PR | Built: reviewable PR for ignore rules, empty `.nospoilers.yml`, bundler hints, `files` snippet, and packed-artifact CI; never merged; 409 copy-paste until Contents+PR write; customer files are not overwritten | NoSpoilers |
 | Multiple GitHub organizations | Built: Watch install switcher; list APIs take `installationId`; writes require an id when two+ installs exist; coverage and GitHub suspend are per install | NoSpoilers |
 | Live installation/permission test | Built: GitHub install + optional repo probe + last customer job; reports Members read and optional Contents/PR/Checks write; Administration granted is a warning; never invents an incident | NoSpoilers |
@@ -173,7 +173,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Severity and repository routing rules | Built: trial/Team routes by min severity, repository, package, teammate assign, and destination; empty destination still gets every alert; routed test never invents an incident | NoSpoilers Team |
 | 90-day timeline | Built: Watch feed of this install’s alerts, acknowledgement activity, and notification deliveries for the install list window (default 90 days); trial/Team; Solo 403; unpaid 402; no invented rows | NoSpoilers Team |
 | Configurable data retention | Built: query-time list window (90 default; 180/365/keep while this install exists); append-only evidence is never deleted; typed confirm; Solo allowed; unpaid 402; members may read | NoSpoilers |
-| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, map custody, routes, registries, tokens, allowlists, baselines, and PRs | NoSpoilers Team |
+| Team members and roles | Built: first GitHub user on an install is admin; later users are members; trial/Team role changes; Solo 403; unpaid 402; last admin stays; GitHub suspend does not block; members keep Watch/ack/test; admins save Slack/SIEM/Jira, map custody, routes, registries, tokens, allowlists, baselines, PRs, and confirmed GitHub responses | NoSpoilers Team |
 | SSO/SAML | Deferred until requested | NoSpoilers |
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |

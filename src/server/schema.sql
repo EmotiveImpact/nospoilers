@@ -560,7 +560,10 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'map_destination.delete',
     'identity.allowlist',
     'identity.revoke_allowlist',
-    'retention.save'
+    'retention.save',
+    'repo.make_private',
+    'repo.delete_pack_assets',
+    'repo.disable_workflow'
   )),
   summary TEXT NOT NULL,
   target_kind TEXT,

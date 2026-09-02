@@ -130,7 +130,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   user owns that install on this App.
 - Change roles, remove members, save or delete Slack/SIEM/Jira destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
-  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, or open setup or remediation PRs. Those writes need an install admin.
+  lookalike names, change the retention window, save or delete Sentry/Bugsnag map custody, open setup or
+  remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
+  install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
@@ -180,8 +182,15 @@ granted. Contents write is enough to seed the throwaway fixture and open reviewa
   the rule. Unwatch requires typing the package name.
 - Open a reviewable setup PR or remediation PR while coverage is active. The App never
   merges those PRs. Required Contents write and Pull requests write are shown before the
-  button. Existing customer ignore/policy/workflow files are not overwritten. This is not
-  make-private, asset deletion, or workflow disable.
+  button. Existing customer ignore/policy/workflow files are not overwritten. Those PRs are
+  not make-private, asset deletion, or workflow disable.
+- Confirm one-click make-private (type `owner/repo`), delete packed assets on the latest
+  GitHub Release (type `delete pack assets on owner/repo`), or disable a workflow under
+  `.github/workflows/` (type that path; not `.github/workflows/nospoilers.yml`). Unpaid
+  returns 402. GitHub suspend returns 409. Members return 403. Missing GitHub App
+  Administration returns 409 with GitHub UI steps. Contents write is not enough. Do not
+  grant Administration for Phase 1. A successful response writes audit plus a Watch alert
+  that is a confirmed action, not a discovered incident.
 - Allowlist or revoke a lookalike candidate on a protected pack (reason required; type the
   candidate name). Audit entries record the public package and candidate names only.
 - Change this install’s list retention to 90, 180, or 365 days, or keep while this install
@@ -384,6 +393,11 @@ or alert bodies, members can read/export, and `audit_events` cannot be updated o
 members can watch and test but cannot save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists,
 or open setup/remediation PRs, role changes are trial/Team only (Solo 403, unpaid 402),
 GitHub suspend does not block role changes, and the last admin cannot be demoted or removed.
+`tests/github-response.test.ts` proves make-private, delete-pack-assets, and disable-workflow
+are install-admin only, require typed confirmation, 409 until Administration without audit,
+refuse `.github/workflows/nospoilers.yml`, hide other tenants, unpaid GET is allowed, unpaid
+POST is 402, GitHub suspend is 409, and a mocked Administration write records audit plus a
+Watch alert that is a confirmed response, not a discovered incident.
 `tests/web-origin.test.ts` proves website watches are tenant-scoped, unpaid POST returns 402,
 SSRF skips fetch, unwatch audit stores the host only, exposed `.env` and `.git` files alert
 without storing secret values, SPA catch-all HTML is not treated as a secret file, and

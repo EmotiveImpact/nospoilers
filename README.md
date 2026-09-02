@@ -105,9 +105,9 @@ re-run `npm run phase1:throwaway`. Optional **Pull requests write** and **Checks
 setup/remediation PRs and hosted Checks.
 
 **Administration** is a different GitHub permission. It is repo-admin: make a repository
-private, delete Release assets, disable workflows, change settings. NoSpoilers does not use
-it. One-click make-private / asset delete / workflow disable stays planned until that
-permission is deliberately granted later. Do not grant Administration to finish Phase 1.
+private, delete Release assets, disable workflows, change settings. Watch can confirm those
+three actions; they return 409 GitHub UI steps until Administration is granted. Do not grant
+it to finish Phase 1. Contents write is not enough for those actions.
 
 Or set `GITHUB_PROOF_TOKEN` to a **fine-grained** PAT for **only**
 `EmotiveImpact/nospoilers-throwaway` with Contents: write. Do not use a classic `repo` PAT.

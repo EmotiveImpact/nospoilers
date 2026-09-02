@@ -17,6 +17,9 @@ import {
   setupPullRequestTitle,
   setupWorkflowYaml,
 } from "./setup-workflow.ts";
+import { ADMINISTRATION_DENIED } from "./github-response.ts";
+import { hasWrite } from "./install-test.ts";
+import { isPackAssetName } from "./paths.ts";
 
 export type GithubRepo = {
   id: number;
@@ -53,6 +56,10 @@ export type GithubCheckResult =
 export type GithubSetupPrResult =
   | { skipped: "permission"; reason: string }
   | { htmlUrl: string; number: number; existing: boolean };
+
+export type GithubAdminResult =
+  | { skipped: "permission" | "empty"; reason: string }
+  | { ok: true; detail: string; names?: string[] };
 
 export class GithubApiError extends Error {
   readonly status: number;
@@ -117,19 +124,45 @@ export type GithubPort = {
     owner: string,
     repo: string,
   ) => Promise<GithubSetupPrResult>;
+  makeRepoPrivate: (
+    installationId: number,
+    owner: string,
+    repo: string,
+  ) => Promise<GithubAdminResult>;
+  deleteLatestPackAssets: (
+    installationId: number,
+    owner: string,
+    repo: string,
+  ) => Promise<GithubAdminResult>;
+  disableWorkflow: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    workflowPath: string,
+  ) => Promise<GithubAdminResult>;
 };
 
 export function skippedGithubWrites(): Pick<
   GithubPort,
-  "getRefSha" | "createCheckRun" | "createSetupPullRequest" | "createRemediationPullRequest"
+  | "getRefSha"
+  | "createCheckRun"
+  | "createSetupPullRequest"
+  | "createRemediationPullRequest"
+  | "makeRepoPrivate"
+  | "deleteLatestPackAssets"
+  | "disableWorkflow"
 > {
   const reason =
     "Grant Contents write and Pull requests write to open a setup or remediation PR. Grant Checks write to report release scans. Do not grant Administration.";
+  const adminReason = ADMINISTRATION_DENIED;
   return {
     getRefSha: async () => null,
     createCheckRun: async () => ({ skipped: "permission", reason }),
     createSetupPullRequest: async () => ({ skipped: "permission", reason }),
     createRemediationPullRequest: async () => ({ skipped: "permission", reason }),
+    makeRepoPrivate: async () => ({ skipped: "permission", reason: adminReason }),
+    deleteLatestPackAssets: async () => ({ skipped: "permission", reason: adminReason }),
+    disableWorkflow: async () => ({ skipped: "permission", reason: adminReason }),
   };
 }
 
@@ -553,6 +586,100 @@ export function createGithubPort(config: AppConfig): GithubPort {
       } catch (error) {
         if (error instanceof GithubApiError && permissionDenied(error.status)) {
           return { skipped: "permission", reason };
+        }
+        throw error;
+      }
+    },
+
+    async makeRepoPrivate(installationId, owner, repo) {
+      const install = await this.getInstallation(installationId);
+      if (!hasWrite(install.permissions ?? {}, "administration")) {
+        return { skipped: "permission", reason: ADMINISTRATION_DENIED };
+      }
+      const token = await installationToken(installationId);
+      try {
+        const current = await githubJson<{ private?: boolean; html_url?: string }>(
+          `https://api.github.com/repos/${owner}/${repo}`,
+          token,
+        );
+        if (current.private) {
+          return { ok: true, detail: `${owner}/${repo} is already private.` };
+        }
+        await githubJson(`https://api.github.com/repos/${owner}/${repo}`, token, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ private: true }),
+        });
+        return { ok: true, detail: `Made ${owner}/${repo} private.` };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return { skipped: "permission", reason: ADMINISTRATION_DENIED };
+        }
+        throw error;
+      }
+    },
+
+    async deleteLatestPackAssets(installationId, owner, repo) {
+      const install = await this.getInstallation(installationId);
+      if (!hasWrite(install.permissions ?? {}, "administration")) {
+        return { skipped: "permission", reason: ADMINISTRATION_DENIED };
+      }
+      try {
+        const latest = await this.getLatestRelease(installationId, owner, repo);
+        if (!latest) {
+          return {
+            skipped: "empty",
+            reason: "No GitHub Release on this repository. Nothing to delete.",
+          };
+        }
+        const assets = await this.listReleaseAssets(installationId, owner, repo, latest.id);
+        const packs = assets.filter((asset) => isPackAssetName(asset.name));
+        if (packs.length === 0) {
+          return {
+            skipped: "empty",
+            reason: "The latest Release has no packed assets. Source trees are not deleted.",
+          };
+        }
+        const token = await installationToken(installationId);
+        const names: string[] = [];
+        for (const asset of packs) {
+          await githubJson(
+            `https://api.github.com/repos/${owner}/${repo}/releases/assets/${asset.id}`,
+            token,
+            { method: "DELETE" },
+          );
+          names.push(asset.name);
+        }
+        return {
+          ok: true,
+          detail: `Removed ${names.join(", ")} from ${owner}/${repo} ${latest.tag_name}.`,
+          names,
+        };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return { skipped: "permission", reason: ADMINISTRATION_DENIED };
+        }
+        throw error;
+      }
+    },
+
+    async disableWorkflow(installationId, owner, repo, workflowPath) {
+      const install = await this.getInstallation(installationId);
+      if (!hasWrite(install.permissions ?? {}, "administration")) {
+        return { skipped: "permission", reason: ADMINISTRATION_DENIED };
+      }
+      const file = workflowPath.replace(/^.*\//, "");
+      const token = await installationToken(installationId);
+      try {
+        await githubJson(
+          `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(file)}/disable`,
+          token,
+          { method: "PUT" },
+        );
+        return { ok: true, detail: `Disabled ${workflowPath} on ${owner}/${repo}.`, names: [workflowPath] };
+      } catch (error) {
+        if (error instanceof GithubApiError && permissionDenied(error.status)) {
+          return { skipped: "permission", reason: ADMINISTRATION_DENIED };
         }
         throw error;
       }

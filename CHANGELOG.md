@@ -52,6 +52,11 @@
   Solo 8 / Team and trial 24 heavy unpacks per UTC day. Watch warning and pause copy. Owner
   aggregate counts. Webhooks stay HTTP 200. Customer hosted APIs 429 + Retry-After. No
   scan-credit meter. Event-driven queue. Not advertised as a Pricing change.
+- Watch one-click GitHub responses: make-private, delete latest Release pack assets, and
+  disable a workflow that is not `.github/workflows/nospoilers.yml`. Install admin, typed
+  confirm, unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not
+  granted). Contents write is not enough. Success is audit plus a Watch alert you confirmed,
+  not a discovered incident.
 - Owner queue health: `/api/internal/queue` returns customer vs prospect counts, stale locks, oldest wait, and daily unpack aggregates. No payloads, tenant names, or credential values. Artifact Leads shows the counts.
 - Incident response: live GitHub permission test without inventing an incident; alert ack/assign/resolve/reopen; exposure duration; rotation checklist; append-only `alert_events`; tenant JSON export of that activity.
 - Multiple GitHub organizations: Watch selects one install; list APIs filter by `installationId`; sibling unpaid or GitHub-suspended orgs do not lock a live one.

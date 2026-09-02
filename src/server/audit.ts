@@ -26,6 +26,9 @@ export const AUDIT_ACTIONS = [
   "identity.allowlist",
   "identity.revoke_allowlist",
   "retention.save",
+  "repo.make_private",
+  "repo.delete_pack_assets",
+  "repo.disable_workflow",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

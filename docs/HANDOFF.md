@@ -33,8 +33,9 @@ Read in this order:
   `013_incident_response`, `014_notification_destinations`, `015_siem_destinations`,
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
-  `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`, and
-  `025_hosted_usage` are applied. `hosted_usage_days` counts heavy hosted unpacks per
+  `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
+  `025_hosted_usage`, and `026_github_response` are applied. `026_github_response` only
+  extends `audit_events.action` for Watch GitHub responses. `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -195,12 +196,17 @@ Read in this order:
   stays. Solo 403. Unpaid 402. GitHub suspend does not block. Members keep Watch, ack, and
   delivery tests. Admins save Slack/SIEM/Jira, map custody, routes, registries, scan tokens, allowlists, baselines,
   and open setup/remediation PRs. Email invite is not built.
+- Watch one-click GitHub responses are in (make-private, delete latest Release pack assets,
+  disable a workflow that is not `.github/workflows/nospoilers.yml`). Install admin, typed
+  confirm, unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not
+  granted). Contents write is not enough. Success writes audit plus a Watch alert that is a
+  confirmed response, not a discovered incident. Do **not** grant Administration.
 - The GitHub App today is Contents/Metadata **read** (Members read is listed on the App
   checklist but the live install token currently reports contents+metadata only). Grant
   optional Contents write, Pull requests write, and Checks write on the App to seed the
   throwaway fixture, upload Release packs, and make live PRs/Checks work. Do **not**
-  grant Administration. Administration is GitHub repo-admin (make-private, delete assets,
-  disable workflows, change settings). It is a later one-click response feature, not Phase 1.
+  grant Administration. Administration is GitHub repo-admin. Watch already exposes the
+  three response actions as 409 copy until that later grant.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Create a new long random `ADMIN_TOKEN`; do not reuse the
   prior temporary local token. `GITHUB_DISCOVERY_TOKEN` is optional.
@@ -324,10 +330,13 @@ Administration is granted. Missing optional grants do not fail the test.
 Watch Scan latest release queues a heavy unpack of that repo’s current GitHub Release pack, not
 the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release and no-pack
 alerts without download, and a packed asset that fails policy and is not allowed to ship.
+Watch one-click GitHub responses are in (make-private / delete latest pack assets / disable a
+workflow other than nospoilers.yml). Typed confirm. 409 until Administration (not granted).
 Grant Contents write on the GitHub App so `npm run phase1:throwaway` can seed
 `throwaway/` onto EmotiveImpact/nospoilers-throwaway and attach sourcemap.tgz.
 Also grant Pull requests write and Checks write for live PRs/Checks.
 Do not grant Administration (make-private / delete assets / disable workflows).
+The GitHub connector is the product-repo user token; it 403s writing nospoilers-throwaway.
 Milestone 1 visibility alert is proven on EmotiveImpact/nospoilers-throwaway (created public).
 The GitHub repo is still empty; content is authored here in `throwaway/`.
 Stripe and Resend are benched. Do not start the Electron installer worker yet.
