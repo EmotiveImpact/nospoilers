@@ -1,0 +1,870 @@
+<!--
+  Direction 06 — Soft & approachable
+  Rationale: Secret-scanning tools usually shout; this direction wraps the same serious
+  information in warm paper, rounded shapes, and kind microcopy so an anxious developer
+  feels helped instead of blamed. Severity stays unmistakable — every signal pairs a soft
+  color pill with a plain-language label and icon — but the overall mood is calm: security
+  without the fear.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 06 Soft &amp; approachable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  :root {
+    --bg: #faf7f2;
+    --panel: #ffffff;
+    --border: #ece4d6;
+    --ink: #1c1917;
+    --muted: #78716c;          /* large text / decorative only */
+    --muted-text: #5d574f;     /* AA-safe small text on --bg / --panel */
+    --accent: #0d9488;
+    --accent-strong: #0f766e;  /* AA-safe for text & buttons */
+    --accent-soft: #f0fdfa;
+    --accent-border: #99e5dc;
+    --crit: #dc2626;
+    --crit-bg: #fef2f2;
+    --warn: #b45309;
+    --warn-bg: #fffbeb;
+    --pass: #15803d;
+    --pass-bg: #f0fdf4;
+    --sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 8px 24px rgba(28, 25, 23, 0.06);
+    --shadow-lg: 0 2px 4px rgba(28, 25, 23, 0.05), 0 16px 40px rgba(28, 25, 23, 0.09);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  a { color: var(--accent-strong); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1, h2, h3, p { margin: 0; }
+  button { font: inherit; cursor: pointer; }
+  input { font: inherit; }
+  :focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+
+  /* ---------- top chrome ---------- */
+  .topbar-inner {
+    max-width: 1040px; margin: 0 auto; padding: 16px 24px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .wordmark {
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--ink); font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+  }
+  .wordmark:hover { text-decoration: none; }
+  .wordmark .mark {
+    width: 32px; height: 32px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, #0d9488, #14b8a6);
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(13, 148, 136, 0.3);
+  }
+  .topnav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .topnav::-webkit-scrollbar { display: none; }
+  .topnav a {
+    color: var(--muted-text); font-weight: 600; font-size: 14px;
+    padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .topnav a:hover { background: #f3eee5; color: var(--ink); text-decoration: none; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .account {
+    display: inline-flex; align-items: center; gap: 9px;
+    color: var(--ink); font-weight: 700; font-size: 14px;
+    padding: 5px 12px 5px 5px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .account:hover { text-decoration: none; border-color: #d9cfbd; }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff; font-size: 11px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 15px; line-height: 1.4;
+    padding: 10px 20px; border-radius: 999px;
+    color: var(--ink); background: var(--panel);
+    border: 1.5px solid var(--border);
+    text-decoration: none; white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:hover { background: #faf7f2; border-color: #d9cfbd; text-decoration: none; transform: translateY(-1px); }
+  .btn-primary {
+    background: var(--accent-strong); border-color: var(--accent-strong); color: #fff;
+    box-shadow: 0 6px 16px rgba(15, 118, 110, 0.28);
+  }
+  .btn-primary:hover { background: #115e59; border-color: #115e59; box-shadow: 0 8px 20px rgba(15, 118, 110, 0.32); }
+  .btn-ink { background: var(--ink); border-color: var(--ink); color: #faf7f2; }
+  .btn-ink:hover { background: #292524; border-color: #292524; }
+  .btn-soft-teal { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-strong); }
+  .btn-soft-teal:hover { background: #dcf7f2; border-color: #6fd8c8; }
+  .btn-soft-green { background: var(--pass-bg); border-color: #bbf7d0; color: var(--pass); }
+  .btn-soft-green:hover { background: #dcfcdf; border-color: #86efac; }
+  .btn-lg { padding: 14px 28px; font-size: 16px; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ---------- pills ---------- */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 700; line-height: 1.3;
+    padding: 3px 11px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill svg { flex: none; }
+  .pill-crit { color: var(--crit); background: var(--crit-bg); }
+  .pill-warn { color: var(--warn); background: var(--warn-bg); }
+  .pill-pass { color: var(--pass); background: var(--pass-bg); }
+  .pill-teal { color: var(--accent-strong); background: var(--accent-soft); }
+  .pill-neutral { color: var(--muted-text); background: #f5f1ea; }
+
+  /* ---------- landing hero ---------- */
+  .hero { padding: 64px 0 36px; text-align: center; }
+  .hero-art { margin-bottom: 22px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: var(--accent-strong); background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    font-size: 13px; font-weight: 800; letter-spacing: 0.02em;
+    padding: 5px 14px; border-radius: 999px; margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(30px, 5.5vw, 52px); font-weight: 800;
+    letter-spacing: -0.025em; line-height: 1.12;
+    max-width: 760px; margin: 0 auto 18px;
+  }
+  .hero .sub {
+    font-size: 20px; color: var(--muted); line-height: 1.55;
+    max-width: 660px; margin: 0 auto 30px;
+  }
+  .cta-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .cta-row .plain-link { font-size: 15px; font-weight: 700; padding: 12px 6px; }
+  .hero-note {
+    display: flex; align-items: flex-start; justify-content: center; gap: 8px;
+    color: var(--muted-text); font-size: 13.5px; max-width: 560px; margin: 0 auto;
+    text-align: left;
+  }
+  .hero-note svg { flex: none; margin-top: 3px; color: var(--accent); }
+
+  /* ---------- product preview ---------- */
+  .preview-section { padding: 20px 0 60px; }
+  .preview-card {
+    display: block; max-width: 780px; margin: 0 auto;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 24px;
+    box-shadow: var(--shadow-lg); padding: 20px; color: var(--ink);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .preview-card:hover {
+    text-decoration: none; transform: translateY(-3px);
+    border-color: var(--accent-border);
+    box-shadow: 0 4px 8px rgba(28, 25, 23, 0.05), 0 24px 48px rgba(13, 148, 136, 0.14);
+  }
+  .pv-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pv-head .who { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+  .pv-head .spacer { margin-left: auto; }
+  .pv-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pv-stats span {
+    background: var(--bg); border-radius: 999px; padding: 4px 12px;
+    font-size: 12.5px; font-weight: 600; color: var(--muted-text);
+  }
+  .pv-stats strong { color: var(--ink); font-weight: 800; }
+  .pv-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 12px; border-radius: 14px; font-size: 13.5px;
+  }
+  .pv-row + .pv-row { margin-top: 6px; }
+  .pv-row .name { font-weight: 700; }
+  .pv-row .meta { margin-left: auto; color: var(--muted-text); font-size: 12.5px; }
+  .pv-row.danger { background: var(--crit-bg); }
+  .pv-row.danger .meta { color: var(--crit); font-weight: 700; }
+  .pv-caption { text-align: center; color: var(--muted-text); font-size: 13px; margin-top: 14px; }
+
+  /* ---------- features ---------- */
+  .features { padding: 0 0 60px; }
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feature {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+    padding: 24px; box-shadow: var(--shadow);
+  }
+  .feature .icon-chip {
+    width: 44px; height: 44px; border-radius: 14px; background: var(--accent-soft);
+    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;
+  }
+  .feature .num { font-size: 13px; font-weight: 800; color: var(--accent); display: block; margin-bottom: 4px; }
+  .feature h3 { font-size: 17px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .feature p { color: var(--muted-text); font-size: 14px; }
+  .feature code { font-family: var(--mono); font-size: 12.5px; background: #f5f1ea; border-radius: 6px; padding: 1px 6px; }
+
+  /* ---------- what we flag ---------- */
+  .flags { padding: 0 0 72px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: var(--shadow); padding: 22px;
+  }
+  .card-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .card-head h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+  .card-head .sub { color: var(--muted-text); font-size: 13.5px; }
+  .card-head .spacer { margin-left: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 6px 5px 13px; font-size: 13px;
+  }
+  .chip .code { font-family: var(--mono); font-weight: 700; font-size: 12px; }
+  .chip .what { color: var(--muted-text); }
+
+  /* ---------- footer ---------- */
+  .foot { border-top: 1px solid var(--border); padding: 32px 0 130px; text-align: center; }
+  .foot-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; margin-bottom: 12px; }
+  .foot-links a { font-size: 14px; font-weight: 600; color: var(--muted-text); }
+  .foot-links a:hover { color: var(--accent-strong); }
+  .foot .tagline {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--muted-text); font-size: 13.5px; font-weight: 600;
+  }
+
+  /* ---------- watch desk ---------- */
+  .desk-head-card {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 24px;
+    box-shadow: var(--shadow); padding: 22px 24px; margin-top: 24px;
+  }
+  .desk-head-card .titles { min-width: 220px; }
+  .desk-head-card .eyebrow {
+    margin-bottom: 8px; padding: 3px 11px; font-size: 12px;
+  }
+  .desk-head-card h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin: 0; display: flex; align-items: center; gap: 10px; }
+  .cov-note { color: var(--muted-text); font-size: 13.5px; margin-top: 6px; display: none; }
+  body[data-coverage="trial"] .cov-note.trial { display: block; }
+  .desk-head-card .actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cov-badge { display: none; font-size: 13px; padding: 6px 14px; }
+  body[data-coverage="trial"] .cov-badge.trial { display: inline-flex; }
+  body[data-coverage="active"] .cov-badge.active { display: inline-flex; }
+  body[data-coverage="ended"] .cov-badge.ended { display: inline-flex; }
+
+  .subscribe-banner {
+    display: none; align-items: center; gap: 18px; flex-wrap: wrap;
+    background: linear-gradient(120deg, #f0fdfa, #d9f5ef);
+    border: 1.5px solid var(--accent-border); border-radius: 24px;
+    padding: 22px 24px; margin-top: 16px; box-shadow: var(--shadow);
+  }
+  body[data-coverage="ended"] .subscribe-banner { display: flex; }
+  .subscribe-banner .banner-text { min-width: 220px; flex: 1; }
+  .subscribe-banner h2 { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+  .subscribe-banner p { color: var(--muted-text); font-size: 14px; }
+  .subscribe-banner .btn { flex: none; }
+
+  .desk { transition: opacity 0.2s ease, filter 0.2s ease; padding: 16px 0 130px; }
+  body[data-coverage="ended"] .desk { opacity: 0.55; filter: saturate(0.55); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 14px 18px;
+  }
+  .stat .num { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .lbl { color: var(--muted-text); font-size: 13px; font-weight: 600; margin-left: 7px; }
+  .stat.hot { background: var(--crit-bg); border-color: #fecaca; }
+  .stat.hot .num { color: var(--crit); }
+
+  .desk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .desk-grid .span-all { grid-column: 1 / -1; }
+
+  .repo-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 14px; border-radius: 16px;
+  }
+  .repo-row + .repo-row { margin-top: 8px; }
+  .repo-row .repo-avatar {
+    width: 34px; height: 34px; border-radius: 11px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #fff;
+  }
+  .repo-row .name { font-weight: 800; font-size: 14.5px; }
+  .repo-row .meta { margin-left: auto; color: var(--muted-text); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .repo-row.danger { background: var(--crit-bg); }
+  .repo-row.danger .meta { color: var(--crit); font-weight: 700; }
+
+  /* alerts */
+  .alert {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: var(--shadow); padding: 20px 22px;
+  }
+  .alert + .alert { margin-top: 14px; }
+  .alert-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .alert-top time { color: var(--muted-text); font-size: 12.5px; font-weight: 600; }
+  .alert h3 { font-size: 16.5px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .alert > p { color: var(--muted-text); font-size: 14px; }
+  .alert-open { display: inline-flex; align-items: center; gap: 8px; }
+  .alert-resolved { display: none; align-items: center; gap: 8px; }
+  .alert-resolved .res-note { color: var(--muted-text); font-size: 12.5px; font-weight: 600; }
+  body[data-coverage="active"] #alert-public .alert-open { display: none; }
+  body[data-coverage="active"] #alert-public .alert-resolved { display: inline-flex; }
+  body[data-coverage="active"] #alert-public .alert-actions { display: none; }
+  .alert-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+  .findings { margin-top: 12px; display: grid; gap: 8px; }
+  .finding {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--bg); border-radius: 14px; padding: 9px 14px; font-size: 13px;
+  }
+  .finding .code {
+    font-family: var(--mono); font-weight: 700; font-size: 12px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px;
+  }
+  .finding .path { font-family: var(--mono); font-size: 12.5px; }
+  .finding .note { color: var(--muted-text); flex: 1; min-width: 140px; }
+
+  .checklist {
+    margin-top: 12px; background: var(--accent-soft); border: 1px solid var(--accent-border);
+    border-radius: 16px; padding: 14px 16px;
+  }
+  .checklist .checklist-title { font-size: 13px; font-weight: 800; color: var(--accent-strong); margin-bottom: 8px; }
+  .checklist label {
+    display: flex; align-items: center; gap: 10px; padding: 4px 0;
+    font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  .checklist input { accent-color: var(--accent-strong); width: 17px; height: 17px; margin: 0; cursor: pointer; }
+
+  .icon-chip-sm {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--accent-soft);
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+  }
+  .kv { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+  .kv .name { font-weight: 800; }
+  .kv .tail { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .kv-label { color: var(--muted-text); font-size: 13px; font-weight: 600; }
+  .watch-form { display: flex; gap: 8px; margin-top: 12px; }
+  .watch-form input {
+    flex: 1; min-width: 0; padding: 9px 16px; font-size: 13.5px; font-family: var(--mono);
+    border: 1.5px solid var(--border); border-radius: 999px; background: var(--bg); color: var(--ink);
+  }
+  .watch-form input::placeholder { color: var(--muted-text); }
+  .watch-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18); }
+  .watch-form input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 50; display: flex; align-items: center; gap: 6px;
+    background: rgba(255, 255, 255, 0.92); border: 1px solid var(--border);
+    border-radius: 999px; box-shadow: var(--shadow-lg);
+    padding: 5px; backdrop-filter: blur(8px);
+    max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none;
+  }
+  .mockup-switcher::-webkit-scrollbar { display: none; }
+  .switcher-group { display: flex; gap: 2px; }
+  .switcher-group + .switcher-group { border-left: 1px solid var(--border); padding-left: 6px; }
+  .mockup-switcher button {
+    border: 0; background: transparent; color: var(--muted-text);
+    font-family: var(--sans); font-size: 12.5px; font-weight: 700;
+    padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .mockup-switcher button:hover { color: var(--ink); background: #f3eee5; }
+  .mockup-switcher [data-view][aria-pressed="true"] { background: var(--ink); color: #faf7f2; }
+  .mockup-switcher [data-state][aria-pressed="true"] { background: var(--accent-strong); color: #fff; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 860px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .desk-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .topbar-inner { gap: 10px 16px; }
+    .topnav { order: 3; width: 100%; }
+    .hero { padding: 44px 0 28px; }
+    .desk-head-card .actions { margin-left: 0; }
+    .kv .tail, .repo-row .meta, .pv-row .meta { margin-left: 0; }
+    .finding .note { flex-basis: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    .btn:hover, .preview-card:hover { transform: none; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<main data-screen="landing" id="landing">
+  <header>
+    <div class="topbar-inner">
+      <a class="wordmark" href="#landing" aria-label="NoSpoilers home">
+        <span class="mark" aria-hidden="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.6 8-10V5.2L12 2 4 5.2V12c0 6.4 8 10 8 10z"/><polyline points="8.8 11.8 11.2 14.2 15.4 9.8"/></svg>
+        </span>
+        NoSpoilers
+      </a>
+      <nav class="topnav" aria-label="Product">
+        <a href="#product">Product</a>
+        <a href="#watch">Watch</a>
+        <a href="#scan">Scan</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#docs">Docs</a>
+      </nav>
+      <div class="topbar-right">
+        <a class="btn btn-ink" href="#signin">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          Sign in with GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero wrap" aria-labelledby="hero-h">
+    <div class="hero-art" aria-hidden="true">
+      <svg width="170" height="126" viewBox="0 0 170 126" fill="none">
+        <ellipse cx="85" cy="66" rx="76" ry="54" fill="#d9f0ea"/>
+        <circle cx="24" cy="30" r="5" fill="#fde68a"/>
+        <circle cx="148" cy="38" r="4" fill="#bbf7d0"/>
+        <circle cx="140" cy="98" r="6" fill="#fde68a" opacity="0.7"/>
+        <circle cx="30" cy="96" r="4" fill="#99e5dc"/>
+        <path d="M85 26l30 10.5V66c0 21-13.5 32.5-30 39-16.5-6.5-30-18-30-39V36.5L85 26z" fill="#ffffff" stroke="#0d9488" stroke-width="3" stroke-linejoin="round"/>
+        <polyline points="71,65 81,75 100,54" fill="none" stroke="#0f766e" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M42 48l2.2 5.2L49.5 55l-5.3 1.8L42 62l-2.2-5.2L34.5 55l5.3-1.8L42 48z" fill="#f59e0b" opacity="0.85"/>
+        <path d="M132 66l1.6 3.9 4 1.4-4 1.4-1.6 3.9-1.6-3.9-4-1.4 4-1.4 1.6-3.9z" fill="#14b8a6"/>
+      </svg>
+    </div>
+    <p class="eyebrow">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-3.6 8-10V5.2L12 2 4 5.2V12c0 6.4 8 10 8 10z"/></svg>
+      No spoilers in production
+    </p>
+    <h1 id="hero-h">We watch GitHub. We read the pack they download.</h1>
+    <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary btn-lg" href="#trial">Start 14-day trial</a>
+      <a class="btn btn-lg" href="#signin">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        Sign in with GitHub
+      </a>
+      <a class="plain-link" href="#pricing">Solo $29 · Team $99</a>
+    </div>
+    <p class="hero-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg>
+      Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.
+    </p>
+  </section>
+
+  <section class="preview-section wrap" aria-label="Product preview">
+    <a class="preview-card" href="#watch" data-view="watch" aria-label="Open the watch desk screen">
+      <span class="pv-head">
+        <span class="who"><span class="avatar" aria-hidden="true">ei</span>emotive-impact</span>
+        <span class="pill pill-warn">Trial · 11 days left</span>
+        <span class="pill pill-crit spacer">1 open alert</span>
+      </span>
+      <span class="pv-stats">
+        <span><strong>2</strong> repositories</span>
+        <span><strong>1</strong> open alert</span>
+        <span><strong>1</strong> npm package</span>
+        <span><strong>1</strong> website</span>
+      </span>
+      <span class="pv-row">
+        <span class="pill pill-pass">ok</span>
+        <span class="name">emotive-impact/desktop</span>
+        <span class="pill pill-neutral">Private</span>
+        <span class="meta">Checked 2 min ago</span>
+      </span>
+      <span class="pv-row danger">
+        <span class="pill pill-crit">alert</span>
+        <span class="name">emotive-impact/old-cli</span>
+        <span class="pill pill-neutral">Public</span>
+        <span class="meta">Went public 9:14 AM</span>
+      </span>
+      <span class="pv-row">
+        <span class="pill pill-crit">failed policy</span>
+        <span class="name mono">@emotive/desktop@2.4.1</span>
+        <span class="meta">8:57 AM</span>
+      </span>
+    </a>
+    <p class="pv-caption">The logged-in desk during trial. Click through.</p>
+  </section>
+
+  <section class="features wrap" aria-label="Features">
+    <div class="features-grid">
+      <article class="feature">
+        <span class="icon-chip" aria-hidden="true">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        <span class="num">01</span>
+        <h3>Watch GitHub</h3>
+        <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+      </article>
+      <article class="feature">
+        <span class="icon-chip" aria-hidden="true">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </span>
+        <span class="num">02</span>
+        <h3>Read the pack</h3>
+        <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+      </article>
+      <article class="feature">
+        <span class="icon-chip" aria-hidden="true">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.6 8-10V5.2L12 2 4 5.2V12c0 6.4 8 10 8 10z"/><polyline points="8.8 11.8 11.2 14.2 15.4 9.8"/></svg>
+        </span>
+        <span class="num">03</span>
+        <h3>Fail closed in CI</h3>
+        <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="flags wrap" aria-labelledby="flags-h">
+    <div class="card">
+      <div class="card-head">
+        <h2 id="flags-h">What we flag</h2>
+        <span class="sub">Eight checks on every pack, every time.</span>
+        <span class="pill pill-neutral spacer">8 rules</span>
+      </div>
+      <div class="chips">
+        <span class="chip"><span class="code">MAP-001</span><span class="what">Source map in pack</span><span class="pill pill-crit">critical</span></span>
+        <span class="chip"><span class="code">SEC-001</span><span class="what">.env file</span><span class="pill pill-crit">critical</span></span>
+        <span class="chip"><span class="code">SEC-003</span><span class="what">Cloud credential</span><span class="pill pill-crit">critical</span></span>
+        <span class="chip"><span class="code">GIT-001</span><span class="what">.git packed in</span><span class="pill pill-crit">critical</span></span>
+        <span class="chip"><span class="code">DB-001</span><span class="what">Database dump</span><span class="pill pill-crit">critical</span></span>
+        <span class="chip"><span class="code">SRC-001</span><span class="what">Raw TypeScript source</span><span class="pill pill-warn">warn</span></span>
+        <span class="chip"><span class="code">NET-001</span><span class="what">Private-network URL</span><span class="pill pill-warn">warn</span></span>
+        <span class="chip"><span class="code">SIZE-002</span><span class="what">Payload over 50 MB</span><span class="pill pill-warn">warn</span></span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <nav class="foot-links" aria-label="Legal">
+        <a href="#privacy">Privacy</a>
+        <a href="#terms">Terms</a>
+        <a href="#retention">Retention</a>
+        <a href="#disclosure">Disclosure</a>
+        <a href="#support">Support</a>
+        <a href="#refunds">Refunds</a>
+      </nav>
+      <p class="tagline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-3.6 8-10V5.2L12 2 4 5.2V12c0 6.4 8 10 8 10z"/><polyline points="8.8 11.8 11.2 14.2 15.4 9.8"/></svg>
+        No spoilers in production.
+      </p>
+    </div>
+  </footer>
+</main>
+
+<main data-screen="watch" id="watch" hidden>
+  <header>
+    <div class="topbar-inner">
+      <a class="wordmark" href="#landing" aria-label="NoSpoilers home">
+        <span class="mark" aria-hidden="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.6 8-10V5.2L12 2 4 5.2V12c0 6.4 8 10 8 10z"/><polyline points="8.8 11.8 11.2 14.2 15.4 9.8"/></svg>
+        </span>
+        NoSpoilers
+      </a>
+      <nav class="topnav" aria-label="Product">
+        <a href="#product">Product</a>
+        <a href="#watch">Watch</a>
+        <a href="#scan">Scan</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#docs">Docs</a>
+      </nav>
+      <div class="topbar-right">
+        <a class="account" href="#account">
+          <span class="avatar" aria-hidden="true">ei</span>
+          emotive-impact
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="desk-head-card">
+      <div class="titles">
+        <p class="eyebrow">Watch desk</p>
+        <h1><span class="avatar" style="width:32px;height:32px;font-size:13px" aria-hidden="true">ei</span>emotive-impact</h1>
+        <p class="cov-note trial">Full coverage. No card yet.</p>
+      </div>
+      <div class="actions">
+        <span class="cov-badge trial pill pill-warn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+          Trial · 11 days left
+        </span>
+        <span class="cov-badge active pill pill-pass">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4.5 12.5 9.5 17.5 19.5 6.5"/></svg>
+          Team · Active
+        </span>
+        <span class="cov-badge ended pill pill-crit">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+          Coverage ended
+        </span>
+        <button type="button" class="btn btn-ink">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          Install on GitHub
+        </button>
+      </div>
+    </div>
+
+    <div class="subscribe-banner" role="status">
+      <div class="banner-text">
+        <h2>Ready to pick back up?</h2>
+        <p>The bot is quiet until you subscribe. Your settings are saved — coverage resumes the moment you do.</p>
+      </div>
+      <button type="button" class="btn btn-primary btn-lg">Subscribe — Solo $29 · Team $99</button>
+    </div>
+
+    <div class="desk">
+      <section class="stats" aria-label="Coverage summary">
+        <div class="stat"><span class="num">2</span><span class="lbl">repositories</span></div>
+        <div class="stat hot"><span class="num">1</span><span class="lbl">open alert</span></div>
+        <div class="stat"><span class="num">1</span><span class="lbl">npm package</span></div>
+        <div class="stat"><span class="num">1</span><span class="lbl">website</span></div>
+      </section>
+
+      <div class="desk-grid">
+        <section class="card span-all" aria-labelledby="repos-h">
+          <div class="card-head">
+            <h2 id="repos-h">Repositories</h2>
+            <span class="pill pill-neutral spacer">2</span>
+          </div>
+          <div class="repo-row">
+            <span class="repo-avatar" style="background:linear-gradient(135deg,#0d9488,#14b8a6)" aria-hidden="true">d</span>
+            <span class="name">emotive-impact/desktop</span>
+            <span class="pill pill-neutral">Private</span>
+            <span class="meta">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4.5 12.5 9.5 17.5 19.5 6.5"/></svg>
+              Checked 2 min ago
+            </span>
+          </div>
+          <div class="repo-row danger">
+            <span class="repo-avatar" style="background:linear-gradient(135deg,#f59e0b,#f97316)" aria-hidden="true">o</span>
+            <span class="name">emotive-impact/old-cli</span>
+            <span class="pill pill-neutral">Public</span>
+            <span class="meta">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Went public 9:14 AM
+            </span>
+          </div>
+        </section>
+
+        <section class="span-all" aria-labelledby="alerts-h">
+          <div class="card-head" style="margin-bottom:4px">
+            <h2 id="alerts-h">Alerts</h2>
+            <span class="pill pill-crit">1 open</span>
+            <span class="sub spacer">Take a breath — each alert below has clear next steps.</span>
+          </div>
+
+          <article class="alert" id="alert-public" aria-labelledby="alert-public-h">
+            <div class="alert-top">
+              <span class="pill pill-neutral">Went public</span>
+              <time>9:14 AM</time>
+              <span class="alert-open">
+                <span class="pill pill-crit">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  open
+                </span>
+              </span>
+              <span class="alert-resolved">
+                <span class="pill pill-pass">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4.5 12.5 9.5 17.5 19.5 6.5"/></svg>
+                  resolved
+                </span>
+                <span class="res-note">resolved by maya · exposed 4 min</span>
+              </span>
+            </div>
+            <h3 id="alert-public-h">emotive-impact/old-cli flipped to public</h3>
+            <p>Visibility job finished in 400ms. No pack attached to this event.</p>
+            <div class="alert-actions">
+              <button type="button" class="btn btn-soft-teal btn-sm" data-cov-action>Acknowledge</button>
+              <button type="button" class="btn btn-sm" data-cov-action>Assign</button>
+              <button type="button" class="btn btn-soft-green btn-sm" data-cov-action>Resolve</button>
+            </div>
+          </article>
+
+          <article class="alert" id="alert-pack" aria-labelledby="alert-pack-h">
+            <div class="alert-top">
+              <span class="pill pill-neutral">npm pack</span>
+              <time>8:57 AM</time>
+              <span class="alert-open">
+                <span class="pill pill-crit">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  open
+                </span>
+              </span>
+            </div>
+            <h3 id="alert-pack-h">@emotive/desktop@2.4.1 failed policy</h3>
+            <div class="findings">
+              <div class="finding">
+                <span class="code">MAP-002</span>
+                <span class="path">dist/cli.js.map</span>
+                <span class="pill pill-crit">critical</span>
+                <span class="note">Source map embeds original source</span>
+              </div>
+              <div class="finding">
+                <span class="code">SEC-001</span>
+                <span class="path">.env</span>
+                <span class="pill pill-crit">critical</span>
+                <span class="note">.env file in the pack</span>
+              </div>
+              <div class="finding">
+                <span class="code">SRC-001</span>
+                <span class="path">src/auth.ts</span>
+                <span class="pill pill-warn">warn</span>
+                <span class="note">Raw TypeScript source</span>
+              </div>
+            </div>
+            <div class="checklist">
+              <p class="checklist-title">Rotation checklist</p>
+              <label><input type="checkbox"> <span>Rotate the npm token</span></label>
+              <label><input type="checkbox"> <span>Purge the CDN cache</span></label>
+              <label><input type="checkbox"> <span>Publish 2.4.2 and deprecate 2.4.1</span></label>
+            </div>
+            <div class="alert-actions">
+              <button type="button" class="btn btn-soft-teal btn-sm" data-cov-action>Acknowledge</button>
+              <button type="button" class="btn btn-sm" data-cov-action>Assign</button>
+              <button type="button" class="btn btn-soft-green btn-sm" data-cov-action>Resolve</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="card" aria-labelledby="npm-h">
+          <div class="card-head">
+            <span class="icon-chip-sm" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </span>
+            <h2 id="npm-h">npm packages</h2>
+            <span class="pill pill-neutral spacer">1</span>
+          </div>
+          <div class="kv">
+            <span class="name mono">@emotive/desktop</span>
+            <span class="kv-label mono">registry.npmjs.org</span>
+          </div>
+          <div class="kv" style="margin-top:10px">
+            <span class="kv-label">latest <span class="mono">2.4.1</span></span>
+            <span class="tail">
+              <span class="kv-label">Last scan:</span>
+              <span class="pill pill-crit">failed policy</span>
+              <button type="button" class="btn btn-soft-teal btn-sm" data-cov-action>Scan latest</button>
+            </span>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="sites-h">
+          <div class="card-head">
+            <span class="icon-chip-sm" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </span>
+            <h2 id="sites-h">Production websites</h2>
+            <span class="pill pill-neutral spacer">1</span>
+          </div>
+          <div class="kv">
+            <span class="name mono">https://app.emotive.dev</span>
+            <span class="tail">
+              <span class="kv-label">Last crawl:</span>
+              <span class="pill pill-pass">clean</span>
+            </span>
+          </div>
+          <form class="watch-form" action="#watch-site" method="get">
+            <input type="url" placeholder="https://…" aria-label="Website URL to watch" data-cov-action>
+            <button type="submit" class="btn btn-primary btn-sm" data-cov-action>Watch website</button>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="maps-h">
+          <div class="card-head">
+            <span class="icon-chip-sm" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </span>
+            <h2 id="maps-h">Map custody</h2>
+          </div>
+          <div class="kv">
+            <span class="name mono">Sentry → emotive/desktop</span>
+            <span class="tail">
+              <span class="kv-label">Last check:</span>
+              <span class="pill pill-pass">ok</span>
+            </span>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="notif-h">
+          <div class="card-head">
+            <span class="icon-chip-sm" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </span>
+            <h2 id="notif-h">Notifications</h2>
+          </div>
+          <div class="kv">
+            <span class="name">Slack #security</span>
+            <span class="tail">
+              <span class="kv-label">minimum severity</span>
+              <span class="pill pill-crit">critical</span>
+            </span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <div class="switcher-group" id="switcher-states" role="group" aria-label="Coverage state" hidden>
+    <button type="button" data-state="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-state="active" aria-pressed="false">Active</button>
+    <button type="button" data-state="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var screens = document.querySelectorAll('main[data-screen]');
+  var viewButtons = document.querySelectorAll('.mockup-switcher [data-view]');
+  var stateButtons = document.querySelectorAll('.mockup-switcher [data-state]');
+  var stateGroup = document.getElementById('switcher-states');
+  var covActions = document.querySelectorAll('[data-cov-action]');
+
+  function showScreen(name) {
+    screens.forEach(function (s) { s.hidden = s.dataset.screen !== name; });
+    viewButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === name)); });
+    stateGroup.hidden = name !== 'watch';
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(state) {
+    document.body.dataset.coverage = state;
+    stateButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.state === state)); });
+    covActions.forEach(function (el) { el.disabled = state === 'ended'; });
+  }
+
+  document.querySelectorAll('[data-view]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      showScreen(el.dataset.view);
+    });
+  });
+  stateButtons.forEach(function (b) {
+    b.addEventListener('click', function () { setCoverage(b.dataset.state); });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,893 @@
+<!--
+  Direction 03 — Stripe-style light
+  Rationale: Trustworthy fintech polish — a spacious light UI with rounded-xl cards, soft layered
+  shadows and a navy ink that feels calm and authoritative. The indigo accent and the
+  indigo→cyan gradient are used sparingly (logo, hero accent, subscribe CTA), while severity
+  rides on tinted pills that always pair an icon with a text label.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 03 Stripe-style light</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f9fc;
+    --card: #ffffff;
+    --ink: #0a2540;
+    --muted: #425466;
+    --faint: #61718a;
+    --line: #e6ebf1;
+    --line-strong: #d7dee8;
+    --accent: #635bff;
+    --accent-hover: #4f44d6;
+    --accent-ink: #4f44d6;
+    --accent-soft: #eeefff;
+    --critical: #df1b41;
+    --critical-ink: #a31230;
+    --critical-soft: #fbe3ea;
+    --warn: #c48f01;
+    --warn-ink: #8a5a00;
+    --warn-soft: #fdf3d7;
+    --pass: #0e8a5f;
+    --pass-ink: #0c6e4c;
+    --pass-soft: #dcf5ea;
+    --gradient: linear-gradient(100deg, #635bff, #00d4ff);
+    --radius: 16px;
+    --shadow-card: 0 1px 1px rgba(10, 37, 64, .04), 0 4px 14px -4px rgba(10, 37, 64, .08);
+    --shadow-lift: 0 2px 4px rgba(10, 37, 64, .06), 0 16px 36px -12px rgba(10, 37, 64, .18);
+    --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.55;
+    letter-spacing: -.01em;
+  }
+  ::selection { background: rgba(99, 91, 255, .22); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  code { font-family: var(--mono); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- chrome ---------- */
+  .site-header {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(255, 255, 255, .9);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .site-header .bar {
+    max-width: 1080px; margin: 0 auto; padding: 0 24px;
+    min-height: 62px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+  }
+  .wordmark { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; letter-spacing: -.02em; color: var(--ink); }
+  .site-nav { display: flex; align-items: center; gap: 4px; }
+  .site-nav a {
+    font-size: 14.5px; font-weight: 500; color: var(--muted);
+    padding: 6px 11px; border-radius: 999px;
+    transition: color .12s ease, background .12s ease;
+  }
+  .site-nav a:hover { color: var(--ink); background: #eef2f7; }
+  .site-nav a[aria-current="page"] { color: var(--ink); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 14px; font-weight: 500; color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 14px 4px 5px;
+    background: #fff; box-shadow: 0 1px 2px rgba(10, 37, 64, .05);
+  }
+  .account-chip .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gradient); color: #fff;
+    font-size: 10px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14.5px; font-weight: 600; letter-spacing: -.01em;
+    border-radius: 999px; padding: 10px 20px;
+    border: 1px solid transparent;
+    transition: background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease, transform .14s ease;
+    white-space: nowrap;
+  }
+  .btn svg { flex: none; }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 1px 2px rgba(10, 37, 64, .18), inset 0 1px 0 rgba(255, 255, 255, .14);
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary {
+    background: #fff; color: var(--ink); border-color: var(--line-strong);
+    box-shadow: 0 1px 2px rgba(10, 37, 64, .06);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .btn-sm { font-size: 13px; padding: 7px 15px; }
+
+  /* ---------- landing hero ---------- */
+  .hero { position: relative; padding: 96px 24px 44px; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; left: -10%; right: -10%; top: -140px; height: 340px;
+    background: linear-gradient(100deg, rgba(99, 91, 255, .10), rgba(0, 212, 255, .10));
+    transform: skewY(-4deg); pointer-events: none;
+  }
+  .hero > * { position: relative; }
+  .hero-inner { max-width: 1080px; margin: 0 auto; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13.5px; font-weight: 700; color: var(--accent-ink);
+    margin: 0 0 16px; letter-spacing: .01em;
+  }
+  .eyebrow::before { content: ""; width: 18px; height: 3px; border-radius: 2px; background: var(--gradient); }
+  .hero h1 {
+    margin: 0; max-width: 760px;
+    font-size: clamp(36px, 5.6vw, 62px); font-weight: 800;
+    letter-spacing: -.035em; line-height: 1.04; color: var(--ink);
+  }
+  .hero .sub {
+    margin: 22px 0 0; max-width: 640px;
+    color: var(--muted); font-size: 17px; line-height: 1.62; letter-spacing: -.012em;
+  }
+  .cta-row { margin-top: 32px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .price-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14.5px; font-weight: 600; color: var(--accent-ink);
+    padding: 10px 8px; border-radius: 8px;
+  }
+  .price-link svg { transition: transform .14s ease; }
+  .price-link:hover svg { transform: translateX(3px); }
+  .trial-note {
+    margin: 26px 0 0; max-width: 620px;
+    color: var(--muted); font-size: 13.5px; line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .trial-note svg { flex: none; margin-top: 2px; color: var(--faint); }
+
+  /* ---------- landing product preview ---------- */
+  .preview { padding: 40px 24px 12px; }
+  .preview figure { margin: 0 auto; max-width: 900px; }
+  .preview-button {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+    overflow: hidden; box-shadow: var(--shadow-lift);
+    transition: box-shadow .16s ease, transform .16s ease;
+  }
+  .preview-button:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(10, 37, 64, .06), 0 28px 56px -16px rgba(10, 37, 64, .22); }
+  .preview figcaption { margin-top: 16px; text-align: center; color: var(--faint); font-size: 13.5px; }
+
+  /* mini watch desk (static, simplified) */
+  .mini { font-size: 10px; color: var(--ink); display: block; }
+  .mini-chrome {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--line); background: #fff;
+  }
+  .mini-chrome .mark { width: 10px; height: 10px; border-radius: 3px; background: var(--gradient); }
+  .mini-chrome .word { font-weight: 700; font-size: 10.5px; letter-spacing: -.01em; }
+  .mini-chrome .face { margin-left: auto; width: 13px; height: 13px; border-radius: 50%; background: var(--gradient); }
+  .mini-body { padding: 16px 18px 18px; display: grid; gap: 12px; background: var(--bg); }
+  .mini-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mini-eyebrow { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .mini-account { display: block; font-size: 13px; font-weight: 700; letter-spacing: -.015em; }
+  .mini-badge {
+    margin-left: auto; font-size: 8px; font-weight: 700;
+    color: var(--accent-ink); background: var(--accent-soft);
+    border-radius: 999px; padding: 3px 9px;
+  }
+  .mini-install { font-size: 8.5px; font-weight: 600; color: #fff; background: var(--accent); border-radius: 999px; padding: 3.5px 10px; }
+  .mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .mini-stats span {
+    padding: 8px 11px; font-size: 7.5px; font-weight: 500; color: var(--muted);
+    background: #fff; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 2px;
+  }
+  .mini-stats b { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .mini-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 10px; }
+  .mini-panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 7px; align-content: start; }
+  .mini-panel-title { font-size: 7.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .mini-row { display: flex; align-items: center; gap: 7px; font-size: 8.5px; font-weight: 500; padding: 2px 0; }
+  .mini-row em { font-style: normal; margin-left: auto; color: var(--faint); font-size: 7.5px; }
+  .mini-row .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--pass); }
+  .mini-row.danger .dot { background: var(--critical); }
+  .mini-row.danger { color: var(--critical-ink); }
+  .mini-alert { border: 1px solid var(--line); border-left: 3px solid var(--critical); border-radius: 10px; padding: 8px 10px; display: grid; gap: 5px; }
+  .mini-alert-meta { font-size: 7.5px; font-weight: 600; color: var(--faint); }
+  .mini-alert-title { font-size: 9.5px; font-weight: 700; letter-spacing: -.01em; }
+  .mini-finding { display: flex; align-items: center; gap: 7px; font-size: 8px; color: var(--muted); }
+  .mini-finding code { color: var(--ink); font-size: 8px; }
+  .mini-sev { font-style: normal; margin-left: auto; font-size: 7px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+  .mini-sev.crit { color: var(--critical-ink); background: var(--critical-soft); }
+  .mini-sev.warn { color: var(--warn-ink); background: var(--warn-soft); }
+
+  /* ---------- landing features ---------- */
+  .features { padding: 76px 24px 0; }
+  .features ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .features li {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px 26px 26px; box-shadow: var(--shadow-card);
+    transition: box-shadow .16s ease, transform .16s ease;
+  }
+  .features li:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); }
+  .features .num {
+    display: inline-grid; place-content: center;
+    min-width: 34px; height: 34px; padding: 0 8px;
+    font-size: 13px; font-weight: 700; color: var(--accent-ink);
+    background: var(--accent-soft); border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .features h3 { margin: 16px 0 8px; font-size: 16.5px; font-weight: 700; letter-spacing: -.02em; }
+  .features p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.62; }
+  .features p code { font-size: 12px; color: var(--ink); background: #eef2f7; border-radius: 5px; padding: 1.5px 6px; }
+
+  /* ---------- what we flag ---------- */
+  .flags { padding: 76px 24px 0; }
+  .flags h2 { margin: 0 0 18px; font-size: 22px; font-weight: 700; letter-spacing: -.025em; }
+  .flag-list {
+    list-style: none; margin: 0; padding: 6px;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+  }
+  .flag-list li {
+    display: grid; grid-template-columns: 104px 1fr auto; align-items: center; gap: 16px;
+    padding: 10px 16px; border-radius: 10px;
+    transition: background .12s ease;
+  }
+  .flag-list li + li { border-top: 1px solid var(--line); }
+  .flag-list li:hover { background: var(--bg); }
+  .flag-list code { font-size: 12.5px; font-weight: 500; color: var(--ink); }
+  .flag-name { font-size: 14px; color: var(--muted); }
+
+  /* severity pills — icon + label, never color alone */
+  .sev {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .01em;
+    border-radius: 999px; padding: 3px 11px 3px 8px; white-space: nowrap;
+  }
+  .sev svg { flex: none; }
+  .sev-critical { color: var(--critical-ink); background: var(--critical-soft); }
+  .sev-critical svg { color: var(--critical); }
+  .sev-warn { color: var(--warn-ink); background: var(--warn-soft); }
+  .sev-warn svg { color: var(--warn); }
+  .sev-pass { color: var(--pass-ink); background: var(--pass-soft); }
+  .sev-pass svg { color: var(--pass); }
+
+  /* ---------- landing footer ---------- */
+  .site-footer { margin-top: 88px; border-top: 1px solid var(--line); padding: 30px 24px 120px; background: #fff; }
+  .site-footer .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 0; }
+  .site-footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+  .site-footer a { font-size: 13.5px; font-weight: 500; color: var(--muted); transition: color .12s ease; }
+  .site-footer a:hover { color: var(--ink); }
+  .site-footer .tagline { margin: 0 0 0 auto; font-size: 13.5px; color: var(--faint); }
+
+  /* ---------- watch desk ---------- */
+  .desk { padding: 34px 24px 130px; }
+  .desk-header { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .desk-header .eyebrow { margin: 0 0 6px; }
+  .desk-account { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+  .coverage-line { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .coverage-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 13px;
+  }
+  .coverage-badge.is-trial { color: var(--accent-ink); background: var(--accent-soft); }
+  .coverage-badge.is-active { color: var(--pass-ink); background: var(--pass-soft); display: none; }
+  .coverage-badge.is-ended { color: var(--muted); background: #e8edf3; display: none; }
+  .coverage-note { display: none; font-size: 13.5px; color: var(--muted); margin: 0; }
+  .desk-header .btn { margin-left: auto; }
+
+  body[data-coverage="active"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="active"] .coverage-badge.is-active { display: inline-flex; }
+  body[data-coverage="ended"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="ended"] .coverage-badge.is-ended { display: inline-flex; }
+  body[data-coverage="trial"] .coverage-note.note-trial { display: inline; }
+  body[data-coverage="ended"] .coverage-note.note-ended { display: inline; }
+
+  .subscribe-banner {
+    display: none; position: relative; overflow: hidden;
+    align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    margin-top: 22px; padding: 20px 24px;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow-lift);
+  }
+  .subscribe-banner::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--gradient);
+  }
+  .subscribe-banner p { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+  .subscribe-banner p svg { flex: none; color: var(--accent); }
+  body[data-coverage="ended"] .subscribe-banner { display: flex; }
+
+  .desk-content { transition: opacity .25s ease, filter .25s ease; }
+  body[data-coverage="ended"] .desk-content { opacity: .45; filter: saturate(.35); }
+
+  .stat-row { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat-row li {
+    padding: 18px 22px; background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow-card); display: grid; gap: 3px;
+  }
+  .stat-row strong { font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat-row span { font-size: 13px; font-weight: 500; color: var(--muted); }
+
+  .desk-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .panel {
+    grid-column: span 12;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 22px 22px; box-shadow: var(--shadow-card);
+  }
+  .panel-repos { grid-column: span 5; }
+  .panel-alerts { grid-column: span 7; }
+  .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 6; }
+  .panel > h2 {
+    margin: 0 0 8px; font-size: 12.5px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel > h2 svg { color: var(--faint); }
+
+  .repo-list { list-style: none; margin: 4px 0 0; padding: 0; }
+  .repo-list li {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 8px; border-bottom: 1px solid var(--line); border-radius: 8px;
+    transition: background .12s ease;
+  }
+  .repo-list li:last-child { border-bottom: 0; }
+  .repo-list li:hover { background: var(--bg); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .status-dot.ok { background: var(--pass); box-shadow: 0 0 0 3px var(--pass-soft); }
+  .status-dot.bad { background: var(--critical); box-shadow: 0 0 0 3px var(--critical-soft); }
+  .repo-name { font-size: 13.5px; font-weight: 600; font-family: var(--mono); letter-spacing: -.01em; }
+  .chip {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 10px;
+    background: #fff;
+  }
+  .chip-critical { color: var(--critical-ink); border-color: transparent; background: var(--critical-soft); }
+  .repo-meta { margin-left: auto; font-size: 12.5px; color: var(--faint); white-space: nowrap; }
+  .repo-meta.danger-text { color: var(--critical); font-weight: 600; }
+
+  /* alerts */
+  .alert {
+    margin-top: 12px; border: 1px solid var(--line); border-left: 4px solid var(--critical);
+    border-radius: 12px; padding: 16px 20px 18px; background: #fff;
+    box-shadow: 0 1px 2px rgba(10, 37, 64, .04);
+    transition: border-color .2s ease, opacity .2s ease;
+  }
+  .alert-meta {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    font-size: 12px; font-weight: 600; color: var(--faint); letter-spacing: .01em;
+  }
+  .alert-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-size: 11px; }
+  .alert-state.state-open { color: var(--critical-ink); background: var(--critical-soft); }
+  .alert-state.state-resolved { color: var(--pass-ink); background: var(--pass-soft); display: none; }
+  body[data-coverage="active"] .alert-public { border-left-color: var(--pass); }
+  body[data-coverage="active"] .alert-public .alert-title { color: var(--muted); }
+  body[data-coverage="active"] .alert-public .state-open { display: none; }
+  body[data-coverage="active"] .alert-public .state-resolved { display: inline-flex; }
+  .alert-title { margin: 8px 0 0; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+  .alert-body { margin: 6px 0 0; font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  .findings { width: 100%; margin-top: 14px; border-collapse: collapse; font-size: 13.5px; }
+  .findings th {
+    text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line);
+  }
+  .findings td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .findings tr:last-child td { border-bottom: 0; }
+  .findings td:last-child { color: var(--muted); padding-right: 0; }
+  .findings code { font-size: 12px; color: var(--ink); }
+  .findings th:nth-child(3), .findings td:nth-child(3) { width: 108px; }
+
+  .checklist { margin-top: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 13px 16px 14px; }
+  .checklist-title { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .checklist label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; padding: 4px 0; cursor: pointer; }
+  .checklist input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; flex: none; }
+  .checklist input[type="checkbox"]:checked + span { color: var(--faint); text-decoration: line-through; }
+
+  .alert-actions { margin-top: 15px; display: flex; gap: 9px; flex-wrap: wrap; }
+
+  /* small panels */
+  .kv { display: grid; gap: 10px; margin-top: 10px; font-size: 14px; }
+  .kv .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .kv code { font-size: 12.5px; font-weight: 500; }
+  .kv .label { color: var(--faint); font-size: 13px; }
+  .mono-link { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .panel .btn { margin-top: 14px; }
+  .watch-form { margin-top: 14px; display: flex; gap: 9px; }
+  .watch-form input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13.5px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; padding: 8px 13px;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .watch-form input::placeholder { color: var(--faint); }
+  .watch-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99, 91, 255, .18); }
+  .watch-form input:focus-visible { outline: none; }
+  .watch-form .btn { margin-top: 0; }
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(255, 255, 255, .92);
+    border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 30px rgba(10, 37, 64, .16);
+  }
+  .switcher-group { display: flex; align-items: center; gap: 2px; }
+  .switcher-group + .switcher-group { border-left: 1px solid var(--line); padding-left: 4px; }
+  .mockup-switcher button {
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    border-radius: 999px; padding: 6px 14px;
+    transition: color .12s ease, background .12s ease;
+  }
+  .mockup-switcher button:hover { color: var(--ink); }
+  .mockup-switcher button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .mockup-switcher button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .panel-repos, .panel-alerts { grid-column: span 12; }
+    .features ol { grid-template-columns: 1fr; }
+    .mini-cols { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .site-header .bar { padding: 12px 16px; row-gap: 8px; }
+    .site-nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+    .hero { padding: 64px 18px 32px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-row strong { font-size: 25px; }
+    .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 12; }
+    .desk { padding: 22px 16px 130px; }
+    .desk-header .btn { margin-left: 0; }
+    .flag-list li { grid-template-columns: 88px 1fr auto; gap: 10px; padding: 10px 12px; }
+    .findings th:nth-child(4), .findings td:nth-child(4) { display: none; }
+    .watch-form { flex-direction: column; }
+    .subscribe-banner { align-items: stretch; }
+    .subscribe-banner .btn { justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect width="18" height="18" rx="5" fill="url(#nsg)"/><path d="M5.4 9.2 8 11.8 12.8 6.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="nsg" x1="0" y1="0" x2="18" y2="18"><stop stop-color="#635bff"/><stop offset="1" stop-color="#00d4ff"/></linearGradient></defs></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <a class="btn btn-secondary btn-sm" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Sign in with GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-inner">
+      <p class="eyebrow">No spoilers in production</p>
+      <h1 id="hero-title">We watch GitHub. We read the pack they download.</h1>
+      <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#">Start 14-day trial</a>
+        <a class="btn btn-secondary" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Sign in with GitHub
+        </a>
+        <a class="price-link" href="#">Solo $29 · Team $99
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        </a>
+      </div>
+      <p class="trial-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+        <span>Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="preview" aria-label="Product preview">
+    <figure>
+      <button class="preview-button" type="button" data-open-watch aria-label="Open the watch desk screen">
+        <span class="mini" aria-hidden="true">
+          <span class="mini-chrome">
+            <span class="mark"></span>
+            <span class="word">NoSpoilers</span>
+            <span class="face"></span>
+          </span>
+          <span class="mini-body">
+            <span class="mini-head">
+              <span>
+                <span class="mini-eyebrow">Watch desk</span>
+                <span class="mini-account">emotive-impact</span>
+              </span>
+              <span class="mini-badge">Trial · 11 days left</span>
+              <span class="mini-install">Install on GitHub</span>
+            </span>
+            <span class="mini-stats">
+              <span><b>2</b> repositories</span>
+              <span><b>1</b> open alert</span>
+              <span><b>1</b> npm package</span>
+              <span><b>1</b> website</span>
+            </span>
+            <span class="mini-cols">
+              <span class="mini-panel">
+                <span class="mini-panel-title">Repositories</span>
+                <span class="mini-row"><i class="dot"></i>emotive-impact/desktop<em>Private</em></span>
+                <span class="mini-row danger"><i class="dot"></i>emotive-impact/old-cli<em>Public</em></span>
+              </span>
+              <span class="mini-panel">
+                <span class="mini-panel-title">Alerts</span>
+                <span class="mini-alert">
+                  <span class="mini-alert-meta">npm pack · 8:57 AM · open</span>
+                  <span class="mini-alert-title">@emotive/desktop@2.4.1 failed policy</span>
+                  <span class="mini-finding"><code>MAP-002</code> dist/cli.js.map <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SEC-001</code> .env <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SRC-001</code> src/auth.ts <i class="mini-sev warn">warn</i></span>
+                </span>
+              </span>
+            </span>
+          </span>
+        </span>
+      </button>
+      <figcaption>The logged-in desk during trial. Click through.</figcaption>
+    </figure>
+  </section>
+
+  <section class="features wrap" aria-label="How it works">
+    <ol>
+      <li>
+        <span class="num">01</span>
+        <h3>Watch GitHub</h3>
+        <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+      </li>
+      <li>
+        <span class="num">02</span>
+        <h3>Read the pack</h3>
+        <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+      </li>
+      <li>
+        <span class="num">03</span>
+        <h3>Fail closed in CI</h3>
+        <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="flags wrap" aria-labelledby="flags-title">
+    <h2 id="flags-title">What we flag</h2>
+    <ul class="flag-list">
+      <li><code>MAP-001</code><span class="flag-name">Source map in pack</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SEC-001</code><span class="flag-name">.env file</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SEC-003</code><span class="flag-name">Cloud credential</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>GIT-001</code><span class="flag-name">.git packed in</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>DB-001</code><span class="flag-name">Database dump</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SRC-001</code><span class="flag-name">Raw TypeScript source</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>NET-001</code><span class="flag-name">Private-network URL</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>SIZE-002</code><span class="flag-name">Payload over 50 MB</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+    </ul>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav aria-label="Legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Retention</a>
+        <a href="#">Disclosure</a>
+        <a href="#">Support</a>
+        <a href="#">Refunds</a>
+      </nav>
+      <p class="tagline">No spoilers in production.</p>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect width="18" height="18" rx="5" fill="url(#nsg2)"/><path d="M5.4 9.2 8 11.8 12.8 6.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="nsg2" x1="0" y1="0" x2="18" y2="18"><stop stop-color="#635bff"/><stop offset="1" stop-color="#00d4ff"/></linearGradient></defs></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#" aria-current="page">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <span class="account-chip"><span class="avatar" aria-hidden="true">ei</span>emotive-impact</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="desk wrap">
+    <header class="desk-header">
+      <div>
+        <p class="eyebrow">Watch desk</p>
+        <h1 class="desk-account">emotive-impact</h1>
+        <div class="coverage-line">
+          <span class="coverage-badge is-trial">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Trial · 11 days left
+          </span>
+          <span class="coverage-badge is-active">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            Team · Active
+          </span>
+          <span class="coverage-badge is-ended">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+            Coverage ended
+          </span>
+          <p class="coverage-note note-trial">Full coverage. No card yet.</p>
+          <p class="coverage-note note-ended">The bot is quiet until you subscribe.</p>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="#">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Install on GitHub
+      </a>
+    </header>
+
+    <div class="subscribe-banner">
+      <p>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+        The bot is quiet until you subscribe.
+      </p>
+      <a class="btn btn-primary" href="#">Subscribe — Solo $29 · Team $99</a>
+    </div>
+
+    <div class="desk-content">
+      <ul class="stat-row" aria-label="Coverage summary">
+        <li><strong>2</strong> <span>repositories</span></li>
+        <li><strong>1</strong> <span>open alert</span></li>
+        <li><strong>1</strong> <span>npm package</span></li>
+        <li><strong>1</strong> <span>website</span></li>
+      </ul>
+
+      <div class="desk-grid">
+        <section class="panel panel-repos" aria-labelledby="h-repos">
+          <h2 id="h-repos">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z"/></svg>
+            Repositories
+          </h2>
+          <ul class="repo-list">
+            <li>
+              <span class="status-dot ok" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/desktop</span>
+              <span class="chip">Private</span>
+              <span class="repo-meta">Checked 2 min ago</span>
+            </li>
+            <li>
+              <span class="status-dot bad" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/old-cli</span>
+              <span class="chip chip-critical">Public</span>
+              <span class="repo-meta danger-text">Went public 9:14 AM</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel panel-alerts" aria-labelledby="h-alerts">
+          <h2 id="h-alerts">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            Alerts
+          </h2>
+
+          <article class="alert alert-public">
+            <header class="alert-meta">
+              <span>Went public</span><span aria-hidden="true">·</span><time>9:14 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+              <span class="alert-state state-resolved">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                resolved by maya · exposed 4 min
+              </span>
+            </header>
+            <h3 class="alert-title">emotive-impact/old-cli flipped to public</h3>
+            <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+            <div class="alert-actions">
+              <button class="btn btn-secondary btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-secondary btn-sm" type="button">Assign</button>
+              <button class="btn btn-secondary btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+
+          <article class="alert alert-pack">
+            <header class="alert-meta">
+              <span>npm pack</span><span aria-hidden="true">·</span><time>8:57 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+            </header>
+            <h3 class="alert-title">@emotive/desktop@2.4.1 failed policy</h3>
+            <table class="findings">
+              <thead>
+                <tr><th scope="col">Rule</th><th scope="col">Path</th><th scope="col">Severity</th><th scope="col">Detail</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>MAP-002</code></td>
+                  <td><code>dist/cli.js.map</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></td>
+                  <td>Source map embeds original source</td>
+                </tr>
+                <tr>
+                  <td><code>SEC-001</code></td>
+                  <td><code>.env</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></td>
+                  <td>.env file in the pack</td>
+                </tr>
+                <tr>
+                  <td><code>SRC-001</code></td>
+                  <td><code>src/auth.ts</code></td>
+                  <td><span class="sev sev-warn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></td>
+                  <td>Raw TypeScript source</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="checklist">
+              <p class="checklist-title">Rotation checklist</p>
+              <label><input type="checkbox"> <span>Rotate the npm token</span></label>
+              <label><input type="checkbox"> <span>Purge the CDN cache</span></label>
+              <label><input type="checkbox"> <span>Publish 2.4.2 and deprecate 2.4.1</span></label>
+            </div>
+            <div class="alert-actions">
+              <button class="btn btn-secondary btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-secondary btn-sm" type="button">Assign</button>
+              <button class="btn btn-secondary btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel panel-npm" aria-labelledby="h-npm">
+          <h2 id="h-npm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            npm packages
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>@emotive/desktop</code>
+              <span class="label">registry.npmjs.org</span>
+              <span class="chip">latest 2.4.1</span>
+            </div>
+            <div class="row">
+              <span class="label">Last scan:</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>failed policy</span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" type="button">Scan latest</button>
+        </section>
+
+        <section class="panel panel-sites" aria-labelledby="h-sites">
+          <h2 id="h-sites">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
+            Production websites
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <span class="mono-link">https://app.emotive.dev</span>
+            </div>
+            <div class="row">
+              <span class="label">Last crawl:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>clean</span>
+            </div>
+          </div>
+          <form class="watch-form" action="#" onsubmit="return false">
+            <input type="url" placeholder="https://…" aria-label="Website URL to watch">
+            <button class="btn btn-secondary btn-sm" type="submit">Watch website</button>
+          </form>
+        </section>
+
+        <section class="panel panel-custody" aria-labelledby="h-custody">
+          <h2 id="h-custody">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+            Map custody
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Sentry → emotive/desktop</code>
+            </div>
+            <div class="row">
+              <span class="label">Last check:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>ok</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-notifications" aria-labelledby="h-notify">
+          <h2 id="h-notify">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/></svg>
+            Notifications
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Slack #security</code>
+            </div>
+            <div class="row">
+              <span class="label">minimum severity</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <div class="switcher-group switcher-states" role="group" aria-label="Coverage state" hidden>
+    <button type="button" data-coverage-set="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-coverage-set="active" aria-pressed="false">Active</button>
+    <button type="button" data-coverage-set="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var screens = {
+    landing: document.querySelector('main[data-screen="landing"]'),
+    watch: document.querySelector('main[data-screen="watch"]')
+  };
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll('[data-view]'));
+  var stateButtons = Array.prototype.slice.call(document.querySelectorAll('[data-coverage-set]'));
+  var stateGroup = document.querySelector('.switcher-states');
+
+  function setView(name) {
+    screens.landing.hidden = name !== 'landing';
+    screens.watch.hidden = name !== 'watch';
+    stateGroup.hidden = name !== 'watch';
+    viewButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.view === name));
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(value) {
+    document.body.dataset.coverage = value;
+    stateButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.coverageSet === value));
+    });
+  }
+
+  viewButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setView(btn.dataset.view); });
+  });
+  stateButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setCoverage(btn.dataset.coverageSet); });
+  });
+
+  var preview = document.querySelector('[data-open-watch]');
+  if (preview) {
+    preview.addEventListener('click', function () { setView('watch'); });
+  }
+})();
+</script>
+</body>
+</html>

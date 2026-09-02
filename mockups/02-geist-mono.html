@@ -1,0 +1,884 @@
+<!--
+  Direction 02 — Vercel/Geist monochrome
+  Rationale: Austere black-and-white precision — a white marketing landing, a pure-black watch
+  desk, hairline borders and big tabular numerals. A single red (#ee0000) is reserved for
+  critical, so a leak is impossible to miss; warn and pass stay grayscale but are always paired
+  with a distinct icon and text label, never color alone.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 02 Vercel/Geist monochrome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --red: #ee0000;
+    /* landing (light) */
+    --l-bg: #ffffff;
+    --l-text: #000000;
+    --l-muted: #666666;
+    --l-line: #eaeaea;
+    --l-fill: #fafafa;
+    /* watch (dark) */
+    --d-bg: #000000;
+    --d-text: #ededed;
+    --d-muted: #8f8f8f;
+    --d-dim: #7a7a7a;
+    --d-line: #333333;
+    --d-fill: #0a0a0a;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    background: var(--l-bg);
+    color: var(--l-text);
+  }
+  body:has(main[data-screen="watch"]:not([hidden])) { background: var(--d-bg); }
+  ::selection { background: #000; color: #fff; }
+  main[data-screen="watch"] ::selection { background: #fff; color: #000; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  code, kbd { font-family: var(--mono); }
+  main[data-screen="landing"] { --focus: #000; }
+  main[data-screen="watch"] { --focus: #fff; }
+  :focus-visible { outline: 2px solid var(--focus, #000); outline-offset: 2px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- chrome ---------- */
+  .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--l-line); background: rgba(255, 255, 255, .85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  main[data-screen="watch"] .site-header { border-bottom-color: var(--d-line); background: rgba(0, 0, 0, .85); }
+  .site-header .bar {
+    max-width: 1080px; margin: 0 auto; padding: 0 24px;
+    min-height: 60px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .wordmark { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15.5px; letter-spacing: -.02em; }
+  .site-nav { display: flex; align-items: center; gap: 2px; }
+  .site-nav a {
+    font-size: 14px; color: var(--l-muted); padding: 6px 10px; border-radius: var(--radius);
+    transition: color .12s ease, background .12s ease;
+  }
+  main[data-screen="watch"] .site-nav a { color: var(--d-muted); }
+  .site-nav a:hover { color: var(--l-text); background: var(--l-fill); }
+  main[data-screen="watch"] .site-nav a:hover { color: var(--d-text); background: var(--d-fill); }
+  .site-nav a[aria-current="page"] { color: var(--d-text); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 14px; color: var(--d-text);
+    border: 1px solid var(--d-line); border-radius: 999px; padding: 4px 13px 4px 5px;
+  }
+  .account-chip .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; color: #000;
+    font-size: 10px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 500;
+    border-radius: var(--radius); padding: 9px 16px;
+    border: 1px solid transparent;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+    white-space: nowrap;
+  }
+  .btn svg { flex: none; }
+  .btn-dark { background: #000; color: #fff; }
+  .btn-dark:hover { background: #262626; }
+  .btn-light { background: #fff; color: #000; }
+  .btn-light:hover { background: #e6e6e6; }
+  .btn-outline { border-color: var(--l-line); color: var(--l-text); background: transparent; }
+  .btn-outline:hover { border-color: #999; }
+  main[data-screen="watch"] .btn-outline { border-color: var(--d-line); color: var(--d-text); }
+  main[data-screen="watch"] .btn-outline:hover { border-color: #666; background: var(--d-fill); }
+  .btn-sm { font-size: 13px; padding: 6px 12px; }
+
+  /* ---------- landing hero ---------- */
+  .hero {
+    position: relative; text-align: center; padding: 104px 24px 40px; overflow: hidden;
+    background-image:
+      linear-gradient(var(--l-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--l-line) 1px, transparent 1px);
+    background-size: 72px 72px;
+    background-position: center top;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(720px 380px at 50% 0%, transparent 0%, var(--l-bg) 78%);
+  }
+  .hero > * { position: relative; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--l-muted); margin: 0 0 22px;
+  }
+  .hero h1 {
+    margin: 0 auto; max-width: 840px;
+    font-size: clamp(38px, 6vw, 72px); font-weight: 600;
+    letter-spacing: -.045em; line-height: 1.02;
+  }
+  .hero .sub {
+    margin: 24px auto 0; max-width: 660px;
+    color: var(--l-muted); font-size: 16.5px; line-height: 1.6; letter-spacing: -.01em;
+  }
+  .cta-row { margin-top: 34px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .price-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14px; color: var(--l-muted); padding: 9px 10px; border-radius: var(--radius);
+    transition: color .12s ease;
+  }
+  .price-link:hover { color: var(--l-text); }
+  .price-link svg { transition: transform .12s ease; }
+  .price-link:hover svg { transform: translateX(3px); }
+  .trial-note {
+    margin: 26px auto 0; max-width: 600px;
+    color: var(--l-muted); font-size: 13.5px; line-height: 1.6;
+    display: flex; align-items: flex-start; justify-content: center; gap: 9px; text-align: left;
+  }
+  .trial-note svg { flex: none; margin-top: 2px; }
+
+  /* ---------- landing product preview ---------- */
+  .preview { padding: 56px 24px 12px; }
+  .preview figure { margin: 0 auto; max-width: 880px; }
+  .preview-button {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--d-bg); border: 1px solid var(--d-line); border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 24px 64px -32px rgba(0, 0, 0, .35);
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .preview-button:hover { border-color: #666; transform: translateY(-2px); }
+  .preview figcaption { margin-top: 16px; text-align: center; color: var(--l-muted); font-size: 13.5px; }
+
+  /* mini watch desk (static, simplified) */
+  .mini { font-size: 10px; color: var(--d-text); display: block; }
+  .mini-chrome {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--d-line);
+  }
+  .mini-chrome .tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #fff; }
+  .mini-chrome .word { font-weight: 600; font-size: 10.5px; letter-spacing: -.01em; }
+  .mini-chrome .face { margin-left: auto; width: 13px; height: 13px; border-radius: 50%; background: #fff; }
+  .mini-body { padding: 16px 18px 18px; display: grid; gap: 12px; }
+  .mini-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mini-eyebrow { display: block; font-family: var(--mono); font-size: 7.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--d-dim); }
+  .mini-account { display: block; font-size: 13px; font-weight: 600; letter-spacing: -.02em; }
+  .mini-badge {
+    margin-left: auto; font-family: var(--mono); font-size: 8px; font-weight: 500;
+    color: #000; background: #fff; border-radius: 999px; padding: 2.5px 9px;
+    letter-spacing: .04em;
+  }
+  .mini-install { font-size: 8.5px; font-weight: 500; color: var(--d-text); border: 1px solid var(--d-line); border-radius: 4px; padding: 3px 9px; }
+  .mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--d-line); border-radius: 6px; overflow: hidden; }
+  .mini-stats span { padding: 8px 11px; font-family: var(--mono); font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--d-muted); border-right: 1px solid var(--d-line); display: grid; gap: 2px; }
+  .mini-stats span:last-child { border-right: 0; }
+  .mini-stats b { font-family: var(--font); font-size: 16px; font-weight: 600; color: #fff; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .mini-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 12px; }
+  .mini-panel { border: 1px solid var(--d-line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 7px; align-content: start; }
+  .mini-panel-title { font-family: var(--mono); font-size: 7.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--d-dim); }
+  .mini-row { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 8.5px; padding: 2px 0; }
+  .mini-row em { font-style: normal; margin-left: auto; color: var(--d-dim); font-size: 7.5px; letter-spacing: .06em; text-transform: uppercase; }
+  .mini-row .sq { width: 6px; height: 6px; flex: none; border-radius: 1px; background: #fff; }
+  .mini-row.danger .sq { background: var(--red); }
+  .mini-row.danger { color: var(--red); }
+  .mini-alert { border: 1px solid var(--d-line); border-left: 2px solid var(--red); border-radius: 4px; padding: 8px 10px; display: grid; gap: 5px; }
+  .mini-alert-meta { font-family: var(--mono); font-size: 7.5px; color: var(--d-dim); }
+  .mini-alert-title { font-size: 9.5px; font-weight: 600; letter-spacing: -.01em; }
+  .mini-finding { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 8px; color: var(--d-muted); }
+  .mini-finding code { color: var(--d-text); }
+  .mini-sev { font-style: normal; margin-left: auto; font-size: 7.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .mini-sev.crit { color: var(--red); }
+  .mini-sev.warn { color: var(--d-muted); }
+
+  /* ---------- landing features ---------- */
+  .features { padding: 84px 24px 0; }
+  .features ol {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--l-line); border-bottom: 1px solid var(--l-line);
+  }
+  .features li { padding: 26px 30px 30px; border-left: 1px solid var(--l-line); }
+  .features li:first-child { border-left: 0; padding-left: 0; }
+  .features .num {
+    display: block; font-size: 56px; font-weight: 700; letter-spacing: -.05em; line-height: 1;
+    color: #ededed; font-variant-numeric: tabular-nums;
+  }
+  .features h3 { margin: 16px 0 8px; font-size: 16.5px; font-weight: 600; letter-spacing: -.02em; }
+  .features p { margin: 0; color: var(--l-muted); font-size: 14.5px; line-height: 1.6; }
+  .features p code { font-size: 12.5px; color: var(--l-text); background: var(--l-fill); border: 1px solid var(--l-line); border-radius: 4px; padding: 1px 6px; }
+
+  /* ---------- what we flag ---------- */
+  .flags { padding: 84px 24px 0; }
+  .flags h2 { margin: 0 0 20px; font-size: 22px; font-weight: 600; letter-spacing: -.03em; }
+  .flag-list {
+    list-style: none; margin: 0; padding: 0;
+    border: 1px solid var(--l-line); border-radius: 8px; overflow: hidden; background: #fff;
+  }
+  .flag-list li {
+    display: grid; grid-template-columns: 104px 1fr auto; align-items: center; gap: 16px;
+    padding: 11px 18px; border-bottom: 1px solid var(--l-line);
+    transition: background .12s ease;
+  }
+  .flag-list li:last-child { border-bottom: 0; }
+  .flag-list li:hover { background: var(--l-fill); }
+  .flag-list code { font-size: 12.5px; font-weight: 500; }
+  .flag-name { font-size: 14px; color: var(--l-muted); }
+
+  /* severity — icon + label, never color alone */
+  .sev {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+  }
+  .sev svg { flex: none; }
+  .sev-critical { color: var(--red); }
+  .sev-warn { color: #666666; }
+  .sev-pass { color: #666666; }
+  main[data-screen="watch"] .sev-warn, main[data-screen="watch"] .sev-pass { color: var(--d-muted); }
+
+  /* ---------- landing footer ---------- */
+  .site-footer { margin-top: 96px; border-top: 1px solid var(--l-line); padding: 30px 24px 120px; }
+  .site-footer .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 0; }
+  .site-footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+  .site-footer a { font-size: 13.5px; color: var(--l-muted); transition: color .12s ease; }
+  .site-footer a:hover { color: var(--l-text); }
+  .site-footer .tagline { margin: 0 0 0 auto; font-size: 13.5px; color: var(--l-muted); }
+
+  /* ---------- watch desk ---------- */
+  main[data-screen="watch"] { background: var(--d-bg); color: var(--d-text); }
+  .desk { padding: 36px 24px 130px; }
+  .desk-header { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .desk-header .eyebrow { margin: 0 0 8px; color: var(--d-dim); }
+  .desk-account { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.03em; color: #fff; }
+  .coverage-line { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .coverage-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .06em;
+    border-radius: 999px; padding: 4px 12px; text-transform: uppercase;
+  }
+  .coverage-badge.is-trial { color: #000; background: #fff; }
+  .coverage-badge.is-active { color: #fff; background: transparent; box-shadow: inset 0 0 0 1px #4d4d4d; display: none; }
+  .coverage-badge.is-ended { color: var(--d-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--d-line); display: none; }
+  .coverage-note { display: none; font-size: 13.5px; color: var(--d-muted); margin: 0; }
+  .desk-header .btn { margin-left: auto; }
+
+  body[data-coverage="active"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="active"] .coverage-badge.is-active { display: inline-flex; }
+  body[data-coverage="ended"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="ended"] .coverage-badge.is-ended { display: inline-flex; }
+  body[data-coverage="trial"] .coverage-note.note-trial { display: inline; }
+  body[data-coverage="ended"] .coverage-note.note-ended { display: inline; }
+
+  .subscribe-banner {
+    display: none; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    margin-top: 24px; padding: 18px 22px;
+    background: #fff; color: #000; border-radius: 8px;
+  }
+  .subscribe-banner p { margin: 0; font-size: 14.5px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .subscribe-banner p svg { flex: none; }
+  .subscribe-banner .btn-dark { font-weight: 600; }
+  body[data-coverage="ended"] .subscribe-banner { display: flex; }
+
+  .desk-content { transition: opacity .25s ease, filter .25s ease; }
+  body[data-coverage="ended"] .desk-content { opacity: .32; filter: grayscale(1); }
+
+  .stat-row {
+    list-style: none; margin: 26px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--d-line); border-radius: 8px; overflow: hidden;
+  }
+  .stat-row li { padding: 18px 22px; border-right: 1px solid var(--d-line); display: grid; gap: 4px; }
+  .stat-row li:last-child { border-right: 0; }
+  .stat-row strong {
+    font-size: 44px; font-weight: 600; letter-spacing: -.04em; line-height: 1;
+    color: #fff; font-variant-numeric: tabular-nums;
+  }
+  .stat-row span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--d-muted); }
+
+  .desk-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .panel {
+    grid-column: span 12;
+    border: 1px solid var(--d-line); border-radius: 8px;
+    padding: 18px 20px 20px; background: var(--d-bg);
+    transition: border-color .15s ease;
+  }
+  .panel:hover { border-color: #4d4d4d; }
+  .panel-repos { grid-column: span 5; }
+  .panel-alerts { grid-column: span 7; }
+  .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 6; }
+  .panel > h2 {
+    margin: 0 0 8px; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--d-dim);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .repo-list { list-style: none; margin: 6px 0 0; padding: 0; }
+  .repo-list li {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 8px; border-bottom: 1px solid var(--d-line); border-radius: 4px;
+    transition: background .12s ease;
+  }
+  .repo-list li:last-child { border-bottom: 0; }
+  .repo-list li:hover { background: var(--d-fill); }
+  .status-sq { width: 8px; height: 8px; border-radius: 1px; flex: none; background: #fff; }
+  .status-sq.bad { background: var(--red); }
+  .repo-name { font-size: 13.5px; font-weight: 500; font-family: var(--mono); }
+  .chip {
+    font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--d-muted); border: 1px solid var(--d-line); border-radius: 4px; padding: 2px 8px;
+  }
+  .chip-critical { color: var(--red); border-color: rgba(238, 0, 0, .5); }
+  .repo-meta { margin-left: auto; font-size: 12.5px; color: var(--d-dim); white-space: nowrap; }
+  .repo-meta.danger-text { color: var(--red); font-weight: 500; }
+
+  /* alerts */
+  .alert {
+    margin-top: 12px; border: 1px solid var(--d-line); border-left: 2px solid var(--red);
+    border-radius: 6px; padding: 15px 18px 16px;
+    transition: border-color .2s ease, opacity .2s ease;
+  }
+  .alert-meta {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 11px; color: var(--d-dim); letter-spacing: .04em;
+  }
+  .alert-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .alert-state.state-open { color: var(--red); }
+  .alert-state.state-resolved { color: var(--d-muted); display: none; }
+  body[data-coverage="active"] .alert-public { border-left-color: #4d4d4d; }
+  body[data-coverage="active"] .alert-public .alert-title { color: var(--d-muted); }
+  body[data-coverage="active"] .alert-public .state-open { display: none; }
+  body[data-coverage="active"] .alert-public .state-resolved { display: inline-flex; }
+  .alert-title { margin: 8px 0 0; font-size: 15.5px; font-weight: 600; letter-spacing: -.015em; color: #fff; }
+  .alert-body { margin: 6px 0 0; font-size: 13.5px; color: var(--d-muted); line-height: 1.55; }
+
+  .findings { width: 100%; margin-top: 14px; border-collapse: collapse; font-size: 13px; }
+  .findings th {
+    text-align: left; font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--d-dim);
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--d-line);
+  }
+  .findings td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--d-line); vertical-align: middle; }
+  .findings tr:last-child td { border-bottom: 0; }
+  .findings td:last-child { color: var(--d-muted); padding-right: 0; }
+  .findings code { font-size: 12px; }
+  .findings th:nth-child(3), .findings td:nth-child(3) { width: 110px; }
+
+  .checklist { margin-top: 14px; border: 1px solid var(--d-line); border-radius: 6px; padding: 12px 16px 13px; background: var(--d-fill); }
+  .checklist-title { margin: 0 0 8px; font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--d-dim); }
+  .checklist label { display: flex; align-items: center; gap: 10px; font-size: 13.5px; padding: 4px 0; cursor: pointer; }
+  .checklist input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; margin: 0; flex: none; border: 1px solid #4d4d4d; border-radius: 3px; background: transparent; display: inline-grid; place-content: center; }
+  .checklist input[type="checkbox"]:checked { background: #fff; border-color: #fff; }
+  .checklist input[type="checkbox"]:checked::after { content: ""; width: 8px; height: 5px; border-left: 2px solid #000; border-bottom: 2px solid #000; transform: rotate(-45deg) translate(0, -1px); }
+  .checklist input[type="checkbox"]:checked + span { color: var(--d-dim); text-decoration: line-through; }
+
+  .alert-actions { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* small panels */
+  .kv { display: grid; gap: 10px; margin-top: 10px; font-size: 13.5px; }
+  .kv .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .kv code { font-size: 12.5px; }
+  .kv .label { color: var(--d-dim); font-size: 12.5px; font-family: var(--mono); letter-spacing: .04em; }
+  .mono-link { font-family: var(--mono); font-size: 13px; }
+  .panel .btn { margin-top: 14px; }
+  .watch-form { margin-top: 14px; display: flex; gap: 8px; }
+  .watch-form input {
+    flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; color: var(--d-text);
+    background: var(--d-fill); border: 1px solid var(--d-line); border-radius: var(--radius); padding: 8px 12px;
+  }
+  .watch-form input::placeholder { color: var(--d-dim); }
+  .watch-form input:focus-visible { outline: 2px solid #fff; outline-offset: 0; border-color: #fff; }
+  .watch-form .btn { margin-top: 0; }
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(0, 0, 0, .82);
+    border: 1px solid #4d4d4d; border-radius: 999px; padding: 4px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, .35);
+  }
+  .switcher-group { display: flex; align-items: center; gap: 2px; }
+  .switcher-group + .switcher-group { border-left: 1px solid #4d4d4d; padding-left: 4px; }
+  .mockup-switcher button {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .04em;
+    color: #999; border-radius: 999px; padding: 6px 13px;
+    transition: color .12s ease, background .12s ease;
+  }
+  .mockup-switcher button:hover { color: #fff; }
+  .mockup-switcher button[aria-pressed="true"] { background: #fff; color: #000; }
+  .mockup-switcher button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .panel-repos, .panel-alerts { grid-column: span 12; }
+    .features ol { grid-template-columns: 1fr; border-bottom: 0; }
+    .features li { border-left: 0; border-bottom: 1px solid var(--l-line); padding: 22px 0 26px; }
+    .features li:first-child { padding-top: 22px; }
+    .mini-cols { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .site-header .bar { padding: 12px 16px; row-gap: 8px; }
+    .site-nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+    .hero { padding: 72px 18px 28px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-row li:nth-child(2) { border-right: 0; }
+    .stat-row li:nth-child(1), .stat-row li:nth-child(2) { border-bottom: 1px solid var(--d-line); }
+    .stat-row strong { font-size: 34px; }
+    .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 12; }
+    .desk { padding: 24px 16px 130px; }
+    .desk-header .btn { margin-left: 0; }
+    .flag-list li { grid-template-columns: 88px 1fr auto; gap: 10px; padding: 10px 14px; }
+    .findings th:nth-child(4), .findings td:nth-child(4) { display: none; }
+    .watch-form { flex-direction: column; }
+    .subscribe-banner { align-items: stretch; }
+    .subscribe-banner .btn { justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="14" height="13" viewBox="0 0 14 13" fill="currentColor" aria-hidden="true"><path d="M7 0 14 13H0L7 0Z"/></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <a class="btn btn-dark btn-sm" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Sign in with GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <p class="eyebrow">No spoilers in production</p>
+    <h1 id="hero-title">We watch GitHub. We read the pack they download.</h1>
+    <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+    <div class="cta-row">
+      <a class="btn btn-dark" href="#">Start 14-day trial</a>
+      <a class="btn btn-outline" href="#">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Sign in with GitHub
+      </a>
+      <a class="price-link" href="#">Solo $29 · Team $99
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </a>
+    </div>
+    <p class="trial-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+      <span>Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</span>
+    </p>
+  </section>
+
+  <section class="preview" aria-label="Product preview">
+    <figure>
+      <button class="preview-button" type="button" data-open-watch aria-label="Open the watch desk screen">
+        <span class="mini" aria-hidden="true">
+          <span class="mini-chrome">
+            <span class="tri"></span>
+            <span class="word">NoSpoilers</span>
+            <span class="face"></span>
+          </span>
+          <span class="mini-body">
+            <span class="mini-head">
+              <span>
+                <span class="mini-eyebrow">Watch desk</span>
+                <span class="mini-account">emotive-impact</span>
+              </span>
+              <span class="mini-badge">Trial · 11 days left</span>
+              <span class="mini-install">Install on GitHub</span>
+            </span>
+            <span class="mini-stats">
+              <span><b>2</b> repositories</span>
+              <span><b>1</b> open alert</span>
+              <span><b>1</b> npm package</span>
+              <span><b>1</b> website</span>
+            </span>
+            <span class="mini-cols">
+              <span class="mini-panel">
+                <span class="mini-panel-title">Repositories</span>
+                <span class="mini-row"><i class="sq"></i>emotive-impact/desktop<em>Private</em></span>
+                <span class="mini-row danger"><i class="sq"></i>emotive-impact/old-cli<em>Public</em></span>
+              </span>
+              <span class="mini-panel">
+                <span class="mini-panel-title">Alerts</span>
+                <span class="mini-alert">
+                  <span class="mini-alert-meta">npm pack · 8:57 AM · open</span>
+                  <span class="mini-alert-title">@emotive/desktop@2.4.1 failed policy</span>
+                  <span class="mini-finding"><code>MAP-002</code> dist/cli.js.map <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SEC-001</code> .env <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SRC-001</code> src/auth.ts <i class="mini-sev warn">warn</i></span>
+                </span>
+              </span>
+            </span>
+          </span>
+        </span>
+      </button>
+      <figcaption>The logged-in desk during trial. Click through.</figcaption>
+    </figure>
+  </section>
+
+  <section class="features wrap" aria-label="How it works">
+    <ol>
+      <li>
+        <span class="num" aria-hidden="true">01</span>
+        <h3>Watch GitHub</h3>
+        <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+      </li>
+      <li>
+        <span class="num" aria-hidden="true">02</span>
+        <h3>Read the pack</h3>
+        <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+      </li>
+      <li>
+        <span class="num" aria-hidden="true">03</span>
+        <h3>Fail closed in CI</h3>
+        <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="flags wrap" aria-labelledby="flags-title">
+    <h2 id="flags-title">What we flag</h2>
+    <ul class="flag-list">
+      <li><code>MAP-001</code><span class="flag-name">Source map in pack</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></li>
+      <li><code>SEC-001</code><span class="flag-name">.env file</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></li>
+      <li><code>SEC-003</code><span class="flag-name">Cloud credential</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></li>
+      <li><code>GIT-001</code><span class="flag-name">.git packed in</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></li>
+      <li><code>DB-001</code><span class="flag-name">Database dump</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></li>
+      <li><code>SRC-001</code><span class="flag-name">Raw TypeScript source</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>NET-001</code><span class="flag-name">Private-network URL</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>SIZE-002</code><span class="flag-name">Payload over 50 MB</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+    </ul>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav aria-label="Legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Retention</a>
+        <a href="#">Disclosure</a>
+        <a href="#">Support</a>
+        <a href="#">Refunds</a>
+      </nav>
+      <p class="tagline">No spoilers in production.</p>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="14" height="13" viewBox="0 0 14 13" fill="currentColor" aria-hidden="true"><path d="M7 0 14 13H0L7 0Z"/></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#" aria-current="page">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <span class="account-chip"><span class="avatar" aria-hidden="true">ei</span>emotive-impact</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="desk wrap">
+    <header class="desk-header">
+      <div>
+        <p class="eyebrow">Watch desk</p>
+        <h1 class="desk-account">emotive-impact</h1>
+        <div class="coverage-line">
+          <span class="coverage-badge is-trial">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Trial · 11 days left
+          </span>
+          <span class="coverage-badge is-active">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            Team · Active
+          </span>
+          <span class="coverage-badge is-ended">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+            Coverage ended
+          </span>
+          <p class="coverage-note note-trial">Full coverage. No card yet.</p>
+          <p class="coverage-note note-ended">The bot is quiet until you subscribe.</p>
+        </div>
+      </div>
+      <a class="btn btn-light" href="#">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Install on GitHub
+      </a>
+    </header>
+
+    <div class="subscribe-banner">
+      <p>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+        The bot is quiet until you subscribe.
+      </p>
+      <a class="btn btn-dark" href="#">Subscribe — Solo $29 · Team $99</a>
+    </div>
+
+    <div class="desk-content">
+      <ul class="stat-row" aria-label="Coverage summary">
+        <li><strong>2</strong> <span>repositories</span></li>
+        <li><strong>1</strong> <span>open alert</span></li>
+        <li><strong>1</strong> <span>npm package</span></li>
+        <li><strong>1</strong> <span>website</span></li>
+      </ul>
+
+      <div class="desk-grid">
+        <section class="panel panel-repos" aria-labelledby="h-repos">
+          <h2 id="h-repos">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z"/></svg>
+            Repositories
+          </h2>
+          <ul class="repo-list">
+            <li>
+              <span class="status-sq" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/desktop</span>
+              <span class="chip">Private</span>
+              <span class="repo-meta">Checked 2 min ago</span>
+            </li>
+            <li>
+              <span class="status-sq bad" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/old-cli</span>
+              <span class="chip chip-critical">Public</span>
+              <span class="repo-meta danger-text">Went public 9:14 AM</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel panel-alerts" aria-labelledby="h-alerts">
+          <h2 id="h-alerts">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            Alerts
+          </h2>
+
+          <article class="alert alert-public">
+            <header class="alert-meta">
+              <span>Went public</span><span aria-hidden="true">·</span><time>9:14 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+              <span class="alert-state state-resolved">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                resolved by maya · exposed 4 min
+              </span>
+            </header>
+            <h3 class="alert-title">emotive-impact/old-cli flipped to public</h3>
+            <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+            <div class="alert-actions">
+              <button class="btn btn-outline btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-outline btn-sm" type="button">Assign</button>
+              <button class="btn btn-outline btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+
+          <article class="alert alert-pack">
+            <header class="alert-meta">
+              <span>npm pack</span><span aria-hidden="true">·</span><time>8:57 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+            </header>
+            <h3 class="alert-title">@emotive/desktop@2.4.1 failed policy</h3>
+            <table class="findings">
+              <thead>
+                <tr><th scope="col">Rule</th><th scope="col">Path</th><th scope="col">Severity</th><th scope="col">Detail</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>MAP-002</code></td>
+                  <td><code>dist/cli.js.map</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></td>
+                  <td>Source map embeds original source</td>
+                </tr>
+                <tr>
+                  <td><code>SEC-001</code></td>
+                  <td><code>.env</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span></td>
+                  <td>.env file in the pack</td>
+                </tr>
+                <tr>
+                  <td><code>SRC-001</code></td>
+                  <td><code>src/auth.ts</code></td>
+                  <td><span class="sev sev-warn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></td>
+                  <td>Raw TypeScript source</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="checklist">
+              <p class="checklist-title">Rotation checklist</p>
+              <label><input type="checkbox"> <span>Rotate the npm token</span></label>
+              <label><input type="checkbox"> <span>Purge the CDN cache</span></label>
+              <label><input type="checkbox"> <span>Publish 2.4.2 and deprecate 2.4.1</span></label>
+            </div>
+            <div class="alert-actions">
+              <button class="btn btn-outline btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-outline btn-sm" type="button">Assign</button>
+              <button class="btn btn-outline btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel panel-npm" aria-labelledby="h-npm">
+          <h2 id="h-npm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            npm packages
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>@emotive/desktop</code>
+              <span class="label">registry.npmjs.org</span>
+              <span class="chip">latest 2.4.1</span>
+            </div>
+            <div class="row">
+              <span class="label">Last scan:</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>failed policy</span>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" type="button">Scan latest</button>
+        </section>
+
+        <section class="panel panel-sites" aria-labelledby="h-sites">
+          <h2 id="h-sites">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
+            Production websites
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <span class="mono-link">https://app.emotive.dev</span>
+            </div>
+            <div class="row">
+              <span class="label">Last crawl:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>clean</span>
+            </div>
+          </div>
+          <form class="watch-form" action="#" onsubmit="return false">
+            <input type="url" placeholder="https://…" aria-label="Website URL to watch">
+            <button class="btn btn-outline btn-sm" type="submit">Watch website</button>
+          </form>
+        </section>
+
+        <section class="panel panel-custody" aria-labelledby="h-custody">
+          <h2 id="h-custody">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+            Map custody
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Sentry → emotive/desktop</code>
+            </div>
+            <div class="row">
+              <span class="label">Last check:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>ok</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-notifications" aria-labelledby="h-notify">
+          <h2 id="h-notify">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/></svg>
+            Notifications
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Slack #security</code>
+            </div>
+            <div class="row">
+              <span class="label">minimum severity</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/></svg>critical</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <div class="switcher-group switcher-states" role="group" aria-label="Coverage state" hidden>
+    <button type="button" data-coverage-set="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-coverage-set="active" aria-pressed="false">Active</button>
+    <button type="button" data-coverage-set="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var screens = {
+    landing: document.querySelector('main[data-screen="landing"]'),
+    watch: document.querySelector('main[data-screen="watch"]')
+  };
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll('[data-view]'));
+  var stateButtons = Array.prototype.slice.call(document.querySelectorAll('[data-coverage-set]'));
+  var stateGroup = document.querySelector('.switcher-states');
+
+  function setView(name) {
+    screens.landing.hidden = name !== 'landing';
+    screens.watch.hidden = name !== 'watch';
+    stateGroup.hidden = name !== 'watch';
+    viewButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.view === name));
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(value) {
+    document.body.dataset.coverage = value;
+    stateButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.coverageSet === value));
+    });
+  }
+
+  viewButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setView(btn.dataset.view); });
+  });
+  stateButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setCoverage(btn.dataset.coverageSet); });
+  });
+
+  var preview = document.querySelector('[data-open-watch]');
+  if (preview) {
+    preview.addEventListener('click', function () { setView('watch'); });
+  }
+})();
+</script>
+</body>
+</html>

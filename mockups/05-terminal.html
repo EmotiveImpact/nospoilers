@@ -1,0 +1,658 @@
+<!--
+  Direction 05 — Terminal / CLI
+  Rationale: NoSpoilers ships a CLI and watches CI, so a terminal-native UI speaks the
+  developer's first language — the product feels like a tool you already trust, not a
+  dashboard you have to learn. Phosphor-on-black with bracket tags and ASCII frames keeps
+  it playful and hacker-flavored while every control stays a real, readable, AA-contrast
+  button or link.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 05 Terminal / CLI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --bg: #0c0c0c;
+    --panel: #0f1511;
+    --line: #1f3d2b;
+    --line-soft: #14241a;
+    --green: #33ff66;
+    --amber: #ffb000;
+    --red: #ff4444;
+    --dim: #4d7a5c;        /* decorative only: borders, prompts, ASCII frames */
+    --mute: #6da87e;       /* AA-safe secondary text on --bg */
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 40; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+    opacity: 0.5;
+  }
+  a { color: var(--amber); text-decoration: none; }
+  a:hover { color: #ffc94d; text-decoration: underline; }
+  h1, h2, h3, p { margin: 0; }
+  button { font: inherit; cursor: pointer; }
+  input { font: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+  .mute { color: var(--mute); }
+  .dim { color: var(--dim); }
+
+  .cursor::after {
+    content: "█"; margin-left: 4px; color: var(--green);
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- bracket tags ---------- */
+  .tag { font-weight: 700; white-space: nowrap; }
+  .tag::before { content: "["; font-weight: 400; opacity: 0.75; }
+  .tag::after { content: "]"; font-weight: 400; opacity: 0.75; }
+  .tag-crit { color: var(--red); }
+  .tag-warn { color: var(--amber); }
+  .tag-pass { color: var(--green); }
+  .tag-mute { color: var(--mute); }
+
+  /* ---------- top chrome ---------- */
+  .topbar { border-bottom: 1px solid var(--line); background: rgba(12, 12, 12, 0.85); }
+  .topbar-inner {
+    max-width: 980px; margin: 0 auto; padding: 12px 20px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .wordmark {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    color: var(--green); font-weight: 700; font-size: 15px;
+  }
+  .wordmark:hover { text-decoration: none; }
+  .wordmark .ps1 { color: var(--dim); }
+  .topnav { display: flex; gap: 4px 14px; overflow-x: auto; scrollbar-width: none; flex-wrap: wrap; }
+  .topnav::-webkit-scrollbar { display: none; }
+  .topnav a { color: var(--mute); white-space: nowrap; padding: 2px 0; }
+  .topnav a::before { content: "["; color: var(--dim); }
+  .topnav a::after { content: "]"; color: var(--dim); }
+  .topnav a:hover { color: var(--amber); text-decoration: none; }
+  .topnav a:hover::before, .topnav a:hover::after { color: var(--amber); }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .account { color: var(--green); }
+  .account .k { color: var(--dim); }
+
+  /* ---------- terminal buttons ---------- */
+  .tbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; color: var(--green);
+    border: 1px solid var(--dim); border-radius: 3px;
+    padding: 6px 14px; font-weight: 500; text-decoration: none; white-space: nowrap;
+    transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .tbtn:hover { background: rgba(51, 255, 102, 0.1); border-color: var(--green); text-decoration: none; color: var(--green); }
+  .tbtn-fill { background: var(--green); border-color: var(--green); color: #06130a; font-weight: 700; }
+  .tbtn-fill:hover { background: #6bff8f; border-color: #6bff8f; color: #06130a; }
+  .tbtn-amber { color: var(--amber); border-color: #7a5a10; }
+  .tbtn-amber:hover { background: rgba(255, 176, 0, 0.1); border-color: var(--amber); color: var(--amber); }
+  .tbtn-lg { padding: 10px 20px; font-size: 15px; }
+  .tbtn-sm { padding: 3px 10px; font-size: 12px; }
+  .tbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .tbtn:disabled:hover { background: transparent; border-color: var(--dim); }
+
+  /* ---------- landing hero ---------- */
+  .hero { padding: 56px 0 32px; }
+  .cmd { color: var(--mute); margin-bottom: 20px; font-size: 13px; }
+  .cmd .ps1 { color: var(--green); font-weight: 700; margin-right: 6px; }
+  .eyebrow { color: var(--amber); font-size: 13px; letter-spacing: 0.06em; margin-bottom: 14px; }
+  .eyebrow::before { content: "## "; color: var(--dim); }
+  .hero h1 {
+    font-size: clamp(24px, 4.5vw, 40px); font-weight: 700; line-height: 1.25;
+    color: var(--green); text-shadow: 0 0 14px rgba(51, 255, 102, 0.3);
+    max-width: 760px; margin-bottom: 18px;
+  }
+  .hero .sub { color: var(--mute); font-size: 14px; max-width: 700px; margin-bottom: 26px; }
+  .cta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .cta-row .plain-link { font-size: 14px; padding: 10px 2px; }
+  .hero-note { color: var(--mute); font-size: 13px; max-width: 640px; }
+  .hero-note::before { content: "# "; color: var(--dim); }
+
+  /* ---------- panels (ASCII frames) ---------- */
+  .panel {
+    border: 1px solid var(--line); border-radius: 4px;
+    background: var(--panel); padding: 16px 16px 14px;
+  }
+  .panel-title {
+    color: var(--amber); font-size: 13px; font-weight: 700; letter-spacing: 0.08em;
+    margin: 0 0 12px;
+  }
+  .panel-title::before { content: "[ "; color: var(--dim); font-weight: 400; }
+  .panel-title::after { content: " ]"; color: var(--dim); font-weight: 400; }
+  .panel-title .count { color: var(--mute); font-weight: 400; }
+
+  /* ---------- product preview ---------- */
+  .preview-section { padding: 12px 0 44px; }
+  .preview-card {
+    display: block; color: var(--green);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .preview-card:hover { border-color: var(--green); box-shadow: 0 0 0 1px var(--green), 0 0 24px rgba(51, 255, 102, 0.15); text-decoration: none; }
+  .pv-line { display: flex; gap: 10px; flex-wrap: wrap; padding: 3px 0; font-size: 13px; align-items: baseline; }
+  .pv-line .k { color: var(--dim); min-width: 74px; }
+  .pv-line .v { color: var(--green); }
+  .pv-line.danger .v, .pv-line.danger .k { color: var(--red); }
+  .pv-divider { border-top: 1px dashed var(--line); margin: 8px 0; }
+  .pv-caption { color: var(--mute); font-size: 12px; margin-top: 10px; }
+  .pv-caption::before { content: "# "; color: var(--dim); }
+
+  /* ---------- features ---------- */
+  .features { padding: 0 0 44px; }
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .feature h3 { font-size: 14px; font-weight: 700; color: var(--green); margin: 0 0 8px; }
+  .feature .num { color: var(--dim); font-weight: 400; margin-right: 6px; }
+  .feature p { color: var(--mute); font-size: 13px; }
+  .feature code { color: var(--amber); font-size: 12px; }
+
+  /* ---------- tables ---------- */
+  .ttable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ttable th {
+    text-align: left; color: var(--dim); font-weight: 500; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 10px 8px; border-bottom: 1px solid var(--line);
+  }
+  .ttable td { padding: 8px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; color: var(--green); }
+  .ttable tbody tr:last-child td { border-bottom: 0; }
+  .ttable tbody tr:hover td { background: rgba(51, 255, 102, 0.05); }
+  .ttable tr.danger td { color: var(--red); }
+  .ttable .sub-cell { color: var(--mute); }
+
+  /* ---------- footer ---------- */
+  .foot { border-top: 1px solid var(--line); padding: 24px 0 120px; }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; }
+  .foot-links a { font-size: 13px; }
+  .foot .tagline { color: var(--mute); font-size: 13px; }
+
+  /* ---------- watch desk ---------- */
+  .desk-head { padding: 28px 0 18px; }
+  .desk-readout { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin-top: 14px; font-size: 14px; }
+  .desk-readout .k { color: var(--dim); }
+  .desk-readout .v { color: var(--green); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cov-note { color: var(--mute); font-size: 13px; display: none; }
+  .cov-note::before { content: "# "; color: var(--dim); }
+  body[data-coverage="trial"] .cov-note.trial { display: inline; }
+  .cov-badge { display: none; }
+  body[data-coverage="trial"] .cov-badge.trial { display: inline; }
+  body[data-coverage="active"] .cov-badge.active { display: inline; }
+  body[data-coverage="ended"] .cov-badge.ended { display: inline; }
+  .desk-actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .subscribe-banner {
+    display: none; align-items: center; gap: 14px; flex-wrap: wrap;
+    border: 1px solid var(--red); border-left-width: 4px; border-radius: 4px;
+    background: rgba(255, 68, 68, 0.07); padding: 14px 16px; margin-bottom: 18px;
+  }
+  body[data-coverage="ended"] .subscribe-banner { display: flex; }
+  .subscribe-banner p { color: var(--red); font-size: 13px; font-weight: 700; }
+  .subscribe-banner p::before { content: "! "; }
+
+  .desk { transition: opacity 0.2s ease, filter 0.2s ease; padding-bottom: 120px; }
+  body[data-coverage="ended"] .desk { opacity: 0.45; filter: saturate(0.5); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .stat { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); padding: 10px 14px; }
+  .stat .num { font-size: 24px; font-weight: 700; color: var(--green); text-shadow: 0 0 10px rgba(51, 255, 102, 0.35); }
+  .stat .lbl { color: var(--mute); font-size: 12px; margin-left: 8px; }
+  .stat.hot { border-color: var(--red); }
+  .stat.hot .num { color: var(--red); text-shadow: 0 0 10px rgba(255, 68, 68, 0.4); }
+
+  .desk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .desk-grid .span-all { grid-column: 1 / -1; }
+
+  /* alerts */
+  .alert { padding: 12px 0; border-top: 1px solid var(--line-soft); }
+  .alert:first-of-type { border-top: 0; padding-top: 0; }
+  .alert-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; font-size: 13px; }
+  .alert-top .kind { color: var(--amber); }
+  .alert-top time { color: var(--dim); font-size: 12px; }
+  .alert h3 { font-size: 14px; font-weight: 700; color: var(--green); margin: 0 0 4px; }
+  .alert > p { color: var(--mute); font-size: 13px; }
+  .alert-open { display: inline-flex; align-items: center; gap: 10px; }
+  .alert-resolved { display: none; align-items: center; gap: 10px; }
+  .alert-resolved .res-note { color: var(--mute); font-size: 12px; }
+  body[data-coverage="active"] #alert-public .alert-open { display: none; }
+  body[data-coverage="active"] #alert-public .alert-resolved { display: inline-flex; }
+  body[data-coverage="active"] #alert-public .alert-actions { display: none; }
+  .alert-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+  .findings { margin-top: 10px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+
+  .checklist {
+    margin-top: 12px; border: 1px solid var(--line); border-radius: 4px;
+    padding: 10px 14px; background: rgba(51, 255, 102, 0.03);
+  }
+  .checklist .checklist-title { color: var(--dim); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .checklist label { display: flex; align-items: center; gap: 10px; padding: 3px 0; color: var(--mute); font-size: 13px; cursor: pointer; }
+  .checklist input {
+    appearance: none; width: 15px; height: 15px; margin: 0; flex: none;
+    border: 1px solid var(--dim); border-radius: 2px; background: transparent;
+    position: relative; cursor: pointer;
+  }
+  .checklist input:hover { border-color: var(--green); }
+  .checklist input:checked { border-color: var(--green); }
+  .checklist input:checked::after {
+    content: "x"; position: absolute; inset: 0; color: var(--green);
+    font-size: 11px; font-weight: 700; line-height: 13px; text-align: center;
+  }
+  .checklist input:checked + span { color: var(--dim); text-decoration: line-through; }
+  .checklist input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .kvline { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; font-size: 13px; padding: 4px 0; }
+  .kvline .k { color: var(--dim); }
+  .kvline .v { color: var(--green); }
+  .kvline .tail { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .watch-form { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .watch-form .ps1 { color: var(--dim); }
+  .watch-form input {
+    flex: 1; min-width: 0; background: #0a0f0b; border: 1px solid var(--line);
+    color: var(--green); padding: 7px 12px; border-radius: 3px;
+  }
+  .watch-form input::placeholder { color: var(--mute); }
+  .watch-form input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  .watch-form input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 50; display: flex; align-items: center; gap: 6px;
+    background: rgba(12, 12, 12, 0.92); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px; backdrop-filter: blur(6px);
+    max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none;
+  }
+  .mockup-switcher::-webkit-scrollbar { display: none; }
+  .switcher-group { display: flex; gap: 2px; }
+  .switcher-group + .switcher-group { border-left: 1px solid var(--line); padding-left: 6px; }
+  .mockup-switcher button {
+    border: 0; background: transparent; color: var(--mute);
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    padding: 5px 12px; border-radius: 3px; white-space: nowrap;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  .mockup-switcher button:hover { color: var(--green); background: rgba(51, 255, 102, 0.08); }
+  .mockup-switcher [data-view][aria-pressed="true"] { background: var(--green); color: #06130a; font-weight: 700; }
+  .mockup-switcher [data-state][aria-pressed="true"] { background: var(--amber); color: #1a1000; font-weight: 700; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 860px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .desk-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .topbar-inner { gap: 8px 14px; }
+    .topnav { order: 3; width: 100%; }
+    .hero { padding: 36px 0 24px; }
+    .desk-readout { grid-template-columns: 1fr; gap: 2px; }
+    .ttable th:nth-child(4), .ttable td:nth-child(4) { display: none; }
+    .kvline .tail { margin-left: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    .cursor::after { animation: none; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<main data-screen="landing" id="landing">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="wordmark cursor" href="#landing" aria-label="NoSpoilers home"><span class="ps1" aria-hidden="true">$</span>NoSpoilers</a>
+      <nav class="topnav" aria-label="Product">
+        <a href="#product">Product</a>
+        <a href="#watch">Watch</a>
+        <a href="#scan">Scan</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#docs">Docs</a>
+      </nav>
+      <div class="topbar-right">
+        <a class="tbtn" href="#signin">Sign in with GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero wrap" aria-labelledby="hero-h">
+    <p class="cmd"><span class="ps1" aria-hidden="true">$</span>nospoilers watch --github --packs</p>
+    <p class="eyebrow">No spoilers in production</p>
+    <h1 id="hero-h">We watch GitHub. We read the pack they download.</h1>
+    <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+    <div class="cta-row">
+      <a class="tbtn tbtn-fill tbtn-lg" href="#trial">Start 14-day trial</a>
+      <a class="tbtn tbtn-lg" href="#signin">Sign in with GitHub</a>
+      <a class="plain-link" href="#pricing">Solo $29 · Team $99</a>
+    </div>
+    <p class="hero-note">Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</p>
+  </section>
+
+  <section class="preview-section wrap" aria-label="Product preview">
+    <a class="preview-card panel" href="#watch" data-view="watch" aria-label="Open the watch desk screen">
+      <span class="pv-line"><span class="k">$</span><span class="v mute">nospoilers status</span></span>
+      <span class="pv-divider" aria-hidden="true"></span>
+      <span class="pv-line"><span class="k">account</span><span class="v">emotive-impact</span><span class="tag tag-warn">Trial · 11 days left</span></span>
+      <span class="pv-line"><span class="k">coverage</span><span class="v">2 repositories · 1 open alert · 1 npm package · 1 website</span></span>
+      <span class="pv-divider" aria-hidden="true"></span>
+      <span class="pv-line"><span class="tag tag-pass">ok</span><span class="v">emotive-impact/desktop</span><span class="k">private · checked 2 min ago</span></span>
+      <span class="pv-line danger"><span class="tag tag-crit">!!</span><span class="v">emotive-impact/old-cli</span><span class="k">public · went public 9:14 AM</span></span>
+      <span class="pv-line danger"><span class="tag tag-crit">CRIT</span><span class="v">@emotive/desktop@2.4.1</span><span class="k">failed policy</span></span>
+    </a>
+    <p class="pv-caption">The logged-in desk during trial. Click through.</p>
+  </section>
+
+  <section class="features wrap" aria-label="Features">
+    <div class="features-grid">
+      <article class="feature panel">
+        <h3><span class="num">01</span>Watch GitHub</h3>
+        <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+      </article>
+      <article class="feature panel">
+        <h3><span class="num">02</span>Read the pack</h3>
+        <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+      </article>
+      <article class="feature panel">
+        <h3><span class="num">03</span>Fail closed in CI</h3>
+        <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="flags wrap" aria-labelledby="flags-h">
+    <div class="panel">
+      <h2 class="panel-title" id="flags-h">What we flag <span class="count">· 8 rules</span></h2>
+      <table class="ttable">
+        <thead>
+          <tr><th scope="col">Code</th><th scope="col">Finding</th><th scope="col">Severity</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MAP-001</td><td class="sub-cell">Source map in pack</td><td><span class="tag tag-crit">critical</span></td></tr>
+          <tr><td>SEC-001</td><td class="sub-cell">.env file</td><td><span class="tag tag-crit">critical</span></td></tr>
+          <tr><td>SEC-003</td><td class="sub-cell">Cloud credential</td><td><span class="tag tag-crit">critical</span></td></tr>
+          <tr><td>GIT-001</td><td class="sub-cell">.git packed in</td><td><span class="tag tag-crit">critical</span></td></tr>
+          <tr><td>DB-001</td><td class="sub-cell">Database dump</td><td><span class="tag tag-crit">critical</span></td></tr>
+          <tr><td>SRC-001</td><td class="sub-cell">Raw TypeScript source</td><td><span class="tag tag-warn">warn</span></td></tr>
+          <tr><td>NET-001</td><td class="sub-cell">Private-network URL</td><td><span class="tag tag-warn">warn</span></td></tr>
+          <tr><td>SIZE-002</td><td class="sub-cell">Payload over 50 MB</td><td><span class="tag tag-warn">warn</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <nav class="foot-links" aria-label="Legal">
+        <a href="#privacy">Privacy</a>
+        <a href="#terms">Terms</a>
+        <a href="#retention">Retention</a>
+        <a href="#disclosure">Disclosure</a>
+        <a href="#support">Support</a>
+        <a href="#refunds">Refunds</a>
+      </nav>
+      <p class="tagline cursor">No spoilers in production.</p>
+    </div>
+  </footer>
+</main>
+
+<main data-screen="watch" id="watch" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="wordmark cursor" href="#landing" aria-label="NoSpoilers home"><span class="ps1" aria-hidden="true">$</span>NoSpoilers</a>
+      <nav class="topnav" aria-label="Product">
+        <a href="#product">Product</a>
+        <a href="#watch">Watch</a>
+        <a href="#scan">Scan</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#docs">Docs</a>
+      </nav>
+      <div class="topbar-right">
+        <span class="account"><span class="k">account:</span> emotive-impact</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="desk-head">
+      <p class="cmd"><span class="ps1" aria-hidden="true">$</span>nospoilers status --account emotive-impact</p>
+      <p class="eyebrow">Watch desk</p>
+      <div class="desk-readout">
+        <span class="k">account</span>
+        <span class="v">emotive-impact</span>
+        <span class="k">coverage</span>
+        <span class="v">
+          <span class="cov-badge trial tag tag-warn">Trial · 11 days left</span>
+          <span class="cov-badge active tag tag-pass">Team · Active</span>
+          <span class="cov-badge ended tag tag-crit">Coverage ended</span>
+          <span class="cov-note trial">Full coverage. No card yet.</span>
+        </span>
+      </div>
+      <div class="desk-actions">
+        <button type="button" class="tbtn">Install on GitHub</button>
+      </div>
+    </div>
+
+    <div class="subscribe-banner" role="status">
+      <p>The bot is quiet until you subscribe.</p>
+      <button type="button" class="tbtn tbtn-fill tbtn-lg">Subscribe — Solo $29 · Team $99</button>
+    </div>
+
+    <div class="desk">
+      <section class="stats" aria-label="Coverage summary">
+        <div class="stat"><span class="num">2</span><span class="lbl">repositories</span></div>
+        <div class="stat hot"><span class="num">1</span><span class="lbl">open alert</span></div>
+        <div class="stat"><span class="num">1</span><span class="lbl">npm package</span></div>
+        <div class="stat"><span class="num">1</span><span class="lbl">website</span></div>
+      </section>
+
+      <div class="desk-grid">
+        <section class="panel span-all" aria-labelledby="repos-h">
+          <h2 class="panel-title" id="repos-h">Repositories <span class="count">· 2</span></h2>
+          <table class="ttable">
+            <thead>
+              <tr><th scope="col">St</th><th scope="col">Repository</th><th scope="col">Visibility</th><th scope="col">Last check</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tag tag-pass">ok</span></td>
+                <td>emotive-impact/desktop</td>
+                <td class="sub-cell">Private</td>
+                <td class="sub-cell">Checked 2 min ago</td>
+              </tr>
+              <tr class="danger">
+                <td><span class="tag tag-crit">!!</span></td>
+                <td>emotive-impact/old-cli</td>
+                <td>Public</td>
+                <td>Went public 9:14 AM</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="panel span-all" aria-labelledby="alerts-h">
+          <h2 class="panel-title" id="alerts-h">Alerts <span class="count">· 1 open</span></h2>
+
+          <article class="alert" id="alert-public" aria-labelledby="alert-public-h">
+            <div class="alert-top">
+              <span class="alert-open"><span class="tag tag-crit">open</span></span>
+              <span class="alert-resolved"><span class="tag tag-pass">resolved</span><span class="res-note">resolved by maya · exposed 4 min</span></span>
+              <span class="kind">Went public</span>
+              <time>9:14 AM</time>
+            </div>
+            <h3 id="alert-public-h">emotive-impact/old-cli flipped to public</h3>
+            <p>Visibility job finished in 400ms. No pack attached to this event.</p>
+            <div class="alert-actions">
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Acknowledge</button>
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Assign</button>
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Resolve</button>
+            </div>
+          </article>
+
+          <article class="alert" id="alert-pack" aria-labelledby="alert-pack-h">
+            <div class="alert-top">
+              <span class="alert-open"><span class="tag tag-crit">open</span></span>
+              <span class="kind">npm pack</span>
+              <time>8:57 AM</time>
+            </div>
+            <h3 id="alert-pack-h">@emotive/desktop@2.4.1 failed policy</h3>
+            <div class="findings">
+              <table class="ttable">
+                <thead>
+                  <tr><th scope="col">Rule</th><th scope="col">Path</th><th scope="col">Severity</th><th scope="col">Note</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>MAP-002</td>
+                    <td class="sub-cell">dist/cli.js.map</td>
+                    <td><span class="tag tag-crit">critical</span></td>
+                    <td class="sub-cell">Source map embeds original source</td>
+                  </tr>
+                  <tr>
+                    <td>SEC-001</td>
+                    <td class="sub-cell">.env</td>
+                    <td><span class="tag tag-crit">critical</span></td>
+                    <td class="sub-cell">.env file in the pack</td>
+                  </tr>
+                  <tr>
+                    <td>SRC-001</td>
+                    <td class="sub-cell">src/auth.ts</td>
+                    <td><span class="tag tag-warn">warn</span></td>
+                    <td class="sub-cell">Raw TypeScript source</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="checklist">
+              <p class="checklist-title">Rotation checklist</p>
+              <label><input type="checkbox"> <span>Rotate the npm token</span></label>
+              <label><input type="checkbox"> <span>Purge the CDN cache</span></label>
+              <label><input type="checkbox"> <span>Publish 2.4.2 and deprecate 2.4.1</span></label>
+            </div>
+            <div class="alert-actions">
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Acknowledge</button>
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Assign</button>
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Resolve</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel" aria-labelledby="npm-h">
+          <h2 class="panel-title" id="npm-h">npm packages <span class="count">· 1</span></h2>
+          <div class="kvline">
+            <span class="v">@emotive/desktop</span>
+            <span class="k">registry.npmjs.org</span>
+          </div>
+          <div class="kvline">
+            <span class="k">latest:</span><span class="v">2.4.1</span>
+            <span class="tail">
+              <span class="k">Last scan:</span>
+              <span class="tag tag-crit">failed policy</span>
+              <button type="button" class="tbtn tbtn-sm" data-cov-action>Scan latest</button>
+            </span>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="sites-h">
+          <h2 class="panel-title" id="sites-h">Production websites <span class="count">· 1</span></h2>
+          <div class="kvline">
+            <span class="v">https://app.emotive.dev</span>
+            <span class="tail">
+              <span class="k">Last crawl:</span>
+              <span class="tag tag-pass">clean</span>
+            </span>
+          </div>
+          <form class="watch-form" action="#watch-site" method="get">
+            <span class="ps1" aria-hidden="true">&gt;</span>
+            <input type="url" placeholder="https://…" aria-label="Website URL to watch" data-cov-action>
+            <button type="submit" class="tbtn tbtn-sm" data-cov-action>Watch website</button>
+          </form>
+        </section>
+
+        <section class="panel" aria-labelledby="maps-h">
+          <h2 class="panel-title" id="maps-h">Map custody</h2>
+          <div class="kvline">
+            <span class="v">Sentry → emotive/desktop</span>
+            <span class="tail">
+              <span class="k">Last check:</span>
+              <span class="tag tag-pass">ok</span>
+            </span>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="notif-h">
+          <h2 class="panel-title" id="notif-h">Notifications</h2>
+          <div class="kvline">
+            <span class="v">Slack #security</span>
+            <span class="tail">
+              <span class="k">minimum severity</span>
+              <span class="tag tag-crit">critical</span>
+            </span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <div class="switcher-group" id="switcher-states" role="group" aria-label="Coverage state" hidden>
+    <button type="button" data-state="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-state="active" aria-pressed="false">Active</button>
+    <button type="button" data-state="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var screens = document.querySelectorAll('main[data-screen]');
+  var viewButtons = document.querySelectorAll('.mockup-switcher [data-view]');
+  var stateButtons = document.querySelectorAll('.mockup-switcher [data-state]');
+  var stateGroup = document.getElementById('switcher-states');
+  var covActions = document.querySelectorAll('[data-cov-action]');
+
+  function showScreen(name) {
+    screens.forEach(function (s) { s.hidden = s.dataset.screen !== name; });
+    viewButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === name)); });
+    stateGroup.hidden = name !== 'watch';
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(state) {
+    document.body.dataset.coverage = state;
+    stateButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.state === state)); });
+    covActions.forEach(function (el) { el.disabled = state === 'ended'; });
+  }
+
+  document.querySelectorAll('[data-view]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      showScreen(el.dataset.view);
+    });
+  });
+  stateButtons.forEach(function (b) {
+    b.addEventListener('click', function () { setCoverage(b.dataset.state); });
+  });
+})();
+</script>
+</body>
+</html>

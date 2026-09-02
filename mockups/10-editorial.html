@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Direction 10 — Editorial / print
+  Rationale: the watch desk is stressful material, so this direction sets it like a
+  well-made page — paper, ink hairlines, a serif display face, and a single red used
+  the way an editor uses a red pen. Numbered sections, an annotated findings column
+  with margin notes, and a drop cap give an anxious developer a calm reading order:
+  headline first, severity in the margin, next action always underlined.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>NoSpoilers mockup — 10 Editorial / print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f5f1e8;
+    --paper-2:#faf7ef;
+    --ink:#111111;
+    --ink-2:#4a463c;
+    --ink-3:#6e6858;
+    --rule:#111111;
+    --rule-soft:rgba(17,17,17,.22);
+    --red:#c0341d;
+    --amber:#8a5a00;
+    --green:#166534;
+    --red-wash:rgba(192,52,29,.06);
+    --serif:"Playfair Display",Georgia,"Times New Roman",serif;
+    --body:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--body);font-size:16.5px;line-height:1.6;
+    padding-bottom:130px;
+  }
+  ::selection{background:var(--red);color:var(--paper)}
+  a{color:inherit}
+  code{font-family:var(--mono);font-size:.86em}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+  :focus-visible{outline:2px solid var(--red);outline-offset:2px}
+
+  .micro{font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;
+    border:1px solid var(--ink);background:transparent;color:var(--ink);
+    font-family:var(--body);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    padding:11px 17px;transition:background .15s ease,color .15s ease,border-color .15s ease;
+  }
+  .btn:hover{background:var(--ink);color:var(--paper)}
+  .btn-solid{background:var(--ink);color:var(--paper)}
+  .btn-solid:hover{background:var(--red);border-color:var(--red);color:var(--paper)}
+  .btn-sm{padding:8px 13px;font-size:10px}
+
+  /* ---------- chrome ---------- */
+  .chrome{border-bottom:1px solid var(--rule)}
+  .chrome-inner{display:flex;align-items:center;gap:26px;padding:16px 0;flex-wrap:wrap}
+  .wordmark{
+    font-family:var(--serif);font-weight:900;font-size:23px;letter-spacing:-.01em;
+    text-decoration:none;
+  }
+  .chrome-nav{display:flex;gap:20px;flex-wrap:wrap}
+  .chrome-nav a{
+    text-decoration:none;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-2);padding:4px 0;border-bottom:1px solid transparent;
+    transition:color .15s ease,border-color .15s ease;
+  }
+  .chrome-nav a:hover{color:var(--ink);border-bottom-color:var(--red)}
+  .chrome-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .account{
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .account::before{content:"";width:9px;height:9px;border:1px solid var(--ink)}
+
+  /* ---------- landing: hero ---------- */
+  .hero{padding:64px 0 50px;border-bottom:1px solid var(--rule)}
+  .eyebrow{
+    display:flex;align-items:center;gap:14px;margin:0 0 26px;
+    font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--red);font-weight:700;
+  }
+  .eyebrow::after{content:"";height:1px;width:64px;background:var(--red)}
+  h1{
+    font-family:var(--serif);font-weight:800;
+    font-size:clamp(2.5rem,5.6vw,4.4rem);line-height:1.04;letter-spacing:-.015em;
+    margin:0 0 30px;max-width:16ch;
+  }
+  h1 em{font-style:italic;font-weight:600}
+  .sub{max-width:64ch;font-size:17.5px;margin:0 0 32px}
+  .sub::first-letter{
+    font-family:var(--serif);font-weight:800;font-size:3.15em;line-height:.78;
+    float:left;padding:7px 10px 0 0;color:var(--red);
+  }
+  .cta-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:0 0 24px}
+  .cta-primary{padding:15px 26px}
+  .cta-link{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
+    text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;
+  }
+  .cta-link:hover{color:var(--red)}
+  .price{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+  .note{
+    margin:0;max-width:58ch;font-style:italic;font-size:14.5px;color:var(--ink-2);
+    border-left:2px solid var(--red);padding-left:14px;
+  }
+
+  /* ---------- landing: product preview plate ---------- */
+  .plate{margin:54px 0 0}
+  .plate-frame{border:1px solid var(--rule);padding:8px}
+  .plate-link{
+    display:block;text-decoration:none;color:inherit;
+    border:1px solid var(--rule-soft);background:var(--paper-2);padding:22px 24px;
+    transition:border-color .15s ease;
+  }
+  .plate-link:hover{border-color:var(--ink)}
+  .mini{font-size:13px}
+  .mini-top{
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+    border-bottom:1px solid var(--rule);padding-bottom:11px;margin-bottom:16px;
+  }
+  .mini-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+  .mini-badge{
+    display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ink);
+    padding:4px 10px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  }
+  .mini-badge::before{content:"";width:7px;height:7px;background:var(--green)}
+  .mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+  .mini-stat b{font-family:var(--serif);font-weight:800;font-size:26px;display:block;line-height:1.1}
+  .mini-stat .red{color:var(--red)}
+  .mini-stat span{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .mini-row{
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    border-top:1px solid var(--rule-soft);padding:9px 0;
+  }
+  .mini-row .m{font-style:italic;color:var(--ink-2)}
+  .mini-row .danger{color:var(--red);font-weight:700;font-style:normal}
+  .plate figcaption{
+    text-align:center;font-style:italic;color:var(--ink-2);font-size:14px;padding:14px 0 6px;
+  }
+
+  /* ---------- landing: features ---------- */
+  .features{border-bottom:1px solid var(--rule);padding:54px 0}
+  .features ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:38px}
+  .features li{border-top:1px solid var(--rule);padding-top:18px}
+  .f-num{
+    display:block;font-family:var(--serif);font-style:italic;font-weight:600;
+    color:var(--red);font-size:30px;margin-bottom:12px;
+  }
+  .features h3{margin:0 0 10px;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
+  .features p{margin:0;color:var(--ink-2);font-size:15px}
+  .features code{font-size:.82em}
+
+  /* ---------- landing: what we flag ---------- */
+  .flags{padding:54px 0}
+  .flags-head{display:flex;align-items:baseline;gap:16px;margin-bottom:10px}
+  .flags-head h2{margin:0;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+  .flags-head::after{content:"";flex:1;height:1px;background:var(--rule)}
+  .flag-list{list-style:none;margin:0;padding:0}
+  .flag-list li{
+    display:grid;grid-template-columns:1fr auto;gap:16px;align-items:baseline;
+    padding:11px 0;border-bottom:1px solid var(--rule-soft);
+  }
+  .flag-id code{margin-right:12px;font-weight:700}
+  .sev{
+    display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  }
+  .sev::before{content:"";width:8px;height:8px;background:currentColor;flex:none}
+  .sev-critical{color:var(--red)}
+  .sev-warn{color:var(--amber)}
+  .sev-pass{color:var(--green)}
+
+  /* ---------- landing: footer ---------- */
+  .site-footer{border-top:1px solid var(--rule);padding:28px 0 12px}
+  .foot-links{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px}
+  .foot-links a{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
+    text-decoration:none;border-bottom:1px solid transparent;padding-bottom:2px;
+  }
+  .foot-links a:hover{color:var(--ink);border-bottom-color:var(--red)}
+  .colophon{font-family:var(--serif);font-style:italic;font-weight:600;font-size:23px;margin:0}
+
+  /* ---------- watch desk: header ---------- */
+  .desk-head{padding:46px 0 28px;display:grid;grid-template-columns:1fr auto;gap:26px;align-items:end}
+  .desk-eyebrow{
+    display:flex;align-items:center;gap:14px;margin:0 0 14px;
+    font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--red);font-weight:700;
+  }
+  .desk-eyebrow::after{content:"";height:1px;width:48px;background:var(--red)}
+  .desk-account{
+    font-family:var(--serif);font-weight:800;letter-spacing:-.01em;
+    font-size:clamp(28px,4vw,40px);margin:0;line-height:1.1;
+  }
+  .desk-side{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .cov-badge{
+    display:none;align-items:center;gap:9px;border:1px solid var(--ink);
+    padding:8px 14px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  }
+  .cov-badge::before{content:"";width:8px;height:8px;flex:none}
+  .cov-trial::before{background:var(--green)}
+  .cov-active{border-color:var(--green);color:var(--green)}
+  .cov-active::before{background:var(--green)}
+  .cov-ended{border-color:var(--red);color:var(--red)}
+  .cov-ended::before{background:var(--red)}
+  body[data-coverage="trial"] .cov-trial{display:inline-flex}
+  body[data-coverage="active"] .cov-active{display:inline-flex}
+  body[data-coverage="ended"] .cov-ended{display:inline-flex}
+  .cov-note{display:none;margin:0;font-style:italic;font-size:14px;color:var(--ink-2)}
+  body[data-coverage="trial"] .cov-note-trial{display:block}
+  body[data-coverage="ended"] .cov-note-ended{display:block}
+
+  /* ---------- watch desk: subscribe insert (ended) ---------- */
+  .subscribe{display:none;margin:0 0 34px;border:1px solid var(--red);background:var(--red-wash);padding:30px 28px;text-align:center}
+  body[data-coverage="ended"] .subscribe{display:block}
+  .subscribe a{
+    font-family:var(--serif);font-weight:800;font-size:clamp(20px,3vw,28px);
+    color:var(--red);text-decoration:none;border-bottom:2px solid var(--red);
+    padding-bottom:2px;transition:background .15s ease,color .15s ease;
+  }
+  .subscribe a:hover{background:var(--red);color:var(--paper)}
+
+  /* ---------- watch desk: muted content when ended ---------- */
+  .desk{transition:opacity .2s ease,filter .2s ease}
+  body[data-coverage="ended"] .desk{opacity:.5;filter:grayscale(.45)}
+
+  /* ---------- watch desk: stats ---------- */
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  }
+  .stat{padding:18px 18px 16px;border-left:1px solid var(--rule-soft)}
+  .stat:first-child{border-left:0}
+  .stat b{font-family:var(--serif);font-weight:800;font-size:34px;display:block;line-height:1.1}
+  .stat span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+  .stat-alert b{color:var(--red)}
+
+  /* ---------- watch desk: sections ---------- */
+  .desk-section{padding:32px 0;border-bottom:1px solid var(--rule-soft)}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+  .sec-no{font-family:var(--serif);font-style:italic;font-weight:600;color:var(--red);font-size:16px}
+  .sec-head h3{margin:0;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+  .sec-head::after{content:"";flex:1;height:1px;background:var(--rule-soft)}
+
+  .row{
+    display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+    padding:13px 0;border-bottom:1px solid var(--rule-soft);
+  }
+  .row:last-child{border-bottom:0}
+  .row-name{font-weight:700;font-size:16.5px}
+  .row-meta{margin-left:auto;font-style:italic;color:var(--ink-2);font-size:14px;text-align:right}
+  .tag{
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    border:1px solid var(--ink-3);color:var(--ink-2);padding:3px 9px;white-space:nowrap;
+  }
+  .tag-danger{border-color:var(--red);color:var(--red);font-weight:700}
+  .row-danger{box-shadow:inset 2px 0 0 var(--red);background:var(--red-wash);padding-left:14px}
+  .row-meta-danger{color:var(--red);font-weight:700;font-style:normal}
+
+  /* ---------- watch desk: alerts ---------- */
+  .alert{border:1px solid var(--rule);background:var(--paper-2);padding:24px 26px;margin-bottom:22px}
+  .alert:last-child{margin-bottom:0}
+  .kicker{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  }
+  .k-kind{color:var(--ink);font-weight:700}
+  .k-state-open{display:inline-flex;align-items:center;gap:7px;color:var(--red);font-weight:700}
+  .k-state-open::before{content:"";width:8px;height:8px;background:var(--red)}
+  .k-state-res{display:none;align-items:center;gap:7px;color:var(--green);font-weight:700}
+  .k-state-res::before{content:"";width:8px;height:8px;background:var(--green)}
+  body[data-coverage="active"] .alert-public .k-state-open{display:none}
+  body[data-coverage="active"] .alert-public .k-state-res{display:inline-flex}
+  body[data-coverage="active"] .alert-public{opacity:.72}
+  .alert h4{font-family:var(--serif);font-weight:800;font-size:21px;margin:0 0 8px;letter-spacing:-.005em}
+  .alert-body{margin:0;color:var(--ink-2);font-size:15px}
+
+  .findings{margin:18px 0 0;border-top:1px solid var(--rule-soft)}
+  .finding{
+    display:grid;grid-template-columns:1fr 230px;gap:28px;
+    padding:13px 0;border-bottom:1px solid var(--rule-soft);
+  }
+  .f-main{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .f-code{font-family:var(--mono);font-size:13px;font-weight:700}
+  .f-path{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+  .f-note{
+    margin:0;font-style:italic;font-size:13.5px;color:var(--ink-2);
+    border-left:1px solid var(--rule-soft);padding-left:16px;
+  }
+
+  .rotation{margin-top:20px}
+  .rotation h5{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2)}
+  .rotation ul{list-style:none;margin:0;padding:0}
+  .rotation li{display:flex;gap:12px;align-items:baseline;padding:6px 0;font-size:15px}
+  .rotation li::before{
+    content:"";width:10px;height:10px;border:1px solid var(--ink);flex:none;transform:translateY(1px);
+  }
+
+  .actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+
+  /* ---------- watch desk: data lines (npm, sites, custody, notifications) ---------- */
+  .line{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:6px 0}
+  .line .mono{font-family:var(--mono);font-size:14px}
+  .line .name{font-weight:700}
+  .line .dim{font-style:italic;color:var(--ink-2);font-size:14px}
+  .line .right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .watch-form{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .watch-form input{
+    flex:1;min-width:220px;font-family:var(--mono);font-size:13.5px;
+    padding:11px 13px;border:1px solid var(--ink);background:transparent;color:var(--ink);
+  }
+  .watch-form input::placeholder{color:var(--ink-3);font-style:italic}
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher{
+    position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;
+    display:flex;align-items:center;gap:4px;
+    background:rgba(245,241,232,.96);border:1px solid var(--ink);
+    padding:5px;box-shadow:0 6px 24px rgba(17,17,17,.18);
+  }
+  .mockup-switcher button{
+    font-family:var(--body);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    border:0;background:transparent;color:var(--ink-2);padding:8px 13px;cursor:pointer;
+    transition:background .15s ease,color .15s ease;
+  }
+  .mockup-switcher button:hover{color:var(--ink)}
+  .mockup-switcher button.is-active{background:var(--ink);color:var(--paper)}
+  .switcher-div{width:1px;align-self:stretch;background:var(--rule-soft);margin:2px 3px}
+  body[data-view="landing"] .switcher-cov,
+  body[data-view="landing"] .switcher-div{display:none}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .features ol{grid-template-columns:1fr;gap:30px}
+    .finding{grid-template-columns:1fr;gap:8px}
+    .f-note{border-left:0;border-top:1px solid var(--rule-soft);padding:8px 0 0}
+    .desk-head{grid-template-columns:1fr;align-items:start}
+    .desk-side{align-items:flex-start}
+  }
+  @media (max-width:640px){
+    body{font-size:15.5px}
+    .stats{grid-template-columns:1fr 1fr}
+    .stat:nth-child(odd){border-left:0}
+    .stat:nth-child(n+3){border-top:1px solid var(--rule-soft)}
+    .mini-stats{grid-template-columns:1fr 1fr}
+    .row-meta{margin-left:0;width:100%;text-align:left}
+    .chrome-right{margin-left:0}
+    .alert{padding:20px 18px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body data-coverage="trial" data-view="landing">
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="chrome">
+    <div class="wrap chrome-inner">
+      <a class="wordmark" href="#">NoSpoilers</a>
+      <nav class="chrome-nav" aria-label="Product">
+        <a href="#">Product</a>
+        <a href="#">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="chrome-right">
+        <a class="btn" href="#">Sign in with GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">No spoilers in production</p>
+      <h1>We watch GitHub. <em>We read the pack they download.</em></h1>
+      <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+      <div class="cta-row">
+        <a class="btn btn-solid cta-primary" href="#">Start 14-day trial</a>
+        <a class="cta-link" href="#">Sign in with GitHub</a>
+        <span class="price">Solo $29 · Team $99</span>
+      </div>
+      <p class="note">Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <figure class="plate">
+      <div class="plate-frame">
+        <a class="plate-link" href="#" data-goto="watch" aria-label="Open the watch desk screen">
+          <div class="mini">
+            <div class="mini-top">
+              <span class="mini-title">Watch desk — emotive-impact</span>
+              <span class="mini-badge">Trial · 11 days left</span>
+            </div>
+            <div class="mini-stats">
+              <span class="mini-stat"><b>2</b><span>repositories</span></span>
+              <span class="mini-stat"><b class="red">1</b><span>open alert</span></span>
+              <span class="mini-stat"><b>1</b><span>npm package</span></span>
+              <span class="mini-stat"><b>1</b><span>website</span></span>
+            </div>
+            <div class="mini-row"><span>emotive-impact/desktop</span><span class="m">Private · Checked 2 min ago</span></div>
+            <div class="mini-row"><span>emotive-impact/old-cli</span><span class="m danger">Public · Went public 9:14 AM</span></div>
+            <div class="mini-row"><span>@emotive/desktop@2.4.1</span><span class="m danger">failed policy · critical</span></div>
+          </div>
+        </a>
+      </div>
+      <figcaption>The logged-in desk during trial. Click through.</figcaption>
+    </figure>
+  </div>
+
+  <section class="features">
+    <div class="wrap">
+      <ol>
+        <li>
+          <span class="f-num">01</span>
+          <h3>Watch GitHub</h3>
+          <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+        </li>
+        <li>
+          <span class="f-num">02</span>
+          <h3>Read the pack</h3>
+          <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+        </li>
+        <li>
+          <span class="f-num">03</span>
+          <h3>Fail closed in CI</h3>
+          <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="flags" aria-labelledby="flags-h">
+    <div class="wrap">
+      <div class="flags-head"><h2 id="flags-h">What we flag</h2></div>
+      <ul class="flag-list">
+        <li><span class="flag-id"><code>MAP-001</code>Source map in pack</span><span class="sev sev-critical">critical</span></li>
+        <li><span class="flag-id"><code>SEC-001</code>.env file</span><span class="sev sev-critical">critical</span></li>
+        <li><span class="flag-id"><code>SEC-003</code>Cloud credential</span><span class="sev sev-critical">critical</span></li>
+        <li><span class="flag-id"><code>GIT-001</code>.git packed in</span><span class="sev sev-critical">critical</span></li>
+        <li><span class="flag-id"><code>DB-001</code>Database dump</span><span class="sev sev-critical">critical</span></li>
+        <li><span class="flag-id"><code>SRC-001</code>Raw TypeScript source</span><span class="sev sev-warn">warn</span></li>
+        <li><span class="flag-id"><code>NET-001</code>Private-network URL</span><span class="sev sev-warn">warn</span></li>
+        <li><span class="flag-id"><code>SIZE-002</code>Payload over 50 MB</span><span class="sev sev-warn">warn</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav class="foot-links" aria-label="Legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Retention</a>
+        <a href="#">Disclosure</a>
+        <a href="#">Support</a>
+        <a href="#">Refunds</a>
+      </nav>
+      <p class="colophon">No spoilers in production.</p>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="chrome">
+    <div class="wrap chrome-inner">
+      <a class="wordmark" href="#">NoSpoilers</a>
+      <nav class="chrome-nav" aria-label="Product">
+        <a href="#">Product</a>
+        <a href="#">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="chrome-right">
+        <span class="account">emotive-impact</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <header class="desk-head">
+      <div>
+        <p class="desk-eyebrow">Watch desk</p>
+        <h2 class="desk-account">emotive-impact</h2>
+      </div>
+      <div class="desk-side">
+        <span class="cov-badge cov-trial">Trial · 11 days left</span>
+        <span class="cov-badge cov-active">Team · Active</span>
+        <span class="cov-badge cov-ended">Coverage ended</span>
+        <p class="cov-note cov-note-trial">Full coverage. No card yet.</p>
+        <p class="cov-note cov-note-ended">The bot is quiet until you subscribe.</p>
+        <a class="btn" href="#">Install on GitHub</a>
+      </div>
+    </header>
+
+    <p class="subscribe"><a href="#">Subscribe — Solo $29 · Team $99</a></p>
+
+    <div class="desk">
+      <section class="stats" aria-label="Coverage summary">
+        <div class="stat"><b>2</b><span>repositories</span></div>
+        <div class="stat stat-alert"><b>1</b><span>open alert</span></div>
+        <div class="stat"><b>1</b><span>npm package</span></div>
+        <div class="stat"><b>1</b><span>website</span></div>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-repos">
+        <div class="sec-head"><span class="sec-no">§ 1</span><h3 id="s-repos">Repositories</h3></div>
+        <div class="row">
+          <span class="row-name">emotive-impact/desktop</span>
+          <span class="tag">Private</span>
+          <span class="row-meta">Checked 2 min ago</span>
+        </div>
+        <div class="row row-danger">
+          <span class="row-name">emotive-impact/old-cli</span>
+          <span class="tag tag-danger">Public</span>
+          <span class="row-meta row-meta-danger">Went public 9:14 AM</span>
+        </div>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-alerts">
+        <div class="sec-head"><span class="sec-no">§ 2</span><h3 id="s-alerts">Alerts</h3></div>
+
+        <article class="alert alert-public">
+          <p class="kicker">
+            <span class="k-kind">Went public</span><span aria-hidden="true">·</span><span>9:14 AM</span><span aria-hidden="true">·</span>
+            <span class="k-state-open">open</span>
+            <span class="k-state-res">resolved by maya · exposed 4 min</span>
+          </p>
+          <h4>emotive-impact/old-cli flipped to public</h4>
+          <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+          <div class="actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-sm btn-solid" type="button">Resolve</button>
+          </div>
+        </article>
+
+        <article class="alert">
+          <p class="kicker">
+            <span class="k-kind">npm pack</span><span aria-hidden="true">·</span><span>8:57 AM</span><span aria-hidden="true">·</span>
+            <span class="k-state-open">open</span>
+          </p>
+          <h4>@emotive/desktop@2.4.1 failed policy</h4>
+          <div class="findings">
+            <div class="finding">
+              <div class="f-main">
+                <span class="f-code">MAP-002</span>
+                <span class="f-path">dist/cli.js.map</span>
+                <span class="sev sev-critical">critical</span>
+              </div>
+              <p class="f-note">Source map embeds original source</p>
+            </div>
+            <div class="finding">
+              <div class="f-main">
+                <span class="f-code">SEC-001</span>
+                <span class="f-path">.env</span>
+                <span class="sev sev-critical">critical</span>
+              </div>
+              <p class="f-note">.env file in the pack</p>
+            </div>
+            <div class="finding">
+              <div class="f-main">
+                <span class="f-code">SRC-001</span>
+                <span class="f-path">src/auth.ts</span>
+                <span class="sev sev-warn">warn</span>
+              </div>
+              <p class="f-note">Raw TypeScript source</p>
+            </div>
+          </div>
+          <div class="rotation">
+            <h5>Rotation checklist</h5>
+            <ul>
+              <li>Rotate the npm token</li>
+              <li>Purge the CDN cache</li>
+              <li>Publish 2.4.2 and deprecate 2.4.1</li>
+            </ul>
+          </div>
+          <div class="actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-sm btn-solid" type="button">Resolve</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-npm">
+        <div class="sec-head"><span class="sec-no">§ 3</span><h3 id="s-npm">npm packages</h3></div>
+        <div class="line">
+          <span class="mono name">@emotive/desktop</span>
+          <span class="dim">registry.npmjs.org</span>
+          <span class="mono">latest 2.4.1</span>
+          <span class="right">
+            <span class="dim">Last scan:</span>
+            <span class="sev sev-critical">failed policy</span>
+            <button class="btn btn-sm" type="button">Scan latest</button>
+          </span>
+        </div>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-sites">
+        <div class="sec-head"><span class="sec-no">§ 4</span><h3 id="s-sites">Production websites</h3></div>
+        <div class="line">
+          <span class="mono name">https://app.emotive.dev</span>
+          <span class="right">
+            <span class="dim">Last crawl:</span>
+            <span class="sev sev-pass">clean</span>
+          </span>
+        </div>
+        <form class="watch-form" action="#" method="get">
+          <input type="url" placeholder="https://…" aria-label="Website URL to watch">
+          <button class="btn" type="submit">Watch website</button>
+        </form>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-custody">
+        <div class="sec-head"><span class="sec-no">§ 5</span><h3 id="s-custody">Map custody</h3></div>
+        <div class="line">
+          <span class="mono name">Sentry → emotive/desktop</span>
+          <span class="right">
+            <span class="dim">Last check:</span>
+            <span class="sev sev-pass">ok</span>
+          </span>
+        </div>
+      </section>
+
+      <section class="desk-section" aria-labelledby="s-notify">
+        <div class="sec-head"><span class="sec-no">§ 6</span><h3 id="s-notify">Notifications</h3></div>
+        <div class="line">
+          <span class="name">Slack #security</span>
+          <span class="right">
+            <span class="dim">minimum severity</span>
+            <span class="sev sev-critical">critical</span>
+          </span>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+  <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  <span class="switcher-div" aria-hidden="true"></span>
+  <span class="switcher-cov" role="group" aria-label="Coverage state">
+    <button type="button" data-cov="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-cov="active" aria-pressed="false">Active</button>
+    <button type="button" data-cov="ended" aria-pressed="false">Ended</button>
+  </span>
+</nav>
+
+<script>
+(function () {
+  var body = document.body;
+  var screens = Array.prototype.slice.call(document.querySelectorAll('main[data-screen]'));
+  var viewBtns = Array.prototype.slice.call(document.querySelectorAll('.mockup-switcher [data-view]'));
+  var covBtns = Array.prototype.slice.call(document.querySelectorAll('.mockup-switcher [data-cov]'));
+
+  function setView(name) {
+    screens.forEach(function (m) { m.hidden = m.getAttribute('data-screen') !== name; });
+    body.setAttribute('data-view', name);
+    viewBtns.forEach(function (b) {
+      var on = b.getAttribute('data-view') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(name) {
+    body.setAttribute('data-coverage', name);
+    covBtns.forEach(function (b) {
+      var on = b.getAttribute('data-cov') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  viewBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setView(b.getAttribute('data-view')); });
+  });
+  covBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setCoverage(b.getAttribute('data-cov')); });
+  });
+  Array.prototype.slice.call(document.querySelectorAll('[data-goto]')).forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      setView(el.getAttribute('data-goto'));
+    });
+  });
+
+  setView('landing');
+  setCoverage('trial');
+})();
+</script>
+</body>
+</html>
