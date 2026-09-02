@@ -33,6 +33,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 - Privacy, Terms, retention, responsible disclosure, support, and refund pages.
 - Strong secret-length checks on Neon/https boot; `/api/ready` database ping; JSON logs.
 - Public npm package watching: connect a pack, scan `latest`, detect the next version.
+  A later registry 404 after a recorded version is a Watch `package_unpublished` fact
+  (no download, not a malware verdict). A 5xx/network error is not an unpublish.
 - Prerelease npm channels: `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs unpack when
   those tags point at another version (cap three extras). Other dist-tag moves stay tag-only
   alerts and do not download. Event-driven. Not a Pricing change.

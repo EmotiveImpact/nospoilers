@@ -32,6 +32,7 @@ const CRITICAL_KINDS = new Set([
   "app_suspended",
   "package_maintainer_changed",
   "package_repository_mismatch",
+  "package_unpublished",
   "release_digest_mismatch",
   "identity_lookalike_registered",
   "identity_dormant",

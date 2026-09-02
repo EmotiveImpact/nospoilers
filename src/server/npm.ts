@@ -89,6 +89,7 @@ export type WatchDelta =
   | { type: "new_version"; from: string; to: string }
   | { type: "mutated_tarball"; version: string }
   | { type: "dist_tags"; from: NpmDistTags; to: NpmDistTags }
+  | { type: "unpublished" }
   | { type: "unchanged" };
 
 export function diffWatchedPack(

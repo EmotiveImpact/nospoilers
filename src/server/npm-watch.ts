@@ -33,6 +33,15 @@ export function npmScanDeliveryId(
   return `npm-scan:${installationId}:${registryOrigin}:${packageName}:${version}:${shasum ?? "none"}`;
 }
 
+export function npmGoneDeliveryId(
+  installationId: number,
+  packageName: string,
+  lastVersion: string,
+  registryOrigin: string = PUBLIC_NPM_ORIGIN,
+): string {
+  return `npm-gone:${installationId}:${registryOrigin}:${packageName}:${lastVersion}`;
+}
+
 export function npmDistTagDeliveryId(
   installationId: number,
   packageName: string,
@@ -262,7 +271,7 @@ async function enqueueFromDelta(
   delta: WatchDelta,
   previousTags: NpmDistTags | null | undefined,
 ): Promise<boolean> {
-  if (delta.type === "unchanged") return false;
+  if (delta.type === "unchanged" || delta.type === "unpublished") return false;
   if (delta.type === "dist_tags") {
     const scanned = await enqueueChannelScans(store, pkg, pack, delta.from);
     if (scanned) return true;
@@ -355,6 +364,36 @@ export async function connectWatchedPackage(
   return { package: inserted, queued };
 }
 
+async function noteMissingWatchedPack(
+  store: Store,
+  pkg: WatchedPackageRow,
+  notifier?: AlertNotifier,
+): Promise<{ queued: boolean; deltas: WatchDelta[] }> {
+  const lastVersion = pkg.last_version?.trim();
+  if (!lastVersion) {
+    await store.touchWatchedPackage(pkg.id, {});
+    return { queued: false, deltas: [{ type: "unchanged" }] };
+  }
+  const origin = pkg.registry_origin || PUBLIC_NPM_ORIGIN;
+  const payload = {
+    installationId: pkg.installation_id,
+    packageName: pkg.package_name,
+    kind: "package_unpublished",
+    title: `npm ${pkg.package_name} is no longer on the registry`,
+    body: `${pkg.package_name} last recorded as ${lastVersion} is gone from ${origin}. This is a registry fact, not a malware verdict.`,
+    githubDeliveryId: npmGoneDeliveryId(
+      pkg.installation_id,
+      pkg.package_name,
+      lastVersion,
+      origin,
+    ),
+  };
+  if (notifier) await notifier.send(payload);
+  else await store.insertAlert(payload);
+  await store.touchWatchedPackage(pkg.id, {});
+  return { queued: false, deltas: [{ type: "unpublished" }] };
+}
+
 export async function checkWatchedPackage(
   store: Store,
   npm: NpmPort,
@@ -372,10 +411,15 @@ export async function checkWatchedPackage(
     await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
   }
-  const pack = await npm.getPack(pkg.package_name, auth);
-  if (!pack) {
+  let pack: NpmPack | null = null;
+  try {
+    pack = await npm.getPack(pkg.package_name, auth);
+  } catch {
     await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
+  }
+  if (!pack) {
+    return await noteMissingWatchedPack(store, pkg, notifier);
   }
   const deltas = diffWatchedPack(
     {

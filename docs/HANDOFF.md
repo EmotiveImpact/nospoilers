@@ -34,8 +34,11 @@ Read in this order:
   `016_installation_roles`, `017_jira_destinations`, `018_notification_routes`,
   `019_audit_events`, `020_identity_signals`, `021_retention_policies`,
   `022_watched_origins`, `023_map_destinations`, `024_fair_use_concurrency`,
-  `025_hosted_usage`, and `026_github_response` are applied. `026_github_response` only
-  extends `audit_events.action` for Watch GitHub responses. `hosted_usage_days` counts heavy hosted unpacks per
+  `025_hosted_usage`, `026_github_response`, `027_team_invites`, and
+  `028_identity_dependencies` are applied. `026_github_response` only
+  extends `audit_events.action` for Watch GitHub responses. `027_team_invites` adds
+  `installation_invites`. `028_identity_dependencies` adds
+  `package_identity_snapshots.dependency_names`. `hosted_usage_days` counts heavy hosted unpacks per
   installation per UTC day (fair use, not a credit meter). Hosted
   coverage belongs to the GitHub installation billing account, not the user row. Scan receipts are
   append-only HMAC JSON; they store manifests and hashes, never source. Release revisions are
@@ -88,6 +91,8 @@ Read in this order:
   plus `next`/`beta`/`canary`/`rc`/`alpha`/`preview` tarballs when those tags point at another
   version (cap three extras). The hourly poller and Watch “Check now” enqueue new versions,
   mutated tarballs, channel-tag tarballs, and tag-only alerts for other dist-tag moves.
+  A later registry 404 after a recorded version is a Watch `package_unpublished` alert
+  without downloading. A 5xx or network error is not treated as unpublish.
   Private HTTPS registries (GitHub Packages, GitLab, Verdaccio, …) take an encrypted read token;
   tarball hosts must match the saved origin. Tokens are never returned and never written onto jobs.
   Covered npm and GitHub release scans persist a signed receipt and can diff the last two. A later
@@ -320,6 +325,8 @@ baseline; first scans do not; warn; allowlistable; Watch Diff and Checks). Not a
 Prerelease npm channel tarballs are in (`next`/`beta`/`canary`/`rc`/`alpha`/`preview` when those
 tags point at another version, cap three extras; other dist-tags stay tag-only). Event-driven.
 Not a Pricing change.
+A watched npm name that 404s after a recorded version writes `package_unpublished` (no
+download; 5xx is not unpublish; unpaid skips). Event-driven. Not a Pricing change.
 GitHub Release `edited` / `prereleased` / `released` rescan when pack assets change (fingerprint
 idempotency). `unpublished` / `deleted` are light Watch alerts and never download. Event-driven.
 Not a Pricing change.

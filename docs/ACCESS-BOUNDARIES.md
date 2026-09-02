@@ -44,6 +44,9 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Connect and watch public npm packages on those installations while coverage is active.
   `latest` unpacks, and `next`/`beta`/`canary` (plus rc/alpha/preview, cap three extras)
   unpack when those tags point at another version. Other dist-tags are a tag-only alert.
+  A later registry 404 after a recorded version is a Watch alert (`package_unpublished`)
+  without a download. A registry 5xx or network error is not. Unpaid skips the alert.
+  Another tenant cannot see it.
 - Connect and watch public HTTPS production websites on those installations while coverage is
   active. The crawler fetches the named page, then same-origin JavaScript, CSS, maps, and a
   bounded probe of exposed files, credentials, and internal paths linked from the page.
@@ -333,9 +336,11 @@ GitHub-hosted runners. `tests/remediation.test.ts` proves remediation files are 
 unpaid POST returns 402, GitHub-suspended POST returns 409, permission skips return
 copy-paste files, required permissions are listed before write, customer ignore/policy
 files are not overwritten, empty `.nospoilers.yml` has no allowlist, and the merge API
-is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
-never returned, blocked off-tenant, and never written onto jobs, and that next/beta/canary
-tarballs enqueue as `npm_scan` while custom dist-tags stay tag-only. `tests/scan-api.test.ts`
+  is never called. `tests/npm-watch.test.ts` proves private registry tokens are encrypted,
+  never returned, blocked off-tenant, and never written onto jobs, that next/beta/canary
+  tarballs enqueue as `npm_scan` while custom dist-tags stay tag-only, and that a registry
+  404 after a recorded version writes one tenant-scoped `package_unpublished` alert without
+  a download while 5xx and unpaid do not. `tests/scan-api.test.ts`
 proves scan API tokens are hashed, shown once, tenant-scoped, unpaid mint/scan return 402,
 and revoked tokens cannot unpack. `tests/release-ledger.test.ts` proves release revisions
 are append-only, tenant-scoped, flag digest mismatch without a compromise claim, reject

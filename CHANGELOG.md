@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Watch records `package_unpublished` when a watched npm name 404s after we already
+  recorded a version. No tarball download. A 5xx or network error is not an unpublish.
+  Unpaid skips. Another tenant cannot see it. Not a malware verdict. Not a Pricing change.
+
 - Trial and Team Package Identity alerts when a protected pack adds a dependency whose npm
   name was first published within 14 days. First snapshot is baseline. An old package newly
   added does not alert. Missing registry metadata is skipped. Metadata only; the added

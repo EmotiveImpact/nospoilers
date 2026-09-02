@@ -46,6 +46,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | JSON and SARIF reports | Built | NoSpoilers |
 | Automatic npm package watching | Built: public registry.npmjs.org and private HTTPS registries per GitHub install | NoSpoilers |
 | New npm version detection | Built: hourly check + Watch “Check now” | NoSpoilers |
+| Watched package unpublished / missing from registry | Built: registry 404 after a recorded version writes `package_unpublished` without download; 5xx/network errors do not; unpaid skips; tenant-scoped; not a malware verdict | NoSpoilers |
 | npm dist-tag and prerelease-channel changes | Built: next/beta/canary/rc/alpha/preview tarballs scanned (cap 3 extras); other tags stay a tag-only light alert | NoSpoilers |
 | Changed tarball bytes under the same package coordinate | Built: latest shasum change enqueues a rescan | NoSpoilers |
 | Private npm registry support | Built: encrypted per-install token, same-host HTTPS tarballs, SSRF blocked | NoSpoilers |

@@ -3612,8 +3612,10 @@ export function WatchPage({ search }: { search: string }) {
           <code className="text-snow">canary</code>, rc, alpha, and preview when those tags point at
           another packed version. Other dist-tag moves stay a tag-only alert and do not download.
           Public packs use registry.npmjs.org. Private registries need an encrypted token (never
-          shown again). Tarball hosts must match the saved registry. Source is not kept. A later
-          pack that is twice as large, or at least 5 MiB larger unpacked, raises SIZE-003 against the
+          shown again). Tarball hosts must match the saved registry. Source is not kept. If the
+          registry later has no package under that name after we recorded a version, Watch records
+          that fact without downloading. A later pack that is twice as large, or at least 5 MiB
+          larger unpacked, raises SIZE-003 against the
           approved baseline or the previous receipt. Protect identity only after the npm scope or
           GitHub repository field matches this install. Trial and Team installs then generate bounded
           lookalike names and watch dormant resurrection, release bursts, and new dependencies that

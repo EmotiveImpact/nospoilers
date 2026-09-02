@@ -45,13 +45,14 @@ function pack(overrides: Partial<NpmPack> = {}): NpmPack {
 }
 
 function stubNpm(
-  current: { pack: NpmPack | null },
+  current: { pack: NpmPack | null; error?: Error },
   downloads: string[] = [],
   auths: Array<NpmAuth | undefined> = [],
 ): NpmPort {
   return {
     getPack: async (_name, auth) => {
       auths.push(auth);
+      if (current.error) throw current.error;
       return current.pack;
     },
     downloadTarball: async (url, _max, auth) => {
@@ -439,6 +440,103 @@ describe("hosted npm watch", () => {
       expect(fresh).not.toBeNull();
       const check = await checkWatchedPackage(store, npm, fresh!);
       expect(check.deltas[0]?.type).toBe("unchanged");
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("alerts when a recorded pack is gone from the registry, without downloading", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertUser({ id: "u2", login: "other" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.upsertInstallation({
+        id: 9,
+        accountLogin: "other",
+        accountType: "User",
+        accountId: 2,
+      });
+      await store.linkUserInstallation(7, "u1");
+      await store.linkUserInstallation(9, "u2");
+      const downloads: string[] = [];
+      const current: { pack: NpmPack | null; error?: Error } = { pack: pack() };
+      const npm = stubNpm(current, downloads);
+      const connected = await connectWatchedPackage(store, npm, {
+        installationId: 7,
+        packageName: "demo-pack",
+      });
+      current.pack = null;
+      const recorded = await store.getWatchedPackage(connected.package.id);
+      const gone = await checkWatchedPackage(store, npm, recorded!);
+      expect(gone.queued).toBe(false);
+      expect(gone.deltas[0]?.type).toBe("unpublished");
+      expect(downloads).toEqual([]);
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const otherCookie = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        npm,
+      });
+      const alerts = await app.request("/api/alerts", { headers: { cookie } });
+      const alertBody = (await alerts.json()) as { alerts: { kind: string; body: string }[] };
+      const unpublished = alertBody.alerts.filter((row) => row.kind === "package_unpublished");
+      expect(unpublished).toHaveLength(1);
+      expect(unpublished[0]?.body).toMatch(/1\.0\.0/);
+      expect(unpublished[0]?.body).toMatch(/not a malware verdict/);
+      const again = await checkWatchedPackage(store, npm, (await store.getWatchedPackage(connected.package.id))!);
+      expect(again.deltas[0]?.type).toBe("unpublished");
+      const after = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await after.json()) as { alerts: { kind: string }[] }).alerts.filter(
+          (row) => row.kind === "package_unpublished",
+        ),
+      ).toHaveLength(1);
+      const foreign = await app.request("/api/alerts", { headers: { cookie: otherCookie } });
+      expect(
+        ((await foreign.json()) as { alerts: { kind: string }[] }).alerts.map((row) => row.kind),
+      ).not.toContain("package_unpublished");
+
+      current.error = new Error("npm registry returned 503.");
+      const blip = await checkWatchedPackage(store, npm, (await store.getWatchedPackage(connected.package.id))!);
+      expect(blip.deltas[0]?.type).toBe("unchanged");
+      delete current.error;
+      expect(downloads).toEqual([]);
+
+      const unpaidPkg = await store.insertWatchedPackage(7, "unpaid-pack");
+      await store.touchWatchedPackage(unpaidPkg!.id, {
+        version: "9.9.9",
+        distTags: { latest: "9.9.9" },
+        tarballUrl: TARBALL,
+        shasum: "x",
+      });
+      await sql.query(
+        `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
+      );
+      const unpaid = await checkWatchedPackage(store, npm, (await store.getWatchedPackage(unpaidPkg!.id))!);
+      expect(unpaid.deltas[0]?.type).toBe("unchanged");
+      const afterUnpaid = await app.request("/api/alerts", { headers: { cookie } });
+      expect(
+        ((await afterUnpaid.json()) as { alerts: { kind: string; body: string }[] }).alerts.filter(
+          (row) => row.kind === "package_unpublished" && /unpaid-pack/.test(row.body),
+        ),
+      ).toHaveLength(0);
     } finally {
       await sql.close();
     }
