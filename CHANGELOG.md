@@ -5,7 +5,8 @@
 - Artifact Leads notifies the owner only after a Disclosure Desk case is
   verified and has critical fingerprints. Unverified scans and warn-only cases
   do not. One notification per case. Mark-read. Never mailed. Rule ids and
-  fingerprints only. Not a Pricing change.
+  fingerprints only. Live-emitted one row for the verified public prettier
+  case (`SEC-003` only; no values). Not a Pricing change.
 
 - Artifact Leads includes Disclosure Desk Phase 1: an owner-only case per public
   lead, verification checklist, duplicate warning (owner/repo, package, or
