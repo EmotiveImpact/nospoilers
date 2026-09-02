@@ -6,6 +6,7 @@ import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts"
 import { LEGAL_NAV } from "@/legal.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
+import { isWatchDeskPath } from "@/watch/routes.ts"
 import { Menu as MenuIcon } from "lucide-react"
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 
@@ -96,6 +97,10 @@ export function SiteChrome({
   const ended = coverage?.status === "ended"
   const signedIn = Boolean(login)
   const previewing = Boolean(coverage) && !signedIn
+
+  if (isWatchDeskPath(path)) {
+    return <div className="flex min-h-svh flex-col bg-ink">{children}</div>
+  }
 
   return (
     <div className="flex min-h-svh flex-col bg-ink">
