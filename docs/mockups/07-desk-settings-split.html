@@ -189,8 +189,14 @@
           <a href="#" aria-current="page">Settings</a>
         </nav>
         <div class="grow"></div>
-        <span class="pill"><span class="dot ok"></span> EmotiveImpact · Team</span>
-        <span class="pill">admin</span>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <span class="pill admin-only">admin</span>
+        <span class="pill s-member">member</span>
         <button class="btn sm ghost">Back to desk</button>
       </header>
 
@@ -201,20 +207,21 @@
             <a href="#">General</a>
             <a href="#">Team &amp; roles</a>
             <a href="#">Retention</a>
-            <a href="#">Audit log</a>
+            <a href="#" class="team-only">Audit log</a>
+            <a href="#" class="team-only">Install timeline</a>
             <a href="#">Install health</a>
           </div>
           <div class="snav-group">
             <span class="kicker">Detection</span>
             <a href="#">Policy &amp; allowlist</a>
             <a href="#">Baseline approvals</a>
-            <a href="#">Private registries</a>
+            <a href="#" class="admin-only">Private registries</a>
           </div>
           <div class="snav-group">
             <span class="kicker">Delivery</span>
             <a href="#" aria-current="page">Notifications</a>
-            <a href="#">Scan API tokens</a>
-            <a href="#">Webhooks &amp; SIEM</a>
+            <a href="#" class="admin-only">Scan API tokens</a>
+            <a href="#" class="team-only">Webhooks &amp; SIEM</a>
           </div>
           <div class="snav-group">
             <span class="kicker">Billing</span>
@@ -232,7 +239,7 @@
             which alerts reach which destination.
           </p>
 
-          <div class="adminnote">
+          <div class="adminnote admin-only">
             <span class="dim">☗</span>
             <span
               >You are an <strong class="snow">admin</strong> on this install, so you can change
@@ -240,13 +247,49 @@
             >
           </div>
 
+          <div class="adminnote s-member" style="border-color: var(--line-strong)">
+            <span class="dim">☗</span>
+            <span
+              >You are a <strong class="snow">member</strong>, so this page is read-only. The first
+              GitHub user to connect an install is admin; later users become members. Ask
+              <code>@ryan</code> or <code>@dana</code> to change a destination or a route.</span
+            >
+          </div>
+
+          <div
+            class="adminnote s-solo"
+            style="border-color: rgba(217, 154, 43, 0.35); background: rgba(217, 154, 43, 0.06)"
+          >
+            <span class="warnc">◆</span>
+            <span
+              >Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend. Alerts
+              still open on the desk — this page is where they would learn to leave it.
+              <a href="#" class="snow">Compare Solo and Team →</a></span
+            >
+          </div>
+
+          <div
+            class="adminnote s-ended"
+            style="border-color: rgba(226, 69, 58, 0.35); background: rgba(226, 69, 58, 0.06)"
+          >
+            <span class="bad">✕</span>
+            <span
+              >Coverage ended. Destinations stay saved and readable, but nothing is delivered
+              because no new jobs run. <a href="#" class="snow">See plans →</a></span
+            >
+          </div>
+
           <div class="setrow">
             <div class="lbl">
               <h3>Destinations</h3>
-              <p class="small dim">Two connected. Each is tested when you save it.</p>
+              <p class="small dim has-data">Two connected. Each is tested when you save it.</p>
+              <p class="small dim s-empty">None connected yet.</p>
             </div>
             <div>
-              <div class="dest">
+              <p class="small dim s-empty" style="margin-bottom: 12px">
+                No destinations yet. Alerts stay in the desk inbox until you add one.
+              </p>
+              <div class="dest has-data">
                 <span class="glyph">◈</span>
                 <div class="grow">
                   <div class="row gap8">
@@ -261,7 +304,7 @@
                 <button class="btn sm ghost danger">Remove</button>
               </div>
 
-              <div class="dest">
+              <div class="dest has-data">
                 <span class="glyph">◇</span>
                 <div class="grow">
                   <div class="row gap8">
@@ -273,10 +316,10 @@
                   </p>
                 </div>
                 <button class="btn sm ghost">Test</button>
-                <button class="btn sm ghost danger">Remove</button>
+                <button class="btn sm ghost danger admin-only">Remove</button>
               </div>
 
-              <div class="row gap8" style="margin-top: 12px">
+              <div class="row gap8 admin-only" style="margin-top: 12px">
                 <button class="btn sm outline">+ Slack</button>
                 <button class="btn sm outline">+ Jira</button>
                 <button class="btn sm outline">+ SIEM webhook</button>
@@ -293,15 +336,18 @@
               </p>
             </div>
             <div>
-              <div class="routerow">
+              <p class="small dim s-empty" style="margin-bottom: 12px">
+                No routes yet. Destinations without a route still receive every Watch alert.
+              </p>
+              <div class="routerow has-data">
                 <span class="pill crit">critical</span>
                 <span class="arrow">→</span>
                 <span class="snow">Slack</span>
                 <code class="path">#sec-alerts</code>
                 <span class="grow"></span>
-                <button class="btn sm ghost danger">Remove</button>
+                <button class="btn sm ghost danger admin-only">Remove</button>
               </div>
-              <div class="routerow">
+              <div class="routerow has-data">
                 <span class="pill warn">warn</span>
                 <span class="dim">on</span>
                 <code class="path">EmotiveImpact/desk</code>
@@ -309,10 +355,10 @@
                 <span class="snow">Jira</span>
                 <span class="dim">assign @dana</span>
                 <span class="grow"></span>
-                <button class="btn sm ghost danger">Remove</button>
+                <button class="btn sm ghost danger admin-only">Remove</button>
               </div>
 
-              <div class="row gap8 wrap" style="margin-top: 14px">
+              <div class="row gap8 wrap admin-only" style="margin-top: 14px">
                 <select class="field" style="width: 118px">
                   <option>critical</option>
                   <option>warn</option>
@@ -345,7 +391,7 @@
                 <input type="checkbox" checked /> Hold <strong class="snow">warn</strong> deliveries
                 between
               </label>
-              <div class="row gap8">
+              <div class="row gap8 admin-only">
                 <input class="field" value="19:00" style="width: 92px" />
                 <span class="dim">and</span>
                 <input class="field" value="08:00" style="width: 92px" />
@@ -362,17 +408,18 @@
               <p class="small dim">Last 8. Failures retry with backoff.</p>
             </div>
             <div>
-              <div class="routerow">
+              <p class="small dim s-empty">No delivery yet.</p>
+              <div class="routerow has-data">
                 <span class="dot ok"></span><span class="snow">Slack</span
                 ><span class="dim">MAP-002 · nospoilers@0.4.2</span
                 ><span class="grow"></span><span class="tiny dim">09:14</span>
               </div>
-              <div class="routerow">
+              <div class="routerow has-data">
                 <span class="dot ok"></span><span class="snow">Jira</span
                 ><span class="dim">DOC-001 · desk v2.1.0 → SEC-418</span
                 ><span class="grow"></span><span class="tiny dim">06:02</span>
               </div>
-              <div class="routerow">
+              <div class="routerow has-data">
                 <span class="dot warn"></span><span class="snow">Slack</span
                 ><span class="dim">retry 1 of 5 · 429 from hooks.slack.com</span
                 ><span class="grow"></span><span class="tiny dim">yesterday</span>
@@ -380,7 +427,7 @@
             </div>
           </div>
 
-          <div class="savebar">
+          <div class="savebar admin-only">
             <span class="dot warn"></span>
             <span class="small muted">Quiet hours changed</span>
             <div class="grow"></div>
