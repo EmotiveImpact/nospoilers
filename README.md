@@ -6,6 +6,19 @@ Secret scanners read git. NoSpoilers reads the **packed artifact** — the npm t
 
 That is the class of leak that shipped Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer. GitHub secret scanning does not catch packed maps. Making the git repo private does not catch an installer on a CDN.
 
+One bounded scanner checks several release surfaces:
+
+| Source | What is checked |
+| --- | --- |
+| CLI / CI / Scan upload | The exact directory or packed artifact before release |
+| GitHub Release / npm | The published pack customers download |
+| Watched production website | HTML, same-origin JS/CSS, exposed files, and public source maps |
+
+For source maps with `sourcesContent`, NoSpoilers reconstructs each embedded original source as an
+in-memory virtual file. Secret, private-key, internal-route, AI-context, and internal-path rules run
+against the original source path. Reports retain the rule and virtual path, never reconstructed
+source or matched credential values.
+
 Product decisions (pricing, queue, what to buy later) live in **[docs/PRODUCT.md](docs/PRODUCT.md)**.
 Execution order is in **[docs/ROADMAP.md](docs/ROADMAP.md)**, completed work in
 **[CHANGELOG.md](CHANGELOG.md)**, and the next-agent brief in

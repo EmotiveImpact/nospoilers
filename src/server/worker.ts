@@ -150,11 +150,13 @@ export async function handleJob(
   const repo = repoOf(payload);
   const installationId = Number(payload.installationId);
   const deliveryId = job.delivery_id;
+  let hostedUnpackConsumed = job.priority === "heavy" && job.kind !== "web_origin_scan";
 
   async function refundUnusedHostedUnpack(): Promise<void> {
-    if (job.priority !== "heavy") return;
+    if (!hostedUnpackConsumed) return;
     if (!Number.isFinite(installationId) || installationId <= 0) return;
     await deps.store.refundHostedUnpack(installationId);
+    hostedUnpackConsumed = false;
   }
 
   const alertBase = {
@@ -604,13 +606,14 @@ export async function handleJob(
         await refundUnusedHostedUnpack();
         return;
       }
-      if (job.priority === "light") {
-        const consumed = await deps.store.consumeHostedUnpack(installationId);
-        if (!consumed) {
-          await deps.store.noteFairUseExhausted(installationId);
-          return;
-        }
+      // Website jobs use the heavy concurrency lane but reserve daily usage
+      // only after the crawl proves there are changed bytes to scan.
+      const consumed = await deps.store.consumeHostedUnpack(installationId);
+      if (!consumed) {
+        await deps.store.noteFairUseExhausted(installationId);
+        return;
       }
+      hostedUnpackConsumed = true;
       for (const file of crawled.files) {
         const dest = path.join(dir, file.rel);
         await mkdir(path.dirname(dest), { recursive: true });

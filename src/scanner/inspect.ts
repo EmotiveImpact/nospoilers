@@ -4,6 +4,9 @@ import type { Finding } from "./types.ts";
 
 const TEXT_LIMIT = 2_000_000;
 const MAP_PEEK = 256_000;
+const MAX_EMBEDDED_SOURCES = 1_000;
+const MAX_EMBEDDED_SOURCE_CHARS = 2_000_000;
+const MAX_EMBEDDED_TOTAL_CHARS = 8_000_000;
 export const INSPECT_BYTES = 8_000_000;
 export const FILE_WARN_BYTES = 10_000_000;
 export const TOTAL_WARN_BYTES = 50_000_000;
@@ -37,17 +40,54 @@ function looksLikeSourceMap(filePath: string, buf: Buffer): boolean {
   }
 }
 
-function hasEmbeddedSources(buf: Buffer): boolean {
+type EmbeddedSource = {
+  path: string;
+  content: string;
+};
+
+function normalizedEmbeddedSourcePath(raw: string, index: number): string {
+  const clean = raw
+    .replace(/\\/g, "/")
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
+    .replace(/[?#].*$/, "")
+    .split("")
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code > 31 && code !== 127;
+    })
+    .join("")
+    .split("/")
+    .filter((part) => part && part !== ".")
+    .map((part) => (part === ".." ? "_parent_" : part))
+    .join("/")
+    .slice(0, 400);
+  return clean || `source-${index + 1}.txt`;
+}
+
+function embeddedSources(buf: Buffer): EmbeddedSource[] {
   try {
     const json = JSON.parse(asText(buf, Math.min(buf.length, 8_000_000))) as {
+      sources?: unknown;
       sourcesContent?: unknown;
     };
-    return (
-      Array.isArray(json.sourcesContent) &&
-      json.sourcesContent.some((chunk) => typeof chunk === "string" && chunk.length > 0)
-    );
+    if (!Array.isArray(json.sourcesContent)) return [];
+    const sources = Array.isArray(json.sources) ? json.sources : [];
+    const embedded: EmbeddedSource[] = [];
+    let totalChars = 0;
+    for (const [index, content] of json.sourcesContent.entries()) {
+      if (embedded.length >= MAX_EMBEDDED_SOURCES || totalChars >= MAX_EMBEDDED_TOTAL_CHARS) break;
+      if (typeof content !== "string" || content.length === 0) continue;
+      const source = typeof sources[index] === "string" ? sources[index] : "";
+      const retained = content.slice(
+        0,
+        Math.min(MAX_EMBEDDED_SOURCE_CHARS, MAX_EMBEDDED_TOTAL_CHARS - totalChars),
+      );
+      totalChars += retained.length;
+      embedded.push({ path: normalizedEmbeddedSourcePath(source, index), content: retained });
+    }
+    return embedded;
   } catch {
-    return false;
+    return [];
   }
 }
 
@@ -289,6 +329,96 @@ function internalLocation(text: string): boolean {
   );
 }
 
+function internalApplicationRoute(text: string): boolean {
+  return /["'`](?:\/api\/internal(?:\/|["'`])|\/_internal(?:\/|["'`])|\/admin\/|\/debug\/)/i.test(
+    text,
+  );
+}
+
+function inspectEmbeddedSource(mapPath: string, source: EmbeddedSource): Finding[] {
+  const sourcePath = `${mapPath}::${source.path}`;
+  const rel = posixPath(source.path);
+  const base = path.posix.basename(rel);
+  const text = source.content.slice(0, TEXT_LIMIT);
+  const findings: Finding[] = [];
+  const isCredentialConfig = credentialConfig(rel, base);
+
+  if (base === ".env" || base.startsWith(".env.")) {
+    findings.push({
+      rule: "SEC-001",
+      severity: "critical",
+      path: sourcePath,
+      title: "Environment file embedded in source map",
+      detail: "The public source map reconstructs an environment file. Values are never included in reports.",
+    });
+  }
+  if (
+    /\.(pem|key|p12|pfx)$/i.test(base) ||
+    PRIVATE_KEY.test(text) ||
+    /^(?:id_rsa|id_ed25519|id_dsa|id_ecdsa)(?:_sk)?$/i.test(base)
+  ) {
+    findings.push({
+      rule: "SEC-002",
+      severity: "critical",
+      path: sourcePath,
+      title: "Private key embedded in source map",
+      detail: "The reconstructed source contains private-key material. NoSpoilers does not report the value.",
+    });
+  }
+  if (
+    HIGH_CONFIDENCE_TOKEN.test(text) ||
+    cloudCredentialDocument(text) ||
+    (isCredentialConfig && hasAssignedCredential(text))
+  ) {
+    findings.push({
+      rule: "SEC-003",
+      severity: "critical",
+      path: sourcePath,
+      title: "Credential embedded in source map",
+      detail:
+        "A reconstructed source file contains a high-confidence credential pattern. NoSpoilers does not include the value in reports.",
+    });
+  }
+  if (isCredentialConfig) {
+    findings.push({
+      rule: "SEC-004",
+      severity: "warn",
+      path: sourcePath,
+      title: "Credential configuration embedded in source map",
+      detail: "The source map reconstructs a file that commonly carries service credentials.",
+    });
+  }
+  if (aiContextFile(rel, base)) {
+    findings.push({
+      rule: "AI-001",
+      severity: "warn",
+      path: sourcePath,
+      title: "AI context embedded in source map",
+      detail: "The reconstructed tree contains agent instructions, prompts, memory, or tool configuration.",
+    });
+  }
+  if (internalDoc(rel, base)) {
+    findings.push({
+      rule: "DOC-001",
+      severity: "warn",
+      path: sourcePath,
+      title: "Internal documentation embedded in source map",
+      detail: "The reconstructed tree contains internal product or engineering documentation.",
+    });
+  }
+  if (internalLocation(text) || internalApplicationRoute(text)) {
+    findings.push({
+      rule: "NET-001",
+      severity: "warn",
+      path: sourcePath,
+      title: "Internal route or location embedded in source map",
+      detail:
+        "The reconstructed source identifies an internal route, private-network endpoint, or developer-machine path.",
+    });
+  }
+  return findings;
+}
+
 export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.length): Finding[] {
   const rel = posixPath(relPath).replace(/^\.\//, "");
   const base = path.posix.basename(rel);
@@ -457,6 +587,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
   }
 
   if (looksLikeSourceMap(rel, buf)) {
+    const reconstructed = embeddedSources(buf);
     findings.push({
       rule: "MAP-001",
       severity: "critical",
@@ -465,7 +596,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
       detail:
         "Source maps map minified production code back to original TypeScript/JavaScript. They are spoilers.",
     });
-    if (hasEmbeddedSources(buf)) {
+    if (reconstructed.length > 0) {
       findings.push({
         rule: "MAP-002",
         severity: "critical",
@@ -474,6 +605,16 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
         detail:
           "sourcesContent is populated. Anyone with this file can reconstruct the original tree.",
       });
+      const reconstructedFindings = reconstructed.flatMap((source) =>
+        inspectEmbeddedSource(rel, source),
+      );
+      for (const finding of reconstructedFindings) {
+        const lessPrecise = findings.findIndex(
+          (existing) => existing.rule === finding.rule && existing.path === rel,
+        );
+        if (lessPrecise >= 0) findings.splice(lessPrecise, 1);
+        findings.push(finding);
+      }
     }
   }
 

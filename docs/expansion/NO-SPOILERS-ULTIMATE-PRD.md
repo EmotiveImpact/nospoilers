@@ -43,6 +43,17 @@ credentials, prompts, internal paths, and debug material after source review.
 NoSpoilers wins by inspecting that final object and continuously watching the release/exposure
 surface. It is not another generic SAST, dependency, antivirus, or code-review platform.
 
+The product uses one scanner across multiple evidence sources:
+
+- pre-release bytes supplied by CLI, CI, or Scan;
+- published packs downloaded from GitHub Releases or npm;
+- deployed HTML, JavaScript, CSS, exposed files, and public source maps from a watched origin.
+
+Source maps with `sourcesContent` are reconstructed only as bounded in-memory virtual files.
+Existing deterministic rules inspect each original source path; reports persist findings, hashes,
+and paths but never reconstructed source or matched credential values. Website/map scans use the
+heavy queue, so bursts wait rather than reconstructing every customer map concurrently.
+
 ## 3. Customers
 
 ### Primary
@@ -69,7 +80,7 @@ surface. It is not another generic SAST, dependency, antivirus, or code-review p
 ## 5. Product principles
 
 1. Scan packed/deployed bytes, not only Git.
-2. Prevention first; post-publication monitoring is a backstop.
+2. Prevention first; post-publication and deployed-origin monitoring are backstops.
 3. Never retain artifact source after a scan.
 4. Never include credential values in reports.
 5. Deterministic findings before AI explanations.

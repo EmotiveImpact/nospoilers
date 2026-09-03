@@ -389,7 +389,7 @@ describe("hosted website watch", () => {
       const { rows: pollJobs } = await sql.query<{ priority: string }>(
         "SELECT priority FROM jobs WHERE kind = 'web_origin_scan' ORDER BY id DESC LIMIT 1",
       );
-      expect(pollJobs[0]?.priority).toBe("light");
+      expect(pollJobs[0]?.priority).toBe("heavy");
       const usageAfterPoll = await sql.query<{ n: string }>(
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
@@ -828,7 +828,7 @@ describe("hosted website watch", () => {
       const { rows: jobs } = await sql.query<{ priority: string }>(
         "SELECT priority FROM jobs WHERE kind = 'web_origin_scan'",
       );
-      expect(jobs[0]?.priority).toBe("light");
+      expect(jobs[0]?.priority).toBe("heavy");
       await store.sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );

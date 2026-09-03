@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+- Source maps with populated `sourcesContent` are now reconstructed as bounded
+  in-memory virtual files. Existing secret, private-key, credential,
+  AI-context, internal-document, internal-route, and internal-location rules
+  identify the original source path. Reports never retain reconstructed source
+  or matched credential values.
+
+- Production website/map crawls now use the heavy queue. Global and
+  installation concurrency limits make bursts wait instead of reconstructing
+  every customer map in memory simultaneously. Unchanged crawls still refund
+  their daily hosted-unpack slot.
+
 - Local GitHub sign-in now uses the stable loopback callback from the
   browser request instead of the changing public webhook tunnel. Non-local
   requests still use `APP_BASE_URL`. A successful sign-in returns to

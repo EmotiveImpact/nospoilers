@@ -24,6 +24,13 @@ Same brand, same scanner kernel, same alerts. Not a GitGlow clone (visibility em
 
 GitHub secret scanning does **not** catch packed maps. Making the git repo private does **not** catch an installer on a CDN.
 
+These are different evidence sources, not different scanners. CLI/CI and Scan inspect pre-release
+bytes; GitHub Release and npm monitoring inspect published packs; Production Sources crawls the
+deployed website. All use the same deterministic rules, limits, policy, receipt, and finding model.
+When a source map embeds `sourcesContent`, the scanner reconstructs bounded virtual source files in
+memory so a finding identifies the original source path. Reconstructed source and credential values
+are never persisted or logged.
+
 ---
 
 ## What is already built (this repo)
@@ -33,7 +40,7 @@ and Action still run locally. Stripe and Resend stay dark without keys. Producti
 
 | Piece | Where |
 | --- | --- |
-| Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, Chrome extension ZIP, `.whl`, Python sdist (PKG-INFO), `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, serverless zip, Electron `.asar`; npm/pnpm/Yarn/Bun workspace listing |
+| Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, Chrome extension ZIP, `.whl`, Python sdist (PKG-INFO), `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, serverless zip, Electron `.asar`; bounded in-memory source-map reconstruction; npm/pnpm/Yarn/Bun workspace listing |
 | CLI | `src/cli.ts` — `npx tsx src/cli.ts scan <path> [--strict] [--json] [--sarif file]` |
 | GitHub Action | `action.yml` (this repo, `uses: ./`). Customer Setup PR vendors `.github/actions/nospoilers`, which POSTs packed bytes to `/api/v1/scan`. |
 | Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
@@ -49,7 +56,9 @@ formats, not current claims; see `docs/ELECTRON.md`.
 
 **Exit codes:** 0 clean, 1 failed-policy, 2 error or inconclusive (never a passing receipt).
 
-**Built:** scanner kernel, CLI, Action, local pack drop-zone, **hosted GitHub App loop** (sign-in, install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
+**Built:** scanner kernel, bounded in-memory embedded-source reconstruction, CLI, Action, local
+pack drop-zone, production website/map scanning, and the **hosted GitHub App loop** (sign-in,
+install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
 
 **Not built / Phase B:** custom domain, Railway/Fly account and DNS, Marketplace. The production process split is in code (`npm run build` + `npm run host`; `NOSPOILERS_ROLE=web|worker`). This host is not deployed. Stripe Checkout/portal/webhooks and Resend Watch email are implemented and stay dark without keys.
 

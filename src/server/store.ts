@@ -2377,6 +2377,7 @@ export function createStore(
         const countsTowardUsage =
           input.priority === "heavy" &&
           input.kind !== "prospect_scan" &&
+          input.kind !== "web_origin_scan" &&
           installationId != null;
         let consumed = false;
         if (countsTowardUsage) {
