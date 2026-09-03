@@ -351,7 +351,7 @@ describe("customer-controlled public verification page", () => {
   });
 
   it("shows Watch copy for publish and unpublish", () => {
-    const page = readFileSync(path.resolve("src/pages/WatchWorkspace.tsx"), "utf8");
+    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8");
     expect(page).toMatch(/Publish verification/);
     expect(page).toMatch(/Unpublish verification/);
     expect(page).toMatch(/Solo may publish/);

@@ -34,7 +34,7 @@ function mockGithub(overrides: Partial<GithubPort> = {}): GithubPort {
 
 describe("setup status copy", () => {
   it("keeps Watch setup guidance off branch protection writes", () => {
-    const page = readFileSync("src/pages/WatchWorkspace.tsx", "utf8");
+    const page = readFileSync("src/components/watch/screens/SourcesScreen.tsx", "utf8");
     expect(page).toMatch(/Setup status/);
     expect(page).toMatch(/cannot see whether a check is required/);
     expect(page).toMatch(/never invents an alert/);

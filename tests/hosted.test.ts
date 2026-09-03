@@ -1627,7 +1627,7 @@ describe("scan latest release", () => {
   });
 
   it("says Scan latest release unpacks the Release pack, not git, and is not the hourly poller", () => {
-    const page = readFileSync(path.resolve("src/pages/WatchWorkspace.tsx"), "utf8");
+    const page = readFileSync(path.resolve("src/components/watch/screens/SourcesScreen.tsx"), "utf8");
     expect(page).toMatch(/Scan latest release/);
     expect(page).toMatch(/current Release pack, not the git tree/);
     expect(page).toMatch(/hourly poller does\s+not download every latest release/);
