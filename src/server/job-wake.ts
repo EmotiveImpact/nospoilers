@@ -18,8 +18,27 @@ export type ListenJobQueuedOptions = {
   retryDelayMs?: number;
 };
 
+export function directListenDatabaseUrl(databaseUrl: string): string {
+  try {
+    const url = new URL(databaseUrl);
+    if (
+      (url.hostname === "neon.tech" || url.hostname.endsWith(".neon.tech")) &&
+      url.hostname.includes("-pooler.")
+    ) {
+      url.hostname = url.hostname.replace("-pooler.", ".");
+      return url.toString();
+    }
+  } catch {
+    // Let pg report malformed connection strings through its normal path.
+  }
+  return databaseUrl;
+}
+
 async function defaultConnect(databaseUrl: string): Promise<JobListenClient> {
-  const client = new pg.Client({ connectionString: databaseUrl, keepAlive: true });
+  const client = new pg.Client({
+    connectionString: directListenDatabaseUrl(databaseUrl),
+    keepAlive: true,
+  });
   await client.connect();
   return {
     query: (text) => client.query(text),

@@ -14,6 +14,11 @@
   missing sibling map; that fallback is no longer reported as a public source
   map.
 
+- Long-lived workers now derive Neon’s direct endpoint for the session-bound
+  `LISTEN nospoilers_jobs` connection while keeping normal queries on the
+  pooled endpoint. PgBouncer no longer causes an enqueue notification to be
+  missed until the recovery timer.
+
 - Vercel cold starts no longer replay every database DDL migration. Runtime
   startup checks the current schema marker first; a fresh Postgres database
   serializes migration with a transaction-scoped advisory lock. Concurrent
