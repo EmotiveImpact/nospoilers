@@ -18,6 +18,8 @@ Read in this order:
 - Private GitHub repository: `EmotiveImpact/nospoilers`
 - Branch: `main`
 - Server: `http://127.0.0.1:4347`
+- Signed-in Watch is the 2B monolith sidebar against live APIs. Ember
+  stays homepage-only. Do not invent customer rows.
 - Do not create a PR unless asked. Commit and push each logical change.
 
 ## Database

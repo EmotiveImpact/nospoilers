@@ -73,7 +73,7 @@ export default function App() {
   return (
     <SiteChrome path={chromePath} search={search}>
       {page === "home" && <LandingPage />}
-      {page === "watch" && <WatchPage search={search} />}
+      {page === "watch" && <WatchPage path={path} search={search} />}
       {page === "scan" && <ScanPage search={search} />}
       {page === "pricing" && <PricingPage />}
       {page === "docs" && <DocsPage />}

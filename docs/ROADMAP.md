@@ -29,7 +29,8 @@ the immediate operational sequence. The exhaustive expansion plan is
   as CLI exit 2, and passes every clean pack plus `workspace.tgz`. Dogfoods the GitHub Action
   on a clean pack (pass) and a dirty pack (fail closed). An unclassified fixture fails the gate.
 - Hosted code: GitHub OAuth/install, HMAC webhooks, Postgres queue, worker, visibility poller,
-  release scans, alerts, and Watch desk.
+  release scans, alerts, and the 2B Watch desk (monolith sidebar on
+  signed-in and preview `/watch`; ember stays on the homepage).
 - Event-driven worker wake-up with a 15-minute recovery check.
 - Failed-job retry with backoff and stale-lock recovery after a worker crash.
 - Installation billing accounts and unpaid hosted-work enforcement.

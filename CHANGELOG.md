@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Signed-in Watch is the 2B monolith sidebar (Overview, Alerts + views,
+  Sources, Releases, Timeline, Finish setup, Settings). Ember stays on
+  the homepage. Live APIs; no invented customer rows. Preview
+  `/watch?as=trial` uses the same shell.
+
 - Live App-generated setup PR on `EmotiveImpact/nospoilers-throwaway`:
   https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1 opened by
   `nospoilers-dev[bot]` from `nospoilers/setup` onto `main` after install
