@@ -1,4 +1,4 @@
-import type { Finding } from "@/report-types.ts";
+import type { Finding } from "@/report-types";
 import type { DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";
@@ -314,7 +314,7 @@ export function buildTimelineLanes(
     if (!Number.isFinite(opened) || !Number.isFinite(resolved) || resolved < start || opened > now) continue;
     const finding = findingOf(alert);
     const key = alert.full_name || finding?.path || `alert-${alert.id}`;
-    const lane = lanes.get(key) ?? {
+    const lane: TimelineLaneViewModel = lanes.get(key) ?? {
       key,
       label: alert.full_name || alert.title,
       detail: finding?.path ?? alert.kind,

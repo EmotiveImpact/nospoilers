@@ -251,7 +251,7 @@ describe("selected alert activity", () => {
       }),
     ).toBe(true);
     const calls: string[] = [];
-    const fetcher = (async (input: RequestInfo | URL) => {
+    const fetcher = (async (input: unknown) => {
       calls.push(String(input));
       return new Response(
         JSON.stringify({
