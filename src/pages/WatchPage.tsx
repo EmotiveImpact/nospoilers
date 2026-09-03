@@ -2018,6 +2018,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           setMembers([]);
           setInvites([]);
           setMembersError(null);
+          setTimeline({ status: "ready", entries: [], days: 0 });
           setAudit({ status: "ready", rows: [] });
           setAuditExportError(null);
           setRetention({ status: "ready", days: 90 });
