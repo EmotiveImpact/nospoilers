@@ -14,6 +14,38 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
+export const CURRENT_SCHEMA_MIGRATION = "062_release_signing_policies";
+const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
+
+async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
+  const { rows: relations } = await sql.query<{ name: string | null }>(
+    "SELECT to_regclass('schema_migrations')::text AS name",
+  );
+  if (!relations[0]?.name) return false;
+  const { rows } = await sql.query<{ id: string }>(
+    "SELECT id FROM schema_migrations WHERE id = $1",
+    [CURRENT_SCHEMA_MIGRATION],
+  );
+  return rows.length > 0;
+}
+
+export async function migrateIfNeeded(
+  sql: SqlClient,
+  options: { serialize?: boolean } = {},
+): Promise<boolean> {
+  if (await schemaIsCurrent(sql)) return false;
+  if (!options.serialize) {
+    await migrate(sql);
+    return true;
+  }
+  return await sql.transaction(async (tx) => {
+    await tx.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_ADVISORY_LOCK]);
+    if (await schemaIsCurrent(tx)) return false;
+    await migrate(tx);
+    return true;
+  });
+}
+
 function wrapPglite(db: PGlite): SqlClient {
   const run = (target: PGlite) =>
     async <T>(text: string, params: unknown[] = []): Promise<QueryResult<T>> => {

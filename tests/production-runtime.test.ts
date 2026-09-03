@@ -13,7 +13,12 @@ import {
 import { JOBS_CHANNEL, notifyJobQueued } from "../src/server/job-wake.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createRuntime } from "../src/server/runtime.ts";
-import { migrate, openSql } from "../src/server/sql.ts";
+import {
+  CURRENT_SCHEMA_MIGRATION,
+  migrate,
+  migrateIfNeeded,
+  openSql,
+} from "../src/server/sql.ts";
 import { serveUi } from "../src/server/static.ts";
 import { createStore } from "../src/server/store.ts";
 
@@ -55,6 +60,23 @@ describe("process roles", () => {
     expect(jobProcessingMode("web")).toBe("on-request");
     expect(jobProcessingMode("worker")).toBe("background");
     expect(jobProcessingMode("all")).toBe("background");
+  });
+});
+
+describe("runtime migrations", () => {
+  it("skips the full migration after the current schema marker exists", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      expect(await migrateIfNeeded(sql)).toBe(true);
+      expect(await migrateIfNeeded(sql)).toBe(false);
+      const { rows } = await sql.query<{ id: string }>(
+        "SELECT id FROM schema_migrations WHERE id = $1",
+        [CURRENT_SCHEMA_MIGRATION],
+      );
+      expect(rows).toEqual([{ id: CURRENT_SCHEMA_MIGRATION }]);
+    } finally {
+      await sql.close();
+    }
   });
 });
 

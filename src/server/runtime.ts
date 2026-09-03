@@ -15,7 +15,7 @@ import { createLogNotifier } from "./notifier.ts";
 import { createApp } from "./app.ts";
 import { runPollerTick, startPoller } from "./poller.ts";
 import { assertProductionSecrets } from "./secrets.ts";
-import { migrate, openSql } from "./sql.ts";
+import { migrateIfNeeded, openSql } from "./sql.ts";
 import { stubGithub } from "./stub-github.ts";
 import { createStore } from "./store.ts";
 import { createWorker } from "./worker.ts";
@@ -24,7 +24,9 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
   assertProductionSecrets(config);
   const sql = await openSql(config.databaseUrl);
-  await migrate(sql);
+  await migrateIfNeeded(sql, {
+    serialize: databaseMode(config.databaseUrl) !== "pglite",
+  });
   const store = createStore(sql, {
     jobMaxAttempts: config.jobMaxAttempts,
     tokenSecret: config.sessionSecret,

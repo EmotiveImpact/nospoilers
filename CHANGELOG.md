@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Vercel cold starts no longer replay every database DDL migration. Runtime
+  startup checks the current schema marker first; a fresh Postgres database
+  serializes migration with a transaction-scoped advisory lock. Concurrent
+  Watch API requests can no longer deadlock Neon while the UI waits on
+  `/api/me`.
+
 - Product positioning now names three coverage surfaces—GitHub Exposure,
   Release Artifacts, and Production Web—without presenting them as separate
   scanners. The landing page explains pre-release versus continuous hosted
