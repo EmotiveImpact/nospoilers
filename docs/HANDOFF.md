@@ -402,6 +402,9 @@ Read in this order:
   Administration is not granted. Do **not** grant Administration. Do **not** request
   Workflows write (Actions YAML). Watch one-click responses stay 409 until Administration,
   which we will not take. Setup/remediation PRs stay copy-paste until Pull requests write.
+  `npm run phase1:setup-pr` opens the App-generated setup PR on
+  `EmotiveImpact/nospoilers-throwaway` once that write is requested and accepted.
+  It never merges. It never requests Workflows write.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Disclosure Desk Phase 2 minus send
   lives on that same page (`/api/internal/prospects/:id/disclosure*`,

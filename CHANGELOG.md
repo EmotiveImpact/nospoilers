@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- `npm run phase1:setup-pr` opens the App-generated setup PR on
+  `EmotiveImpact/nospoilers-throwaway` when Pull requests write is requested on
+  the App and accepted on install `158159401`. Until then it prints the App
+  permissions URL and Accept URL. The App never merges. Workflow YAML stays
+  copy-paste. Do not grant Administration or Workflows write. Do not invent
+  `-vis`.
+
 - Feature inventory now lists the human lookalike allowlist (already built)
   and records private → public on the throwaway proof row. Remaining
   specified work is human-gated or on ice. Do not invent `-vis`.

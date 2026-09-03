@@ -20,6 +20,7 @@
     "neon:check": "tsx scripts/neon-runtime-check.ts",
     "phase1:throwaway": "tsx scripts/phase1-throwaway.ts",
     "phase1:visibility": "tsx scripts/phase1-visibility.ts",
+    "phase1:setup-pr": "tsx scripts/phase1-setup-pr.ts",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "lint": "oxlint src tests scripts"
