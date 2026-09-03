@@ -1,92 +1,14 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
 import { FAIR_USE_EXHAUSTED, FAIR_USE_WARNING } from "@/fair-use-copy.ts";
 import {
-  ADMINISTRATION_DENIED,
-  DELETE_PACK_ASSETS_COPY,
-  DISABLE_WORKFLOW_COPY,
-  MAKE_PRIVATE_COPY,
-  deletePackAssetsConfirm,
-  makePrivateConfirm,
-  parseWorkflowPath,
-  workflowIsNoSpoilersScan,
-} from "@/github-response-copy.ts";
-import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
-import { WatchAlertsWorkspace } from "@/components/WatchAlertsWorkspace.tsx";
-import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
-import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
-import { WatchOverview } from "@/components/WatchOverview.tsx";
-import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
-import { WatchRouteContent } from "@/components/watch/WatchRouteContent.tsx";
-import { AuditScreen } from "@/components/watch/screens/AuditScreen.tsx";
-import { RetentionScreen } from "@/components/watch/screens/RetentionScreen.tsx";
-import { TimelineScreen } from "@/components/watch/screens/TimelineScreen.tsx";
-import {
-  WatchSectionError,
-  WatchSkeleton,
-} from "@/components/WatchDataState.tsx";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
-import { cn } from "@/lib/utils";
-import { navigate } from "@/nav.ts";
-import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
-import {
-  loadWatchJson as loadJson,
-  loadWatchResources,
-  scopedWatchApi as scopedApi,
-} from "@/watch/api.ts";
-import { watchHref, watchPath } from "@/watch/routes.ts";
-import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
-import type {
-  Me,
-  Repo,
-  Alert,
-  AlertEvent,
-  WatchedPackage,
-  WatchedOrigin,
-  MapCustodyDestination,
-  NpmRegistry,
-  NotificationDestination,
-  NotificationDelivery,
-  NotificationRoute,
-  TeamMember,
-  TeamInvite,
-  TimelineEntry,
-  TimelineView,
-  AuditRow,
-  AuditView,
-  RetentionDays,
-  RetentionView,
-  SigningPolicyDraft,
-  SigningPolicyView,
-  IdentityCandidateView,
-  IdentitySignalsView,
-  IdentityEvidenceView,
-  IdentityRiskView,
-  ProtectedNamespace,
-  Confirming,
-  ScanApiToken,
-  ReleaseRevision,
-  PackageProtection,
-  ProtectionImportResult,
-  TenantJob,
-  JobSummary,
-  FairUseStatus,
-  ReleaseDiffView,
-  PolicyExceptionView,
-  BaselineView,
-  LoadState,
-  DeskDataset,
-  SetupPrView,
-  RemediationPrView,
-  GithubResponseView,
-  SetupStatusView,
-} from "@/watch/types.ts";
-import {
-  combineWatchSectionStates,
-  type WatchSectionState,
-} from "@/watch/data-state.ts";
-import { useCallback, useEffect, useState } from "react";
+  TypeToConfirm,
+  SetupStatusResult,
+  SetupPrResult,
+  RemediationPrResult,
+  GithubResponseResult,
+  AlertDeskItem,
+} from "@/watch/WatchControllerSupport";
+import { receiptStatusMark } from "@/watch/receipt-status";
 import {
   destinationKindLabel,
   routeMinSeverityLabel,
@@ -98,21 +20,14 @@ import {
   retentionConfirmToken,
   confirmActionLabel,
   formatSealedBytes,
-  receiptStatusMark,
   protectionImportStatusLabel,
   LOADING_DATASETS,
   sectionStateOf,
-  TypeToConfirm,
   installIdFromSearch,
   formatExposure,
   kindLabel,
   defaultExpiryDate,
-  SetupStatusResult,
-  SetupPrResult,
-  RemediationPrResult,
-  GithubResponseResult,
-  AlertDeskItem,
-} from "@/watch/WatchControllerSupport";
+} from "@/watch/controller-utils";
 
 export function useWatchWorkspaceController({ path = "/watch", search }: { path?: string; search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
