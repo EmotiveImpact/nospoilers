@@ -147,8 +147,8 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 - [x] Honest preview empty state verified on all 14 routes at 320, 390, 768, 1024, and 1440;
   70 route/viewport screenshots plus the focused npm configuration state are stored outside the
   repository under `/tmp/watch-premium-screens`.
-- [x] Draft PR is updated and can be marked ready because every non-human-gated criterion passes;
-  the remaining human validation is tracked explicitly.
+- [x] Final PR body and ready-state update were attempted after every non-human-gated criterion
+  passed. GitHub returned 403; the exact body is handed to the parent for the external update.
 
 ## Verification matrix
 
@@ -181,6 +181,8 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
   available. This must be reported as unverified, not simulated.
 - Screen-reader product review by a human assistive-technology user; automated semantics and
   keyboard checks can pass independently.
+- Applying the final PR body/ready state with a GitHub credential that can update PR #13; this
+  run's token receives `403 Resource not accessible by personal access token`.
 
 ## Delivery status
 
@@ -211,3 +213,5 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
   markup, raw disclosures, microtext, and Unicode controls from returning to the page boundary.
 - `/api/me` reported no authenticated user, so live-install read-only visual verification was not
   available. Preview verification used no invented rows and made no live mutations.
+- Updating PR #13 and marking it ready was attempted after verification and failed with GitHub
+  403. The exact final body and artifact path are included in the handoff for the parent.
