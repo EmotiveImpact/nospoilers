@@ -1,0 +1,63 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const screens = [
+  "OverviewScreen",
+  "AlertsScreen",
+  "SourcesScreen",
+  "ReleasesScreen",
+  "TimelineScreen",
+  "SetupScreen",
+  "NotificationsScreen",
+  "PolicyScreen",
+  "TeamScreen",
+  "RetentionScreen",
+  "AuditScreen",
+  "HealthScreen",
+  "TokensScreen",
+  "RegistriesScreen",
+];
+
+describe("Watch architecture boundaries", () => {
+  it("keeps page and workspace files as orchestration boundaries", () => {
+    const page = readFileSync("src/pages/WatchPage.tsx", "utf8");
+    const workspace = readFileSync("src/pages/WatchWorkspace.tsx", "utf8");
+    expect(page.split("\n").length).toBeLessThanOrEqual(30);
+    expect(workspace.split("\n").length).toBeLessThanOrEqual(20);
+    expect(workspace).toMatch(/useWatchWorkspaceController/);
+    expect(workspace).not.toMatch(/fetch\(|<section|<form/);
+  });
+
+  it("keeps every route in a focused screen module", () => {
+    for (const screen of screens) {
+      expect(readFileSync(path.join("src/components/watch/screens", `${screen}.tsx`), "utf8"))
+        .toMatch(new RegExp(`(?:function|const) ${screen}`));
+    }
+  });
+
+  it("does not regress to core disclosures, microtext, or unicode controls", () => {
+    const source = screens
+      .map((screen) => readFileSync(path.join("src/components/watch/screens", `${screen}.tsx`), "utf8"))
+      .join("\n");
+    expect(source).not.toMatch(/<details|<summary/);
+    expect(source).not.toMatch(/text-\[(?:10|11)px\]/);
+    expect(source).not.toMatch(/[✓→⌥▣⬡⎔]/);
+  });
+
+  it("keeps notification and registry settings focused", () => {
+    const notifications = readFileSync(
+      "src/components/watch/screens/NotificationsScreen.tsx",
+      "utf8",
+    );
+    const registries = readFileSync(
+      "src/components/watch/screens/RegistriesScreen.tsx",
+      "utf8",
+    );
+    expect(notifications).toMatch(/role="tablist"/);
+    expect(notifications).toMatch(/flow === "email"/);
+    expect(notifications).toMatch(/flow === "route-test"/);
+    expect(registries).toMatch(/route\.view === "sources" \? \(/);
+    expect(registries).toMatch(/Registry credentials/);
+  });
+});
