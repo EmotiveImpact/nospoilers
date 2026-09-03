@@ -78,6 +78,38 @@ describe("runtime migrations", () => {
       await sql.close();
     }
   });
+
+  it("adds origin verification columns to an existing database before indexing them", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      await sql.exec(`
+        DROP INDEX IF EXISTS watched_origins_deploy_token_uidx;
+        ALTER TABLE watched_origins DROP COLUMN deploy_token_hash;
+        ALTER TABLE watched_origins DROP COLUMN deploy_token_prefix;
+        ALTER TABLE watched_origins DROP COLUMN verification_token;
+        ALTER TABLE watched_origins DROP COLUMN verification_method;
+        ALTER TABLE watched_origins DROP COLUMN verified_at;
+        DELETE FROM schema_migrations WHERE id = '063_origin_verification';
+      `);
+      expect(await migrateIfNeeded(sql)).toBe(true);
+      const { rows } = await sql.query<{ n: string }>(
+        `SELECT count(*)::text AS n
+         FROM information_schema.columns
+         WHERE table_name = 'watched_origins'
+           AND column_name IN (
+             'deploy_token_hash',
+             'deploy_token_prefix',
+             'verification_token',
+             'verification_method',
+             'verified_at'
+           )`,
+      );
+      expect(Number(rows[0]?.n)).toBe(5);
+    } finally {
+      await sql.close();
+    }
+  });
 });
 
 describe("built UI", () => {

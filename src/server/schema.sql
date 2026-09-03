@@ -631,6 +631,12 @@ CREATE TABLE IF NOT EXISTS watched_origins (
 CREATE INDEX IF NOT EXISTS watched_origins_install_idx
   ON watched_origins (installation_id, origin_url);
 
+ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_token TEXT;
+ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_method TEXT;
+ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_hash TEXT;
+ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_prefix TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS watched_origins_deploy_token_uidx
   ON watched_origins (deploy_token_hash)
   WHERE deploy_token_hash IS NOT NULL;
