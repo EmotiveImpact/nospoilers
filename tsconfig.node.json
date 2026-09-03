@@ -16,6 +16,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
+    "api/**/*.ts",
     "vite.config.ts",
     "src/plugin.ts",
     "src/cli.ts",
