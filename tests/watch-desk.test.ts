@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { previewAlerts, previewRepos } from "../src/preview.ts";
@@ -240,6 +241,52 @@ describe("normalized source views", () => {
     expect(filterSourceViewModels(sources, "npm", true).map((source) => source.key)).toEqual([
       "npm-2",
     ]);
+  });
+
+  it("does not crash Coverage when a legacy alert stores digest metadata instead of findings", () => {
+    const sources = buildSourceViewModels({
+      repos: [{ id: 1, full_name: "acme/app", private: true, last_checked_at: null }],
+      packages: [],
+      origins: [],
+      maps: [],
+      alerts: [
+        {
+          id: 9,
+          kind: "release_digest_mismatch",
+          title: "Digest changed",
+          body: "",
+          findings: {
+            coordinate: "web:https://app.example.com/",
+            previousSha256: "old",
+            artifactSha256: "new",
+          },
+          created_at: "2026-09-03T10:00:00Z",
+        } as never,
+      ],
+    });
+    expect(sources).toHaveLength(1);
+    expect(sources[0]?.alertCount).toBe(0);
+    expect(asFindingList({ coordinate: "web:https://app.example.com/" })).toEqual([]);
+    expect(
+      leadFinding({
+        findings: { previousSha256: "old", artifactSha256: "new" },
+      }),
+    ).toBeNull();
+    expect(() =>
+      buildTimelineLanes(
+        [
+          {
+            id: 9,
+            kind: "release_digest_mismatch",
+            title: "Digest changed",
+            body: "",
+            findings: { coordinate: "web:https://app.example.com/" } as never,
+            created_at: "2026-09-03T10:00:00Z",
+          },
+        ],
+        { now: Date.parse("2026-09-03T12:00:00Z"), days: 7 },
+      ),
+    ).not.toThrow();
   });
 });
 

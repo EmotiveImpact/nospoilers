@@ -1,4 +1,5 @@
 import type { Finding } from "../report-types.ts";
+import { asFindingList } from "./format.ts";
 import type { DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";
@@ -80,7 +81,7 @@ export function buildSourceViewModels(input: {
     openAlerts.filter((alert) => {
       const coordinates = [
         alert.full_name,
-        ...(alert.findings ?? []).map((finding) => finding.path),
+        ...asFindingList(alert.findings).map((finding) => finding.path),
       ].filter((value): value is string => Boolean(value));
       return values.some((value) =>
         coordinates.some(
@@ -356,7 +357,7 @@ export type TimelineLaneViewModel = {
 };
 
 function findingOf(alert: DeskAlert): Finding | null {
-  return (alert.findings?.[0] as Finding | undefined) ?? null;
+  return (asFindingList(alert.findings)[0] as Finding | undefined) ?? null;
 }
 
 function severityFor(rule: string): "critical" | "warning" {

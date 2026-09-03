@@ -447,6 +447,7 @@ function publicIdentityCandidate(row: IdentityCandidateRow) {
 }
 
 function publicAlert(row: AlertRow) {
+  const findings = Array.isArray(row.findings) ? row.findings : null;
   return {
     id: row.id,
     installation_id: row.installation_id,
@@ -454,7 +455,7 @@ function publicAlert(row: AlertRow) {
     kind: row.kind,
     title: row.title,
     body: row.body,
-    findings: row.findings,
+    findings,
     github_delivery_id: row.github_delivery_id,
     acknowledged_at: row.acknowledged_at,
     acknowledged_by_login: row.acknowledged_by_login,
@@ -465,7 +466,7 @@ function publicAlert(row: AlertRow) {
     created_at: row.created_at,
     full_name: row.full_name ?? null,
     exposure_ms: exposureMs(row.created_at, row.resolved_at),
-    rotation_checklist: rotationChecklist(findingRules(row.findings)),
+    rotation_checklist: rotationChecklist(findingRules(findings)),
   };
 }
 

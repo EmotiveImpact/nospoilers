@@ -68,9 +68,22 @@ export function kindLabel(kind: string): string {
   }
 }
 
+export function asFindingList(
+  findings: unknown,
+): { rule: string; path: string }[] {
+  if (!Array.isArray(findings)) return [];
+  return findings.filter((row): row is { rule: string; path: string } => {
+    if (!row || typeof row !== "object") return false;
+    return typeof (row as { rule?: unknown }).rule === "string";
+  }).map((row) => ({
+    rule: row.rule,
+    path: typeof row.path === "string" ? row.path : "",
+  }));
+}
+
 export function leadFinding(alert: {
-  findings?: { rule: string; path: string }[] | null;
+  findings?: unknown;
 }): { rule: string; path: string } | null {
-  const first = alert.findings?.[0];
+  const first = asFindingList(alert.findings)[0];
   return first ? { rule: first.rule, path: first.path } : null;
 }

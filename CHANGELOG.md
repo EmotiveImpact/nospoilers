@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Watch no longer goes black after GitHub login when a historical alert stores
+  digest metadata in `findings` instead of an array. The API and desk view
+  models now treat non-array findings as empty.
+
 - Production Web now has customer-domain ownership verification by DNS TXT or
   an HTTPS well-known file. Verified install admins can mint a one-time
   `nsd_` deployment token for the signed `/api/v1/deploy` trigger; duplicate
