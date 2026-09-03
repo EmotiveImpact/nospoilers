@@ -1144,7 +1144,7 @@ function AlertDeskItem({
   );
 }
 
-export function WatchPage({ path, search }: { path: string; search: string }) {
+export function WatchPage({ path = "/watch", search }: { path?: string; search: string }) {
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
