@@ -25,10 +25,10 @@ const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
 ];
 
 function revealSourceForm(id: string) {
-  const details = document.getElementById(id);
-  if (details instanceof HTMLDetailsElement) {
-    details.open = true;
-    details.scrollIntoView({ behavior: "smooth", block: "start" });
+  const section = document.getElementById(id);
+  if (section instanceof HTMLElement) {
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    section.focus({ preventScroll: true });
   }
 }
 
@@ -156,7 +156,14 @@ export function WatchSourcesSummary({
                     : "grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-dim"
                 }
               >
-                {step.proof === "covered" ? "✓" : index + 1}
+                {step.proof === "covered" ? (
+                  <>
+                    <CheckCircle2 className="size-3.5" aria-hidden />
+                    <span className="sr-only">Covered</span>
+                  </>
+                ) : (
+                  index + 1
+                )}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-snow">{step.label}</p>

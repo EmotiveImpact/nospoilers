@@ -17,6 +17,13 @@ import {
   type DeskAlert,
 } from "@/watch/verdict.ts";
 import type { WatchSetupViewModel, WatchSourceViewModel } from "@/watch/view-models.ts";
+import { GitBranch, Globe2, Map, Package } from "lucide-react";
+
+function SourceIcon({ kind }: { kind: WatchSourceViewModel["kind"] }) {
+  const Icon =
+    kind === "github" ? GitBranch : kind === "npm" ? Package : kind === "website" ? Globe2 : Map;
+  return <Icon className="size-4" aria-hidden />;
+}
 
 export function WatchOverview({
   search,
@@ -217,7 +224,7 @@ export function WatchOverview({
               {sources.slice(0, 6).map((row) => (
                 <li key={row.key} className="grid gap-3 px-4 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center">
                   <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-xs text-mute">
-                    {row.kind === "github" ? "⌥" : row.kind === "npm" ? "▣" : row.kind === "website" ? "⬡" : "⎔"}
+                    <SourceIcon kind={row.kind} />
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
