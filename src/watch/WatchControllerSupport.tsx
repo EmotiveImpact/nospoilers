@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import type { Alert, AlertEvent, GithubResponseView, RemediationPrView, SetupPrView, SetupStatusView } from "@/watch/types";
-import { formatExposure } from "@/watch/controller-utils";
+import { formatExposure, kindLabel } from "@/watch/controller-utils";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 
 export function TypeToConfirm(props: {
