@@ -1,5 +1,5 @@
-import { createRuntime } from "../src/server/runtime.ts";
-import { createVercelHandler, type WebRuntimeLoader } from "../src/server/vercel.ts";
+import { createRuntime } from "./runtime.ts";
+import { createVercelHandler, type WebRuntimeLoader } from "./vercel.ts";
 
 let runtime: ReturnType<typeof createRuntime> | undefined;
 

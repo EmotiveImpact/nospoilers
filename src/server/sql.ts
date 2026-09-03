@@ -109,10 +109,24 @@ export async function openSql(databaseUrl: string): Promise<SqlClient> {
   return wrapPool(pool);
 }
 
-export async function migrate(sql: SqlClient): Promise<void> {
+async function readSchemaSql(): Promise<string> {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const schemaPath = path.join(here, "schema.sql");
-  const schema = await readFile(schemaPath, "utf8");
+  const candidates = [
+    path.join(here, "schema.sql"),
+    path.join(process.cwd(), "src/server/schema.sql"),
+  ];
+  for (const schemaPath of candidates) {
+    try {
+      return await readFile(schemaPath, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error(`schema.sql not found (checked: ${candidates.join(", ")})`);
+}
+
+export async function migrate(sql: SqlClient): Promise<void> {
+  const schema = await readSchemaSql();
   await sql.exec(schema);
   await sql.exec(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;

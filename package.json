@@ -12,6 +12,8 @@
     "worker": "NOSPOILERS_ROLE=worker tsx src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "build": "tsc -b && vite build",
+    "build:api": "tsup --config tsup.vercel.config.ts",
+    "build:vercel": "npm run build:api && npm run build",
     "preview": "vite preview --port 4347 --host --strictPort",
     "nospoilers": "tsx src/cli.ts",
     "scan": "tsx src/cli.ts scan",

@@ -40,7 +40,7 @@ describe("Vercel web runtime", () => {
       { source: "/api/:path*", destination: "/api" },
       { source: "/:path*", destination: "/index.html" },
     ]);
-    expect(config.functions["api/index.ts"]).toMatchObject({
+    expect(config.functions["api/index.js"]).toMatchObject({
       includeFiles: "src/server/schema.sql",
       maxDuration: 300,
     });
