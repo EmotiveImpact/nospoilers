@@ -44,9 +44,10 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px]",
+        "flex items-center gap-2 rounded-md px-2.5 py-[7px] text-[13px]",
         active ? "bg-white/8 text-snow" : "text-mute hover:bg-white/5 hover:text-snow",
       )}
+      aria-current={active ? "page" : undefined}
     >
       {children}
     </a>
@@ -137,7 +138,13 @@ export function WatchMonolithShell({
             </select>
           </label>
         ) : (
-          <p className="mt-2 truncate text-xs text-mute">{login}</p>
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-white/8 bg-white/[0.025] px-2 py-2">
+            <span className="grid size-6 place-items-center rounded-md bg-white/10 text-[10px] font-semibold text-snow">
+              {login.slice(0, 2).toUpperCase()}
+            </span>
+            <p className="min-w-0 flex-1 truncate text-xs text-snow">{login}</p>
+            <span className="text-[10px] text-dim">⌄</span>
+          </div>
         )}
         <p className="mt-1 text-[11px] text-dim">
           {sourceCount > 0 ? `${sourceCount} sources` : "nothing connected"}
@@ -176,7 +183,7 @@ export function WatchMonolithShell({
           </NavLink>
         </div>
 
-        <div>
+        <div className="border-t border-white/8 pt-4">
           <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Alert views</p>
           <div className="flex flex-col gap-0.5">
             <NavLink href={hrefFor("alerts", "open")} active={alertActive("open")} onNavigate={closeNav}>
@@ -263,22 +270,32 @@ export function WatchMonolithShell({
           go(event, hrefFor("setup"));
           closeNav();
         }}
-        className="border-t border-white/8 px-4 py-3 text-left hover:bg-white/3"
+        className="flex items-center gap-3 border-t border-white/8 px-4 py-3 text-left hover:bg-white/3"
       >
-        <p className="text-xs text-snow">
-          {setupDone} of {setupTotal} leak paths covered
-        </p>
-        <p className={cn("mt-0.5 text-[11px]", ended ? "text-danger" : "text-dim")}>
-          {coverage?.label ?? "Coverage"}
-          {role ? ` · ${role}` : ""}
-        </p>
+        <span
+          className="grid size-10 shrink-0 place-items-center rounded-full"
+          style={{ background: `conic-gradient(#f4f4f5 ${(setupDone / setupTotal) * 360}deg, #252529 0)` }}
+        >
+          <span className="grid size-[32px] place-items-center rounded-full bg-[#0c0c0e] text-[9px] text-snow">
+            {setupDone}/{setupTotal}
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs text-snow">
+            {setupDone > 0 ? `${setupDone} of ${setupTotal} leak paths covered` : "Nothing covered yet"}
+          </span>
+          <span className={cn("mt-0.5 block text-[11px]", ended ? "text-danger" : "text-dim")}>
+            {coverage?.label ?? "Coverage"}
+            {role ? ` · ${role}` : ""}
+          </span>
+        </span>
       </a>
     </>
   );
 
   return (
-    <div className="flex min-h-svh bg-ink">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-white/8 bg-[#0c0c0e] md:flex">
+    <div className="flex h-svh overflow-hidden bg-ink">
+      <aside className="hidden h-svh w-[244px] shrink-0 flex-col border-r border-white/8 bg-[#0c0c0e] md:flex">
         {nav}
       </aside>
 
@@ -297,7 +314,7 @@ export function WatchMonolithShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b border-white/8 px-5">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/8 bg-ink px-4 shadow-[0_10px_32px_rgba(0,0,0,.12)] md:px-5">
           <button
             type="button"
             className="inline-flex size-9 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
@@ -311,21 +328,27 @@ export function WatchMonolithShell({
           <button
             type="button"
             onClick={onOpenPalette}
-            className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/10 bg-white/3 px-3 text-left text-sm text-dim hover:border-white/20"
+            className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/10 bg-white/3 px-3 text-left text-sm text-dim hover:border-white/20 md:max-w-sm"
           >
             <span className="truncate">Search or run a command…</span>
             <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-[10px] text-dim sm:inline">
               ⌘K
             </span>
           </button>
-          <strong className="hidden shrink-0 text-sm text-snow md:inline">{VIEW_TITLE[route.view]}</strong>
+          <span className="hidden flex-1 md:block" />
+          <strong className="hidden shrink-0 text-sm text-snow lg:inline">{VIEW_TITLE[route.view]}</strong>
+          {coverage ? (
+            <span className={cn("hidden rounded-full border px-2 py-1 text-[10px] sm:inline", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
+              {coverage.label}
+            </span>
+          ) : null}
           <Button
             type="button"
             size="sm"
             variant="ghost"
             onClick={() => setGuidanceOpen((open) => !open)}
           >
-            {guidanceOpen ? "Hide guide" : "About"}
+            {guidanceOpen ? "Hide guide" : "Guide"}
           </Button>
           {ended ? (
             <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
@@ -338,8 +361,16 @@ export function WatchMonolithShell({
             </Button>
           ) : null}
           {billing}
-          <Button type="button" size="sm" variant="ghost" onClick={() => void signOut()}>
-            Sign out
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="size-8 rounded-full border border-white/10 px-0 text-[10px] text-snow"
+            onClick={() => void signOut()}
+            title="Sign out"
+            aria-label={`Sign out ${login}`}
+          >
+            {login.slice(0, 2).toUpperCase()}
           </Button>
         </header>
         <div

@@ -12,6 +12,7 @@ import {
 } from "@/github-response-copy.ts";
 import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
 import { WatchExposureChart } from "@/components/WatchExposureChart.tsx";
+import { WatchAlertsWorkspace } from "@/components/WatchAlertsWorkspace.tsx";
 import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
 import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
@@ -21,8 +22,8 @@ import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
-import { parseWatchRoute, watchHref, watchPath } from "@/watch/routes.ts";
-import { filterDeskAlerts, isOpenAlert, setupProgress } from "@/watch/verdict.ts";
+import { watchHref, watchPath } from "@/watch/routes.ts";
+import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
 import type { Finding } from "@/report-types";
 import { useCallback, useEffect, useState } from "react";
 
@@ -1973,6 +1974,32 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     };
   }, [selectedInstallId]);
 
+  const controller = useWatchDeskController({
+    path,
+    search,
+    login: me.status === "ready" ? me.data.user?.login ?? PREVIEW_LOGIN : PREVIEW_LOGIN,
+    previewing: me.status !== "ready" || !me.data.user,
+    repos:
+      me.status === "ready" && !me.data.user
+        ? previewRepos()
+        : repos.status === "ready"
+          ? repos.data.repos
+          : [],
+    alerts:
+      me.status === "ready" && !me.data.user
+        ? (previewAlerts() as Alert[])
+        : alerts.status === "ready"
+          ? alerts.data.alerts
+          : [],
+    packages: packages.status === "ready" ? packages.data.packages : [],
+    origins: origins.status === "ready" ? origins.data.origins : [],
+    maps: mapDestinations,
+    releases,
+    setupProbes: setupStatusByRepo,
+    alertEvents,
+    setAlertEvents,
+  });
+
   if (me.status === "loading") {
     return (
       <main className="flex min-h-[70svh] items-center justify-center px-5">
@@ -2101,52 +2128,20 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       />
     ) : null;
 
-  const route = parseWatchRoute(path, search);
+  const route = controller.route;
   const deskOrigins = previewing ? [] : origins.status === "ready" ? origins.data.origins : [];
   const teamOnly = deskCoverage?.status === "trial" || deskCoverage?.plan === "team";
   const adminOnly = Boolean(installAdmin) || previewing;
-  const setup = setupProgress({
-    repos: deskRepos.length,
-    packages: deskPackages.length,
-    origins: deskOrigins.length,
-    maps: mapDestinations.length,
-    tokens: scanTokens.length,
-  });
-  const sourceRows = [
-    ...deskRepos.map((repo) => ({
-      key: `repo-${repo.id}`,
-      kind: "GitHub",
-      name: repo.full_name,
-      meta: repo.private ? "private" : "public",
-    })),
-    ...deskPackages.map((pkg) => ({
-      key: `npm-${pkg.id}`,
-      kind: "npm",
-      name: pkg.package_name,
-      meta: pkg.last_version ? `latest ${pkg.last_version}` : "watched",
-    })),
-    ...deskOrigins.map((row) => ({
-      key: `web-${row.id}`,
-      kind: "website",
-      name: row.host,
-      meta: row.origin_url,
-    })),
-    ...mapDestinations.map((row) => ({
-      key: `map-${row.id}`,
-      kind: "map custody",
-      name: `${row.kind} · ${row.projectSlug}`,
-      meta: row.host,
-    })),
-  ];
-  const listedAlerts = filterDeskAlerts(deskAlerts, route.tab, login);
-  const selectedAlert =
-    listedAlerts.find((alert) => alert.id === route.alertId) ?? listedAlerts[0] ?? null;
+  const setup = controller.setup;
+  const sourceRows = controller.sources;
+  const listedAlerts = controller.listedAlerts as Alert[];
+  const selectedAlert = controller.selectedAlert as Alert | null;
   const selectedRelease =
     releases.find((release) => release.id === route.releaseId) ?? releases[0] ?? null;
-  const openAlertCount = deskAlerts.filter(isOpenAlert).length;
-  const waitingCount = filterDeskAlerts(deskAlerts, "waiting", login).length;
-  const mineCount = filterDeskAlerts(deskAlerts, "mine", login).length;
-  const resolvedCount = filterDeskAlerts(deskAlerts, "done", login).length;
+  const openAlertCount = controller.counts.open;
+  const waitingCount = controller.counts.waiting;
+  const mineCount = controller.counts.mine;
+  const resolvedCount = controller.counts.resolved;
   const billingControl =
     !previewing && stripeLive && installAdmin && billing?.hasCustomer ? (
       <Button
@@ -2244,8 +2239,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             <CoverageLock variant="watch" title="Subscribe to keep watching." />
           ) : null}
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
-          <WatchSourcesSummary mode={route.view} sources={sourceRows} setup={setup} />
-          <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+          <WatchSourcesSummary mode={route.view} sources={sourceRows} setup={setup} admin={adminOnly} />
+          <details id="watch-source-github" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
           <summary className="cursor-pointer text-sm text-snow">GitHub repositories</summary>
           <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
           <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -2691,7 +2686,110 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         </section>
       )}
 
-      {route.view === "alerts" && (
+      {route.view === "alerts" ? (
+        <WatchAlertsWorkspace
+          alerts={listedAlerts}
+          rows={controller.alertRows}
+          selected={selectedAlert}
+          events={selectedAlert ? alertEvents[selectedAlert.id] ?? [] : []}
+          previewing={previewing}
+          ended={ended}
+          busy={Boolean(selectedAlert && alertBusyId === selectedAlert.id)}
+          note={selectedAlert ? alertNotes[selectedAlert.id] ?? "" : ""}
+          assignee={selectedAlert ? alertAssignees[selectedAlert.id] ?? "" : ""}
+          error={selectedAlert ? alertErrorById[selectedAlert.id] ?? null : null}
+          exportError={exportError}
+          onSelect={(alertId) =>
+            navigate(
+              watchHref(watchPath("alerts"), search, {
+                alert: alertId,
+                tab: route.tab,
+              }),
+            )
+          }
+          onNote={(value) => {
+            if (!selectedAlert) return;
+            setAlertNotes((current) => ({ ...current, [selectedAlert.id]: value }));
+          }}
+          onAssignee={(value) => {
+            if (!selectedAlert) return;
+            setAlertAssignees((current) => ({ ...current, [selectedAlert.id]: value }));
+          }}
+          onAction={(action) => {
+            if (previewing || !selectedAlert) return;
+            const alert = selectedAlert;
+            setAlertErrorById((current) => {
+              const next = { ...current };
+              delete next[alert.id];
+              return next;
+            });
+            setAlertBusyId(alert.id);
+            void (async () => {
+              try {
+                const payload =
+                  action === "assign"
+                    ? { login: (alertAssignees[alert.id] ?? "").trim() }
+                    : action === "resolve"
+                      ? { note: (alertNotes[alert.id] ?? "").trim() }
+                      : undefined;
+                const response = await fetch(`/api/alerts/${alert.id}/${action}`, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: payload ? { "content-type": "application/json" } : undefined,
+                  body: payload ? JSON.stringify(payload) : undefined,
+                });
+                const body = (await response.json()) as { error?: string; alert?: Alert };
+                if (!response.ok || !body.alert) {
+                  throw new Error(body.error ?? "Could not update that alert.");
+                }
+                setAlerts((current) => {
+                  if (current.status !== "ready") return current;
+                  return {
+                    status: "ready",
+                    data: {
+                      alerts: current.data.alerts.map((row) =>
+                        row.id === body.alert!.id ? { ...row, ...body.alert } : row,
+                      ),
+                    },
+                  };
+                });
+                const eventBody = await loadJson<{ events: AlertEvent[] }>(
+                  `/api/alerts/${alert.id}/events`,
+                );
+                setAlertEvents((current) => ({ ...current, [alert.id]: eventBody.events }));
+              } catch (error) {
+                setAlertErrorById((current) => ({
+                  ...current,
+                  [alert.id]: error instanceof Error ? error.message : "Could not update that alert.",
+                }));
+              } finally {
+                setAlertBusyId(null);
+              }
+            })();
+          }}
+          onExport={() => {
+            setExportError(null);
+            void (async () => {
+              try {
+                const body = await loadJson<{ exportedAt: string; alerts: Alert[] }>(
+                  scopedApi("/api/alerts/export", activeInstallId),
+                );
+                const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `nospoilers-alerts-${body.exportedAt.slice(0, 10)}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              } catch (error) {
+                setExportError(error instanceof Error ? error.message : "Could not export alerts.");
+              }
+            })();
+          }}
+        />
+      ) : null}
+
+      {false && route.view === "alerts" && (
         <section>
           <h1 className="font-display text-3xl tracking-tight text-snow">Alerts</h1>
           <p className="mt-2 text-sm text-mute">Facts that need triage, ownership, or resolution.</p>
@@ -2875,7 +2973,10 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
           stays until uninstall.
         </p>
-        <WatchExposureChart alerts={deskAlerts} />
+        <WatchExposureChart
+          alerts={deskAlerts}
+          days={timeline.status === "ready" ? Math.max(7, timeline.days || 90) : 90}
+        />
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
             Preview cannot show a live timeline. No invented incident.
@@ -4285,7 +4386,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <details id="watch-source-web" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
         <summary className="cursor-pointer text-sm text-snow">Production websites</summary>
         <p className="mt-2 text-sm text-mute">Origins watched for public source maps and exposed files.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -4428,7 +4529,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <details id="watch-source-map" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
         <summary className="cursor-pointer text-sm text-snow">Map custody</summary>
         <p className="mt-2 text-sm text-mute">Confirm maps are held by your error tracker, not served publicly.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -4642,7 +4743,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         {route.view === "registries" ? (
           <h1 className="mb-5 font-display text-3xl tracking-tight text-snow">Private registries</h1>
         ) : null}
-        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view !== "sources"}>
+        <details id="watch-source-npm" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view !== "sources"}>
         <summary className="cursor-pointer text-sm text-snow">
           {route.view === "registries" ? "Registry credentials and packages" : "npm packages"}
         </summary>

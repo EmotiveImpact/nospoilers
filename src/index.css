@@ -48,6 +48,48 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.watch-kicker {
+  color: #71717a;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.watch-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: #a1a1aa;
+  font-size: 10px;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+.watch-pill-crit {
+  border-color: rgba(226, 69, 58, 0.35);
+  background: rgba(226, 69, 58, 0.1);
+  color: #f17b72;
+}
+
+.watch-pill-warn {
+  border-color: rgba(177, 129, 52, 0.38);
+  background: rgba(177, 129, 52, 0.1);
+  color: #d5a85e;
+}
+
+.watch-pill-ok {
+  border-color: rgba(91, 177, 111, 0.28);
+  background: rgba(91, 177, 111, 0.08);
+  color: #8bcc9a;
+}
+
+.watch-gantt {
+  overflow-x: auto;
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

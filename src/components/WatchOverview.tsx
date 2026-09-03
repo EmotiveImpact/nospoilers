@@ -1,4 +1,5 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
+import { WatchExposureChart } from "@/components/WatchExposureChart.tsx";
 import { Button } from "@/components/ui/button";
 import { navigate } from "@/nav.ts";
 import { formatExposure, leadFinding } from "@/watch/format.ts";
@@ -8,16 +9,9 @@ import {
   isOpenAlert,
   longestOpenExposure,
   newestOpenAlert,
-  setupProgress,
   type DeskAlert,
 } from "@/watch/verdict.ts";
-
-type SourceRow = {
-  key: string;
-  kind: string;
-  name: string;
-  meta: string;
-};
+import type { WatchSetupViewModel, WatchSourceViewModel } from "@/watch/view-models.ts";
 
 export function WatchOverview({
   search,
@@ -37,12 +31,12 @@ export function WatchOverview({
   githubPaused: boolean;
   installUrl?: string;
   alerts: DeskAlert[];
-  sources: SourceRow[];
+  sources: WatchSourceViewModel[];
   packsRead: number;
   failedPolicy: number;
   queueDepth: number;
   lastRunLabel: string;
-  setup: ReturnType<typeof setupProgress>;
+  setup: WatchSetupViewModel;
 }) {
   const verdict = deskVerdict({
     ended,
@@ -53,11 +47,11 @@ export function WatchOverview({
   const open = alerts.filter(isOpenAlert);
   const lead = newestOpenAlert(open);
   const finding = lead ? leadFinding(lead) : null;
-  const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy") =>
+  const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy" | "timeline") =>
     watchHref(watchPath(view), search);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <h1 className="font-display text-3xl tracking-tight text-snow md:text-4xl">{verdict.title}</h1>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">{verdict.detail}</p>
       {verdict.tone === "ended" ? (
@@ -143,7 +137,13 @@ export function WatchOverview({
             {formatExposure(lead.exposure_ms, lead.created_at, lead.resolved_at)}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={() => navigate(href("alerts"))}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                navigate(watchHref(watchPath("alerts"), search, { alert: lead.id }))
+              }
+            >
               Open rotation checklist
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={() => navigate(href("policy"))}>
@@ -152,6 +152,16 @@ export function WatchOverview({
           </div>
         </section>
       ) : null}
+
+      <section className="mt-10">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm text-snow">Exposure, last 7 days</h2>
+          <button type="button" className="text-xs text-dim hover:text-snow" onClick={() => navigate(href("timeline"))}>
+            Full timeline →
+          </button>
+        </div>
+        <WatchExposureChart alerts={alerts} compact />
+      </section>
 
       <section className="relative mt-10">
         {ended ? <CoverageLock variant="watch" title="Subscribe to keep watching." /> : null}
@@ -173,13 +183,25 @@ export function WatchOverview({
           ) : (
             <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8">
               {sources.slice(0, 6).map((row) => (
-                <li key={row.key} className="flex items-baseline justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className="font-mono text-sm text-snow">{row.name}</p>
+                <li key={row.key} className="grid gap-3 px-4 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center">
+                  <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-xs text-mute">
+                    {row.kind === "github" ? "⌥" : row.kind === "npm" ? "▣" : row.kind === "website" ? "⬡" : "⎔"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-mono text-sm text-snow">{row.name}</p>
+                      <span className={row.attention === "critical" ? "watch-pill watch-pill-crit" : "watch-pill"}>
+                        {row.status}
+                      </span>
+                    </div>
                     <p className="mt-1 text-[11px] text-dim">
-                      {row.kind} · {row.meta}
+                      {row.kindLabel} · {row.detail}
+                      {row.digest ? ` · ${row.digest.slice(0, 12)}` : ""}
                     </p>
                   </div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => navigate(href("sources"))}>
+                    Open
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -202,19 +224,24 @@ export function WatchOverview({
             Setup →
           </button>
         </div>
-        <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8">
-          {setup.steps.map((step) => (
-            <li key={step.key} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div>
-                <p className="text-sm text-snow">{step.label}</p>
-                <p className="mt-1 text-[11px] text-dim">{step.done ? "Connected" : "Not connected"}</p>
-              </div>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
-                {step.done ? "done" : "open"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {setup.next ? (
+          <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-white/10 bg-panel p-4">
+            <span className="grid size-7 place-items-center rounded-full border border-white/20 text-xs text-snow">
+              {setup.steps.indexOf(setup.next) + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-snow">{setup.next.label}</p>
+              <p className="mt-1 text-[11px] text-dim">{setup.next.summary}</p>
+            </div>
+            <Button type="button" size="sm" onClick={() => navigate(href("setup"))}>
+              {setup.next.action}
+            </Button>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg border border-white/8 bg-panel p-4 text-sm text-mute">
+            Every path has direct proof.
+          </p>
+        )}
       </section>
     </div>
   );
