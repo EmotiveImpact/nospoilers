@@ -89,6 +89,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   verify; no stored signatures; first refresh baseline; later loss/change is a
   Watch fact; Solo 403; unpaid 402). Live Neon: throwaway `phase1-fixture`
   revision 6 (`c74219d2…`) github `missing` baseline, leftover row stayed.
+  Trial and Team admins can save a signing policy that blocks
+  approve-to-ship until required GitHub/npm attestation facts match
+  (optional builder prefix and expiration; Solo 403; unpaid 402).
   Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or

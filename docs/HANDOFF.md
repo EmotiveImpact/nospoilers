@@ -132,7 +132,10 @@ Read in this order:
   bytes). Live Neon: `061` applied; unauth GET/POST 401; throwaway
   `phase1-fixture` revision 6 (`c74219d2…`) stored github `missing`
   with no alert; leftover row 1 stayed after a second refresh (2 rows);
-  UPDATE rejected; `watched_packages` 0. Next unused id is `062_*`.
+  UPDATE rejected; `watched_packages` 0.
+  `062_release_signing_policies` stores one customer signing policy per
+  install (required GitHub/npm presence, optional builder prefix,
+  optional expiration). Next unused id is `063_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -171,6 +174,11 @@ Read in this order:
   Unpaid 402. Private registries store `missing` and are not fetched.
   Hosted `api:` coordinates have no attestation source. This is not the
   packument-only identity snapshot.
+  Trial and Team admins can save a signing policy that blocks
+  approve-to-ship until required GitHub/npm attestation facts are
+  present (optional builder prefix and expiration). Typed confirm.
+  Members may read. Solo 403. Unpaid 402. Clear deletes the row.
+  This is not Sigstore verification.
   Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save.   Slack incoming webhooks,
   SIEM HTTPS webhooks, Jira Cloud email+token, and PagerDuty routing keys are the same

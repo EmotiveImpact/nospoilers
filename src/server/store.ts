@@ -73,6 +73,7 @@ import {
   type AttestationStatus,
   type ReleaseAttestationRow,
 } from "./attestations.ts";
+import type { SigningPolicyInput, SigningPolicyRow } from "./signing-policy.ts";
 import {
   asDisclosureDestinationKind,
   type DisclosureDestinationKind,
@@ -7285,6 +7286,88 @@ export function createStore(
         revisionIds,
       );
       return rows.map(releaseAttestationRow);
+    },
+
+    async getSigningPolicy(installationId: number): Promise<SigningPolicyRow | null> {
+      const { rows } = await sql.query<{
+        installation_id: unknown;
+        require_github: boolean | unknown;
+        require_npm: boolean | unknown;
+        builder_prefix: string | null;
+        expires_at: string | Date | null;
+        updated_by_login: string;
+        updated_at: string | Date;
+      }>(
+        `SELECT * FROM release_signing_policies WHERE installation_id = $1`,
+        [installationId],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        installationId: num(row.installation_id),
+        requireGithub: row.require_github === true,
+        requireNpm: row.require_npm === true,
+        builderPrefix: row.builder_prefix,
+        expiresAt: iso(row.expires_at),
+        updatedByLogin: row.updated_by_login,
+        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async upsertSigningPolicy(input: {
+      installationId: number;
+      policy: SigningPolicyInput;
+      actorLogin: string;
+    }): Promise<SigningPolicyRow> {
+      const { rows } = await sql.query<{
+        installation_id: unknown;
+        require_github: boolean | unknown;
+        require_npm: boolean | unknown;
+        builder_prefix: string | null;
+        expires_at: string | Date | null;
+        updated_by_login: string;
+        updated_at: string | Date;
+      }>(
+        `INSERT INTO release_signing_policies (
+           installation_id, require_github, require_npm, builder_prefix, expires_at, updated_by_login
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (installation_id) DO UPDATE SET
+           require_github = excluded.require_github,
+           require_npm = excluded.require_npm,
+           builder_prefix = excluded.builder_prefix,
+           expires_at = excluded.expires_at,
+           updated_by_login = excluded.updated_by_login,
+           updated_at = now()
+         RETURNING *`,
+        [
+          input.installationId,
+          input.policy.requireGithub,
+          input.policy.requireNpm,
+          input.policy.builderPrefix,
+          input.policy.expiresAt,
+          input.actorLogin,
+        ],
+      );
+      const row = rows[0];
+      if (!row) throw new Error("signing policy upsert returned no row");
+      return {
+        installationId: num(row.installation_id),
+        requireGithub: row.require_github === true,
+        requireNpm: row.require_npm === true,
+        builderPrefix: row.builder_prefix,
+        expiresAt: iso(row.expires_at),
+        updatedByLogin: row.updated_by_login,
+        updatedAt: iso(row.updated_at) ?? new Date().toISOString(),
+      };
+    },
+
+    async deleteSigningPolicy(installationId: number): Promise<boolean> {
+      const { rows } = await sql.query<{ installation_id: unknown }>(
+        `DELETE FROM release_signing_policies WHERE installation_id = $1 RETURNING installation_id`,
+        [installationId],
+      );
+      return Boolean(rows[0]);
     },
 
     async countDeliveryLocations(input: {

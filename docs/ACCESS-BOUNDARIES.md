@@ -163,6 +163,11 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   install may `GET /api/releases/:id/attestations`. Solo paid returns 403. Unpaid
   returns 402. Signature bytes and bundles are never returned. This is not a Sigstore
   verdict.
+- On a trial or Team install, `GET /api/signing-policy` for that install. Members
+  may read the required GitHub/npm flags, optional builder prefix, optional
+  expiration, and last updater login. Solo paid returns 403. Unpaid returns 402.
+  Another tenant’s installation returns `{ policy: null }`. Signature bytes are
+  never stored or returned. This is not a Sigstore verdict.
 - On a trial or Team install, export the release ledger JSON (digests, size, media type,
   receipt status, approvals, hold events, redacted delivery URLs). Members may export.
   Solo paid returns 403. Unpaid returns 402. Another tenant’s installation is empty.
@@ -194,7 +199,7 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Change roles, remove members, invite or revoke a GitHub login, save or delete email/Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, watch or stop watching an npm scope, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
-  verify a release delivery URL, publish or unpublish a verification page, refresh GitHub or npm attestations, approve or reject a sealed revision, place or release a legal hold, open setup or
+  verify a release delivery URL, publish or unpublish a verification page, refresh GitHub or npm attestations, save or clear a signing policy, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
@@ -293,8 +298,11 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   hourly poller and not scheduled CDN verification.
 - Approve a passing sealed revision to ship, or reject it, on a trial or Team install.
   Type the coordinate. Reason required. Failed-policy, inconclusive, and digest-changed
-  rows cannot be approved (409). The admin who attached a delivery URL cannot approve
-  that revision (separation of duties). Duplicate same decision by the same admin is 409.
+  rows cannot be approved (409). An active signing policy that is unsatisfied
+  (required GitHub/npm attestation missing, or builder prefix mismatch) is 409
+  after those checks. Expired policies do not block. The admin who attached a
+  delivery URL cannot approve that revision (separation of duties). Duplicate same
+  decision by the same admin is 409.
   Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404.
   Audit records the coordinate only.
 - Place or release a legal hold on a sealed revision on a trial or Team install. Type
@@ -309,6 +317,14 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   disappears, changes predicate/builder, or mismatches the sealed digest writes a Watch
   fact. Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant
   is 404. Hosted `api:` coordinates return 400. Audit records the coordinate only.
+- Save or clear one signing policy for this install on a trial or Team install.
+  Type `signing-policy` to save or `clear-signing-policy` to delete. Require a
+  present GitHub attestation, a present npm attestation, and/or a builder prefix
+  (max 200, no newlines). Optional future expiration. At least one requirement
+  is required. Members return 403. Solo paid returns 403. Unpaid returns 402.
+  Another tenant is 403 on write and `{ policy: null }` on GET. Clear deletes
+  the row. Audit records the confirm token only. This is not Sigstore
+  verification and is not a malware verdict.
 - Publish or unpublish a verification page for a sealed revision. Type the coordinate.
   Solo paid is allowed. Unpaid returns 402. Members return 403. Another tenant is 404.
   The public token is unguessable and is not the revision id. Audit records the
@@ -623,6 +639,11 @@ admin-only, typed-confirm, Solo 403, unpaid 402, another tenant 404, hosted `api
 coordinates 400, first refresh is a no-alert baseline, later present→missing writes
 `release_attestation_lost`, leftover rows stay append-only, private-registry facts
 are stored as missing without a fetch, and signature bytes are never stored.
+`tests/signing-policy.test.ts` proves customer signing policies are admin-only
+writes, typed `signing-policy` / `clear-signing-policy`, members GET, Solo 403,
+unpaid 402, another tenant GET `{ policy: null }` and PUT 403, empty policy 400,
+approve-to-ship 409 until required attestation facts match, expired policies
+do not block, and clear deletes the leftover row.
 Live throwaway `phase1-fixture` revision 6 (`c74219d2…`) on Neon: unauth GET/POST
 401, admin POST 201 github `missing` with no alert, leftover row 1 stayed after a
 second refresh, UPDATE rejected.

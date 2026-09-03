@@ -74,6 +74,8 @@ describe("Team audit log", () => {
     expect(AUDIT_ACTIONS).toContain("release.publish_verify");
     expect(AUDIT_ACTIONS).toContain("release.unpublish_verify");
     expect(AUDIT_ACTIONS).toContain("release.attest");
+    expect(AUDIT_ACTIONS).toContain("signing_policy.save");
+    expect(AUDIT_ACTIONS).toContain("signing_policy.clear");
     expect(AUDIT_ACTIONS).toContain("identity.evidence");
     expect(AUDIT_ACTIONS).toContain("identity.publish_advisory");
     expect(AUDIT_ACTIONS).toContain("identity.unpublish_advisory");

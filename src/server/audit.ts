@@ -39,6 +39,8 @@ export const AUDIT_ACTIONS = [
   "release.publish_verify",
   "release.unpublish_verify",
   "release.attest",
+  "signing_policy.save",
+  "signing_policy.clear",
   "identity.evidence",
   "identity.publish_advisory",
   "identity.unpublish_advisory",

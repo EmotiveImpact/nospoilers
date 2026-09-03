@@ -1052,6 +1052,16 @@ CREATE TRIGGER release_attestations_no_delete
   BEFORE DELETE ON release_attestations
   FOR EACH ROW EXECUTE PROCEDURE reject_release_attestation_mutation();
 
+CREATE TABLE IF NOT EXISTS release_signing_policies (
+  installation_id BIGINT PRIMARY KEY REFERENCES installations (id) ON DELETE CASCADE,
+  require_github BOOLEAN NOT NULL DEFAULT false,
+  require_npm BOOLEAN NOT NULL DEFAULT false,
+  builder_prefix TEXT,
+  expires_at TIMESTAMPTZ,
+  updated_by_login TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS package_protections (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
@@ -1234,6 +1244,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'release.publish_verify',
     'release.unpublish_verify',
     'release.attest',
+    'signing_policy.save',
+    'signing_policy.clear',
     'identity.evidence',
     'identity.publish_advisory',
     'identity.unpublish_advisory',

@@ -341,8 +341,18 @@ import {
   latestAttestationBySource,
   publicAttestation,
   refreshReleaseAttestations,
+  rowToFacts,
   type ReleaseAttestationRow,
 } from "./attestations.ts";
+import {
+  SIGNING_POLICY_CLEAR_CONFIRM,
+  SIGNING_POLICY_CONFIRM,
+  SIGNING_POLICY_EMPTY_ERROR,
+  parseSigningPolicyInput,
+  publicSigningPolicy,
+  signingPolicyBlocksApprove,
+  signingPolicyPlanDeniedFromBilling,
+} from "./signing-policy.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -2179,6 +2189,112 @@ export function createApp(deps: AppDeps): Hono {
       targetId: retentionConfirmToken(days),
     });
     return c.json({ ok: true, days });
+  });
+
+  app.get("/api/signing-policy", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = queryInstallationId(c);
+    const installationId =
+      requested && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the signing policy." }, 400);
+    }
+    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
+      return c.json({ policy: null });
+    }
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = signingPolicyPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const row = await deps.store.getSigningPolicy(installationId);
+    return c.json({ policy: row ? publicSigningPolicy(row) : null });
+  });
+
+  app.put("/api/signing-policy", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the signing policy." }, 400);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = signingPolicyPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const confirmError = typedConfirm(body, SIGNING_POLICY_CONFIRM);
+    if (confirmError) return c.json(confirmError, 400);
+    try {
+      const policy = parseSigningPolicyInput(body);
+      const saved = await deps.store.upsertSigningPolicy({
+        installationId,
+        policy,
+        actorLogin: user.login,
+      });
+      await recordAudit({
+        installationId,
+        actorLogin: user.login,
+        action: "signing_policy.save",
+        summary: "Saved a customer signing policy",
+        targetKind: "signing_policy",
+        targetId: SIGNING_POLICY_CONFIRM,
+      });
+      return c.json({ ok: true, policy: publicSigningPolicy(saved) });
+    } catch (error) {
+      return c.json(
+        {
+          error: error instanceof Error ? error.message : SIGNING_POLICY_EMPTY_ERROR,
+        },
+        errorStatus(error),
+      );
+    }
+  });
+
+  app.delete("/api/signing-policy", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const installations = await deps.store.listInstallationsForUser(user.userId);
+    const requested = Number(body.installationId);
+    const installationId =
+      Number.isFinite(requested) && requested > 0
+        ? requested
+        : installations.length === 1
+          ? installations[0].id
+          : NaN;
+    if (!Number.isFinite(installationId) || installationId <= 0) {
+      return c.json({ error: "Choose a GitHub installation for the signing policy." }, 400);
+    }
+    const adminDenied = await requireInstallAdmin(user.userId, installationId);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(installationId);
+    const planDenied = signingPolicyPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const confirmError = typedConfirm(body, SIGNING_POLICY_CLEAR_CONFIRM);
+    if (confirmError) return c.json(confirmError, 400);
+    await deps.store.deleteSigningPolicy(installationId);
+    await recordAudit({
+      installationId,
+      actorLogin: user.login,
+      action: "signing_policy.clear",
+      summary: "Cleared the customer signing policy",
+      targetKind: "signing_policy",
+      targetId: SIGNING_POLICY_CLEAR_CONFIRM,
+    });
+    return c.json({ ok: true, policy: null });
   });
 
   app.get("/api/audit", async (c) => {
@@ -4820,6 +4936,14 @@ export function createApp(deps: AppDeps): Hono {
       if (attachers.includes(user.login)) {
         return c.json({ error: GOVERNANCE_SOD_ATTACH_ERROR }, 409);
       }
+      const policy = await deps.store.getSigningPolicy(row.installation_id);
+      const latestAttestations = new Map(
+        [...latestAttestationBySource(
+          await deps.store.listReleaseAttestationsForRevisions([row.id]),
+        ).entries()].map(([source, attestation]) => [source, rowToFacts(attestation)]),
+      );
+      const policyBlocked = signingPolicyBlocksApprove(policy, latestAttestations);
+      if (policyBlocked) return c.json({ error: policyBlocked }, 409);
     }
     const latest = latestByRevision(await deps.store.listReleaseApprovalsForRevisions([row.id])).get(
       row.id,

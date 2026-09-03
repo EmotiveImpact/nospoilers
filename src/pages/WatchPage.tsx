@@ -244,6 +244,43 @@ type RetentionView =
   | { status: "ready"; days: RetentionDays }
   | { status: "error"; message: string };
 
+type SigningPolicyDraft = {
+  requireGithub: boolean;
+  requireNpm: boolean;
+  builderPrefix: string;
+  expiresAt: string;
+};
+
+type SigningPolicyView =
+  | { status: "loading" }
+  | { status: "ready"; policy: SigningPolicyDraft | null }
+  | { status: "solo" }
+  | { status: "ended" }
+  | { status: "error"; message: string };
+
+const SIGNING_POLICY_CONFIRM = "signing-policy";
+const SIGNING_POLICY_CLEAR_CONFIRM = "clear-signing-policy";
+
+function emptySigningDraft(): SigningPolicyDraft {
+  return { requireGithub: false, requireNpm: false, builderPrefix: "", expiresAt: "" };
+}
+
+function parseSigningPolicy(raw: unknown): SigningPolicyDraft | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const row = raw as {
+    requireGithub?: unknown;
+    requireNpm?: unknown;
+    builderPrefix?: unknown;
+    expiresAt?: unknown;
+  };
+  return {
+    requireGithub: row.requireGithub === true,
+    requireNpm: row.requireNpm === true,
+    builderPrefix: typeof row.builderPrefix === "string" ? row.builderPrefix : "",
+    expiresAt: typeof row.expiresAt === "string" ? row.expiresAt : "",
+  };
+}
+
 function parseRetentionDays(raw: unknown): RetentionDays | null {
   const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
   if (value === 0 || value === 90 || value === 180 || value === 365) return value;
@@ -328,6 +365,8 @@ type Confirming =
   | { kind: "invite"; login: string; expected: string; role: "admin" | "member" }
   | { kind: "invite-revoke"; id: number; expected: string }
   | { kind: "retention"; days: RetentionDays; expected: string }
+  | { kind: "signing-policy-save"; expected: string }
+  | { kind: "signing-policy-clear"; expected: string }
   | { kind: "make-private"; id: number; expected: string }
   | { kind: "delete-pack-assets"; id: number; expected: string }
   | { kind: "disable-workflow"; id: number; expected: string; workflow: string }
@@ -375,6 +414,10 @@ function confirmActionLabel(row: Confirming): string {
       return "revoke this invite";
     case "retention":
       return "set this retention window";
+    case "signing-policy-save":
+      return "save this signing policy";
+    case "signing-policy-clear":
+      return "clear this signing policy";
     case "make-private":
       return "make this repository private";
     case "delete-pack-assets":
@@ -1224,6 +1267,14 @@ export function WatchPage({ search }: { search: string }) {
   const [auditExportError, setAuditExportError] = useState<string | null>(null);
   const [retention, setRetention] = useState<RetentionView>({ status: "loading" });
   const [retentionDraft, setRetentionDraft] = useState<RetentionDays>(90);
+  const [signingPolicy, setSigningPolicy] = useState<SigningPolicyView>({ status: "loading" });
+  const [signingDraft, setSigningDraft] = useState<SigningPolicyDraft>({
+    requireGithub: false,
+    requireNpm: false,
+    builderPrefix: "",
+    expiresAt: "",
+  });
+  const [signingError, setSigningError] = useState<string | null>(null);
   const [identitySignals, setIdentitySignals] = useState<IdentitySignalsView>({ status: "loading" });
   const [candidatesByPackage, setCandidatesByPackage] = useState<Record<number, IdentityCandidateView[]>>(
     {},
@@ -1265,6 +1316,7 @@ export function WatchPage({ search }: { search: string }) {
     setTimeline({ status: "loading" });
     setAudit({ status: "loading" });
     setRetention({ status: "loading" });
+    setSigningPolicy({ status: "loading" });
     setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
@@ -1371,6 +1423,27 @@ export function WatchPage({ search }: { search: string }) {
         const days = parseRetentionDays(retentionBody.days) ?? 90;
         setRetention({ status: "ready", days });
         setRetentionDraft(days);
+      }
+      const signingResponse = await fetch(q("/api/signing-policy"), { credentials: "include" });
+      const signingBody = (await signingResponse.json()) as {
+        error?: string;
+        policy?: unknown;
+      };
+      if (signingResponse.status === 402) {
+        setSigningPolicy({ status: "ended" });
+        setSigningDraft(emptySigningDraft());
+      } else if (signingResponse.status === 403) {
+        setSigningPolicy({ status: "solo" });
+        setSigningDraft(emptySigningDraft());
+      } else if (!signingResponse.ok) {
+        setSigningPolicy({
+          status: "error",
+          message: signingBody.error ?? "Could not load the signing policy.",
+        });
+      } else {
+        const parsed = parseSigningPolicy(signingBody.policy);
+        setSigningPolicy({ status: "ready", policy: parsed });
+        setSigningDraft(parsed ?? emptySigningDraft());
       }
       const nextCandidates: Record<number, IdentityCandidateView[]> = {};
       const nextEvidence: Record<number, IdentityEvidenceView | null> = {};
@@ -1597,6 +1670,32 @@ export function WatchPage({ search }: { search: string }) {
               confirm,
             }),
           });
+        } else if (confirming.kind === "signing-policy-save") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch("/api/signing-policy", {
+            method: "PUT",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              installationId: installId,
+              requireGithub: signingDraft.requireGithub,
+              requireNpm: signingDraft.requireNpm,
+              builderPrefix: signingDraft.builderPrefix,
+              expiresAt: signingDraft.expiresAt,
+              confirm,
+            }),
+          });
+        } else if (confirming.kind === "signing-policy-clear") {
+          if (!installId) throw new Error("Choose a GitHub installation.");
+          response = await fetch("/api/signing-policy", {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({
+              installationId: installId,
+              confirm,
+            }),
+          });
         } else if (confirming.kind === "make-private") {
           response = await fetch(`/api/repos/${confirming.id}/make-private`, {
             method: "POST",
@@ -1759,7 +1858,7 @@ export function WatchPage({ search }: { search: string }) {
         setConfirmBusy(false);
       }
     })();
-  }, [confirmText, confirming, refreshSignedIn, selectedInstallId]);
+  }, [confirmText, confirming, refreshSignedIn, selectedInstallId, signingDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1801,6 +1900,9 @@ export function WatchPage({ search }: { search: string }) {
           setAuditExportError(null);
           setRetention({ status: "ready", days: 90 });
           setRetentionDraft(90);
+          setSigningPolicy({ status: "ready", policy: null });
+          setSigningDraft(emptySigningDraft());
+          setSigningError(null);
           setConfirming(null);
           setRevealedScanToken(null);
           setAlertNotes({});
@@ -1947,6 +2049,7 @@ export function WatchPage({ search }: { search: string }) {
     identitySignals.status === "ready" &&
     (deskCoverage?.status === "trial" || deskCoverage?.plan === "team");
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
+  const canManageSigningPolicy = canGovernReleases && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
   const login = user?.login ?? PREVIEW_LOGIN;
   const watching = selectedInstall ? [selectedInstall.account_login] : [];
@@ -2766,6 +2869,145 @@ export function WatchPage({ search }: { search: string }) {
             ) : (
               <p className="mt-3 text-sm leading-relaxed text-mute">
                 An install admin has to change this window.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-16">
+        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Signing policy</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          Trial and Team can require a present GitHub or npm attestation document, or a builder
+          prefix, before a passing revision is approved to ship. Type signing-policy to save.
+          Type clear-signing-policy to remove it. Expired policies do not block. This is not
+          Sigstore verification and not a malware verdict.
+        </p>
+        {previewing ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Preview cannot change a live signing policy. No invented incident.
+          </p>
+        ) : signingPolicy.status === "ended" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to Team to set a signing policy.
+          </p>
+        ) : signingPolicy.status === "solo" ? (
+          <p className="mt-6 text-sm leading-relaxed text-mute">
+            Subscribe to Team to set a signing policy.
+          </p>
+        ) : signingPolicy.status === "error" ? (
+          <p className="mt-6 text-sm text-danger">{signingPolicy.message}</p>
+        ) : signingPolicy.status === "loading" ? (
+          <p className="mt-6 text-sm text-dim">Loading…</p>
+        ) : (
+          <div className="mt-6 max-w-xl space-y-3">
+            <label className="flex items-center gap-2 text-sm text-snow">
+              <input
+                type="checkbox"
+                checked={signingDraft.requireGithub}
+                disabled={!canManageSigningPolicy || confirmBusy}
+                onChange={(event) =>
+                  setSigningDraft((current) => ({
+                    ...current,
+                    requireGithub: event.target.checked,
+                  }))
+                }
+              />
+              Require a present GitHub attestation
+            </label>
+            <label className="flex items-center gap-2 text-sm text-snow">
+              <input
+                type="checkbox"
+                checked={signingDraft.requireNpm}
+                disabled={!canManageSigningPolicy || confirmBusy}
+                onChange={(event) =>
+                  setSigningDraft((current) => ({
+                    ...current,
+                    requireNpm: event.target.checked,
+                  }))
+                }
+              />
+              Require a present npm attestation
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                Builder prefix
+              </span>
+              <input
+                value={signingDraft.builderPrefix}
+                disabled={!canManageSigningPolicy || confirmBusy}
+                onChange={(event) =>
+                  setSigningDraft((current) => ({
+                    ...current,
+                    builderPrefix: event.target.value,
+                  }))
+                }
+                placeholder="https://github.com/actions"
+                autoComplete="off"
+                spellCheck={false}
+                className="mt-1 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40 disabled:opacity-50"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Expires</span>
+              <input
+                value={signingDraft.expiresAt}
+                disabled={!canManageSigningPolicy || confirmBusy}
+                onChange={(event) =>
+                  setSigningDraft((current) => ({
+                    ...current,
+                    expiresAt: event.target.value,
+                  }))
+                }
+                placeholder="2026-12-01T00:00:00.000Z"
+                autoComplete="off"
+                spellCheck={false}
+                className="mt-1 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40 disabled:opacity-50"
+              />
+            </label>
+            {signingError ? <p className="text-sm text-danger">{signingError}</p> : null}
+            {canManageSigningPolicy ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={confirmBusy}
+                  onClick={() => {
+                    setSigningError(null);
+                    beginConfirm({
+                      kind: "signing-policy-save",
+                      expected: SIGNING_POLICY_CONFIRM,
+                    });
+                  }}
+                >
+                  Save signing policy
+                </Button>
+                {signingPolicy.policy ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={confirmBusy}
+                    onClick={() => {
+                      setSigningError(null);
+                      beginConfirm({
+                        kind: "signing-policy-clear",
+                        expected: SIGNING_POLICY_CLEAR_CONFIRM,
+                      });
+                    }}
+                  >
+                    Clear signing policy
+                  </Button>
+                ) : null}
+                {confirmForm(
+                  confirming?.kind === "signing-policy-save" ||
+                    confirming?.kind === "signing-policy-clear",
+                )}
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-mute">
+                An install admin has to change this policy.
               </p>
             )}
           </div>
@@ -5345,6 +5587,9 @@ export function WatchPage({ search }: { search: string }) {
           Trial and Team can refresh GitHub and npm attestation documents for a sealed digest.
           The adapter records presence, subject digest, and builder id. It does not verify
           Sigstore signatures and is not a malware verdict. Solo is 403. Unpaid is 402.
+          A Team signing policy can require a present GitHub or npm document, or a builder
+          prefix, before approve-to-ship. Expired policies do not block. Clearing removes
+          the row. This is not Sigstore verification.
         </p>
         {previewing ? (
           <p className="mt-4 text-sm leading-relaxed text-mute">
@@ -5353,7 +5598,7 @@ export function WatchPage({ search }: { search: string }) {
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-4 text-sm leading-relaxed text-mute">
             Subscribe to Team to approve shipping releases, place legal hold, export the ledger,
-            and refresh GitHub or npm attestations.
+            refresh GitHub or npm attestations, and set a signing policy.
           </p>
         ) : null}
         {canExportReleases ? (

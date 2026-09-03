@@ -819,6 +819,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateStripeBilling(sql);
   await migrateEmailDestinations(sql);
   await migrateReleaseAttestations(sql);
+  await migrateSigningPolicies(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1301,6 +1302,8 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'release.publish_verify',
       'release.unpublish_verify',
       'release.attest',
+      'signing_policy.save',
+      'signing_policy.clear',
       'identity.evidence',
       'identity.publish_advisory',
       'identity.unpublish_advisory',
@@ -1797,6 +1800,23 @@ async function migrateReleaseAttestations(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "061_release_attestations",
+  ]);
+}
+
+async function migrateSigningPolicies(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS release_signing_policies (
+      installation_id BIGINT PRIMARY KEY REFERENCES installations (id) ON DELETE CASCADE,
+      require_github BOOLEAN NOT NULL DEFAULT false,
+      require_npm BOOLEAN NOT NULL DEFAULT false,
+      builder_prefix TEXT,
+      expires_at TIMESTAMPTZ,
+      updated_by_login TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "062_release_signing_policies",
   ]);
 }
 

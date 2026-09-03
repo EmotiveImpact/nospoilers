@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Customer-managed signing policies: trial/Team admins require a present
+  GitHub or npm attestation, or a builder prefix, before approve-to-ship.
+  Optional expiration. Typed `signing-policy` / `clear-signing-policy`.
+  Members may read. Solo is 403. Unpaid is 402. Clear deletes the row.
+  Watch uses outline buttons, not ember. Migration
+  `062_release_signing_policies`. Not Sigstore verification.
+
 - GitHub and public-npm attestation adapters refresh a sealed revision.
   Trial/Team install admins type the coordinate. The adapter stores
   presence, subject digest, predicate type, builder id, and issuer host.
