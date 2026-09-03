@@ -101,6 +101,7 @@ export function WatchMonolithShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
   const hrefFor = (view: WatchView, tab?: AlertTab) =>
     watchHref(watchPath(view), search, tab ? { tab } : {});
   const alertActive = (tab: AlertTab) => route.view === "alerts" && route.tab === tab;
@@ -318,6 +319,14 @@ export function WatchMonolithShell({
             </span>
           </button>
           <strong className="hidden shrink-0 text-sm text-snow md:inline">{VIEW_TITLE[route.view]}</strong>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setGuidanceOpen((open) => !open)}
+          >
+            {guidanceOpen ? "Hide guide" : "About"}
+          </Button>
           {ended ? (
             <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
               See plans
@@ -333,7 +342,14 @@ export function WatchMonolithShell({
             Sign out
           </Button>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto px-5 py-8 md:px-8">{children}</div>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-auto px-5 py-8 md:px-8",
+            !guidanceOpen && "[&_.watch-guidance]:hidden",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

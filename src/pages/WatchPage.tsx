@@ -10,14 +10,14 @@ import {
   parseWorkflowPath,
   workflowIsNoSpoilersScan,
 } from "@/github-response-copy.ts";
-import { LoggedInLook } from "@/components/LoggedInLook.tsx";
 import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
 import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
+import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { navigate } from "@/nav.ts";
-import { PREVIEW_INSTALLATIONS, PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
+import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
 import { parseWatchRoute, watchHref } from "@/watch/routes.ts";
 import { filterDeskAlerts, isOpenAlert, setupProgress } from "@/watch/verdict.ts";
 import type { Finding } from "@/report-types";
@@ -2024,16 +2024,6 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             Preview the desk
           </Button>
         </div>
-        <p className="mt-10 text-sm text-dim">
-          Two logged-in looks:{" "}
-          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/watch?as=trial")}>
-            trial desk
-          </button>
-          {" · "}
-          <button type="button" className="text-snow underline-offset-4 hover:underline" onClick={() => navigate("/scan?as=ended")}>
-            unpaid locked scan
-          </button>
-        </p>
       </main>
     );
   }
@@ -2043,7 +2033,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     : (selectedInstallId
         ? (installations.find((row) => row.id === selectedInstallId) ?? installations[0])
         : installations[0]) ?? null;
-  const selectedInstall = previewing ? PREVIEW_INSTALLATIONS[0] : selectedLiveInstall;
+  const selectedInstall = previewing ? null : selectedLiveInstall;
   const deskCoverage = previewing
     ? coverage
     : selectedLiveInstall
@@ -2221,7 +2211,6 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         sources={sourceRows}
         onClose={() => setPaletteOpen(false)}
       />
-      {previewing ? <LoggedInLook current={ended ? "ended" : "trial"} /> : null}
       {billingError ? <p className="mb-4 text-sm text-danger">{billingError}</p> : null}
 
       {route.view === "overview" ? (
@@ -2248,8 +2237,10 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             <CoverageLock variant="watch" title="Subscribe to keep watching." />
           ) : null}
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Repositories</h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          <WatchSourcesSummary mode={route.view} sources={sourceRows} setup={setup} />
+          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repositories</h2>
+          <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
+          <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
             Setup PR adds packed-artifact CI that scans each{" "}
             <code className="text-snow">package.tgz</code> or{" "}
             <code className="text-snow">dist/</code> pack that exists, not only a hardcoded
@@ -2284,7 +2275,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             not download every latest release. Unpublishing or deleting
             a release is an alert only; gone assets are not downloaded.
           </p>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
             {MAKE_PRIVATE_COPY} {DELETE_PACK_ASSETS_COPY} {DISABLE_WORKFLOW_COPY} Setup and
             remediation PRs do not need Administration. A confirmed GitHub response is not a
             discovered incident.
@@ -2693,8 +2684,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "alerts" && (
         <section>
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Alerts</h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+          <h1 className="font-display text-3xl tracking-tight text-snow">Alerts</h1>
+          <p className="mt-2 text-sm text-mute">Facts that need triage, ownership, or resolution.</p>
+          <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
             Acknowledge, assign, and resolve stay available when coverage has ended or GitHub has
             suspended the App. New scans still wait for coverage and an unsuspended install.
           </p>
@@ -2821,10 +2813,11 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "timeline" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">
+        <h1 className="font-display text-3xl tracking-tight text-snow">
           {timeline.status === "ready" ? timelineHeading(timeline.days) : "Timeline"}
-        </h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        </h1>
+        <p className="mt-2 text-sm text-mute">Alert and response activity within the retained window.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs see this install’s alerts, acknowledgement activity, and
           notification deliveries{" "}
           {timeline.status === "ready"
@@ -2883,8 +2876,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "retention" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Retention</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Retention</h1>
+        <p className="mt-2 text-sm text-mute">Choose how long operational lists remain visible.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
           Append-only evidence is not deleted. Uninstall still drops the tenant.
         </p>
@@ -2951,8 +2945,10 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "policy" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Signing policy</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Policy &amp; allowlist</h1>
+        <p className="mt-2 text-sm text-mute">Shipping evidence, time-bound exceptions, and approved baselines.</p>
+        <h2 className="mt-8 text-[11px] uppercase tracking-[0.22em] text-dim">Signing policy</h2>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Trial and Team can require a present GitHub or npm attestation document, or a builder
           prefix, before a passing revision is approved to ship. Type signing-policy to save.
           Type clear-signing-policy to remove it. Expired policies do not block. This is not
@@ -3092,8 +3088,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "audit" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Audit log</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Audit log</h1>
+        <p className="mt-2 text-sm text-mute">Administrative changes and response activity for this install.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Team and trial installs can export this install’s admin writes, notification deliveries,
           and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
           emails, tokens, and other secret values are never stored here.
@@ -3175,8 +3172,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "team" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Team &amp; roles</h1>
+        <p className="mt-2 text-sm text-mute">People who can view or administer this install.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           The first GitHub user to connect this install is admin. Later users become members. Admins
           change roles, remove people, and invite by GitHub login. They get that role the next time
           they sign in, if they can already see this App install. This does not send email. Invites
@@ -3366,8 +3364,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "health" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Install health</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Install health</h1>
+        <p className="mt-2 text-sm text-mute">Permissions, deliveries, and recent work for this GitHub install.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
           reports Contents and Metadata reads, Members read (collaborator alerts), optional
           Contents/Pull requests/Checks write, and whether Administration was granted — it should
@@ -3528,8 +3527,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "notifications" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Notifications</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
+        <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
           SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
           encrypted and never shown again. A delivery test talks to the destination and never
@@ -4232,7 +4232,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Production websites</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <p className="mt-2 text-sm text-mute">Origins watched for public source maps and exposed files.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the HTTPS page you name, then same-origin JavaScript, CSS, maps, and a bounded
           probe of exposed files, credentials, and internal paths linked from the page. Local,
           private, and metadata hosts are blocked. JavaScript is not executed. Bytes are deleted
@@ -4372,7 +4373,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Map custody</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <p className="mt-2 text-sm text-mute">Confirm maps are held by your error tracker, not served publicly.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Prove Sentry has the debug ID, or Bugsnag has the release version, and that the public
           site or pack does not serve the map. Tokens are encrypted and never returned. We do not
           download map source. This is not advertised as a Pricing extra. Bugsnag matches a release
@@ -4579,8 +4581,13 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {(route.view === "sources" || route.view === "setup" || route.view === "registries") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        {route.view === "registries" ? (
+          <h1 className="font-display text-3xl tracking-tight text-snow">Private registries</h1>
+        ) : (
+          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
+        )}
+        <p className="mt-2 text-sm text-mute">Packages watched as customers receive them from the registry.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>, and
           also <code className="text-snow">next</code>, <code className="text-snow">beta</code>,{" "}
           <code className="text-snow">canary</code>, rc, alpha, and preview when those tags point at
@@ -5503,8 +5510,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "tokens" && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Scan API</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Scan API tokens</h1>
+        <p className="mt-2 text-sm text-mute">Credentials for scanning packed artifacts from CI.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
           <code className="text-snow">/api/v1/scan</code>. We hash the secret, show it once, and
           delete the bytes after the scan. Generated Setup CI vendors a composite Action in your
@@ -5647,8 +5655,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {route.view === "releases" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Releases</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Releases and receipts</h1>
+        <p className="mt-2 text-sm text-mute">Sealed artifact revisions, policy results, and delivery evidence.</p>
+        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
           canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
           and never fetched.           Each row shows the linked receipt status, sealed size, and media type.
@@ -6133,7 +6142,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       {route.view === "policy" && (
       <section className="mt-4">
         <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
+        <p className="mt-2 text-sm text-mute">Time-bound exceptions and the approved comparison receipt.</p>
+        <p className="watch-guidance mt-3 max-w-2xl text-sm leading-relaxed text-mute">
           Exceptions are exact-rule, attributable, and they expire. They never suppress a different
           rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
           instead of whichever scan happened last.

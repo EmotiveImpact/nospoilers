@@ -7,6 +7,12 @@
   requests still use `APP_BASE_URL`. A successful sign-in returns to
   `/watch`.
 
+- Watch views now put their decision, live information, and actions first.
+  Detailed implementation guidance is available from `About` instead of
+  filling every page. Sources has one live source list; Finish setup has a
+  five-path checklist. Preview and the homepage product frame no longer
+  invent repository or alert rows.
+
 - Signed-in Watch is the 2B monolith sidebar (Overview, Alerts + views,
   Sources, Releases, Timeline, Finish setup, Settings). Ember stays on
   the homepage. Live APIs; no invented customer rows. Preview

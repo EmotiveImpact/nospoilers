@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
+import { previewAlerts, previewRepos } from "../src/preview.ts";
+
+describe("Watch preview", () => {
+  it("shows structure without inventing tenant rows", () => {
+    expect(previewRepos()).toEqual([]);
+    expect(previewAlerts()).toEqual([]);
+  });
+});
 
 describe("2B watch routes", () => {
   it("opens Overview on /watch and keeps settings in the same tree", () => {
