@@ -42,8 +42,6 @@ import type {
   RemediationPrView,
   GithubResponseView,
   SetupStatusView,
-  SetupStatusFacts,
-  RemediationFileView,
 } from "@/watch/types";
 import type { WatchSectionState } from "@/watch/data-state";
 import type { Coverage } from "@/coverage";

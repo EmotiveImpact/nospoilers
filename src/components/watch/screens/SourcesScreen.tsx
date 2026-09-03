@@ -2,7 +2,7 @@ import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
 import type { RemediationFileView, SetupStatusFacts } from "@/watch/types";
 
 export function SourcesScreen() {
-  const { Button, CoverageLock, DELETE_PACK_ASSETS_COPY, DISABLE_WORKFLOW_COPY, GithubResponseResult, MAKE_PRIVATE_COPY, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, githubRunnersReachable, hostedOrigin, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupSectionState, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
+  const { Button, CoverageLock, DELETE_PACK_ASSETS_COPY, DISABLE_WORKFLOW_COPY, GithubResponseResult, MAKE_PRIVATE_COPY, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, githubRunnersReachable, hostedOrigin, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
   return (
     <>
       {route.view === "sources" && (
@@ -12,7 +12,7 @@ export function SourcesScreen() {
                   ) : null}
                   <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
                   <WatchSourcesSummary
-                    mode={route.view}
+                    mode="sources"
                     sources={sourceRows}
                     setup={setup}
                     admin={adminOnly}
@@ -20,7 +20,7 @@ export function SourcesScreen() {
                     filter={route.sourceFilter}
                     attention={route.sourceAttention}
                     selectedSourceKey={route.sourceKey}
-                    state={route.view === "setup" ? setupSectionState : sourceSectionState}
+                    state={sourceSectionState}
                     onRetry={() => void retryDeskSection("sources")}
                   />
                   {route.view === "sources" &&
