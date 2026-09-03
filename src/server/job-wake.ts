@@ -8,8 +8,8 @@ export const LISTEN_RETRY_MS = 2_000;
 
 export type JobListenClient = {
   query: (text: string) => Promise<unknown>;
-  on: (event: string, listener: (...args: unknown[]) => void) => unknown;
-  off: (event: string, listener: (...args: unknown[]) => void) => unknown;
+  on: (event: "notification" | "error" | "end", listener: (message?: unknown) => void) => unknown;
+  off: (event: "notification" | "error" | "end", listener: (message?: unknown) => void) => unknown;
   end: () => Promise<void>;
 };
 
@@ -21,7 +21,22 @@ export type ListenJobQueuedOptions = {
 async function defaultConnect(databaseUrl: string): Promise<JobListenClient> {
   const client = new pg.Client({ connectionString: databaseUrl, keepAlive: true });
   await client.connect();
-  return client;
+  return {
+    query: (text) => client.query(text),
+    on(event, listener) {
+      if (event === "notification") client.on(event, listener);
+      else if (event === "error") client.on(event, listener);
+      else client.on(event, listener);
+      return client;
+    },
+    off(event, listener) {
+      if (event === "notification") client.off(event, listener);
+      else if (event === "error") client.off(event, listener);
+      else client.off(event, listener);
+      return client;
+    },
+    end: () => client.end(),
+  };
 }
 
 export async function notifyJobQueued(sql: SqlClient, kind: string): Promise<void> {
@@ -50,8 +65,15 @@ export async function listenJobQueued(
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let connecting: Promise<void> | undefined;
 
-  const onNotification = (message: { channel?: string }) => {
-    if (message.channel === JOBS_CHANNEL) onWake();
+  const onNotification = (message?: unknown) => {
+    if (
+      message &&
+      typeof message === "object" &&
+      "channel" in message &&
+      message.channel === JOBS_CHANNEL
+    ) {
+      onWake();
+    }
   };
 
   function detach(client: JobListenClient): void {

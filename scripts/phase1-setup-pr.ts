@@ -77,11 +77,14 @@ export async function openSetupPullRequest(
 export async function main(): Promise<void> {
   assertThrowaway(SETUP_REPO);
   const github = createGithubPort(loadConfig());
+  if (!github.getApp) {
+    throw new Error("The configured GitHub adapter cannot inspect App permissions.");
+  }
   const [app, install] = await Promise.all([
     github.getApp(),
     github.getInstallation(SETUP_INSTALL_ID),
   ]);
-  if (!setupPrWriteReady(app.permissions, install.permissions)) {
+  if (!setupPrWriteReady(app.permissions, install.permissions ?? {})) {
     process.stderr.write(deniedMessage());
     process.exitCode = 2;
     return;
