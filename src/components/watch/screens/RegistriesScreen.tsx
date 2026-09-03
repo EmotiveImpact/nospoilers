@@ -58,19 +58,21 @@ export function RegistriesScreen() {
                 )}
                 {previewing ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-                    Preview cannot watch lookalike names. No invented incident.
+                    {route.view === "registries"
+                      ? "Preview cannot save registry credentials."
+                      : "Preview cannot watch lookalike names. No invented incident."}
                   </p>
-                ) : deskCoverage?.plan === "solo" ? (
+                ) : route.view === "sources" && deskCoverage?.plan === "solo" ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
                     Lookalike, dormant, burst, new-dependency, packument-size, provenance, namespace
                     watchlists, identity evidence, and consumer advisories are on Team.
                   </p>
-                ) : ended ? (
+                ) : route.view === "sources" && ended ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
                     Subscribe to Team to watch lookalike names, an owned npm scope, and assemble identity
                     evidence.
                   </p>
-                ) : identitySignals.status === "error" ? (
+                ) : route.view === "sources" && identitySignals.status === "error" ? (
                   <p className="mt-4 max-w-xl text-sm text-danger">{identitySignals.message}</p>
                 ) : null}
                 {route.view === "sources" && !previewing && user && installations.length > 0 && identitySignals.status === "ready" && (
