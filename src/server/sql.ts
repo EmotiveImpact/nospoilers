@@ -31,19 +31,33 @@ async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
 
 export async function migrateIfNeeded(
   sql: SqlClient,
-  options: { serialize?: boolean } = {},
+  options: { databaseUrl?: string } = {},
 ): Promise<boolean> {
   if (await schemaIsCurrent(sql)) return false;
-  if (!options.serialize) {
+  const databaseUrl = options.databaseUrl?.trim() ?? "";
+  if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
     await migrate(sql);
     return true;
   }
-  return await sql.transaction(async (tx) => {
-    await tx.query("SELECT pg_advisory_xact_lock($1)", [MIGRATION_ADVISORY_LOCK]);
-    if (await schemaIsCurrent(tx)) return false;
-    await migrate(tx);
+  const url = new URL(databaseUrl);
+  if (
+    (url.hostname === "neon.tech" || url.hostname.endsWith(".neon.tech")) &&
+    url.hostname.includes("-pooler.")
+  ) {
+    url.hostname = url.hostname.replace("-pooler.", ".");
+  }
+  const client = new pg.Client({ connectionString: url.toString(), keepAlive: true });
+  await client.connect();
+  const direct = wrapClient(client);
+  try {
+    await direct.query("SELECT pg_advisory_lock($1)", [MIGRATION_ADVISORY_LOCK]);
+    if (await schemaIsCurrent(direct)) return false;
+    await migrate(direct);
     return true;
-  });
+  } finally {
+    await direct.query("SELECT pg_advisory_unlock($1)", [MIGRATION_ADVISORY_LOCK]).catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
 }
 
 function wrapPglite(db: PGlite): SqlClient {
@@ -118,6 +132,33 @@ function wrapPool(pool: pg.Pool): SqlClient {
       await pool.end();
     },
   };
+}
+
+function wrapClient(client: pg.Client): SqlClient {
+  const direct: SqlClient = {
+    async query<T>(text: string, params: unknown[] = []) {
+      const result = await client.query(text, params);
+      return { rows: result.rows as T[] };
+    },
+    async exec(text: string) {
+      await client.query(text);
+    },
+    async transaction<T>(fn: (sql: SqlClient) => Promise<T>): Promise<T> {
+      await client.query("BEGIN");
+      try {
+        const value = await fn(direct);
+        await client.query("COMMIT");
+        return value;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      }
+    },
+    async close() {
+      await client.end();
+    },
+  };
+  return direct;
 }
 
 export async function openSql(databaseUrl: string): Promise<SqlClient> {

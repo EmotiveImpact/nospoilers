@@ -25,7 +25,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   assertProductionSecrets(config);
   const sql = await openSql(config.databaseUrl);
   await migrateIfNeeded(sql, {
-    serialize: databaseMode(config.databaseUrl) !== "pglite",
+    databaseUrl: config.databaseUrl,
   });
   const store = createStore(sql, {
     jobMaxAttempts: config.jobMaxAttempts,

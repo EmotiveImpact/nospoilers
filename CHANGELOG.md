@@ -37,7 +37,8 @@
 
 - Vercel cold starts no longer replay every database DDL migration. Runtime
   startup checks the current schema marker first; a fresh Postgres database
-  serializes migration with a transaction-scoped advisory lock. Concurrent
+  uses a dedicated direct connection and session advisory lock, preserving
+  legacy per-statement migration recovery without concurrent DDL. Concurrent
   Watch API requests can no longer deadlock Neon while the UI waits on
   `/api/me`.
 
