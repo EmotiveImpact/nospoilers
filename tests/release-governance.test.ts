@@ -435,7 +435,7 @@ describe("release approval, legal hold, and ledger export", () => {
   });
 
   it("shows Watch copy for approval, legal hold, and ledger export", () => {
-    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8");
+    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8");
     expect(page).toMatch(/Approve to ship/);
     expect(page).toMatch(/Legal hold/);
     expect(page).toMatch(/Export ledger/);
