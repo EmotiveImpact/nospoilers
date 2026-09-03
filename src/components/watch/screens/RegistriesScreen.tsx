@@ -15,9 +15,19 @@ export function RegistriesScreen() {
                 ) : null}
                 <section id="watch-source-npm" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                 <h2 className="text-sm font-semibold text-snow">
-                  {route.view === "registries" ? "Registry credentials and packages" : "npm packages"}
+                  {route.view === "registries" ? "Registry credentials" : "npm packages"}
                 </h2>
-                <p className="mt-2 text-sm text-mute">Packages watched as customers receive them from the registry.</p>
+                <p className="mt-2 text-sm text-mute">
+                  {route.view === "registries"
+                    ? "Encrypted read credentials for private package hosts."
+                    : "Packages watched as customers receive them from the registry."}
+                </p>
+                {route.view === "registries" ? (
+                  <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                    Save one read-only registry origin and token at a time. Tokens are encrypted,
+                    never shown again, and tarball hosts must match the saved origin.
+                  </p>
+                ) : (
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                   We fetch the tarball a registry serves for <code className="text-snow">latest</code>, and
                   also <code className="text-snow">next</code>, <code className="text-snow">beta</code>,{" "}
@@ -45,6 +55,7 @@ export function RegistriesScreen() {
                   and publish a consumer advisory page. We never send that pack to npm or GitHub and never
                   call it malware.
                 </p>
+                )}
                 {previewing ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
                     Preview cannot watch lookalike names. No invented incident.
@@ -62,7 +73,7 @@ export function RegistriesScreen() {
                 ) : identitySignals.status === "error" ? (
                   <p className="mt-4 max-w-xl text-sm text-danger">{identitySignals.message}</p>
                 ) : null}
-                {!previewing && user && installations.length > 0 && identitySignals.status === "ready" && (
+                {route.view === "sources" && !previewing && user && installations.length > 0 && identitySignals.status === "ready" && (
                   <div className="mt-6 max-w-xl">
                     <p className="text-xs uppercase tracking-[0.16em] text-dim">npm scope watchlist</p>
                     <p className="mt-2 text-sm leading-relaxed text-mute">
@@ -192,8 +203,8 @@ export function RegistriesScreen() {
                     ) : null}
                   </div>
                 )}
-                {!previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
-                {!previewing && packages.status === "error" && (
+                {route.view === "sources" && !previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+                {route.view === "sources" && !previewing && packages.status === "error" && (
                   <p className="mt-6 text-sm text-danger">{packages.message}</p>
                 )}
                 {!previewing && user && installations.length > 0 && installAdmin && (
@@ -291,6 +302,8 @@ export function RegistriesScreen() {
                     ))}
                   </ul>
                 )}
+                {route.view === "sources" ? (
+                <>
                 {!previewing && user && installations.length > 0 && (
                   <form
                     className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
@@ -936,6 +949,8 @@ export function RegistriesScreen() {
                     })}
                   </ul>
                 )}
+                </>
+                ) : null}
                 </section>
               </section>
               )}

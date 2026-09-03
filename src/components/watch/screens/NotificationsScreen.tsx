@@ -1,6 +1,20 @@
 import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useState } from "react";
+
+type NotificationFlow = "email" | "slack" | "siem" | "jira" | "pagerduty" | "route" | "route-test";
+
+const FLOWS: { value: NotificationFlow; label: string }[] = [
+  { value: "email", label: "Email" },
+  { value: "slack", label: "Slack" },
+  { value: "siem", label: "SIEM" },
+  { value: "jira", label: "Jira" },
+  { value: "pagerduty", label: "PagerDuty" },
+  { value: "route", label: "Add route" },
+  { value: "route-test", label: "Test routing" },
+];
 
 export function NotificationsScreen() {
+  const [flow, setFlow] = useState<NotificationFlow | null>(null);
   const { Button, WatchNotificationSummary, WatchSectionError, WatchSkeleton, activeInstallId, beginConfirm, confirmBusy, confirmForm, confirming, datasetState, deliveries, deskCoverage, deskPackages, deskRepos, destinationKindLabel, destinations, emailAddress, ended, installAdmin, jiraEmail, jiraProjectKey, jiraSite, jiraToken, members, pagerDutyKey, previewing, refreshSignedIn, retryDeskSection, route, routeDestinationId, routeMinSeverity, routeMinSeverityLabel, routePackage, routeRepo, routeTeam, routeTestPackage, routeTestRepo, routeTestSeverity, routes, savingEmail, savingJira, savingPagerDuty, savingRoute, savingSiem, savingSlack, selectedInstallId, setEmailAddress, setJiraEmail, setJiraProjectKey, setJiraSite, setJiraToken, setPagerDutyKey, setRouteDestinationId, setRouteMinSeverity, setRoutePackage, setRouteRepo, setRouteTeam, setRouteTestPackage, setRouteTestRepo, setRouteTestSeverity, setSavingEmail, setSavingJira, setSavingPagerDuty, setSavingRoute, setSavingSiem, setSavingSlack, setSiemWebhook, setSlackError, setSlackWebhook, setTestingRoute, setTestingSlackId, siemWebhook, slackError, slackWebhook, testingRoute, testingSlackId } = useWatchScreenContext();
   return (
     <>
@@ -125,8 +139,28 @@ export function NotificationsScreen() {
                         ))}
                       </ul>
                     )}
-                    {!ended && installAdmin && (
-                      <form
+                    {!ended && installAdmin ? (
+                      <div className="mt-6">
+                        <p className="text-xs font-medium text-snow">Choose a focused flow</p>
+                        <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Notification configuration">
+                          {FLOWS.map((item) => (
+                            <Button
+                              key={item.value}
+                              type="button"
+                              size="sm"
+                              variant={flow === item.value ? "default" : "outline"}
+                              role="tab"
+                              aria-selected={flow === item.value}
+                              onClick={() => setFlow(item.value)}
+                            >
+                              {item.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {!ended && installAdmin && flow === "email" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -173,14 +207,14 @@ export function NotificationsScreen() {
                           {savingEmail ? "Saving…" : "Save email"}
                         </Button>
                       </form>
-                    )}
+) : null}
                     {deskCoverage?.plan === "solo" ? (
                       <p className="mt-6 text-sm leading-relaxed text-mute">
                         Slack, SIEM, Jira, and PagerDuty are on Team.
                       </p>
                     ) : null}
-                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
-                      <form
+                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && flow === "slack" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -227,9 +261,9 @@ export function NotificationsScreen() {
                           {savingSlack ? "Saving…" : "Save Slack"}
                         </Button>
                       </form>
-                    )}
-                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
-                      <form
+) : null}
+                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && flow === "siem" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -276,9 +310,9 @@ export function NotificationsScreen() {
                           {savingSiem ? "Saving…" : "Save SIEM"}
                         </Button>
                       </form>
-                    )}
-                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
-                      <form
+) : null}
+                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && flow === "jira" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -389,9 +423,9 @@ export function NotificationsScreen() {
                           {savingJira ? "Saving…" : "Save Jira"}
                         </Button>
                       </form>
-                    )}
-                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && (
-                      <form
+) : null}
+                    {deskCoverage?.plan !== "solo" && !ended && installAdmin && flow === "pagerduty" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -440,7 +474,7 @@ export function NotificationsScreen() {
                           {savingPagerDuty ? "Saving…" : "Save PagerDuty"}
                         </Button>
                       </form>
-                    )}
+) : null}
                     {routes.length === 0 ? (
                       <p className="mt-6 text-sm leading-relaxed text-mute">
                         No routes yet. Destinations without a route still receive every Watch alert.
@@ -485,8 +519,8 @@ export function NotificationsScreen() {
                         })}
                       </ul>
                     )}
-                    {!ended && installAdmin && destinations.length > 0 && (
-                      <form
+                    {!ended && installAdmin && destinations.length > 0 && flow === "route" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -607,9 +641,9 @@ export function NotificationsScreen() {
                           {savingRoute ? "Saving…" : "Save route"}
                         </Button>
                       </form>
-                    )}
-                    {!ended && destinations.length > 0 && (
-                      <form
+) : null}
+                    {!ended && destinations.length > 0 && flow === "route-test" ? (
+<form
                         className="mt-6 flex max-w-xl flex-col gap-3"
                         onSubmit={(event) => {
                           event.preventDefault();
@@ -699,7 +733,7 @@ export function NotificationsScreen() {
                           {testingRoute ? "Testing…" : "Test routed delivery"}
                         </Button>
                       </form>
-                    )}
+) : null}
                     {deliveries.length > 0 ? (
                       <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                         {deliveries.slice(0, 8).map((row) => (
