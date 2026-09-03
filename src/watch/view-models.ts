@@ -45,6 +45,8 @@ type OriginInput = {
   last_checked_at: string | null;
   last_scan_status: string | null;
   last_public_map?: boolean;
+  verification?: { verifiedAt: string | null } | null;
+  deployTokenPrefix?: string | null;
 };
 
 type MapInput = {
@@ -136,16 +138,30 @@ export function buildSourceViewModels(input: {
       kindLabel: "Production web",
       name: origin.origin_url,
       coordinate: origin.host,
-      status: origin.last_public_map ? "public map found" : origin.last_scan_status ?? "check needed",
+      status: !origin.verification?.verifiedAt
+        ? "verification required"
+        : origin.last_public_map
+          ? "public map found"
+          : origin.last_scan_status ?? "check needed",
       attention: attentionFor(
         [origin.origin_url, origin.host],
-        origin.last_public_map ? "critical" : scanAttention(origin.last_scan_status),
+        !origin.verification?.verifiedAt
+          ? "warning"
+          : origin.last_public_map
+            ? "critical"
+            : scanAttention(origin.last_scan_status),
       ),
       digest: origin.last_sha256,
       lastCheckedAt: origin.last_checked_at,
-      detail: "public HTML, JS, CSS, exposed files, and maps",
+      detail: origin.verification?.verifiedAt
+        ? `verified production web${origin.deployTokenPrefix ? " · deploy trigger ready" : ""}`
+        : "prove domain control before automatic scans",
       alertCount: alertCountFor([origin.origin_url, origin.host]),
-      primaryAction: origin.last_checked_at ? "Scan website again" : "Scan website",
+      primaryAction: origin.verification?.verifiedAt
+        ? origin.last_checked_at
+          ? "Scan website again"
+          : "Scan website"
+        : "Verify domain",
     })),
     ...input.maps.map((map): WatchSourceViewModel => ({
       key: `map-${map.id}`,

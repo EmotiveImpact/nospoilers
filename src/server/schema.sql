@@ -618,12 +618,22 @@ CREATE TABLE IF NOT EXISTS watched_origins (
   last_debug_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
   last_release TEXT,
   last_public_map BOOLEAN NOT NULL DEFAULT false,
+  verification_token TEXT,
+  verification_method TEXT
+    CHECK (verification_method IS NULL OR verification_method IN ('dns', 'http')),
+  verified_at TIMESTAMPTZ,
+  deploy_token_hash TEXT,
+  deploy_token_prefix TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (installation_id, origin_url)
 );
 
 CREATE INDEX IF NOT EXISTS watched_origins_install_idx
   ON watched_origins (installation_id, origin_url);
+
+CREATE UNIQUE INDEX IF NOT EXISTS watched_origins_deploy_token_uidx
+  ON watched_origins (deploy_token_hash)
+  WHERE deploy_token_hash IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS map_destinations (
   id BIGSERIAL PRIMARY KEY,
@@ -1227,6 +1237,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
     'setup_pr.create',
     'remediation_pr.create',
     'package.unwatch',
+    'origin.verify',
+    'origin.deploy_token',
     'origin.unwatch',
     'map_destination.save',
     'map_destination.delete',

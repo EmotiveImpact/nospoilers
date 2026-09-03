@@ -96,6 +96,26 @@ async function siteFetch(root: string): Promise<typeof fetch> {
 }
 
 const publicLookup = async () => [{ address: "1.1.1.1", family: 4 as const }];
+const verifyDomain = async (
+  host: string,
+  _token: string,
+  method: "dns" | "http",
+) => ({ method, detail: `Verified ${host}.` });
+
+async function verifyCreatedOrigin(
+  app: ReturnType<typeof createApp>,
+  cookie: string,
+  created: Response,
+): Promise<number> {
+  const body = (await created.json()) as { origin: { id: number } };
+  const verified = await app.request(`/api/origins/${body.origin.id}/verify`, {
+    method: "POST",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ method: "dns" }),
+  });
+  expect(verified.status).toBe(200);
+  return body.origin.id;
+}
 
 async function usageOf(sql: SqlClient, installationId = 7): Promise<number> {
   const { rows } = await sql.query<{ n: string }>(
@@ -294,6 +314,88 @@ describe("website crawl", () => {
 });
 
 describe("hosted website watch", () => {
+  it("verifies domain control before issuing an idempotent deployment trigger", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          sessionSecret: "sess",
+          appBaseUrl: "https://nospoilers.dev",
+        }),
+        store,
+        github: unusedGithub(),
+        verifyDomain,
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const createdForVerification = created.clone();
+      const pendingBody = (await created.json()) as { origin: { id: number } };
+      expect(
+        (await app.request(`/api/origins/${pendingBody.origin.id}/check`, {
+          method: "POST",
+          headers: { cookie },
+        })).status,
+      ).toBe(409);
+      const originId = await verifyCreatedOrigin(app, cookie, createdForVerification);
+      const tokenResponse = await app.request(`/api/origins/${originId}/deploy-token`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(tokenResponse.status).toBe(201);
+      const tokenBody = (await tokenResponse.json()) as { token: string; endpoint: string };
+      expect(tokenBody.endpoint).toBe("https://nospoilers.dev/api/v1/deploy");
+      const { rows: storedTokens } = await sql.query<{
+        deploy_token_hash: string;
+        deploy_token_prefix: string;
+      }>(
+        "SELECT deploy_token_hash, deploy_token_prefix FROM watched_origins WHERE id = $1",
+        [originId],
+      );
+      expect(storedTokens[0]?.deploy_token_hash).not.toContain(tokenBody.token);
+      expect(storedTokens[0]?.deploy_token_prefix).toBe(tokenBody.token.slice(0, 12));
+
+      const trigger = () =>
+        app.request("/api/v1/deploy", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${tokenBody.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ provider: "vercel", deploymentId: "dpl_123" }),
+        });
+      expect((await trigger()).status).toBe(202);
+      expect(await (await trigger()).json()).toMatchObject({ duplicate: true, queued: false });
+      expect(
+        (await app.request("/api/v1/deploy", {
+          method: "POST",
+          headers: { authorization: "Bearer invalid" },
+        })).status,
+      ).toBe(401);
+      const { rows } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(Number(rows[0]?.n)).toBe(2);
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("queues every explicit website check instead of suppressing same-minute clicks", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -348,6 +450,7 @@ describe("hosted website watch", () => {
         wakeWorker: () => {
           woke += 1;
         },
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -355,6 +458,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       expect(woke).toBe(1);
       const worker = createWorker({
         store,
@@ -426,6 +530,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -433,6 +538,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -516,6 +622,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -523,6 +630,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const usageAfterCreate = await sql.query<{ n: string }>(
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
@@ -586,6 +694,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -593,6 +702,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -649,6 +759,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -656,6 +767,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const first = createWorker({
         store,
         github: unusedGithub(),
@@ -729,6 +841,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -736,7 +849,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
-      const createdBody = (await created.json()) as { origin: { id: number } };
+      const createdOriginId = await verifyCreatedOrigin(app, cookie, created);
       const first = createWorker({
         store,
         github: unusedGithub(),
@@ -766,7 +879,7 @@ describe("hosted website watch", () => {
       expect(release.inserted).toBe(true);
       expect(release.skipped).toBeUndefined();
       expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY);
-      const check = await app.request(`/api/origins/${createdBody.origin.id}/check`, {
+      const check = await app.request(`/api/origins/${createdOriginId}/check`, {
         method: "POST",
         headers: { cookie },
       });

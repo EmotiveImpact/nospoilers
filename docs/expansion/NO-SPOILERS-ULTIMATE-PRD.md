@@ -54,6 +54,11 @@ Existing deterministic rules inspect each original source path; reports persist 
 and paths but never reconstructed source or matched credential values. Website/map scans use the
 heavy queue, so bursts wait rather than reconstructing every customer map concurrently.
 
+Automatic Production Web scanning is provider-neutral. The customer first proves hostname control
+by DNS TXT or an HTTPS well-known file, then mints a hashed deployment token for one idempotent
+endpoint. Vercel, Netlify, Cloudflare, and existing CI systems are trigger adapters over the same
+`web_origin_scan` job; none is a separate scanner.
+
 ## 3. Customers
 
 ### Primary

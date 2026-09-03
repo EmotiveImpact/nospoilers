@@ -27,7 +27,10 @@ Watch desk 2B is the live signed-in desk. Leftover mockup PR #3 and earlier 2B P
 3. Milestone 2 unpaid enforcement — **done**.
 4. Milestone 3 Stripe — **on `main`, wired, not live**. This host has no Stripe keys. `/api/health` `stripe: false`.
 5. Resend Watch email — **on `main`, wired, not live**. Migration `060` on Neon; destinations 0; `/api/health` `resend: false`. Disclosure Desk `sent` stays false. Invites stay GitHub-login only.
-6. Milestone 4 process split — **on `main`**. `npm run build` + `npm run host` serves the SPA. `NOSPOILERS_ROLE=web|worker|all`. Enqueue `NOTIFY nospoilers_jobs`. Live health: `role: all`, `ui: true` after build, Neon. **Not deployed. No Railway account. No domain.**
+6. Milestone 4 process split — **on `main`**, with the Vercel runtime, direct Neon job listener,
+   Production Web ownership/deploy trigger, and Railway service definition on PR #14.
+   Vercel web/API is live on a temporary alias; Railway account deployment and `nospoilers.dev`
+   DNS cutover remain human-gated.
 7. npm/GitHub attestation adapters — **on `main`**. Live Neon: `061` applied; throwaway `phase1-fixture` revision 6 stored github `missing` with no alert; leftover row stayed. Sigstore verify stays Planned.
 8. Customer-managed signing policies — **on `main`**. Live Neon: `062` applied; unauth PUT 401; GET `{ policy: null }`; PUT require-github 200 on install `158159401`; GET returned the policy; DELETE leftover 0; `watched_packages` 0. Approve-to-ship 409 is unit-tested; live throwaway revision 6 is `failed-policy` so approve 409s dirty first. Sigstore verify stays Planned.
 9. Remaining specified work is **human-gated or on ice**: Stripe/Resend keys, Railway + `nospoilers.dev`, a second GitHub account for collaborator/fork proof, an EmotiveImpact-owned npm pack for live Package Identity, Electron / SBOM / Sigstore verify / scheduled CDN (ice). Watch desk 2B is the live signed-in UI. The live setup PR is open and must stay unmerged. Do not transfer. Do not grant Administration or Workflows write. Client projects, other registries, aggregate research, and Employee Public Footprint stay out.
@@ -38,7 +41,8 @@ Electron installer worker, SBOM, Sigstore, and scheduled CDN stay **on ice**. Em
 
 - Stripe keys + four price IDs if you want charges (approval).
 - Resend keys + from address if you want mail (approval). Do not mail disclosures.
-- Railway + `nospoilers.dev` / Cloudflare DNS if you want a real public host (purchase). The `trycloudflare.com` URL is only a webhook tunnel. It is **not** the database.
+- Deploy the prepared Railway worker and point `nospoilers.dev` from its registrar to Vercel.
+  Cloudflare DNS is not required.
 - Leave https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1 **open**. Do not merge it. Workflow YAML stays copy-paste. Do **not** grant Administration or Workflows write.
 - Optional: `GITHUB_PROOF_TOKEN` on `EmotiveImpact/nospoilers-throwaway` only (Administration + Contents write) if you want the script to flip visibility. The live proof used GitHub Settings → Private, then Public with `npm run dev` running. Do not invent `-vis`. Do not grant the App Administration.
 

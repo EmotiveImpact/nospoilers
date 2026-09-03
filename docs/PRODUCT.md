@@ -33,6 +33,12 @@ When a source map embeds `sourcesContent`, the scanner reconstructs bounded virt
 memory so a finding identifies the original source path. Reconstructed source and credential values
 are never persisted or logged.
 
+Production Web requires proof that the install controls the hostname before deployment-triggered
+scans. DNS TXT and HTTPS well-known-file verification are supported. A verified admin can mint a
+hashed deployment token for one provider-neutral endpoint; Vercel, Netlify, Cloudflare, or an
+existing CI pipeline can call the same endpoint with an idempotent deployment ID. Provider-native
+OAuth installations remain convenience work after customer demand, not separate scanners.
+
 ---
 
 ## What is already built (this repo)

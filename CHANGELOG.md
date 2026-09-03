@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+- Production Web now has customer-domain ownership verification by DNS TXT or
+  an HTTPS well-known file. Verified install admins can mint a one-time
+  `nsd_` deployment token for the signed `/api/v1/deploy` trigger; duplicate
+  provider deployment IDs are idempotent and reuse the existing bounded
+  `web_origin_scan` queue. Deploy tokens are stored only as SHA-256 hashes.
+
+- The Watch overview restores the mockups’ risk-weighted bento composition
+  using live alert, setup, release, Production Web, and queue data. The
+  landing preview now shows the real desk geometry without invented rows;
+  source details link to related alerts/releases; Release guidance is reduced
+  from one long essay to four concise evidence cards.
+
+- `railway.toml` defines the independent `npm run worker` service, and `tsx`
+  is now an explicit runtime dependency. Vercel remains the web/API host;
+  Railway runs the persistent queue consumer and hourly poller.
+
 - Vercel now registers post-response job work with the official
   `@vercel/functions` `waitUntil` API. Previously, the response could freeze a
   claimed website scan and leave its Neon job in `running`. Production Web

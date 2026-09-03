@@ -14,7 +14,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "062_release_signing_policies";
+export const CURRENT_SCHEMA_MIGRATION = "063_origin_verification";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -781,6 +781,8 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
         'setup_pr.create',
         'remediation_pr.create',
         'package.unwatch',
+        'origin.verify',
+        'origin.deploy_token',
         'origin.unwatch',
         'map_destination.save',
         'map_destination.delete',
@@ -870,6 +872,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateEmailDestinations(sql);
   await migrateReleaseAttestations(sql);
   await migrateSigningPolicies(sql);
+  await migrateOriginVerification(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1335,6 +1338,8 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'setup_pr.create',
       'remediation_pr.create',
       'package.unwatch',
+      'origin.verify',
+      'origin.deploy_token',
       'origin.unwatch',
       'map_destination.save',
       'map_destination.delete',
@@ -1867,6 +1872,25 @@ async function migrateSigningPolicies(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "062_release_signing_policies",
+  ]);
+}
+
+async function migrateOriginVerification(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_token TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_method TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_hash TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_prefix TEXT;
+    ALTER TABLE watched_origins DROP CONSTRAINT IF EXISTS watched_origins_verification_method_check;
+    ALTER TABLE watched_origins ADD CONSTRAINT watched_origins_verification_method_check
+      CHECK (verification_method IS NULL OR verification_method IN ('dns', 'http'));
+    CREATE UNIQUE INDEX IF NOT EXISTS watched_origins_deploy_token_uidx
+      ON watched_origins (deploy_token_hash)
+      WHERE deploy_token_hash IS NOT NULL;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "063_origin_verification",
   ]);
 }
 
