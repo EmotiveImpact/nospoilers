@@ -413,21 +413,40 @@ export function WatchSourcesSummary({
                   {selectedSource.detail}. Checks, alerts, release evidence, and remediation actions remain scoped to this real source.
                 </p>
               </div>
-              <Button
-                type="button"
-                className="mt-6"
-                onClick={() => {
-                  navigate(
-                    watchHref(watchPath("sources"), search, {
-                      source: null,
-                      configure: configureForKind(selectedSource.kind),
-                    }),
-                  );
-                }}
-              >
-                <Box className="size-4" aria-hidden />
-                {selectedSource.primaryAction}
-              </Button>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    navigate(
+                      watchHref(watchPath("sources"), search, {
+                        source: null,
+                        configure: configureForKind(selectedSource.kind),
+                      }),
+                    );
+                  }}
+                >
+                  <Box className="size-4" aria-hidden />
+                  {selectedSource.primaryAction}
+                </Button>
+                {selectedSource.alertCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
+                  >
+                    Open related alerts
+                  </Button>
+                ) : null}
+                {(selectedSource.kind === "npm" || selectedSource.kind === "github") ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => navigate(watchHref(watchPath("releases"), search))}
+                  >
+                    Open release evidence
+                  </Button>
+                ) : null}
+              </div>
             </>
           ) : null}
         </DialogPanel>
