@@ -36,6 +36,35 @@ function NavLink({
   children: ReactNode;
   onNavigate?: () => void;
 }) {
+  const path = href.split("?")[0] ?? href;
+  const glyph =
+    path === "/watch"
+      ? "◉"
+      : path.endsWith("/alerts")
+        ? "▲"
+        : path.endsWith("/sources")
+          ? "⌸"
+          : path.endsWith("/releases")
+            ? "✓"
+            : path.endsWith("/timeline")
+              ? "◷"
+              : path.endsWith("/setup")
+                ? "◎"
+                : path.endsWith("/notifications")
+                  ? "✉"
+                  : path.endsWith("/policy")
+                    ? "⚖"
+                    : path.endsWith("/team")
+                      ? "☗"
+                      : path.endsWith("/retention")
+                        ? "⧗"
+                        : path.endsWith("/audit")
+                          ? "⎙"
+                          : path.endsWith("/health")
+                            ? "✱"
+                            : path.endsWith("/tokens")
+                              ? "◍"
+                              : "▤";
   return (
     <a
       href={href}
@@ -49,6 +78,7 @@ function NavLink({
       )}
       aria-current={active ? "page" : undefined}
     >
+      <span className="w-4 shrink-0 text-center text-[11px] text-dim" aria-hidden>{glyph}</span>
       {children}
     </a>
   );
@@ -103,10 +133,15 @@ export function WatchMonolithShell({
 }) {
   const [navOpen, setNavOpen] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
   const hrefFor = (view: WatchView, tab?: AlertTab) =>
     watchHref(watchPath(view), search, tab ? { tab } : {});
   const alertActive = (tab: AlertTab) => route.view === "alerts" && route.tab === tab;
   const closeNav = () => setNavOpen(false);
+  const installIdentity =
+    installations.find((installation) => installation.id === activeInstallId)?.account_login ??
+    installations[0]?.account_login ??
+    login;
 
   const nav = (
     <>
@@ -140,9 +175,9 @@ export function WatchMonolithShell({
         ) : (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-white/8 bg-white/[0.025] px-2 py-2">
             <span className="grid size-6 place-items-center rounded-md bg-white/10 text-[10px] font-semibold text-snow">
-              {login.slice(0, 2).toUpperCase()}
+              {installIdentity.slice(0, 2).toUpperCase()}
             </span>
-            <p className="min-w-0 flex-1 truncate text-xs text-snow">{login}</p>
+            <p className="min-w-0 flex-1 truncate text-xs text-snow">{installIdentity}</p>
             <span className="text-[10px] text-dim">⌄</span>
           </div>
         )}
@@ -351,7 +386,7 @@ export function WatchMonolithShell({
             {guidanceOpen ? "Hide guide" : "Guide"}
           </Button>
           {ended ? (
-            <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
+            <Button type="button" size="sm" onClick={() => setPlansOpen(true)}>
               See plans
             </Button>
           ) : null}
@@ -382,6 +417,38 @@ export function WatchMonolithShell({
           {children}
         </div>
       </div>
+      {plansOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
+          <button type="button" className="absolute inset-0" aria-label="Close plans dialog" onClick={() => setPlansOpen(false)} />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="watch-plans-title"
+            className="relative z-10 w-full max-w-xl rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-dim">Hosted coverage</p>
+                <h2 id="watch-plans-title" className="mt-1 font-display text-xl text-snow">Keep the desk looking.</h2>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setPlansOpen(false)}>Close</Button>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/8 bg-panel p-4">
+                <p className="text-sm text-snow">Solo · $29</p>
+                <p className="mt-2 text-xs leading-relaxed text-mute">One admin, email destination, and hosted Watch coverage.</p>
+              </div>
+              <div className="rounded-lg border border-white/8 bg-panel p-4">
+                <p className="text-sm text-snow">Team · $99</p>
+                <p className="mt-2 text-xs leading-relaxed text-mute">Roles, timeline, audit, routes, release governance, and signing policy.</p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button type="button" onClick={() => navigate("/pricing")}>Compare plans</Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { navigate } from "@/nav.ts";
+import { watchHref, watchPath, type SourceFilter } from "@/watch/routes.ts";
 import {
   filterSourceViewModels,
   type SourceKind,
@@ -28,16 +30,22 @@ export function WatchSourcesSummary({
   sources,
   setup,
   admin = false,
+  search = "",
+  filter = "all",
+  attention = false,
+  selectedSourceKey = null,
 }: {
   mode: "sources" | "setup";
   sources: WatchSourceViewModel[];
   setup: WatchSetupViewModel;
   admin?: boolean;
+  search?: string;
+  filter?: SourceFilter;
+  attention?: boolean;
+  selectedSourceKey?: string | null;
 }) {
-  const [kind, setKind] = useState<SourceKind | "all">("all");
-  const [attentionOnly, setAttentionOnly] = useState(false);
   const [adding, setAdding] = useState(false);
-  const filteredSources = filterSourceViewModels(sources, kind, attentionOnly);
+  const filteredSources = filterSourceViewModels(sources, filter, attention);
 
   if (mode === "setup") {
     return (
@@ -145,29 +153,41 @@ export function WatchSourcesSummary({
       </div>
       {sources.length > 0 ? (
         <div className="mt-5 flex flex-wrap gap-2">
-          {SOURCE_FILTERS.map((filter) => {
+          {SOURCE_FILTERS.map((option) => {
             const count =
-              filter.value === "all" ? sources.length : sources.filter((source) => source.kind === filter.value).length;
+              option.value === "all" ? sources.length : sources.filter((source) => source.kind === option.value).length;
             return (
               <button
-                key={filter.value}
+                key={option.value}
                 type="button"
-                onClick={() => setKind(filter.value)}
+                onClick={() =>
+                  navigate(
+                    watchHref(watchPath("sources"), search, {
+                      sourceType: option.value,
+                    }),
+                  )
+                }
                 className={
-                  kind === filter.value
+                  filter === option.value
                     ? "rounded-full border border-white/25 bg-white/8 px-3 py-1.5 text-xs text-snow"
                     : "rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20"
                 }
               >
-                {filter.label} <span className="ml-1 text-dim">{count}</span>
+                {option.label} <span className="ml-1 text-dim">{count}</span>
               </button>
             );
           })}
           <button
             type="button"
-            onClick={() => setAttentionOnly((value) => !value)}
+            onClick={() =>
+              navigate(
+                watchHref(watchPath("sources"), search, {
+                  attention: !attention,
+                }),
+              )
+            }
             className={
-              attentionOnly
+              attention
                 ? "ml-auto rounded-full border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs text-danger"
                 : "ml-auto rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20"
             }
@@ -192,7 +212,14 @@ export function WatchSourcesSummary({
       ) : (
         <ul className="mt-5 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
           {filteredSources.map((source) => (
-            <li key={source.key} className="grid gap-3 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center">
+            <li
+              key={source.key}
+              className={
+                selectedSourceKey === source.key
+                  ? "grid gap-3 bg-white/[0.035] px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
+                  : "grid gap-3 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
+              }
+            >
               <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-xs text-mute">
                 {source.kind === "github" ? "⌥" : source.kind === "npm" ? "▣" : source.kind === "website" ? "⬡" : "⎔"}
               </span>
@@ -219,17 +246,22 @@ export function WatchSourcesSummary({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  revealSourceForm(
-                    source.kind === "github"
-                      ? "watch-source-github"
-                      : source.kind === "npm"
-                        ? "watch-source-npm"
-                        : source.kind === "website"
-                          ? "watch-source-web"
-                          : "watch-source-map",
-                  )
-                }
+                onClick={() => {
+                  navigate(watchHref(watchPath("sources"), search, { source: source.key }));
+                  window.setTimeout(
+                    () =>
+                      revealSourceForm(
+                        source.kind === "github"
+                          ? "watch-source-github"
+                          : source.kind === "npm"
+                            ? "watch-source-npm"
+                            : source.kind === "website"
+                              ? "watch-source-web"
+                              : "watch-source-map",
+                      ),
+                    0,
+                  );
+                }}
               >
                 Open
               </Button>

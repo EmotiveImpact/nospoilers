@@ -1,6 +1,6 @@
 import { navigate } from "@/nav.ts";
 import { VIEW_TITLE, type WatchView, watchHref, watchPath } from "@/watch/routes.ts";
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 
 const PAGES: WatchView[] = [
   "overview",
@@ -54,10 +54,6 @@ export function WatchCommandPalette({
     { label: "Test install health", view: "health" as const },
     { label: "Finish setup", view: "setup" as const },
   ].filter((command) => command.label.toLowerCase().includes(q));
-
-  useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
 
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {

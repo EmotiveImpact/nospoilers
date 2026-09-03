@@ -17,16 +17,21 @@ export const WATCH_VIEWS = [
 
 export type WatchView = (typeof WATCH_VIEWS)[number];
 export type AlertTab = "open" | "waiting" | "mine" | "done";
+export type SourceFilter = "all" | "github" | "npm" | "website" | "map";
 
 export type WatchRoute = {
   view: WatchView;
   alertId: number | null;
   releaseId: number | null;
+  sourceKey: string | null;
+  sourceFilter: SourceFilter;
+  sourceAttention: boolean;
   tab: AlertTab;
 };
 
 const VIEW_SET = new Set<string>(WATCH_VIEWS);
 const TAB_SET = new Set<string>(["open", "waiting", "mine", "done"]);
+const SOURCE_FILTER_SET = new Set<string>(["all", "github", "npm", "website", "map"]);
 
 export const VIEW_TITLE: Record<WatchView, string> = {
   overview: "Overview",
@@ -55,19 +60,26 @@ export function parseWatchRoute(path: string, search: string): WatchRoute {
   const alertId = Number.isFinite(rawAlert) && rawAlert > 0 ? rawAlert : null;
   const rawRelease = Number(params.get("release"));
   const releaseId = Number.isFinite(rawRelease) && rawRelease > 0 ? rawRelease : null;
+  const rawSource = params.get("source")?.trim() ?? "";
+  const sourceKey = /^(repo|npm|web|map)-\d+$/.test(rawSource) ? rawSource : null;
+  const rawSourceFilter = params.get("sourceType") ?? "";
+  const sourceFilter: SourceFilter = SOURCE_FILTER_SET.has(rawSourceFilter)
+    ? (rawSourceFilter as SourceFilter)
+    : "all";
+  const sourceAttention = params.get("attention") === "1";
   const rawTab = params.get("tab") ?? "";
   const tab: AlertTab = TAB_SET.has(rawTab) ? (rawTab as AlertTab) : "open";
   const trimmed = path.replace(/\/+$/, "") || "/watch";
   if (trimmed === "/watch") {
-    return { view: "overview", alertId, releaseId, tab };
+    return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
   }
   if (trimmed.startsWith("/watch/")) {
     const page = trimmed.slice("/watch/".length);
     if (VIEW_SET.has(page)) {
-      return { view: page as WatchView, alertId, releaseId, tab };
+      return { view: page as WatchView, alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
     }
   }
-  return { view: "overview", alertId, releaseId, tab };
+  return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
 }
 
 export function watchPath(view: WatchView): string {
@@ -81,6 +93,9 @@ export function watchHref(
     install?: number | null;
     alert?: number | null;
     release?: number | null;
+    source?: string | null;
+    sourceType?: SourceFilter | null;
+    attention?: boolean | null;
     tab?: AlertTab | null;
   } = {},
 ): string {
@@ -96,6 +111,18 @@ export function watchHref(
   if (extra.release !== undefined) {
     if (extra.release) params.set("release", String(extra.release));
     else params.delete("release");
+  }
+  if (extra.source !== undefined) {
+    if (extra.source) params.set("source", extra.source);
+    else params.delete("source");
+  }
+  if (extra.sourceType !== undefined) {
+    if (extra.sourceType && extra.sourceType !== "all") params.set("sourceType", extra.sourceType);
+    else params.delete("sourceType");
+  }
+  if (extra.attention !== undefined) {
+    if (extra.attention) params.set("attention", "1");
+    else params.delete("attention");
   }
   if (extra.tab !== undefined) {
     if (extra.tab && extra.tab !== "open") params.set("tab", extra.tab);

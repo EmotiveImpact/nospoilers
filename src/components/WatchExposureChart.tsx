@@ -1,5 +1,6 @@
 import type { DeskAlert } from "@/watch/verdict.ts";
 import { buildTimelineLanes } from "@/watch/view-models.ts";
+import { useState } from "react";
 
 export function WatchExposureChart({
   alerts,
@@ -10,9 +11,10 @@ export function WatchExposureChart({
   days?: number;
   compact?: boolean;
 }) {
-  const lanes = buildTimelineLanes(alerts, { days });
+  const [now] = useState(() => Date.now());
+  const lanes = buildTimelineLanes(alerts, { days, now });
   const ticks = Array.from({ length: 8 }, (_, index) => {
-    const date = new Date(Date.now() - (7 - index) * (days / 7) * 86_400_000);
+    const date = new Date(now - (7 - index) * (days / 7) * 86_400_000);
     return index === 7
       ? "Today"
       : date.toLocaleDateString(undefined, {

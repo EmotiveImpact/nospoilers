@@ -3,6 +3,16 @@ import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { previewAlerts, previewRepos } from "../src/preview.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";
+import {
+  buildSetupViewModel,
+  buildSourceViewModels,
+  buildTimelineLanes,
+  filterSourceViewModels,
+} from "../src/watch/view-models.ts";
+import {
+  loadSelectedAlertActivity,
+  shouldLoadAlertActivity,
+} from "../src/watch/useWatchDeskController.ts";
 
 describe("Watch preview", () => {
   it("shows structure without inventing tenant rows", () => {
@@ -47,10 +57,27 @@ describe("2B watch routes", () => {
     expect(parseWatchRoute("/watch/notifications", "").view).toBe("notifications");
     expect(parseWatchRoute("/watch/alerts", "?tab=waiting").tab).toBe("waiting");
     expect(parseWatchRoute("/watch/releases", "?release=12").releaseId).toBe(12);
+    expect(
+      parseWatchRoute(
+        "/watch/sources",
+        "?install=7&source=npm-4&sourceType=npm&attention=1",
+      ),
+    ).toMatchObject({
+      sourceKey: "npm-4",
+      sourceFilter: "npm",
+      sourceAttention: true,
+    });
     expect(watchPath("policy")).toBe("/watch/policy");
     expect(watchHref("/watch/alerts", "?install=7", { tab: "done" })).toBe(
       "/watch/alerts?install=7&tab=done",
     );
+    expect(
+      watchHref("/watch/sources", "?install=7", {
+        source: "repo-2",
+        sourceType: "github",
+        attention: true,
+      }),
+    ).toBe("/watch/sources?install=7&source=repo-2&sourceType=github&attention=1");
   });
 });
 
@@ -105,5 +132,151 @@ describe("setup ring", () => {
     });
     expect(progress.done).toBe(3);
     expect(progress.total).toBe(5);
+  });
+
+  it("does not infer workflow or release coverage from a repository count", () => {
+    const setup = buildSetupViewModel({
+      repoCount: 2,
+      releases: [],
+      setupProbes: {},
+      packages: [],
+      origins: [],
+      maps: [],
+    });
+    expect(setup.steps.find((step) => step.key === "visibility")?.proof).toBe("covered");
+    expect(setup.steps.find((step) => step.key === "release-assets")?.proof).toBe("unknown");
+    expect(setup.steps.find((step) => step.key === "workflow-check")?.proof).toBe("unknown");
+    expect(setup.done).toBe(1);
+  });
+
+  it("requires real production and map proof when a public map was found", () => {
+    const base = {
+      repoCount: 0,
+      releases: [],
+      setupProbes: {},
+      packages: [],
+      origins: [
+        {
+          id: 1,
+          origin_url: "https://app.example.test",
+          host: "app.example.test",
+          last_sha256: "abc",
+          last_checked_at: "2026-09-03T10:00:00Z",
+          last_scan_status: "failed",
+          last_public_map: true,
+        },
+      ],
+    };
+    expect(buildSetupViewModel({ ...base, maps: [] }).steps.at(-1)?.proof).toBe("unknown");
+    expect(
+      buildSetupViewModel({
+        ...base,
+        maps: [
+          {
+            id: 1,
+            kind: "sentry",
+            host: "sentry.io",
+            orgSlug: "acme",
+            projectSlug: "web",
+            lastCheckedAt: "2026-09-03T10:10:00Z",
+            lastStatus: "verified",
+            lastError: null,
+          },
+        ],
+      }).steps.at(-1)?.proof,
+    ).toBe("covered");
+  });
+});
+
+describe("normalized source views", () => {
+  it("unifies real source kinds and filters attention without illustrative rows", () => {
+    const sources = buildSourceViewModels({
+      repos: [{ id: 1, full_name: "acme/app", private: true, last_checked_at: null }],
+      packages: [
+        {
+          id: 2,
+          package_name: "@acme/app",
+          last_version: "1.0.0",
+          last_sha256: "abc",
+          last_checked_at: "2026-09-03T10:00:00Z",
+          last_scan_status: "failed-policy",
+        },
+      ],
+      origins: [],
+      maps: [],
+      alerts: [],
+    });
+    expect(sources.map((source) => source.kind)).toEqual(["github", "npm"]);
+    expect(filterSourceViewModels(sources, "npm", true).map((source) => source.key)).toEqual([
+      "npm-2",
+    ]);
+  });
+});
+
+describe("source-lane timeline", () => {
+  it("clips spans to the retained window and keeps open state", () => {
+    const now = Date.parse("2026-09-03T12:00:00Z");
+    const lanes = buildTimelineLanes(
+      [
+        {
+          id: 7,
+          kind: "npm_scan",
+          title: "Map exposed",
+          body: "",
+          full_name: "@acme/app@1.0.0",
+          findings: [{ rule: "MAP-002", path: "dist/app.js.map" }],
+          created_at: "2026-09-03T10:00:00Z",
+        },
+      ],
+      { now, days: 7 },
+    );
+    expect(lanes).toHaveLength(1);
+    expect(lanes[0]?.spans[0]).toMatchObject({
+      alertId: 7,
+      rule: "MAP-002",
+      open: true,
+      severity: "critical",
+    });
+    expect(lanes[0]?.spans[0]?.left).toBeGreaterThan(90);
+  });
+});
+
+describe("selected alert activity", () => {
+  it("loads activity as soon as a real alert is selected and caches empty results", async () => {
+    expect(
+      shouldLoadAlertActivity({
+        previewing: false,
+        selectedAlertId: 19,
+        alertEvents: {},
+      }),
+    ).toBe(true);
+    const calls: string[] = [];
+    const fetcher = (async (input: RequestInfo | URL) => {
+      calls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          events: [
+            {
+              id: 1,
+              actor_login: "dana",
+              action: "acknowledged",
+              detail: null,
+              created_at: "2026-09-03T10:00:00Z",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+    const events = await loadSelectedAlertActivity(19, fetcher);
+    expect(calls).toEqual(["/api/alerts/19/events"]);
+    expect(events[0]?.action).toBe("acknowledged");
+    expect(
+      shouldLoadAlertActivity({
+        previewing: false,
+        selectedAlertId: 19,
+        alertEvents: { 19: events },
+      }),
+    ).toBe(false);
   });
 });

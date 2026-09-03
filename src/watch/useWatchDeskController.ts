@@ -8,7 +8,7 @@ import {
   type WatchSetupViewModel,
   type WatchSourceViewModel,
 } from "./view-models.ts";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 export type AlertActivityEvent = {
   id: number;
@@ -31,7 +31,7 @@ export type WatchDeskControllerInput = {
   releases: { id: number }[];
   setupProbes: Parameters<typeof buildSetupViewModel>[0]["setupProbes"];
   alertEvents: Record<number, AlertActivityEvent[]>;
-  setAlertEvents: React.Dispatch<React.SetStateAction<Record<number, AlertActivityEvent[]>>>;
+  setAlertEvents: Dispatch<SetStateAction<Record<number, AlertActivityEvent[]>>>;
   onActivityError?: (alertId: number, message: string) => void;
 };
 
@@ -78,6 +78,8 @@ export function shouldLoadAlertActivity(input: {
 }
 
 export function useWatchDeskController(input: WatchDeskControllerInput): WatchDeskController {
+  const [now] = useState(() => Date.now());
+  const { alertEvents, onActivityError, previewing, setAlertEvents } = input;
   const route = useMemo(() => parseWatchRoute(input.path, input.search), [input.path, input.search]);
   const sources = useMemo(
     () =>
@@ -112,7 +114,7 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     () =>
       buildAlertListViewModels(listedAlerts, (alert) => {
         const opened = Date.parse(alert.created_at);
-        const ended = alert.resolved_at ? Date.parse(alert.resolved_at) : Date.now();
+        const ended = alert.resolved_at ? Date.parse(alert.resolved_at) : now;
         const ms =
           typeof alert.exposure_ms === "number"
             ? alert.exposure_ms
@@ -124,7 +126,7 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
         if (ms < 172_800_000) return `${Math.floor(ms / 3_600_000)}h`;
         return `${Math.floor(ms / 86_400_000)}d`;
       }),
-    [listedAlerts],
+    [listedAlerts, now],
   );
   const timelineLanes = useMemo(() => buildTimelineLanes(input.alerts), [input.alerts]);
 
@@ -132,9 +134,9 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     const selectedAlertId = selectedAlert?.id ?? null;
     if (
       !shouldLoadAlertActivity({
-        previewing: input.previewing,
+        previewing,
         selectedAlertId,
-        alertEvents: input.alertEvents,
+        alertEvents,
       }) ||
       !selectedAlertId
     ) {
@@ -143,21 +145,21 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     const controller = new AbortController();
     void loadSelectedAlertActivity(selectedAlertId, fetch, controller.signal)
       .then((events) => {
-        input.setAlertEvents((current) => ({ ...current, [selectedAlertId]: events }));
+        setAlertEvents((current) => ({ ...current, [selectedAlertId]: events }));
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        input.onActivityError?.(
+        onActivityError?.(
           selectedAlertId,
           error instanceof Error ? error.message : "Could not load alert activity.",
         );
       });
     return () => controller.abort();
   }, [
-    input.alertEvents,
-    input.onActivityError,
-    input.previewing,
-    input.setAlertEvents,
+    alertEvents,
+    onActivityError,
+    previewing,
+    setAlertEvents,
     selectedAlert?.id,
   ]);
 

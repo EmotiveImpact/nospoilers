@@ -22,6 +22,11 @@ import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
+import {
+  loadWatchJson as loadJson,
+  loadWatchResources,
+  scopedWatchApi as scopedApi,
+} from "@/watch/api.ts";
 import { watchHref, watchPath } from "@/watch/routes.ts";
 import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
 import type { Finding } from "@/report-types";
@@ -651,21 +656,6 @@ type LoadState<T> =
   | { status: "error"; message: string }
   | { status: "ready"; data: T };
 
-async function loadJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { credentials: "include" });
-  const body = (await response.json()) as T & { error?: string };
-  if (!response.ok) {
-    throw new Error(body.error ?? `Request failed (${response.status})`);
-  }
-  return body;
-}
-
-function scopedApi(path: string, installationId: number | null): string {
-  if (!installationId) return path;
-  const join = path.includes("?") ? "&" : "?";
-  return `${path}${join}installationId=${installationId}`;
-}
-
 function TypeToConfirm(props: {
   expected: string;
   action: string;
@@ -677,33 +667,44 @@ function TypeToConfirm(props: {
   onSubmit: () => void;
 }) {
   return (
-    <form
-      className="mt-3 w-full max-w-xl"
-      onSubmit={(event) => {
-        event.preventDefault();
-        props.onSubmit();
-      }}
-    >
-      <p className="text-xs leading-relaxed text-mute">
-        Type <span className="font-mono text-snow">{props.expected}</span> to {props.action}.
-      </p>
-      <input
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-        autoComplete="off"
-        spellCheck={false}
-        className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
-      />
-      {props.error ? <p className="mt-2 text-sm text-danger">{props.error}</p> : null}
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button type="submit" size="sm" disabled={props.busy || !props.value.trim()}>
-          {props.busy ? "Working…" : "Confirm"}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" disabled={props.busy} onClick={props.onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
+      <button type="button" className="absolute inset-0" aria-label="Cancel confirmation" onClick={props.onCancel} />
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="typed-confirm-title"
+        className="relative z-10 w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onSubmit();
+        }}
+      >
+        <p className="watch-kicker">Confirmation required</p>
+        <h2 id="typed-confirm-title" className="mt-1 font-display text-xl text-snow">
+          {props.action}
+        </h2>
+        <p className="mt-4 text-xs leading-relaxed text-mute">
+          Type <span className="font-mono text-snow">{props.expected}</span> to continue.
+        </p>
+        <input
+          autoFocus
+          value={props.value}
+          onChange={(event) => props.onChange(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          className="mt-3 h-11 w-full rounded-md border border-white/15 bg-panel px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
+        />
+        {props.error ? <p className="mt-2 text-sm text-danger">{props.error}</p> : null}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" size="sm" variant="ghost" disabled={props.busy} onClick={props.onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" disabled={props.busy || props.value.trim() !== props.expected}>
+            {props.busy ? "Working…" : "Confirm"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -1330,27 +1331,61 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     setIdentitySignals({ status: "loading" });
     try {
       const q = (path: string) => scopedApi(path, installationId);
-      const [repoBody, alertBody, packageBody, originBody, exceptionBody, registryBody, destinationBody, deliveryBody, routeBody, tokenBody, releaseBody, protectionBody, jobBody, mapBody] =
-        await Promise.all([
-        loadJson<{ repos: Repo[] }>(q("/api/repos")),
-        loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
-        loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
-        loadJson<{ origins: WatchedOrigin[] }>(q("/api/origins")),
-        loadJson<{ exceptions: PolicyExceptionView[] }>(q("/api/exceptions")),
-        loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
-        loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
-        loadJson<{ deliveries: NotificationDelivery[] }>(q("/api/destinations/deliveries")),
-        loadJson<{ routes: NotificationRoute[] }>(q("/api/destinations/routes")),
-        loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
-        loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
-        loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
-        loadJson<{ jobs: TenantJob[]; summary: JobSummary; fairUse?: FairUseStatus }>(q("/api/jobs")),
-        loadJson<{ destinations: MapCustodyDestination[] }>(q("/api/map-destinations")),
-      ]);
-      setRepos({ status: "ready", data: repoBody });
-      setAlerts({ status: "ready", data: alertBody });
-      setPackages({ status: "ready", data: packageBody });
-      setOrigins({ status: "ready", data: originBody });
+      const loaded = await loadWatchResources({
+        repos: () => loadJson<{ repos: Repo[] }>(q("/api/repos")),
+        alerts: () => loadJson<{ alerts: Alert[] }>(q("/api/alerts")),
+        packages: () => loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
+        origins: () => loadJson<{ origins: WatchedOrigin[] }>(q("/api/origins")),
+        exceptions: () => loadJson<{ exceptions: PolicyExceptionView[] }>(q("/api/exceptions")),
+        registries: () => loadJson<{ registries: NpmRegistry[] }>(q("/api/registries")),
+        destinations: () => loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
+        deliveries: () => loadJson<{ deliveries: NotificationDelivery[] }>(q("/api/destinations/deliveries")),
+        routes: () => loadJson<{ routes: NotificationRoute[] }>(q("/api/destinations/routes")),
+        tokens: () => loadJson<{ tokens: ScanApiToken[] }>(q("/api/scan-tokens")),
+        releases: () => loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases")),
+        protections: () => loadJson<{ protections: PackageProtection[] }>(q("/api/protections")),
+        jobs: () => loadJson<{ jobs: TenantJob[]; summary: JobSummary; fairUse?: FairUseStatus }>(q("/api/jobs")),
+        maps: () => loadJson<{ destinations: MapCustodyDestination[] }>(q("/api/map-destinations")),
+      });
+      const failureMessage = (result: PromiseRejectedResult) =>
+        result.reason instanceof Error ? result.reason.message : "Could not load.";
+      const repoBody = loaded.repos.status === "fulfilled" ? loaded.repos.value : { repos: [] };
+      const alertBody = loaded.alerts.status === "fulfilled" ? loaded.alerts.value : { alerts: [] };
+      const packageBody = loaded.packages.status === "fulfilled" ? loaded.packages.value : { packages: [] };
+      const originBody = loaded.origins.status === "fulfilled" ? loaded.origins.value : { origins: [] };
+      const exceptionBody = loaded.exceptions.status === "fulfilled" ? loaded.exceptions.value : { exceptions: [] };
+      const registryBody = loaded.registries.status === "fulfilled" ? loaded.registries.value : { registries: [] };
+      const destinationBody = loaded.destinations.status === "fulfilled" ? loaded.destinations.value : { destinations: [] };
+      const deliveryBody = loaded.deliveries.status === "fulfilled" ? loaded.deliveries.value : { deliveries: [] };
+      const routeBody = loaded.routes.status === "fulfilled" ? loaded.routes.value : { routes: [] };
+      const tokenBody = loaded.tokens.status === "fulfilled" ? loaded.tokens.value : { tokens: [] };
+      const releaseBody = loaded.releases.status === "fulfilled" ? loaded.releases.value : { releases: [] };
+      const protectionBody = loaded.protections.status === "fulfilled" ? loaded.protections.value : { protections: [] };
+      const jobBody =
+        loaded.jobs.status === "fulfilled"
+          ? loaded.jobs.value
+          : { jobs: [], summary: { queued: 0, running: 0, done: 0, failed: 0 }, fairUse: null };
+      const mapBody = loaded.maps.status === "fulfilled" ? loaded.maps.value : { destinations: [] };
+      setRepos(
+        loaded.repos.status === "fulfilled"
+          ? { status: "ready", data: repoBody }
+          : { status: "error", message: failureMessage(loaded.repos) },
+      );
+      setAlerts(
+        loaded.alerts.status === "fulfilled"
+          ? { status: "ready", data: alertBody }
+          : { status: "error", message: failureMessage(loaded.alerts) },
+      );
+      setPackages(
+        loaded.packages.status === "fulfilled"
+          ? { status: "ready", data: packageBody }
+          : { status: "error", message: failureMessage(loaded.packages) },
+      );
+      setOrigins(
+        loaded.origins.status === "fulfilled"
+          ? { status: "ready", data: originBody }
+          : { status: "error", message: failureMessage(loaded.origins) },
+      );
       setExceptions(exceptionBody.exceptions);
       setRegistries(registryBody.registries);
       setDestinations(destinationBody.destinations);
@@ -2129,7 +2164,6 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     ) : null;
 
   const route = controller.route;
-  const deskOrigins = previewing ? [] : origins.status === "ready" ? origins.data.origins : [];
   const teamOnly = deskCoverage?.status === "trial" || deskCoverage?.plan === "team";
   const adminOnly = Boolean(installAdmin) || previewing;
   const setup = controller.setup;
@@ -2239,8 +2273,17 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             <CoverageLock variant="watch" title="Subscribe to keep watching." />
           ) : null}
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
-          <WatchSourcesSummary mode={route.view} sources={sourceRows} setup={setup} admin={adminOnly} />
-          <details id="watch-source-github" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+          <WatchSourcesSummary
+            mode={route.view}
+            sources={sourceRows}
+            setup={setup}
+            admin={adminOnly}
+            search={search}
+            filter={route.sourceFilter}
+            attention={route.sourceAttention}
+            selectedSourceKey={route.sourceKey}
+          />
+          <details id="watch-source-github" className="rounded-lg border border-white/8 bg-panel p-5">
           <summary className="cursor-pointer text-sm text-snow">GitHub repositories</summary>
           <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
           <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -2789,8 +2832,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         />
       ) : null}
 
-      {false && route.view === "alerts" && (
-        <section>
+      {route.view === "alerts" && (
+        <section className="hidden" aria-hidden="true">
           <h1 className="font-display text-3xl tracking-tight text-snow">Alerts</h1>
           <p className="mt-2 text-sm text-mute">Facts that need triage, ownership, or resolution.</p>
           <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -3441,9 +3484,18 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 {members.map((member) => (
                   <li key={member.userId} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-snow">{member.login}</p>
-                      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
+                    <div className="flex items-center gap-3">
+                      {member.avatarUrl ? (
+                        <img src={member.avatarUrl} alt="" className="size-8 rounded-full border border-white/10" />
+                      ) : (
+                        <span className="grid size-8 place-items-center rounded-full bg-white/8 text-[10px] text-snow">
+                          {member.login.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <div>
+                        <p className="text-sm text-snow">@{member.login}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
+                      </div>
                     </div>
                     {canManageRoles ? (
                       <div className="flex flex-wrap gap-2">
@@ -3517,6 +3569,44 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       <section className="mt-4">
         <h1 className="font-display text-3xl tracking-tight text-snow">Install health</h1>
         <p className="mt-2 text-sm text-mute">Permissions, deliveries, and recent work for this GitHub install.</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-white/8 bg-panel p-4">
+            <p className="watch-kicker">Webhook</p>
+            <p className={githubPaused ? "mt-2 text-lg text-danger" : "mt-2 text-lg text-snow"}>
+              {githubPaused ? "paused" : "check needed"}
+            </p>
+            <p className="mt-1 text-[11px] text-dim">
+              {githubPaused ? "GitHub suspended the App" : "No invented delivery proof"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-panel p-4">
+            <p className="watch-kicker">Permissions</p>
+            <p className={selectedInstall?.lastPermissionTest?.ok ? "mt-2 text-lg text-snow" : "mt-2 text-lg text-mute"}>
+              {selectedInstall?.lastPermissionTest?.ok ? "pass" : "unknown"}
+            </p>
+            <p className="mt-1 text-[11px] text-dim">
+              {selectedInstall?.lastPermissionTest
+                ? selectedInstall.lastPermissionTest.administrationGranted
+                  ? "Administration granted — remove it"
+                  : "Administration off"
+                : "Run the live install test"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-panel p-4">
+            <p className="watch-kicker">Queue</p>
+            <p className="mt-2 text-lg text-snow">{jobSummary.queued + jobSummary.running}</p>
+            <p className="mt-1 text-[11px] text-dim">
+              {jobSummary.done} done · {jobSummary.failed} failed
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-panel p-4">
+            <p className="watch-kicker">Fair use</p>
+            <p className={fairUse?.exhausted ? "mt-2 text-lg text-danger" : "mt-2 text-lg text-snow"}>
+              {fairUse?.exhausted ? "paused" : fairUse?.warning ? "near cap" : fairUse ? "ok" : "unknown"}
+            </p>
+            <p className="mt-1 text-[11px] text-dim">Hosted unpacks · not scan credits</p>
+          </div>
+        </div>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
           reports Contents and Metadata reads, Members read (collaborator alerts), optional
@@ -3681,8 +3771,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
         <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
         <WatchNotificationSummary destinations={destinations} routes={routes} />
-        <details className="mt-5 rounded-lg border border-white/8 bg-panel p-5">
-        <summary className="cursor-pointer text-sm text-snow">Configure notifications</summary>
+        <details id="watch-notification-config" className="mt-5 rounded-lg border border-white/8 bg-panel p-5">
+        <summary className="cursor-pointer text-sm text-snow">Add, edit, or test a destination</summary>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
           SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
@@ -4386,7 +4476,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <details id="watch-source-web" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <details id="watch-source-web" className="rounded-lg border border-white/8 bg-panel p-5">
         <summary className="cursor-pointer text-sm text-snow">Production websites</summary>
         <p className="mt-2 text-sm text-mute">Origins watched for public source maps and exposed files.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -4529,7 +4619,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <details id="watch-source-map" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <details id="watch-source-map" className="rounded-lg border border-white/8 bg-panel p-5">
         <summary className="cursor-pointer text-sm text-snow">Map custody</summary>
         <p className="mt-2 text-sm text-mute">Confirm maps are held by your error tracker, not served publicly.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -4743,7 +4833,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         {route.view === "registries" ? (
           <h1 className="mb-5 font-display text-3xl tracking-tight text-snow">Private registries</h1>
         ) : null}
-        <details id="watch-source-npm" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view !== "sources"}>
+        <details id="watch-source-npm" className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "registries"}>
         <summary className="cursor-pointer text-sm text-snow">
           {route.view === "registries" ? "Registry credentials and packages" : "npm packages"}
         </summary>
@@ -5786,6 +5876,13 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                     <div className="min-w-0">
                       <p className="text-sm text-snow">{token.name}</p>
                       <p className="mt-0.5 font-mono text-xs text-dim">{token.token_prefix}…</p>
+                      <p className="mt-1 text-[11px] text-dim">
+                        created {new Date(token.created_at).toLocaleDateString()}
+                        {token.last_used_at
+                          ? ` · last used ${new Date(token.last_used_at).toLocaleString()}`
+                          : " · never used"}
+                        {token.created_by_login ? ` · @${token.created_by_login}` : ""}
+                      </p>
                     </div>
                     {installAdmin ? (
                     <Button
