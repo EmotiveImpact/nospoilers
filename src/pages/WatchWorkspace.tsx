@@ -2479,7 +2479,9 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             state={route.view === "setup" ? setupSectionState : sourceSectionState}
             onRetry={() => void retryDeskSection("sources")}
           />
-          {previewing || sourceSectionState.status === "ready" ? (
+          {route.view === "sources" &&
+          route.sourceConfigure === "github" &&
+          (previewing || sourceSectionState.status === "ready") ? (
           <section id="watch-source-github" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
           <h2 className="text-sm font-semibold text-snow">GitHub repositories</h2>
           <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
@@ -4602,7 +4604,8 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
       </section>
       )}
 
-      {(route.view === "sources" || route.view === "setup") &&
+      {route.view === "sources" &&
+        route.sourceConfigure === "website" &&
         (previewing || sourceSectionState.status === "ready") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <section id="watch-source-web" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
@@ -4746,7 +4749,8 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
       </section>
       )}
 
-      {(route.view === "sources" || route.view === "setup") &&
+      {route.view === "sources" &&
+        route.sourceConfigure === "map" &&
         (previewing || sourceSectionState.status === "ready") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <section id="watch-source-map" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
@@ -4959,7 +4963,8 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
       )}
 
       {(route.view === "registries" ||
-        ((route.view === "sources" || route.view === "setup") &&
+        (route.view === "sources" &&
+          route.sourceConfigure === "npm" &&
           (previewing || sourceSectionState.status === "ready"))) && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         {route.view === "registries" ? (

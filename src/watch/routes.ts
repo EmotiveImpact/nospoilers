@@ -18,6 +18,7 @@ export const WATCH_VIEWS = [
 export type WatchView = (typeof WATCH_VIEWS)[number];
 export type AlertTab = "open" | "waiting" | "mine" | "done";
 export type SourceFilter = "all" | "github" | "npm" | "website" | "map";
+export type SourceConfigure = Exclude<SourceFilter, "all">;
 
 export type WatchRoute = {
   view: WatchView;
@@ -26,6 +27,7 @@ export type WatchRoute = {
   sourceKey: string | null;
   sourceFilter: SourceFilter;
   sourceAttention: boolean;
+  sourceConfigure: SourceConfigure | null;
   tab: AlertTab;
 };
 
@@ -67,19 +69,24 @@ export function parseWatchRoute(path: string, search: string): WatchRoute {
     ? (rawSourceFilter as SourceFilter)
     : "all";
   const sourceAttention = params.get("attention") === "1";
+  const rawConfigure = params.get("configure") ?? "";
+  const sourceConfigure: SourceConfigure | null =
+    rawConfigure !== "all" && SOURCE_FILTER_SET.has(rawConfigure)
+      ? (rawConfigure as SourceConfigure)
+      : null;
   const rawTab = params.get("tab") ?? "";
   const tab: AlertTab = TAB_SET.has(rawTab) ? (rawTab as AlertTab) : "open";
   const trimmed = path.replace(/\/+$/, "") || "/watch";
   if (trimmed === "/watch") {
-    return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
+    return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
   }
   if (trimmed.startsWith("/watch/")) {
     const page = trimmed.slice("/watch/".length);
     if (VIEW_SET.has(page)) {
-      return { view: page as WatchView, alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
+      return { view: page as WatchView, alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
     }
   }
-  return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, tab };
+  return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
 }
 
 export function watchPath(view: WatchView): string {
@@ -96,6 +103,7 @@ export function watchHref(
     source?: string | null;
     sourceType?: SourceFilter | null;
     attention?: boolean | null;
+    configure?: SourceConfigure | null;
     tab?: AlertTab | null;
   } = {},
 ): string {
@@ -123,6 +131,10 @@ export function watchHref(
   if (extra.attention !== undefined) {
     if (extra.attention) params.set("attention", "1");
     else params.delete("attention");
+  }
+  if (extra.configure !== undefined) {
+    if (extra.configure) params.set("configure", extra.configure);
+    else params.delete("configure");
   }
   if (extra.tab !== undefined) {
     if (extra.tab && extra.tab !== "open") params.set("tab", extra.tab);

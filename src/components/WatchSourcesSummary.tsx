@@ -5,7 +5,12 @@ import {
   type WatchSectionState,
 } from "@/components/WatchDataState";
 import { navigate } from "@/nav.ts";
-import { watchHref, watchPath, type SourceFilter } from "@/watch/routes.ts";
+import {
+  watchHref,
+  watchPath,
+  type SourceConfigure,
+  type SourceFilter,
+} from "@/watch/routes.ts";
 import {
   filterSourceViewModels,
   type SourceKind,
@@ -24,12 +29,8 @@ const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
   { value: "map", label: "Map custody" },
 ];
 
-function revealSourceForm(id: string) {
-  const section = document.getElementById(id);
-  if (section instanceof HTMLElement) {
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
-    section.focus({ preventScroll: true });
-  }
+function configureForKind(kind: SourceKind): SourceConfigure {
+  return kind;
 }
 
 export function WatchSourcesSummary({
@@ -132,12 +133,15 @@ export function WatchSourcesSummary({
                 type="button"
                 size="sm"
                 onClick={() =>
-                  revealSourceForm(
-                    setup.next?.key === "registry"
-                      ? "watch-source-npm"
-                      : setup.next?.key === "production"
-                        ? "watch-source-web"
-                        : "watch-source-github",
+                  navigate(
+                    watchHref(watchPath("sources"), search, {
+                      configure:
+                        setup.next?.key === "registry"
+                          ? "npm"
+                          : setup.next?.key === "production"
+                            ? "website"
+                            : "github",
+                    }),
                   )
                 }
               >
@@ -293,22 +297,7 @@ export function WatchSourcesSummary({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => {
-                  navigate(watchHref(watchPath("sources"), search, { source: source.key }));
-                  window.setTimeout(
-                    () =>
-                      revealSourceForm(
-                        source.kind === "github"
-                          ? "watch-source-github"
-                          : source.kind === "npm"
-                            ? "watch-source-npm"
-                            : source.kind === "website"
-                              ? "watch-source-web"
-                              : "watch-source-map",
-                      ),
-                    0,
-                  );
-                }}
+                onClick={() => navigate(watchHref(watchPath("sources"), search, { source: source.key }))}
               >
                 {source.primaryAction}
               </Button>
@@ -333,19 +322,19 @@ export function WatchSourcesSummary({
               <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)} aria-label="Close add source"><X className="size-4" aria-hidden /></Button>
             </div>
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              {[
-                ["watch-source-github", "GitHub repository", "Visibility, release assets, and packed CI"],
-                ["watch-source-npm", "npm package", "The tarball and channels the registry serves"],
-                ["watch-source-web", "Production website", "Same-origin assets and public maps"],
-                ["watch-source-map", "Map custody", "Sentry or Bugsnag private upload proof"],
-              ].map(([id, label, detail]) => (
+              {([
+                ["github", "GitHub repository", "Visibility, release assets, and packed CI"],
+                ["npm", "npm package", "The tarball and channels the registry serves"],
+                ["website", "Production website", "Same-origin assets and public maps"],
+                ["map", "Map custody", "Sentry or Bugsnag private upload proof"],
+              ] as [SourceConfigure, string, string][]).map(([configure, label, detail]) => (
                 <button
-                  key={id}
+                  key={configure}
                   type="button"
                   className="min-h-24 rounded-lg border border-white/8 bg-panel p-4 text-left transition-colors duration-150 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
                   onClick={() => {
                     setAdding(false);
-                    window.setTimeout(() => revealSourceForm(id), 0);
+                    navigate(watchHref(watchPath("sources"), search, { configure }));
                   }}
                 >
                   <span className="text-sm text-snow">{label}</span>
@@ -422,12 +411,12 @@ export function WatchSourcesSummary({
                 type="button"
                 className="mt-6"
                 onClick={() => {
-                  navigate(watchHref(watchPath("sources"), search, { source: null }));
-                  window.setTimeout(() => revealSourceForm(
-                    selectedSource.kind === "github" ? "watch-source-github" :
-                      selectedSource.kind === "npm" ? "watch-source-npm" :
-                        selectedSource.kind === "website" ? "watch-source-web" : "watch-source-map"
-                  ), 0);
+                  navigate(
+                    watchHref(watchPath("sources"), search, {
+                      source: null,
+                      configure: configureForKind(selectedSource.kind),
+                    }),
+                  );
                 }}
               >
                 <Box className="size-4" aria-hidden />
