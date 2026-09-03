@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { useState } from "react";
 
 type NotificationFlow = "email" | "slack" | "siem" | "jira" | "pagerduty" | "route" | "route-test";

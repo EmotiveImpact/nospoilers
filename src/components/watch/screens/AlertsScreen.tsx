@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { Alert, AlertEvent } from "@/watch/types";
 
 export function AlertsScreen() {

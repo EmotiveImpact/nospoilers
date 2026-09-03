@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function OverviewScreen() {
   const { WatchOverview, deskAlerts, ended, githubApp, githubPaused, installUrl, jobSummary, overviewSectionState, releases, retryDeskSection, route, search, setup, sourceRows, user } = useWatchScreenContext();

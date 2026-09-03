@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function AuditRouteScreen() {
   const { AuditScreen, activeInstallId, audit, previewing, route } = useWatchScreenContext();

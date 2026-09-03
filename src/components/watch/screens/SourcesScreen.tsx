@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { RemediationFileView, SetupStatusFacts } from "@/watch/types";
 
 export function SourcesScreen() {

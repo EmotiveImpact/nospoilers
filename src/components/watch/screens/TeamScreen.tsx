@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function TeamScreen() {
   const { Avatar, AvatarFallback, AvatarImage, Button, adminCount, beginConfirm, canManageRoles, confirmBusy, confirmForm, confirming, deskCoverage, ended, inviteLogin, inviteRole, invites, members, membersError, previewing, route, setInviteLogin, setInviteRole } = useWatchScreenContext();

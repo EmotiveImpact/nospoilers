@@ -45,7 +45,8 @@ import type {
 } from "@/watch/types";
 import type { WatchSectionState } from "@/watch/data-state";
 import type { Coverage } from "@/coverage";
-import { createContext, useContext, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { WatchScreenContextValue } from "@/components/watch/WatchScreenContextValue";
 
 export type WatchScreenContext = {
   AlertDeskItem: ({ alert, previewing, events, busy, note, assignee, error, onNote, onAssignee, onAction, }: { alert: Alert; previewing: boolean; events: AlertEvent[]; busy: boolean; note: string; assignee: string; error: string | null; onNote: (value: string) => void; onAssignee: (value: string) => void; onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void; }) => import("react").JSX.Element;
@@ -377,14 +378,6 @@ export type WatchScreenContext = {
   workflowIsNoSpoilersScan: (workflowPath: string) => boolean;
 };
 
-const Context = createContext<WatchScreenContext | null>(null);
-
 export function WatchScreenProvider({ value, children }: { value: WatchScreenContext; children: ReactNode }) {
-  return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-
-export function useWatchScreenContext(): WatchScreenContext {
-  const value = useContext(Context);
-  if (!value) throw new Error("Watch screen context is unavailable.");
-  return value;
+  return <WatchScreenContextValue.Provider value={value}>{children}</WatchScreenContextValue.Provider>;
 }

@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { ProtectionImportResult, ReleaseDiffView } from "@/watch/types";
 
 export function RegistriesScreen() {

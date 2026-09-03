@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function SetupScreen() {
   const { CoverageLock, WatchSourcesSummary, adminOnly, ended, retryDeskSection, route, search, setup, setupSectionState, sourceRows } = useWatchScreenContext();

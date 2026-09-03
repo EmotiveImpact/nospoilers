@@ -1,4 +1,4 @@
-import { useWatchScreenContext } from "@/components/watch/WatchScreenContext";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function ReleasesScreen() {
   const { Button, WatchSectionError, WatchSkeleton, activeInstallId, attachingReleaseId, attestationError, beginConfirm, canExportReleases, canGovernReleases, canPublishVerify, cn, confirmForm, confirming, datasetState, deliveryError, deliveryUrlByRelease, deskCoverage, downloadingReceiptId, formatSealedBytes, governanceReasonByRelease, installAdmin, ledgerExportError, loadJson, locked, navigate, previewing, receiptError, receiptStatusMark, refreshSignedIn, releases, retryDeskSection, route, scopedApi, search, selectedInstallId, selectedRelease, setAttachingReleaseId, setAttestationError, setDeliveryError, setDeliveryUrlByRelease, setDownloadingReceiptId, setGovernanceReasonByRelease, setLedgerExportError, setReceiptError, setVerifyingLocationId, verifyingLocationId, watchHref, watchPath } = useWatchScreenContext();
