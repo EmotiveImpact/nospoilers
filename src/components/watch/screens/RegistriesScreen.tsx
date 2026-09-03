@@ -914,7 +914,7 @@ export function RegistriesScreen() {
                                 <>
                                   <p className="text-xs uppercase tracking-[0.16em] text-dim">
                                     {diffState.versus === "baseline" ? "vs baseline · " : ""}
-                                    {diffState.previous.coordinate} → {diffState.current.coordinate}
+                                    {diffState.previous.coordinate} to {diffState.current.coordinate}
                                   </p>
                                   {diffState.diff.unexpectedSizeJump ? (
                                     <p className="mt-2 text-sm text-snow">

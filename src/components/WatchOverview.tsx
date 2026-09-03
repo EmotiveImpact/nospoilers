@@ -17,7 +17,7 @@ import {
   type DeskAlert,
 } from "@/watch/verdict.ts";
 import type { WatchSetupViewModel, WatchSourceViewModel } from "@/watch/view-models.ts";
-import { GitBranch, Globe2, Map, Package } from "lucide-react";
+import { ArrowRight, GitBranch, Globe2, Map, Package } from "lucide-react";
 
 function SourceIcon({ kind }: { kind: WatchSourceViewModel["kind"] }) {
   const Icon =
@@ -196,7 +196,7 @@ export function WatchOverview({
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm text-snow">Exposure, last 7 days</h2>
           <button type="button" className="text-xs text-dim hover:text-snow" onClick={() => navigate(href("timeline"))}>
-            Full timeline →
+            Full timeline <ArrowRight className="inline size-3.5" aria-hidden />
           </button>
         </div>
         <WatchExposureChart alerts={alerts} compact />
@@ -212,7 +212,7 @@ export function WatchOverview({
               className="text-xs text-dim hover:text-snow"
               onClick={() => navigate(href("sources"))}
             >
-              All {sources.length || ""} →
+              All {sources.length || ""} <ArrowRight className="inline size-3.5" aria-hidden />
             </button>
           </div>
           {sources.length === 0 ? (
@@ -260,7 +260,7 @@ export function WatchOverview({
             className="text-xs text-dim hover:text-snow"
             onClick={() => navigate(href("setup"))}
           >
-            Setup →
+            Setup <ArrowRight className="inline size-3.5" aria-hidden />
           </button>
         </div>
         {setup.next ? (

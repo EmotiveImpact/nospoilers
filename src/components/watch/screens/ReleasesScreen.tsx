@@ -231,7 +231,7 @@ export function ReleasesScreen() {
                                   {location.lastStatus ? ` · ${location.lastStatus.replace("_", " ")}` : ""}
                                   {location.lastSha256 ? ` · ${location.lastSha256.slice(0, 12)}` : ""}
                                   {location.lastRedirectHosts
-                                    ? ` · ${location.lastRedirectHosts.split(",").join(" → ")}`
+                                    ? ` · ${location.lastRedirectHosts.split(",").join(" to ")}`
                                     : ""}
                                   {location.lastRegion ? ` · ${location.lastRegion}` : ""}
                                   {location.lastCacheState ? ` · ${location.lastCacheState}` : ""}
