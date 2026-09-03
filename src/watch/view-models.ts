@@ -1,4 +1,5 @@
 import type { Finding } from "../report-types.ts";
+import { asFindingList } from "./format.ts";
 import type { DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";
@@ -45,6 +46,8 @@ type OriginInput = {
   last_checked_at: string | null;
   last_scan_status: string | null;
   last_public_map?: boolean;
+  verification?: { verifiedAt: string | null } | null;
+  deployTokenPrefix?: string | null;
 };
 
 type MapInput = {
@@ -78,7 +81,7 @@ export function buildSourceViewModels(input: {
     openAlerts.filter((alert) => {
       const coordinates = [
         alert.full_name,
-        ...(alert.findings ?? []).map((finding) => finding.path),
+        ...asFindingList(alert.findings).map((finding) => finding.path),
       ].filter((value): value is string => Boolean(value));
       return values.some((value) =>
         coordinates.some(
@@ -97,14 +100,14 @@ export function buildSourceViewModels(input: {
       key: `repo-${repo.id}`,
       id: repo.id,
       kind: "github",
-      kindLabel: "GitHub repository",
+      kindLabel: "GitHub exposure",
       name: repo.full_name,
       coordinate: repo.full_name,
       status: repo.private ? "private" : "public",
       attention: attentionFor([repo.full_name], repo.private ? (repo.last_checked_at ? "ok" : "unknown") : "critical"),
       digest: null,
       lastCheckedAt: repo.last_checked_at,
-      detail: repo.last_checked_at ? "visibility connected" : "visibility connected · check needed",
+      detail: repo.last_checked_at ? "repository visibility monitor" : "visibility monitor · check needed",
       alertCount: alertCountFor([repo.full_name]),
       primaryAction: repo.last_checked_at ? "Open repository" : "Check visibility",
     })),
@@ -112,7 +115,7 @@ export function buildSourceViewModels(input: {
       key: `npm-${pkg.id}`,
       id: pkg.id,
       kind: "npm",
-      kindLabel: "npm package",
+      kindLabel: "Published artifact",
       name: pkg.package_name,
       coordinate: pkg.last_version ? `${pkg.package_name}@${pkg.last_version}` : pkg.package_name,
       status: pkg.last_scan_status ?? (pkg.last_checked_at ? "checked" : "check needed"),
@@ -133,25 +136,41 @@ export function buildSourceViewModels(input: {
       key: `web-${origin.id}`,
       id: origin.id,
       kind: "website",
-      kindLabel: "Production origin",
+      kindLabel: "Production web",
       name: origin.origin_url,
       coordinate: origin.host,
-      status: origin.last_public_map ? "public map found" : origin.last_scan_status ?? "check needed",
+      status: origin.verification && !origin.verification.verifiedAt
+        ? "verification required"
+        : origin.last_public_map
+          ? "public map found"
+          : origin.last_scan_status ?? "check needed",
       attention: attentionFor(
         [origin.origin_url, origin.host],
-        origin.last_public_map ? "critical" : scanAttention(origin.last_scan_status),
+        origin.verification && !origin.verification.verifiedAt
+          ? "warning"
+          : origin.last_public_map
+            ? "critical"
+            : scanAttention(origin.last_scan_status),
       ),
       digest: origin.last_sha256,
       lastCheckedAt: origin.last_checked_at,
-      detail: "same-origin crawl",
+      detail: origin.verification?.verifiedAt
+        ? `verified production web${origin.deployTokenPrefix ? " · deploy trigger ready" : ""}`
+        : origin.verification
+          ? "prove domain control before automatic scans"
+          : "connected before domain verification was required",
       alertCount: alertCountFor([origin.origin_url, origin.host]),
-      primaryAction: origin.last_checked_at ? "Check origin" : "Run first crawl",
+      primaryAction: !origin.verification || origin.verification.verifiedAt
+        ? origin.last_checked_at
+          ? "Scan website again"
+          : "Scan website"
+        : "Verify domain",
     })),
     ...input.maps.map((map): WatchSourceViewModel => ({
       key: `map-${map.id}`,
       id: map.id,
       kind: "map",
-      kindLabel: "Map custody",
+      kindLabel: "Private map custody",
       name: `${map.kind} · ${map.orgSlug ? `${map.orgSlug}/` : ""}${map.projectSlug}`,
       coordinate: map.host,
       status: map.lastStatus ?? "check needed",
@@ -338,7 +357,7 @@ export type TimelineLaneViewModel = {
 };
 
 function findingOf(alert: DeskAlert): Finding | null {
-  return (alert.findings?.[0] as Finding | undefined) ?? null;
+  return (asFindingList(alert.findings)[0] as Finding | undefined) ?? null;
 }
 
 function severityFor(rule: string): "critical" | "warning" {

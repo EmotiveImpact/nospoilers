@@ -40,6 +40,7 @@ export type AppConfig = {
   resendFromEmail: string;
   processRole: ProcessRole;
   uiRoot: string;
+  cronSecret: string;
 };
 
 export type ProcessRole = "all" | "web" | "worker";
@@ -56,6 +57,10 @@ export function processRunsHttp(role: ProcessRole): boolean {
 
 export function processRunsJobs(role: ProcessRole): boolean {
   return role === "all" || role === "worker";
+}
+
+export function jobProcessingMode(role: ProcessRole): "background" | "on-request" {
+  return processRunsJobs(role) ? "background" : "on-request";
 }
 
 function loadDotEnv(): void {
@@ -151,6 +156,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     resendFromEmail: env("RESEND_FROM_EMAIL"),
     processRole: parseProcessRole(env("NOSPOILERS_ROLE", "all")),
     uiRoot: env("NOSPOILERS_UI_ROOT", path.resolve("dist")),
+    cronSecret: env("CRON_SECRET"),
   };
   const merged = { ...base, ...overrides };
   if (!merged.receiptSecret) merged.receiptSecret = merged.sessionSecret;

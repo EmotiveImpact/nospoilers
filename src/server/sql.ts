@@ -14,6 +14,52 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
+export const CURRENT_SCHEMA_MIGRATION = "063_origin_verification";
+const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
+
+async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
+  const { rows: relations } = await sql.query<{ name: string | null }>(
+    "SELECT to_regclass('schema_migrations')::text AS name",
+  );
+  if (!relations[0]?.name) return false;
+  const { rows } = await sql.query<{ id: string }>(
+    "SELECT id FROM schema_migrations WHERE id = $1",
+    [CURRENT_SCHEMA_MIGRATION],
+  );
+  return rows.length > 0;
+}
+
+export async function migrateIfNeeded(
+  sql: SqlClient,
+  options: { databaseUrl?: string } = {},
+): Promise<boolean> {
+  if (await schemaIsCurrent(sql)) return false;
+  const databaseUrl = options.databaseUrl?.trim() ?? "";
+  if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
+    await migrate(sql);
+    return true;
+  }
+  const url = new URL(databaseUrl);
+  if (
+    (url.hostname === "neon.tech" || url.hostname.endsWith(".neon.tech")) &&
+    url.hostname.includes("-pooler.")
+  ) {
+    url.hostname = url.hostname.replace("-pooler.", ".");
+  }
+  const client = new pg.Client({ connectionString: url.toString(), keepAlive: true });
+  await client.connect();
+  const direct = wrapClient(client);
+  try {
+    await direct.query("SELECT pg_advisory_lock($1)", [MIGRATION_ADVISORY_LOCK]);
+    if (await schemaIsCurrent(direct)) return false;
+    await migrate(direct);
+    return true;
+  } finally {
+    await direct.query("SELECT pg_advisory_unlock($1)", [MIGRATION_ADVISORY_LOCK]).catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
+}
+
 function wrapPglite(db: PGlite): SqlClient {
   const run = (target: PGlite) =>
     async <T>(text: string, params: unknown[] = []): Promise<QueryResult<T>> => {
@@ -88,6 +134,33 @@ function wrapPool(pool: pg.Pool): SqlClient {
   };
 }
 
+function wrapClient(client: pg.Client): SqlClient {
+  const direct: SqlClient = {
+    async query<T>(text: string, params: unknown[] = []) {
+      const result = await client.query(text, params);
+      return { rows: result.rows as T[] };
+    },
+    async exec(text: string) {
+      await client.query(text);
+    },
+    async transaction<T>(fn: (sql: SqlClient) => Promise<T>): Promise<T> {
+      await client.query("BEGIN");
+      try {
+        const value = await fn(direct);
+        await client.query("COMMIT");
+        return value;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      }
+    },
+    async close() {
+      await client.end();
+    },
+  };
+  return direct;
+}
+
 export async function openSql(databaseUrl: string): Promise<SqlClient> {
   if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
     const loc = databaseUrl.replace(/^pglite:\/\//, "") || "./data/nospoilers";
@@ -109,10 +182,24 @@ export async function openSql(databaseUrl: string): Promise<SqlClient> {
   return wrapPool(pool);
 }
 
-export async function migrate(sql: SqlClient): Promise<void> {
+async function readSchemaSql(): Promise<string> {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const schemaPath = path.join(here, "schema.sql");
-  const schema = await readFile(schemaPath, "utf8");
+  const candidates = [
+    path.join(here, "schema.sql"),
+    path.join(process.cwd(), "src/server/schema.sql"),
+  ];
+  for (const schemaPath of candidates) {
+    try {
+      return await readFile(schemaPath, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error(`schema.sql not found (checked: ${candidates.join(", ")})`);
+}
+
+export async function migrate(sql: SqlClient): Promise<void> {
+  const schema = await readSchemaSql();
   await sql.exec(schema);
   await sql.exec(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
@@ -735,6 +822,8 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
         'setup_pr.create',
         'remediation_pr.create',
         'package.unwatch',
+        'origin.verify',
+        'origin.deploy_token',
         'origin.unwatch',
         'map_destination.save',
         'map_destination.delete',
@@ -824,6 +913,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateEmailDestinations(sql);
   await migrateReleaseAttestations(sql);
   await migrateSigningPolicies(sql);
+  await migrateOriginVerification(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1289,6 +1379,8 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'setup_pr.create',
       'remediation_pr.create',
       'package.unwatch',
+      'origin.verify',
+      'origin.deploy_token',
       'origin.unwatch',
       'map_destination.save',
       'map_destination.delete',
@@ -1821,6 +1913,25 @@ async function migrateSigningPolicies(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "062_release_signing_policies",
+  ]);
+}
+
+async function migrateOriginVerification(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_token TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verification_method TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_hash TEXT;
+    ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS deploy_token_prefix TEXT;
+    ALTER TABLE watched_origins DROP CONSTRAINT IF EXISTS watched_origins_verification_method_check;
+    ALTER TABLE watched_origins ADD CONSTRAINT watched_origins_verification_method_check
+      CHECK (verification_method IS NULL OR verification_method IN ('dns', 'http'));
+    CREATE UNIQUE INDEX IF NOT EXISTS watched_origins_deploy_token_uidx
+      ON watched_origins (deploy_token_hash)
+      WHERE deploy_token_hash IS NOT NULL;
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "063_origin_verification",
   ]);
 }
 

@@ -22,6 +22,8 @@ export const AUDIT_ACTIONS = [
   "setup_pr.create",
   "remediation_pr.create",
   "package.unwatch",
+  "origin.verify",
+  "origin.deploy_token",
   "origin.unwatch",
   "map_destination.save",
   "map_destination.delete",

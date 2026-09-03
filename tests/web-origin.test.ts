@@ -13,10 +13,12 @@ import {
   collectHtmlAssetUrls,
   collectSensitiveUrls,
   crawlOrigin,
+  isSourceMapResponse,
   parseWatchOrigin,
+  parseWatchRoot,
   WebCrawlError,
 } from "../src/server/web-origin.ts";
-import { runWebOriginPoll } from "../src/server/web-watch.ts";
+import { checkWatchedOrigin, runWebOriginPoll } from "../src/server/web-watch.ts";
 import { SOLO_HEAVY_PER_UTC_DAY } from "../src/server/usage.ts";
 
 const DIRTY = path.resolve("fixtures/web/dirty");
@@ -94,6 +96,26 @@ async function siteFetch(root: string): Promise<typeof fetch> {
 }
 
 const publicLookup = async () => [{ address: "1.1.1.1", family: 4 as const }];
+const verifyDomain = async (
+  host: string,
+  _token: string,
+  method: "dns" | "http",
+) => ({ method, detail: `Verified ${host}.` });
+
+async function verifyCreatedOrigin(
+  app: ReturnType<typeof createApp>,
+  cookie: string,
+  created: Response,
+): Promise<number> {
+  const body = (await created.json()) as { origin: { id: number } };
+  const verified = await app.request(`/api/origins/${body.origin.id}/verify`, {
+    method: "POST",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ method: "dns" }),
+  });
+  expect(verified.status).toBe(200);
+  return body.origin.id;
+}
 
 async function usageOf(sql: SqlClient, installationId = 7): Promise<number> {
   const { rows } = await sql.query<{ n: string }>(
@@ -121,6 +143,9 @@ describe("website origin parsing", () => {
     expect(parseWatchOrigin("https://app.example.com/app")?.url).toBe(
       "https://app.example.com/app",
     );
+    expect(parseWatchRoot("https://app.example.com/watch?token=secret")?.url).toBe(
+      "https://app.example.com/",
+    );
     expect(parseWatchOrigin("http://app.example.com/")).toBeNull();
     expect(parseWatchOrigin("https://localhost/")).toBeNull();
     expect(parseWatchOrigin("https://127.0.0.1/")).toBeNull();
@@ -135,6 +160,21 @@ describe("website origin parsing", () => {
     expect(urls).toContain("https://app.example.com/app.js");
     expect(urls).toContain("https://app.example.com/app.css");
     expect(urls.some((url) => url.includes("cdn.example.net"))).toBe(false);
+  });
+
+  it("requires source-map JSON instead of trusting a .map filename", () => {
+    expect(
+      isSourceMapResponse(
+        Buffer.from('{"version":3,"sources":["app.ts"],"mappings":"AAAA"}'),
+        "application/json",
+      ),
+    ).toBe(true);
+    expect(
+      isSourceMapResponse(
+        Buffer.from("<!doctype html><html><body>SPA fallback</body></html>"),
+        "text/html",
+      ),
+    ).toBe(false);
   });
 
   it("collects same-origin exposed paths and ignores off-origin credential hrefs", () => {
@@ -167,6 +207,30 @@ describe("website crawl", () => {
       lookup: publicLookup,
     });
     expect(crawled.files.map((row) => row.rel).sort()).toEqual(["app.js", "index.html"].sort());
+  });
+
+  it("ignores a SPA fallback returned with 200 for a missing sibling map", async () => {
+    const home = Buffer.from('<!doctype html><script src="/app.js"></script>');
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: (async (input) => {
+        const url = String(input);
+        if (url === ORIGIN) {
+          return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
+        }
+        if (url === `${ORIGIN}app.js`) {
+          return new Response("console.log('ok')", {
+            status: 200,
+            headers: { "content-type": "application/javascript" },
+          });
+        }
+        if (url.endsWith(".map")) {
+          return new Response("forbidden", { status: 403 });
+        }
+        return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(crawled.files.map((row) => row.rel).sort()).toEqual(["app.js", "index.html"]);
   });
 
   it("marks a private DNS answer as inconclusive, never a fetch to that address", async () => {
@@ -250,6 +314,112 @@ describe("website crawl", () => {
 });
 
 describe("hosted website watch", () => {
+  it("verifies domain control before issuing an idempotent deployment trigger", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          sessionSecret: "sess",
+          appBaseUrl: "https://nospoilers.dev",
+        }),
+        store,
+        github: unusedGithub(),
+        verifyDomain,
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      const createdForVerification = created.clone();
+      const pendingBody = (await created.json()) as { origin: { id: number } };
+      expect(
+        (await app.request(`/api/origins/${pendingBody.origin.id}/check`, {
+          method: "POST",
+          headers: { cookie },
+        })).status,
+      ).toBe(409);
+      const originId = await verifyCreatedOrigin(app, cookie, createdForVerification);
+      const tokenResponse = await app.request(`/api/origins/${originId}/deploy-token`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      expect(tokenResponse.status).toBe(201);
+      const tokenBody = (await tokenResponse.json()) as { token: string; endpoint: string };
+      expect(tokenBody.endpoint).toBe("https://nospoilers.dev/api/v1/deploy");
+      const { rows: storedTokens } = await sql.query<{
+        deploy_token_hash: string;
+        deploy_token_prefix: string;
+      }>(
+        "SELECT deploy_token_hash, deploy_token_prefix FROM watched_origins WHERE id = $1",
+        [originId],
+      );
+      expect(storedTokens[0]?.deploy_token_hash).not.toContain(tokenBody.token);
+      expect(storedTokens[0]?.deploy_token_prefix).toBe(tokenBody.token.slice(0, 12));
+
+      const trigger = () =>
+        app.request("/api/v1/deploy", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${tokenBody.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ provider: "vercel", deploymentId: "dpl_123" }),
+        });
+      expect((await trigger()).status).toBe(202);
+      expect(await (await trigger()).json()).toMatchObject({ duplicate: true, queued: false });
+      expect(
+        (await app.request("/api/v1/deploy", {
+          method: "POST",
+          headers: { authorization: "Bearer invalid" },
+        })).status,
+      ).toBe(401);
+      const { rows } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(Number(rows[0]?.n)).toBe(2);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("queues every explicit website check instead of suppressing same-minute clicks", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const origin = await store.insertWatchedOrigin(7, ORIGIN, "app.example.com");
+      expect(origin).not.toBeNull();
+      expect((await checkWatchedOrigin(store, origin!)).queued).toBe(true);
+      expect((await checkWatchedOrigin(store, origin!)).queued).toBe(true);
+      const { rows } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(Number(rows[0]?.n)).toBe(2);
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("connects an origin, crawls, alerts on maps, and deletes bytes", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -280,6 +450,7 @@ describe("hosted website watch", () => {
         wakeWorker: () => {
           woke += 1;
         },
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -287,6 +458,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       expect(woke).toBe(1);
       const worker = createWorker({
         store,
@@ -358,6 +530,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -365,6 +538,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -389,7 +563,7 @@ describe("hosted website watch", () => {
       const { rows: pollJobs } = await sql.query<{ priority: string }>(
         "SELECT priority FROM jobs WHERE kind = 'web_origin_scan' ORDER BY id DESC LIMIT 1",
       );
-      expect(pollJobs[0]?.priority).toBe("light");
+      expect(pollJobs[0]?.priority).toBe("heavy");
       const usageAfterPoll = await sql.query<{ n: string }>(
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
@@ -448,6 +622,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -455,6 +630,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const usageAfterCreate = await sql.query<{ n: string }>(
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
@@ -518,6 +694,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -525,6 +702,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -581,6 +759,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -588,6 +767,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
       const first = createWorker({
         store,
         github: unusedGithub(),
@@ -661,6 +841,7 @@ describe("hosted website watch", () => {
         store,
         github: unusedGithub(),
         wakeWorker: () => {},
+        verifyDomain,
       });
       const created = await app.request("/api/origins", {
         method: "POST",
@@ -668,7 +849,7 @@ describe("hosted website watch", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(created.status).toBe(201);
-      const createdBody = (await created.json()) as { origin: { id: number } };
+      const createdOriginId = await verifyCreatedOrigin(app, cookie, created);
       const first = createWorker({
         store,
         github: unusedGithub(),
@@ -698,7 +879,7 @@ describe("hosted website watch", () => {
       expect(release.inserted).toBe(true);
       expect(release.skipped).toBeUndefined();
       expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY);
-      const check = await app.request(`/api/origins/${createdBody.origin.id}/check`, {
+      const check = await app.request(`/api/origins/${createdOriginId}/check`, {
         method: "POST",
         headers: { cookie },
       });
@@ -828,7 +1009,7 @@ describe("hosted website watch", () => {
       const { rows: jobs } = await sql.query<{ priority: string }>(
         "SELECT priority FROM jobs WHERE kind = 'web_origin_scan'",
       );
-      expect(jobs[0]?.priority).toBe("light");
+      expect(jobs[0]?.priority).toBe("heavy");
       await store.sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
       );

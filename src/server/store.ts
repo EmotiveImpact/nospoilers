@@ -203,6 +203,10 @@ export type WatchedOriginRow = {
   last_debug_ids: string[];
   last_release: string | null;
   last_public_map: boolean;
+  verification_token: string | null;
+  verification_method: "dns" | "http" | null;
+  verified_at: string | null;
+  deploy_token_prefix: string | null;
 };
 
 export type MapDestinationKind = "sentry" | "bugsnag";
@@ -1753,6 +1757,10 @@ function watchedOriginRow(row: {
   last_debug_ids?: unknown;
   last_release?: string | null;
   last_public_map?: boolean | null;
+  verification_token?: string | null;
+  verification_method?: "dns" | "http" | null;
+  verified_at?: string | Date | null;
+  deploy_token_prefix?: string | null;
 }): WatchedOriginRow {
   return {
     id: num(row.id),
@@ -1766,6 +1774,10 @@ function watchedOriginRow(row: {
     last_debug_ids: parseStringArray(row.last_debug_ids),
     last_release: row.last_release ?? null,
     last_public_map: Boolean(row.last_public_map),
+    verification_token: row.verification_token ?? null,
+    verification_method: row.verification_method ?? null,
+    verified_at: iso(row.verified_at),
+    deploy_token_prefix: row.deploy_token_prefix ?? null,
   };
 }
 
@@ -2377,6 +2389,7 @@ export function createStore(
         const countsTowardUsage =
           input.priority === "heavy" &&
           input.kind !== "prospect_scan" &&
+          input.kind !== "web_origin_scan" &&
           installationId != null;
         let consumed = false;
         if (countsTowardUsage) {
@@ -5661,6 +5674,95 @@ export function createStore(
         [installationId, originUrl, host],
       );
       return rows[0] ? watchedOriginRow(rows[0]) : null;
+    },
+
+    async setOriginVerificationChallenge(
+      id: number,
+      userId: string,
+      token: string,
+    ): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<Record<string, unknown> & {
+        origin_url: string;
+        host: string;
+      }>(
+        `UPDATE watched_origins wo
+         SET verification_token = $3,
+             verification_method = NULL,
+             verified_at = NULL,
+             deploy_token_hash = NULL,
+             deploy_token_prefix = NULL
+         FROM installation_users iu
+         WHERE wo.id = $1
+           AND iu.user_id = $2
+           AND iu.installation_id = wo.installation_id
+         RETURNING wo.*`,
+        [id, userId, token],
+      );
+      return rows[0]
+        ? watchedOriginRow(rows[0] as Parameters<typeof watchedOriginRow>[0])
+        : null;
+    },
+
+    async markOriginVerified(
+      id: number,
+      userId: string,
+      method: "dns" | "http",
+    ): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<Record<string, unknown> & {
+        origin_url: string;
+        host: string;
+      }>(
+        `UPDATE watched_origins wo
+         SET verification_method = $3, verified_at = now()
+         FROM installation_users iu
+         WHERE wo.id = $1
+           AND iu.user_id = $2
+           AND iu.installation_id = wo.installation_id
+         RETURNING wo.*`,
+        [id, userId, method],
+      );
+      return rows[0]
+        ? watchedOriginRow(rows[0] as Parameters<typeof watchedOriginRow>[0])
+        : null;
+    },
+
+    async setOriginDeployToken(
+      id: number,
+      userId: string,
+      tokenHash: string,
+      tokenPrefix: string,
+    ): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<Record<string, unknown> & {
+        origin_url: string;
+        host: string;
+      }>(
+        `UPDATE watched_origins wo
+         SET deploy_token_hash = $3, deploy_token_prefix = $4
+         FROM installation_users iu
+         WHERE wo.id = $1
+           AND iu.user_id = $2
+           AND iu.installation_id = wo.installation_id
+           AND wo.verified_at IS NOT NULL
+         RETURNING wo.*`,
+        [id, userId, tokenHash, tokenPrefix],
+      );
+      return rows[0]
+        ? watchedOriginRow(rows[0] as Parameters<typeof watchedOriginRow>[0])
+        : null;
+    },
+
+    async getOriginByDeployTokenHash(tokenHash: string): Promise<WatchedOriginRow | null> {
+      const { rows } = await sql.query<Record<string, unknown> & {
+        origin_url: string;
+        host: string;
+      }>(
+        `SELECT * FROM watched_origins
+         WHERE deploy_token_hash = $1 AND verified_at IS NOT NULL`,
+        [tokenHash],
+      );
+      return rows[0]
+        ? watchedOriginRow(rows[0] as Parameters<typeof watchedOriginRow>[0])
+        : null;
     },
 
     async deleteWatchedOriginForUser(id: number, userId: string): Promise<boolean> {

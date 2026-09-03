@@ -106,6 +106,13 @@ export function parseWatchOrigin(raw: string): WatchOrigin | null {
   return { url: `https://${host}${port}${path}${search}`, host };
 }
 
+export function parseWatchRoot(raw: string): WatchOrigin | null {
+  const parsed = parseWatchOrigin(raw);
+  if (!parsed) return null;
+  const url = new URL(parsed.url);
+  return { url: `${url.origin}/`, host: parsed.host };
+}
+
 export function sameOrigin(left: URL, right: URL): boolean {
   return (
     left.protocol === right.protocol &&
@@ -206,6 +213,26 @@ export function siblingMapUrl(assetUrl: string): string | null {
   if (!/\.(?:js|mjs|cjs|css)$/i.test(url.pathname)) return null;
   url.pathname = `${url.pathname}.map`;
   return url.href;
+}
+
+export function isSourceMapResponse(bytes: Buffer, contentType = ""): boolean {
+  if (contentType.split(";")[0]?.trim().toLowerCase() === "text/html") return false;
+  try {
+    const parsed = JSON.parse(bytes.toString("utf8")) as {
+      version?: unknown;
+      mappings?: unknown;
+      sources?: unknown;
+      sections?: unknown;
+    };
+    return (
+      parsed.version === 3 &&
+      (typeof parsed.mappings === "string" ||
+        Array.isArray(parsed.sources) ||
+        Array.isArray(parsed.sections))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function isHtmlDocument(bytes: Buffer, contentType = ""): boolean {
@@ -419,6 +446,10 @@ export async function crawlOrigin(startUrl: string, opts: WebCrawlOpts = {}): Pr
     if (!rel || seen.has(rel)) continue;
     try {
       const asset = await fetchPublicHttps(href, opts, maxFileBytes);
+      if (new URL(href).pathname.toLowerCase().endsWith(".map") &&
+          !isSourceMapResponse(asset.bytes, asset.contentType)) {
+        continue;
+      }
       if (!addFile(rel, asset.bytes)) break;
       const text = asset.bytes.subarray(0, 256_000).toString("utf8");
       for (const mapHref of collectMapUrls(text, asset.url)) {
@@ -426,14 +457,19 @@ export async function crawlOrigin(startUrl: string, opts: WebCrawlOpts = {}): Pr
         if (!mapRel || seen.has(mapRel)) continue;
         try {
           const map = await fetchPublicHttps(mapHref, opts, maxFileBytes);
+          if (!isSourceMapResponse(map.bytes, map.contentType)) continue;
           if (!addFile(mapRel, map.bytes)) break;
         } catch (error) {
-          if (error instanceof WebCrawlError && /HTTP 404/.test(error.message)) continue;
+          if (error instanceof WebCrawlError && /HTTP (?:403|404)/.test(error.message)) continue;
           throw error;
         }
       }
     } catch (error) {
-      if (error instanceof WebCrawlError && /HTTP 404/.test(error.message) && extraMaps.includes(href)) {
+      if (
+        error instanceof WebCrawlError &&
+        /HTTP (?:403|404)/.test(error.message) &&
+        extraMaps.includes(href)
+      ) {
         continue;
       }
       throw error;

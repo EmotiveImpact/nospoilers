@@ -99,6 +99,16 @@ export type WatchedOrigin = {
   last_debug_ids?: string[];
   last_release?: string | null;
   last_public_map?: boolean;
+  verification?: {
+    token: string;
+    dnsName: string;
+    dnsValue: string;
+    httpUrl: string;
+    httpBody: string;
+    method: "dns" | "http" | null;
+    verifiedAt: string | null;
+  } | null;
+  deployTokenPrefix?: string | null;
 };
 
 export type MapCustodyDestination = {

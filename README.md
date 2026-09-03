@@ -6,6 +6,34 @@ Secret scanners read git. NoSpoilers reads the **packed artifact** — the npm t
 
 That is the class of leak that shipped Claude Code’s `cli.js.map` on npm and source maps inside a public desktop installer. GitHub secret scanning does not catch packed maps. Making the git repo private does not catch an installer on a CDN.
 
+One bounded scanner checks several release surfaces:
+
+| Source | What is checked |
+| --- | --- |
+| CLI / CI / Scan upload | The exact directory or packed artifact before release |
+| GitHub Release / npm | The published pack customers download |
+| Watched production website | HTML, same-origin JS/CSS, exposed files, and public source maps |
+
+For source maps with `sourcesContent`, NoSpoilers reconstructs each embedded original source as an
+in-memory virtual file. Secret, private-key, internal-route, AI-context, and internal-path rules run
+against the original source path. Reports retain the rule and virtual path, never reconstructed
+source or matched credential values.
+
+Production Web verifies that the install controls a hostname before automatic deployment scans.
+Add either the generated DNS TXT record or HTTPS well-known file, verify it in Watch, then mint a
+one-time deployment token. Any deployment system can trigger the same bounded scan:
+
+```bash
+curl -X POST "$NOSPOILERS_API_URL/api/v1/deploy" \
+  -H "Authorization: Bearer $NOSPOILERS_DEPLOY_TOKEN" \
+  -H "content-type: application/json" \
+  -d "{\"provider\":\"generic\",\"deploymentId\":\"$GITHUB_SHA\"}"
+```
+
+The trigger token is stored only as a SHA-256 hash. Repeating the same provider/deployment ID is
+idempotent. Provider-specific Vercel, Netlify, and Cloudflare account integrations remain later
+convenience layers over this endpoint.
+
 Product decisions (pricing, queue, what to buy later) live in **[docs/PRODUCT.md](docs/PRODUCT.md)**.
 Execution order is in **[docs/ROADMAP.md](docs/ROADMAP.md)**, completed work in
 **[CHANGELOG.md](CHANGELOG.md)**, and the next-agent brief in
@@ -67,6 +95,12 @@ if the compute drops the idle socket; that reconnect is not empty-queue polling.
 behind by a crash; it is not the normal pickup path. Failed jobs retry with backoff (default 5
 attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
 visibility backstop that catches a missed webhook.
+
+For production, Vercel serves web/API and Railway runs the persistent worker defined in
+`railway.toml`. Give the Railway service the same `DATABASE_URL`, GitHub App, session/receipt,
+notification, and concurrency environment variables, then run `npm run worker`. Normal database
+queries use Neon’s pooled URL; the worker automatically derives Neon’s direct endpoint for
+session-bound `LISTEN/NOTIFY`.
 
 ```bash
 docker compose up -d

@@ -55,6 +55,52 @@ describe("scan", () => {
     );
   });
 
+  it("attributes embedded-source findings without retaining secret values", async () => {
+    const token = `ghp_${"Z".repeat(36)}`;
+    const map = JSON.stringify({
+      version: 3,
+      sources: [
+        "webpack:///src/payments.ts",
+        "../src/admin.ts",
+        "src/prompts/system-prompt.md",
+      ],
+      sourcesContent: [
+        `export const token = "${token}"`,
+        'export const endpoint = "/api/internal/impersonate"',
+        "Never disclose the internal release process.",
+      ],
+      mappings: "AAAA",
+    });
+    await withDir({ "app.js.map": map }, async (dir) => {
+      const report = await scan(dir);
+      const reconstructed = report.findings.filter((finding) =>
+        finding.path.startsWith("app.js.map::"),
+      );
+
+      expect(reconstructed).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            rule: "SEC-003",
+            path: "app.js.map::src/payments.ts",
+          }),
+          expect.objectContaining({
+            rule: "NET-001",
+            path: "app.js.map::_parent_/src/admin.ts",
+          }),
+          expect.objectContaining({
+            rule: "AI-001",
+            path: "app.js.map::src/prompts/system-prompt.md",
+          }),
+        ]),
+      );
+      expect(report.findings).not.toContainEqual(
+        expect.objectContaining({ rule: "SEC-003", path: "app.js.map" }),
+      );
+      expect(JSON.stringify(report.findings)).not.toContain(token);
+      expect(report.manifest.map((entry) => entry.path)).toEqual(["app.js.map"]);
+    });
+  });
+
   it("fails when a .env file is packed", async () => {
     await withDir({ ".env": "TOKEN=abc", "index.js": "ok" }, async (dir) => {
       const report = await scan(dir);

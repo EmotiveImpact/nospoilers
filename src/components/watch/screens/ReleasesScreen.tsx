@@ -8,41 +8,40 @@ export function ReleasesScreen() {
               <section className="mt-4">
                 <h1 className="font-display text-3xl tracking-tight text-snow">Releases and receipts</h1>
                 <p className="mt-2 text-sm text-mute">Sealed artifact revisions, policy results, and delivery evidence.</p>
-                <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                  Append-only revisions for packed artifacts we scanned. Channels are stable, beta, or
-                  canary. A digest change appends a new row; history is not rewritten. CI URLs are stored
-                  and never fetched.           Each row shows the linked receipt status, sealed size, and media type.
-                  Failed-policy and
-                  inconclusive are not clean and are not allowed to ship. Download the signed receipt JSON
-                  and check it on Scan or with{" "}
-                  <code className="text-snow">npx nospoilers verify ./package.tgz --receipt receipt.json</code>
-                  {" "}
-                  or stream-hash a delivery URL with{" "}
-                  <code className="text-snow">npx nospoilers verify --receipt receipt.json --url https://example.com/app.tgz</code>
-                  . That check is not hosted unpack. Coverage ended still allows the download. An install
-                  admin can attach an HTTPS delivery URL and verify it now. Public GitHub Release
-                  download URLs and public npm tarball URLs are attached when we seal the revision.
-                  We stream-hash the bytes, compare them to the sealed digest, and drop the download.
-                  Cross-host redirects are not followed, except the GitHub Release download hop to
-                  GitHub’s asset CDN, a same-bucket S3 hop, or a same-account R2 hop. Verify records
-                  hop hosts, a cache token, and a region when we can read them from the host. Query
-                  strings never appear on Watch. This is not the hourly poller and not a hosted unpack.
-                  Trial and Team admins can approve a passing revision to ship or reject it — type the
-                  coordinate. The admin who attached a delivery URL cannot approve that revision.
-                  Failed-policy, inconclusive, and digest-changed rows cannot be approved. Legal hold
-                  keeps a revision on the list after the retention window; another admin must release
-                  the hold. Members can export the ledger JSON. Query strings and pack bytes stay off
-                  that export. Solo is 403. Unpaid is 402. An install admin can publish a verification
-                  page for a sealed revision — type the coordinate. Visitors see digests, receipt
-                  status, and last delivery host match. Query strings, pack bytes, CI URLs, and signed
-                  URLs stay off that page. Failed-policy is not clean. Solo may publish. Unpaid is 402.
-                  Unpublish hides the page. This is not scheduled CDN verification.
-                  Trial and Team can refresh GitHub and npm attestation documents for a sealed digest.
-                  The adapter records presence, subject digest, and builder id. It does not verify
-                  Sigstore signatures and is not a malware verdict. Solo is 403. Unpaid is 402.
-                  A Team signing policy can require a present GitHub or npm document, or a builder
-                  prefix, before approve-to-ship. Expired policies do not block. Clearing removes
-                  the row. This is not Sigstore verification.
+                <div className="watch-guidance mt-4 grid max-w-4xl gap-3 sm:grid-cols-2">
+                  {[
+                    {
+                      title: "Receipt",
+                      detail:
+                        "The signed receipt identifies the exact bytes and policy result. Failed-policy and inconclusive are not clean.",
+                    },
+                    {
+                      title: "Delivery match",
+                      detail:
+                        "Verify that npm, GitHub, or a customer URL still serves the same SHA-256. Downloaded bytes are discarded.",
+                    },
+                    {
+                      title: "Approval and hold",
+                      detail:
+                        "Team admins approve or reject passing revisions. Failed-policy, inconclusive, and digest-changed revisions cannot be approved. A legal hold remains until another admin must release it.",
+                    },
+                    {
+                      title: "Attestation",
+                      detail:
+                        "GitHub/npm documents and builder IDs are recorded as evidence. Sigstore verification is not claimed yet.",
+                    },
+                  ].map((item) => (
+                    <article key={item.title} className="rounded-lg border border-white/8 bg-panel p-4">
+                      <h2 className="text-xs uppercase tracking-[0.16em] text-snow">{item.title}</h2>
+                      <p className="mt-2 text-xs leading-relaxed text-mute">{item.detail}</p>
+                    </article>
+                  ))}
+                </div>
+                <p className="watch-guidance mt-3 max-w-4xl text-xs leading-relaxed text-dim">
+                  Failed-policy and inconclusive receipts are never clean. Failed-policy, inconclusive,
+                  and digest-changed revisions cannot be approved. A legal hold remains until
+                  another admin must release it. Solo may publish a passing verification page; delivery matching is
+                  on demand and is not scheduled CDN verification.
                 </p>
                 {previewing ? (
                   <p className="mt-4 text-sm leading-relaxed text-mute">

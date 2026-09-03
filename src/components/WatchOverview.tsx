@@ -12,7 +12,6 @@ import { watchHref, watchPath } from "@/watch/routes.ts";
 import {
   deskVerdict,
   isOpenAlert,
-  longestOpenExposure,
   newestOpenAlert,
   type DeskAlert,
 } from "@/watch/verdict.ts";
@@ -63,6 +62,11 @@ export function WatchOverview({
   const open = alerts.filter(isOpenAlert);
   const lead = newestOpenAlert(open);
   const finding = lead ? leadFinding(lead) : null;
+  const productionSources = sources.filter((source) => source.kind === "website");
+  const productionAttention = productionSources.filter(
+    (source) => source.attention === "critical" || source.attention === "warning",
+  ).length;
+  const setupPercent = Math.round((setup.done / setup.total) * 100);
   const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy" | "timeline") =>
     watchHref(watchPath(view), search);
 
@@ -117,44 +121,84 @@ export function WatchOverview({
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[8.5rem]">
         <button
           type="button"
           onClick={() => navigate(href("alerts"))}
-          className="rounded-lg border border-white/8 bg-panel p-4 text-left"
+          className="group relative overflow-hidden rounded-xl border border-white/8 bg-panel p-5 text-left sm:col-span-2 lg:col-span-5 lg:row-span-2 lg:p-6"
         >
-          <p className="text-xs uppercase tracking-[0.16em] text-dim">Open alerts</p>
-          <p className={`mt-2 font-display text-3xl ${open.length ? "text-danger" : "text-snow"}`}>
+          <div className="absolute -right-16 -top-20 size-48 rounded-full bg-danger/10 blur-3xl" aria-hidden />
+          <p className="relative text-xs uppercase tracking-[0.16em] text-dim">Exposure now</p>
+          <p className={`relative mt-3 font-display text-6xl ${open.length ? "text-danger" : "text-snow"}`}>
             {open.length}
           </p>
-          <p className="mt-1 text-xs text-dim">{open.length ? "needs triage" : "inbox clear"}</p>
-        </button>
-        <div className="rounded-lg border border-white/8 bg-panel p-4">
-          <p className="text-xs uppercase tracking-[0.16em] text-dim">Exposed now</p>
-          <p className={`mt-2 font-display text-3xl ${open.length ? "text-danger" : "text-snow"}`}>
-            {open.length ? longestOpenExposure(open) : "0"}
+          <p className="relative mt-2 text-sm text-snow">
+            {open.length ? `${open.length} ${open.length === 1 ? "incident needs" : "incidents need"} triage` : "Nothing is exposed right now"}
           </p>
-          <p className="mt-1 text-xs text-dim">oldest open alert</p>
-        </div>
+          <p className="relative mt-2 line-clamp-2 max-w-sm text-xs leading-relaxed text-dim">
+            {lead?.title ?? "The inbox is clear across connected sources."}
+          </p>
+          <span className="relative mt-6 inline-flex items-center text-xs text-mute group-hover:text-snow">
+            Open inbox <ArrowRight className="ml-1 size-3.5" aria-hidden />
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(href("setup"))}
+          className="flex items-center gap-4 rounded-xl border border-white/8 bg-panel p-5 text-left lg:col-span-4"
+        >
+          <span
+            className="grid size-16 shrink-0 place-items-center rounded-full"
+            style={{
+              background: `conic-gradient(#f4f4f5 ${setupPercent * 3.6}deg, #252529 0)`,
+            }}
+            aria-label={`${setupPercent}% of setup paths covered`}
+          >
+            <span className="grid size-12 place-items-center rounded-full bg-panel font-display text-sm text-snow">
+              {setup.done}/{setup.total}
+            </span>
+          </span>
+          <span>
+            <span className="block text-xs uppercase tracking-[0.16em] text-dim">Coverage proof</span>
+            <span className="mt-2 block text-sm text-snow">
+              {setup.done === setup.total ? "All paths covered" : `${setup.total - setup.done} still open`}
+            </span>
+            <span className="mt-1 block text-xs text-dim">Open guided setup</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(href("sources"))}
+          className="rounded-xl border border-white/8 bg-panel p-5 text-left lg:col-span-3"
+        >
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Production web</p>
+          <p className="mt-3 font-display text-3xl text-snow">{productionSources.length}</p>
+          <p className="mt-1 text-xs text-dim">
+            {productionAttention ? `${productionAttention} need attention` : "public origins watched"}
+          </p>
+        </button>
         <button
           type="button"
           onClick={() => navigate(href("releases"))}
-          className="rounded-lg border border-white/8 bg-panel p-4 text-left"
+          className="rounded-xl border border-white/8 bg-panel p-5 text-left lg:col-span-4"
         >
-          <p className="text-xs uppercase tracking-[0.16em] text-dim">Packs read, 30 d</p>
-          <p className="mt-2 font-display text-3xl text-snow">{packsRead}</p>
-          <p className="mt-1 text-xs text-dim">
-            {failedPolicy ? `${failedPolicy} failed policy` : "listed revisions"}
-          </p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Release gate</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <p className="font-display text-3xl text-snow">{packsRead}</p>
+            <span className={failedPolicy ? "watch-pill watch-pill-crit" : "watch-pill"}>
+              {failedPolicy ? `${failedPolicy} blocked` : "no policy failures"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-dim">sealed revisions, 30 days</p>
         </button>
         <button
           type="button"
           onClick={() => navigate(href("health"))}
-          className="rounded-lg border border-white/8 bg-panel p-4 text-left"
+          className="rounded-xl border border-white/8 bg-panel p-5 text-left lg:col-span-3"
         >
-          <p className="text-xs uppercase tracking-[0.16em] text-dim">Queue</p>
-          <p className="mt-2 font-display text-3xl text-snow">{queueDepth}</p>
-          <p className="mt-1 text-xs text-dim">{lastRunLabel}</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Processing</p>
+          <p className="mt-3 font-display text-3xl text-snow">{queueDepth}</p>
+          <p className="mt-1 text-xs text-dim">{lastRunLabel} · queued or running</p>
         </button>
       </div>
 

@@ -1,7 +1,7 @@
 import type { AlertNotifier } from "./notifier.ts";
 import { httpErrorForWorkBlock } from "./install-health.ts";
 import type { Store, WatchedOriginRow } from "./store.ts";
-import { MAX_WATCHED_ORIGINS, parseWatchOrigin } from "./web-origin.ts";
+import { MAX_WATCHED_ORIGINS, parseWatchRoot } from "./web-origin.ts";
 
 export function webOriginScanDeliveryId(
   installationId: number,
@@ -25,8 +25,9 @@ async function requireHostedWork(
 export async function connectWatchedOrigin(
   store: Store,
   input: { installationId: number; url: string },
+  options: { enqueue?: boolean } = {},
 ): Promise<{ queued: boolean; origin: WatchedOriginRow }> {
-  const parsed = parseWatchOrigin(input.url);
+  const parsed = parseWatchRoot(input.url);
   if (!parsed) {
     throw Object.assign(
       new Error("Use an https website URL on a public host. Local, private, and metadata hosts are blocked."),
@@ -49,17 +50,20 @@ export async function connectWatchedOrigin(
   if (!inserted) {
     throw Object.assign(new Error("That website is already on this install."), { status: 409 });
   }
-  const result = await store.enqueueJob({
-    deliveryId: webOriginScanDeliveryId(input.installationId, inserted.id, "initial"),
-    priority: "light",
-    kind: "web_origin_scan",
-    payload: {
-      installationId: input.installationId,
-      originId: inserted.id,
-      url: parsed.url,
-      reason: "first",
-    },
-  });
+  const result =
+    options.enqueue === false
+      ? { inserted: false }
+      : await store.enqueueJob({
+          deliveryId: webOriginScanDeliveryId(input.installationId, inserted.id, "initial"),
+          priority: "heavy",
+          kind: "web_origin_scan",
+          payload: {
+            installationId: input.installationId,
+            originId: inserted.id,
+            url: parsed.url,
+            reason: "first",
+          },
+        });
   return { queued: result.inserted, origin: inserted };
 }
 
@@ -68,15 +72,21 @@ export async function checkWatchedOrigin(
   origin: WatchedOriginRow,
   _notifier?: AlertNotifier,
 ): Promise<{ queued: boolean }> {
+  if (origin.verification_token && !origin.verified_at) {
+    throw Object.assign(
+      new Error("Verify domain control before scanning this production website."),
+      { status: 409 },
+    );
+  }
   await requireHostedWork(
     store,
     origin.installation_id,
     "Coverage ended. Subscribe to keep watching production websites.",
   );
-  const token = `check:${new Date().toISOString().slice(0, 16)}`;
+  const token = `check:${crypto.randomUUID()}`;
   const result = await store.enqueueJob({
     deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, token),
-    priority: "light",
+    priority: "heavy",
     kind: "web_origin_scan",
     payload: {
       installationId: origin.installation_id,
@@ -95,10 +105,11 @@ export async function runWebOriginPoll(deps: {
   const hour = new Date().toISOString().slice(0, 13);
   let queued = 0;
   for (const origin of origins) {
+    if (origin.verification_token && !origin.verified_at) continue;
     if (!(await deps.store.installationWorkAllowed(origin.installation_id))) continue;
     const result = await deps.store.enqueueJob({
       deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, `hour:${hour}`),
-      priority: "light",
+      priority: "heavy",
       kind: "web_origin_scan",
       payload: {
         installationId: origin.installation_id,

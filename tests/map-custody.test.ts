@@ -182,6 +182,10 @@ describe("hosted map custody", () => {
         wakeWorker: () => {
           woke += 1;
         },
+        verifyDomain: async (host, _token, method) => ({
+          method,
+          detail: `Verified ${host}.`,
+        }),
       });
       const origin = await app.request("/api/origins", {
         method: "POST",
@@ -189,6 +193,13 @@ describe("hosted map custody", () => {
         body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
       });
       expect(origin.status).toBe(201);
+      const originBody = (await origin.json()) as { origin: { id: number } };
+      const verified = await app.request(`/api/origins/${originBody.origin.id}/verify`, {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ method: "dns" }),
+      });
+      expect(verified.status).toBe(200);
       const worker = createWorker({
         store,
         github: unusedGithub(),

@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 import {
+  directListenDatabaseUrl,
   JOBS_CHANNEL,
   LISTEN_RETRY_MS,
   listenJobQueued,
@@ -31,6 +32,19 @@ function wait(ms: number): Promise<void> {
 }
 
 describe("listenJobQueued", () => {
+  it("uses Neon's direct endpoint for session-bound LISTEN connections", () => {
+    expect(
+      directListenDatabaseUrl(
+        "postgresql://user:pass@ep-example-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require",
+      ),
+    ).toBe(
+      "postgresql://user:pass@ep-example.us-east-2.aws.neon.tech/neondb?sslmode=require",
+    );
+    expect(directListenDatabaseUrl("postgres://db.example.com/app")).toBe(
+      "postgres://db.example.com/app",
+    );
+  });
+
   it("reconnects the LISTEN socket slower than 500 ms empty polling", () => {
     expect(LISTEN_RETRY_MS).toBeGreaterThan(500);
   });

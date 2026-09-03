@@ -346,9 +346,14 @@ Exit: customer one can pay without GitHub Marketplace once keys exist. Marketpla
 
 ## Milestone 4 — production reliability
 
-- Railway web/API and normal worker; Neon Postgres; Cloudflare DNS.
+- Vercel web/API; Railway normal worker; Neon Postgres; registrar DNS for `nospoilers.dev`.
 - Before customers: Railway warning near $25 and hard stop near $50; review before production.
-- Set Resend keys when a sending domain exists. Built frontend and API serve together (`npm run host` after `npm run build`). `NOSPOILERS_ROLE=web` / `worker` is the production split; enqueue NOTIFY wakes the worker. Not deployed.
+- Vercel production is live on its temporary alias. `railway.toml` defines the worker but the
+  Railway account/environment is still human-gated. `NOSPOILERS_ROLE=web` / `worker` is the
+  production split; direct Neon `LISTEN` wakes the worker.
+- Production Web domain verification and the provider-neutral deployment trigger are built.
+  Native Vercel/Netlify/Cloudflare account connections are later convenience adapters.
+- Set Resend keys when a sending domain exists.
 
 ## Milestone 5 — repeatable acquisition
 

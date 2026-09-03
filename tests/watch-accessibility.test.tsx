@@ -121,4 +121,61 @@ describe("Watch keyboard and dialog accessibility", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(assign);
   });
+
+  it("renders alert detail when findings is digest metadata instead of an array", () => {
+    render(
+      <WatchAlertsWorkspace
+        alerts={[{
+          id: 9,
+          kind: "release_digest_mismatch",
+          title: "Digest changed",
+          body: "The served bytes no longer match the last known digest.",
+          findings: { coordinate: "web:https://app.example.com/", previousSha256: "old" } as never,
+          created_at: "2026-09-03T10:00:00.000Z",
+        }]}
+        rows={[{
+          id: 9,
+          title: "Digest changed",
+          coordinate: "https://app.example.com/",
+          rule: "digest",
+          severity: "warning",
+          status: "open",
+          exposure: "2h",
+        }]}
+        selected={{
+          id: 9,
+          kind: "release_digest_mismatch",
+          title: "Digest changed",
+          body: "The served bytes no longer match the last known digest.",
+          findings: { coordinate: "web:https://app.example.com/", previousSha256: "old" } as never,
+          full_name: "https://app.example.com/",
+          created_at: "2026-09-03T10:00:00.000Z",
+        }}
+        events={[]}
+        previewing
+        ended={false}
+        busy={false}
+        note=""
+        assignee=""
+        error={null}
+        exportError={null}
+        state={{ status: "ready" }}
+        activityState={{ status: "ready" }}
+        detailOpen
+        tab="open"
+        teamOnly={false}
+        onSelect={() => undefined}
+        onBack={() => undefined}
+        onRetry={() => undefined}
+        onRetryActivity={() => undefined}
+        onTab={() => undefined}
+        onNote={() => undefined}
+        onAssignee={() => undefined}
+        onAction={() => undefined}
+        onExport={() => undefined}
+      />,
+    );
+    expect(screen.getAllByRole("heading", { name: "Digest changed" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("https://app.example.com/").length).toBeGreaterThan(0);
+  });
 });

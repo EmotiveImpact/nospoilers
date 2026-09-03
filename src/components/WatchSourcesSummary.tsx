@@ -23,10 +23,10 @@ import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "github", label: "GitHub repos" },
-  { value: "npm", label: "npm packages" },
-  { value: "website", label: "Websites" },
-  { value: "map", label: "Map custody" },
+  { value: "github", label: "GitHub exposure" },
+  { value: "npm", label: "Published packages" },
+  { value: "website", label: "Production web" },
+  { value: "map", label: "Private map custody" },
 ];
 
 function configureForKind(kind: SourceKind): SourceConfigure {
@@ -188,9 +188,13 @@ export function WatchSourcesSummary({
     <div className="mb-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl tracking-tight text-snow">Everything we watch, one list.</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-dim">Coverage</p>
+          <h1 className="mt-2 font-display text-3xl tracking-tight text-snow">
+            Three exposure surfaces. One desk.
+          </h1>
           <p className="mt-2 max-w-2xl text-sm text-mute">
-            Repositories, registry packs, production origins, and map custody report into the same inbox.
+            GitHub exposure, published artifacts, and production web report into the same inbox.
+            The artifact scanner also runs before release through Scan, CLI, or your existing CI.
           </p>
         </div>
         {admin && sources.length > 0 ? (
@@ -252,7 +256,9 @@ export function WatchSourcesSummary({
       {sources.length === 0 ? (
         <div className="mt-5 rounded-lg border border-white/8 bg-panel px-5 py-9 text-center">
           <p className="text-sm text-snow">No sources yet.</p>
-          <p className="mt-2 text-xs text-dim">Install on a private repository or connect a real package name.</p>
+          <p className="mt-2 text-xs text-dim">
+            Install on a private repository, connect a published package, or watch your production URL.
+          </p>
           {admin ? (
             <Button type="button" size="sm" className="mt-4" onClick={() => setAdding(true)}>
               Add the first source
@@ -407,21 +413,40 @@ export function WatchSourcesSummary({
                   {selectedSource.detail}. Checks, alerts, release evidence, and remediation actions remain scoped to this real source.
                 </p>
               </div>
-              <Button
-                type="button"
-                className="mt-6"
-                onClick={() => {
-                  navigate(
-                    watchHref(watchPath("sources"), search, {
-                      source: null,
-                      configure: configureForKind(selectedSource.kind),
-                    }),
-                  );
-                }}
-              >
-                <Box className="size-4" aria-hidden />
-                {selectedSource.primaryAction}
-              </Button>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    navigate(
+                      watchHref(watchPath("sources"), search, {
+                        source: null,
+                        configure: configureForKind(selectedSource.kind),
+                      }),
+                    );
+                  }}
+                >
+                  <Box className="size-4" aria-hidden />
+                  {selectedSource.primaryAction}
+                </Button>
+                {selectedSource.alertCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
+                  >
+                    Open related alerts
+                  </Button>
+                ) : null}
+                {(selectedSource.kind === "npm" || selectedSource.kind === "github") ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => navigate(watchHref(watchPath("releases"), search))}
+                  >
+                    Open release evidence
+                  </Button>
+                ) : null}
+              </div>
             </>
           ) : null}
         </DialogPanel>

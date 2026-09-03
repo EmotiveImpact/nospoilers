@@ -2,6 +2,68 @@
 
 ## [Unreleased]
 
+- Watch no longer goes black after GitHub login when a historical alert stores
+  digest metadata in `findings` instead of an array. The API and desk view
+  models now treat non-array findings as empty.
+
+- Production Web now has customer-domain ownership verification by DNS TXT or
+  an HTTPS well-known file. Verified install admins can mint a one-time
+  `nsd_` deployment token for the signed `/api/v1/deploy` trigger; duplicate
+  provider deployment IDs are idempotent and reuse the existing bounded
+  `web_origin_scan` queue. Deploy tokens are stored only as SHA-256 hashes.
+
+- The Watch overview restores the mockups’ risk-weighted bento composition
+  using live alert, setup, release, Production Web, and queue data. The
+  landing preview now shows the real desk geometry without invented rows;
+  source details link to related alerts/releases; Release guidance is reduced
+  from one long essay to four concise evidence cards.
+
+- `railway.toml` defines the independent `npm run worker` service, and `tsx`
+  is now an explicit runtime dependency. Vercel remains the web/API host;
+  Railway runs the persistent queue consumer and hourly poller.
+
+- Vercel now registers post-response job work with the official
+  `@vercel/functions` `waitUntil` API. Previously, the response could freeze a
+  claimed website scan and leave its Neon job in `running`. Production Web
+  normalizes pasted dashboard/deep links to the public site root, gives each
+  manual click a unique job, automatically refreshes until the result lands,
+  and replaces “crawl” with plain website-scan language.
+
+- Production Web now validates source-map JSON before reporting a `.map`
+  URL. SPA hosts such as Vercel often return `index.html` with HTTP 200 for a
+  missing sibling map; that fallback is no longer reported as a public source
+  map.
+
+- Long-lived workers now derive Neon’s direct endpoint for the session-bound
+  `LISTEN nospoilers_jobs` connection while keeping normal queries on the
+  pooled endpoint. PgBouncer no longer causes an enqueue notification to be
+  missed until the recovery timer.
+
+- Vercel cold starts no longer replay every database DDL migration. Runtime
+  startup checks the current schema marker first; a fresh Postgres database
+  uses a dedicated direct connection and session advisory lock, preserving
+  legacy per-statement migration recovery without concurrent DDL. Concurrent
+  Watch API requests can no longer deadlock Neon while the UI waits on
+  `/api/me`.
+
+- Product positioning now names three coverage surfaces—GitHub Exposure,
+  Release Artifacts, and Production Web—without presenting them as separate
+  scanners. The landing page explains pre-release versus continuous hosted
+  coverage; Watch labels `/sources` as Coverage and identifies the evidence
+  source behind each result. Private Map Custody is explicitly a supporting
+  proof, not another public-site scan.
+
+- Source maps with populated `sourcesContent` are now reconstructed as bounded
+  in-memory virtual files. Existing secret, private-key, credential,
+  AI-context, internal-document, internal-route, and internal-location rules
+  identify the original source path. Reports never retain reconstructed source
+  or matched credential values.
+
+- Production website/map crawls now use the heavy queue. Global and
+  installation concurrency limits make bursts wait instead of reconstructing
+  every customer map in memory simultaneously. Unchanged crawls still refund
+  their daily hosted-unpack slot.
+
 - Local GitHub sign-in now uses the stable loopback callback from the
   browser request instead of the changing public webhook tunnel. Non-local
   requests still use `APP_BASE_URL`. A successful sign-in returns to

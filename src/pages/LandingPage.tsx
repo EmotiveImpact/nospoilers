@@ -41,12 +41,13 @@ export function LandingPage() {
       <section className="fade-up grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
         <div>
           <h1 className="max-w-xl font-display text-[2.5rem] leading-[1.05] tracking-tight text-snow sm:text-6xl">
-            We watch GitHub.
+            Know what actually shipped.
             <br />
-            We open the pack.
+            Before customers find it.
           </h1>
           <p className="mt-6 max-w-md text-base leading-relaxed text-mute md:text-lg">
-            Repo goes public. We unpack the tarball, zip, or asar they download.
+            NoSpoilers checks release packs, production websites, and GitHub exposure for source
+            maps, secrets, and internal material added after code review.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
@@ -78,16 +79,18 @@ export function LandingPage() {
 
       <section className="mt-24 md:mt-32">
         <h2 className="max-w-xl font-display text-3xl tracking-tight text-snow md:text-4xl">
-          Take the hosted watch, or run the scan yourself.
+          One release firewall. Before and after deployment.
         </h2>
         <p className="mt-4 max-w-lg text-sm leading-relaxed text-mute">
-          Coverage on our servers is the bill. The CLI on your machine is a bonus.
+          The same bounded scanner reads artifact and website bytes. GitHub Watch handles repository
+          exposure events. Every finding reaches one desk.
         </p>
         <div className="mt-10 grid gap-4 md:grid-cols-2">
           <article className="rounded-xl border border-white/10 bg-panel p-6 md:p-8">
-            <p className="font-display text-xl tracking-tight text-snow">Do it on your laptop</p>
+            <p className="font-display text-xl tracking-tight text-snow">Pre-release gate</p>
             <p className="mt-3 text-sm leading-relaxed text-mute">
-              Scan the build you remember to wire. Same kernel. You cannot pirate the doorbell.
+              Scan the exact tarball, zip, image, extension, or app package before publishing—by
+              hand or automatically in your existing CI.
             </p>
             <p className="mt-5 font-mono text-xs text-dim">npx nospoilers scan ./package.tgz</p>
             <Button type="button" variant="ghost" className="mt-8 px-0" onClick={() => navigate("/scan")}>
@@ -95,10 +98,10 @@ export function LandingPage() {
             </Button>
           </article>
           <article className="rounded-xl border border-ember/50 bg-panel p-6 shadow-[0_0_40px_-12px_rgb(255_79_31_/_0.45)] md:p-8">
-            <p className="font-display text-xl tracking-tight text-snow">Hosted GitHub App</p>
+            <p className="font-display text-xl tracking-tight text-snow">Continuous coverage</p>
             <p className="mt-3 text-sm leading-relaxed text-mute">
-              Private → public, then we unpack the release pack. Trial is full coverage. Unpaid, we go
-              quiet.
+              Watch published packs, deployed web assets, and GitHub visibility after the build is
+              over. Trial is full coverage. Unpaid, the hosted watch goes quiet.
             </p>
             <Button
               type="button"
@@ -119,26 +122,25 @@ export function LandingPage() {
       <ul className="mt-24 grid gap-10 border-t border-white/5 pt-12 sm:grid-cols-3 md:mt-32">
         <li>
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">01</p>
-          <p className="mt-3 font-display text-xl tracking-tight text-snow">Watch GitHub</p>
+          <p className="mt-3 font-display text-xl tracking-tight text-snow">GitHub exposure</p>
           <p className="mt-2 text-sm leading-relaxed text-dim">
-            Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a
-            second.
+            Watch private → public, created-public, transfer, collaborator, fork, and Release events.
           </p>
         </li>
         <li>
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">02</p>
-          <p className="mt-3 font-display text-xl tracking-tight text-snow">Read the pack</p>
+          <p className="mt-3 font-display text-xl tracking-tight text-snow">Release artifacts</p>
           <p className="mt-2 text-sm leading-relaxed text-dim">
-            Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan
-            credits.
+            Inspect the exact npm tarball, GitHub Release, zip, image, extension, or asar customers
+            receive—not merely the repository that produced it.
           </p>
         </li>
         <li>
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">03</p>
-          <p className="mt-3 font-display text-xl tracking-tight text-snow">Fail closed in CI</p>
+          <p className="mt-3 font-display text-xl tracking-tight text-snow">Production websites</p>
           <p className="mt-2 text-sm leading-relaxed text-dim">
-            <code className="text-mute">npx nospoilers scan ./package.tgz</code> for the build you
-            remember. The hosted app is for the release you forget.
+            Check public HTML, JavaScript, CSS, exposed files, and source maps. Reconstruct embedded
+            source in memory without retaining it.
           </p>
         </li>
       </ul>

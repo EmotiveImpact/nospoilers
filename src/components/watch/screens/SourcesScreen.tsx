@@ -27,8 +27,10 @@ export function SourcesScreen() {
                   route.sourceConfigure === "github" &&
                   (previewing || sourceSectionState.status === "ready") ? (
                   <section id="watch-source-github" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-                  <h2 className="text-sm font-semibold text-snow">GitHub repositories</h2>
-                  <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
+                  <h2 className="text-sm font-semibold text-snow">GitHub exposure</h2>
+                  <p className="mt-2 text-sm text-mute">
+                    Repository visibility, access relationships, and published Release assets.
+                  </p>
                   <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                     Setup PR adds packed-artifact CI that scans each{" "}
                     <code className="text-snow">package.tgz</code> or{" "}

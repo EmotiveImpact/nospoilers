@@ -21,20 +21,38 @@ export function ProductFrame() {
         <span className="ml-2 font-mono text-[11px] text-dim">/watch</span>
         <span className="ml-auto text-[11px] uppercase tracking-[0.16em] text-dim">Product preview</span>
       </div>
-      <div className="grid gap-0 md:grid-cols-2">
-        <div className="border-b border-white/8 px-5 py-6 md:border-b-0 md:border-r">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Watch desk</p>
-          <p className="mt-2 font-display text-xl text-snow">Nothing invented.</p>
-          <p className="mt-3 text-xs leading-relaxed text-dim">
-            Sign in to see repositories, releases, and alerts from your GitHub install.
-          </p>
+      <div className="grid min-h-80 md:grid-cols-[11rem_minmax(0,1fr)]">
+        <div className="hidden border-r border-white/8 bg-[#0d0d10] p-4 md:block">
+          <p className="font-display text-sm text-snow">NoSpoilers</p>
+          <p className="mt-5 text-[10px] uppercase tracking-[0.18em] text-dim">Work</p>
+          <p className="mt-2 rounded bg-white/8 px-2 py-1.5 text-xs text-snow">Overview</p>
+          <p className="mt-5 text-[10px] uppercase tracking-[0.18em] text-dim">Evidence</p>
+          <p className="mt-2 px-2 text-xs text-mute">Coverage</p>
+          <p className="mt-2 px-2 text-xs text-mute">Releases</p>
+          <p className="mt-2 px-2 text-xs text-mute">Timeline</p>
         </div>
-        <div className="px-5 py-6">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Overview</p>
-          <p className="mt-2 text-sm text-snow">Live facts appear here after connection.</p>
-          <p className="mt-3 text-xs leading-relaxed text-dim">
-            Preview shows the product structure without pretending an incident occurred.
+        <div className="p-5 md:p-7">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Empty trial desk</p>
+          <p className="mt-2 font-display text-2xl text-snow">Nothing is being watched yet.</p>
+          <p className="mt-2 max-w-md text-xs leading-relaxed text-dim">
+            Connect a real source to create evidence. This preview does not invent incidents.
           </p>
+          <div className="mt-6 grid gap-2 sm:grid-cols-3">
+            {[
+              ["GitHub exposure", "0 connected"],
+              ["Release artifacts", "No receipt"],
+              ["Production web", "0 origins"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-white/8 bg-white/[0.025] p-4">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-dim">{label}</p>
+                <p className="mt-3 text-sm text-snow">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-lg border border-dashed border-white/10 p-4">
+            <p className="text-xs text-snow">First action</p>
+            <p className="mt-1 text-xs text-dim">Install the GitHub App or add a production URL.</p>
+          </div>
         </div>
       </div>
     </a>

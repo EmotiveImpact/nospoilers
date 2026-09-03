@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vercel-runtime
 *.local
 agent-tools
 data
@@ -28,3 +29,5 @@ data
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*

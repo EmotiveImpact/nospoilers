@@ -13,6 +13,7 @@ import type { AppConfig } from "./config.ts";
 import {
   databaseMode,
   githubAppConfigured,
+  jobProcessingMode,
   processRunsHttp,
   resendConfigured,
   stripeConfigured,
@@ -94,7 +95,20 @@ import {
   publicNamespace,
   unprotectNamespace,
 } from "./namespace-watch.ts";
-import { checkWatchedOrigin, connectWatchedOrigin } from "./web-watch.ts";
+import {
+  checkWatchedOrigin,
+  connectWatchedOrigin,
+  webOriginScanDeliveryId,
+} from "./web-watch.ts";
+import {
+  domainVerificationChallenge,
+  hashDeployToken,
+  mintDeployToken,
+  mintDomainVerificationChallenge,
+  parseDeployBearer,
+  verifyDomainOwnership,
+  type DomainVerificationMethod,
+} from "./domain-verification.ts";
 import {
   parseMapDestination,
   validateMapToken,
@@ -364,6 +378,8 @@ export type AppDeps = {
   npm?: NpmPort;
   scan?: typeof scan;
   wakeWorker?: () => void;
+  runScheduledJobs?: () => Promise<Record<string, number>>;
+  verifyDomain?: typeof verifyDomainOwnership;
   slackFetch?: typeof fetch;
   webhookLookup?: WebhookHostLookup;
   notifier?: AlertNotifier;
@@ -431,6 +447,7 @@ function publicIdentityCandidate(row: IdentityCandidateRow) {
 }
 
 function publicAlert(row: AlertRow) {
+  const findings = Array.isArray(row.findings) ? row.findings : null;
   return {
     id: row.id,
     installation_id: row.installation_id,
@@ -438,7 +455,7 @@ function publicAlert(row: AlertRow) {
     kind: row.kind,
     title: row.title,
     body: row.body,
-    findings: row.findings,
+    findings,
     github_delivery_id: row.github_delivery_id,
     acknowledged_at: row.acknowledged_at,
     acknowledged_by_login: row.acknowledged_by_login,
@@ -449,7 +466,7 @@ function publicAlert(row: AlertRow) {
     created_at: row.created_at,
     full_name: row.full_name ?? null,
     exposure_ms: exposureMs(row.created_at, row.resolved_at),
-    rotation_checklist: rotationChecklist(findingRules(row.findings)),
+    rotation_checklist: rotationChecklist(findingRules(findings)),
   };
 }
 
@@ -866,9 +883,23 @@ export function createApp(deps: AppDeps): Hono {
       worker: {
         recoveryIntervalMs: deps.config.workerIntervalMs,
         visibilityPollIntervalMs: deps.config.pollIntervalMs,
+        jobs: jobProcessingMode(deps.config.processRole),
       },
     }),
   );
+
+  app.get("/api/cron/jobs", async (c) => {
+    const secret = deps.config.cronSecret.trim();
+    const auth = c.req.header("authorization") ?? "";
+    if (!secret || secret.length < 16 || !sameSecret(auth, `Bearer ${secret}`)) {
+      return c.json({ error: "Cron authorization required." }, 401);
+    }
+    if (!deps.runScheduledJobs) {
+      return c.json({ error: "Job scheduler is not attached to this process." }, 503);
+    }
+    const result = await deps.runScheduledJobs();
+    return c.json({ ok: true, ...result });
+  });
 
   app.get("/api/ready", async (c) => {
     let databaseOk = false;
@@ -3734,6 +3765,14 @@ export function createApp(deps: AppDeps): Hono {
         last_debug_ids: row.last_debug_ids,
         last_release: row.last_release,
         last_public_map: row.last_public_map,
+        verification: row.verification_token
+          ? {
+              ...domainVerificationChallenge(row.host, row.verification_token),
+              method: row.verification_method,
+              verifiedAt: row.verified_at,
+            }
+          : null,
+        deployTokenPrefix: row.deploy_token_prefix,
       })),
     });
   });
@@ -3759,15 +3798,163 @@ export function createApp(deps: AppDeps): Hono {
       const result = await connectWatchedOrigin(deps.store, {
         installationId,
         url: String(body.url ?? ""),
-      });
-      if (result.queued) deps.wakeWorker?.();
-      return c.json({ ok: true, queued: result.queued, origin: result.origin }, 201);
+      }, { enqueue: false });
+      const challenge = mintDomainVerificationChallenge(result.origin.host);
+      const origin = await deps.store.setOriginVerificationChallenge(
+        result.origin.id,
+        user.userId,
+        challenge.token,
+      );
+      if (!origin) throw new Error("Could not create website verification.");
+      return c.json({ ok: true, queued: false, origin, verification: challenge }, 201);
     } catch (error) {
       return c.json(
         { error: error instanceof Error ? error.message : "Could not watch that website." },
         errorStatus(error),
       );
     }
+  });
+
+  app.post("/api/origins/:id/verification", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const origin = await deps.store.getWatchedOrigin(id);
+    if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
+      return c.json({ error: "Unknown website." }, 404);
+    }
+    const adminError = await requireInstallAdmin(user.userId, origin.installation_id);
+    if (adminError) return c.json({ error: adminError.error }, adminError.status);
+    const challenge = mintDomainVerificationChallenge(origin.host);
+    const updated = await deps.store.setOriginVerificationChallenge(id, user.userId, challenge.token);
+    if (!updated) return c.json({ error: "Unknown website." }, 404);
+    return c.json({ verification: challenge });
+  });
+
+  app.post("/api/origins/:id/verify", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const origin = await deps.store.getWatchedOrigin(id);
+    if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
+      return c.json({ error: "Unknown website." }, 404);
+    }
+    const adminError = await requireInstallAdmin(user.userId, origin.installation_id);
+    if (adminError) return c.json({ error: adminError.error }, adminError.status);
+    if (!origin.verification_token) {
+      return c.json({ error: "Generate a domain verification challenge first." }, 409);
+    }
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const method = body.method === "dns" || body.method === "http"
+      ? body.method as DomainVerificationMethod
+      : null;
+    if (!method) return c.json({ error: "Choose DNS TXT or HTTPS file verification." }, 400);
+    try {
+      const result = await (deps.verifyDomain ?? verifyDomainOwnership)(
+        origin.host,
+        origin.verification_token,
+        method,
+        { lookup: deps.webhookLookup },
+      );
+      const verified = await deps.store.markOriginVerified(id, user.userId, method);
+      if (!verified) return c.json({ error: "Unknown website." }, 404);
+      const queued = await checkWatchedOrigin(deps.store, verified, notifier);
+      if (queued.queued) deps.wakeWorker?.();
+      await recordAudit({
+        installationId: origin.installation_id,
+        actorLogin: user.login,
+        action: "origin.verify",
+        summary: `Verified ${origin.host} by ${method}`,
+        targetKind: "origin",
+        targetId: origin.host,
+      });
+      return c.json({ ok: true, detail: result.detail, origin: verified, queued: queued.queued });
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Could not verify this website." },
+        409,
+      );
+    }
+  });
+
+  app.post("/api/origins/:id/deploy-token", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    const origin = await deps.store.getWatchedOrigin(id);
+    if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
+      return c.json({ error: "Unknown website." }, 404);
+    }
+    const adminError = await requireInstallAdmin(user.userId, origin.installation_id);
+    if (adminError) return c.json({ error: adminError.error }, adminError.status);
+    if (!origin.verified_at) {
+      return c.json({ error: "Verify this domain before creating a deployment trigger." }, 409);
+    }
+    const minted = mintDeployToken();
+    const updated = await deps.store.setOriginDeployToken(
+      id,
+      user.userId,
+      minted.tokenHash,
+      minted.tokenPrefix,
+    );
+    if (!updated) return c.json({ error: "Could not create deployment trigger." }, 409);
+    await recordAudit({
+      installationId: origin.installation_id,
+      actorLogin: user.login,
+      action: "origin.deploy_token",
+      summary: `Rotated deployment trigger for ${origin.host}`,
+      targetKind: "origin",
+      targetId: origin.host,
+    });
+    return c.json({
+      token: minted.token,
+      tokenPrefix: minted.tokenPrefix,
+      endpoint: `${deps.config.appBaseUrl}/api/v1/deploy`,
+    }, 201);
+  });
+
+  app.post("/api/v1/deploy", async (c) => {
+    const token = parseDeployBearer(c.req.header("authorization"));
+    if (!token) return c.json({ error: "Valid deployment token required." }, 401);
+    const origin = await deps.store.getOriginByDeployTokenHash(hashDeployToken(token));
+    if (!origin) return c.json({ error: "Valid deployment token required." }, 401);
+    const checkDenied = await hostedWorkDenied(
+      deps.store,
+      origin.installation_id,
+      "Coverage ended. Subscribe to keep deployment-triggered website scans running.",
+    );
+    if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const deploymentId = String(body.deploymentId ?? "").trim();
+    const provider = String(body.provider ?? "generic").trim().toLowerCase();
+    if (!/^[A-Za-z0-9._:-]{1,200}$/.test(deploymentId)) {
+      return c.json({ error: "deploymentId is required (commit SHA or provider deployment ID)." }, 400);
+    }
+    if (!/^[a-z0-9-]{1,32}$/.test(provider)) {
+      return c.json({ error: "provider must be a short lowercase name." }, 400);
+    }
+    const result = await deps.store.enqueueJob({
+      deliveryId: webOriginScanDeliveryId(
+        origin.installation_id,
+        origin.id,
+        `deploy:${provider}:${deploymentId}`,
+      ),
+      priority: "heavy",
+      kind: "web_origin_scan",
+      payload: {
+        installationId: origin.installation_id,
+        originId: origin.id,
+        url: origin.origin_url,
+        reason: "deployment",
+        provider,
+        deploymentId,
+      },
+    });
+    if (result.skipped === "fair_use") {
+      return c.json({ error: FAIR_USE_EXHAUSTED }, 429);
+    }
+    if (result.inserted) deps.wakeWorker?.();
+    return c.json({ ok: true, queued: result.inserted, duplicate: !result.inserted }, 202);
   });
 
   app.delete("/api/origins/:id", async (c) => {
@@ -3802,6 +3989,9 @@ export function createApp(deps: AppDeps): Hono {
     const origin = await deps.store.getWatchedOrigin(id);
     if (!origin || !(await deps.store.userOwnsInstallation(user.userId, origin.installation_id))) {
       return c.json({ error: "Unknown website." }, 404);
+    }
+    if (origin.verification_token && !origin.verified_at) {
+      return c.json({ error: "Verify domain control before scanning this website." }, 409);
     }
     const checkDenied = await hostedWorkDenied(
       deps.store,

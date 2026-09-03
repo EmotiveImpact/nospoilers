@@ -16,6 +16,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
+    "tsup.vercel.config.ts",
     "vite.config.ts",
     "src/plugin.ts",
     "src/cli.ts",

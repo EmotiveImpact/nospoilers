@@ -38,7 +38,7 @@ const SOURCE_FILTER_SET = new Set<string>(["all", "github", "npm", "website", "m
 export const VIEW_TITLE: Record<WatchView, string> = {
   overview: "Overview",
   alerts: "Alerts",
-  sources: "Sources",
+  sources: "Coverage",
   releases: "Releases",
   timeline: "Timeline",
   setup: "Finish setup",

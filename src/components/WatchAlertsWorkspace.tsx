@@ -278,8 +278,8 @@ export function WatchAlertsWorkspace({
                   <section className="mt-8">
                     <p className="watch-kicker">Where</p>
                     <div className="mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
-                      {(selected.findings ?? []).length ? (
-                        selected.findings?.map((finding) => (
+                      {Array.isArray(selected.findings) && selected.findings.length ? (
+                        selected.findings.map((finding) => (
                           <div key={`${finding.rule}:${finding.path}`} className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
                             <span className="font-mono text-xs text-snow">{finding.rule}</span>
                             <span className="truncate font-mono text-xs text-mute">{finding.path}</span>
