@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- Live GitHub publicize proof on `EmotiveImpact/nospoilers-throwaway` (repo
+  `1353409756`, install `158159401`). Private → public 3 Sep 2026. First
+  deliveries 502 while origin was down; redelivery 200 → jobs 52 and 53
+  `done` → Watch alerts 41 and 42 `EmotiveImpact/nospoilers-throwaway is
+  public`. Two rows because GitHub sends both `public` and
+  `repository.publicized`. `npm run phase1:visibility` now targets this
+  throwaway, not an invented `-vis` repo. Contents write still cannot
+  change visibility. Optional `GITHUB_PROOF_TOKEN` on this disposable
+  repo. Do not grant the App Administration. Transfer, collaborator, and
+  fork stay unproven. Do not transfer. Do not publicize a product
+  repository.
+
 - Customer-managed signing policies: trial/Team admins require a present
   GitHub or npm attestation, or a builder prefix, before approve-to-ship.
   Optional expiration. Typed `signing-policy` / `clear-signing-policy`.
@@ -33,13 +45,14 @@
   (Stripe) was already merged.
 
 - `npm run phase1:visibility` points the GitHub App webhook at
-  `APP_BASE_URL/api/webhooks/github` and tries to publicize only
-  `EmotiveImpact/nospoilers-throwaway-vis`. Contents write cannot change
+  `APP_BASE_URL/api/webhooks/github` and optionally publicizes
+  `EmotiveImpact/nospoilers-throwaway` only. Contents write cannot change
   visibility (404/403). Live this session: App webhook pointed at the
   trycloudflare tunnel; cheap `.env.visibility-proof` push on
   `EmotiveImpact/nospoilers-throwaway` → job 51 `done` → Watch alert 40
-  `Sensitive path in EmotiveImpact/nospoilers-throwaway`. Publicize,
-  transfer, collaborator, and fork stay unproven. Do not grant the App
+  `Sensitive path in EmotiveImpact/nospoilers-throwaway`. Publicize is
+  proven (jobs 52/53 → alerts 41/42). Transfer, collaborator, and fork
+  stay unproven. Do not invent `-vis`. Do not grant the App
   Administration. Do not publicize a product repository.
 
 - Production process split is in code. `npm run build` then `npm run host`

@@ -95,8 +95,10 @@ stored and never fetched.
 5. Within about a minute the Watch page should show **Went public**.
 6. Seed the disposable git files and publish the hostile pack: `npm run phase1:throwaway`.
    After a Cloud Agent tunnel change, `APP_BASE_URL=https://<tunnel> npm run phase1:visibility`
-   points the App webhook. Publicize still needs `GITHUB_PROOF_TOKEN` on a disposable
-   repo. Do not grant the App Administration.
+   points the App webhook. Publicize is private → public on this throwaway
+   (`EmotiveImpact/nospoilers-throwaway`). Leave `npm run dev` running. Optional
+   `GITHUB_PROOF_TOKEN` on that disposable repo only. Do not invent `-vis`.
+   Do not grant the App Administration.
    That writes `throwaway/` onto `EmotiveImpact/nospoilers-throwaway` and attaches
    `fixtures/sourcemap.tgz` as GitHub Release `phase1-fixture`. Or create that Release by
    hand. Publishing with no pack yet, then uploading the asset, still scans (`release.edited`).

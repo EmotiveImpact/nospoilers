@@ -271,9 +271,11 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 - Neon Auth remains disabled on purpose.
 - Throwaway repo Watch alerts are proven (`repo_created_public`, cheap `.env`/`.map` push,
-  and fixture `release_scan`). Cheap-push re-proven on 2 Sep 2026: job 51 → alert 40
-  after the App webhook was pointed at this host. Publicize / transfer / collaborator /
-  fork still need `GITHUB_PROOF_TOKEN` (not App Administration).
+  fixture `release_scan`, and private → public). Cheap-push re-proven on 2 Sep 2026:
+  job 51 → alert 40. Publicize proven 3 Sep 2026: jobs 52 and 53 → alerts 41 and 42
+  on `EmotiveImpact/nospoilers-throwaway` after redelivery (first 502s while origin
+  was down). Transfer / collaborator / fork still need a real GitHub action (not App
+  Administration). Do not invent `-vis`.
 
 ### Missing before launch
 
@@ -293,8 +295,10 @@ alerts are proven. `EmotiveImpact/nospoilers-throwaway` was created public, then
 `throwaway/` (workflow YAML skipped — that needs a Workflows permission we will not request)
 and `fixtures/sourcemap.tgz` on tag `phase1-fixture`. GitHub delivered `release.published`
 (HTTP 200) → job `release_scan` done → alert **Spoilers in EmotiveImpact/nospoilers-throwaway
-phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Contents write is live on
-this install only. Do not grant Administration. Do not publicize a product repository.
+phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Private → public on that
+same throwaway (3 Sep 2026) delivered `public` + `repository.publicized` → jobs 52 and 53
+`done` → alerts 41 and 42. Contents write is live on this install only. Do not grant
+Administration. Do not publicize a product repository. Do not invent `-vis`.
 Resend Watch email is wired and stays 503 until keys exist. Stripe checkout is wired and stays 503 until keys exist.
 
 1. Register the GitHub App and add all credentials as Runtime Secrets.
@@ -305,8 +309,8 @@ Resend Watch email is wired and stays 503 until keys exist. Stripe checkout is w
 6. Verify bad HMAC, duplicate delivery, suspend/uninstall, and poller fallback.
 
 Exit: OAuth → webhook → queue → worker → alert works without manual SQL. Visibility alert
-(`repo_created_public`) and fixture release scan (`release_scan` + failed-policy receipt)
-are done.
+(`repo_created_public`), private → public (`repo_publicized`), and fixture release scan
+(`release_scan` + failed-policy receipt) are done.
 
 ## Milestone 2 — make coverage commercially correct
 

@@ -619,14 +619,20 @@ GitHub `member` added, `fork`, and cheap `push` (`*.map` / `.env` only) enqueue 
 Other member actions and pushes without those paths do not. HMAC required. Unpaid is HTTP 200
 with no job. The worker writes Watch alerts for those jobs. The GitHub `public` event is the
 same light publicized job. `repository.privatized` updates the Watch row and does not enqueue.
-Real GitHub proof is still outstanding for publicize, transfer, collaborator, and fork.
-Cheap `.env` / `*.map` push is proven again: job 51 `done` → Watch alert 40
-`Sensitive path in EmotiveImpact/nospoilers-throwaway` after pointing the App
-webhook at this host’s trycloudflare URL. `npm run phase1:visibility` points
-`/app/hook/config` at `APP_BASE_URL/api/webhooks/github` and tries to publicize
-`EmotiveImpact/nospoilers-throwaway-vis` only. Contents write is not enough
-(404/403). Set `GITHUB_PROOF_TOKEN` on that disposable repo. Do not grant the
-App Administration. Do not publicize a product repository. Do not transfer.
+Publicize is proven live on `EmotiveImpact/nospoilers-throwaway` (repo
+`1353409756`): private → public 3 Sep 2026. First deliveries 502 while
+origin was down; redelivery 200 → jobs 52 and 53 `done` → Watch alerts 41
+and 42 `EmotiveImpact/nospoilers-throwaway is public`. Two rows because
+GitHub sends both `public` and `repository.publicized`. Cheap `.env` /
+`*.map` push is proven again: job 51 `done` → Watch alert 40
+`Sensitive path in EmotiveImpact/nospoilers-throwaway`. Transfer,
+collaborator, and fork still need a real GitHub action (not App
+Administration). `npm run phase1:visibility` points `/app/hook/config` at
+`APP_BASE_URL/api/webhooks/github` and optionally publicizes this
+throwaway only. Contents write is not enough (404/403). Do not invent
+`nospoilers-throwaway-vis`. Optional `GITHUB_PROOF_TOKEN` on this
+disposable repo. Do not grant the App Administration. Do not publicize a
+product repository. Do not transfer.
 Public `/docs` is in. Hosted scan, GitHub OAuth, and owner discovery are rate-limited per
 address. Receipt verify is a separate budget. GitHub webhooks are not.
 Artifact Leads inspect also queues up to eight public npm workspace member packs named
@@ -730,7 +736,7 @@ alerts without download, and a packed asset that fails policy and is not allowed
 Watch one-click GitHub responses are in (make-private / delete latest pack assets / disable a
 workflow other than nospoilers.yml). Typed confirm. 409 until Administration (not granted).
 Contents write is live on install 158159401 (EmotiveImpact only). Milestone 1
-visibility + fixture release scan are proven on EmotiveImpact/nospoilers-throwaway.
+visibility, publicize, and fixture release scan are proven on EmotiveImpact/nospoilers-throwaway.
 `npm run phase1:throwaway` skips `.github/workflows/` (Workflows write is not
 requested). Optional next grants: Members read (collaborator Watch), Pull requests
 write (reviewable Setup/remediation PRs, never merged), Checks write (hosted

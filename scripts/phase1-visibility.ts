@@ -3,7 +3,7 @@ import { createAppJwt } from "../src/server/github.ts";
 import { loadConfig } from "../src/server/config.ts";
 
 export const VIS_OWNER = "EmotiveImpact";
-export const VIS_REPO = "nospoilers-throwaway-vis";
+export const VIS_REPO = "nospoilers-throwaway";
 export const VIS_FULL = `${VIS_OWNER}/${VIS_REPO}`;
 export const PRODUCT_REPOS = ["nospoilers", "Echo"];
 
@@ -44,8 +44,11 @@ export function deniedMessage(): string {
     `Cannot change visibility or collaborators on ${VIS_FULL}.`,
     "The GitHub App has Contents write. That cannot publicize a repo or add a collaborator.",
     "",
-    "Set GITHUB_PROOF_TOKEN to a fine-grained PAT for only this disposable repo",
-    "with Administration + Contents write. Do not use a classic repo PAT.",
+    "Publicize is private → public on this throwaway. If it is already public,",
+    "use GitHub Settings → Danger zone → Private, then Public. Leave npm run dev",
+    "running so the webhook can land. Do not invent nospoilers-throwaway-vis.",
+    "Optional: GITHUB_PROOF_TOKEN as a fine-grained PAT for only this disposable",
+    "repo with Administration + Contents write. Do not use a classic repo PAT.",
     "Do not grant the App Administration. Do not publicize a product repository.",
     "Do not transfer a repository in this proof.",
     "",

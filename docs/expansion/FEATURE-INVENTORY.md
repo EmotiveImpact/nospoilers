@@ -147,7 +147,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Private → public alert | Built/needs real proof: `repository.publicized` and the GitHub `public` event enqueue the same light job. `npm run phase1:visibility` points the App webhook and tries `EmotiveImpact/nospoilers-throwaway-vis` only. Contents write 404/403. Needs `GITHUB_PROOF_TOKEN`. Do not grant App Administration | NoSpoilers |
+| Private → public alert | Built: `repository.publicized` and the GitHub `public` event enqueue the same light `repo_publicized` job. Live on `EmotiveImpact/nospoilers-throwaway` (repo `1353409756`, install `158159401`): private → public 3 Sep 2026; first deliveries 502 while origin was down; redelivery 200 → jobs 52 and 53 `done` → alerts 41 and 42 `EmotiveImpact/nospoilers-throwaway is public`. Two rows because GitHub sends both events (different delivery ids). `repository.privatized` updates Watch and does not enqueue. `npm run phase1:visibility` points the App webhook and optionally publicizes this throwaway only. Contents write 404/403. Optional `GITHUB_PROOF_TOKEN` on this disposable repo. Do not invent `-vis`. Do not grant App Administration | NoSpoilers |
 | Repository created public | Built: `EmotiveImpact/nospoilers-throwaway` `repository.created` → `repo_created_public` | NoSpoilers |
 | Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
 | Repository made private | Built: Watch updates the private flag in place; no extra job | NoSpoilers |
