@@ -3,6 +3,25 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import type { Coverage } from "@/coverage.ts";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import {
+  Activity,
+  Bell,
+  BookOpenCheck,
+  Boxes,
+  CircleGauge,
+  Clock3,
+  FileCheck2,
+  HeartPulse,
+  KeyRound,
+  Menu,
+  PackageSearch,
+  Scale,
+  Search,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
 import {
   VIEW_TITLE,
   type AlertTab,
@@ -37,34 +56,34 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const path = href.split("?")[0] ?? href;
-  const glyph =
+  const Icon =
     path === "/watch"
-      ? "◉"
+      ? CircleGauge
       : path.endsWith("/alerts")
-        ? "▲"
+        ? Bell
         : path.endsWith("/sources")
-          ? "⌸"
+          ? Boxes
           : path.endsWith("/releases")
-            ? "✓"
+            ? FileCheck2
             : path.endsWith("/timeline")
-              ? "◷"
+              ? Activity
               : path.endsWith("/setup")
-                ? "◎"
+                ? ShieldCheck
                 : path.endsWith("/notifications")
-                  ? "✉"
+                  ? Bell
                   : path.endsWith("/policy")
-                    ? "⚖"
+                    ? Scale
                     : path.endsWith("/team")
-                      ? "☗"
+                      ? Users
                       : path.endsWith("/retention")
-                        ? "⧗"
+                        ? Clock3
                         : path.endsWith("/audit")
-                          ? "⎙"
+                          ? BookOpenCheck
                           : path.endsWith("/health")
-                            ? "✱"
+                            ? HeartPulse
                             : path.endsWith("/tokens")
-                              ? "◍"
-                              : "▤";
+                              ? KeyRound
+                              : PackageSearch;
   return (
     <a
       href={href}
@@ -78,7 +97,7 @@ function NavLink({
       )}
       aria-current={active ? "page" : undefined}
     >
-      <span className="w-4 shrink-0 text-center text-[11px] text-dim" aria-hidden>{glyph}</span>
+      <Icon className="size-4 shrink-0 text-dim" aria-hidden />
       {children}
     </a>
   );
@@ -178,7 +197,6 @@ export function WatchMonolithShell({
               {installIdentity.slice(0, 2).toUpperCase()}
             </span>
             <p className="min-w-0 flex-1 truncate text-xs text-snow">{installIdentity}</p>
-            <span className="text-[10px] text-dim">⌄</span>
           </div>
         )}
         <p className="mt-1 text-[11px] text-dim">
@@ -188,17 +206,30 @@ export function WatchMonolithShell({
 
       <nav className="flex flex-1 flex-col gap-5 overflow-auto px-3 py-4" aria-label="Watch desk">
         <div className="flex flex-col gap-0.5">
+          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Work</p>
           <NavLink href={hrefFor("overview")} active={route.view === "overview"} onNavigate={closeNav}>
             Overview
           </NavLink>
-          <NavLink href={hrefFor("alerts")} active={alertActive("open")} onNavigate={closeNav}>
-            Alerts
-            {openAlertCount > 0 ? (
-              <span className="ml-auto rounded-full bg-danger/20 px-1.5 text-[10px] text-danger">
-                {openAlertCount}
-              </span>
-            ) : null}
-          </NavLink>
+        </div>
+
+        <div>
+          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Alert views</p>
+          <div className="flex flex-col gap-0.5">
+            <NavLink href={hrefFor("alerts", "open")} active={alertActive("open")} onNavigate={closeNav}>
+              Needs triage
+              {openAlertCount > 0 ? <span className="ml-auto text-[10px] text-danger">{openAlertCount}</span> : null}
+            </NavLink>
+            <NavLink href={hrefFor("alerts", "waiting")} active={alertActive("waiting")} onNavigate={closeNav}>
+              Waiting on rotation
+              {waitingCount > 0 ? <span className="ml-auto text-[10px] text-dim">{waitingCount}</span> : null}
+            </NavLink>
+            {teamOnly ? <NavLink href={hrefFor("alerts", "mine")} active={alertActive("mine")} onNavigate={closeNav}>Assigned to me{mineCount > 0 ? <span className="ml-auto text-[10px] text-dim">{mineCount}</span> : null}</NavLink> : null}
+            <NavLink href={hrefFor("alerts", "done")} active={alertActive("done")} onNavigate={closeNav}>Resolved{resolvedCount > 0 ? <span className="ml-auto text-[10px] text-dim">{resolvedCount}</span> : null}</NavLink>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-0.5">
+          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Evidence</p>
           <NavLink href={hrefFor("sources")} active={route.view === "sources"} onNavigate={closeNav}>
             Sources
             {sourceCount > 0 ? (
@@ -213,49 +244,10 @@ export function WatchMonolithShell({
               Timeline
             </NavLink>
           ) : null}
-          <NavLink href={hrefFor("setup")} active={route.view === "setup"} onNavigate={closeNav}>
-            Finish setup
-          </NavLink>
-        </div>
-
-        <div className="border-t border-white/8 pt-4">
-          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Alert views</p>
-          <div className="flex flex-col gap-0.5">
-            <NavLink href={hrefFor("alerts", "open")} active={alertActive("open")} onNavigate={closeNav}>
-              Needs triage
-              {openAlertCount > 0 ? (
-                <span className="ml-auto text-[10px] text-danger">{openAlertCount}</span>
-              ) : null}
-            </NavLink>
-            <NavLink
-              href={hrefFor("alerts", "waiting")}
-              active={alertActive("waiting")}
-              onNavigate={closeNav}
-            >
-              Waiting on rotation
-              {waitingCount > 0 ? (
-                <span className="ml-auto text-[10px] text-dim">{waitingCount}</span>
-              ) : null}
-            </NavLink>
-            {teamOnly ? (
-              <NavLink href={hrefFor("alerts", "mine")} active={alertActive("mine")} onNavigate={closeNav}>
-                Assigned to me
-                {mineCount > 0 ? (
-                  <span className="ml-auto text-[10px] text-dim">{mineCount}</span>
-                ) : null}
-              </NavLink>
-            ) : null}
-            <NavLink href={hrefFor("alerts", "done")} active={alertActive("done")} onNavigate={closeNav}>
-              Resolved
-              {resolvedCount > 0 ? (
-                <span className="ml-auto text-[10px] text-dim">{resolvedCount}</span>
-              ) : null}
-            </NavLink>
-          </div>
         </div>
 
         <div>
-          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Settings</p>
+          <p className="px-2.5 pb-1 text-[10px] uppercase tracking-[0.16em] text-dim">Configure</p>
           <div className="flex flex-col gap-0.5">
             <NavLink
               href={hrefFor("notifications")}
@@ -334,38 +326,34 @@ export function WatchMonolithShell({
         {nav}
       </aside>
 
-      {navOpen ? (
-        <div className="fixed inset-0 z-30 md:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/60"
-            aria-label="Close watch navigation"
-            onClick={closeNav}
-          />
-          <aside className="relative z-10 flex h-full w-60 flex-col border-r border-white/8 bg-[#0c0c0e]">
+      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
+        <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
+        <div className="fixed inset-0 flex">
+          <DialogPanel className="flex h-full w-[min(20rem,88vw)] flex-col border-r border-white/8 bg-[#0c0c0e] shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+            <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {nav}
-          </aside>
+          </DialogPanel>
         </div>
-      ) : null}
+      </Dialog>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/8 bg-ink px-4 shadow-[0_10px_32px_rgba(0,0,0,.12)] md:px-5">
           <button
             type="button"
-            className="inline-flex size-9 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
+            className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
             onClick={() => setNavOpen(true)}
           >
             <span className="sr-only">Open watch navigation</span>
-            <span aria-hidden className="text-lg leading-none">
-              ☰
-            </span>
+            <Menu className="size-5" aria-hidden />
           </button>
+          <strong className="truncate text-sm text-snow md:hidden">{VIEW_TITLE[route.view]}</strong>
           <button
             type="button"
             onClick={onOpenPalette}
-            className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/10 bg-white/3 px-3 text-left text-sm text-dim hover:border-white/20 md:max-w-sm"
+            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-white/10 bg-white/3 text-sm text-dim hover:border-white/20 sm:h-9 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
           >
-            <span className="truncate">Search or run a command…</span>
+            <Search className="size-4 shrink-0" aria-hidden />
+            <span className="hidden truncate sm:inline">Search or run a command…</span>
             <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-[10px] text-dim sm:inline">
               ⌘K
             </span>
@@ -417,21 +405,16 @@ export function WatchMonolithShell({
           {children}
         </div>
       </div>
-      {plansOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
-          <button type="button" className="absolute inset-0" aria-label="Close plans dialog" onClick={() => setPlansOpen(false)} />
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="watch-plans-title"
-            className="relative z-10 w-full max-w-xl rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl"
-          >
+      <Dialog open={plansOpen} onClose={setPlansOpen} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
+          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] text-dim">Hosted coverage</p>
-                <h2 id="watch-plans-title" className="mt-1 font-display text-xl text-snow">Keep the desk looking.</h2>
+                <DialogTitle className="mt-1 font-display text-xl text-snow">Keep the desk looking.</DialogTitle>
               </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setPlansOpen(false)}>Close</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setPlansOpen(false)} aria-label="Close plans"><X className="size-4" aria-hidden /></Button>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-white/8 bg-panel p-4">
@@ -446,9 +429,9 @@ export function WatchMonolithShell({
             <div className="mt-5 flex justify-end">
               <Button type="button" onClick={() => navigate("/pricing")}>Compare plans</Button>
             </div>
-          </section>
+          </DialogPanel>
         </div>
-      ) : null}
+      </Dialog>
     </div>
   );
 }

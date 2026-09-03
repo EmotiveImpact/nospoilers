@@ -16,6 +16,8 @@ export type WatchSourceViewModel = {
   digest: string | null;
   lastCheckedAt: string | null;
   detail: string;
+  alertCount: number;
+  primaryAction: string;
 };
 
 type RepoInput = {
@@ -71,14 +73,24 @@ export function buildSourceViewModels(input: {
   maps: MapInput[];
   alerts?: DeskAlert[];
 }): WatchSourceViewModel[] {
-  const alertCoordinates = new Set(
-    (input.alerts ?? [])
-      .filter((alert) => !alert.resolved_at)
-      .flatMap((alert) => [alert.full_name, ...(alert.findings ?? []).map((finding) => finding.path)])
-      .filter((value): value is string => Boolean(value)),
-  );
+  const openAlerts = (input.alerts ?? []).filter((alert) => !alert.resolved_at);
+  const alertCountFor = (values: string[]): number =>
+    openAlerts.filter((alert) => {
+      const coordinates = [
+        alert.full_name,
+        ...(alert.findings ?? []).map((finding) => finding.path),
+      ].filter((value): value is string => Boolean(value));
+      return values.some((value) =>
+        coordinates.some(
+          (coordinate) =>
+            coordinate === value ||
+            coordinate.startsWith(`${value}@`) ||
+            coordinate.includes(value),
+        ),
+      );
+    }).length;
   const attentionFor = (values: string[], fallback: SourceAttention): SourceAttention =>
-    values.some((value) => alertCoordinates.has(value)) ? "critical" : fallback;
+    alertCountFor(values) > 0 ? "critical" : fallback;
 
   return [
     ...input.repos.map((repo): WatchSourceViewModel => ({
@@ -93,6 +105,8 @@ export function buildSourceViewModels(input: {
       digest: null,
       lastCheckedAt: repo.last_checked_at,
       detail: repo.last_checked_at ? "visibility connected" : "visibility connected · check needed",
+      alertCount: alertCountFor([repo.full_name]),
+      primaryAction: repo.last_checked_at ? "Open repository" : "Check visibility",
     })),
     ...input.packages.map((pkg): WatchSourceViewModel => ({
       key: `npm-${pkg.id}`,
@@ -109,6 +123,11 @@ export function buildSourceViewModels(input: {
       digest: pkg.last_sha256,
       lastCheckedAt: pkg.last_checked_at,
       detail: pkg.registry_origin ?? "https://registry.npmjs.org",
+      alertCount: alertCountFor([
+        pkg.package_name,
+        pkg.last_version ? `${pkg.package_name}@${pkg.last_version}` : "",
+      ]),
+      primaryAction: pkg.last_checked_at ? "Check package" : "Run first check",
     })),
     ...input.origins.map((origin): WatchSourceViewModel => ({
       key: `web-${origin.id}`,
@@ -125,6 +144,8 @@ export function buildSourceViewModels(input: {
       digest: origin.last_sha256,
       lastCheckedAt: origin.last_checked_at,
       detail: "same-origin crawl",
+      alertCount: alertCountFor([origin.origin_url, origin.host]),
+      primaryAction: origin.last_checked_at ? "Check origin" : "Run first crawl",
     })),
     ...input.maps.map((map): WatchSourceViewModel => ({
       key: `map-${map.id}`,
@@ -138,6 +159,8 @@ export function buildSourceViewModels(input: {
       digest: null,
       lastCheckedAt: map.lastCheckedAt,
       detail: map.lastError ?? "private map upload proof",
+      alertCount: alertCountFor([map.host, map.projectSlug]),
+      primaryAction: map.lastCheckedAt ? "Check custody" : "Verify custody",
     })),
   ];
 }
@@ -154,7 +177,7 @@ export function filterSourceViewModels(
   );
 }
 
-export type SetupProof = "covered" | "open" | "unknown";
+export type SetupProof = "covered" | "open" | "check-needed" | "unknown";
 
 export type SetupStepViewModel = {
   key: "visibility" | "release-assets" | "workflow-check" | "registry" | "production";
@@ -182,13 +205,15 @@ export type WatchSetupViewModel = {
 };
 
 export function buildSetupViewModel(input: {
-  repoCount: number;
+  repos: RepoInput[];
   releases: { id: number }[];
   setupProbes: Record<number, SetupProbe>;
   packages: PackageInput[];
   origins: OriginInput[];
   maps: MapInput[];
 }): WatchSetupViewModel {
+  const repoCount = input.repos.length;
+  const visibilityChecked = input.repos.some((repo) => Boolean(repo.last_checked_at));
   const probes = Object.values(input.setupProbes);
   const readyProbes = probes.filter((probe) => probe.status === "ready" && probe.facts);
   const workflowCovered = readyProbes.some(
@@ -200,6 +225,7 @@ export function buildSetupViewModel(input: {
   const workflowKnownOpen =
     readyProbes.length > 0 &&
     !workflowCovered;
+  const workflowProbeFailed = probes.some((probe) => probe.status === "error");
   const registryChecked = input.packages.some(
     (pkg) => Boolean(pkg.last_checked_at || pkg.last_version || pkg.last_sha256),
   );
@@ -215,10 +241,12 @@ export function buildSetupViewModel(input: {
     {
       key: "visibility",
       label: "Watch GitHub visibility",
-      summary: input.repoCount
-        ? `${input.repoCount} ${input.repoCount === 1 ? "repository" : "repositories"} connected`
+      summary: visibilityChecked
+        ? `${repoCount} ${repoCount === 1 ? "repository has" : "repositories have"} visibility evidence`
+        : repoCount
+          ? "Repository connected; run a visibility check for proof"
         : "Install on at least one repository",
-      proof: input.repoCount > 0 ? "covered" : "open",
+      proof: visibilityChecked ? "covered" : repoCount ? "check-needed" : "open",
       action: "Install on GitHub",
     },
     {
@@ -226,10 +254,10 @@ export function buildSetupViewModel(input: {
       label: "Read GitHub release assets",
       summary: input.releases.length
         ? `${input.releases.length} sealed ${input.releases.length === 1 ? "revision" : "revisions"}`
-        : input.repoCount
+        : repoCount
           ? "No sealed release receipt yet"
           : "Connect a repository first",
-      proof: input.releases.length ? "covered" : input.repoCount ? "unknown" : "open",
+      proof: input.releases.length ? "covered" : repoCount ? "check-needed" : "open",
       action: "Scan a release",
     },
     {
@@ -239,8 +267,20 @@ export function buildSetupViewModel(input: {
         ? "Action, workflow, and a check run found · required status is unknown"
         : workflowKnownOpen
           ? "Setup proof is incomplete"
-          : "Check needed — repository count is not proof",
-      proof: workflowCovered ? "covered" : workflowKnownOpen ? "open" : "unknown",
+          : workflowProbeFailed
+            ? "The last setup proof check failed"
+            : repoCount
+              ? "Run setup status; repository connection is not proof"
+              : "Connect a repository before checking setup",
+      proof: workflowCovered
+        ? "covered"
+        : workflowKnownOpen
+          ? "open"
+          : workflowProbeFailed
+            ? "unknown"
+            : repoCount
+              ? "check-needed"
+              : "open",
       action: "Check setup",
     },
     {
@@ -251,7 +291,7 @@ export function buildSetupViewModel(input: {
         : input.packages.length
           ? "First registry check is still needed"
           : "The registry tarball can differ from the release asset",
-      proof: registryChecked ? "covered" : input.packages.length ? "unknown" : "open",
+      proof: registryChecked ? "covered" : input.packages.length ? "check-needed" : "open",
       action: "Connect npm",
     },
     {
@@ -266,11 +306,15 @@ export function buildSetupViewModel(input: {
             ? "Public map found — map custody proof needed"
             : "Production crawl has not completed"
           : "No production origin connected",
-      proof: productionCovered ? "covered" : input.origins.length ? "unknown" : "open",
+      proof: productionCovered ? "covered" : input.origins.length ? "check-needed" : "open",
       action: input.origins.length ? "Check production" : "Add origin",
     },
   ];
-  const next = steps.find((step) => step.proof === "open") ?? steps.find((step) => step.proof === "unknown") ?? null;
+  const next =
+    steps.find((step) => step.proof === "open") ??
+    steps.find((step) => step.proof === "check-needed") ??
+    steps.find((step) => step.proof === "unknown") ??
+    null;
   return { done: steps.filter((step) => step.proof === "covered").length, total: 5, steps, next };
 }
 

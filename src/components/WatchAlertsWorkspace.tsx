@@ -1,8 +1,15 @@
 import { Button } from "@/components/ui/button";
+import {
+  WatchSectionError,
+  WatchSkeleton,
+  type WatchSectionState,
+} from "@/components/WatchDataState";
 import { cn } from "@/lib/utils";
 import type { AlertListViewModel } from "@/watch/view-models.ts";
 import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
-import { useState } from "react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 export type WatchAlertDetail = {
   id: number;
@@ -34,7 +41,13 @@ export function WatchAlertsWorkspace({
   assignee,
   error,
   exportError,
+  state,
+  activityState,
+  detailOpen,
   onSelect,
+  onBack,
+  onRetry,
+  onRetryActivity,
   onNote,
   onAssignee,
   onAction,
@@ -51,7 +64,13 @@ export function WatchAlertsWorkspace({
   assignee: string;
   error: string | null;
   exportError: string | null;
+  state: WatchSectionState;
+  activityState: WatchSectionState;
+  detailOpen: boolean;
   onSelect: (alertId: number) => void;
+  onBack: () => void;
+  onRetry: () => void;
+  onRetryActivity: () => void;
   onNote: (value: string) => void;
   onAssignee: (value: string) => void;
   onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void;
@@ -62,6 +81,35 @@ export function WatchAlertsWorkspace({
   const previous = selectedIndex > 0 ? alerts[selectedIndex - 1] : null;
   const next = selectedIndex >= 0 && selectedIndex < alerts.length - 1 ? alerts[selectedIndex + 1] : null;
   const selectedRow = selected ? rows.find((row) => row.id === selected.id) : null;
+  const listRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const saved = Number(sessionStorage.getItem("watch-alert-scroll"));
+    if (Number.isFinite(saved)) list.scrollTop = saved;
+    return () => sessionStorage.setItem("watch-alert-scroll", String(list.scrollTop));
+  }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (event.key === "j" || event.key === "J" || event.key === "ArrowDown") {
+        if (!next) return;
+        event.preventDefault();
+        onSelect(next.id);
+      }
+      if (event.key === "k" || event.key === "K" || event.key === "ArrowUp") {
+        if (!previous) return;
+        event.preventDefault();
+        onSelect(previous.id);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [next, onSelect, previous, selected]);
 
   return (
     <section className="-mx-5 -my-8 flex h-[calc(100svh-3.5rem)] min-h-[560px] flex-col md:-mx-8">
@@ -72,7 +120,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col border-b border-white/8 bg-[#0d0d10] lg:border-b-0 lg:border-r">
+        <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-[#0d0d10] lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/8 px-4">
             <div className="flex items-center gap-2">
               <strong className="text-sm text-snow">Inbox</strong>
@@ -83,7 +131,12 @@ export function WatchAlertsWorkspace({
             ) : null}
           </div>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
-          <ol className="min-h-0 flex-1 divide-y divide-white/5 overflow-auto">
+          {state.status === "loading" ? (
+            <WatchSkeleton variant="list" className="min-h-0 flex-1 overflow-hidden" />
+          ) : state.status === "error" ? (
+            <WatchSectionError className="m-4" message={state.message} onRetry={onRetry} />
+          ) : (
+          <ol ref={listRef} className="min-h-0 flex-1 divide-y divide-white/5 overflow-auto">
             {rows.length === 0 ? (
               <li className="px-5 py-10 text-center">
                 <p className="text-sm text-snow">This view is clear.</p>
@@ -122,9 +175,10 @@ export function WatchAlertsWorkspace({
               ))
             )}
           </ol>
+          )}
         </aside>
 
-        <main className="min-h-0 bg-ink">
+        <main className={cn("min-h-0 bg-ink lg:block", detailOpen ? "block" : "hidden")}>
           {!selected || !selectedRow ? (
             <div className="grid h-full place-items-center px-5 text-center">
               <div>
@@ -135,6 +189,10 @@ export function WatchAlertsWorkspace({
           ) : (
             <div className="flex h-full min-h-0 flex-col">
               <div className="sticky top-0 z-10 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-white/8 bg-ink/95 px-4 py-2 backdrop-blur">
+                <Button type="button" size="sm" variant="ghost" className="lg:hidden" onClick={onBack}>
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Back to inbox
+                </Button>
                 {!selected.acknowledged_at && !selected.resolved_at ? (
                   <Button type="button" size="sm" disabled={previewing || busy} onClick={() => onAction("acknowledge")}>
                     Acknowledge
@@ -157,8 +215,8 @@ export function WatchAlertsWorkspace({
                   </Button>
                 ) : null}
                 <div className="ml-auto flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert">↑</Button>
-                  <Button type="button" size="sm" variant="ghost" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert">↓</Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
@@ -227,7 +285,11 @@ export function WatchAlertsWorkspace({
                         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-[10px] text-snow">NS</span>
                         <p><span className="text-snow">NoSpoilers</span> opened this from {selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
                       </div>
-                      {events.map((event) => (
+                      {activityState.status === "loading" ? (
+                        <WatchSkeleton variant="list" className="py-2" />
+                      ) : activityState.status === "error" ? (
+                        <WatchSectionError className="my-3" message={activityState.message} onRetry={onRetryActivity} />
+                      ) : events.map((event) => (
                         <div key={event.id} className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute last:border-b-0">
                           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-[10px] text-snow">{event.actor_login.slice(0, 2).toUpperCase()}</span>
                           <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}</p>
@@ -259,14 +321,12 @@ export function WatchAlertsWorkspace({
         </main>
       </div>
 
-      {assignOpen && selected ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
-          <button type="button" className="absolute inset-0" aria-label="Close assignment dialog" onClick={() => setAssignOpen(false)} />
-          <form
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="assign-alert-title"
-            className="relative z-10 w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl"
+      <Dialog open={assignOpen && Boolean(selected)} onClose={setAssignOpen} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
+        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
+          <DialogPanel
+            as="form"
+            className="w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none"
             onSubmit={(event) => {
               event.preventDefault();
               if (!assignee.trim()) return;
@@ -275,7 +335,10 @@ export function WatchAlertsWorkspace({
             }}
           >
             <p className="watch-kicker">Assign alert</p>
-            <h2 id="assign-alert-title" className="mt-1 font-display text-xl text-snow">{selected.title}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <DialogTitle className="mt-1 font-display text-xl text-snow">{selected?.title}</DialogTitle>
+              <Button type="button" size="sm" variant="ghost" aria-label="Close assignment dialog" onClick={() => setAssignOpen(false)}><X className="size-4" aria-hidden /></Button>
+            </div>
             <label className="mt-5 block">
               <span className="text-xs text-mute">GitHub login on this install</span>
               <input
@@ -290,9 +353,9 @@ export function WatchAlertsWorkspace({
               <Button type="button" size="sm" variant="ghost" onClick={() => setAssignOpen(false)}>Cancel</Button>
               <Button type="submit" size="sm" disabled={busy || !assignee.trim()}>Assign</Button>
             </div>
-          </form>
+          </DialogPanel>
         </div>
-      ) : null}
+      </Dialog>
     </section>
   );
 }

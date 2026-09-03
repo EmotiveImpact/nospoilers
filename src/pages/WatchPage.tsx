@@ -17,6 +17,11 @@ import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
 import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
 import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
+import {
+  WatchSectionError,
+  WatchSkeleton,
+  type WatchSectionState,
+} from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { cn } from "@/lib/utils";
@@ -30,6 +35,7 @@ import {
 import { watchHref, watchPath } from "@/watch/routes.ts";
 import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
 import type { Finding } from "@/report-types";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useCallback, useEffect, useState } from "react";
 
 type PermissionTest = {
@@ -656,6 +662,34 @@ type LoadState<T> =
   | { status: "error"; message: string }
   | { status: "ready"; data: T };
 
+type DeskDataset = "maps" | "releases" | "jobs" | "notifications";
+
+const LOADING_DATASETS: Record<DeskDataset, WatchSectionState> = {
+  maps: { status: "loading" },
+  releases: { status: "loading" },
+  jobs: { status: "loading" },
+  notifications: { status: "loading" },
+};
+
+export function combineWatchSectionStates(states: WatchSectionState[]): WatchSectionState {
+  const errors = states.filter(
+    (state): state is Extract<WatchSectionState, { status: "error" }> =>
+      state.status === "error",
+  );
+  if (errors.length > 0) {
+    return { status: "error", message: errors.map((state) => state.message).join(" ") };
+  }
+  return states.some((state) => state.status === "loading")
+    ? { status: "loading" }
+    : { status: "ready" };
+}
+
+function sectionStateOf<T>(state: LoadState<T>): WatchSectionState {
+  return state.status === "error"
+    ? { status: "error", message: state.message }
+    : { status: state.status };
+}
+
 function TypeToConfirm(props: {
   expected: string;
   action: string;
@@ -667,22 +701,21 @@ function TypeToConfirm(props: {
   onSubmit: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
-      <button type="button" className="absolute inset-0" aria-label="Cancel confirmation" onClick={props.onCancel} />
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="typed-confirm-title"
-        className="relative z-10 w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl"
+    <Dialog open onClose={props.busy ? () => undefined : props.onCancel} className="relative z-50">
+      <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
+      <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
+      <DialogPanel
+        as="form"
+        className="w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none"
         onSubmit={(event) => {
           event.preventDefault();
           props.onSubmit();
         }}
       >
         <p className="watch-kicker">Confirmation required</p>
-        <h2 id="typed-confirm-title" className="mt-1 font-display text-xl text-snow">
+        <DialogTitle className="mt-1 font-display text-xl text-snow">
           {props.action}
-        </h2>
+        </DialogTitle>
         <p className="mt-4 text-xs leading-relaxed text-mute">
           Type <span className="font-mono text-snow">{props.expected}</span> to continue.
         </p>
@@ -703,8 +736,9 @@ function TypeToConfirm(props: {
             {props.busy ? "Working…" : "Confirm"}
           </Button>
         </div>
-      </form>
-    </div>
+      </DialogPanel>
+      </div>
+    </Dialog>
   );
 }
 
@@ -1159,6 +1193,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
   const [origins, setOrigins] = useState<LoadState<{ origins: WatchedOrigin[] }>>({
     status: "loading",
   });
+  const [datasetState, setDatasetState] =
+    useState<Record<DeskDataset, WatchSectionState>>(LOADING_DATASETS);
   const [registries, setRegistries] = useState<NpmRegistry[]>([]);
   const [destinations, setDestinations] = useState<NotificationDestination[]>([]);
   const [deliveries, setDeliveries] = useState<NotificationDelivery[]>([]);
@@ -1324,6 +1360,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     setAlerts({ status: "loading" });
     setPackages({ status: "loading" });
     setOrigins({ status: "loading" });
+    setDatasetState({ ...LOADING_DATASETS });
     setTimeline({ status: "loading" });
     setAudit({ status: "loading" });
     setRetention({ status: "loading" });
@@ -1398,6 +1435,26 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       setJobSummary(jobBody.summary);
       setFairUse(jobBody.fairUse ?? null);
       setMapDestinations(mapBody.destinations);
+      const resultState = (result: PromiseSettledResult<unknown>): WatchSectionState =>
+        result.status === "fulfilled"
+          ? { status: "ready" }
+          : { status: "error", message: failureMessage(result) };
+      const notificationFailures = [
+        loaded.destinations,
+        loaded.deliveries,
+        loaded.routes,
+      ].filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      setDatasetState({
+        maps: resultState(loaded.maps),
+        releases: resultState(loaded.releases),
+        jobs: resultState(loaded.jobs),
+        notifications: notificationFailures.length
+          ? {
+              status: "error",
+              message: notificationFailures.map(failureMessage).join(" "),
+            }
+          : { status: "ready" },
+      });
       if (installationId) {
         const membersResponse = await fetch(`/api/installations/${installationId}/members`, {
           credentials: "include",
@@ -1573,7 +1630,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       } else {
         setNamespaces(namespaceBody.namespaces ?? []);
       }
-      const baselines = await Promise.all(
+      const baselines = await Promise.allSettled(
         packageBody.packages.map(async (pkg) => {
           const body = await loadJson<{ baseline: BaselineView | null }>(
             `/api/packages/${pkg.id}/baseline`,
@@ -1581,13 +1638,23 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           return [pkg.id, body.baseline] as const;
         }),
       );
-      setBaselineByPackage(Object.fromEntries(baselines));
+      setBaselineByPackage(
+        Object.fromEntries(
+          baselines.flatMap((result) => result.status === "fulfilled" ? [result.value] : []),
+        ),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not load.";
       setRepos({ status: "error", message });
       setAlerts({ status: "error", message });
       setPackages({ status: "error", message });
       setOrigins({ status: "error", message });
+      setDatasetState({
+        maps: { status: "error", message },
+        releases: { status: "error", message },
+        jobs: { status: "error", message },
+        notifications: { status: "error", message },
+      });
       setMapDestinations([]);
       setTimeline({ status: "error", message });
       setAudit({ status: "error", message });
@@ -1905,6 +1972,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     })();
   }, [confirmText, confirming, refreshSignedIn, selectedInstallId, signingDraft]);
 
+  const requestedInstallId = installIdFromSearch(search);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -1925,7 +1994,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         if (cancelled) return;
         setMe({ status: "ready", data: body });
         if (body.user) {
-          const wanted = installIdFromSearch(search);
+          const wanted = requestedInstallId;
           const ids = (body.installations ?? []).map((row) => row.id);
           const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
           setSelectedInstallId(pick);
@@ -1950,6 +2019,12 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           setJobs([]);
           setJobSummary({ queued: 0, running: 0, done: 0, failed: 0 });
           setFairUse(null);
+          setDatasetState({
+            maps: { status: "ready" },
+            releases: { status: "ready" },
+            jobs: { status: "ready" },
+            notifications: { status: "ready" },
+          });
           setMembers([]);
           setInvites([]);
           setMembersError(null);
@@ -1980,7 +2055,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     return () => {
       cancelled = true;
     };
-  }, [refreshSignedIn, search]);
+  }, [refreshSignedIn, requestedInstallId]);
 
   useEffect(() => {
     if (!selectedInstallId) {
@@ -2145,6 +2220,140 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     : packages.status === "ready"
       ? packages.data.packages
       : [];
+  const alertSectionState = previewing ? { status: "ready" as const } : sectionStateOf(alerts);
+  const sourceSectionState = previewing
+    ? { status: "ready" as const }
+    : combineWatchSectionStates([
+        sectionStateOf(repos),
+        sectionStateOf(alerts),
+        sectionStateOf(packages),
+        sectionStateOf(origins),
+        datasetState.maps,
+      ]);
+  const overviewSectionState = combineWatchSectionStates([
+    alertSectionState,
+    sourceSectionState,
+    datasetState.releases,
+    datasetState.jobs,
+  ]);
+  const setupSectionState = combineWatchSectionStates([
+    sourceSectionState,
+    datasetState.releases,
+  ]);
+
+  const retryDeskSection = async (
+    section: "alerts" | "sources" | "overview" | "releases" | "notifications" | "timeline",
+  ) => {
+    const q = (url: string) => scopedApi(url, activeInstallId);
+    const messageOf = (error: unknown) =>
+      error instanceof Error ? error.message : "Could not load this section.";
+    const retryAlerts = async () => {
+      setAlerts({ status: "loading" });
+      try {
+        setAlerts({ status: "ready", data: await loadJson<{ alerts: Alert[] }>(q("/api/alerts")) });
+      } catch (error) {
+        setAlerts({ status: "error", message: messageOf(error) });
+      }
+    };
+    const retrySources = async () => {
+      setRepos({ status: "loading" });
+      setPackages({ status: "loading" });
+      setOrigins({ status: "loading" });
+      setDatasetState((current) => ({ ...current, maps: { status: "loading" } }));
+      const loaded = await loadWatchResources({
+        repos: () => loadJson<{ repos: Repo[] }>(q("/api/repos")),
+        packages: () => loadJson<{ packages: WatchedPackage[] }>(q("/api/packages")),
+        origins: () => loadJson<{ origins: WatchedOrigin[] }>(q("/api/origins")),
+        maps: () => loadJson<{ destinations: MapCustodyDestination[] }>(q("/api/map-destinations")),
+      });
+      const loadState = <T,>(result: PromiseSettledResult<T>): LoadState<T> =>
+        result.status === "fulfilled"
+          ? { status: "ready", data: result.value }
+          : { status: "error", message: messageOf(result.reason) };
+      setRepos(loadState(loaded.repos));
+      setPackages(loadState(loaded.packages));
+      setOrigins(loadState(loaded.origins));
+      if (loaded.maps.status === "fulfilled") setMapDestinations(loaded.maps.value.destinations);
+      setDatasetState((current) => ({
+        ...current,
+        maps: loaded.maps.status === "fulfilled"
+          ? { status: "ready" }
+          : { status: "error", message: messageOf(loaded.maps.reason) },
+      }));
+    };
+    const retryDataset = async (
+      key: "releases" | "jobs",
+      load: () => Promise<void>,
+    ) => {
+      setDatasetState((current) => ({ ...current, [key]: { status: "loading" } }));
+      try {
+        await load();
+        setDatasetState((current) => ({ ...current, [key]: { status: "ready" } }));
+      } catch (error) {
+        setDatasetState((current) => ({
+          ...current,
+          [key]: { status: "error", message: messageOf(error) },
+        }));
+      }
+    };
+    if (section === "alerts") return retryAlerts();
+    if (section === "sources") return Promise.all([retrySources(), retryAlerts()]);
+    if (section === "releases") {
+      return retryDataset("releases", async () => {
+        const body = await loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases"));
+        setReleases(body.releases);
+      });
+    }
+    if (section === "notifications") {
+      setDatasetState((current) => ({ ...current, notifications: { status: "loading" } }));
+      try {
+        const loaded = await loadWatchResources({
+          destinations: () => loadJson<{ destinations: NotificationDestination[] }>(q("/api/destinations")),
+          deliveries: () => loadJson<{ deliveries: NotificationDelivery[] }>(q("/api/destinations/deliveries")),
+          routes: () => loadJson<{ routes: NotificationRoute[] }>(q("/api/destinations/routes")),
+        });
+        const failure = Object.values(loaded).find(
+          (result): result is PromiseRejectedResult => result.status === "rejected",
+        );
+        if (failure) throw failure.reason;
+        if (loaded.destinations.status === "fulfilled") setDestinations(loaded.destinations.value.destinations);
+        if (loaded.deliveries.status === "fulfilled") setDeliveries(loaded.deliveries.value.deliveries);
+        if (loaded.routes.status === "fulfilled") setRoutes(loaded.routes.value.routes);
+        setDatasetState((current) => ({ ...current, notifications: { status: "ready" } }));
+      } catch (error) {
+        setDatasetState((current) => ({
+          ...current,
+          notifications: { status: "error", message: messageOf(error) },
+        }));
+      }
+      return;
+    }
+    if (section === "timeline") {
+      setTimeline({ status: "loading" });
+      try {
+        const response = await fetch(q("/api/timeline"), { credentials: "include" });
+        const body = (await response.json()) as { error?: string; days?: number; entries?: TimelineEntry[] };
+        if (!response.ok) throw new Error(body.error ?? "Could not load the timeline.");
+        setTimeline({ status: "ready", days: body.days ?? 90, entries: body.entries ?? [] });
+      } catch (error) {
+        setTimeline({ status: "error", message: messageOf(error) });
+      }
+      return;
+    }
+    await Promise.all([
+      retrySources(),
+      retryDataset("releases", async () => {
+        const body = await loadJson<{ releases: ReleaseRevision[] }>(q("/api/releases"));
+        setReleases(body.releases);
+      }),
+      retryDataset("jobs", async () => {
+        const body = await loadJson<{ jobs: TenantJob[]; summary: JobSummary; fairUse?: FairUseStatus }>(q("/api/jobs"));
+        setJobs(body.jobs);
+        setJobSummary(body.summary);
+        setFairUse(body.fairUse ?? null);
+      }),
+    ]);
+  };
   const confirmForm = (match: boolean) =>
     confirming && match ? (
       <TypeToConfirm
@@ -2245,6 +2454,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         adminOnly={adminOnly}
         alerts={deskAlerts.map((row) => ({ id: row.id, title: row.title }))}
         sources={sourceRows}
+        releases={releases.map((row) => ({ id: row.id, coordinate: row.coordinate }))}
         onClose={() => setPaletteOpen(false)}
       />
       {billingError ? <p className="mb-4 text-sm text-danger">{billingError}</p> : null}
@@ -2264,6 +2474,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             jobSummary.running > 0 ? "running" : jobSummary.queued > 0 ? "queued" : "idle"
           }
           setup={setup}
+          state={overviewSectionState}
+          onRetry={() => void retryDeskSection("overview")}
         />
       ) : null}
 
@@ -2282,7 +2494,10 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             filter={route.sourceFilter}
             attention={route.sourceAttention}
             selectedSourceKey={route.sourceKey}
+            state={route.view === "setup" ? setupSectionState : sourceSectionState}
+            onRetry={() => void retryDeskSection("sources")}
           />
+          {previewing || sourceSectionState.status === "ready" ? (
           <details id="watch-source-github" className="rounded-lg border border-white/8 bg-panel p-5">
           <summary className="cursor-pointer text-sm text-snow">GitHub repositories</summary>
           <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
@@ -2725,6 +2940,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           )}
           {scanError && <p className="mt-4 text-sm text-danger">{scanError}</p>}
           </details>
+          ) : null}
           </div>
         </section>
       )}
@@ -2742,6 +2958,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           assignee={selectedAlert ? alertAssignees[selectedAlert.id] ?? "" : ""}
           error={selectedAlert ? alertErrorById[selectedAlert.id] ?? null : null}
           exportError={exportError}
+          state={alertSectionState}
+          activityState={controller.selectedActivityState}
+          detailOpen={route.alertId !== null}
           onSelect={(alertId) =>
             navigate(
               watchHref(watchPath("alerts"), search, {
@@ -2750,6 +2969,16 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
               }),
             )
           }
+          onBack={() =>
+            navigate(
+              watchHref(watchPath("alerts"), search, {
+                alert: null,
+                tab: route.tab,
+              }),
+            )
+          }
+          onRetry={() => void retryDeskSection("alerts")}
+          onRetryActivity={controller.retrySelectedActivity}
           onNote={(value) => {
             if (!selectedAlert) return;
             setAlertNotes((current) => ({ ...current, [selectedAlert.id]: value }));
@@ -3016,10 +3245,17 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
           stays until uninstall.
         </p>
-        <WatchExposureChart
-          alerts={deskAlerts}
-          days={timeline.status === "ready" ? Math.max(7, timeline.days || 90) : 90}
-        />
+        {timeline.status === "ready" && alertSectionState.status === "ready" ? (
+          <WatchExposureChart alerts={deskAlerts} days={Math.max(7, timeline.days || 90)} />
+        ) : timeline.status === "loading" || alertSectionState.status === "loading" ? (
+          <WatchSkeleton variant="detail" className="mt-6" />
+        ) : alertSectionState.status === "error" ? (
+          <WatchSectionError
+            className="mt-6 max-w-2xl"
+            message={alertSectionState.message}
+            onRetry={() => void retryDeskSection("alerts")}
+          />
+        ) : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
             Preview cannot show a live timeline. No invented incident.
@@ -3033,9 +3269,13 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             Subscribe to Team to keep the install timeline.
           </p>
         ) : timeline.status === "error" ? (
-          <p className="mt-6 text-sm text-danger">{timeline.message}</p>
+          <WatchSectionError
+            className="mt-6 max-w-2xl"
+            message={timeline.message}
+            onRetry={() => void retryDeskSection("timeline")}
+          />
         ) : timeline.status === "loading" ? (
-          <p className="mt-6 text-sm text-dim">Loading…</p>
+          null
         ) : timeline.entries.length === 0 ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
             {timeline.days === 0
@@ -3770,6 +4010,16 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       <section className="mt-4">
         <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
         <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
+        {datasetState.notifications.status === "loading" ? (
+          <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
+        ) : datasetState.notifications.status === "error" ? (
+          <WatchSectionError
+            className="mt-6 max-w-2xl"
+            message={datasetState.notifications.message}
+            onRetry={() => void retryDeskSection("notifications")}
+          />
+        ) : (
+        <>
         <WatchNotificationSummary destinations={destinations} routes={routes} />
         <details id="watch-notification-config" className="mt-5 rounded-lg border border-white/8 bg-panel p-5">
         <summary className="cursor-pointer text-sm text-snow">Add, edit, or test a destination</summary>
@@ -4471,10 +4721,13 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           </>
         )}
         </details>
+        </>
+        )}
       </section>
       )}
 
-      {(route.view === "sources" || route.view === "setup") && (
+      {(route.view === "sources" || route.view === "setup") &&
+        (previewing || sourceSectionState.status === "ready") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <details id="watch-source-web" className="rounded-lg border border-white/8 bg-panel p-5">
         <summary className="cursor-pointer text-sm text-snow">Production websites</summary>
@@ -4617,7 +4870,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       </section>
       )}
 
-      {(route.view === "sources" || route.view === "setup") && (
+      {(route.view === "sources" || route.view === "setup") &&
+        (previewing || sourceSectionState.status === "ready") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         <details id="watch-source-map" className="rounded-lg border border-white/8 bg-panel p-5">
         <summary className="cursor-pointer text-sm text-snow">Map custody</summary>
@@ -4828,7 +5082,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       </section>
       )}
 
-      {(route.view === "sources" || route.view === "setup" || route.view === "registries") && (
+      {(route.view === "registries" ||
+        ((route.view === "sources" || route.view === "setup") &&
+          (previewing || sourceSectionState.status === "ready"))) && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         {route.view === "registries" ? (
           <h1 className="mb-5 font-display text-3xl tracking-tight text-snow">Private registries</h1>
@@ -6000,7 +6256,15 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}
         {attestationError ? <p className="mt-3 text-sm text-danger">{attestationError}</p> : null}
-        {previewing ? (
+        {datasetState.releases.status === "loading" ? (
+          <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
+        ) : datasetState.releases.status === "error" ? (
+          <WatchSectionError
+            className="mt-6 max-w-2xl"
+            message={datasetState.releases.message}
+            onRetry={() => void retryDeskSection("releases")}
+          />
+        ) : previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
         ) : releases.length === 0 ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>

@@ -13,6 +13,11 @@ import {
   loadSelectedAlertActivity,
   shouldLoadAlertActivity,
 } from "../src/watch/useWatchDeskController.ts";
+import {
+  buildPaletteItems,
+  nextPaletteIndex,
+} from "../src/components/WatchCommandPalette.tsx";
+import { combineWatchSectionStates } from "../src/pages/WatchPage.tsx";
 
 describe("Watch preview", () => {
   it("shows structure without inventing tenant rows", () => {
@@ -136,22 +141,25 @@ describe("setup ring", () => {
 
   it("does not infer workflow or release coverage from a repository count", () => {
     const setup = buildSetupViewModel({
-      repoCount: 2,
+      repos: [
+        { id: 1, full_name: "acme/app", private: true, last_checked_at: null },
+        { id: 2, full_name: "acme/api", private: true, last_checked_at: null },
+      ],
       releases: [],
       setupProbes: {},
       packages: [],
       origins: [],
       maps: [],
     });
-    expect(setup.steps.find((step) => step.key === "visibility")?.proof).toBe("covered");
-    expect(setup.steps.find((step) => step.key === "release-assets")?.proof).toBe("unknown");
-    expect(setup.steps.find((step) => step.key === "workflow-check")?.proof).toBe("unknown");
-    expect(setup.done).toBe(1);
+    expect(setup.steps.find((step) => step.key === "visibility")?.proof).toBe("check-needed");
+    expect(setup.steps.find((step) => step.key === "release-assets")?.proof).toBe("check-needed");
+    expect(setup.steps.find((step) => step.key === "workflow-check")?.proof).toBe("check-needed");
+    expect(setup.done).toBe(0);
   });
 
   it("requires real production and map proof when a public map was found", () => {
     const base = {
-      repoCount: 0,
+      repos: [],
       releases: [],
       setupProbes: {},
       packages: [],
@@ -185,6 +193,26 @@ describe("setup ring", () => {
         ],
       }).steps.at(-1)?.proof,
     ).toBe("covered");
+  });
+
+  it("only covers GitHub visibility after a real check supplied evidence", () => {
+    const setup = buildSetupViewModel({
+      repos: [
+        {
+          id: 1,
+          full_name: "acme/app",
+          private: true,
+          last_checked_at: "2026-09-03T10:00:00Z",
+        },
+      ],
+      releases: [],
+      setupProbes: {},
+      packages: [],
+      origins: [],
+      maps: [],
+    });
+    expect(setup.steps.find((step) => step.key === "visibility")?.proof).toBe("covered");
+    expect(setup.done).toBe(1);
   });
 });
 
@@ -278,5 +306,45 @@ describe("selected alert activity", () => {
         alertEvents: { 19: events },
       }),
     ).toBe(false);
+  });
+});
+
+describe("truthful section states", () => {
+  it("lets an error dominate loading so no section can render an empty success state", () => {
+    expect(
+      combineWatchSectionStates([
+        { status: "loading" },
+        { status: "error", message: "alerts unavailable" },
+        { status: "ready" },
+      ]),
+    ).toEqual({ status: "error", message: "alerts unavailable" });
+    expect(combineWatchSectionStates([{ status: "loading" }, { status: "ready" }])).toEqual({
+      status: "loading",
+    });
+  });
+});
+
+describe("command palette keyboard model", () => {
+  it("wraps and supports Home and End", () => {
+    expect(nextPaletteIndex(2, "ArrowDown", 3)).toBe(0);
+    expect(nextPaletteIndex(0, "ArrowUp", 3)).toBe(2);
+    expect(nextPaletteIndex(1, "Home", 3)).toBe(0);
+    expect(nextPaletteIndex(1, "End", 3)).toBe(2);
+  });
+
+  it("deep-links real entities and omits admin actions for members", () => {
+    const items = buildPaletteItems({
+      query: "artifact",
+      search: "?install=7",
+      teamOnly: true,
+      adminOnly: false,
+      alerts: [{ id: 12, title: "Artifact exposed" }],
+      sources: [{ key: "npm-4", name: "artifact-kit" }],
+      releases: [{ id: 9, coordinate: "artifact-kit@1.2.0" }],
+    });
+    expect(items.map((item) => item.href)).toContain("/watch/alerts?install=7&alert=12");
+    expect(items.map((item) => item.href)).toContain("/watch/sources?install=7&source=npm-4");
+    expect(items.map((item) => item.href)).toContain("/watch/releases?install=7&release=9");
+    expect(items.some((item) => item.id === "do-add-source")).toBe(false);
   });
 });

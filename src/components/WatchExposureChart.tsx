@@ -58,6 +58,9 @@ export function WatchExposureChart({
                 {lane.spans.map((span) => (
                   <div
                     key={span.alertId}
+                    tabIndex={0}
+                    role="img"
+                    aria-label={`${span.rule}: ${span.label}; ${span.open ? "open" : "resolved"} exposure`}
                     className={
                       span.open
                         ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/80 px-2 py-1 text-[10px] text-white"
@@ -75,6 +78,15 @@ export function WatchExposureChart({
               </div>
             </div>
           ))}
+          <ul className="sr-only" aria-label="Exposure chart text equivalent">
+            {lanes.flatMap((lane) =>
+              lane.spans.map((span) => (
+                <li key={`text-${lane.key}-${span.alertId}`}>
+                  {lane.label}: {span.rule}, {span.label}, {span.open ? "open" : "resolved"}.
+                </li>
+              )),
+            )}
+          </ul>
         </div>
       )}
     </section>

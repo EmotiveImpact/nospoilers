@@ -8,7 +8,7 @@ import {
   type WatchSetupViewModel,
   type WatchSourceViewModel,
 } from "./view-models.ts";
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 export type AlertActivityEvent = {
   id: number;
@@ -43,6 +43,11 @@ export type WatchDeskController = {
   listedAlerts: DeskAlert[];
   alertRows: ReturnType<typeof buildAlertListViewModels>;
   selectedAlert: DeskAlert | null;
+  selectedActivityState:
+    | { status: "loading" }
+    | { status: "ready" }
+    | { status: "error"; message: string };
+  retrySelectedActivity: () => void;
   counts: {
     open: number;
     waiting: number;
@@ -79,6 +84,10 @@ export function shouldLoadAlertActivity(input: {
 
 export function useWatchDeskController(input: WatchDeskControllerInput): WatchDeskController {
   const [now] = useState(() => Date.now());
+  const [activityState, setActivityState] = useState<
+    Record<number, { status: "loading" } | { status: "ready" } | { status: "error"; message: string }>
+  >({});
+  const [activityRetry, setActivityRetry] = useState(0);
   const { alertEvents, onActivityError, previewing, setAlertEvents } = input;
   const route = useMemo(() => parseWatchRoute(input.path, input.search), [input.path, input.search]);
   const sources = useMemo(
@@ -95,14 +104,14 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
   const setup = useMemo(
     () =>
       buildSetupViewModel({
-        repoCount: input.repos.length,
+        repos: input.repos,
         releases: input.releases,
         setupProbes: input.setupProbes,
         packages: input.packages,
         origins: input.origins,
         maps: input.maps,
       }),
-    [input.maps, input.origins, input.packages, input.releases, input.repos.length, input.setupProbes],
+    [input.maps, input.origins, input.packages, input.releases, input.repos, input.setupProbes],
   );
   const listedAlerts = useMemo(
     () => filterDeskAlerts(input.alerts, route.tab, input.login),
@@ -129,6 +138,16 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     [listedAlerts, now],
   );
   const timelineLanes = useMemo(() => buildTimelineLanes(input.alerts), [input.alerts]);
+  const retrySelectedActivity = useCallback(() => {
+    const id = selectedAlert?.id;
+    if (!id) return;
+    setActivityState((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setActivityRetry((value) => value + 1);
+  }, [selectedAlert?.id]);
 
   useEffect(() => {
     const selectedAlertId = selectedAlert?.id ?? null;
@@ -143,9 +162,11 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
       return;
     }
     const controller = new AbortController();
+    setActivityState((current) => ({ ...current, [selectedAlertId]: { status: "loading" } }));
     void loadSelectedAlertActivity(selectedAlertId, fetch, controller.signal)
       .then((events) => {
         setAlertEvents((current) => ({ ...current, [selectedAlertId]: events }));
+        setActivityState((current) => ({ ...current, [selectedAlertId]: { status: "ready" } }));
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -153,10 +174,18 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
           selectedAlertId,
           error instanceof Error ? error.message : "Could not load alert activity.",
         );
+        setActivityState((current) => ({
+          ...current,
+          [selectedAlertId]: {
+            status: "error",
+            message: error instanceof Error ? error.message : "Could not load alert activity.",
+          },
+        }));
       });
     return () => controller.abort();
   }, [
     alertEvents,
+    activityRetry,
     onActivityError,
     previewing,
     setAlertEvents,
@@ -171,6 +200,13 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     listedAlerts,
     alertRows,
     selectedAlert,
+    selectedActivityState: selectedAlert
+      ? activityState[selectedAlert.id] ??
+        (Object.prototype.hasOwnProperty.call(alertEvents, selectedAlert.id)
+          ? { status: "ready" }
+          : { status: "loading" })
+      : { status: "ready" },
+    retrySelectedActivity,
     counts: {
       open: input.alerts.filter((alert) => !alert.resolved_at).length,
       waiting: filterDeskAlerts(input.alerts, "waiting", input.login).length,

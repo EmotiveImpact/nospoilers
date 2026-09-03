@@ -1,5 +1,10 @@
 import { CoverageLock } from "@/components/CoverageLock.tsx";
 import { WatchExposureChart } from "@/components/WatchExposureChart.tsx";
+import {
+  WatchSectionError,
+  WatchSkeleton,
+  type WatchSectionState,
+} from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
 import { navigate } from "@/nav.ts";
 import { formatExposure, leadFinding } from "@/watch/format.ts";
@@ -25,6 +30,8 @@ export function WatchOverview({
   queueDepth,
   lastRunLabel,
   setup,
+  state,
+  onRetry,
 }: {
   search: string;
   ended: boolean;
@@ -37,6 +44,8 @@ export function WatchOverview({
   queueDepth: number;
   lastRunLabel: string;
   setup: WatchSetupViewModel;
+  state: WatchSectionState;
+  onRetry: () => void;
 }) {
   const verdict = deskVerdict({
     ended,
@@ -49,6 +58,29 @@ export function WatchOverview({
   const finding = lead ? leadFinding(lead) : null;
   const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy" | "timeline") =>
     watchHref(watchPath(view), search);
+
+  if (state.status === "loading") {
+    return (
+      <div className="mx-auto max-w-5xl" aria-busy="true">
+        <div className="h-10 w-80 max-w-full animate-pulse rounded bg-white/8 motion-reduce:animate-none" />
+        <div className="mt-3 h-4 w-[32rem] max-w-full animate-pulse rounded bg-white/5 motion-reduce:animate-none" />
+        <WatchSkeleton className="mt-8" />
+        <WatchSkeleton variant="detail" className="mt-8" />
+      </div>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <h1 className="font-display text-3xl tracking-tight text-snow">Overview unavailable</h1>
+        <p className="mt-3 max-w-xl text-sm text-mute">
+          No verdict is shown until the alert and source reads succeed.
+        </p>
+        <WatchSectionError className="mt-6 max-w-2xl" message={state.message} onRetry={onRetry} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
