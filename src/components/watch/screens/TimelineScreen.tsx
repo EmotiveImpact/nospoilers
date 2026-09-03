@@ -9,13 +9,14 @@ import type { DeskAlert } from "@/watch/verdict";
 type TimelineEntry = {
   type: "alert" | "alert_event" | "delivery";
   at: string;
-  alertId?: number | null;
-  title?: string;
-  kind?: string;
-  fullName?: string;
-  action?: string;
-  actorLogin?: string;
-  deliveryStatus?: string;
+  alertId: number | null;
+  title: string | null;
+  kind: string | null;
+  fullName: string | null;
+  action: string | null;
+  actorLogin: string | null;
+  deliveryStatus: "sent" | "failed" | null;
+  inventedIncident: false | null;
 };
 
 type TimelineState =
