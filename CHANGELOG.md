@@ -13,6 +13,13 @@
   five-path checklist. Preview and the homepage product frame no longer
   invent repository or alert rows.
 
+- Alerts and Releases now use the 2B list/detail panes while retaining the
+  current live response, receipt, delivery, attestation, approval, and hold
+  actions. Timeline derives a seven-day exposure chart from real alert
+  intervals. Notification destinations/routes have summary cards, and
+  source configuration is collapsed on the inventory view but expanded
+  during Finish setup.
+
 - Signed-in Watch is the 2B monolith sidebar (Overview, Alerts + views,
   Sources, Releases, Timeline, Finish setup, Settings). Ember stays on
   the homepage. Live APIs; no invented customer rows. Preview

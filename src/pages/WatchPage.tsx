@@ -2245,7 +2245,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           ) : null}
           <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <WatchSourcesSummary mode={route.view} sources={sourceRows} setup={setup} />
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repositories</h2>
+          <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+          <summary className="cursor-pointer text-sm text-snow">GitHub repositories</summary>
           <p className="mt-2 text-sm text-mute">Repositories connected to this install and their current state.</p>
           <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
             Setup PR adds packed-artifact CI that scans each{" "}
@@ -2301,7 +2302,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             </p>
           )}
           {deskRepos.length > 0 && (
-            <ul className="mt-4 divide-y divide-white/5">
+            <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
               {deskRepos.map((repo) => (
                 <li key={repo.id} className="py-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -2685,6 +2686,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             </ul>
           )}
           {scanError && <p className="mt-4 text-sm text-danger">{scanError}</p>}
+          </details>
           </div>
         </section>
       )}
@@ -2897,7 +2899,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
               : `Nothing in the last ${timeline.days} days on this install.`}
           </p>
         ) : (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+          <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {timeline.entries.map((entry, index) => (
               <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -2943,7 +2945,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         ) : retention.status === "loading" ? (
           <p className="mt-6 text-sm text-dim">Loading…</p>
         ) : (
-          <div className="mt-6 max-w-xl">
+          <div className="mt-6 max-w-xl rounded-lg border border-white/8 bg-panel p-5">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] uppercase tracking-[0.16em] text-dim">List window</span>
               <select
@@ -3197,7 +3199,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 No admin writes recorded on this install yet.
               </p>
             ) : (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {audit.rows.map((row) => (
                   <li key={row.id} className="py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -3250,7 +3252,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           <>
             {canManageRoles ? (
               <form
-                className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                className="mt-6 flex max-w-xl flex-col gap-3 rounded-lg border border-white/8 bg-panel p-5 sm:flex-row sm:items-end"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const login = inviteLogin.trim();
@@ -3296,7 +3298,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             ) : null}
             {confirmForm(confirming?.kind === "invite")}
             {invites.length > 0 ? (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {invites.map((invite) => (
                   <li key={invite.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -3334,7 +3336,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 Nobody linked on this install yet.
               </p>
             ) : (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {members.map((member) => (
                   <li key={member.userId} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -3440,7 +3442,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             Preview cannot reach GitHub. No invented incident.
           </p>
         ) : (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+          <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {installations
               .filter((row) => !activeInstallId || row.id === activeInstallId)
               .map((install) => {
@@ -3543,7 +3545,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 {jobSummary.failed} failed
               </span>
             </p>
-            <ul className="mt-4 max-w-xl divide-y divide-white/5">
+            <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
               {jobs.map((job) => (
                 <li key={job.id} className="py-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -3578,6 +3580,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
         <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
         <WatchNotificationSummary destinations={destinations} routes={routes} />
+        <details className="mt-5 rounded-lg border border-white/8 bg-panel p-5">
+        <summary className="cursor-pointer text-sm text-snow">Configure notifications</summary>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
           SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
@@ -3599,7 +3603,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 No email, Slack, SIEM, Jira, or PagerDuty destination saved on this install.
               </p>
             ) : (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {destinations.map((destination) => (
                   <li key={destination.id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4003,7 +4007,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                 No routes yet. Destinations without a route still receive every Watch alert.
               </p>
             ) : (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {routes.map((route) => {
                   const destination = destinations.find((row) => row.id === route.destinationId);
                   return (
@@ -4258,7 +4262,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
               </form>
             )}
             {deliveries.length > 0 ? (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5">
+              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {deliveries.slice(0, 8).map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
                     <p className="text-sm text-snow">
@@ -4275,12 +4279,14 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             {slackError ? <p className="mt-4 text-sm text-danger">{slackError}</p> : null}
           </>
         )}
+        </details>
       </section>
       )}
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Production websites</h2>
+        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <summary className="cursor-pointer text-sm text-snow">Production websites</summary>
         <p className="mt-2 text-sm text-mute">Origins watched for public source maps and exposed files.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the HTTPS page you name, then same-origin JavaScript, CSS, maps, and a bounded
@@ -4351,7 +4357,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         )}
         {originError && <p className="mt-4 text-sm text-danger">{originError}</p>}
         {!previewing && origins.status === "ready" && origins.data.origins.length > 0 && (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+          <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {origins.data.origins.map((row) => (
               <li key={row.id} className="py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -4416,12 +4422,14 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             ))}
           </ul>
         )}
+        </details>
       </section>
       )}
 
       {(route.view === "sources" || route.view === "setup") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Map custody</h2>
+        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view === "setup"}>
+        <summary className="cursor-pointer text-sm text-snow">Map custody</summary>
         <p className="mt-2 text-sm text-mute">Confirm maps are held by your error tracker, not served publicly.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Prove Sentry has the debug ID, or Bugsnag has the release version, and that the public
@@ -4556,7 +4564,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         )}
         {mapError ? <p className="mt-4 text-sm text-danger">{mapError}</p> : null}
         {!previewing && mapDestinations.length > 0 && (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5">
+          <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {mapDestinations.map((row) => (
               <li key={row.id} className="py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -4625,16 +4633,19 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             ))}
           </ul>
         )}
+        </details>
       </section>
       )}
 
       {(route.view === "sources" || route.view === "setup" || route.view === "registries") && (
       <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
         {route.view === "registries" ? (
-          <h1 className="font-display text-3xl tracking-tight text-snow">Private registries</h1>
-        ) : (
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">npm packages</h2>
-        )}
+          <h1 className="mb-5 font-display text-3xl tracking-tight text-snow">Private registries</h1>
+        ) : null}
+        <details className="rounded-lg border border-white/8 bg-panel p-5" open={route.view !== "sources"}>
+        <summary className="cursor-pointer text-sm text-snow">
+          {route.view === "registries" ? "Registry credentials and packages" : "npm packages"}
+        </summary>
         <p className="mt-2 text-sm text-mute">Packages watched as customers receive them from the registry.</p>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           We fetch the tarball a registry serves for <code className="text-snow">latest</code>, and
@@ -4742,7 +4753,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             ) : null}
             {namespaceError ? <p className="mt-3 text-sm text-danger">{namespaceError}</p> : null}
             {namespaces.length > 0 ? (
-              <ul className="mt-4 divide-y divide-white/5">
+              <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {namespaces.map((row) => (
                   <li key={row.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -4881,7 +4892,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         )}
         {registryError && <p className="mt-4 text-sm text-danger">{registryError}</p>}
         {!previewing && registries.length > 0 && (
-          <ul className="mt-4 max-w-xl divide-y divide-white/5">
+          <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {registries.map((registry) => (
               <li key={registry.id} className="py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -5058,7 +5069,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         )}
         {importError && <p className="mt-4 text-sm text-danger">{importError}</p>}
         {importResults && importResults.length > 0 && (
-          <ul className="mt-4 max-w-xl divide-y divide-white/5">
+          <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {importResults.map((row) => (
               <li key={`${row.name}:${row.status}`} className="py-3">
                 <p className="font-mono text-sm text-snow">{row.name}</p>
@@ -5079,7 +5090,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           </p>
         )}
         {deskPackages.length > 0 && (
-          <ul className="mt-4 divide-y divide-white/5">
+          <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {deskPackages.map((pkg) => {
               const diffState = diffByPackage[pkg.id];
               const protection = protections.find((row) => row.packageId === pkg.id);
@@ -5554,6 +5565,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             })}
           </ul>
         )}
+        </details>
       </section>
       )}
 
@@ -5666,7 +5678,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             {scanTokens.length === 0 ? (
               <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
             ) : (
-              <ul className="mt-4 max-w-xl divide-y divide-white/5">
+              <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                 {scanTokens.map((token) => (
                   <li key={token.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -6340,7 +6352,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         ) : exceptions.length === 0 ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No active allowlist entries.</p>
         ) : (
-          <ul className="mt-6 divide-y divide-white/5">
+          <ul className="mt-6 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
             {exceptions.map((entry) => (
               <li key={entry.id} className="py-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
