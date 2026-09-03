@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Home uses the PR #2 hero: two columns, two actions, CLI vs hosted cards.
+  Log in stays on the hero. Ember token is `--color-ember`. GitHub PR #1
+  (Neon) stays closed leftover — Neon already boots on `main`. PR #6
+  (Stripe) was already merged.
+
 - `npm run phase1:visibility` points the GitHub App webhook at
   `APP_BASE_URL/api/webhooks/github` and tries to publicize only
   `EmotiveImpact/nospoilers-throwaway-vis`. Contents write cannot change

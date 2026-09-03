@@ -4,10 +4,12 @@ Updated 2 September 2026 after the pre-design platform PRs landed on `main`. Res
 
 ## Is it on `main`?
 
-**Yes, through Milestone 4 process split.** `origin/main` is `59e00c6` (“Merge pull request #8 … production-runtime”).
+**Yes, through Milestone 4 process split, visibility proofs, and the PR #2 home hero.** Check `origin/main` for the current tip.
 
 | Phase | How it landed | On `main`? |
 | --- | --- | --- |
+| Neon runtime (PR #1 leftover) | Already on `main` via later commits. GitHub PR #1 is a stale draft on an old branch | Yes (code). PR closed leftover |
+| Home hero (PR #2) | Two-column hero + CLI/hosted cards landed on `main`; Log in kept | Yes |
 | Stripe Checkout / portal / webhooks (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/6 merged | Yes |
 | Resend Watch email destinations (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/7 commits merged via `9859d72`, PR closed (stacked base was not `main`) | Yes |
 | Production serve + `NOSPOILERS_ROLE` + NOTIFY wake | https://github.com/EmotiveImpact/nospoilers/pull/8 commits merged via `59e00c6`, PR closed (stacked base was not `main`) | Yes |
