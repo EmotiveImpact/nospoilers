@@ -13,7 +13,7 @@ import { logJson } from "./log.ts";
 import { createNpmPort } from "./npm.ts";
 import { createLogNotifier } from "./notifier.ts";
 import { createApp } from "./app.ts";
-import { startPoller } from "./poller.ts";
+import { runPollerTick, startPoller } from "./poller.ts";
 import { assertProductionSecrets } from "./secrets.ts";
 import { migrate, openSql } from "./sql.ts";
 import { stubGithub } from "./stub-github.ts";
@@ -49,36 +49,34 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     receiptSecret: config.receiptSecret,
   });
   const runJobs = processRunsJobs(config.processRole);
+  const wakeWorker = () => {
+    void worker.tick();
+  };
+  const pollerDeps = {
+    store,
+    github,
+    notifier,
+    npm,
+    wakeWorker,
+    prospectDiscovery: config.githubDiscoveryToken
+      ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
+      : undefined,
+    staleAfterMs: config.jobStaleMs,
+  };
   const app = createApp({
     config,
     store,
     github,
     npm,
     notifier,
-    wakeWorker: runJobs
-      ? () => {
-          void worker.tick();
-        }
-      : undefined,
+    wakeWorker,
+    runScheduledJobs: async () => {
+      const result = await runPollerTick(pollerDeps);
+      await worker.runUntilIdle();
+      return result;
+    },
   });
-  const poller = runJobs
-    ? startPoller(
-        {
-          store,
-          github,
-          notifier,
-          npm,
-          wakeWorker: () => {
-            void worker.tick();
-          },
-          prospectDiscovery: config.githubDiscoveryToken
-            ? { token: config.githubDiscoveryToken, maxAssetBytes: config.maxAssetBytes }
-            : undefined,
-          staleAfterMs: config.jobStaleMs,
-        },
-        config.pollIntervalMs,
-      )
-    : { stop() {} };
+  const poller = runJobs ? startPoller(pollerDeps, config.pollIntervalMs) : { stop() {} };
   let stopListen: (() => Promise<void>) | undefined;
   return {
     app,
@@ -87,6 +85,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     worker,
     sql,
     runJobs,
+    flushJobs: () => worker.runUntilIdle(),
     startBackground() {
       logJson("info", "runtime.start", {
         database: databaseMode(config.databaseUrl),

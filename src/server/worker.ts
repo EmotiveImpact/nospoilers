@@ -877,6 +877,8 @@ export function createWorker(opts: {
     }
   }
 
+  let tickInFlight: Promise<void> | null = null;
+
   async function tick(): Promise<void> {
     if (stopped) return;
     if (ticking) {
@@ -884,34 +886,51 @@ export function createWorker(opts: {
       return;
     }
     ticking = true;
-    try {
-      await opts.store.recoverStaleJobs(opts.staleAfterMs ?? 5 * 60 * 1000);
-      do {
-        tickRequested = false;
-        while (lightRunning < opts.lightConcurrency) {
-          const job = await opts.store.claimJob("light", opts.lightConcurrency, workerId);
-          if (!job) break;
-          launch(job);
-        }
-        while (heavyRunning < opts.heavyConcurrency) {
-          const job = await opts.store.claimJob(
-            "heavy",
-            opts.heavyConcurrency,
-            workerId,
-            prospectRunning < 1,
-          );
-          if (!job) break;
-          launch(job);
-        }
-      } while (tickRequested && !stopped);
-    } finally {
-      ticking = false;
-      if (tickRequested && !stopped) void tick();
+    const running = (async () => {
+      try {
+        await opts.store.recoverStaleJobs(opts.staleAfterMs ?? 5 * 60 * 1000);
+        do {
+          tickRequested = false;
+          while (lightRunning < opts.lightConcurrency) {
+            const job = await opts.store.claimJob("light", opts.lightConcurrency, workerId);
+            if (!job) break;
+            launch(job);
+          }
+          while (heavyRunning < opts.heavyConcurrency) {
+            const job = await opts.store.claimJob(
+              "heavy",
+              opts.heavyConcurrency,
+              workerId,
+              prospectRunning < 1,
+            );
+            if (!job) break;
+            launch(job);
+          }
+        } while (tickRequested && !stopped);
+      } finally {
+        ticking = false;
+        tickInFlight = null;
+        if (tickRequested && !stopped) void tick();
+      }
+    })();
+    tickInFlight = running;
+    await running;
+  }
+
+  async function runUntilIdle(): Promise<void> {
+    if (stopped) return;
+    if (tickInFlight) await tickInFlight;
+    await tick();
+    while (!stopped && activeJobs.size > 0) {
+      await Promise.allSettled([...activeJobs]);
+      if (tickInFlight) await tickInFlight;
+      await tick();
     }
   }
 
   return {
     tick,
+    runUntilIdle,
     get running() {
       return { light: lightRunning, heavy: heavyRunning, prospect: prospectRunning };
     },

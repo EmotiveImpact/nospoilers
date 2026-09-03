@@ -41,6 +41,62 @@ export async function runVisibilityPoll(deps: {
   return alerts;
 }
 
+export type PollerTickResult = {
+  visibilityAlerts: number;
+  npmQueued: number;
+  namespacesQueued: number;
+  webQueued: number;
+  mapsQueued: number;
+  prospectsFeedQueued: number;
+  prospectsDiscoveryQueued: number;
+};
+
+export async function runPollerTick(deps: {
+  store: Store;
+  github: GithubPort;
+  notifier: AlertNotifier;
+  npm: NpmPort;
+  wakeWorker?: () => void;
+  prospectDiscovery?: { token: string; maxAssetBytes: number };
+  staleAfterMs?: number;
+}): Promise<PollerTickResult> {
+  const visibilityAlerts = await runVisibilityPoll(deps);
+  const npm = await runNpmWatchPoll(deps);
+  const namespaces = await runNamespaceWatchPoll(deps);
+  const web = await runWebOriginPoll(deps);
+  const maps = await runMapCustodyPoll(deps);
+  const prospects = await runProspectAcquisitionPoll({
+    store: deps.store,
+    npm: deps.npm,
+    discovery: deps.prospectDiscovery,
+    staleAfterMs: deps.staleAfterMs,
+  });
+  const expired = await sweepExpiredDisclosureEvidence(deps.store);
+  if (expired.attachments + expired.notes > 0) {
+    logJson("info", "disclosure.evidence_expired", expired);
+  }
+  if (
+    npm.queued +
+      namespaces.queued +
+      web.queued +
+      maps.queued +
+      prospects.feedQueued +
+      prospects.discoveryQueued >
+    0
+  ) {
+    deps.wakeWorker?.();
+  }
+  return {
+    visibilityAlerts,
+    npmQueued: npm.queued,
+    namespacesQueued: namespaces.queued,
+    webQueued: web.queued,
+    mapsQueued: maps.queued,
+    prospectsFeedQueued: prospects.feedQueued,
+    prospectsDiscoveryQueued: prospects.discoveryQueued,
+  };
+}
+
 export function startPoller(
   deps: {
     store: Store;
@@ -54,34 +110,7 @@ export function startPoller(
   intervalMs: number,
 ): { stop: () => void } {
   const timer = setInterval(() => {
-    void (async () => {
-      await runVisibilityPoll(deps);
-      const npm = await runNpmWatchPoll(deps);
-      const namespaces = await runNamespaceWatchPoll(deps);
-      const web = await runWebOriginPoll(deps);
-      const maps = await runMapCustodyPoll(deps);
-      const prospects = await runProspectAcquisitionPoll({
-        store: deps.store,
-        npm: deps.npm,
-        discovery: deps.prospectDiscovery,
-        staleAfterMs: deps.staleAfterMs,
-      });
-      const expired = await sweepExpiredDisclosureEvidence(deps.store);
-      if (expired.attachments + expired.notes > 0) {
-        logJson("info", "disclosure.evidence_expired", expired);
-      }
-      if (
-        npm.queued +
-          namespaces.queued +
-          web.queued +
-          maps.queued +
-          prospects.feedQueued +
-          prospects.discoveryQueued >
-        0
-      ) {
-        deps.wakeWorker?.();
-      }
-    })().catch((error: unknown) => {
+    void runPollerTick(deps).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "poller.failed", { message });
     });

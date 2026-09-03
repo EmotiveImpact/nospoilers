@@ -15,4 +15,12 @@ const loadRuntime: WebRuntimeLoader = () => {
 
 const handler = createVercelHandler(loadRuntime);
 
-export default { fetch: handler };
+export default {
+  fetch(
+    request: Request,
+    _env?: unknown,
+    ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+  ) {
+    return handler(request, ctx);
+  },
+};

@@ -34,6 +34,7 @@ describe("Vercel web runtime", () => {
     const config = JSON.parse(await readFile("vercel.json", "utf8")) as {
       rewrites: Array<{ source: string; destination: string }>;
       functions: Record<string, { includeFiles?: string; maxDuration?: number }>;
+      crons: Array<{ path: string; schedule: string }>;
     };
 
     expect(config.rewrites).toEqual([
@@ -44,5 +45,30 @@ describe("Vercel web runtime", () => {
       includeFiles: "src/server/schema.sql",
       maxDuration: 300,
     });
+    expect(config.crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 0 * * *" }]);
+  });
+
+  it("keeps processing queued jobs after the HTTP response via waitUntil", async () => {
+    const app = new Hono();
+    app.get("/api/health", (c) => c.json({ ok: true }));
+    let flushed = false;
+    const handler = createVercelHandler(async () => ({
+      app,
+      flushJobs: async () => {
+        flushed = true;
+      },
+    }));
+    const pending: Promise<unknown>[] = [];
+
+    const response = await handler(new Request("https://nospoilers.vercel.app/api/health"), {
+      waitUntil(work) {
+        pending.push(work);
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(pending).toHaveLength(1);
+    await pending[0];
+    expect(flushed).toBe(true);
   });
 });

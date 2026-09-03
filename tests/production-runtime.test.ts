@@ -3,7 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app.ts";
-import { loadConfig, parseProcessRole, processRunsHttp, processRunsJobs } from "../src/server/config.ts";
+import {
+  jobProcessingMode,
+  loadConfig,
+  parseProcessRole,
+  processRunsHttp,
+  processRunsJobs,
+} from "../src/server/config.ts";
 import { JOBS_CHANNEL, notifyJobQueued } from "../src/server/job-wake.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createRuntime } from "../src/server/runtime.ts";
@@ -46,6 +52,9 @@ describe("process roles", () => {
     expect(processRunsJobs("web")).toBe(false);
     expect(processRunsJobs("worker")).toBe(true);
     expect(processRunsJobs("all")).toBe(true);
+    expect(jobProcessingMode("web")).toBe("on-request");
+    expect(jobProcessingMode("worker")).toBe("background");
+    expect(jobProcessingMode("all")).toBe("background");
   });
 });
 
@@ -99,6 +108,35 @@ describe("built UI", () => {
   });
 });
 
+describe("scheduled job cron", () => {
+  it("rejects cron ticks without the cron secret and runs when authorized", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql, { tokenSecret: "sess" });
+      const app = createApp({
+        config: loadConfig({
+          databaseUrl: "pglite://:memory:",
+          sessionSecret: "sess",
+          cronSecret: "cron-secret-at-least-16",
+        }),
+        store,
+        github: unusedGithub(),
+        runScheduledJobs: async () => ({ visibilityAlerts: 0 }),
+      });
+      const denied = await app.request("/api/cron/jobs");
+      expect(denied.status).toBe(401);
+      const ok = await app.request("/api/cron/jobs", {
+        headers: { authorization: "Bearer cron-secret-at-least-16" },
+      });
+      expect(ok.status).toBe(200);
+      expect(await ok.json()).toMatchObject({ ok: true, visibilityAlerts: 0 });
+    } finally {
+      await sql.close();
+    }
+  });
+});
+
 describe("job notify and web role", () => {
   it("notifies after a job is queued and does not throw on PGlite", async () => {
     const sql = await openSql("pglite://:memory:");
@@ -142,6 +180,37 @@ describe("job notify and web role", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       const { rows } = await runtime.sql.query<{ status: string }>("SELECT status FROM jobs");
       expect(rows.map((row) => row.status)).toEqual(["queued"]);
+    } finally {
+      await runtime.close();
+    }
+  });
+
+  it("claims queued jobs on the web role when flushed after a request", async () => {
+    const runtime = await createRuntime({
+      databaseUrl: "pglite://:memory:",
+      githubWebhookSecret: "",
+      githubAppId: "",
+      githubPrivateKey: "",
+      githubClientId: "",
+      githubClientSecret: "",
+      sessionSecret: "test-session-secret-for-runtime-role-web",
+      processRole: "web",
+      workerIntervalMs: 60 * 60 * 1000,
+    });
+    try {
+      expect(runtime.runJobs).toBe(false);
+      const queued = await runtime.store.enqueueJob({
+        priority: "light",
+        kind: "member_added",
+        payload: { login: "octo" },
+      });
+      expect(queued.inserted).toBe(true);
+      await runtime.flushJobs();
+      const { rows } = await runtime.sql.query<{ status: string; attempts: string }>(
+        "SELECT status, attempts::text AS attempts FROM jobs",
+      );
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0]?.attempts)).toBeGreaterThan(0);
     } finally {
       await runtime.close();
     }

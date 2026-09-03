@@ -9,7 +9,11 @@ type Health = {
   role?: "all" | "web" | "worker";
   ui?: boolean;
   database: { mode: string };
-  worker: { recoveryIntervalMs: number; visibilityPollIntervalMs: number };
+  worker: {
+    recoveryIntervalMs: number;
+    visibilityPollIntervalMs: number;
+    jobs?: "background" | "on-request";
+  };
 };
 
 export function StatusPage() {
@@ -75,6 +79,10 @@ export function StatusPage() {
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Database</p>
             <p className="text-sm text-snow">{health.database.mode}</p>
+          </li>
+          <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Jobs</p>
+            <p className="text-sm text-snow">{health.worker.jobs ?? "background"}</p>
           </li>
           <li className="flex flex-wrap items-baseline justify-between gap-2 py-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Worker recovery</p>

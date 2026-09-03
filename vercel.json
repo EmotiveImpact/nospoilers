@@ -9,6 +9,12 @@
       "maxDuration": 300
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/jobs",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

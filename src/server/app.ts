@@ -13,6 +13,7 @@ import type { AppConfig } from "./config.ts";
 import {
   databaseMode,
   githubAppConfigured,
+  jobProcessingMode,
   processRunsHttp,
   resendConfigured,
   stripeConfigured,
@@ -364,6 +365,7 @@ export type AppDeps = {
   npm?: NpmPort;
   scan?: typeof scan;
   wakeWorker?: () => void;
+  runScheduledJobs?: () => Promise<Record<string, number>>;
   slackFetch?: typeof fetch;
   webhookLookup?: WebhookHostLookup;
   notifier?: AlertNotifier;
@@ -866,9 +868,23 @@ export function createApp(deps: AppDeps): Hono {
       worker: {
         recoveryIntervalMs: deps.config.workerIntervalMs,
         visibilityPollIntervalMs: deps.config.pollIntervalMs,
+        jobs: jobProcessingMode(deps.config.processRole),
       },
     }),
   );
+
+  app.get("/api/cron/jobs", async (c) => {
+    const secret = deps.config.cronSecret.trim();
+    const auth = c.req.header("authorization") ?? "";
+    if (!secret || secret.length < 16 || !sameSecret(auth, `Bearer ${secret}`)) {
+      return c.json({ error: "Cron authorization required." }, 401);
+    }
+    if (!deps.runScheduledJobs) {
+      return c.json({ error: "Job scheduler is not attached to this process." }, 503);
+    }
+    const result = await deps.runScheduledJobs();
+    return c.json({ ok: true, ...result });
+  });
 
   app.get("/api/ready", async (c) => {
     let databaseOk = false;
