@@ -9,7 +9,7 @@ import type { DeskAlert } from "@/watch/verdict";
 type TimelineEntry = {
   type: "alert" | "alert_event" | "delivery";
   at: string;
-  alertId?: number;
+  alertId?: number | null;
   title?: string;
   kind?: string;
   fullName?: string;

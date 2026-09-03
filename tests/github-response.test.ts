@@ -113,7 +113,7 @@ describe("GitHub response helpers", () => {
     );
     expect(github).toMatch(/async disableWorkflow[\s\S]*hasWrite\(install\.permissions \?\? \{\}, "administration"\)/);
     expect(ADMINISTRATION_DENIED).toMatch(/Contents write is not enough/);
-    const page = readFileSync("src/pages/WatchPage.tsx", "utf8");
+    const page = readFileSync("src/pages/WatchWorkspace.tsx", "utf8");
     expect(page).toMatch(/Make private/);
     expect(page).toMatch(/Remove pack assets/);
     expect(page).toMatch(/Disable workflow/);

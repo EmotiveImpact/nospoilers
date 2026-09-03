@@ -315,16 +315,6 @@ function retentionConfirmToken(days: RetentionDays): string {
   return days === 0 ? "keep" : String(days);
 }
 
-function retentionWindowLabel(days: number): string {
-  if (days === 0) return "while this install exists";
-  return `the last ${days} days`;
-}
-
-function timelineHeading(days: number): string {
-  if (days === 0) return "Install timeline";
-  return `${days}-day timeline`;
-}
-
 type IdentityCandidateView = {
   id: number;
   candidateName: string;
@@ -2051,7 +2041,6 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
 
   useEffect(() => {
     if (!selectedInstallId) {
-      setBilling(null);
       return;
     }
     let cancelled = false;
