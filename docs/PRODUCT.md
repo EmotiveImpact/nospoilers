@@ -7,6 +7,8 @@ Every discussed feature is accounted for in `docs/expansion/FEATURE-INVENTORY.md
 product PRDs live under `docs/products/`.
 
 Tagline: **no spoilers in production.**
+Category: **release exposure protection** — final-artifact and production-web inspection plus
+GitHub exposure monitoring.
 
 Owner: Creative Director (Emotive Impact). GitHub login: `EmotiveImpact`.
 

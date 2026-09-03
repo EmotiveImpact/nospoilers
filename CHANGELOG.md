@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Product positioning now names three coverage surfaces—GitHub Exposure,
+  Release Artifacts, and Production Web—without presenting them as separate
+  scanners. The landing page explains pre-release versus continuous hosted
+  coverage; Watch labels `/sources` as Coverage and identifies the evidence
+  source behind each result. Private Map Custody is explicitly a supporting
+  proof, not another public-site scan.
+
 - Source maps with populated `sourcesContent` are now reconstructed as bounded
   in-memory virtual files. Existing secret, private-key, credential,
   AI-context, internal-document, internal-route, and internal-location rules

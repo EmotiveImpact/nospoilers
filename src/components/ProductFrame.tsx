@@ -24,16 +24,16 @@ export function ProductFrame() {
       <div className="grid gap-0 md:grid-cols-2">
         <div className="border-b border-white/8 px-5 py-6 md:border-b-0 md:border-r">
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Watch desk</p>
-          <p className="mt-2 font-display text-xl text-snow">Nothing invented.</p>
+          <p className="mt-2 font-display text-xl text-snow">One exposure desk.</p>
           <p className="mt-3 text-xs leading-relaxed text-dim">
-            Sign in to see repositories, releases, and alerts from your GitHub install.
+            GitHub events, release artifacts, and production-web findings share one real inbox.
           </p>
         </div>
         <div className="px-5 py-6">
           <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Overview</p>
-          <p className="mt-2 text-sm text-snow">Live facts appear here after connection.</p>
+          <p className="mt-2 text-sm text-snow">See which surface was checked.</p>
           <p className="mt-3 text-xs leading-relaxed text-dim">
-            Preview shows the product structure without pretending an incident occurred.
+            Every result names its evidence source. Preview never invents an incident.
           </p>
         </div>
       </div>

@@ -9,13 +9,16 @@ export function SourcesProductionScreens() {
                 (previewing || sourceSectionState.status === "ready") && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 <section id="watch-source-web" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-                <h2 className="text-sm font-semibold text-snow">Production websites</h2>
-                <p className="mt-2 text-sm text-mute">Origins watched for public source maps and exposed files.</p>
+                <h2 className="text-sm font-semibold text-snow">Production web</h2>
+                <p className="mt-2 text-sm text-mute">
+                  What customers can publicly download from your deployed website.
+                </p>
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                   We fetch the HTTPS page you name, then same-origin JavaScript, CSS, maps, and a bounded
-                  probe of exposed files, credentials, and internal paths linked from the page. Local,
-                  private, and metadata hosts are blocked. JavaScript is not executed. Bytes are deleted
-                  after the scan. This is not advertised as a Pricing extra.
+                  probe of exposed files. Embedded source maps are reconstructed in memory so credential,
+                  private-key, AI-context, and internal-route findings identify the original source path.
+                  Local, private, and metadata hosts are blocked. JavaScript is not executed. Source,
+                  maps, and matched credential values are deleted after the scan.
                 </p>
                 {previewing ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -153,13 +156,13 @@ export function SourcesProductionScreens() {
                 (previewing || sourceSectionState.status === "ready") && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 <section id="watch-source-map" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-                <h2 className="text-sm font-semibold text-snow">Map custody</h2>
+                <h2 className="text-sm font-semibold text-snow">Private map custody</h2>
                 <p className="mt-2 text-sm text-mute">Confirm maps are held by your error tracker, not served publicly.</p>
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                  Prove Sentry has the debug ID, or Bugsnag has the release version, and that the public
-                  site or pack does not serve the map. Tokens are encrypted and never returned. We do not
-                  download map source. This is not advertised as a Pricing extra. Bugsnag matches a release
-                  version; it cannot look up a debug ID.
+                  This custody check asks whether Sentry has the debug ID or Bugsnag has the release
+                  version; it does not download private map source. Production Web separately inspects a
+                  map only when your public website serves it. Tokens are encrypted and never returned.
+                  Bugsnag matches a release version; it cannot look up a debug ID.
                 </p>
                 {previewing ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
