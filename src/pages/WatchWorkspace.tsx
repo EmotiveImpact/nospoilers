@@ -16,6 +16,7 @@ import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
 import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
 import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
+import { AuditScreen } from "@/components/watch/screens/AuditScreen.tsx";
 import { RetentionScreen } from "@/components/watch/screens/RetentionScreen.tsx";
 import { TimelineScreen } from "@/components/watch/screens/TimelineScreen.tsx";
 import {
@@ -1292,7 +1293,6 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
   const [exportError, setExportError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineView>({ status: "loading" });
   const [audit, setAudit] = useState<AuditView>({ status: "loading" });
-  const [auditExportError, setAuditExportError] = useState<string | null>(null);
   const [retention, setRetention] = useState<RetentionView>({ status: "loading" });
   const [retentionDraft, setRetentionDraft] = useState<RetentionDays>(90);
   const [signingPolicy, setSigningPolicy] = useState<SigningPolicyView>({ status: "loading" });
@@ -2012,7 +2012,6 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
           setMembersError(null);
           setTimeline({ status: "ready", entries: [], days: 0 });
           setAudit({ status: "ready", rows: [] });
-          setAuditExportError(null);
           setRetention({ status: "ready", days: 90 });
           setRetentionDraft(90);
           setSigningPolicy({ status: "ready", policy: null });
@@ -3399,89 +3398,14 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
       </section>
       )}
 
-      {route.view === "audit" && (
-      <section className="mt-4">
-        <h1 className="font-display text-3xl tracking-tight text-snow">Audit log</h1>
-        <p className="mt-2 text-sm text-mute">Administrative changes and response activity for this install.</p>
-        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs can export this install’s admin writes, notification deliveries,
-          and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
-          emails, tokens, and other secret values are never stored here.
-        </p>
-        {previewing ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot export a live audit log. No invented incident.
-          </p>
-        ) : audit.status === "solo" ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">The audit log is on Team.</p>
-        ) : audit.status === "ended" ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Subscribe to Team to keep the audit log.
-          </p>
-        ) : audit.status === "error" ? (
-          <p className="mt-6 text-sm text-danger">{audit.message}</p>
-        ) : audit.status === "loading" ? (
-          <p className="mt-6 text-sm text-dim">Loading…</p>
-        ) : (
-          <>
-            <div className="mt-4">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setAuditExportError(null);
-                  void (async () => {
-                    try {
-                      const body = await loadJson<{ exportedAt: string }>(
-                        scopedApi("/api/audit/export", activeInstallId),
-                      );
-                      const blob = new Blob([JSON.stringify(body, null, 2)], {
-                        type: "application/json",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `nospoilers-audit-${body.exportedAt.slice(0, 10)}.json`;
-                      link.click();
-                      URL.revokeObjectURL(url);
-                    } catch (error) {
-                      setAuditExportError(
-                        error instanceof Error ? error.message : "Could not export the audit log.",
-                      );
-                    }
-                  })();
-                }}
-              >
-                Export audit log
-              </Button>
-              {auditExportError ? <p className="mt-2 text-sm text-danger">{auditExportError}</p> : null}
-            </div>
-            {audit.rows.length === 0 ? (
-              <p className="mt-6 text-sm leading-relaxed text-mute">
-                No admin writes recorded on this install yet.
-              </p>
-            ) : (
-              <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
-                {audit.rows.map((row) => (
-                  <li key={row.id} className="py-3">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-sm text-snow">{row.summary}</p>
-                      <span className="text-xs uppercase tracking-[0.16em] text-dim">
-                        {new Date(row.at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="mt-1 font-mono text-xs text-dim">
-                      {row.actorLogin} · {row.action}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </section>
-      )}
+      {route.view === "audit" ? (
+        <AuditScreen
+          key={activeInstallId ?? "preview"}
+          previewing={previewing}
+          audit={audit}
+          installationId={activeInstallId}
+        />
+      ) : null}
 
       {route.view === "team" && (
       <section className="mt-4">
