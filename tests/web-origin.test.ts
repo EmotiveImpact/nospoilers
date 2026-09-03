@@ -203,6 +203,9 @@ describe("website crawl", () => {
             headers: { "content-type": "application/javascript" },
           });
         }
+        if (url.endsWith(".map")) {
+          return new Response("forbidden", { status: 403 });
+        }
         return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
       }) as typeof fetch,
       lookup: publicLookup,

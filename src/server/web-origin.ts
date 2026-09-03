@@ -460,12 +460,16 @@ export async function crawlOrigin(startUrl: string, opts: WebCrawlOpts = {}): Pr
           if (!isSourceMapResponse(map.bytes, map.contentType)) continue;
           if (!addFile(mapRel, map.bytes)) break;
         } catch (error) {
-          if (error instanceof WebCrawlError && /HTTP 404/.test(error.message)) continue;
+          if (error instanceof WebCrawlError && /HTTP (?:403|404)/.test(error.message)) continue;
           throw error;
         }
       }
     } catch (error) {
-      if (error instanceof WebCrawlError && /HTTP 404/.test(error.message) && extraMaps.includes(href)) {
+      if (
+        error instanceof WebCrawlError &&
+        /HTTP (?:403|404)/.test(error.message) &&
+        extraMaps.includes(href)
+      ) {
         continue;
       }
       throw error;
