@@ -19,18 +19,29 @@ export function installAcceptUrl(installationId = SETUP_INSTALL_ID): string {
   return `https://github.com/settings/installations/${installationId}`;
 }
 
+export function installReviewUrl(installationId = SETUP_INSTALL_ID): string {
+  return `${installAcceptUrl(installationId)}/permissions/update`;
+}
+
 export function deniedMessage(): string {
   return [
     `Cannot open an App-generated setup PR on ${SETUP_FULL}.`,
     "The GitHub App has Contents write. That committed the vendored Action on",
     `${SETUP_BRANCH}. Opening the reviewable PR needs Pull requests write.`,
     "",
+    "If the install page has no Accept button, Pull requests write is not saved",
+    "on the App yet. GitHub only shows Accept after that Save. The Configure page",
+    "is not the review.",
+    "",
     "1. Signed in as EmotiveImpact, open",
     `   ${appPermissionsUrl()}`,
-    "2. Repository permissions → Pull requests: Read and write → Save.",
-    "3. Accept on",
-    `   ${installAcceptUrl()}`,
-    "4. Leave npm run dev running, then npm run phase1:setup-pr.",
+    "2. Repository permissions → Pull requests → Read and write.",
+    "3. Save changes at the bottom. Do not change Administration or Workflows.",
+    "4. Review the new request at",
+    `   ${installReviewUrl()}`,
+    `   not ${installAcceptUrl()}.`,
+    "5. Accept Pull requests write. Members read may appear too; that is optional.",
+    "6. Leave npm run dev running, then npm run phase1:setup-pr.",
     "",
     "Do not grant Administration. Do not request Workflows write.",
     "The workflow YAML stays copy-paste. The App never merges.",

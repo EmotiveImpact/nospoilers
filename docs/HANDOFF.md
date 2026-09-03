@@ -404,6 +404,9 @@ Read in this order:
   which we will not take. Setup/remediation PRs stay copy-paste until Pull requests write.
   `npm run phase1:setup-pr` opens the App-generated setup PR on
   `EmotiveImpact/nospoilers-throwaway` once that write is requested and accepted.
+  If the install Configure page has no Accept, Pull requests write is not saved
+  on the App yet. After Save, review
+  `https://github.com/settings/installations/158159401/permissions/update`.
   It never merges. It never requests Workflows write.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Disclosure Desk Phase 2 minus send

@@ -9,7 +9,8 @@
 - `npm run phase1:setup-pr` opens the App-generated setup PR on
   `EmotiveImpact/nospoilers-throwaway` when Pull requests write is requested on
   the App and accepted on install `158159401`. Until then it prints the App
-  permissions URL and Accept URL. The App never merges. Workflow YAML stays
+  permissions URL and the permission-update review URL. The install Configure
+  page has no Accept until that Save. The App never merges. Workflow YAML stays
   copy-paste. Do not grant Administration or Workflows write. Do not invent
   `-vis`.
 

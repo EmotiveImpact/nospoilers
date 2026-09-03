@@ -7,6 +7,7 @@ import {
   appPermissionsUrl,
   deniedMessage,
   installAcceptUrl,
+  installReviewUrl,
   setupPrWriteReady,
 } from "../scripts/phase1-setup-pr.ts";
 
@@ -23,7 +24,10 @@ describe("phase1 setup PR proof", () => {
     expect(message).toContain(SETUP_FULL);
     expect(message).toContain(appPermissionsUrl());
     expect(message).toContain(installAcceptUrl());
-    expect(message).toMatch(/Pull requests: Read and write/);
+    expect(message).toContain(installReviewUrl());
+    expect(message).toMatch(/If the install page has no Accept button/);
+    expect(message).toMatch(/Pull requests → Read and write/);
+    expect(message).toMatch(/Save changes/);
     expect(message).toMatch(/npm run phase1:setup-pr/);
     expect(message).toMatch(/Do not grant Administration/);
     expect(message).toMatch(/Do not request Workflows write/);

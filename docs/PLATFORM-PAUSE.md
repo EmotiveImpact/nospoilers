@@ -38,7 +38,7 @@ Electron installer worker, SBOM, Sigstore, and scheduled CDN stay **on ice**. Em
 - Stripe keys + four price IDs if you want charges (approval).
 - Resend keys + from address if you want mail (approval). Do not mail disclosures.
 - Railway + `nospoilers.dev` / Cloudflare DNS if you want a real public host (purchase). The `trycloudflare.com` URL is only a webhook tunnel. It is **not** the database.
-- GitHub App **Pull requests: write**, then Accept on the install, for a live setup PR. Do **not** grant Administration or Workflows write. After Accept, `npm run phase1:setup-pr` opens the reviewable PR on `EmotiveImpact/nospoilers-throwaway` and never merges it.
+- GitHub App **Pull requests: write**, then Accept the permission update, for a live setup PR. Save on `https://github.com/settings/apps/nospoilers-dev/permissions` first. The Configure page (`/settings/installations/158159401`) has no Accept until that Save; the review is `/settings/installations/158159401/permissions/update`. Do **not** grant Administration or Workflows write. After Accept, `npm run phase1:setup-pr` opens the reviewable PR on `EmotiveImpact/nospoilers-throwaway` and never merges it.
 - Optional: `GITHUB_PROOF_TOKEN` on `EmotiveImpact/nospoilers-throwaway` only (Administration + Contents write) if you want the script to flip visibility. The live proof used GitHub Settings → Private, then Public with `npm run dev` running. Do not invent `-vis`. Do not grant the App Administration.
 
 ## Resume the platform job
