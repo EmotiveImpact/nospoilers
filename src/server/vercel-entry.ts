@@ -13,4 +13,6 @@ const loadRuntime: WebRuntimeLoader = () => {
   return runtime;
 };
 
-export default createVercelHandler(loadRuntime);
+const handler = createVercelHandler(loadRuntime);
+
+export default { fetch: handler };
