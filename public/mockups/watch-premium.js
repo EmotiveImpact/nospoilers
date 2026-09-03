@@ -7,7 +7,9 @@
   const layer = document.querySelector("#dialog-layer");
   const dialog = layer.querySelector(".dialog");
   const dialogContent = document.querySelector("#dialog-content");
-  const state = { route: location.hash.slice(1) || "overview", preview: "live", selectedAlert: null, selectedSource: null, data: null, status: "loading", error: "", lastFocus: null, paletteIndex: 0 };
+  const params = new URLSearchParams(location.search);
+  const previewParam = params.get("preview");
+  const state = { route: location.hash.slice(1) || "overview", preview: ["loading","error","empty","paused","ended","member","solo","team"].includes(previewParam) ? previewParam : "live", selectedAlert: null, selectedSource: null, data: null, status: "loading", error: "", lastFocus: null, paletteIndex: 0 };
   const groups = [
     ["Work", [["overview","Overview","overview"],["alerts","Alerts","alert"],["sources","Sources","source"],["releases","Releases","release"]]],
     ["Evidence", [["timeline","Timeline","timeline"],["setup","Setup","setup"]]],
@@ -175,6 +177,7 @@
     if(e.target.closest("#retry"))load();
     const delta=e.target.closest("#previous-alert")?-1:e.target.closest("#next-alert")?1:0;if(delta){const a=list("alerts"),i=a.findIndex(x=>x.id===state.selectedAlert);state.selectedAlert=a[(i+delta+a.length)%a.length].id;render();}
   });
+  document.querySelector("#preview-state").value=state.preview;
   document.querySelector("#preview-state").addEventListener("change",e=>{state.preview=e.target.value;render()});
   document.addEventListener("input",e=>{if(e.target.id==="palette-search"){const q=e.target.value.toLowerCase();dialog.querySelectorAll(".palette-item").forEach(x=>x.hidden=!x.textContent.toLowerCase().includes(q));state.paletteIndex=0;updatePalette();}});
   document.addEventListener("keydown",e=>{
@@ -196,5 +199,5 @@
   });
   window.addEventListener("hashchange",()=>{const r=location.hash.slice(1);if(labels[r]&&r!==state.route){state.route=r;render()}});
   document.querySelector("#shortcut").textContent=/Mac|iPhone|iPad/.test(navigator.platform)?"⌘ K":"Ctrl K";
-  render(); load();
+  render(); load().then(()=>{const initialDialog=params.get("dialog");if(initialDialog)openDialog(initialDialog,document.querySelector(".search-trigger"));});
 })();
