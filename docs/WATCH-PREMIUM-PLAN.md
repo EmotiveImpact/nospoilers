@@ -188,8 +188,8 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 - [x] Plan committed as the execution contract.
 - [x] Implementation commits pushed.
 - [x] Draft PR opened against `main`: https://github.com/EmotiveImpact/nospoilers/pull/13.
-- [x] Full automated verification green: typecheck/build pass; full lint exits zero with four
-  pre-existing warnings outside this change. Final file/test counts are recorded in the PR.
+- [x] Full automated verification green: 65 files and 489 tests pass; typecheck/build pass; full
+  lint exits zero with four pre-existing warnings outside this change.
 - [x] Browser/visual evidence recaptured under `/tmp/watch-premium-final-screens` (70 PNGs);
   the PR integration does not support uploading local binary artifacts.
 - [x] Non-human-gated acceptance complete.
