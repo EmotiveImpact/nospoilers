@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Feature inventory now lists the human lookalike allowlist (already built)
+  and records private → public on the throwaway proof row. Remaining
+  specified work is human-gated or on ice. Do not invent `-vis`.
+
 - Live GitHub publicize proof on `EmotiveImpact/nospoilers-throwaway` (repo
   `1353409756`, install `158159401`). Private → public 3 Sep 2026. First
   deliveries 502 while origin was down; redelivery 200 → jobs 52 and 53
