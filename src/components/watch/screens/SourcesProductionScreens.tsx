@@ -190,7 +190,7 @@ export function SourcesProductionScreens() {
                           <div>
                             <p className="font-mono text-xs text-snow">{row.origin_url}</p>
                             <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">
-                              {!row.verification?.verifiedAt
+                              {row.verification && !row.verification.verifiedAt
                                 ? "verification required"
                                 : row.last_scan_status ?? "waiting to scan"}
                               {row.last_checked_at
@@ -203,7 +203,11 @@ export function SourcesProductionScreens() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={locked || !row.verification?.verifiedAt || checkingOriginId === row.id}
+                              disabled={
+                                locked ||
+                                Boolean(row.verification && !row.verification.verifiedAt) ||
+                                checkingOriginId === row.id
+                              }
                               onClick={() => {
                                 setCheckingOriginId(row.id);
                                 setOriginError(null);

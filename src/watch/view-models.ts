@@ -138,14 +138,14 @@ export function buildSourceViewModels(input: {
       kindLabel: "Production web",
       name: origin.origin_url,
       coordinate: origin.host,
-      status: !origin.verification?.verifiedAt
+      status: origin.verification && !origin.verification.verifiedAt
         ? "verification required"
         : origin.last_public_map
           ? "public map found"
           : origin.last_scan_status ?? "check needed",
       attention: attentionFor(
         [origin.origin_url, origin.host],
-        !origin.verification?.verifiedAt
+        origin.verification && !origin.verification.verifiedAt
           ? "warning"
           : origin.last_public_map
             ? "critical"
@@ -155,9 +155,11 @@ export function buildSourceViewModels(input: {
       lastCheckedAt: origin.last_checked_at,
       detail: origin.verification?.verifiedAt
         ? `verified production web${origin.deployTokenPrefix ? " · deploy trigger ready" : ""}`
-        : "prove domain control before automatic scans",
+        : origin.verification
+          ? "prove domain control before automatic scans"
+          : "connected before domain verification was required",
       alertCount: alertCountFor([origin.origin_url, origin.host]),
-      primaryAction: origin.verification?.verifiedAt
+      primaryAction: !origin.verification || origin.verification.verifiedAt
         ? origin.last_checked_at
           ? "Scan website again"
           : "Scan website"
