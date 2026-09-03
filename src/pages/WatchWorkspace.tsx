@@ -67,7 +67,6 @@ import type {
   Confirming,
   ScanApiToken,
   ReceiptScanStatus,
-  DeliveryLocation,
   ReleaseRevision,
   PackageProtection,
   ProtectionImportResult,
