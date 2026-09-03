@@ -42,8 +42,11 @@ import type {
   RemediationPrView,
   GithubResponseView,
   SetupStatusView,
+  SetupStatusFacts,
+  RemediationFileView,
 } from "@/watch/types";
 import type { WatchSectionState } from "@/watch/data-state";
+import type { Coverage } from "@/coverage";
 
 export type WatchScreenContext = {
   AlertDeskItem: ({ alert, previewing, events, busy, note, assignee, error, onNote, onAssignee, onAction, }: { alert: Alert; previewing: boolean; events: AlertEvent[]; busy: boolean; note: string; assignee: string; error: string | null; onNote: (value: string) => void; onAssignee: (value: string) => void; onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void; }) => import("react").JSX.Element;
@@ -65,13 +68,13 @@ export type WatchScreenContext = {
   SIGNING_POLICY_CONFIRM: string;
   SetupPrResult: ({ view }: { view: SetupPrView; }) => import("react").JSX.Element;
   SetupStatusResult: ({ view }: { view: SetupStatusView; }) => import("react").JSX.Element;
-  TimelineScreen: ({ previewing, timeline, alerts, alertState, onRetryTimeline, onRetryAlerts, }: { previewing: boolean; timeline: { status: "loading"; } | { status: "solo"; } | { status: "ended"; } | { status: "error"; message: string; } | { status: "ready"; entries: { type: "alert" | "alert_event" | "delivery"; at: string; alertId: number | null; title: string | null; kind: string | null; fullName: string | null; action: string | null; actorLogin: string | null; deliveryStatus: "sent" | "failed" | null; inventedIncident: false | null; }[]; days: number; }; alerts: import("../watch/verdict").DeskAlert[]; alertState: WatchSectionState; onRetryTimeline: () => void; onRetryAlerts: () => void; }) => import("react").JSX.Element;
-  WatchAlertsWorkspace: ({ alerts, rows, selected, events, previewing, ended, busy, note, assignee, error, exportError, state, activityState, detailOpen, tab, teamOnly, onSelect, onBack, onRetry, onRetryActivity, onTab, onNote, onAssignee, onAction, onExport, }: { alerts: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail[]; rows: import("../watch/view-models").AlertListViewModel[]; selected: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail | null; events: import("@/watch/useWatchDeskController.ts").AlertActivityEvent[]; previewing: boolean; ended: boolean; busy: boolean; note: string; assignee: string; error: string | null; exportError: string | null; state: WatchSectionState; activityState: WatchSectionState; detailOpen: boolean; tab: import("@/watch/routes.ts").AlertTab; teamOnly: boolean; onSelect: (alertId: number) => void; onBack: () => void; onRetry: () => void; onRetryActivity: () => void; onTab: (tab: import("@/watch/routes.ts").AlertTab) => void; onNote: (value: string) => void; onAssignee: (value: string) => void; onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void; onExport: () => void; }) => import("react").JSX.Element;
+  TimelineScreen: ({ previewing, timeline, alerts, alertState, onRetryTimeline, onRetryAlerts, }: { previewing: boolean; timeline: { status: "loading"; } | { status: "solo"; } | { status: "ended"; } | { status: "error"; message: string; } | { status: "ready"; entries: { type: "alert" | "alert_event" | "delivery"; at: string; alertId: number | null; title: string | null; kind: string | null; fullName: string | null; action: string | null; actorLogin: string | null; deliveryStatus: "sent" | "failed" | null; inventedIncident: false | null; }[]; days: number; }; alerts: import("@/watch/verdict").DeskAlert[]; alertState: WatchSectionState; onRetryTimeline: () => void; onRetryAlerts: () => void; }) => import("react").JSX.Element;
+  WatchAlertsWorkspace: ({ alerts, rows, selected, events, previewing, ended, busy, note, assignee, error, exportError, state, activityState, detailOpen, tab, teamOnly, onSelect, onBack, onRetry, onRetryActivity, onTab, onNote, onAssignee, onAction, onExport, }: { alerts: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail[]; rows: import("@/watch/view-models").AlertListViewModel[]; selected: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail | null; events: import("@/watch/useWatchDeskController.ts").AlertActivityEvent[]; previewing: boolean; ended: boolean; busy: boolean; note: string; assignee: string; error: string | null; exportError: string | null; state: WatchSectionState; activityState: WatchSectionState; detailOpen: boolean; tab: import("@/watch/routes.ts").AlertTab; teamOnly: boolean; onSelect: (alertId: number) => void; onBack: () => void; onRetry: () => void; onRetryActivity: () => void; onTab: (tab: import("@/watch/routes.ts").AlertTab) => void; onNote: (value: string) => void; onAssignee: (value: string) => void; onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void; onExport: () => void; }) => import("react").JSX.Element;
   WatchNotificationSummary: ({ destinations, routes, }: { destinations: { id: number; kind: string; host: string; lastDeliveryStatus: string | null; }[]; routes: { id: number; minSeverity: string; repoFullName: string | null; packageName: string | null; teamLogin: string | null; }[]; }) => import("react").JSX.Element;
-  WatchOverview: ({ search, ended, githubPaused, installUrl, alerts, sources, packsRead, failedPolicy, queueDepth, lastRunLabel, setup, state, onRetry, }: { search: string; ended: boolean; githubPaused: boolean; installUrl?: string; alerts: import("../watch/verdict").DeskAlert[]; sources: import("../watch/view-models").WatchSourceViewModel[]; packsRead: number; failedPolicy: number; queueDepth: number; lastRunLabel: string; setup: import("../watch/view-models").WatchSetupViewModel; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
+  WatchOverview: ({ search, ended, githubPaused, installUrl, alerts, sources, packsRead, failedPolicy, queueDepth, lastRunLabel, setup, state, onRetry, }: { search: string; ended: boolean; githubPaused: boolean; installUrl?: string; alerts: import("@/watch/verdict").DeskAlert[]; sources: import("@/watch/view-models").WatchSourceViewModel[]; packsRead: number; failedPolicy: number; queueDepth: number; lastRunLabel: string; setup: import("@/watch/view-models").WatchSetupViewModel; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
   WatchSectionError: ({ message, onRetry, className, }: { message: string; onRetry: () => void; className?: string; }) => import("react").JSX.Element;
   WatchSkeleton: ({ variant, className, }: { variant?: "cards" | "list" | "detail"; className?: string; }) => import("react").JSX.Element;
-  WatchSourcesSummary: ({ mode, sources, setup, admin, search, filter, attention, selectedSourceKey, state, onRetry, }: { mode: "sources" | "setup"; sources: import("../watch/view-models").WatchSourceViewModel[]; setup: import("../watch/view-models").WatchSetupViewModel; admin?: boolean; search?: string; filter?: import("@/watch/routes.ts").SourceFilter; attention?: boolean; selectedSourceKey?: string | null; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
+  WatchSourcesSummary: ({ mode, sources, setup, admin, search, filter, attention, selectedSourceKey, state, onRetry, }: { mode: "sources" | "setup"; sources: import("@/watch/view-models").WatchSourceViewModel[]; setup: import("@/watch/view-models").WatchSetupViewModel; admin?: boolean; search?: string; filter?: import("@/watch/routes.ts").SourceFilter; attention?: boolean; selectedSourceKey?: string | null; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
   activeInstallId: number | null;
   adminCount: number;
   adminOnly: boolean;
@@ -345,7 +348,7 @@ export type WatchScreenContext = {
   setWatchingOrigin: import("react").Dispatch<import("react").SetStateAction<boolean>>;
   setWatchingPackage: import("react").Dispatch<import("react").SetStateAction<boolean>>;
   setWorkflowDraft: import("react").Dispatch<import("react").SetStateAction<Record<number, string>>>;
-  setup: import("../watch/view-models").WatchSetupViewModel;
+  setup: import("@/watch/view-models").WatchSetupViewModel;
   setupByRepo: Record<number, SetupPrView>;
   setupSectionState: WatchSectionState;
   setupStatusByRepo: Record<number, SetupStatusView>;
@@ -356,7 +359,7 @@ export type WatchScreenContext = {
   signingPolicy: SigningPolicyView;
   slackError: string | null;
   slackWebhook: string;
-  sourceRows: import("../watch/view-models").WatchSourceViewModel[];
+  sourceRows: import("@/watch/view-models").WatchSourceViewModel[];
   sourceSectionState: WatchSectionState;
   teamOnly: boolean;
   testError: string | null;

@@ -38,7 +38,6 @@ import {
 import { watchHref, watchPath } from "@/watch/routes.ts";
 import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
 import type {
-  PermissionTest,
   Me,
   Repo,
   Alert,
@@ -79,11 +78,9 @@ import type {
   BaselineView,
   LoadState,
   DeskDataset,
-  RemediationFileView,
   SetupPrView,
   RemediationPrView,
   GithubResponseView,
-  SetupStatusFacts,
   SetupStatusView,
 } from "@/watch/types.ts";
 import {
