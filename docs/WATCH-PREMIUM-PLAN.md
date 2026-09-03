@@ -105,8 +105,8 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 
 ### Phase 2 — orchestration and route extraction
 
-- [ ] Move domain types, loading, capabilities, and commands out of `WatchPage.tsx`.
-- [ ] Extract every route render tree into a focused screen module.
+- [x] Move domain types, loading, capabilities, and commands out of `WatchPage.tsx`.
+- [x] Extract every route render tree into a focused screen module.
 - [x] Remove all core `<details>/<summary>` disclosures.
 - [x] Lazy-load the Watch workspace while preserving SPA URLs.
 - Acceptance: `WatchPage.tsx` is orchestration only; APIs, mutations, status handling, typed
@@ -129,10 +129,10 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 ### Phase 4 — setup, settings, and design-system polish
 
 - [x] Setup renders five proof states and exactly one next action.
-- [ ] Notifications, policy, team, retention, audit, health, tokens, and registries use focused
+- [x] Notifications, policy, team, retention, audit, health, tokens, and registries use focused
   rows/cards/dialogs with consistent read-only and ended explanations.
 - [x] Team rows use Avatar with fallback; retention preserves typed confirmation.
-- [ ] Apply spacing, density, semantic color, typography, timestamp, icon, button, skeleton,
+- [x] Apply spacing, density, semantic color, typography, timestamp, icon, button, skeleton,
   feedback, transition, and reduced-motion rules.
 - Acceptance: no arbitrary Unicode icons; critical red is not used for private/neutral state;
   meaningful metadata is at least 12px.
@@ -140,13 +140,15 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 ### Phase 5 — verification and delivery
 
 - [x] Full typecheck, build, lint, and relevant/full tests pass.
-- [ ] Keyboard-only, focus restoration, Escape, palette semantics, and reduced motion verified.
-- [ ] Authenticated read-only browser verification at 320, 390, 768, 1024, and wide desktop,
+- [x] Keyboard-only, focus restoration, Escape, palette semantics, and reduced motion verified
+  with DOM-level palette/assignment-dialog tests and architecture regressions.
+- [ ] Authenticated read-only browser verification at 320, 390, 768, 1024, and wide desktop
   without live mutations, if a reusable authenticated session exists.
 - [x] Honest preview empty state verified on all 14 routes at 320, 390, 768, 1024, and 1440;
   70 route/viewport screenshots plus the focused npm configuration state are stored outside the
   repository under `/tmp/watch-premium-screens`.
-- [ ] Draft PR is updated and marked ready only after every non-human-gated criterion passes.
+- [x] Draft PR is updated and can be marked ready because every non-human-gated criterion passes;
+  the remaining human validation is tracked explicitly.
 
 ## Verification matrix
 
@@ -185,24 +187,27 @@ Status: in progress on `cursor/watch-premium-10-1479` from `main` at `b14fb3b`.
 - [x] Feature branch created from current `main`.
 - [x] Plan committed as the execution contract.
 - [x] Implementation commits pushed.
-- [ ] Draft PR opened against `main`.
-- [x] Full automated verification green: 63 files and 483 tests; typecheck/build pass; full lint
-  exits zero with four pre-existing warnings outside this change.
-- [ ] Browser/visual evidence attached where supported (PR creation is currently denied).
-- [ ] Non-human-gated acceptance complete.
+- [x] Draft PR opened against `main`: https://github.com/EmotiveImpact/nospoilers/pull/13.
+- [x] Full automated verification green: typecheck/build pass; full lint exits zero with four
+  pre-existing warnings outside this change. Final file/test counts are recorded in the PR.
+- [x] Browser/visual evidence recaptured under `/tmp/watch-premium-final-screens` (70 PNGs);
+  the PR integration does not support uploading local binary artifacts.
+- [x] Non-human-gated acceptance complete.
 
 ## Execution record and open engineering work
 
-- `WatchPage.tsx` is now a 19-line lazy orchestration boundary. Overview, alerts, sources,
-  timeline, retention, and audit have focused component/screen boundaries; audit export moved
-  with its screen.
+- `WatchPage.tsx` is a 19-line lazy boundary and `WatchWorkspace.tsx` is a five-line
+  controller-composition boundary. All 14 routes now render through focused screen modules.
+- Shared domain records live in `src/watch/types.ts`; data loading, capabilities, typed
+  confirmation commands, and screen composition live in controller/API/state modules rather
+  than either page file.
 - The source route now keeps its normal empty/list view free of configuration walls and exposes
   exactly one URL-backed configuration section after a GitHub/npm/site/map choice.
-- `WatchWorkspace.tsx` is still 6,662 lines. Notifications, policy, team, health, tokens,
-  registries, releases, and parts of source configuration still own substantial route markup in
-  that transitional module. Therefore the “extract every route” and complete legacy-architecture
-  acceptance criteria are not checked.
-- GitHub rejected draft PR creation with `403 Resource not accessible by personal access token`.
-  The pushed branch is available, but there is no PR to update, attach artifacts to, or mark ready.
+- Notification configuration exposes one selected destination/route flow at a time. The
+  Registries route is limited to encrypted credential/list management; npm package identity
+  tooling remains on the npm source path.
+- Automated DOM tests cover combobox/listbox semantics, wrapped Home/End/Arrow navigation,
+  dialog naming, focus trap, Escape, and focus restoration. Architecture tests prevent route
+  markup, raw disclosures, microtext, and Unicode controls from returning to the page boundary.
 - `/api/me` reported no authenticated user, so live-install read-only visual verification was not
   available. Preview verification used no invented rows and made no live mutations.
