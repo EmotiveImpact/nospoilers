@@ -13,6 +13,7 @@ Updated 2 September 2026 after the pre-design platform PRs landed on `main`. Res
 | Stripe Checkout / portal / webhooks (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/6 merged | Yes |
 | Resend Watch email destinations (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/7 commits merged via `9859d72`, PR closed (stacked base was not `main`) | Yes |
 | Production serve + `NOSPOILERS_ROLE` + NOTIFY wake | https://github.com/EmotiveImpact/nospoilers/pull/8 commits merged via `59e00c6`, PR closed (stacked base was not `main`) | Yes |
+| GitHub / public-npm attestation adapters | Fetch attestation documents for a sealed digest; store presence/subject/builder; no Sigstore verify | Yes (after this land). Live Neon `061` on throwaway `phase1-fixture` revision 6 |
 
 Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`, PR #3) and the earlier 2B attempt (`cursor/watch-desk-2b-71d1`, PR #9). Ignore that 2B UI.
 
@@ -24,6 +25,7 @@ Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`
 4. Milestone 3 Stripe — **on `main`, wired, not live**. This host has no Stripe keys. `/api/health` `stripe: false`.
 5. Resend Watch email — **on `main`, wired, not live**. Migration `060` on Neon; destinations 0; `/api/health` `resend: false`. Disclosure Desk `sent` stays false. Invites stay GitHub-login only.
 6. Milestone 4 process split — **on `main`**. `npm run build` + `npm run host` serves the SPA. `NOSPOILERS_ROLE=web|worker|all`. Enqueue `NOTIFY nospoilers_jobs`. Live health: `role: all`, `ui: true` after build, Neon. **Not deployed. No Railway account. No domain.**
+7. npm/GitHub attestation adapters — **on `main` after this land**. Live Neon: `061` applied; throwaway `phase1-fixture` revision 6 stored github `missing` with no alert; leftover row stayed. Sigstore verify stays Planned.
 
 Electron installer worker, SBOM, Sigstore, and scheduled CDN stay **on ice**. Employee Public Footprint stays **out of this repo**.
 

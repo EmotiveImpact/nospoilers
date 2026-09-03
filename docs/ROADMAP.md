@@ -87,7 +87,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   verify). Trial and Team admins can refresh GitHub and public-npm attestation
   documents for that sealed digest (presence, subject, builder; no Sigstore
   verify; no stored signatures; first refresh baseline; later loss/change is a
-  Watch fact; Solo 403; unpaid 402). Development
+  Watch fact; Solo 403; unpaid 402). Live Neon: throwaway `phase1-fixture`
+  revision 6 (`c74219d2…`) github `missing` baseline, leftover row stayed.
+  Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

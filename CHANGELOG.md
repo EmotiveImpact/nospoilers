@@ -11,6 +11,10 @@
   Hosted `api:` coordinates have no source. Private registries store
   `missing` and are not fetched. Watch uses outline Refresh attestations,
   not ember. Migration `061_release_attestations` is append-only.
+  Live Neon: `061` applied; unauth GET/POST 401; throwaway
+  `phase1-fixture` revision 6 (`c74219d2…`) POST 201 github `missing`
+  baseline with no alert; second refresh left row 1 in place (2
+  append-only rows); UPDATE rejected; `watched_packages` 0; open jobs 0.
 
 - Home uses the PR #2 hero: two columns, two actions, CLI vs hosted cards.
   Log in stays on the hero. Ember token is `--color-ember`. GitHub PR #1

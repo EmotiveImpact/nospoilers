@@ -129,7 +129,10 @@ Read in this order:
   `061_release_attestations` stores append-only GitHub and public-npm
   attestation facts on a sealed revision (presence, subject digest,
   predicate type, builder id, issuer host; never signature or bundle
-  bytes). Next unused id is `062_*`.
+  bytes). Live Neon: `061` applied; unauth GET/POST 401; throwaway
+  `phase1-fixture` revision 6 (`c74219d2…`) stored github `missing`
+  with no alert; leftover row 1 stayed after a second refresh (2 rows);
+  UPDATE rejected; `watched_packages` 0. Next unused id is `062_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.

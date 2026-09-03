@@ -623,6 +623,9 @@ admin-only, typed-confirm, Solo 403, unpaid 402, another tenant 404, hosted `api
 coordinates 400, first refresh is a no-alert baseline, later present→missing writes
 `release_attestation_lost`, leftover rows stay append-only, private-registry facts
 are stored as missing without a fetch, and signature bytes are never stored.
+Live throwaway `phase1-fixture` revision 6 (`c74219d2…`) on Neon: unauth GET/POST
+401, admin POST 201 github `missing` with no alert, leftover row 1 stayed after a
+second refresh, UPDATE rejected.
 Live throwaway `phase1-fixture` (`c74219d2…`) published on Neon: unauth publish
 401, public GET 200 with `passingReceipt: false` and host `github.com` matched,
 no query string, no new verify job; Cloudflare tunnel matched.
