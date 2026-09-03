@@ -89,6 +89,7 @@ export function WatchAlertsWorkspace({
   const next = selectedIndex >= 0 && selectedIndex < alerts.length - 1 ? alerts[selectedIndex + 1] : null;
   const selectedRow = selected ? rows.find((row) => row.id === selected.id) : null;
   const listRef = useRef<HTMLOListElement>(null);
+  const assignmentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const list = listRef.current;
@@ -364,7 +365,12 @@ export function WatchAlertsWorkspace({
         </main>
       </div>
 
-      <Dialog open={assignOpen && Boolean(selected)} onClose={setAssignOpen} className="relative z-50">
+      <Dialog
+        open={assignOpen && Boolean(selected)}
+        onClose={setAssignOpen}
+        initialFocus={assignmentInputRef}
+        className="relative z-50"
+      >
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
           <DialogPanel
@@ -385,6 +391,7 @@ export function WatchAlertsWorkspace({
             <label className="mt-5 block">
               <span className="text-xs text-mute">GitHub login on this install</span>
               <input
+                ref={assignmentInputRef}
                 autoFocus
                 value={assignee}
                 onChange={(event) => onAssignee(event.target.value)}

@@ -45,8 +45,8 @@ describe("Watch keyboard and dialog accessibility", () => {
 
     await user.keyboard("{Home}");
     expect(combobox.getAttribute("aria-activedescendant")).not.toBe(endId);
-    expect(screen.queryByRole("option", { name: /Private registries/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /Add a source/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Private registries/i })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Add a source/i })).toBeNull();
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("combobox")).not.toBeInTheDocument());
