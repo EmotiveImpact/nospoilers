@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AlertListViewModel } from "@/watch/view-models.ts";
 import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
+import type { AlertTab } from "@/watch/routes.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -44,10 +45,13 @@ export function WatchAlertsWorkspace({
   state,
   activityState,
   detailOpen,
+  tab,
+  teamOnly,
   onSelect,
   onBack,
   onRetry,
   onRetryActivity,
+  onTab,
   onNote,
   onAssignee,
   onAction,
@@ -67,10 +71,13 @@ export function WatchAlertsWorkspace({
   state: WatchSectionState;
   activityState: WatchSectionState;
   detailOpen: boolean;
+  tab: AlertTab;
+  teamOnly: boolean;
   onSelect: (alertId: number) => void;
   onBack: () => void;
   onRetry: () => void;
   onRetryActivity: () => void;
+  onTab: (tab: AlertTab) => void;
   onNote: (value: string) => void;
   onAssignee: (value: string) => void;
   onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void;
@@ -119,6 +126,30 @@ export function WatchAlertsWorkspace({
           No new jobs run. Existing alerts can still be acknowledged, assigned, resolved, and reopened.
         </div>
       ) : null}
+      <nav
+        className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/8 bg-inset px-3 py-2 lg:hidden"
+        aria-label="Alert views"
+      >
+        {([
+          ["open", "Needs triage"],
+          ["waiting", "Waiting"],
+          ...(teamOnly ? [["mine", "Mine"]] : []),
+          ["done", "Resolved"],
+        ] as [AlertTab, string][]).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-current={tab === value ? "page" : undefined}
+            className={cn(
+              "h-9 shrink-0 rounded-md px-3 text-xs text-mute hover:bg-white/5 hover:text-snow",
+              tab === value && "bg-white/8 text-snow",
+            )}
+            onClick={() => onTab(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-[#0d0d10] lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/8 px-4">

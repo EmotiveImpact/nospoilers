@@ -2953,6 +2953,8 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           state={alertSectionState}
           activityState={controller.selectedActivityState}
           detailOpen={route.alertId !== null}
+          tab={route.tab}
+          teamOnly={Boolean(teamOnly)}
           onSelect={(alertId) =>
             navigate(
               watchHref(watchPath("alerts"), search, {
@@ -2971,6 +2973,14 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           }
           onRetry={() => void retryDeskSection("alerts")}
           onRetryActivity={controller.retrySelectedActivity}
+          onTab={(tab) =>
+            navigate(
+              watchHref(watchPath("alerts"), search, {
+                alert: null,
+                tab,
+              }),
+            )
+          }
           onNote={(value) => {
             if (!selectedAlert) return;
             setAlertNotes((current) => ({ ...current, [selectedAlert.id]: value }));
@@ -3237,7 +3247,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
           stays until uninstall.
         </p>
-        {timeline.status === "ready" && alertSectionState.status === "ready" ? (
+        {previewing ? null : timeline.status === "ready" && alertSectionState.status === "ready" ? (
           <WatchExposureChart alerts={deskAlerts} days={Math.max(7, timeline.days || 90)} />
         ) : timeline.status === "loading" || alertSectionState.status === "loading" ? (
           <WatchSkeleton variant="detail" className="mt-6" />

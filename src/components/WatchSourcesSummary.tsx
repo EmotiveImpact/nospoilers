@@ -182,7 +182,7 @@ export function WatchSourcesSummary({
             Repositories, registry packs, production origins, and map custody report into the same inbox.
           </p>
         </div>
-        {admin ? (
+        {admin && sources.length > 0 ? (
           <Button type="button" onClick={() => setAdding(true)}>
             Add a source
           </Button>
