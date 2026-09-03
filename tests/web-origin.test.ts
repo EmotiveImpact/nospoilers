@@ -13,6 +13,7 @@ import {
   collectHtmlAssetUrls,
   collectSensitiveUrls,
   crawlOrigin,
+  isSourceMapResponse,
   parseWatchOrigin,
   parseWatchRoot,
   WebCrawlError,
@@ -141,6 +142,21 @@ describe("website origin parsing", () => {
     expect(urls.some((url) => url.includes("cdn.example.net"))).toBe(false);
   });
 
+  it("requires source-map JSON instead of trusting a .map filename", () => {
+    expect(
+      isSourceMapResponse(
+        Buffer.from('{"version":3,"sources":["app.ts"],"mappings":"AAAA"}'),
+        "application/json",
+      ),
+    ).toBe(true);
+    expect(
+      isSourceMapResponse(
+        Buffer.from("<!doctype html><html><body>SPA fallback</body></html>"),
+        "text/html",
+      ),
+    ).toBe(false);
+  });
+
   it("collects same-origin exposed paths and ignores off-origin credential hrefs", () => {
     const html =
       '<a href="/.env">env</a><a href="/internal/debug">debug</a><a href="https://evil.com/.env">nope</a><a href="javascript:alert(1)">js</a> fetch("/.git/HEAD")';
@@ -171,6 +187,27 @@ describe("website crawl", () => {
       lookup: publicLookup,
     });
     expect(crawled.files.map((row) => row.rel).sort()).toEqual(["app.js", "index.html"].sort());
+  });
+
+  it("ignores a SPA fallback returned with 200 for a missing sibling map", async () => {
+    const home = Buffer.from('<!doctype html><script src="/app.js"></script>');
+    const crawled = await crawlOrigin(ORIGIN, {
+      fetch: (async (input) => {
+        const url = String(input);
+        if (url === ORIGIN) {
+          return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
+        }
+        if (url === `${ORIGIN}app.js`) {
+          return new Response("console.log('ok')", {
+            status: 200,
+            headers: { "content-type": "application/javascript" },
+          });
+        }
+        return new Response(home, { status: 200, headers: { "content-type": "text/html" } });
+      }) as typeof fetch,
+      lookup: publicLookup,
+    });
+    expect(crawled.files.map((row) => row.rel).sort()).toEqual(["app.js", "index.html"]);
   });
 
   it("marks a private DNS answer as inconclusive, never a fetch to that address", async () => {

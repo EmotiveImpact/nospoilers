@@ -9,6 +9,11 @@
   manual click a unique job, automatically refreshes until the result lands,
   and replaces “crawl” with plain website-scan language.
 
+- Production Web now validates source-map JSON before reporting a `.map`
+  URL. SPA hosts such as Vercel often return `index.html` with HTTP 200 for a
+  missing sibling map; that fallback is no longer reported as a public source
+  map.
+
 - Vercel cold starts no longer replay every database DDL migration. Runtime
   startup checks the current schema marker first; a fresh Postgres database
   serializes migration with a transaction-scoped advisory lock. Concurrent
