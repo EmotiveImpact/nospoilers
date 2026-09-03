@@ -13,7 +13,7 @@ export function ReleasesScreen() {
                     {
                       title: "Receipt",
                       detail:
-                        "The signed receipt identifies the exact bytes and policy result. Failed or inconclusive revisions cannot ship.",
+                        "The signed receipt identifies the exact bytes and policy result. Failed-policy and inconclusive are not clean.",
                     },
                     {
                       title: "Delivery match",
@@ -23,7 +23,7 @@ export function ReleasesScreen() {
                     {
                       title: "Approval and hold",
                       detail:
-                        "Team admins approve or reject passing revisions. A separate admin releases a legal hold.",
+                        "Team admins approve or reject passing revisions. Failed-policy, inconclusive, and digest-changed revisions cannot be approved. A legal hold remains until another admin must release it.",
                     },
                     {
                       title: "Attestation",
@@ -37,6 +37,12 @@ export function ReleasesScreen() {
                     </article>
                   ))}
                 </div>
+                <p className="watch-guidance mt-3 max-w-4xl text-xs leading-relaxed text-dim">
+                  Failed-policy and inconclusive receipts are never clean. Failed-policy, inconclusive,
+                  and digest-changed revisions cannot be approved. A legal hold remains until
+                  another admin must release it. Solo may publish a passing verification page; delivery matching is
+                  on demand and is not scheduled CDN verification.
+                </p>
                 {previewing ? (
                   <p className="mt-4 text-sm leading-relaxed text-mute">
                     Preview cannot approve or export releases. No invented incident.
