@@ -92,6 +92,7 @@ the immediate operational sequence. The exhaustive expansion plan is
   Trial and Team admins can save a signing policy that blocks
   approve-to-ship until required GitHub/npm attestation facts match
   (optional builder prefix and expiration; Solo 403; unpaid 402).
+  Live Neon: `062` applied; unauth PUT 401; save/GET/clear leftover 0.
   Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or

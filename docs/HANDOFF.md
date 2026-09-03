@@ -135,7 +135,10 @@ Read in this order:
   UPDATE rejected; `watched_packages` 0.
   `062_release_signing_policies` stores one customer signing policy per
   install (required GitHub/npm presence, optional builder prefix,
-  optional expiration). Next unused id is `063_*`.
+  optional expiration). Live Neon: `062` applied; unauth PUT 401;
+  GET `{ policy: null }`; PUT require-github 200 on install
+  `158159401`; GET returned the policy; DELETE leftover policies 0;
+  `watched_packages` 0; open jobs 0. Next unused id is `063_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -178,7 +181,7 @@ Read in this order:
   approve-to-ship until required GitHub/npm attestation facts are
   present (optional builder prefix and expiration). Typed confirm.
   Members may read. Solo 403. Unpaid 402. Clear deletes the row.
-  This is not Sigstore verification.
+  This is not Sigstore verification. Live Neon leftover policies 0.
   Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save.   Slack incoming webhooks,
   SIEM HTTPS webhooks, Jira Cloud email+token, and PagerDuty routing keys are the same

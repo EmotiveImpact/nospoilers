@@ -1,10 +1,10 @@
 # Platform build — paused here
 
-Updated 2 September 2026 after the pre-design platform PRs landed on `main`. Resume the complete-platform job from this file after Watch desk 2B.
+Updated 3 September 2026 after customer signing policies landed on `main`. Resume the complete-platform job from this file after Watch desk 2B.
 
 ## Is it on `main`?
 
-**Yes, through Milestone 4 process split, visibility proofs, and the PR #2 home hero.** Check `origin/main` for the current tip.
+**Yes, through Milestone 4 process split, visibility proofs, the PR #2 home hero, attestation adapters, and signing policies.** Check `origin/main` for the current tip.
 
 | Phase | How it landed | On `main`? |
 | --- | --- | --- |
@@ -13,7 +13,8 @@ Updated 2 September 2026 after the pre-design platform PRs landed on `main`. Res
 | Stripe Checkout / portal / webhooks (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/6 merged | Yes |
 | Resend Watch email destinations (dark, no keys) | https://github.com/EmotiveImpact/nospoilers/pull/7 commits merged via `9859d72`, PR closed (stacked base was not `main`) | Yes |
 | Production serve + `NOSPOILERS_ROLE` + NOTIFY wake | https://github.com/EmotiveImpact/nospoilers/pull/8 commits merged via `59e00c6`, PR closed (stacked base was not `main`) | Yes |
-| GitHub / public-npm attestation adapters | Fetch attestation documents for a sealed digest; store presence/subject/builder; no Sigstore verify | Yes (after this land). Live Neon `061` on throwaway `phase1-fixture` revision 6 |
+| GitHub / public-npm attestation adapters | Fetch attestation documents for a sealed digest; store presence/subject/builder; no Sigstore verify | Yes. Live Neon `061` on throwaway `phase1-fixture` revision 6 |
+| Customer-managed signing policies | One install policy; require GitHub/npm present or builder prefix before approve-to-ship; no Sigstore verify | Yes (after this land). Live Neon `062`; leftover policies 0 |
 
 Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`, PR #3) and the earlier 2B attempt (`cursor/watch-desk-2b-71d1`, PR #9). Ignore that 2B UI.
 
@@ -25,7 +26,8 @@ Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`
 4. Milestone 3 Stripe — **on `main`, wired, not live**. This host has no Stripe keys. `/api/health` `stripe: false`.
 5. Resend Watch email — **on `main`, wired, not live**. Migration `060` on Neon; destinations 0; `/api/health` `resend: false`. Disclosure Desk `sent` stays false. Invites stay GitHub-login only.
 6. Milestone 4 process split — **on `main`**. `npm run build` + `npm run host` serves the SPA. `NOSPOILERS_ROLE=web|worker|all`. Enqueue `NOTIFY nospoilers_jobs`. Live health: `role: all`, `ui: true` after build, Neon. **Not deployed. No Railway account. No domain.**
-7. npm/GitHub attestation adapters — **on `main` after this land**. Live Neon: `061` applied; throwaway `phase1-fixture` revision 6 stored github `missing` with no alert; leftover row stayed. Sigstore verify stays Planned.
+7. npm/GitHub attestation adapters — **on `main`**. Live Neon: `061` applied; throwaway `phase1-fixture` revision 6 stored github `missing` with no alert; leftover row stayed. Sigstore verify stays Planned.
+8. Customer-managed signing policies — **on `main` after this land**. Live Neon: `062` applied; unauth PUT 401; GET `{ policy: null }`; PUT require-github 200 on install `158159401`; GET returned the policy; DELETE leftover 0; `watched_packages` 0. Approve-to-ship 409 is unit-tested; live throwaway revision 6 is `failed-policy` so approve 409s dirty first. Sigstore verify stays Planned.
 
 Electron installer worker, SBOM, Sigstore, and scheduled CDN stay **on ice**. Employee Public Footprint stays **out of this repo**.
 

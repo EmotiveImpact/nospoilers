@@ -644,6 +644,9 @@ writes, typed `signing-policy` / `clear-signing-policy`, members GET, Solo 403,
 unpaid 402, another tenant GET `{ policy: null }` and PUT 403, empty policy 400,
 approve-to-ship 409 until required attestation facts match, expired policies
 do not block, and clear deletes the leftover row.
+Live Neon: `062` applied; unauth PUT 401; GET `{ policy: null }`; PUT
+require-github 200 on install `158159401`; GET returned the policy; DELETE
+leftover policies 0; `watched_packages` 0; open jobs 0.
 Live throwaway `phase1-fixture` revision 6 (`c74219d2…`) on Neon: unauth GET/POST
 401, admin POST 201 github `missing` with no alert, leftover row 1 stayed after a
 second refresh, UPDATE rejected.

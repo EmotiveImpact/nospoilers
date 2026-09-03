@@ -8,6 +8,10 @@
   Members may read. Solo is 403. Unpaid is 402. Clear deletes the row.
   Watch uses outline buttons, not ember. Migration
   `062_release_signing_policies`. Not Sigstore verification.
+  Live Neon: `062` applied; unauth PUT 401; GET `{ policy: null }`;
+  PUT require-github 200 as `EmotiveImpact` on install `158159401`;
+  GET returned the policy; DELETE leftover policies 0; `watched_packages`
+  0; open jobs 0.
 
 - GitHub and public-npm attestation adapters refresh a sealed revision.
   Trial/Team install admins type the coordinate. The adapter stores
