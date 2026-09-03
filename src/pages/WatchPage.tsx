@@ -337,6 +337,7 @@ type Confirming =
   | { kind: "release-hold-release"; id: number; expected: string; reason: string }
   | { kind: "release-publish"; id: number; expected: string }
   | { kind: "release-unpublish"; id: number; expected: string }
+  | { kind: "release-attest"; id: number; expected: string }
   | { kind: "identity-evidence"; id: number; expected: string }
   | { kind: "identity-publish-advisory"; id: number; expected: string }
   | { kind: "identity-unpublish-advisory"; id: number; expected: string }
@@ -392,6 +393,8 @@ function confirmActionLabel(row: Confirming): string {
       return "publish a verification page for this release";
     case "release-unpublish":
       return "unpublish this verification page";
+    case "release-attest":
+      return "refresh GitHub and npm attestations for this release";
     case "identity-evidence":
       return "assemble identity evidence for this package";
     case "identity-publish-advisory":
@@ -457,6 +460,15 @@ type ReleaseRevision = {
     createdAt: string;
   } | null;
   publicPage?: { enabled: boolean; path: string } | null;
+  attestations?: {
+    source: "github" | "npm";
+    status: "missing" | "present" | "subject_mismatch" | "unreadable";
+    predicateType: string | null;
+    subjectDigest: string | null;
+    builderId: string | null;
+    issuer: string | null;
+    createdAt: string;
+  }[];
 };
 
 function formatSealedBytes(bytes: number): string {
@@ -1131,6 +1143,7 @@ export function WatchPage({ search }: { search: string }) {
   const [attachingReleaseId, setAttachingReleaseId] = useState<number | null>(null);
   const [verifyingLocationId, setVerifyingLocationId] = useState<number | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [attestationError, setAttestationError] = useState<string | null>(null);
   const [governanceReasonByRelease, setGovernanceReasonByRelease] = useState<Record<number, string>>(
     {},
   );
@@ -1650,6 +1663,13 @@ export function WatchPage({ search }: { search: string }) {
               reason: confirming.reason,
               confirm,
             }),
+          });
+        } else if (confirming.kind === "release-attest") {
+          response = await fetch(`/api/releases/${confirming.id}/attestations`, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify({ confirm }),
           });
         } else if (confirming.kind === "release-publish" || confirming.kind === "release-unpublish") {
           response = await fetch(`/api/releases/${confirming.id}/public`, {
@@ -5322,6 +5342,9 @@ export function WatchPage({ search }: { search: string }) {
           status, and last delivery host match. Query strings, pack bytes, CI URLs, and signed
           URLs stay off that page. Failed-policy is not clean. Solo may publish. Unpaid is 402.
           Unpublish hides the page. This is not scheduled CDN verification.
+          Trial and Team can refresh GitHub and npm attestation documents for a sealed digest.
+          The adapter records presence, subject digest, and builder id. It does not verify
+          Sigstore signatures and is not a malware verdict. Solo is 403. Unpaid is 402.
         </p>
         {previewing ? (
           <p className="mt-4 text-sm leading-relaxed text-mute">
@@ -5329,7 +5352,8 @@ export function WatchPage({ search }: { search: string }) {
           </p>
         ) : deskCoverage?.plan === "solo" ? (
           <p className="mt-4 text-sm leading-relaxed text-mute">
-            Subscribe to Team to approve shipping releases, place legal hold, and export the ledger.
+            Subscribe to Team to approve shipping releases, place legal hold, export the ledger,
+            and refresh GitHub or npm attestations.
           </p>
         ) : null}
         {canExportReleases ? (
@@ -5369,6 +5393,7 @@ export function WatchPage({ search }: { search: string }) {
         ) : null}
         {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
         {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}
+        {attestationError ? <p className="mt-3 text-sm text-danger">{attestationError}</p> : null}
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
         ) : releases.length === 0 ? (
@@ -5591,6 +5616,36 @@ export function WatchPage({ search }: { search: string }) {
                       {release.publicPage.path}
                     </a>
                   </p>
+                ) : null}
+                {(release.attestations ?? []).length > 0 ? (
+                  <ul className="mt-3 space-y-1">
+                    {(release.attestations ?? []).map((row) => (
+                      <li key={`${row.source}-${row.createdAt}`} className="font-mono text-xs text-mute">
+                        {row.source} attestation · {row.status.replace("_", " ")}
+                        {row.predicateType ? ` · ${row.predicateType}` : ""}
+                        {row.builderId ? ` · ${row.builderId}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {canGovernReleases ? (
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setAttestationError(null);
+                        beginConfirm({
+                          kind: "release-attest",
+                          id: release.id,
+                          expected: release.coordinate,
+                        });
+                      }}
+                    >
+                      Refresh attestations
+                    </Button>
+                  </div>
                 ) : null}
                 {canPublishVerify ? (
                   <div className="mt-3 flex flex-wrap gap-2">

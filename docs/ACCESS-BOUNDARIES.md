@@ -153,12 +153,16 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   receipt, and deletes the bytes.
 - List append-only release revisions for those installations (channel, digests, source
   revision, stored CI run URL, linked receipt status, attached delivery URLs with query
-  strings redacted, latest approval, and legal-hold status). Failed-policy and inconclusive are
+  strings redacted, latest approval, legal-hold status, and latest GitHub/npm attestation
+  facts on a trial or Team install). Failed-policy and inconclusive are
   not a passing result. Historical rows cannot be edited or deleted. Download the
   linked signed receipt JSON (`GET /api/receipts/:id`). Unpaid still allowed. Another tenant
-  is 404. Pack bytes are not included. Delivery verification, approval, and legal-hold
-  rows are append-only. A revision on legal hold stays on the list after the retention
-  window. Direct revision ids still load for incident work.
+  is 404. Pack bytes are not included. Delivery verification, approval, legal-hold,
+  and attestation rows are append-only. A revision on legal hold stays on the list after the retention
+  window. Direct revision ids still load for incident work. Members on a trial or Team
+  install may `GET /api/releases/:id/attestations`. Solo paid returns 403. Unpaid
+  returns 402. Signature bytes and bundles are never returned. This is not a Sigstore
+  verdict.
 - On a trial or Team install, export the release ledger JSON (digests, size, media type,
   receipt status, approvals, hold events, redacted delivery URLs). Members may export.
   Solo paid returns 403. Unpaid returns 402. Another tenant’s installation is empty.
@@ -190,14 +194,14 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
 - Change roles, remove members, invite or revoke a GitHub login, save or delete email/Slack/SIEM/Jira/PagerDuty destinations or routes, save or delete private
   registry tokens, mint or revoke scan API tokens, manage allowlists or baselines, allowlist or revoke
   lookalike names, watch or stop watching an npm scope, assemble identity evidence or publish a consumer advisory, change the retention window, save or delete Sentry/Bugsnag map custody, attach or
-  verify a release delivery URL, publish or unpublish a verification page, approve or reject a sealed revision, place or release a legal hold, open setup or
+  verify a release delivery URL, publish or unpublish a verification page, refresh GitHub or npm attestations, approve or reject a sealed revision, place or release a legal hold, open setup or
   remediation PRs, or confirm make-private / delete pack assets / disable workflow. Those writes need an
   install admin.
 - Delete append-only evidence by shortening retention. Alert events, notification deliveries,
   audit events, identity snapshots, release revisions, and scan receipts are not deleted;
   lists hide older rows at query time.
 - See other tenants’ registry tokens, email, Slack, SIEM, Jira, or PagerDuty destinations, map custody tokens, watched websites, scan API tokens, ciphertext, alerts, repos, jobs, artifacts, scan receipts, release revisions, or delivery URLs.
-- Edit or delete scan receipts, release revisions, release approvals, legal-hold events, jobs, alert events, or audit events. Receipts, revisions, approvals, holds, alert events, and audit events are append-only; the customer job list is read-only.
+- Edit or delete scan receipts, release revisions, release approvals, legal-hold events, release attestations, jobs, alert events, or audit events. Receipts, revisions, approvals, holds, attestation facts, alert events, and audit events are append-only; the customer job list is read-only.
 - Patch alert titles or bodies. Resolve with a note instead.
 - Assign an alert to a GitHub login that is not a member of that installation.
 - Access `/internal/*` or `/api/internal/*`.
@@ -297,6 +301,14 @@ reviewable setup or remediation PR also needs Pull requests write. The App never
   the coordinate. Reason required. The admin who placed the hold cannot release it.
   Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant is 404.
   Hold events are append-only. Audit records the coordinate only.
+- Refresh GitHub and public-npm attestation documents for a sealed revision on a trial
+  or Team install. Type the coordinate. The adapter stores presence, subject digest,
+  predicate type, builder id, and issuer host. It does not fetch private registries,
+  does not verify Sigstore, and does not store signature or bundle bytes. First refresh
+  is a baseline (missing is allowed and does not alert). A later present document that
+  disappears, changes predicate/builder, or mismatches the sealed digest writes a Watch
+  fact. Members return 403. Solo paid returns 403. Unpaid returns 402. Another tenant
+  is 404. Hosted `api:` coordinates return 400. Audit records the coordinate only.
 - Publish or unpublish a verification page for a sealed revision. Type the coordinate.
   Solo paid is allowed. Unpaid returns 402. Members return 403. Another tenant is 404.
   The public token is unguessable and is not the revision id. Audit records the
@@ -606,6 +618,11 @@ enabled, redacts query strings / CI URLs / pack bytes, treats failed-policy as n
 clean, refuses members and other tenants on publish, allows Solo, returns 402 when
 unpaid while the existing page still reads, uses an unguessable token, records the
 coordinate only on audit, and does not enqueue a delivery-verify job on public GET.
+`tests/attestations.test.ts` proves GitHub and public-npm attestation adapters are
+admin-only, typed-confirm, Solo 403, unpaid 402, another tenant 404, hosted `api:`
+coordinates 400, first refresh is a no-alert baseline, later present→missing writes
+`release_attestation_lost`, leftover rows stay append-only, private-registry facts
+are stored as missing without a fetch, and signature bytes are never stored.
 Live throwaway `phase1-fixture` (`c74219d2…`) published on Neon: unauth publish
 401, public GET 200 with `passingReceipt: false` and host `github.com` matched,
 no query string, no new verify job; Cloudflare tunnel matched.

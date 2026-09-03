@@ -818,6 +818,7 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateDisclosureFindings(sql);
   await migrateStripeBilling(sql);
   await migrateEmailDestinations(sql);
+  await migrateReleaseAttestations(sql);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
 }
@@ -1299,6 +1300,7 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
       'release.release_hold',
       'release.publish_verify',
       'release.unpublish_verify',
+      'release.attest',
       'identity.evidence',
       'identity.publish_advisory',
       'identity.unpublish_advisory',
@@ -1757,6 +1759,44 @@ async function applyNotificationKindCheck(sql: SqlClient): Promise<void> {
 async function migrateEmailDestinations(sql: SqlClient): Promise<void> {
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "060_email_destinations",
+  ]);
+}
+
+async function migrateReleaseAttestations(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS release_attestations (
+      id BIGSERIAL PRIMARY KEY,
+      installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
+      revision_id BIGINT NOT NULL REFERENCES release_revisions (id) ON DELETE CASCADE,
+      source TEXT NOT NULL CHECK (source IN ('github', 'npm')),
+      status TEXT NOT NULL CHECK (status IN ('missing', 'present', 'subject_mismatch', 'unreadable')),
+      predicate_type TEXT,
+      subject_digest TEXT,
+      builder_id TEXT,
+      issuer TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS release_attestations_revision_idx
+      ON release_attestations (revision_id, source, id DESC);
+    CREATE INDEX IF NOT EXISTS release_attestations_install_idx
+      ON release_attestations (installation_id, id DESC);
+    CREATE OR REPLACE FUNCTION reject_release_attestation_mutation()
+    RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'release_attestations are append-only';
+    END;
+    $$ LANGUAGE plpgsql;
+    DROP TRIGGER IF EXISTS release_attestations_no_update ON release_attestations;
+    CREATE TRIGGER release_attestations_no_update
+      BEFORE UPDATE ON release_attestations
+      FOR EACH ROW EXECUTE PROCEDURE reject_release_attestation_mutation();
+    DROP TRIGGER IF EXISTS release_attestations_no_delete ON release_attestations;
+    CREATE TRIGGER release_attestations_no_delete
+      BEFORE DELETE ON release_attestations
+      FOR EACH ROW EXECUTE PROCEDURE reject_release_attestation_mutation();
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "061_release_attestations",
   ]);
 }
 

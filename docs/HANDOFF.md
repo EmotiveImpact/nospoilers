@@ -126,7 +126,10 @@ Read in this order:
   `059_stripe_billing` adds Stripe customer/subscription/status/price/period
   columns on `billing_accounts`, unique customer index, and `stripe_events`.
   `060_email_destinations` adds email destination/delivery kinds.
-  Next unused id is `061_*`.
+  `061_release_attestations` stores append-only GitHub and public-npm
+  attestation facts on a sealed revision (presence, subject digest,
+  predicate type, builder id, issuer host; never signature or bundle
+  bytes). Next unused id is `062_*`.
   Older delivery/governance/public-page migrations no longer rewrite a stale
   `audit_events.action` CHECK on every boot. `migrate()` applies the current
   full list once at the end so `release.publish_verify` rows stay valid.
@@ -157,6 +160,14 @@ Read in this order:
   Failed-policy is not clean. Solo may publish. Unpaid 402 to publish or
   unpublish; an already-published page still reads. Public GET does not
   enqueue a verify job. This is not scheduled CDN verification.
+  Trial and Team admins can refresh GitHub and public-npm attestation
+  documents for a sealed digest (typed coordinate). The adapter records
+  presence, subject digest, and builder id. It does not verify Sigstore
+  and is not a malware verdict. First refresh is baseline. A later present
+  document that disappears or changes writes a Watch fact. Solo 403.
+  Unpaid 402. Private registries store `missing` and are not fetched.
+  Hosted `api:` coordinates have no attestation source. This is not the
+  packument-only identity snapshot.
   Query strings are redacted on Watch, alerts, and audit. Private registry tokens are
   AES-GCM ciphertext (`ns1.` prefix) and are never returned after save.   Slack incoming webhooks,
   SIEM HTTPS webhooks, Jira Cloud email+token, and PagerDuty routing keys are the same
@@ -563,6 +574,12 @@ or changes registry signature keyids writes `identity_provenance_lost` /
 `identity_provenance_changed` / `identity_signature_changed` (no fetch, no verify, no
 signature values stored; first snapshot is baseline; trial/Team; Solo 403). Event-driven.
 This is not a Sigstore/attestation adapter. Not a Pricing change.
+GitHub and public-npm attestation adapters fetch the attestation
+document for a sealed digest (`061_release_attestations`). They store
+presence, subject, predicate, builder, and issuer host. They do not
+verify signatures or store bundle bytes. First refresh is baseline.
+Later present→missing/changed/mismatch writes Watch facts. Trial/Team.
+Solo 403. Unpaid 402. Not a malware verdict. Not a Pricing change.
 A protected pack whose `_npmUser` name or trusted-publisher id changes writes
 `package_publisher_changed` (no email or oidcConfigId stored; first snapshot / empty
 previous is baseline; Solo allowed; unpaid skips). Event-driven. Not a malware verdict.

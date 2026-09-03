@@ -67,6 +67,13 @@ import { decodeJiraSecret, type JiraSecret } from "./jira.ts";
 import { githubLoginKey, type NotificationRouteRow, type RouteMinSeverity } from "./routing.ts";
 import { IDENTITY_EVIDENCE_ALERT_KINDS } from "./identity-evidence.ts";
 import {
+  asAttestationSource,
+  asAttestationStatus,
+  type AttestationSource,
+  type AttestationStatus,
+  type ReleaseAttestationRow,
+} from "./attestations.ts";
+import {
   asDisclosureDestinationKind,
   type DisclosureDestinationKind,
   type DisclosureDestinationRow,
@@ -1569,6 +1576,39 @@ function releaseLegalHoldRow(row: ReleaseLegalHoldSqlRow): ReleaseLegalHoldRow {
     action: row.action === "release" ? "release" : "place",
     reason: row.reason,
     actor_login: row.actor_login,
+    created_at: iso(row.created_at) ?? new Date().toISOString(),
+  };
+}
+
+type ReleaseAttestationSqlRow = {
+  id: unknown;
+  installation_id: unknown;
+  revision_id: unknown;
+  source: string;
+  status: string;
+  predicate_type: string | null;
+  subject_digest: string | null;
+  builder_id: string | null;
+  issuer: string | null;
+  created_at: string | Date;
+};
+
+function releaseAttestationRow(row: ReleaseAttestationSqlRow): ReleaseAttestationRow {
+  const source = asAttestationSource(row.source);
+  const status = asAttestationStatus(row.status);
+  if (!source || !status) {
+    throw new Error(`Invalid release attestation row ${String(row.id)}.`);
+  }
+  return {
+    id: num(row.id),
+    installation_id: num(row.installation_id),
+    revision_id: num(row.revision_id),
+    source,
+    status,
+    predicate_type: row.predicate_type,
+    subject_digest: row.subject_digest,
+    builder_id: row.builder_id,
+    issuer: row.issuer,
     created_at: iso(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -7199,6 +7239,52 @@ export function createStore(
         revisionIds,
       );
       return rows.map(releaseLegalHoldRow);
+    },
+
+    async insertReleaseAttestation(input: {
+      installationId: number;
+      revisionId: number;
+      source: AttestationSource;
+      status: AttestationStatus;
+      predicateType?: string | null;
+      subjectDigest?: string | null;
+      builderId?: string | null;
+      issuer?: string | null;
+    }): Promise<ReleaseAttestationRow> {
+      const { rows } = await sql.query<ReleaseAttestationSqlRow>(
+        `INSERT INTO release_attestations (
+           installation_id, revision_id, source, status,
+           predicate_type, subject_digest, builder_id, issuer
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          input.installationId,
+          input.revisionId,
+          input.source,
+          input.status,
+          input.predicateType ?? null,
+          input.subjectDigest ?? null,
+          input.builderId ?? null,
+          input.issuer ?? null,
+        ],
+      );
+      if (!rows[0]) throw new Error("release attestation insert returned no row");
+      return releaseAttestationRow(rows[0]);
+    },
+
+    async listReleaseAttestationsForRevisions(
+      revisionIds: number[],
+    ): Promise<ReleaseAttestationRow[]> {
+      if (revisionIds.length === 0) return [];
+      const placeholders = revisionIds.map((_, index) => `$${index + 1}`).join(", ");
+      const { rows } = await sql.query<ReleaseAttestationSqlRow>(
+        `SELECT * FROM release_attestations
+         WHERE revision_id IN (${placeholders})
+         ORDER BY id ASC`,
+        revisionIds,
+      );
+      return rows.map(releaseAttestationRow);
     },
 
     async countDeliveryLocations(input: {

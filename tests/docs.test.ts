@@ -35,6 +35,8 @@ describe("public documentation", () => {
     expect(text).toMatch(/export the ledger/i);
     expect(text).toMatch(/publish a verification page/i);
     expect(text).toMatch(/Solo may publish/i);
+    expect(text).toMatch(/refresh GitHub and npm attestation documents/i);
+    expect(text).toMatch(/does not verify Sigstore/i);
     expect(text).toMatch(/verify it now/i);
     expect(text).toMatch(/not scheduled CDN verification/i);
     expect(text).toMatch(/GitHub Release download hop/i);

@@ -97,6 +97,12 @@ export type GithubPort = {
     html_url?: string | null;
   }>;
   getRepo: (installationId: number, owner: string, repo: string) => Promise<GithubRepo>;
+  listAttestations?: (
+    installationId: number,
+    owner: string,
+    repo: string,
+    sha256: string,
+  ) => Promise<{ attestations: unknown[] }>;
   listReleaseAssets: (
     installationId: number,
     owner: string,
@@ -341,6 +347,34 @@ export function createGithubPort(config: AppConfig): GithubPort {
         `https://api.github.com/repos/${owner}/${repo}`,
         token,
       );
+    },
+
+    async listAttestations(installationId, owner, repo, sha256) {
+      const digest = sha256.trim().toLowerCase().replace(/^sha256:/, "");
+      const token = await installationToken(installationId);
+      const response = await fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/attestations/sha256:${digest}`,
+        {
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "nospoilers",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        },
+      );
+      if (response.status === 404 || response.status === 403) {
+        return { attestations: [] };
+      }
+      if (!response.ok) {
+        const text = await response.text();
+        throw new GithubApiError(
+          response.status,
+          `GitHub ${response.status} attestations: ${text.slice(0, 400)}`,
+        );
+      }
+      const body = (await response.json()) as { attestations?: unknown[] };
+      return { attestations: Array.isArray(body.attestations) ? body.attestations : [] };
     },
 
     async listReleaseAssets(installationId, owner, repo, releaseId) {

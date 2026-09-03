@@ -84,7 +84,10 @@ the immediate operational sequence. The exhaustive expansion plan is
   Members export the ledger JSON (query strings and pack bytes omitted). Solo 403.
   Unpaid 402. An install admin can publish `/verify/:token` for a sealed revision
   (Solo allowed; unpaid 402 to change; public GET is redacted and does not enqueue
-  verify). Development
+  verify). Trial and Team admins can refresh GitHub and public-npm attestation
+  documents for that sealed digest (presence, subject, builder; no Sigstore
+  verify; no stored signatures; first refresh baseline; later loss/change is a
+  Watch fact; Solo 403; unpaid 402). Development
   receipts stay HMAC `dev-hmac`; production signing should move to KMS.
 - Package Identity foundations: customers protect a watched npm pack only when the npm scope or
   GitHub repository field matches this install. Append-only identity snapshots record maintainers

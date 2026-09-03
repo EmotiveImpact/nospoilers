@@ -334,6 +334,15 @@ import {
   parsePublicToken,
   publicPageSummary,
 } from "./release-public.ts";
+import {
+  ATTESTATION_NO_SOURCE_ERROR,
+  ATTESTATION_UNPAID_ERROR,
+  attestationPlanDeniedFromBilling,
+  latestAttestationBySource,
+  publicAttestation,
+  refreshReleaseAttestations,
+  type ReleaseAttestationRow,
+} from "./attestations.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
 
@@ -494,12 +503,33 @@ function publicLegalHold(row: ReleaseLegalHoldRow | null) {
   };
 }
 
+function latestPublicAttestations(rows: ReleaseAttestationRow[]) {
+  return [...latestAttestationBySource(rows).values()].map(publicAttestation);
+}
+
+function exportReleaseLocations(
+  locations: Awaited<ReturnType<Store["listDeliveryLocationsForRevisions"]>> | undefined,
+) {
+  return (locations ?? []).map((location) => ({
+    url: redactDeliveryUrl(location.url),
+    host: location.host,
+    lastStatus: location.last_status,
+    lastSha256: location.last_sha256,
+    lastMediaType: location.last_media_type,
+    lastRedirectHosts: location.last_redirect_hosts,
+    lastCacheState: location.last_cache_state,
+    lastRegion: location.last_region,
+    lastCheckedAt: location.last_checked_at,
+  }));
+}
+
 function publicRelease(
   row: ReleaseRevisionRow,
   locations: ReturnType<typeof publicDeliveryLocation>[] = [],
   approval: ReleaseApprovalRow | null = null,
   hold: ReleaseLegalHoldRow | null = null,
   page: { enabled: boolean; public_token: string } | null = null,
+  attestations: ReturnType<typeof publicAttestation>[] = [],
 ) {
   return {
     id: row.id,
@@ -523,6 +553,7 @@ function publicRelease(
     approval: approval ? publicApproval(approval) : null,
     legalHold: publicLegalHold(hold),
     publicPage: publicPageSummary(page),
+    attestations,
   };
 }
 
@@ -4489,6 +4520,16 @@ export function createApp(deps: AppDeps): Hono {
         page,
       ]),
     );
+    const attestationRows = await deps.store.listReleaseAttestationsForRevisions(revisionIds);
+    const attestationsByRevision = groupedByRevision(attestationRows);
+    const installIds = [...new Set(releases.map((row) => row.installation_id))];
+    const hideAttestations = new Set<number>();
+    for (const installationId of installIds) {
+      const billing = await deps.store.installationBilling(installationId);
+      if (attestationPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan)) {
+        hideAttestations.add(installationId);
+      }
+    }
     const byRevision = new Map<number, ReturnType<typeof publicDeliveryLocation>[]>();
     for (const location of locations) {
       const list = byRevision.get(location.revision_id) ?? [];
@@ -4503,6 +4544,9 @@ export function createApp(deps: AppDeps): Hono {
           approvals.get(row.id) ?? null,
           holds.get(row.id) ?? null,
           pages.get(row.id) ?? null,
+          hideAttestations.has(row.installation_id)
+            ? []
+            : latestPublicAttestations(attestationsByRevision.get(row.id) ?? []),
         ),
       ),
     });
@@ -4544,6 +4588,9 @@ export function createApp(deps: AppDeps): Hono {
     const locationsByRevision = groupedByRevision(locations);
     const approvalsByRevision = groupedByRevision(approvals);
     const holdsByRevision = groupedByRevision(holds);
+    const attestationsByRevision = groupedByRevision(
+      await deps.store.listReleaseAttestationsForRevisions(revisionIds),
+    );
     const latestApproval = latestByRevision(approvals);
     const latestHold = latestByRevision(holds);
     const pages = new Map(
@@ -4580,17 +4627,8 @@ export function createApp(deps: AppDeps): Hono {
           createdAt: hold.created_at,
         })),
         publicPage: publicPageSummary(pages.get(row.id) ?? null),
-        locations: (locationsByRevision.get(row.id) ?? []).map((location) => ({
-          url: redactDeliveryUrl(location.url),
-          host: location.host,
-          lastStatus: location.last_status,
-          lastSha256: location.last_sha256,
-          lastMediaType: location.last_media_type,
-          lastRedirectHosts: location.last_redirect_hosts,
-          lastCacheState: location.last_cache_state,
-          lastRegion: location.last_region,
-          lastCheckedAt: location.last_checked_at,
-        })),
+        attestations: latestPublicAttestations(attestationsByRevision.get(row.id) ?? []),
+        locations: exportReleaseLocations(locationsByRevision.get(row.id)),
       })),
     });
   });
@@ -4606,6 +4644,13 @@ export function createApp(deps: AppDeps): Hono {
     const approvals = await deps.store.listReleaseApprovalsForRevisions([row.id]);
     const holds = await deps.store.listReleaseLegalHoldsForRevisions([row.id]);
     const page = await deps.store.getReleasePublicPageByRevision(row.id);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const hideAttestations = Boolean(
+      attestationPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan),
+    );
+    const attestations = hideAttestations
+      ? []
+      : latestPublicAttestations(await deps.store.listReleaseAttestationsForRevisions([row.id]));
     return c.json({
       release: publicRelease(
         row,
@@ -4613,8 +4658,83 @@ export function createApp(deps: AppDeps): Hono {
         latestByRevision(approvals).get(row.id) ?? null,
         latestByRevision(holds).get(row.id) ?? null,
         page,
+        attestations,
       ),
     });
+  });
+
+  app.get("/api/releases/:id/attestations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = attestationPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const rows = await deps.store.listReleaseAttestationsForRevisions([row.id]);
+    return c.json({
+      attestations: latestPublicAttestations(rows),
+      history: rows.map(publicAttestation),
+    });
+  });
+
+  app.post("/api/releases/:id/attestations", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown release." }, 404);
+    const row = await deps.store.getReleaseRevisionForUser(id, user.userId);
+    if (!row) return c.json({ error: "Unknown release." }, 404);
+    const adminDenied = await requireInstallAdmin(user.userId, row.installation_id);
+    if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
+    const billing = await deps.store.installationBilling(row.installation_id);
+    const planDenied = attestationPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan);
+    if (planDenied) return c.json({ error: planDenied.error }, planDenied.status);
+    const workDenied = await hostedWorkDenied(
+      deps.store,
+      row.installation_id,
+      ATTESTATION_UNPAID_ERROR,
+    );
+    if (workDenied) return c.json({ error: workDenied.error }, workDenied.status);
+    const body = jsonObj(await c.req.json().catch(() => ({})));
+    const confirmError = typedConfirm(body, row.coordinate);
+    if (confirmError) return c.json(confirmError, 400);
+    try {
+      const refreshed = await refreshReleaseAttestations({
+        store: deps.store,
+        github: deps.github,
+        revision: row,
+        actorLogin: user.login,
+      });
+      await recordAudit({
+        installationId: row.installation_id,
+        actorLogin: user.login,
+        action: "release.attest",
+        summary: `Refreshed attestations for ${row.coordinate}`,
+        targetKind: "release",
+        targetId: row.coordinate,
+      });
+      return c.json(
+        {
+          ok: true,
+          attestations: latestPublicAttestations(refreshed.rows),
+          changes: refreshed.changes,
+        },
+        201,
+      );
+    } catch (error) {
+      return c.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : ATTESTATION_NO_SOURCE_ERROR,
+        },
+        errorStatus(error),
+      );
+    }
   });
 
   app.post("/api/releases/:id/public", async (c) => {

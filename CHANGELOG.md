@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- GitHub and public-npm attestation adapters refresh a sealed revision.
+  Trial/Team install admins type the coordinate. The adapter stores
+  presence, subject digest, predicate type, builder id, and issuer host.
+  It does not verify Sigstore and does not store signature or bundle
+  bytes. First refresh is a baseline. A later present document that
+  disappears or changes writes a Watch fact. Solo is 403. Unpaid is 402.
+  Hosted `api:` coordinates have no source. Private registries store
+  `missing` and are not fetched. Watch uses outline Refresh attestations,
+  not ember. Migration `061_release_attestations` is append-only.
+
 - Home uses the PR #2 hero: two columns, two actions, CLI vs hosted cards.
   Log in stays on the hero. Ember token is `--color-ember`. GitHub PR #1
   (Neon) stays closed leftover — Neon already boots on `main`. PR #6
