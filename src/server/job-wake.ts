@@ -1,7 +1,28 @@
 import pg from "pg";
+import { logJson } from "./log.ts";
 import type { SqlClient } from "./sql.ts";
 
 export const JOBS_CHANNEL = "nospoilers_jobs";
+/** Reconnect the LISTEN socket. This is not empty-queue polling. */
+export const LISTEN_RETRY_MS = 2_000;
+
+export type JobListenClient = {
+  query: (text: string) => Promise<unknown>;
+  on: (event: string, listener: (...args: unknown[]) => void) => unknown;
+  off: (event: string, listener: (...args: unknown[]) => void) => unknown;
+  end: () => Promise<void>;
+};
+
+export type ListenJobQueuedOptions = {
+  connect?: () => Promise<JobListenClient>;
+  retryDelayMs?: number;
+};
+
+async function defaultConnect(databaseUrl: string): Promise<JobListenClient> {
+  const client = new pg.Client({ connectionString: databaseUrl, keepAlive: true });
+  await client.connect();
+  return client;
+}
 
 export async function notifyJobQueued(sql: SqlClient, kind: string): Promise<void> {
   try {
@@ -14,24 +35,105 @@ export async function notifyJobQueued(sql: SqlClient, kind: string): Promise<voi
 export async function listenJobQueued(
   databaseUrl: string,
   onWake: () => void,
+  options: ListenJobQueuedOptions = {},
 ): Promise<() => Promise<void>> {
   if (!databaseUrl || databaseUrl.startsWith("pglite:")) {
     return async () => undefined;
   }
-  const client = new pg.Client({ connectionString: databaseUrl });
-  await client.connect();
-  await client.query(`LISTEN ${JOBS_CHANNEL}`);
-  const handler = (message: { channel?: string }) => {
+
+  const retryDelayMs = options.retryDelayMs ?? LISTEN_RETRY_MS;
+  const connect = options.connect ?? (() => defaultConnect(databaseUrl));
+
+  let closed = false;
+  let generation = 0;
+  let current: JobListenClient | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let connecting: Promise<void> | undefined;
+
+  const onNotification = (message: { channel?: string }) => {
     if (message.channel === JOBS_CHANNEL) onWake();
   };
-  client.on("notification", handler);
+
+  function detach(client: JobListenClient): void {
+    client.off("notification", onNotification);
+    client.off("error", onDead);
+    client.off("end", onDead);
+  }
+
+  function onDead(): void {
+    const client = current;
+    if (!client || closed) return;
+    current = undefined;
+    generation += 1;
+    detach(client);
+    void client.end().catch(() => undefined);
+    scheduleReconnect();
+  }
+
+  function scheduleReconnect(): void {
+    if (closed || reconnectTimer || connecting) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      void attach().catch((error) => {
+        logJson("warn", "jobs.listen.reconnect_failed", {
+          message: error instanceof Error ? error.message : "reconnect failed",
+        });
+        scheduleReconnect();
+      });
+    }, retryDelayMs);
+  }
+
+  async function attach(): Promise<void> {
+    if (closed) return;
+    connecting = (async () => {
+      const mine = ++generation;
+      const client = await connect();
+      if (closed || mine !== generation) {
+        await client.end().catch(() => undefined);
+        return;
+      }
+      await client.query(`LISTEN ${JOBS_CHANNEL}`);
+      if (closed || mine !== generation) {
+        await client.end().catch(() => undefined);
+        return;
+      }
+      current = client;
+      client.on("notification", onNotification);
+      client.on("error", onDead);
+      client.on("end", onDead);
+    })();
+    try {
+      await connecting;
+    } finally {
+      connecting = undefined;
+    }
+  }
+
+  try {
+    await attach();
+  } catch (error) {
+    logJson("warn", "jobs.listen.start_failed", {
+      message: error instanceof Error ? error.message : "listen failed",
+    });
+    scheduleReconnect();
+  }
+
   return async () => {
-    client.off("notification", handler);
+    closed = true;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
+    const client = current;
+    current = undefined;
+    generation += 1;
+    if (!client) return;
+    detach(client);
     try {
       await client.query(`UNLISTEN ${JOBS_CHANNEL}`);
     } catch {
       // closing anyway
     }
-    await client.end();
+    await client.end().catch(() => undefined);
   };
 }

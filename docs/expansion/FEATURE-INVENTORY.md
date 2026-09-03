@@ -9,7 +9,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Neon application runtime | Built: app boots on Neon `neondb` | NoSpoilers |
+| Neon application runtime | Built: app boots on Neon `neondb`; `LISTEN nospoilers_jobs` reconnects when Neon drops the idle socket so the process does not die; recovery stays 15 min | NoSpoilers |
 | GitHub OAuth login | Built: real GitHub user session on Neon; `github_app_authorization` revoked drops that user’s sessions and stored OAuth token | NoSpoilers |
 | GitHub App installation | Built: live App install and HMAC webhooks; `installation_target` renamed updates the stored account login in place | NoSpoilers |
 | Installation ownership verification | Built | NoSpoilers |

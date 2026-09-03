@@ -285,7 +285,8 @@ the immediate operational sequence. The exhaustive expansion plan is
 ## Milestone 0 — prove Neon runtime
 
 Done. Health reports `database.mode: neon` without a URL. Idempotent migrations, a temporary
-write/read/delete probe, event-driven enqueue wake, and a 15-minute recovery interval (not 500 ms
+write/read/delete probe, event-driven enqueue wake, LISTEN reconnect when Neon drops the idle
+socket, and a 15-minute recovery interval (not 500 ms
 empty polling) are in the suite. Access boundaries live in `docs/ACCESS-BOUNDARIES.md`.
 
 ## Milestone 1 — prove the GitHub loop

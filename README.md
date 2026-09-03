@@ -61,7 +61,9 @@ current managed option) for users, sessions, GitHub installations, jobs, alerts,
 billing metadata. Packed artifacts are never stored there.
 
 Queue processing is event-driven: webhook, dashboard, and internal discovery routes wake the worker
-as soon as they insert a job. `WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
+as soon as they insert a job. On Neon, a dedicated `LISTEN nospoilers_jobs` connection reconnects
+if the compute drops the idle socket; that reconnect is not empty-queue polling.
+`WORKER_INTERVAL_MS` is only a 15-minute recovery check for work left
 behind by a crash; it is not the normal pickup path. Failed jobs retry with backoff (default 5
 attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
 visibility backstop that catches a missed webhook.

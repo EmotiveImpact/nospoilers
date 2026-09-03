@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Neon `LISTEN nospoilers_jobs` reconnects when the idle socket drops
+  instead of crashing the process. Idle pool errors are logged. Recovery
+  stays 15 minutes. This is not 500 ms empty-queue polling.
+
 - `npm run phase1:setup-pr` opens the App-generated setup PR on
   `EmotiveImpact/nospoilers-throwaway` when Pull requests write is requested on
   the App and accepted on install `158159401`. Until then it prints the App

@@ -446,7 +446,8 @@ Resend Watch email is wired and stays 503 without `RESEND_API_KEY` and `RESEND_F
 Do not create a Resend account or sending domain without approval. Do not mail disclosures or invites.
 Production serve is in: `npm run build` then `npm run host` serves the SPA with the API.
 `NOSPOILERS_ROLE=web|worker|all` splits HTTP from job claim. Enqueue NOTIFY wakes a
-split worker. Recovery stays 15 minutes. This host is not on Railway. Do not buy Railway
+split worker. The LISTEN socket reconnects when Neon drops it; the process does not
+exit. Recovery stays 15 minutes. This host is not on Railway. Do not buy Railway
 or a domain without approval.
 Legal/support pages and strong secret checks are done.
 Public npm package watching (latest plus next/beta/canary channel tarballs) is in.
@@ -791,7 +792,7 @@ email destinations 0, email deliveries 0, unauth POST/list 401, `/api/health`
 Do not create a Resend account or sending domain without approval. Do not mail
 disclosures or invites.
 Production serve is in (`npm run build` + `npm run host`; `NOSPOILERS_ROLE` web/worker/all;
-enqueue NOTIFY). This host is not on Railway. Do not buy Railway or a domain without approval.
+enqueue NOTIFY; LISTEN reconnects if Neon drops the idle socket). This host is not on Railway. Do not buy Railway or a domain without approval.
 Stripe Checkout is wired; this host has no Stripe keys. Resend Watch email is wired; this host has no Resend keys. The normal worker classifies and skips Electron
 installer assets; do not start the isolated installer worker yet.
 Do not start SBOM, Sigstore, or scheduled CDN verification yet.

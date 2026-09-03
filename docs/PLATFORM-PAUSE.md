@@ -21,7 +21,7 @@ Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`
 
 ## Last place in the platform job
 
-1. Phase 0 Neon runtime — **done** on live `neondb` (Auth off, event-driven wake, not 500 ms polling).
+1. Phase 0 Neon runtime — **done** on live `neondb` (Auth off, event-driven wake, not 500 ms polling). `LISTEN nospoilers_jobs` reconnects when Neon drops the idle socket so the origin does not die.
 2. GitHub App loop on `EmotiveImpact/nospoilers-throwaway` — **done** for created-public, cheap `.env`/`.map` push, fixture `release_scan`, and **private → public**. Cheap-push **re-proven**: job **51** `done` → alert **40**. Publicize **proven** 3 Sep 2026: GitHub `public` + `repository.publicized` → jobs **52** and **53** `done` → alerts **41** and **42** `EmotiveImpact/nospoilers-throwaway is public` (first 502s while origin was down; redelivery 200). Still **unproven live**: transfer, collaborator, fork. Do not transfer. Do not grant App Administration. Do not invent `-vis`.
 3. Milestone 2 unpaid enforcement — **done**.
 4. Milestone 3 Stripe — **on `main`, wired, not live**. This host has no Stripe keys. `/api/health` `stripe: false`.

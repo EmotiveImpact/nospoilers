@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
+import { logJson } from "./log.ts";
 
 export type QueryResult<T> = { rows: T[] };
 
@@ -101,7 +102,10 @@ export async function openSql(databaseUrl: string): Promise<SqlClient> {
     await db.waitReady;
     return wrapPglite(db);
   }
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = new pg.Pool({ connectionString: databaseUrl, keepAlive: true });
+  pool.on("error", (error) => {
+    logJson("warn", "sql.pool.idle_error", { message: error.message });
+  });
   return wrapPool(pool);
 }
 
