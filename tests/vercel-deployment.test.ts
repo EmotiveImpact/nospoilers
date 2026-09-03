@@ -33,7 +33,7 @@ describe("Vercel web runtime", () => {
   it("routes API traffic before the Vite SPA fallback", async () => {
     const config = JSON.parse(await readFile("vercel.json", "utf8")) as {
       rewrites: Array<{ source: string; destination: string }>;
-      functions: Record<string, { includeFiles?: string | string[]; maxDuration?: number }>;
+      functions: Record<string, { includeFiles?: string; maxDuration?: number }>;
       crons: Array<{ path: string; schedule: string }>;
     };
 
@@ -42,7 +42,7 @@ describe("Vercel web runtime", () => {
       { source: "/:path*", destination: "/index.html" },
     ]);
     expect(config.functions["api/index.mjs"]).toMatchObject({
-      includeFiles: [".vercel-runtime/**", "src/server/schema.sql"],
+      includeFiles: "{.vercel-runtime/**,src/server/schema.sql}",
       maxDuration: 300,
     });
     expect(await readFile("api/index.mjs", "utf8")).toContain("../.vercel-runtime/index.js");
