@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Premium Watch prototype · NoSpoilers</title>
+  <link rel="stylesheet" href="/mockups/watch-premium.css">
+</head>
+<body>
+  <div id="app" class="app" data-preview="live">
+    <aside class="rail" aria-label="Watch navigation">
+      <div class="brand"><span class="logo-mark" aria-hidden="true"></span><strong>NoSpoilers</strong><span class="prototype">Prototype</span></div>
+      <button class="install-picker" data-dialog="install-dialog"><span class="avatar" aria-hidden="true"></span><span><b id="install-name">Installation</b><small id="coverage-label">Checking access…</small></span><svg><use href="#chevron"/></svg></button>
+      <nav id="nav"></nav>
+      <button class="setup-mini" data-route="setup"><span class="progress-ring" id="mini-ring">—</span><span><b>Setup progress</b><small id="mini-setup">Checking coverage…</small></span></button>
+    </aside>
+    <div class="surface">
+      <header class="topbar">
+        <button class="mobile-menu" aria-label="Open navigation" id="menu-button"><svg><use href="#menu"/></svg></button>
+        <button class="search-trigger" data-dialog="palette"><svg><use href="#search"/></svg><span>Search or jump…</span><kbd id="shortcut">⌘ K</kbd></button>
+        <div class="top-spacer"></div>
+        <button class="coverage-menu" data-dialog="account-dialog"><span id="coverage-top">Coverage</span><span class="avatar" aria-hidden="true"></span></button>
+      </header>
+      <main id="main" tabindex="-1" aria-live="polite"></main>
+    </div>
+    <div class="review-dock">
+      <label>State preview <select id="preview-state"><option value="live">Live data</option><option>loading</option><option>error</option><option>empty</option><option>paused</option><option>ended</option><option>member</option><option value="solo">Solo</option><option value="team">Team</option></select></label>
+      <button data-dialog="notes-dialog"><svg><use href="#help"/></svg><span>Design notes</span></button>
+    </div>
+  </div>
+
+  <div class="dialog-layer" id="dialog-layer" hidden>
+    <div class="scrim" data-close-dialog></div>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+      <button class="dialog-close" data-close-dialog aria-label="Close dialog"><svg><use href="#close"/></svg></button>
+      <div id="dialog-content"></div>
+    </section>
+  </div>
+
+  <svg class="svg-defs" aria-hidden="true"><defs>
+    <symbol id="overview" viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-13h6V4h-6v3Z"/></symbol>
+    <symbol id="alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Zm0 6v5m0 3v.1"/></symbol>
+    <symbol id="source" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="m8 7 3 9m5-9-3 9"/></symbol>
+    <symbol id="release" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8m-8 4h8m-8 4h5"/></symbol>
+    <symbol id="timeline" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-2-2.2-2-2 .9-1.8-.7L10.5 2h-3l-.7 2.3-1.7.7-2-.9-2 2 .9 2-.7 1.7-2.3.7v3l2.3.7.7 1.7-.9 2 2 2 .9-.9"/></symbol>
+    <symbol id="setup" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v9h9"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></symbol>
+    <symbol id="chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+    <symbol id="menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.4 2c-1 .5-1.2 1-1.2 2m0 3v.1"/></symbol>
+  </defs></svg>
+  <script src="/mockups/watch-premium.js" defer></script>
+</body>
+</html>
