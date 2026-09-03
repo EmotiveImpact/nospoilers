@@ -66,7 +66,6 @@ import type {
   ProtectedNamespace,
   Confirming,
   ScanApiToken,
-  ReceiptScanStatus,
   ReleaseRevision,
   PackageProtection,
   ProtectionImportResult,
@@ -87,7 +86,6 @@ import {
   combineWatchSectionStates,
   type WatchSectionState,
 } from "@/watch/data-state.ts";
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useCallback, useEffect, useState } from "react";
 import {
   destinationKindLabel,
