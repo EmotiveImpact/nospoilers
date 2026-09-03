@@ -2381,6 +2381,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         type="button"
         variant="outline"
         size="sm"
+        className="hidden md:inline-flex"
         disabled={billingBusy}
         onClick={() => {
           if (!activeInstallId) return;

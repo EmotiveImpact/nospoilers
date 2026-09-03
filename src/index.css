@@ -48,6 +48,19 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid rgba(244, 244, 245, 0.72);
+  outline-offset: 2px;
+}
+
+:where(button, a, input, textarea, select) {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+}
+
 .watch-kicker {
   color: #71717a;
   font-size: 10px;
@@ -110,6 +123,10 @@ code {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :where(button, a, input, textarea, select) {
+    transition: none;
+  }
+
   .fade-up,
   .fade-up-delay {
     animation: none;

@@ -161,6 +161,10 @@ export function WatchMonolithShell({
     installations.find((installation) => installation.id === activeInstallId)?.account_login ??
     installations[0]?.account_login ??
     login;
+  const shortcutLabel =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
+      ? "⌘K"
+      : "Ctrl K";
 
   const nav = (
     <>
@@ -337,7 +341,7 @@ export function WatchMonolithShell({
       </Dialog>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/8 bg-ink px-4 shadow-[0_10px_32px_rgba(0,0,0,.12)] md:px-5">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/8 bg-ink px-2 shadow-[0_10px_32px_rgba(0,0,0,.12)] sm:gap-3 sm:px-4 md:px-5">
           <button
             type="button"
             className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
@@ -346,7 +350,7 @@ export function WatchMonolithShell({
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <strong className="truncate text-sm text-snow md:hidden">{VIEW_TITLE[route.view]}</strong>
+          <strong className="min-w-0 flex-1 truncate text-sm text-snow sm:flex-none md:hidden">{VIEW_TITLE[route.view]}</strong>
           <button
             type="button"
             onClick={onOpenPalette}
@@ -355,7 +359,7 @@ export function WatchMonolithShell({
             <Search className="size-4 shrink-0" aria-hidden />
             <span className="hidden truncate sm:inline">Search or run a command…</span>
             <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-[10px] text-dim sm:inline">
-              ⌘K
+              {shortcutLabel}
             </span>
           </button>
           <span className="hidden flex-1 md:block" />
@@ -369,17 +373,18 @@ export function WatchMonolithShell({
             type="button"
             size="sm"
             variant="ghost"
+            className="hidden sm:inline-flex"
             onClick={() => setGuidanceOpen((open) => !open)}
           >
             {guidanceOpen ? "Hide guide" : "Guide"}
           </Button>
           {ended ? (
-            <Button type="button" size="sm" onClick={() => setPlansOpen(true)}>
+            <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => setPlansOpen(true)}>
               See plans
             </Button>
           ) : null}
           {installUrl ? (
-            <Button as="a" href={installUrl} size="sm" variant="outline">
+            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden md:inline-flex">
               Install on GitHub
             </Button>
           ) : null}
@@ -388,7 +393,7 @@ export function WatchMonolithShell({
             type="button"
             size="sm"
             variant="ghost"
-            className="size-8 rounded-full border border-white/10 px-0 text-[10px] text-snow"
+            className="size-12 rounded-full border border-white/10 px-0 text-xs text-snow sm:size-8 sm:text-[10px]"
             onClick={() => void signOut()}
             title="Sign out"
             aria-label={`Sign out ${login}`}
