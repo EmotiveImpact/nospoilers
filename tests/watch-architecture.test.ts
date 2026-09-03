@@ -43,6 +43,11 @@ describe("Watch architecture boundaries", () => {
     expect(source).not.toMatch(/<details|<summary/);
     expect(source).not.toMatch(/text-\[(?:10|11)px\]/);
     expect(source).not.toMatch(/[✓→⌥▣⬡⎔]/);
+    const dialogs =
+      readFileSync("src/components/WatchCommandPalette.tsx", "utf8") +
+      readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8") +
+      readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
+    expect(dialogs.match(/motion-reduce:transition-none/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
   it("keeps notification and registry settings focused", () => {

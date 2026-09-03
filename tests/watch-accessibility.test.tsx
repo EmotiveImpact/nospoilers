@@ -45,6 +45,8 @@ describe("Watch keyboard and dialog accessibility", () => {
 
     await user.keyboard("{Home}");
     expect(combobox.getAttribute("aria-activedescendant")).not.toBe(endId);
+    await user.keyboard("{ArrowUp}");
+    expect(combobox.getAttribute("aria-activedescendant")).toBe(endId);
     expect(screen.queryByRole("option", { name: /Private registries/i })).toBeNull();
     expect(screen.queryByRole("option", { name: /Add a source/i })).toBeNull();
 
@@ -111,7 +113,9 @@ describe("Watch keyboard and dialog accessibility", () => {
     await user.click(assign);
     const input = await screen.findByPlaceholderText("teammate");
     await waitFor(() => expect(document.activeElement).toBe(input));
-    expect(screen.getByRole("dialog", { name: "Artifact exposed" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Artifact exposed" });
+    for (let index = 0; index < 6; index += 1) await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
