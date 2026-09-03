@@ -262,7 +262,9 @@ the immediate operational sequence. The exhaustive expansion plan is
 
 - Neon Auth remains disabled on purpose.
 - Throwaway repo Watch alerts are proven (`repo_created_public`, cheap `.env`/`.map` push,
-  and fixture `release_scan`).
+  and fixture `release_scan`). Cheap-push re-proven on 2 Sep 2026: job 51 → alert 40
+  after the App webhook was pointed at this host. Publicize / transfer / collaborator /
+  fork still need `GITHUB_PROOF_TOKEN` (not App Administration).
 
 ### Missing before launch
 

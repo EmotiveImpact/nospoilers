@@ -146,7 +146,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 
 | Feature | Status | Home |
 | --- | --- | --- |
-| Private → public alert | Built/needs real proof: `repository.publicized` and the GitHub `public` event enqueue the same light job | NoSpoilers |
+| Private → public alert | Built/needs real proof: `repository.publicized` and the GitHub `public` event enqueue the same light job. `npm run phase1:visibility` points the App webhook and tries `EmotiveImpact/nospoilers-throwaway-vis` only. Contents write 404/403. Needs `GITHUB_PROOF_TOKEN`. Do not grant App Administration | NoSpoilers |
 | Repository created public | Built: `EmotiveImpact/nospoilers-throwaway` `repository.created` → `repo_created_public` | NoSpoilers |
 | Repository renamed | Built: Watch updates name/URL in place; no extra job | NoSpoilers |
 | Repository made private | Built: Watch updates the private flag in place; no extra job | NoSpoilers |

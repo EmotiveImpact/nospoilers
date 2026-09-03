@@ -17,7 +17,7 @@ Still **not** on `main`: Watch desk mockups (`cursor/watch-desk-ux-mockups-71d1`
 ## Last place in the platform job
 
 1. Phase 0 Neon runtime — **done** on live `neondb` (Auth off, event-driven wake, not 500 ms polling).
-2. GitHub App loop on `EmotiveImpact/nospoilers-throwaway` — **done** for created-public, cheap `.env`/`.map` push, and fixture `release_scan`. Still **unproven live**: publicize, transfer, collaborator, fork.
+2. GitHub App loop on `EmotiveImpact/nospoilers-throwaway` — **done** for created-public, cheap `.env`/`.map` push, and fixture `release_scan`. Cheap-push **re-proven** this session: job **51** `done` → alert **40** after `npm run phase1:visibility` pointed the App webhook at the live trycloudflare URL. Still **unproven live**: publicize, transfer, collaborator, fork (`GITHUB_PROOF_TOKEN` on a disposable repo; do not grant App Administration).
 3. Milestone 2 unpaid enforcement — **done**.
 4. Milestone 3 Stripe — **on `main`, wired, not live**. This host has no Stripe keys. `/api/health` `stripe: false`.
 5. Resend Watch email — **on `main`, wired, not live**. Migration `060` on Neon; destinations 0; `/api/health` `resend: false`. Disclosure Desk `sent` stays false. Invites stay GitHub-login only.
@@ -31,7 +31,7 @@ Electron installer worker, SBOM, Sigstore, and scheduled CDN stay **on ice**. Em
 - Resend keys + from address if you want mail (approval). Do not mail disclosures.
 - Railway + `nospoilers.dev` / Cloudflare DNS if you want a real public host (purchase). The `trycloudflare.com` URL is only a webhook tunnel. It is **not** the database.
 - GitHub App **Pull requests: write**, then Accept on the install, for a live setup PR. Do **not** grant Administration or Workflows write.
-- Optional: `GITHUB_PROOF_TOKEN` on the throwaway only, for publicize / collaborator proofs.
+- Optional: `GITHUB_PROOF_TOKEN` on `EmotiveImpact/nospoilers-throwaway-vis` only (Administration + Contents write), then `npm run phase1:visibility`. Do not grant the App Administration.
 
 ## Resume the platform job
 
