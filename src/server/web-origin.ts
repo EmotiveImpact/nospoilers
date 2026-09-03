@@ -106,6 +106,13 @@ export function parseWatchOrigin(raw: string): WatchOrigin | null {
   return { url: `https://${host}${port}${path}${search}`, host };
 }
 
+export function parseWatchRoot(raw: string): WatchOrigin | null {
+  const parsed = parseWatchOrigin(raw);
+  if (!parsed) return null;
+  const url = new URL(parsed.url);
+  return { url: `${url.origin}/`, host: parsed.host };
+}
+
 export function sameOrigin(left: URL, right: URL): boolean {
   return (
     left.protocol === right.protocol &&

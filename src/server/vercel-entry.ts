@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { createRuntime } from "./runtime.ts";
 import { createVercelHandler, type WebRuntimeLoader } from "./vercel.ts";
 
@@ -16,11 +17,7 @@ const loadRuntime: WebRuntimeLoader = () => {
 const handler = createVercelHandler(loadRuntime);
 
 export default {
-  fetch(
-    request: Request,
-    _env?: unknown,
-    ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
-  ) {
-    return handler(request, ctx);
+  fetch(request: Request) {
+    return handler(request, { waitUntil });
   },
 };

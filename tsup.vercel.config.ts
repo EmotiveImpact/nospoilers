@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: { index: "src/server/vercel-entry.ts" },
-  outDir: "api",
+  outDir: ".vercel-runtime",
   format: ["esm"],
   platform: "node",
   target: "node22",

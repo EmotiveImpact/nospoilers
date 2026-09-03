@@ -1,7 +1,37 @@
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function SourcesProductionScreens() {
-  const { Button, activeInstallId, beginConfirm, checkingMapId, checkingOriginId, confirmBusy, confirmForm, confirming, ended, installAdmin, installations, locked, mapDestinations, mapError, mapHost, mapKind, mapOrg, mapProject, mapToken, originError, originUrl, origins, previewing, refreshSignedIn, route, savingMap, selectedInstallId, setCheckingMapId, setCheckingOriginId, setMapError, setMapHost, setMapKind, setMapOrg, setMapProject, setMapToken, setOriginError, setOriginUrl, setSavingMap, setWatchingOrigin, sourceSectionState, user, watchingOrigin } = useWatchScreenContext();
+  const { Button, activeInstallId, beginConfirm, checkingMapId, checkingOriginId, confirmBusy, confirmForm, confirming, ended, installAdmin, installations, loadJson, locked, mapDestinations, mapError, mapHost, mapKind, mapOrg, mapProject, mapToken, originError, originUrl, origins, previewing, refreshSignedIn, route, savingMap, scopedApi, selectedInstallId, setCheckingMapId, setCheckingOriginId, setMapError, setMapHost, setMapKind, setMapOrg, setMapProject, setMapToken, setOriginError, setOriginUrl, setSavingMap, setWatchingOrigin, sourceSectionState, user, watchingOrigin } = useWatchScreenContext();
+
+  async function waitForWebsiteScan(originId: number, previousCheckedAt: string | null) {
+    const deadline = Date.now() + 90_000;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      try {
+        const body = await loadJson<{
+          origins: Array<{
+            id: number;
+            last_checked_at: string | null;
+            last_scan_status: string | null;
+          }>;
+        }>(scopedApi("/api/origins", activeInstallId));
+        const current = body.origins.find((origin) => origin.id === originId);
+        if (
+          current?.last_checked_at &&
+          current.last_checked_at !== previousCheckedAt &&
+          current.last_scan_status
+        ) {
+          await refreshSignedIn(selectedInstallId);
+          return;
+        }
+      } catch {
+        // A transient status read must not cancel the durable scan job.
+      }
+    }
+    await refreshSignedIn(selectedInstallId);
+    setOriginError("The website scan is still running. You can leave this page; its result will appear here.");
+  }
+
   return (
     <>
       {route.view === "sources" &&
@@ -19,6 +49,10 @@ export function SourcesProductionScreens() {
                   private-key, AI-context, and internal-route findings identify the original source path.
                   Local, private, and metadata hosts are blocked. JavaScript is not executed. Source,
                   maps, and matched credential values are deleted after the scan.
+                </p>
+                <p className="mt-3 max-w-xl text-xs leading-relaxed text-dim">
+                  Add the public site root, such as <code className="text-mute">https://app.example.com</code>.
+                  Paths and query strings are normalized to that root.
                 </p>
                 {previewing ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
@@ -52,10 +86,17 @@ export function SourcesProductionScreens() {
                               installationId: activeInstallId,
                             }),
                           });
-                          const body = (await response.json()) as { error?: string };
+                          const body = (await response.json()) as {
+                            error?: string;
+                            queued?: boolean;
+                            origin?: { id: number; last_checked_at: string | null };
+                          };
                           if (!response.ok) throw new Error(body.error ?? "Could not watch website.");
                           setOriginUrl("");
                           await refreshSignedIn(selectedInstallId);
+                          if (body.queued && body.origin) {
+                            await waitForWebsiteScan(body.origin.id, body.origin.last_checked_at);
+                          }
                         } catch (error) {
                           setOriginError(error instanceof Error ? error.message : "Could not watch website.");
                         } finally {
@@ -77,7 +118,7 @@ export function SourcesProductionScreens() {
                       />
                     </label>
                     <Button type="submit" disabled={locked || watchingOrigin || !originUrl.trim()}>
-                      {watchingOrigin ? "Connecting…" : "Watch website"}
+                      {watchingOrigin ? "Adding and scanning…" : "Add and scan website"}
                     </Button>
                   </form>
                 )}
@@ -90,7 +131,7 @@ export function SourcesProductionScreens() {
                           <div>
                             <p className="font-mono text-xs text-snow">{row.origin_url}</p>
                             <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">
-                              {row.last_scan_status ?? "queued"}
+                              {row.last_scan_status ?? "waiting to scan"}
                               {row.last_checked_at
                                 ? ` · ${new Date(row.last_checked_at).toLocaleString()}`
                                 : ""}
@@ -111,9 +152,15 @@ export function SourcesProductionScreens() {
                                       method: "POST",
                                       credentials: "include",
                                     });
-                                    const body = (await response.json()) as { error?: string };
+                                    const body = (await response.json()) as {
+                                      error?: string;
+                                      queued?: boolean;
+                                    };
                                     if (!response.ok) throw new Error(body.error ?? "Could not check website.");
-                                    await refreshSignedIn(selectedInstallId);
+                                    if (!body.queued) {
+                                      throw new Error("The website scan could not be queued. Try again.");
+                                    }
+                                    await waitForWebsiteScan(row.id, row.last_checked_at);
                                   } catch (error) {
                                     setOriginError(
                                       error instanceof Error ? error.message : "Could not check website.",
@@ -124,7 +171,7 @@ export function SourcesProductionScreens() {
                                 })();
                               }}
                             >
-                              {checkingOriginId === row.id ? "Checking…" : "Check now"}
+                              {checkingOriginId === row.id ? "Scanning website…" : "Scan website now"}
                             </Button>
                             <Button
                               type="button"

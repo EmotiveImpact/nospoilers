@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Vercel now registers post-response job work with the official
+  `@vercel/functions` `waitUntil` API. Previously, the response could freeze a
+  claimed website scan and leave its Neon job in `running`. Production Web
+  normalizes pasted dashboard/deep links to the public site root, gives each
+  manual click a unique job, automatically refreshes until the result lands,
+  and replaces “crawl” with plain website-scan language.
+
 - Vercel cold starts no longer replay every database DDL migration. Runtime
   startup checks the current schema marker first; a fresh Postgres database
   serializes migration with a transaction-scoped advisory lock. Concurrent

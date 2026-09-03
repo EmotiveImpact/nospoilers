@@ -4,8 +4,11 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
   "functions": {
-    "api/index.js": {
-      "includeFiles": "src/server/schema.sql",
+    "api/index.mjs": {
+      "includeFiles": [
+        ".vercel-runtime/**",
+        "src/server/schema.sql"
+      ],
       "maxDuration": 300
     }
   },

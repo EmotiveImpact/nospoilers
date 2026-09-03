@@ -145,7 +145,7 @@ export function buildSourceViewModels(input: {
       lastCheckedAt: origin.last_checked_at,
       detail: "public HTML, JS, CSS, exposed files, and maps",
       alertCount: alertCountFor([origin.origin_url, origin.host]),
-      primaryAction: origin.last_checked_at ? "Check origin" : "Run first crawl",
+      primaryAction: origin.last_checked_at ? "Scan website again" : "Scan website",
     })),
     ...input.maps.map((map): WatchSourceViewModel => ({
       key: `map-${map.id}`,

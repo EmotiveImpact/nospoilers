@@ -1,7 +1,7 @@
 import type { AlertNotifier } from "./notifier.ts";
 import { httpErrorForWorkBlock } from "./install-health.ts";
 import type { Store, WatchedOriginRow } from "./store.ts";
-import { MAX_WATCHED_ORIGINS, parseWatchOrigin } from "./web-origin.ts";
+import { MAX_WATCHED_ORIGINS, parseWatchRoot } from "./web-origin.ts";
 
 export function webOriginScanDeliveryId(
   installationId: number,
@@ -26,7 +26,7 @@ export async function connectWatchedOrigin(
   store: Store,
   input: { installationId: number; url: string },
 ): Promise<{ queued: boolean; origin: WatchedOriginRow }> {
-  const parsed = parseWatchOrigin(input.url);
+  const parsed = parseWatchRoot(input.url);
   if (!parsed) {
     throw Object.assign(
       new Error("Use an https website URL on a public host. Local, private, and metadata hosts are blocked."),
@@ -73,7 +73,7 @@ export async function checkWatchedOrigin(
     origin.installation_id,
     "Coverage ended. Subscribe to keep watching production websites.",
   );
-  const token = `check:${new Date().toISOString().slice(0, 16)}`;
+  const token = `check:${crypto.randomUUID()}`;
   const result = await store.enqueueJob({
     deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, token),
     priority: "heavy",

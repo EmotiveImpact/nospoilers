@@ -33,7 +33,7 @@ describe("Vercel web runtime", () => {
   it("routes API traffic before the Vite SPA fallback", async () => {
     const config = JSON.parse(await readFile("vercel.json", "utf8")) as {
       rewrites: Array<{ source: string; destination: string }>;
-      functions: Record<string, { includeFiles?: string; maxDuration?: number }>;
+      functions: Record<string, { includeFiles?: string | string[]; maxDuration?: number }>;
       crons: Array<{ path: string; schedule: string }>;
     };
 
@@ -41,10 +41,11 @@ describe("Vercel web runtime", () => {
       { source: "/api/:path*", destination: "/api" },
       { source: "/:path*", destination: "/index.html" },
     ]);
-    expect(config.functions["api/index.js"]).toMatchObject({
-      includeFiles: "src/server/schema.sql",
+    expect(config.functions["api/index.mjs"]).toMatchObject({
+      includeFiles: [".vercel-runtime/**", "src/server/schema.sql"],
       maxDuration: 300,
     });
+    expect(await readFile("api/index.mjs", "utf8")).toContain("../.vercel-runtime/index.js");
     expect(config.crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 0 * * *" }]);
   });
 
@@ -70,5 +71,11 @@ describe("Vercel web runtime", () => {
     expect(pending).toHaveLength(1);
     await pending[0];
     expect(flushed).toBe(true);
+  });
+
+  it("registers background work with Vercel's supported waitUntil API", async () => {
+    const entry = await readFile("src/server/vercel-entry.ts", "utf8");
+    expect(entry).toContain('from "@vercel/functions"');
+    expect(entry).toContain("handler(request, { waitUntil })");
   });
 });

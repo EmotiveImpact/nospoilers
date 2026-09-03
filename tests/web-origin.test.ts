@@ -14,9 +14,10 @@ import {
   collectSensitiveUrls,
   crawlOrigin,
   parseWatchOrigin,
+  parseWatchRoot,
   WebCrawlError,
 } from "../src/server/web-origin.ts";
-import { runWebOriginPoll } from "../src/server/web-watch.ts";
+import { checkWatchedOrigin, runWebOriginPoll } from "../src/server/web-watch.ts";
 import { SOLO_HEAVY_PER_UTC_DAY } from "../src/server/usage.ts";
 
 const DIRTY = path.resolve("fixtures/web/dirty");
@@ -120,6 +121,9 @@ describe("website origin parsing", () => {
   it("accepts public https URLs and rejects local, private, and http", () => {
     expect(parseWatchOrigin("https://app.example.com/app")?.url).toBe(
       "https://app.example.com/app",
+    );
+    expect(parseWatchRoot("https://app.example.com/watch?token=secret")?.url).toBe(
+      "https://app.example.com/",
     );
     expect(parseWatchOrigin("http://app.example.com/")).toBeNull();
     expect(parseWatchOrigin("https://localhost/")).toBeNull();
@@ -250,6 +254,30 @@ describe("website crawl", () => {
 });
 
 describe("hosted website watch", () => {
+  it("queues every explicit website check instead of suppressing same-minute clicks", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      const origin = await store.insertWatchedOrigin(7, ORIGIN, "app.example.com");
+      expect(origin).not.toBeNull();
+      expect((await checkWatchedOrigin(store, origin!)).queued).toBe(true);
+      expect((await checkWatchedOrigin(store, origin!)).queued).toBe(true);
+      const { rows } = await sql.query<{ n: string }>(
+        "SELECT count(*)::text AS n FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(Number(rows[0]?.n)).toBe(2);
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("connects an origin, crawls, alerts on maps, and deletes bytes", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
