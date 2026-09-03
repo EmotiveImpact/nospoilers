@@ -27,19 +27,20 @@ export function WatchExposureChart({
     <section className="watch-gantt mt-6 overflow-hidden rounded-lg border border-white/8 bg-panel">
       <div className="flex items-baseline justify-between gap-3 border-b border-white/8 px-4 py-3">
         <h2 className="text-sm text-snow">Exposure, last {days} days</h2>
-        <span className="text-[10px] uppercase tracking-[0.16em] text-dim">
+        <span className="text-xs text-dim">
           {lanes.some((lane) => lane.spans.some((span) => span.open)) ? "open exposure" : "all closed"}
         </span>
       </div>
       {lanes.length === 0 ? (
         <p className="px-4 py-8 text-sm text-mute">No exposure to plot from real alert history.</p>
       ) : (
+        <div className="overflow-x-auto">
         <div className="min-w-[620px]" aria-label="Exposure by source and retained time">
           <div className="grid grid-cols-[minmax(150px,220px)_1fr] border-b border-white/8">
-            <span className="px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-dim">Source</span>
+            <span className="px-4 py-2 text-xs uppercase tracking-[0.16em] text-dim">Source</span>
             <div className="grid grid-cols-8 px-3 py-2">
               {ticks.map((tick, index) => (
-                <span key={`${tick}-${index}`} className="text-[10px] text-dim last:text-right">
+                <span key={`${tick}-${index}`} className="text-xs text-dim last:text-right">
                   {tick}
                 </span>
               ))}
@@ -52,7 +53,7 @@ export function WatchExposureChart({
             >
               <div className="min-w-0 px-4 py-3">
                 <p className="truncate font-mono text-xs text-snow">{lane.label}</p>
-                <p className="mt-1 truncate text-[10px] text-dim">{lane.detail}</p>
+                <p className="mt-1 truncate text-xs text-dim">{lane.detail}</p>
               </div>
               <div className="relative my-2 mr-3 overflow-hidden rounded-sm bg-white/[0.025] [background-image:linear-gradient(to_right,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:14.285%_100%]">
                 {lane.spans.map((span) => (
@@ -60,16 +61,16 @@ export function WatchExposureChart({
                     key={span.alertId}
                     tabIndex={0}
                     role="img"
-                    aria-label={`${span.rule}: ${span.label}; ${span.open ? "open" : "resolved"} exposure`}
+                    aria-label={`${span.rule}: ${span.label}; started ${new Date(span.startedAt).toLocaleString()}; ${span.open ? "still open" : `resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
                     className={
                       span.open
-                        ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/80 px-2 py-1 text-[10px] text-white"
+                        ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/80 px-2 py-1 text-xs text-white"
                         : span.severity === "critical"
-                          ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/25 px-2 py-1 text-[10px] text-snow"
-                          : "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-[#a8782f]/55 px-2 py-1 text-[10px] text-snow"
+                          ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/25 px-2 py-1 text-xs text-snow"
+                          : "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-[#a8782f]/55 px-2 py-1 text-xs text-snow"
                     }
                     style={{ left: `${span.left}%`, width: `${span.width}%` }}
-                    title={`${span.rule} · ${span.label}${span.open ? " · open" : " · resolved"}`}
+                    title={`${span.rule} · ${span.label} · ${new Date(span.startedAt).toLocaleString()}${span.open ? " · open" : ` · resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
                   >
                     {span.rule}
                     {span.open ? " · open" : ""}
@@ -78,17 +79,31 @@ export function WatchExposureChart({
               </div>
             </div>
           ))}
-          <ul className="sr-only" aria-label="Exposure chart text equivalent">
-            {lanes.flatMap((lane) =>
-              lane.spans.map((span) => (
-                <li key={`text-${lane.key}-${span.alertId}`}>
-                  {lane.label}: {span.rule}, {span.label}, {span.open ? "open" : "resolved"}.
-                </li>
-              )),
-            )}
-          </ul>
+        </div>
         </div>
       )}
+      {lanes.length > 0 ? (
+        <>
+          <div className="flex flex-wrap items-center gap-4 border-t border-white/8 px-4 py-3 text-xs text-mute" aria-label="Exposure legend">
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger" aria-hidden />Open critical exposure</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/30" aria-hidden />Resolved critical</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]" aria-hidden />Warning</span>
+          </div>
+          <table className="sr-only">
+            <caption>Exposure timeline text equivalent</caption>
+            <thead><tr><th>Source</th><th>Rule</th><th>Finding</th><th>Started</th><th>Ended</th></tr></thead>
+            <tbody>
+              {lanes.flatMap((lane) => lane.spans.map((span) => (
+                <tr key={`text-${lane.key}-${span.alertId}`}>
+                  <td>{lane.label}</td><td>{span.rule}</td><td>{span.label}</td>
+                  <td>{new Date(span.startedAt).toLocaleString()}</td>
+                  <td>{span.endedAt ? new Date(span.endedAt).toLocaleString() : "Still open"}</td>
+                </tr>
+              )))}
+            </tbody>
+          </table>
+        </>
+      ) : null}
     </section>
   );
 }

@@ -112,7 +112,7 @@ export function WatchCommandPalette({
               return (
                 <div key={item.id}>
                   {showGroup ? (
-                    <p className="border-t border-white/8 px-4 pb-1 pt-3 text-[10px] uppercase tracking-[0.18em] text-dim first:border-0">
+                    <p className="border-t border-white/8 px-4 pb-1 pt-3 text-xs uppercase tracking-[0.18em] text-dim first:border-0">
                       {item.group}
                     </p>
                   ) : null}
@@ -127,7 +127,7 @@ export function WatchCommandPalette({
                   >
                     <Icon className="size-4 shrink-0 text-dim" aria-hidden />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.detail ? <span className="text-[10px] text-dim">{item.detail}</span> : null}
+                    {item.detail ? <span className="text-xs text-dim">{item.detail}</span> : null}
                   </button>
                 </div>
               );

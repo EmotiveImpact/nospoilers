@@ -189,7 +189,7 @@ describe("permission test copy", () => {
   });
 
   it("says Test install reports Members read and that Administration should not be granted", () => {
-    const page = readFileSync("src/pages/WatchPage.tsx", "utf8");
+    const page = readFileSync("src/components/watch/screens/HealthScreen.tsx", "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
     expect(page).toMatch(/Members read \(collaborator alerts\)/);
     expect(page).toMatch(/Administration was granted/);
     expect(page).toMatch(/it should\s+not be/);

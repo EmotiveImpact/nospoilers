@@ -187,6 +187,13 @@ describe("hosted scan rate limit", () => {
 
   it("rate-limits owner discovery after auth and ignores anonymous 401s", async () => {
     const sql = await openSql("pglite://:memory:");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ items: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     try {
       await migrate(sql);
       const store = createStore(sql);
@@ -231,6 +238,7 @@ describe("hosted scan rate limit", () => {
       });
       expect(first.status).not.toBe(429);
       expect(first.status).not.toBe(401);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
       const second = await app.request("/api/internal/prospects/discover", {
         method: "POST",
         headers: {
@@ -241,7 +249,9 @@ describe("hosted scan rate limit", () => {
       });
       expect(second.status).toBe(429);
       expect(second.headers.get("retry-after")).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
+      vi.unstubAllGlobals();
       await sql.close();
     }
   });

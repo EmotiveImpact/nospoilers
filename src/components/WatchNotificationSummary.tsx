@@ -37,7 +37,7 @@ export function WatchNotificationSummary({
                   <p className="text-sm text-snow">{destination.kind}</p>
                   <p className="mt-1 font-mono text-xs text-dim">{destination.host}</p>
                 </div>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-dim">
+                <span className="text-xs uppercase tracking-[0.16em] text-dim">
                   {destination.lastDeliveryStatus ?? "not tested"}
                 </span>
               </li>

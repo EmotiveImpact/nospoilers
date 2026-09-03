@@ -432,7 +432,10 @@ describe("release ledger", () => {
   });
 
   it("shows linked receipt status on Watch Releases, not a clean label for spoilers", () => {
-    const page = readFileSync(path.resolve("src/pages/WatchPage.tsx"), "utf8");
+    const page =
+      readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") +
+      readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") +
+      readFileSync("src/watch/receipt-status.tsx", "utf8");
     expect(page).toMatch(/receiptStatusMark/);
     expect(page).toMatch(/failed policy/);
     expect(page).toMatch(/Failed-policy and/);

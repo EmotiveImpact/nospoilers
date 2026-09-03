@@ -65,12 +65,13 @@ describe("2B watch routes", () => {
     expect(
       parseWatchRoute(
         "/watch/sources",
-        "?install=7&source=npm-4&sourceType=npm&attention=1",
+        "?install=7&source=npm-4&sourceType=npm&attention=1&configure=npm",
       ),
     ).toMatchObject({
       sourceKey: "npm-4",
       sourceFilter: "npm",
       sourceAttention: true,
+      sourceConfigure: "npm",
     });
     expect(watchPath("policy")).toBe("/watch/policy");
     expect(watchHref("/watch/alerts", "?install=7", { tab: "done" })).toBe(
@@ -81,8 +82,9 @@ describe("2B watch routes", () => {
         source: "repo-2",
         sourceType: "github",
         attention: true,
+        configure: "github",
       }),
-    ).toBe("/watch/sources?install=7&source=repo-2&sourceType=github&attention=1");
+    ).toBe("/watch/sources?install=7&source=repo-2&sourceType=github&attention=1&configure=github");
   });
 });
 
@@ -264,6 +266,8 @@ describe("source-lane timeline", () => {
       rule: "MAP-002",
       open: true,
       severity: "critical",
+      startedAt: "2026-09-03T10:00:00.000Z",
+      endedAt: null,
     });
     expect(lanes[0]?.spans[0]?.left).toBeGreaterThan(90);
   });
