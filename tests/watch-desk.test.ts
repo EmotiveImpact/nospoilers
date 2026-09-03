@@ -16,8 +16,8 @@ import {
 import {
   buildPaletteItems,
   nextPaletteIndex,
-} from "../src/components/WatchCommandPalette.tsx";
-import { combineWatchSectionStates } from "../src/pages/WatchPage.tsx";
+} from "../src/watch/command.ts";
+import { combineWatchSectionStates } from "../src/watch/data-state.ts";
 
 describe("Watch preview", () => {
   it("shows structure without inventing tenant rows", () => {
@@ -175,7 +175,7 @@ describe("setup ring", () => {
         },
       ],
     };
-    expect(buildSetupViewModel({ ...base, maps: [] }).steps.at(-1)?.proof).toBe("unknown");
+    expect(buildSetupViewModel({ ...base, maps: [] }).steps.at(-1)?.proof).toBe("check-needed");
     expect(
       buildSetupViewModel({
         ...base,

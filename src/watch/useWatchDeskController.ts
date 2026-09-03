@@ -162,7 +162,6 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
       return;
     }
     const controller = new AbortController();
-    setActivityState((current) => ({ ...current, [selectedAlertId]: { status: "loading" } }));
     void loadSelectedAlertActivity(selectedAlertId, fetch, controller.signal)
       .then((events) => {
         setAlertEvents((current) => ({ ...current, [selectedAlertId]: events }));

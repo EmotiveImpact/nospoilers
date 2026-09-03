@@ -1,11 +1,9 @@
 import { AlertCircle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { WatchSectionState } from "@/watch/data-state";
 
-export type WatchSectionState =
-  | { status: "loading" }
-  | { status: "ready" }
-  | { status: "error"; message: string };
+export type { WatchSectionState } from "@/watch/data-state";
 
 export function WatchSkeleton({
   variant = "cards",

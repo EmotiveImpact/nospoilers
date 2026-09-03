@@ -1,4 +1,4 @@
-import type { Finding } from "@/report-types";
+import type { Finding } from "../report-types.ts";
 import type { DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";

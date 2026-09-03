@@ -20,7 +20,6 @@ import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
 import {
   WatchSectionError,
   WatchSkeleton,
-  type WatchSectionState,
 } from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
@@ -34,6 +33,10 @@ import {
 } from "@/watch/api.ts";
 import { watchHref, watchPath } from "@/watch/routes.ts";
 import { useWatchDeskController } from "@/watch/useWatchDeskController.ts";
+import {
+  combineWatchSectionStates,
+  type WatchSectionState,
+} from "@/watch/data-state.ts";
 import type { Finding } from "@/report-types";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useCallback, useEffect, useState } from "react";
@@ -670,19 +673,6 @@ const LOADING_DATASETS: Record<DeskDataset, WatchSectionState> = {
   jobs: { status: "loading" },
   notifications: { status: "loading" },
 };
-
-export function combineWatchSectionStates(states: WatchSectionState[]): WatchSectionState {
-  const errors = states.filter(
-    (state): state is Extract<WatchSectionState, { status: "error" }> =>
-      state.status === "error",
-  );
-  if (errors.length > 0) {
-    return { status: "error", message: errors.map((state) => state.message).join(" ") };
-  }
-  return states.some((state) => state.status === "loading")
-    ? { status: "loading" }
-    : { status: "ready" };
-}
 
 function sectionStateOf<T>(state: LoadState<T>): WatchSectionState {
   return state.status === "error"

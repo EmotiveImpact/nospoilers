@@ -13,7 +13,7 @@ import {
   type WatchSourceViewModel,
 } from "@/watch/view-models.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
-import { Box, CheckCircle2, Github, Globe2, Map, Package, X } from "lucide-react";
+import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X } from "lucide-react";
 import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
@@ -258,7 +258,7 @@ export function WatchSourcesSummary({
               }
             >
               <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-mute">
-                {source.kind === "github" ? <Github className="size-4" aria-hidden /> : source.kind === "npm" ? <Package className="size-4" aria-hidden /> : source.kind === "website" ? <Globe2 className="size-4" aria-hidden /> : <Map className="size-4" aria-hidden />}
+                {source.kind === "github" ? <GitBranch className="size-4" aria-hidden /> : source.kind === "npm" ? <Package className="size-4" aria-hidden /> : source.kind === "website" ? <Globe2 className="size-4" aria-hidden /> : <Map className="size-4" aria-hidden />}
               </span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
