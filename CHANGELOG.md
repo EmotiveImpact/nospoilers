@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Local GitHub sign-in now uses the stable loopback callback from the
+  browser request instead of the changing public webhook tunnel. Non-local
+  requests still use `APP_BASE_URL`. A successful sign-in returns to
+  `/watch`.
+
 - Signed-in Watch is the 2B monolith sidebar (Overview, Alerts + views,
   Sources, Releases, Timeline, Finish setup, Settings). Ember stays on
   the homepage. Live APIs; no invented customer rows. Preview

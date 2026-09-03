@@ -45,6 +45,7 @@ import {
   type StripePort,
 } from "./stripe.ts";
 import { cookieSettings } from "./cookies.ts";
+import { authOrigin } from "./auth-origin.ts";
 import { GithubApiError, type GithubPort } from "./github.ts";
 import {
   ADMINISTRATION_DENIED,
@@ -1934,11 +1935,12 @@ export function createApp(deps: AppDeps): Hono {
       "Too many sign-in attempts from this address. Wait and try again.",
     );
     if (limited) return limited;
+    const origin = authOrigin(c.req.url, deps.config.appBaseUrl);
     const state = crypto.randomUUID();
-    setCookie(c, "ns_oauth_state", state, cookieSettings(deps.config.appBaseUrl, 600));
+    setCookie(c, "ns_oauth_state", state, cookieSettings(origin, 600));
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", deps.config.githubClientId);
-    url.searchParams.set("redirect_uri", `${deps.config.appBaseUrl}/api/auth/github/callback`);
+    url.searchParams.set("redirect_uri", `${origin}/api/auth/github/callback`);
     url.searchParams.set("state", state);
     return c.redirect(url.toString());
   });
@@ -1982,10 +1984,10 @@ export function createApp(deps: AppDeps): Hono {
       c,
       cookieName,
       signSession(deps.config.sessionSecret, sessionId),
-      cookieSettings(deps.config.appBaseUrl, 30 * 24 * 60 * 60),
+      cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 30 * 24 * 60 * 60),
     );
     deleteCookie(c, "ns_oauth_state", { path: "/" });
-    return c.redirect("/");
+    return c.redirect("/watch");
   });
 
   app.post("/api/auth/logout", async (c) => {
