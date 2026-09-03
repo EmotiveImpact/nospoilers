@@ -49,7 +49,7 @@ describe("Watch keyboard and dialog accessibility", () => {
     expect(screen.queryByRole("option", { name: /Add a source/i })).toBeNull();
 
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("combobox")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("combobox")).toBeNull());
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -114,7 +114,7 @@ describe("Watch keyboard and dialog accessibility", () => {
     expect(screen.getByRole("dialog", { name: "Artifact exposed" })).toBeTruthy();
 
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(assign);
   });
 });
