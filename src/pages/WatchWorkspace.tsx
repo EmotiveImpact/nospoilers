@@ -23,6 +23,7 @@ import {
   WatchSkeleton,
 } from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
@@ -3603,13 +3604,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   <li key={member.userId} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      {member.avatarUrl ? (
-                        <img src={member.avatarUrl} alt="" className="size-8 rounded-full border border-white/10" />
-                      ) : (
-                        <span className="grid size-8 place-items-center rounded-full bg-white/8 text-xs text-snow">
-                          {member.login.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
+                      <Avatar className="border border-white/10">
+                        <AvatarFallback>{member.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        {member.avatarUrl ? <AvatarImage src={member.avatarUrl} /> : null}
+                      </Avatar>
                       <div>
                         <p className="text-sm text-snow">@{member.login}</p>
                         <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">{member.role}</p>

@@ -120,6 +120,17 @@ export function WatchAlertsWorkspace({
 
   return (
     <section className="-mx-5 -my-8 flex h-[calc(100svh-3.5rem)] min-h-[560px] flex-col md:-mx-8">
+      <p className="sr-only" role="status" aria-live="polite">
+        {error ??
+          exportError ??
+          (busy
+            ? "Updating alert…"
+            : selected?.resolved_at
+              ? "Alert resolved."
+              : selected?.acknowledged_at
+                ? "Alert acknowledged."
+                : "")}
+      </p>
       {ended ? (
         <div className="flex items-center gap-3 border-b border-danger/25 bg-danger/8 px-5 py-2.5 text-xs text-snow">
           <span className="size-1.5 rounded-full bg-danger" />
