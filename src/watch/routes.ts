@@ -21,6 +21,7 @@ export type AlertTab = "open" | "waiting" | "mine" | "done";
 export type WatchRoute = {
   view: WatchView;
   alertId: number | null;
+  releaseId: number | null;
   tab: AlertTab;
 };
 
@@ -52,19 +53,21 @@ export function parseWatchRoute(path: string, search: string): WatchRoute {
   const params = paramsOf(search);
   const rawAlert = Number(params.get("alert"));
   const alertId = Number.isFinite(rawAlert) && rawAlert > 0 ? rawAlert : null;
+  const rawRelease = Number(params.get("release"));
+  const releaseId = Number.isFinite(rawRelease) && rawRelease > 0 ? rawRelease : null;
   const rawTab = params.get("tab") ?? "";
   const tab: AlertTab = TAB_SET.has(rawTab) ? (rawTab as AlertTab) : "open";
   const trimmed = path.replace(/\/+$/, "") || "/watch";
   if (trimmed === "/watch") {
-    return { view: "overview", alertId, tab };
+    return { view: "overview", alertId, releaseId, tab };
   }
   if (trimmed.startsWith("/watch/")) {
     const page = trimmed.slice("/watch/".length);
     if (VIEW_SET.has(page)) {
-      return { view: page as WatchView, alertId, tab };
+      return { view: page as WatchView, alertId, releaseId, tab };
     }
   }
-  return { view: "overview", alertId, tab };
+  return { view: "overview", alertId, releaseId, tab };
 }
 
 export function watchPath(view: WatchView): string {
@@ -74,7 +77,12 @@ export function watchPath(view: WatchView): string {
 export function watchHref(
   path: string,
   search: string,
-  extra: { install?: number | null; alert?: number | null; tab?: AlertTab | null } = {},
+  extra: {
+    install?: number | null;
+    alert?: number | null;
+    release?: number | null;
+    tab?: AlertTab | null;
+  } = {},
 ): string {
   const params = paramsOf(search);
   if (extra.install !== undefined) {
@@ -84,6 +92,10 @@ export function watchHref(
   if (extra.alert !== undefined) {
     if (extra.alert) params.set("alert", String(extra.alert));
     else params.delete("alert");
+  }
+  if (extra.release !== undefined) {
+    if (extra.release) params.set("release", String(extra.release));
+    else params.delete("release");
   }
   if (extra.tab !== undefined) {
     if (extra.tab && extra.tab !== "open") params.set("tab", extra.tab);

@@ -11,14 +11,17 @@ import {
   workflowIsNoSpoilersScan,
 } from "@/github-response-copy.ts";
 import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
+import { WatchExposureChart } from "@/components/WatchExposureChart.tsx";
 import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
+import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
 import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
 import { Button } from "@/components/ui/button";
 import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
+import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
-import { parseWatchRoute, watchHref } from "@/watch/routes.ts";
+import { parseWatchRoute, watchHref, watchPath } from "@/watch/routes.ts";
 import { filterDeskAlerts, isOpenAlert, setupProgress } from "@/watch/verdict.ts";
 import type { Finding } from "@/report-types";
 import { useCallback, useEffect, useState } from "react";
@@ -2136,6 +2139,10 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
     })),
   ];
   const listedAlerts = filterDeskAlerts(deskAlerts, route.tab, login);
+  const selectedAlert =
+    listedAlerts.find((alert) => alert.id === route.alertId) ?? listedAlerts[0] ?? null;
+  const selectedRelease =
+    releases.find((release) => release.id === route.releaseId) ?? releases[0] ?? null;
   const openAlertCount = deskAlerts.filter(isOpenAlert).length;
   const waitingCount = filterDeskAlerts(deskAlerts, "waiting", login).length;
   const mineCount = filterDeskAlerts(deskAlerts, "mine", login).length;
@@ -2739,8 +2746,47 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
             </p>
           )}
           {listedAlerts.length > 0 && (
-            <ul className="mt-4 max-h-[40rem] divide-y divide-white/5 overflow-auto">
-              {listedAlerts.map((alert) => (
+            <div className="mt-5 grid overflow-hidden rounded-lg border border-white/8 bg-panel lg:grid-cols-[18rem_minmax(0,1fr)]">
+              <ol className="max-h-[46rem] divide-y divide-white/5 overflow-auto border-b border-white/8 lg:border-b-0 lg:border-r">
+                {listedAlerts.map((alert) => (
+                  <li key={`summary-${alert.id}`}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full px-4 py-4 text-left hover:bg-white/5",
+                        selectedAlert?.id === alert.id && "bg-white/5",
+                      )}
+                      onClick={() =>
+                        navigate(
+                          watchHref(watchPath("alerts"), search, {
+                            alert: alert.id,
+                            tab: route.tab,
+                          }),
+                        )
+                      }
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "size-1.5 shrink-0 rounded-full",
+                            alert.resolved_at ? "bg-white/30" : "bg-danger",
+                          )}
+                          aria-hidden
+                        />
+                        <strong className="truncate text-sm text-snow">{alert.title}</strong>
+                      </span>
+                      <span className="mt-2 block truncate font-mono text-[11px] text-dim">
+                        {alert.full_name ?? kindLabel(alert.kind)}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-dim">
+                        {formatExposure(alert.exposure_ms, alert.created_at, alert.resolved_at)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <ul className="min-w-0 px-5">
+              {selectedAlert ? [selectedAlert].map((alert) => (
                 <AlertDeskItem
                   key={alert.id}
                   alert={alert}
@@ -2805,8 +2851,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                     })();
                   }}
                 />
-              ))}
-            </ul>
+              )) : null}
+              </ul>
+            </div>
           )}
         </section>
       )}
@@ -2826,6 +2873,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
           . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
           stays until uninstall.
         </p>
+        <WatchExposureChart alerts={deskAlerts} />
         {previewing ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">
             Preview cannot show a live timeline. No invented incident.
@@ -3529,6 +3577,7 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
       <section className="mt-4">
         <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
         <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
+        <WatchNotificationSummary destinations={destinations} routes={routes} />
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
           SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
@@ -5746,9 +5795,49 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
         ) : releases.length === 0 ? (
           <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
         ) : (
-          <ul className="mt-6 divide-y divide-white/5">
-            {releases.map((release) => (
-              <li key={release.id} className="py-4">
+          <div className="mt-6 grid overflow-hidden rounded-lg border border-white/8 bg-panel lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <ol className="max-h-[52rem] divide-y divide-white/5 overflow-auto border-b border-white/8 lg:border-b-0 lg:border-r">
+              {releases.map((release) => (
+                <li key={`release-summary-${release.id}`}>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full px-4 py-4 text-left hover:bg-white/5",
+                      selectedRelease?.id === release.id && "bg-white/5",
+                    )}
+                    onClick={() =>
+                      navigate(
+                        watchHref(watchPath("releases"), search, { release: release.id }),
+                      )
+                    }
+                  >
+                    <strong className="block truncate font-mono text-sm text-snow">
+                      {release.coordinate}
+                    </strong>
+                    <span className="mt-2 block text-xs text-dim">
+                      {release.channel} · {release.artifactSha256.slice(0, 12)}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-1 block text-[10px] uppercase tracking-[0.16em]",
+                        release.mismatch ||
+                          release.receiptStatus === "failed-policy" ||
+                          release.receiptStatus === "inconclusive"
+                          ? "text-danger"
+                          : "text-dim",
+                      )}
+                    >
+                      {release.mismatch
+                        ? "digest changed"
+                        : release.receiptStatus?.replace("-", " ") ?? "sealed"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <ul className="min-w-0 px-5">
+            {selectedRelease ? [selectedRelease].map((release) => (
+              <li key={release.id} className="py-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-mono text-sm text-snow">{release.coordinate}</p>
@@ -6133,8 +6222,9 @@ export function WatchPage({ path = "/watch", search }: { path?: string; search: 
                   </div>
                 ) : null}
               </li>
-            ))}
-          </ul>
+            )) : null}
+            </ul>
+          </div>
         )}
       </section>
       )}

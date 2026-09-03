@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { previewAlerts, previewRepos } from "../src/preview.ts";
+import { exposureByDay } from "../src/watch/exposure.ts";
 
 describe("Watch preview", () => {
   it("shows structure without inventing tenant rows", () => {
@@ -10,11 +11,42 @@ describe("Watch preview", () => {
   });
 });
 
+describe("Watch exposure chart", () => {
+  it("derives daily exposure from alert open and close times", () => {
+    const now = Date.parse("2026-09-03T12:00:00Z");
+    const days = exposureByDay(
+      [
+        {
+          id: 1,
+          kind: "repo_publicized",
+          title: "Public",
+          body: "",
+          findings: null,
+          created_at: "2026-09-03T10:00:00Z",
+        },
+        {
+          id: 2,
+          kind: "release_scan",
+          title: "Map",
+          body: "",
+          findings: null,
+          created_at: "2026-09-02T22:00:00Z",
+          resolved_at: "2026-09-03T01:00:00Z",
+        },
+      ],
+      now,
+    );
+    expect(days.at(-2)?.exposedMs).toBe(2 * 60 * 60 * 1000);
+    expect(days.at(-1)?.exposedMs).toBe(3 * 60 * 60 * 1000);
+  });
+});
+
 describe("2B watch routes", () => {
   it("opens Overview on /watch and keeps settings in the same tree", () => {
     expect(parseWatchRoute("/watch", "").view).toBe("overview");
     expect(parseWatchRoute("/watch/notifications", "").view).toBe("notifications");
     expect(parseWatchRoute("/watch/alerts", "?tab=waiting").tab).toBe("waiting");
+    expect(parseWatchRoute("/watch/releases", "?release=12").releaseId).toBe(12);
     expect(watchPath("policy")).toBe("/watch/policy");
     expect(watchHref("/watch/alerts", "?install=7", { tab: "done" })).toBe(
       "/watch/alerts?install=7&tab=done",
