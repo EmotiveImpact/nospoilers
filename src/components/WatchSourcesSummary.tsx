@@ -122,7 +122,7 @@ export function WatchSourcesSummary({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-sm font-semibold text-snow">{setup.next.label}</h2>
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-dim">
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-dim">
                     {setup.next.proof === "check-needed" ? "check needed" : setup.next.proof}
                   </span>
                 </div>
@@ -153,7 +153,7 @@ export function WatchSourcesSummary({
                 className={
                   step.proof === "covered"
                     ? "grid size-6 place-items-center rounded-full bg-white text-xs text-ink"
-                    : "grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-dim"
+                    : "grid size-6 place-items-center rounded-full border border-white/15 text-xs text-dim"
                 }
               >
                 {step.proof === "covered" ? (
@@ -169,7 +169,7 @@ export function WatchSourcesSummary({
                 <p className="text-sm text-snow">{step.label}</p>
                 <p className="mt-0.5 text-xs text-dim">{step.summary}</p>
               </div>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-dim">
+              <span className="text-xs uppercase tracking-[0.14em] text-dim">
                 {step.proof === "check-needed" ? "check needed" : step.proof}
               </span>
             </li>
@@ -213,9 +213,10 @@ export function WatchSourcesSummary({
                 }
                 className={
                   filter === option.value
-                    ? "rounded-full border border-white/25 bg-white/8 px-3 py-1.5 text-xs text-snow"
-                    : "rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20"
+                    ? "min-h-12 rounded-full border border-white/25 bg-white/8 px-3 py-1.5 text-xs text-snow sm:min-h-9"
+                    : "min-h-12 rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20 sm:min-h-9"
                 }
+                aria-pressed={filter === option.value}
               >
                 {option.label} <span className="ml-1 text-dim">{count}</span>
               </button>
@@ -232,9 +233,10 @@ export function WatchSourcesSummary({
             }
             className={
               attention
-                ? "ml-auto rounded-full border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs text-danger"
-                : "ml-auto rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20"
+                ? "min-h-12 rounded-full border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs text-danger sm:ml-auto sm:min-h-9"
+                : "min-h-12 rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20 sm:ml-auto sm:min-h-9"
             }
+            aria-pressed={attention}
           >
             Needs attention{" "}
             <span className="ml-1">
@@ -273,8 +275,8 @@ export function WatchSourcesSummary({
                   <span
                     className={
                       source.attention === "critical"
-                        ? "rounded-full border border-danger/35 bg-danger/10 px-2 py-0.5 text-[10px] text-danger"
-                        : "rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-dim"
+                        ? "rounded-full border border-danger/35 bg-danger/10 px-2 py-0.5 text-xs text-danger"
+                        : "rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim"
                     }
                   >
                     {source.status}
@@ -325,7 +327,7 @@ export function WatchSourcesSummary({
           <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-dim">Add source</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-dim">Add source</p>
                 <DialogTitle className="mt-1 font-display text-xl text-snow">Choose one source type</DialogTitle>
               </div>
               <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)} aria-label="Close add source"><X className="size-4" aria-hidden /></Button>
@@ -340,7 +342,7 @@ export function WatchSourcesSummary({
                 <button
                   key={id}
                   type="button"
-                  className="rounded-lg border border-white/8 bg-panel p-4 text-left hover:border-white/20"
+                  className="min-h-24 rounded-lg border border-white/8 bg-panel p-4 text-left transition-colors duration-150 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
                   onClick={() => {
                     setAdding(false);
                     window.setTimeout(() => revealSourceForm(id), 0);
@@ -389,6 +391,27 @@ export function WatchSourcesSummary({
                   </div>
                 ))}
               </div>
+              <section className="mt-6">
+                <h2 className="text-sm font-semibold text-snow">Evidence and related work</h2>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-white/[0.035] p-4">
+                    <p className="text-xs text-dim">Health and checks</p>
+                    <p className="mt-2 text-sm text-snow">{selectedSource.status}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-mute">
+                      {selectedSource.lastCheckedAt
+                        ? `Last evidence ${new Date(selectedSource.lastCheckedAt).toLocaleString()}`
+                        : "No completed check evidence yet."}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.035] p-4">
+                    <p className="text-xs text-dim">Alerts</p>
+                    <p className="mt-2 text-sm text-snow">{selectedSource.alertCount} open</p>
+                    <p className="mt-1 text-xs leading-relaxed text-mute">
+                      Counts come from alerts whose coordinates match this source.
+                    </p>
+                  </div>
+                </div>
+              </section>
               <div className="mt-6 flex items-start gap-3 rounded-lg bg-white/[0.035] p-4">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-mute" aria-hidden />
                 <p className="text-xs leading-relaxed text-mute">

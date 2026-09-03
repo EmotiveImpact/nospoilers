@@ -264,6 +264,8 @@ describe("source-lane timeline", () => {
       rule: "MAP-002",
       open: true,
       severity: "critical",
+      startedAt: "2026-09-03T10:00:00.000Z",
+      endedAt: null,
     });
     expect(lanes[0]?.spans[0]?.left).toBeGreaterThan(90);
   });

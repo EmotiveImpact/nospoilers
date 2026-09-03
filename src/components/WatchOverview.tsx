@@ -123,27 +123,27 @@ export function WatchOverview({
           onClick={() => navigate(href("alerts"))}
           className="rounded-lg border border-white/8 bg-panel p-4 text-left"
         >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Open alerts</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Open alerts</p>
           <p className={`mt-2 font-display text-3xl ${open.length ? "text-danger" : "text-snow"}`}>
             {open.length}
           </p>
-          <p className="mt-1 text-[11px] text-dim">{open.length ? "needs triage" : "inbox clear"}</p>
+          <p className="mt-1 text-xs text-dim">{open.length ? "needs triage" : "inbox clear"}</p>
         </button>
         <div className="rounded-lg border border-white/8 bg-panel p-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Exposed now</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Exposed now</p>
           <p className={`mt-2 font-display text-3xl ${open.length ? "text-danger" : "text-snow"}`}>
             {open.length ? longestOpenExposure(open) : "0"}
           </p>
-          <p className="mt-1 text-[11px] text-dim">oldest open alert</p>
+          <p className="mt-1 text-xs text-dim">oldest open alert</p>
         </div>
         <button
           type="button"
           onClick={() => navigate(href("releases"))}
           className="rounded-lg border border-white/8 bg-panel p-4 text-left"
         >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Packs read, 30 d</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Packs read, 30 d</p>
           <p className="mt-2 font-display text-3xl text-snow">{packsRead}</p>
-          <p className="mt-1 text-[11px] text-dim">
+          <p className="mt-1 text-xs text-dim">
             {failedPolicy ? `${failedPolicy} failed policy` : "listed revisions"}
           </p>
         </button>
@@ -152,15 +152,15 @@ export function WatchOverview({
           onClick={() => navigate(href("health"))}
           className="rounded-lg border border-white/8 bg-panel p-4 text-left"
         >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Queue</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Queue</p>
           <p className="mt-2 font-display text-3xl text-snow">{queueDepth}</p>
-          <p className="mt-1 text-[11px] text-dim">{lastRunLabel}</p>
+          <p className="mt-1 text-xs text-dim">{lastRunLabel}</p>
         </button>
       </div>
 
       {lead && !ended ? (
         <section className="mt-8 rounded-lg border border-danger/30 bg-danger/8 p-5">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-danger">
+          <p className="text-xs uppercase tracking-[0.16em] text-danger">
             {finding?.rule ?? lead.kind}
           </p>
           <h2 className="mt-2 font-display text-xl text-snow">{lead.title}</h2>
@@ -206,7 +206,7 @@ export function WatchOverview({
         {ended ? <CoverageLock variant="watch" title="Subscribe to keep watching." /> : null}
         <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Sources</h2>
+            <h2 className="text-xs uppercase tracking-[0.22em] text-dim">Sources</h2>
             <button
               type="button"
               className="text-xs text-dim hover:text-snow"
@@ -233,7 +233,7 @@ export function WatchOverview({
                         {row.status}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-dim">
+                    <p className="mt-1 text-xs text-dim">
                       {row.kindLabel} · {row.detail}
                       {row.digest ? ` · ${row.digest.slice(0, 12)}` : ""}
                     </p>
@@ -250,7 +250,7 @@ export function WatchOverview({
 
       <section className="mt-10">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">
+          <h2 className="text-xs uppercase tracking-[0.22em] text-dim">
             {setup.done === setup.total
               ? "Leak paths covered"
               : `${setup.total - setup.done} leak path${setup.total - setup.done === 1 ? "" : "s"} still open`}
@@ -270,7 +270,7 @@ export function WatchOverview({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-snow">{setup.next.label}</p>
-              <p className="mt-1 text-[11px] text-dim">{setup.next.summary}</p>
+              <p className="mt-1 text-xs text-dim">{setup.next.summary}</p>
             </div>
             <Button type="button" size="sm" onClick={() => navigate(href("setup"))}>
               {setup.next.action}

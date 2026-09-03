@@ -324,6 +324,8 @@ export type TimelineSpanViewModel = {
   rule: string;
   severity: "critical" | "warning";
   open: boolean;
+  startedAt: string;
+  endedAt: string | null;
   left: number;
   width: number;
 };
@@ -373,6 +375,8 @@ export function buildTimelineLanes(
       rule,
       severity: severityFor(rule),
       open: !alert.resolved_at,
+      startedAt: new Date(opened).toISOString(),
+      endedAt: alert.resolved_at ? new Date(resolved).toISOString() : null,
       left: Math.max(0, Math.min(100, ((clippedStart - start) / range) * 100)),
       width: Math.max(0.8, Math.min(100, ((clippedEnd - clippedStart) / range) * 100)),
     });

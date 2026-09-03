@@ -141,7 +141,7 @@ export function WatchAlertsWorkspace({
             type="button"
             aria-current={tab === value ? "page" : undefined}
             className={cn(
-              "h-9 shrink-0 rounded-md px-3 text-xs text-mute hover:bg-white/5 hover:text-snow",
+              "min-h-12 shrink-0 rounded-md px-3 text-xs text-mute hover:bg-white/5 hover:text-snow lg:min-h-9",
               tab === value && "bg-white/8 text-snow",
             )}
             onClick={() => onTab(value)}
@@ -155,7 +155,7 @@ export function WatchAlertsWorkspace({
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/8 px-4">
             <div className="flex items-center gap-2">
               <strong className="text-sm text-snow">Inbox</strong>
-              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-dim">{rows.length}</span>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim">{rows.length}</span>
             </div>
             {!previewing ? (
               <Button type="button" size="sm" variant="ghost" onClick={onExport}>Export JSON</Button>
@@ -196,9 +196,9 @@ export function WatchAlertsWorkspace({
                         )}
                       />
                       <strong className="line-clamp-2 min-w-0 flex-1 text-[13px] leading-snug text-snow">{row.title}</strong>
-                      <span className="shrink-0 text-[10px] text-dim">{row.exposure}</span>
+                      <span className="shrink-0 text-xs text-dim">{row.exposure}</span>
                     </span>
-                    <span className="mt-1.5 block truncate pl-3.5 font-mono text-[10px] text-dim">
+                    <span className="mt-1.5 block truncate pl-3.5 font-mono text-xs text-dim">
                       {row.coordinate} · {row.rule}
                     </span>
                   </button>
@@ -225,29 +225,30 @@ export function WatchAlertsWorkspace({
                   Back to inbox
                 </Button>
                 {!selected.acknowledged_at && !selected.resolved_at ? (
-                  <Button type="button" size="sm" disabled={previewing || busy} onClick={() => onAction("acknowledge")}>
+                  <Button type="button" size="sm" className="min-h-12 lg:min-h-8" disabled={previewing || busy} onClick={() => onAction("acknowledge")}>
                     Acknowledge
                   </Button>
                 ) : selected.acknowledged_at ? (
-                  <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-mute">Acknowledged</span>
+                  <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-mute">Acknowledged</span>
                 ) : null}
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="min-h-12 lg:min-h-8"
                   disabled={previewing || busy || (!selected.resolved_at && note.trim().length < 8)}
                   onClick={() => onAction(selected.resolved_at ? "reopen" : "resolve")}
                 >
                   {selected.resolved_at ? "Reopen" : "Resolve"}
                 </Button>
                 {!selected.resolved_at ? (
-                  <Button type="button" size="sm" variant="outline" disabled={previewing || busy} onClick={() => setAssignOpen(true)}>
+                  <Button type="button" size="sm" variant="outline" className="min-h-12 lg:min-h-8" disabled={previewing || busy} onClick={() => setAssignOpen(true)}>
                     {selected.assigned_to_login ? `@${selected.assigned_to_login}` : "Assign"}
                   </Button>
                 ) : null}
                 <div className="ml-auto flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button>
-                  <Button type="button" size="sm" variant="ghost" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
+                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button>
+                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
@@ -313,7 +314,7 @@ export function WatchAlertsWorkspace({
                     <p className="watch-kicker">Activity</p>
                     <div className="mt-2 rounded-lg border border-white/8 bg-panel px-4">
                       <div className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute">
-                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-[10px] text-snow">NS</span>
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">NS</span>
                         <p><span className="text-snow">NoSpoilers</span> opened this from {selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
                       </div>
                       {activityState.status === "loading" ? (
@@ -322,7 +323,7 @@ export function WatchAlertsWorkspace({
                         <WatchSectionError className="my-3" message={activityState.message} onRetry={onRetryActivity} />
                       ) : events.map((event) => (
                         <div key={event.id} className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute last:border-b-0">
-                          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-[10px] text-snow">{event.actor_login.slice(0, 2).toUpperCase()}</span>
+                          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">{event.actor_login.slice(0, 2).toUpperCase()}</span>
                           <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}</p>
                         </div>
                       ))}
@@ -377,7 +378,7 @@ export function WatchAlertsWorkspace({
                 value={assignee}
                 onChange={(event) => onAssignee(event.target.value)}
                 placeholder="teammate"
-                className="mt-2 h-10 w-full rounded-md border border-white/15 bg-panel px-3 text-sm text-snow outline-none focus:border-white/40"
+                className="mt-2 h-12 w-full rounded-md border border-white/15 bg-panel px-3 text-sm text-snow outline-none focus:border-white/40"
               />
             </label>
             <div className="mt-4 flex justify-end gap-2">

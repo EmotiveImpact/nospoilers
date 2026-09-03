@@ -11,12 +11,13 @@ import {
   workflowIsNoSpoilersScan,
 } from "@/github-response-copy.ts";
 import { WatchCommandPalette } from "@/components/WatchCommandPalette.tsx";
-import { WatchExposureChart } from "@/components/WatchExposureChart.tsx";
 import { WatchAlertsWorkspace } from "@/components/WatchAlertsWorkspace.tsx";
 import { WatchMonolithShell } from "@/components/WatchMonolithShell.tsx";
 import { WatchNotificationSummary } from "@/components/WatchNotificationSummary.tsx";
 import { WatchOverview } from "@/components/WatchOverview.tsx";
 import { WatchSourcesSummary } from "@/components/WatchSourcesSummary.tsx";
+import { RetentionScreen } from "@/components/watch/screens/RetentionScreen.tsx";
+import { TimelineScreen } from "@/components/watch/screens/TimelineScreen.tsx";
 import {
   WatchSectionError,
   WatchSkeleton,
@@ -550,16 +551,16 @@ function formatSealedBytes(bytes: number): string {
 function receiptStatusMark(status: ReceiptScanStatus | null) {
   if (status === "failed-policy") {
     return (
-      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">failed policy</span>
+      <span className="text-xs uppercase tracking-[0.16em] text-danger">failed policy</span>
     );
   }
   if (status === "inconclusive") {
     return (
-      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">inconclusive</span>
+      <span className="text-xs uppercase tracking-[0.16em] text-danger">inconclusive</span>
     );
   }
   if (status === "passed") {
-    return <span className="text-[11px] uppercase tracking-[0.16em] text-dim">passed</span>;
+    return <span className="text-xs uppercase tracking-[0.16em] text-dim">passed</span>;
   }
   return null;
 }
@@ -871,7 +872,7 @@ function SetupStatusResult({ view }: { view: SetupStatusView }) {
   return (
     <div className="mt-3 space-y-2">
       <p className="text-sm leading-relaxed text-mute">{facts.detail}</p>
-      <p className="font-mono text-[11px] leading-relaxed text-dim">
+      <p className="font-mono text-xs leading-relaxed text-dim">
         Action {facts.actionOnDefault ? "on default" : facts.actionOnSetup ? `on ${facts.setupBranch}` : "missing"}
         {" · "}
         workflow{" "}
@@ -936,8 +937,8 @@ function SetupPrResult({ view }: { view: SetupPrView }) {
         )}
         {view.files.map((file) => (
           <div key={file.path}>
-            <p className="font-mono text-[11px] text-snow">{file.path}</p>
-            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
+            <p className="font-mono text-xs text-snow">{file.path}</p>
+            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-xs leading-relaxed text-mute">
               {file.content}
             </pre>
           </div>
@@ -994,8 +995,8 @@ function RemediationPrResult({ view }: { view: RemediationPrView }) {
         )}
         {view.files.map((file) => (
           <div key={file.path}>
-            <p className="font-mono text-[11px] text-snow">{file.path}</p>
-            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-[11px] leading-relaxed text-mute">
+            <p className="font-mono text-xs text-snow">{file.path}</p>
+            <pre className="mt-2 max-h-48 overflow-auto border border-white/10 bg-inset p-4 font-mono text-xs leading-relaxed text-mute">
               {file.content}
             </pre>
           </div>
@@ -1043,7 +1044,7 @@ function AlertDeskItem({
   const checklist = alert.rotation_checklist ?? [];
   return (
     <li className="py-5">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+      <p className="text-xs uppercase tracking-[0.16em] text-dim">
         {kindLabel(alert.kind)} · {new Date(alert.created_at).toLocaleString()}
         {resolved ? " · resolved" : alert.acknowledged_at ? " · acknowledged" : " · open"}
       </p>
@@ -1059,7 +1060,7 @@ function AlertDeskItem({
           {alert.findings.map((finding) => (
             <li
               key={`${alert.id}-${finding.rule}-${finding.path}`}
-              className="font-mono text-[11px] text-mute"
+              className="font-mono text-xs text-mute"
             >
               {finding.rule} · {finding.path}
             </li>
@@ -1068,7 +1069,7 @@ function AlertDeskItem({
       )}
       {checklist.length > 0 && (
         <div className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Rotation checklist</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-dim">Rotation checklist</p>
           <ul className="mt-2 flex flex-col gap-1">
             {checklist.map((item) => (
               <li key={item} className="text-xs leading-relaxed text-mute">
@@ -1084,7 +1085,7 @@ function AlertDeskItem({
       {events.length > 0 && (
         <ul className="mt-3 flex flex-col gap-1">
           {events.map((event) => (
-            <li key={event.id} className="text-[11px] text-dim">
+            <li key={event.id} className="text-xs text-dim">
               {event.action} · {event.actor_login}
               {event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}
             </li>
@@ -1129,7 +1130,7 @@ function AlertDeskItem({
         {!resolved && (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="min-w-0 flex-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Assign GitHub login</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Assign GitHub login</span>
               <input
                 value={assignee}
                 onChange={(event) => onAssignee(event.target.value)}
@@ -1153,7 +1154,7 @@ function AlertDeskItem({
         )}
         {!resolved && (
           <label>
-            <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Resolution note</span>
+            <span className="text-xs uppercase tracking-[0.16em] text-dim">Resolution note</span>
             <textarea
               value={note}
               onChange={(event) => onNote(event.target.value)}
@@ -2131,7 +2132,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
   if (!user && githubApp && !queryCoverage) {
     return (
       <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Watch desk</p>
+        <p className="text-xs uppercase tracking-[0.28em] text-dim">Watch desk</p>
         <p className="mt-3 text-sm text-dim">
           <a href="/" className="text-snow underline-offset-4 hover:underline" onClick={(event) => {
             event.preventDefault();
@@ -2559,7 +2560,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     >
                       {repo.full_name}
                     </a>
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">
                       {repo.private ? "private" : "public"}
                     </span>
                   </div>
@@ -3149,10 +3150,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                         />
                         <strong className="truncate text-sm text-snow">{alert.title}</strong>
                       </span>
-                      <span className="mt-2 block truncate font-mono text-[11px] text-dim">
+                      <span className="mt-2 block truncate font-mono text-xs text-dim">
                         {alert.full_name ?? kindLabel(alert.kind)}
                       </span>
-                      <span className="mt-1 block text-[11px] text-dim">
+                      <span className="mt-1 block text-xs text-dim">
                         {formatExposure(alert.exposure_ms, alert.created_at, alert.resolved_at)}
                       </span>
                     </button>
@@ -3232,158 +3233,42 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
         </section>
       )}
 
-      {route.view === "timeline" && (
-      <section className="mt-4">
-        <h1 className="font-display text-3xl tracking-tight text-snow">
-          {timeline.status === "ready" ? timelineHeading(timeline.days) : "Timeline"}
-        </h1>
-        <p className="mt-2 text-sm text-mute">Alert and response activity within the retained window.</p>
-        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Team and trial installs see this install’s alerts, acknowledgement activity, and
-          notification deliveries{" "}
-          {timeline.status === "ready"
-            ? retentionWindowLabel(timeline.days)
-            : "for the list window"}
-          . Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence
-          stays until uninstall.
-        </p>
-        {previewing ? null : timeline.status === "ready" && alertSectionState.status === "ready" ? (
-          <WatchExposureChart alerts={deskAlerts} days={Math.max(7, timeline.days || 90)} />
-        ) : timeline.status === "loading" || alertSectionState.status === "loading" ? (
-          <WatchSkeleton variant="detail" className="mt-6" />
-        ) : alertSectionState.status === "error" ? (
-          <WatchSectionError
-            className="mt-6 max-w-2xl"
-            message={alertSectionState.message}
-            onRetry={() => void retryDeskSection("alerts")}
-          />
-        ) : null}
-        {previewing ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot show a live timeline. No invented incident.
-          </p>
-        ) : timeline.status === "solo" ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            The install timeline is on Team. Solo can still save a Watch email destination.
-          </p>
-        ) : timeline.status === "ended" ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Subscribe to Team to keep the install timeline.
-          </p>
-        ) : timeline.status === "error" ? (
-          <WatchSectionError
-            className="mt-6 max-w-2xl"
-            message={timeline.message}
-            onRetry={() => void retryDeskSection("timeline")}
-          />
-        ) : timeline.status === "loading" ? (
-          null
-        ) : timeline.entries.length === 0 ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            {timeline.days === 0
-              ? "Nothing on this install yet."
-              : `Nothing in the last ${timeline.days} days on this install.`}
-          </p>
-        ) : (
-          <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
-            {timeline.entries.map((entry, index) => (
-              <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="py-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm text-snow">
-                    {entry.type === "delivery"
-                      ? `${destinationKindLabel(entry.kind ?? "")} ${entry.deliveryStatus ?? "delivery"}`
-                      : entry.type === "alert_event"
-                        ? `${entry.action ?? "activity"}${entry.actorLogin ? ` · ${entry.actorLogin}` : ""}`
-                        : entry.title ?? entry.kind ?? "Alert"}
-                  </p>
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
-                    {new Date(entry.at).toLocaleString()}
-                  </span>
-                </div>
-                {entry.fullName ? (
-                  <p className="mt-1 font-mono text-xs text-dim">{entry.fullName}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      )}
+      {route.view === "timeline" ? (
+        <TimelineScreen
+          previewing={previewing}
+          timeline={timeline}
+          alerts={deskAlerts}
+          alertState={alertSectionState}
+          onRetryTimeline={() => void retryDeskSection("timeline")}
+          onRetryAlerts={() => void retryDeskSection("alerts")}
+        />
+      ) : null}
 
-      {route.view === "retention" && (
-      <section className="mt-4">
-        <h1 className="font-display text-3xl tracking-tight text-snow">Retention</h1>
-        <p className="mt-2 text-sm text-mute">Choose how long operational lists remain visible.</p>
-        <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-          Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
-          Append-only evidence is not deleted. Uninstall still drops the tenant.
-        </p>
-        {previewing ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Preview cannot change live retention. No invented incident.
-          </p>
-        ) : ended ? (
-          <p className="mt-6 text-sm leading-relaxed text-mute">
-            Subscribe to keep configurable retention.
-          </p>
-        ) : retention.status === "error" ? (
-          <p className="mt-6 text-sm text-danger">{retention.message}</p>
-        ) : retention.status === "loading" ? (
-          <p className="mt-6 text-sm text-dim">Loading…</p>
-        ) : (
-          <div className="mt-6 max-w-xl rounded-lg border border-white/8 bg-panel p-5">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">List window</span>
-              <select
-                value={retentionDraft}
-                disabled={!canChangeRetention || confirmBusy}
-                onChange={(event) => {
-                  const days = parseRetentionDays(Number(event.target.value));
-                  if (days === null) return;
-                  setRetentionDraft(days);
-                }}
-                className="h-10 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40 disabled:opacity-50"
-              >
-                <option value={90}>90 days</option>
-                <option value={180}>180 days</option>
-                <option value={365}>365 days</option>
-                <option value={0}>Keep while this install exists</option>
-              </select>
-            </label>
-            {canChangeRetention ? (
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={confirmBusy || retentionDraft === retention.days}
-                  onClick={() =>
-                    beginConfirm({
-                      kind: "retention",
-                      days: retentionDraft,
-                      expected: retentionConfirmToken(retentionDraft),
-                    })
-                  }
-                >
-                  Save retention
-                </Button>
-                {confirmForm(confirming?.kind === "retention")}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm leading-relaxed text-mute">
-                An install admin has to change this window.
-              </p>
-            )}
-          </div>
-        )}
-      </section>
-      )}
+      {route.view === "retention" ? (
+        <RetentionScreen
+          previewing={previewing}
+          ended={ended}
+          retention={retention}
+          draft={retentionDraft}
+          canChange={canChangeRetention}
+          busy={confirmBusy}
+          confirmation={confirmForm(confirming?.kind === "retention")}
+          onDraft={setRetentionDraft}
+          onSave={() =>
+            beginConfirm({
+              kind: "retention",
+              days: retentionDraft,
+              expected: retentionConfirmToken(retentionDraft),
+            })
+          }
+        />
+      ) : null}
 
       {route.view === "policy" && (
       <section className="mt-4">
         <h1 className="font-display text-3xl tracking-tight text-snow">Policy &amp; allowlist</h1>
         <p className="mt-2 text-sm text-mute">Shipping evidence, time-bound exceptions, and approved baselines.</p>
-        <h2 className="mt-8 text-[11px] uppercase tracking-[0.22em] text-dim">Signing policy</h2>
+        <h2 className="mt-8 text-xs uppercase tracking-[0.22em] text-dim">Signing policy</h2>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
           Trial and Team can require a present GitHub or npm attestation document, or a builder
           prefix, before a passing revision is approved to ship. Type signing-policy to save.
@@ -3437,7 +3322,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               Require a present npm attestation
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">
                 Builder prefix
               </span>
               <input
@@ -3456,7 +3341,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Expires</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Expires</span>
               <input
                 value={signingDraft.expiresAt}
                 disabled={!canManageSigningPolicy || confirmBusy}
@@ -3590,7 +3475,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   <li key={row.id} className="py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-sm text-snow">{row.summary}</p>
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <span className="text-xs uppercase tracking-[0.16em] text-dim">
                         {new Date(row.at).toLocaleString()}
                       </span>
                     </div>
@@ -3652,7 +3537,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                     GitHub login
                   </span>
                   <input
@@ -3665,7 +3550,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   />
                 </label>
                 <label>
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Role</span>
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">Role</span>
                   <select
                     value={inviteRole}
                     onChange={(event) =>
@@ -3690,7 +3575,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm text-snow">{invite.githubLogin}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">
                           pending {invite.role}
                         </p>
                       </div>
@@ -3730,13 +3615,13 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                       {member.avatarUrl ? (
                         <img src={member.avatarUrl} alt="" className="size-8 rounded-full border border-white/10" />
                       ) : (
-                        <span className="grid size-8 place-items-center rounded-full bg-white/8 text-[10px] text-snow">
+                        <span className="grid size-8 place-items-center rounded-full bg-white/8 text-xs text-snow">
                           {member.login.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                       <div>
                         <p className="text-sm text-snow">@{member.login}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">{member.role}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">{member.role}</p>
                       </div>
                     </div>
                     {canManageRoles ? (
@@ -3817,7 +3702,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             <p className={githubPaused ? "mt-2 text-lg text-danger" : "mt-2 text-lg text-snow"}>
               {githubPaused ? "paused" : "check needed"}
             </p>
-            <p className="mt-1 text-[11px] text-dim">
+            <p className="mt-1 text-xs text-dim">
               {githubPaused ? "GitHub suspended the App" : "No invented delivery proof"}
             </p>
           </div>
@@ -3826,7 +3711,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             <p className={selectedInstall?.lastPermissionTest?.ok ? "mt-2 text-lg text-snow" : "mt-2 text-lg text-mute"}>
               {selectedInstall?.lastPermissionTest?.ok ? "pass" : "unknown"}
             </p>
-            <p className="mt-1 text-[11px] text-dim">
+            <p className="mt-1 text-xs text-dim">
               {selectedInstall?.lastPermissionTest
                 ? selectedInstall.lastPermissionTest.administrationGranted
                   ? "Administration granted — remove it"
@@ -3837,7 +3722,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
           <div className="rounded-lg border border-white/8 bg-panel p-4">
             <p className="watch-kicker">Queue</p>
             <p className="mt-2 text-lg text-snow">{jobSummary.queued + jobSummary.running}</p>
-            <p className="mt-1 text-[11px] text-dim">
+            <p className="mt-1 text-xs text-dim">
               {jobSummary.done} done · {jobSummary.failed} failed
             </p>
           </div>
@@ -3846,7 +3731,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             <p className={fairUse?.exhausted ? "mt-2 text-lg text-danger" : "mt-2 text-lg text-snow"}>
               {fairUse?.exhausted ? "paused" : fairUse?.warning ? "near cap" : fairUse ? "ok" : "unknown"}
             </p>
-            <p className="mt-1 text-[11px] text-dim">Hosted unpacks · not scan credits</p>
+            <p className="mt-1 text-xs text-dim">Hosted unpacks · not scan credits</p>
           </div>
         </div>
         <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
@@ -3986,8 +3871,8 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     <span
                       className={
                         job.status === "failed"
-                          ? "text-[11px] uppercase tracking-[0.16em] text-danger"
-                          : "text-[11px] uppercase tracking-[0.16em] text-dim"
+                          ? "text-xs uppercase tracking-[0.16em] text-danger"
+                          : "text-xs uppercase tracking-[0.16em] text-dim"
                       }
                     >
                       {job.status}
@@ -4161,7 +4046,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                     Alert email
                   </span>
                   <input
@@ -4215,7 +4100,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                     Slack incoming webhook
                   </span>
                   <input
@@ -4264,7 +4149,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                     SIEM HTTPS webhook
                   </span>
                   <input
@@ -4329,7 +4214,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">
                       Jira Cloud site
                     </span>
                     <input
@@ -4342,7 +4227,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     />
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">
                       Project key
                     </span>
                     <input
@@ -4355,7 +4240,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     />
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Email</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Email</span>
                     <input
                       type="email"
                       autoComplete="off"
@@ -4366,7 +4251,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     />
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">
                       API token
                     </span>
                     <input
@@ -4428,7 +4313,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                     PagerDuty Events API routing key
                   </span>
                   <input
@@ -4529,10 +4414,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   })();
                 }}
               >
-                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Route</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-dim">Route</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Destination</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Destination</span>
                     <select
                       value={routeDestinationId || String(destinations[0]?.id ?? "")}
                       onChange={(event) => setRouteDestinationId(event.target.value)}
@@ -4546,7 +4431,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Minimum severity</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Minimum severity</span>
                     <select
                       value={routeMinSeverity}
                       onChange={(event) =>
@@ -4560,7 +4445,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Repository</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Repository</span>
                     <select
                       value={routeRepo}
                       onChange={(event) => setRouteRepo(event.target.value)}
@@ -4575,7 +4460,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Package</span>
                     <select
                       value={routePackage}
                       onChange={(event) => setRoutePackage(event.target.value)}
@@ -4590,7 +4475,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0 sm:col-span-2">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">
                       Assign teammate
                     </span>
                     <select
@@ -4652,10 +4537,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   })();
                 }}
               >
-                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Routed test</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-dim">Routed test</p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Severity</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Severity</span>
                     <select
                       value={routeTestSeverity}
                       onChange={(event) =>
@@ -4669,7 +4554,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Repository</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Repository</span>
                     <select
                       value={routeTestRepo}
                       onChange={(event) => setRouteTestRepo(event.target.value)}
@@ -4684,7 +4569,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </select>
                   </label>
                   <label className="min-w-0">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package</span>
+                    <span className="text-xs uppercase tracking-[0.16em] text-dim">Package</span>
                     <select
                       value={routeTestPackage}
                       onChange={(event) => setRouteTestPackage(event.target.value)}
@@ -4785,7 +4670,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             }}
           >
             <label className="min-w-0 flex-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">HTTPS origin</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">HTTPS origin</span>
               <input
                 value={originUrl}
                 onChange={(event) => setOriginUrl(event.target.value)}
@@ -4809,7 +4694,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-mono text-xs text-snow">{row.origin_url}</p>
-                    <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">
                       {row.last_scan_status ?? "queued"}
                       {row.last_checked_at
                         ? ` · ${new Date(row.last_checked_at).toLocaleString()}`
@@ -4929,7 +4814,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             }}
           >
             <div>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Destination</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Destination</span>
               <div className="mt-2 flex gap-2">
                 <Button
                   type="button"
@@ -4952,7 +4837,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               </div>
             </div>
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Host (optional)</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Host (optional)</span>
               <input
                 value={mapHost}
                 onChange={(event) => setMapHost(event.target.value)}
@@ -4965,7 +4850,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             </label>
             {mapKind === "sentry" ? (
               <label>
-                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Organization slug</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-dim">Organization slug</span>
                 <input
                   value={mapOrg}
                   onChange={(event) => setMapOrg(event.target.value)}
@@ -4978,7 +4863,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               </label>
             ) : null}
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">
                 {mapKind === "sentry" ? "Project slug" : "Project id"}
               </span>
               <input
@@ -4992,7 +4877,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Auth token</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Auth token</span>
               <input
                 type="password"
                 value={mapToken}
@@ -5020,7 +4905,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                       {row.kind} · {row.host}
                       {row.orgSlug ? ` · ${row.orgSlug}/${row.projectSlug}` : ` · ${row.projectSlug}`}
                     </p>
-                    <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-dim">
                       {row.lastStatus ?? "queued"}
                       {row.lastCheckedAt ? ` · ${new Date(row.lastCheckedAt).toLocaleString()}` : ""}
                     </p>
@@ -5142,7 +5027,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
         ) : null}
         {!previewing && user && installations.length > 0 && identitySignals.status === "ready" && (
           <div className="mt-6 max-w-xl">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">npm scope watchlist</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-dim">npm scope watchlist</p>
             <p className="mt-2 text-sm leading-relaxed text-mute">
               Public npm search only. Cap {20} names. First check is a baseline. Later new names
               alert. Nothing is downloaded or auto-watched.
@@ -5184,7 +5069,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Scope</span>
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">Scope</span>
                   <input
                     value={namespaceScope}
                     onChange={(event) => setNamespaceScope(event.target.value)}
@@ -5307,10 +5192,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               })();
             }}
           >
-            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Private registry</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-dim">Private registry</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <label className="min-w-0 flex-1">
-                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Origin</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-dim">Origin</span>
                 <input
                   value={registryOriginInput}
                   onChange={(event) => setRegistryOriginInput(event.target.value)}
@@ -5322,7 +5207,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 />
               </label>
               <label className="min-w-0 flex-1">
-                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Token</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-dim">Token</span>
                 <input
                   type="password"
                   value={registryToken}
@@ -5402,7 +5287,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             }}
           >
             <label className="min-w-0 flex-1">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package name</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Package name</span>
               <input
                 value={packageName}
                 onChange={(event) => setPackageName(event.target.value)}
@@ -5414,7 +5299,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label className="min-w-0 sm:w-56">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Registry</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Registry</span>
               <select
                 value={watchRegistryOrigin}
                 onChange={(event) => setWatchRegistryOrigin(event.target.value)}
@@ -5474,14 +5359,14 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               })();
             }}
           >
-            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Protect identities</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-dim">Protect identities</p>
             <p className="text-sm leading-relaxed text-mute">
               Up to 20 npm names, one per line or comma-separated. We read registry metadata only —
               no tarball download and no scan job. Protect only when the npm scope or GitHub
               repository field matches this install. Names you do not own stay off this watch list.
             </p>
             <label className="min-w-0">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Package names</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Package names</span>
               <textarea
                 value={importNames}
                 onChange={(event) => setImportNames(event.target.value)}
@@ -5495,7 +5380,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             </label>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <label className="min-w-0 sm:w-56">
-                <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Registry</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-dim">Registry</span>
                 <select
                   value={watchRegistryOrigin}
                   onChange={(event) => setWatchRegistryOrigin(event.target.value)}
@@ -5717,7 +5602,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   {confirmForm(confirming?.kind === "package" && confirming.id === pkg.id)}
                   {protection && identitySignals.status === "ready" && risk ? (
                     <div className="mt-4 max-w-xl">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <p className="text-xs uppercase tracking-[0.16em] text-dim">
                         Identity signals {risk.total} / {risk.max}
                       </p>
                       <p className="mt-1 text-xs text-mute">{risk.note}</p>
@@ -5729,7 +5614,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                               className="flex flex-wrap items-baseline justify-between gap-2 py-2"
                             >
                               <p className="text-xs text-snow">{signal.title}</p>
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                              <p className="text-xs uppercase tracking-[0.16em] text-dim">
                                 {signal.count > 1 ? `${signal.count} · ` : ""}
                                 {signal.points}
                               </p>
@@ -5743,13 +5628,13 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   ) : null}
                   {protection && identitySignals.status === "ready" && candidates.length > 0 ? (
                     <div className="mt-4 max-w-xl">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">Lookalike names</p>
+                      <p className="text-xs uppercase tracking-[0.16em] text-dim">Lookalike names</p>
                       <ul className="mt-2 divide-y divide-white/5">
                         {candidates.map((candidate) => (
                           <li key={candidate.id} className="py-3">
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
                               <p className="font-mono text-xs text-snow">{candidate.candidateName}</p>
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                              <p className="text-xs uppercase tracking-[0.16em] text-dim">
                                 {candidate.transformation.replaceAll("_", " ")}
                                 {candidate.allowlisted ? " · allowlisted" : ""}
                                 {candidate.registeredAt && !candidate.allowlisted
@@ -5763,7 +5648,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                             {installAdmin && !candidate.allowlisted ? (
                               <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
                                 <label className="min-w-0 flex-1">
-                                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                                  <span className="text-xs uppercase tracking-[0.16em] text-dim">
                                     Reason
                                   </span>
                                   <input
@@ -5836,7 +5721,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   ) : null}
                   {protection && canReadEvidence ? (
                     <div className="mt-4 max-w-xl">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <p className="text-xs uppercase tracking-[0.16em] text-dim">
                         Identity evidence
                       </p>
                       {evidence ? (
@@ -5977,7 +5862,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                         </p>
                       ) : (
                         <>
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                          <p className="text-xs uppercase tracking-[0.16em] text-dim">
                             {diffState.versus === "baseline" ? "vs baseline · " : ""}
                             {diffState.previous.coordinate} → {diffState.current.coordinate}
                           </p>
@@ -5994,7 +5879,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                             {diffState.diff.changed.length} · {diffState.diff.sizeDelta >= 0 ? "+" : ""}
                             {diffState.diff.sizeDelta} bytes
                           </p>
-                          <ul className="mt-3 flex flex-col gap-1 font-mono text-[11px] text-mute">
+                          <ul className="mt-3 flex flex-col gap-1 font-mono text-xs text-mute">
                             {diffState.diff.added.map((entry) => (
                               <li key={`a-${entry.path}`}>+ {entry.path}</li>
                             ))}
@@ -6032,10 +5917,10 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
         </p>
         {!previewing && hostedOrigin ? (
           <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+            <p className="text-xs uppercase tracking-[0.16em] text-dim">
               Repository variable NOSPOILERS_API_URL
             </p>
-            <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+            <pre className="mt-3 overflow-auto font-mono text-xs leading-relaxed text-snow">
               {hostedOrigin}
             </pre>
             <p className="mt-3 text-sm leading-relaxed text-mute">
@@ -6084,7 +5969,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 }}
               >
                 <label className="min-w-0 flex-1">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Name</span>
+                  <span className="text-xs uppercase tracking-[0.16em] text-dim">Name</span>
                   <input
                     value={scanTokenName}
                     onChange={(event) => setScanTokenName(event.target.value)}
@@ -6103,21 +5988,21 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             {scanTokenError && <p className="mt-4 text-sm text-danger">{scanTokenError}</p>}
             {revealedScanToken ? (
               <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                <p className="text-xs uppercase tracking-[0.16em] text-dim">
                   Copy now. We will not show this again.
                 </p>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-dim">
+                <p className="mt-3 text-xs uppercase tracking-[0.16em] text-dim">
                   Repository secret NOSPOILERS_API_TOKEN
                 </p>
-                <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+                <pre className="mt-3 overflow-auto font-mono text-xs leading-relaxed text-snow">
                   {revealedScanToken}
                 </pre>
                 {hostedOrigin ? (
                   <>
-                    <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-dim">
+                    <p className="mt-4 text-xs uppercase tracking-[0.16em] text-dim">
                       Repository variable NOSPOILERS_API_URL
                     </p>
-                    <pre className="mt-3 overflow-auto font-mono text-[11px] leading-relaxed text-snow">
+                    <pre className="mt-3 overflow-auto font-mono text-xs leading-relaxed text-snow">
                       {hostedOrigin}
                     </pre>
                   </>
@@ -6134,7 +6019,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     <div className="min-w-0">
                       <p className="text-sm text-snow">{token.name}</p>
                       <p className="mt-0.5 font-mono text-xs text-dim">{token.token_prefix}…</p>
-                      <p className="mt-1 text-[11px] text-dim">
+                      <p className="mt-1 text-xs text-dim">
                         created {new Date(token.created_at).toLocaleDateString()}
                         {token.last_used_at
                           ? ` · last used ${new Date(token.last_used_at).toLocaleString()}`
@@ -6295,7 +6180,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     </span>
                     <span
                       className={cn(
-                        "mt-1 block text-[10px] uppercase tracking-[0.16em]",
+                        "mt-1 block text-xs uppercase tracking-[0.16em]",
                         release.mismatch ||
                           release.receiptStatus === "failed-policy" ||
                           release.receiptStatus === "inconclusive"
@@ -6328,28 +6213,28 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     {release.mismatch ? (
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                      <span className="text-xs uppercase tracking-[0.16em] text-danger">
                         digest changed
                       </span>
                     ) : null}
                     {receiptStatusMark(release.receiptStatus)}
                     {release.approval?.decision === "approved" ? (
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <span className="text-xs uppercase tracking-[0.16em] text-dim">
                         approved to ship
                       </span>
                     ) : null}
                     {release.approval?.decision === "rejected" ? (
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-danger">
+                      <span className="text-xs uppercase tracking-[0.16em] text-danger">
                         rejected
                       </span>
                     ) : null}
                     {release.legalHold?.active ? (
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-snow">
+                      <span className="text-xs uppercase tracking-[0.16em] text-snow">
                         legal hold
                       </span>
                     ) : null}
                     {!release.mismatch && !release.receiptStatus ? (
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">sealed</span>
+                      <span className="text-xs uppercase tracking-[0.16em] text-dim">sealed</span>
                     ) : null}
                     <Button
                       type="button"
@@ -6480,7 +6365,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                     }}
                   >
                     <label className="min-w-0 flex-1">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <span className="text-xs uppercase tracking-[0.16em] text-dim">
                         Delivery URL
                       </span>
                       <input
@@ -6602,7 +6487,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
                 {canGovernReleases ? (
                   <div className="mt-3 max-w-xl">
                     <label className="block">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-dim">
+                      <span className="text-xs uppercase tracking-[0.16em] text-dim">
                         Approval or hold reason
                       </span>
                       <input
@@ -6707,7 +6592,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
 
       {route.view === "policy" && (
       <section className="mt-4">
-        <h2 className="text-[11px] uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
+        <h2 className="text-xs uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
         <p className="mt-2 text-sm text-mute">Time-bound exceptions and the approved comparison receipt.</p>
         <p className="watch-guidance mt-3 max-w-2xl text-sm leading-relaxed text-mute">
           Exceptions are exact-rule, attributable, and they expire. They never suppress a different
@@ -6716,7 +6601,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
         </p>
         {!previewing && installAdmin && (
           <label className="mt-6 block max-w-xl">
-            <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Baseline reason</span>
+            <span className="text-xs uppercase tracking-[0.16em] text-dim">Baseline reason</span>
             <input
               value={baselineReason}
               onChange={(event) => setBaselineReason(event.target.value)}
@@ -6764,7 +6649,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
             }}
           >
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Rule</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Rule</span>
               <input
                 value={allowRule}
                 onChange={(event) => setAllowRule(event.target.value)}
@@ -6774,7 +6659,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Path glob</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Path glob</span>
               <input
                 value={allowPath}
                 onChange={(event) => setAllowPath(event.target.value)}
@@ -6784,7 +6669,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Reason</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Reason</span>
               <input
                 value={allowReason}
                 onChange={(event) => setAllowReason(event.target.value)}
@@ -6794,7 +6679,7 @@ export function WatchWorkspace({ path = "/watch", search }: { path?: string; sea
               />
             </label>
             <label>
-              <span className="text-[11px] uppercase tracking-[0.16em] text-dim">Expires</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-dim">Expires</span>
               <input
                 type="date"
                 value={allowExpires}
