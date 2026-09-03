@@ -274,7 +274,9 @@ the immediate operational sequence. The exhaustive expansion plan is
   fixture `release_scan`, and private → public). Cheap-push re-proven on 2 Sep 2026:
   job 51 → alert 40. Publicize proven 3 Sep 2026: jobs 52 and 53 → alerts 41 and 42
   on `EmotiveImpact/nospoilers-throwaway` after redelivery (first 502s while origin
-  was down). Transfer / collaborator / fork still need a real GitHub action (not App
+  was down). App-generated setup PR proven 3 Sep 2026:
+  https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1 (open, never
+  merge). Transfer / collaborator / fork still need a real GitHub action (not App
   Administration). Do not invent `-vis`.
 
 ### Missing before launch
@@ -298,7 +300,10 @@ and `fixtures/sourcemap.tgz` on tag `phase1-fixture`. GitHub delivered `release.
 (HTTP 200) → job `release_scan` done → alert **Spoilers in EmotiveImpact/nospoilers-throwaway
 phase1-fixture** and a `failed-policy` receipt (MAP-001/002/003). Private → public on that
 same throwaway (3 Sep 2026) delivered `public` + `repository.publicized` → jobs 52 and 53
-`done` → alerts 41 and 42. Contents write is live on this install only. Do not grant
+`done` → alerts 41 and 42. App-generated setup PR
+https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1 is open and must
+stay unmerged. Contents write and Pull requests write are live on this install
+only. Do not grant
 Administration. Do not publicize a product repository. Do not invent `-vis`.
 Resend Watch email is wired and stays 503 until keys exist. Stripe checkout is wired and stays 503 until keys exist.
 

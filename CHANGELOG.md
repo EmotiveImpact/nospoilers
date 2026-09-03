@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Live App-generated setup PR on `EmotiveImpact/nospoilers-throwaway`:
+  https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1 opened by
+  `nospoilers-dev[bot]` from `nospoilers/setup` onto `main` after install
+  `158159401` accepted Pull requests write. One file
+  `.github/actions/nospoilers/action.yml`. Never merge. Workflow YAML stays
+  copy-paste. Do not grant Administration or Workflows write. Do not invent
+  `-vis`.
+
 - Neon `LISTEN nospoilers_jobs` reconnects when the idle socket drops
   instead of crashing the process. Idle pool errors are logged. Recovery
   stays 15 minutes. This is not 500 ms empty-queue polling.

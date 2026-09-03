@@ -395,19 +395,18 @@ Read in this order:
   confirm, unpaid 402, GitHub suspend 409, members 403. 409 until Administration (not
   granted). Contents write is not enough. Success writes audit plus a Watch alert that is a
   confirmed response, not a discovered incident. Do **not** grant Administration.
-- The GitHub App (`nospoilers-dev`) requests Contents write, Members read, and Metadata
-  read. Live install `158159401` on `EmotiveImpact` (`repository_selection: all`) has
-  Contents write and Metadata read. Members read is still requested on the App and not
-  accepted on the install. Pull requests write and Checks write are not requested.
-  Administration is not granted. Do **not** grant Administration. Do **not** request
-  Workflows write (Actions YAML). Watch one-click responses stay 409 until Administration,
-  which we will not take. Setup/remediation PRs stay copy-paste until Pull requests write.
-  `npm run phase1:setup-pr` opens the App-generated setup PR on
-  `EmotiveImpact/nospoilers-throwaway` once that write is requested and accepted.
-  If the install Configure page has no Accept, Pull requests write is not saved
-  on the App yet. After Save, review
-  `https://github.com/settings/installations/158159401/permissions/update`.
-  It never merges. It never requests Workflows write.
+- The GitHub App (`nospoilers-dev`) requests Contents write, Pull requests write,
+  Members read, and Metadata read. Live install `158159401` on `EmotiveImpact`
+  (`repository_selection: all`) has Contents write, Pull requests write, and
+  Metadata read. Members read is still requested on the App and not accepted.
+  Checks write is not requested. Administration is not granted. Do **not** grant
+  Administration. Do **not** request Workflows write (Actions YAML). Watch
+  one-click responses stay 409 until Administration, which we will not take.
+  Live App-generated setup PR:
+  https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1
+  (`nospoilers-dev[bot]`, `nospoilers/setup` → `main`, open, never merged;
+  only `.github/actions/nospoilers/action.yml`). `npm run phase1:setup-pr`
+  opened it after Accept. It never merges. It never requests Workflows write.
 - The hourly GitHub visibility poller is separate and remains enabled.
 - Artifact Leads is `/internal/prospects`. Disclosure Desk Phase 2 minus send
   lives on that same page (`/api/internal/prospects/:id/disclosure*`,
@@ -742,12 +741,14 @@ the git tree, and is not the hourly poller. Tests cover 401/404/403, no-release 
 alerts without download, and a packed asset that fails policy and is not allowed to ship.
 Watch one-click GitHub responses are in (make-private / delete latest pack assets / disable a
 workflow other than nospoilers.yml). Typed confirm. 409 until Administration (not granted).
-Contents write is live on install 158159401 (EmotiveImpact only). Milestone 1
-visibility, publicize, and fixture release scan are proven on EmotiveImpact/nospoilers-throwaway.
+Contents write and Pull requests write are live on install 158159401
+(EmotiveImpact only). Milestone 1 visibility, publicize, fixture release scan,
+and the App-generated setup PR
+(https://github.com/EmotiveImpact/nospoilers-throwaway/pull/1, never merge)
+are proven on EmotiveImpact/nospoilers-throwaway.
 `npm run phase1:throwaway` skips `.github/workflows/` (Workflows write is not
-requested). Optional next grants: Members read (collaborator Watch), Pull requests
-write (reviewable Setup/remediation PRs, never merged), Checks write (hosted
-Checks). Do not grant Administration. Do not request Workflows write.
+requested). Optional next grants: Members read (collaborator Watch), Checks
+write (hosted Checks). Do not grant Administration. Do not request Workflows write.
 The GitHub connector is the product-repo user token; it 403s writing nospoilers-throwaway.
 Package Identity batch import is live: `POST /api/protections/import` on install
 `158159401` returned `not_owned` / `not_owned` / `not_found` / `invalid` for
