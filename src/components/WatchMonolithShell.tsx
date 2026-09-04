@@ -453,7 +453,7 @@ export function WatchMonolithShell({
 
       <div className="watch-gutter">
         <div className="watch-stage">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/90 px-2 backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
+        <header className="watch-stage-head flex h-14 shrink-0 items-center gap-2 border-b px-2 sm:gap-3 sm:px-4 md:px-5">
           <button
             type="button"
             className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"

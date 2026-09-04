@@ -125,7 +125,9 @@ code {
 }
 
 /* Shot C from 21-stage-linear: Linear view tokens on .watch-stage only.
-   Rail, gutter, and page stay canvas black. No gray plate under the rail. */
+   Rail, gutter, and page stay canvas black. No gray plate under the rail.
+   C's wash on #09090b is invisible next to #111113 tiles, so the pane
+   floor is the tile color — command row and title sit on the lit stage. */
 .watch-desk {
   display: flex;
   height: 100svh;
@@ -156,7 +158,20 @@ code {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(#ffffff03, #ffffff03), #09090b;
+  background:
+    radial-gradient(
+      ellipse 50% 50% at 0 0,
+      #ffffff08 0%,
+      color-mix(in srgb, #ffffff08 94%, transparent) 15%,
+      color-mix(in srgb, #ffffff08 78%, transparent) 30%,
+      color-mix(in srgb, #ffffff08 58%, transparent) 45%,
+      color-mix(in srgb, #ffffff08 35%, transparent) 60%,
+      color-mix(in srgb, #ffffff08 16%, transparent) 75%,
+      color-mix(in srgb, #ffffff08 3%, transparent) 90%,
+      transparent 100%
+    ),
+    linear-gradient(#ffffff03, #ffffff03),
+    #111113;
   border: 1px solid #ffffff0d;
   border-radius: 8px;
   box-shadow: 0 0 0 2px #0003;
@@ -166,7 +181,7 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 3;
   pointer-events: none;
   border-radius: inherit;
   background: radial-gradient(
@@ -186,7 +201,7 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
   border-radius: inherit;
   border: 1px solid #ffffff0f;
@@ -197,6 +212,11 @@ code {
 .watch-stage > * {
   position: relative;
   z-index: 1;
+}
+
+.watch-stage-head {
+  background: transparent;
+  border-bottom: 1px solid #ffffff0f;
 }
 
 .watch-card {
