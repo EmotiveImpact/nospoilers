@@ -99,6 +99,22 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/PanelLeftClose/);
   });
 
+  it("keeps the gray-stage mock as a content invert, not live Watch", () => {
+    const html = readFileSync("public/mockup-review/2b/20-gray-stage.html", "utf8");
+    const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
+    expect(index).toMatch(/20-gray-stage\.html/);
+    expect(html).toMatch(/\.gray \.view/);
+    expect(html).toMatch(/background:\s*#101112/);
+    expect(html).toMatch(/#ffffff14/);
+    expect(html).toMatch(/#18181b/);
+    expect(html).toMatch(/#0c0c0e/);
+    expect(html).toMatch(/dataset\.shot/);
+    expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
+    expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
+    expect(readFileSync("src/components/WatchMonolithShell.tsx", "utf8")).toMatch(/watch-frame-background/);
+  });
+
   it("keeps the Linear product-frame mock on Linear's homepage tokens", () => {
     const html = readFileSync("public/mockup-review/2b/19-linear-frame.html", "utf8");
     const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
