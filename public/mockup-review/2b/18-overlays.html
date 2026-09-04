@@ -70,6 +70,8 @@
         overflow: hidden;
       }
       .desk.narrow { grid-template-columns: 56px minmax(0, 1fr); }
+      .desk.a { grid-template-columns: 148px minmax(0, 1fr); }
+      .desk.a .rail { width: 56px; }
 
       .rail {
         position: relative;
@@ -226,8 +228,8 @@
         pointer-events: none;
       }
       .tip b { margin-left: 6px; font: 500 12px var(--mono); color: var(--coral); }
-      .desk.a .tip { top: 118px; left: 60px; }
-      .desk.f .tip { top: 154px; left: 248px; }
+      .desk.a .tip { top: 118px; left: 64px; }
+      .desk.f .tip { top: 154px; left: 172px; }
 
       .menu {
         position: absolute; z-index: 9; min-width: 196px; padding: 4px;
@@ -282,7 +284,8 @@
       .palette .opt kbd { margin-left: auto; color: var(--dim); font-size: 11px; }
 
       @media (max-width: 800px) {
-        .desk, .desk.narrow { grid-template-columns: 56px 1fr; }
+        .desk { grid-template-columns: 56px 1fr; }
+        .desk.a { grid-template-columns: 120px 1fr; }
         .split { grid-template-columns: 1fr; }
         .desk.f .tip { display: none; }
       }
