@@ -170,15 +170,17 @@ export function WatchAlertsWorkspace({
             className="watch-queue-item"
             onClick={() => onTab(value)}
           >
-            <span className="watch-queue-label">{label}</span>
-            <span
-              className={cn(
-                "watch-seg-n",
-                value === "open" && count > 0 && "watch-seg-n-open",
-                count === 0 && "watch-seg-n-zero",
-              )}
-            >
-              {count}
+            <span className="watch-queue-pair">
+              <span className="watch-queue-label">{label}</span>
+              <span
+                className={cn(
+                  "watch-seg-n",
+                  value === "open" && count > 0 && "watch-seg-n-open",
+                  count === 0 && "watch-seg-n-zero",
+                )}
+              >
+                {count}
+              </span>
             </span>
           </button>
         ))}

@@ -415,21 +415,35 @@
 
       .queue-track i {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
+        align-items: center;
         min-height: 44px;
-        padding: 0 20px;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -1px;
+        padding: 0 12px;
         color: var(--color-dim);
         font: 400 13px/1 var(--sans);
         font-style: normal;
         cursor: pointer;
       }
 
+      .queue-track i span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+
       .queue-track i.on {
         color: var(--color-snow);
+      }
+
+      .queue-track i.on span {
         border-bottom-color: var(--color-snow);
+      }
+
+      @media (min-width: 768px) {
+        .queue-track i {
+          padding: 0 20px;
+        }
       }
 
       .queue-track b {
@@ -708,10 +722,10 @@
               <span class="export">Export JSON</span>
             </div>
             <div class="queue-track" role="tablist" aria-label="Alert queues">
-              <i class="on" data-q="open">Triage <b class="open">60</b></i>
-              <i data-q="waiting">Waiting <b>3</b></i>
-              <i data-q="mine">Mine <b>1</b></i>
-              <i data-q="done">Resolved <b class="zero">0</b></i>
+              <i class="on" data-q="open"><span>Triage <b class="open">60</b></span></i>
+              <i data-q="waiting"><span>Waiting <b>3</b></span></i>
+              <i data-q="mine"><span>Mine <b>1</b></span></i>
+              <i data-q="done"><span>Resolved <b class="zero">0</b></span></i>
             </div>
             <div class="split">
               <div class="inbox">
