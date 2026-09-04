@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>14 · Remaining pages · black + panels</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --coral: #ff8a80;
+        --canvas: #09090b;
+        --panel-now: #111113;
+        --line-now: #2a2a2e;
+      }
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 22px 90px;
+      }
+      .intro { max-width: 74ch; }
+      .tones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        margin-top: 14px;
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .tones b { font-family: var(--mono); font-weight: 500; }
+      .t-ok { color: var(--ok); }
+      .t-warn { color: var(--warn); }
+      .t-bad { color: var(--danger); }
+      .t-coral { color: var(--coral); }
+      .t-snow { color: var(--snow); }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .ver {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .ver-meta {
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .desk {
+        padding: 20px 18px 22px;
+        background: var(--canvas);
+      }
+      .desk h3 {
+        font-size: 30px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+      .lede {
+        margin-top: 8px;
+        max-width: 40rem;
+        color: var(--mute);
+        font-size: 14px;
+      }
+      .head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .stat, .card, .empty, .progress, .step {
+        border: 1px solid var(--line-now);
+        border-radius: 10px;
+        background: var(--panel-now);
+      }
+      .stat { padding: 14px; }
+      .stat .n {
+        margin-top: 6px;
+        font-family: var(--display);
+        font-size: 24px;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: var(--dim);
+      }
+      .stat .n.ok { color: var(--ok); }
+      .stat .n.warn { color: var(--warn); }
+      .stat .n.bad { color: var(--danger); }
+      .stat .n.mute { color: var(--mute); }
+      .empty {
+        margin-top: 14px;
+        padding: 14px;
+        border-style: dashed;
+        border-color: var(--line-strong);
+        color: var(--dim);
+        font-size: 12.5px;
+      }
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin-top: 18px;
+      }
+      .tile {
+        min-height: 118px;
+        padding: 14px;
+        border: 1px solid var(--line-now);
+        border-radius: 14px;
+        background: var(--panel-now);
+      }
+      .tile.w4 { grid-column: span 4; }
+      .tile.w2 { grid-column: span 2; }
+      .tile.w3 { grid-column: span 3; }
+      .tile.dash { border-style: dashed; border-color: var(--line-strong); }
+      .tile .n {
+        margin-top: 8px;
+        font-family: var(--display);
+        font-size: 28px;
+        letter-spacing: -0.035em;
+        color: var(--dim);
+      }
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 18px;
+        padding: 15px 17px;
+        border-radius: 14px;
+      }
+      .ring {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(#f4f4f5 0%, rgba(255,255,255,0.09) 0);
+      }
+      .ring > span {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: var(--panel-now);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      .step { margin-top: 8px; overflow: hidden; }
+      .step.on { border-color: var(--line-strong); }
+      .stephead {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 13px 16px;
+      }
+      .mark {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+      }
+      .step.on .mark { background: var(--snow); color: var(--canvas); border-color: var(--snow); }
+      .stepbody {
+        padding: 14px 16px 16px 51px;
+        border-top: 1px solid var(--line-now);
+      }
+      .kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line-now);
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .kv:last-child { border-bottom: 0; }
+      @media (max-width: 860px) {
+        .stats, .bento { grid-template-columns: 1fr 1fr; }
+        .tile.w2, .tile.w3, .tile.w4 { grid-column: span 2; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <span class="kicker">Remaining · black + panels</span>
+      <h1 style="margin-top: 8px">Overview, Setup, Health, Audit</h1>
+      <p class="intro muted" style="margin-top: 8px">
+        These four were already rebuilt on the live desk. They were not on mockup 13.
+        Same chrome as the Black + panels switcher: black canvas, grey panels, colour only
+        when the number means something. Hollow empty. No invented incident.
+      </p>
+      <div class="tones">
+        <span>open <b class="t-coral">#ff8a80</b></span>
+        <span>fail <b class="t-bad">#e2453a</b></span>
+        <span>warn <b class="t-warn">#d99a2b</b></span>
+        <span>clear <b class="t-ok">#3fb950</b></span>
+        <span>count <b class="t-snow">#f4f4f5</b></span>
+        <span>zero stays dim</span>
+      </div>
+
+      <div class="grid">
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Overview</span>
+            <h2>Bento on black, tiles as grey panels</h2>
+            <p class="tiny dim" style="margin-top: 6px">Live: 09 bento. This is that board on #09090b, not the grey wash.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <span class="kicker">Friday</span>
+                <h3 class="mt-2">Nothing is being watched yet.</h3>
+                <p class="lede">Install on one repository. Every tile fills from what you connect.</p>
+              </div>
+              <span class="btn sm">Install on GitHub</span>
+            </div>
+            <div class="bento">
+              <div class="tile w4 dash">
+                <span class="kicker">Start here</span>
+                <p class="small snow" style="margin-top: 10px">Install NoSpoilers on one repository.</p>
+                <p class="tiny dim" style="margin-top: 6px">A private throwaway repo is enough.</p>
+              </div>
+              <div class="tile w2">
+                <span class="kicker">Coverage</span>
+                <p class="tiny dim" style="margin-top: 10px">Nothing connected yet.</p>
+              </div>
+              <div class="tile w2">
+                <span class="kicker">Open alerts</span>
+                <div class="n">0</div>
+                <p class="tiny dim" style="margin-top: 8px">Nothing on this install yet</p>
+              </div>
+              <div class="tile w2">
+                <span class="kicker">Queue</span>
+                <div class="n">0</div>
+                <p class="tiny dim" style="margin-top: 8px">Idle · nothing has run</p>
+              </div>
+              <div class="tile w3">
+                <span class="kicker">Packs read, 30 days</span>
+                <p class="tiny dim" style="margin-top: 10px">No packs in the last 30 days.</p>
+              </div>
+              <div class="tile w3">
+                <span class="kicker">Latest sealed</span>
+                <p class="tiny dim" style="margin-top: 10px">No sealed releases yet.</p>
+              </div>
+              <div class="tile w2">
+                <span class="kicker">Delivery</span>
+                <p class="tiny dim" style="margin-top: 10px">No destinations yet</p>
+              </div>
+              <div class="tile w2">
+                <span class="kicker">Policy</span>
+                <div class="n">0</div>
+                <p class="tiny dim" style="margin-top: 8px">No exceptions written</p>
+              </div>
+              <div class="tile w2 dash">
+                <span class="kicker">Team &amp; audit</span>
+                <p class="tiny mute" style="margin-top: 10px">Roles, timeline, and audit are on Team.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Setup</span>
+            <h2>Five leak-path cards, ring on the title</h2>
+            <p class="tiny dim" style="margin-top: 6px">Live fields: 0/5 covered. First step is the work.</p>
+          </div>
+          <div class="desk">
+            <h3>5 leak paths still need proof.</h3>
+            <p class="lede">Connected is not the same as proven. Unknown steps stay open.</p>
+            <div class="progress">
+              <div class="ring"><span>0/5</span></div>
+              <div>
+                <p class="small snow">Nothing connected yet</p>
+                <p class="tiny dim" style="margin-top: 4px">
+                  Watch GitHub visibility, release assets, workflow check, registry, production are not.
+                </p>
+              </div>
+            </div>
+            <div class="step on">
+              <div class="stephead">
+                <span class="mark">1</span>
+                <div class="grow">
+                  <strong class="small snow">Watch GitHub visibility</strong>
+                  <p class="tiny dim">Install on at least one repository</p>
+                </div>
+                <span class="tiny dim">open</span>
+              </div>
+              <div class="stepbody">
+                <span class="btn sm">Install on GitHub</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="stephead">
+                <span class="mark">2</span>
+                <div class="grow">
+                  <strong class="small snow">Read GitHub release assets</strong>
+                  <p class="tiny dim">Connect a repository first</p>
+                </div>
+                <span class="tiny dim">open</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="stephead">
+                <span class="mark">3</span>
+                <div class="grow">
+                  <strong class="small snow">Run the packed-artifact workflow and check</strong>
+                  <p class="tiny dim">Connect a repository before checking setup</p>
+                </div>
+                <span class="tiny dim">open</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="stephead">
+                <span class="mark">4</span>
+                <div class="grow">
+                  <strong class="small snow">Watch a published package</strong>
+                  <p class="tiny dim">No registry package connected</p>
+                </div>
+                <span class="tiny dim">open</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="stephead">
+                <span class="mark">5</span>
+                <div class="grow">
+                  <strong class="small snow">Watch production web</strong>
+                  <p class="tiny dim">No production origin connected</p>
+                </div>
+                <span class="tiny dim">open</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Health</span>
+            <h2>Four status words, then the job list</h2>
+            <p class="tiny dim" style="margin-top: 6px">Preview: no invented delivery proof. Queue 0 stays dim.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Install health</h3>
+                <p class="lede">Permissions, deliveries, and recent work for this GitHub install.</p>
+              </div>
+              <span class="btn sm outline">Test install</span>
+            </div>
+            <div class="stats">
+              <div class="stat">
+                <span class="kicker">Webhook</span>
+                <div class="n mute">check needed</div>
+                <p class="tiny dim" style="margin-top: 8px">No invented delivery proof</p>
+              </div>
+              <div class="stat">
+                <span class="kicker">Permissions</span>
+                <div class="n mute">unknown</div>
+                <p class="tiny dim" style="margin-top: 8px">Run the live install test</p>
+              </div>
+              <div class="stat">
+                <span class="kicker">Queue</span>
+                <div class="n">0</div>
+                <p class="tiny dim" style="margin-top: 8px">0 done · 0 failed</p>
+              </div>
+              <div class="stat">
+                <span class="kicker">Fair use</span>
+                <div class="n mute">unknown</div>
+                <p class="tiny dim" style="margin-top: 8px">Hosted unpacks · not scan credits</p>
+              </div>
+            </div>
+            <div class="empty">No jobs on this install yet. The list fills after a real scan or webhook.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Audit</span>
+            <h2>Title-row export, hollow log</h2>
+            <p class="tiny dim" style="margin-top: 6px">Preview cannot export. No invented admin writes.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Audit log</h3>
+                <p class="lede">Administrative changes and response activity for this install.</p>
+              </div>
+              <span class="btn sm outline disabled">Export audit JSON</span>
+            </div>
+            <div class="card" style="margin-top: 18px">
+              <div class="kv"><span>Rows</span><span class="dim">0</span></div>
+              <div class="kv"><span>Secrets stored</span><span class="okc">never</span></div>
+            </div>
+            <div class="empty">No admin writes recorded on this install yet.</div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>14</b> Remaining pages
+      <span class="sep"></span>
+      <span>Overview · Setup · Health · Audit</span>
+      <span class="sep"></span>
+      <a href="desk.html">clickable desk</a>
+      <a href="13-pages-should-have-been.html">13 ten pages</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>
