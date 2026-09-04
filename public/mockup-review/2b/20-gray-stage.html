@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>20 · Gray stage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --width: 1320px;
+        --height: 720px;
+        --app-radius: 12px;
+        --frame-padding: 8px;
+        --sidebar-width: 244px;
+        --black: #090a0b;
+        --gray: #101112;
+        --panel: #18181b;
+        --inset: #0c0c0e;
+        --line: #2a2a2e;
+        --snow: #f4f4f5;
+        --mute: #a1a1aa;
+        --dim: #71717a;
+        --zero: #3f3f46;
+        --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+        --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        background: #08090a;
+        color: var(--snow);
+        font: 14px/1.5 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      h1, h2, h3, p { margin: 0; }
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; color: inherit; }
+
+      .intro {
+        max-width: 76ch;
+        margin: 0 auto;
+        padding: 28px 20px 8px;
+      }
+      .kicker {
+        color: var(--dim);
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+      .intro h1 {
+        margin-top: 8px;
+        font: 500 30px/1.1 var(--display);
+      }
+      .intro p {
+        margin-top: 10px;
+        color: var(--mute);
+      }
+      .intro code, .recipe code, .block-head code {
+        color: var(--snow);
+        font-family: var(--mono);
+        font-size: 0.92em;
+      }
+      .recipe {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #050506;
+        color: var(--dim);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .recipe strong { color: var(--mute); font-weight: 500; }
+
+      .jump {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 18px 20px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .jump a {
+        height: 30px;
+        padding: 0 11px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--mute);
+        font-size: 12px;
+        line-height: 28px;
+      }
+      .jump a:hover {
+        border-color: #3f3f46;
+        color: var(--snow);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      body[data-shot] .intro,
+      body[data-shot] .jump,
+      body[data-shot] .block { display: none; }
+      body[data-shot="now"] #now,
+      body[data-shot="overview"] #overview,
+      body[data-shot="alerts"] #alerts { display: block; }
+
+      .block { margin-top: 28px; }
+      .block-head {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 0 20px 14px;
+      }
+      .block-head h2 { font: 500 22px/1.2 var(--display); }
+      .block-head p {
+        margin-top: 6px;
+        max-width: 72ch;
+        color: var(--mute);
+        font-size: 13px;
+      }
+
+      .fill-wrap {
+        padding: 10px 12px 48px;
+        background: #08090a;
+      }
+
+      .frame {
+        position: relative;
+        display: grid;
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+        width: 100%;
+        height: min(860px, calc(100svh - 24px));
+        padding: var(--frame-padding);
+        border-radius: var(--app-radius);
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .frame-background {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        border: 1px solid #ffffff14;
+      }
+
+      .corner-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        width: 400px;
+        height: 400px;
+        border-radius: 400px;
+        pointer-events: none;
+        background: radial-gradient(50% 50%, #ffffff0a 0%, transparent 90%);
+        transform: translate(-50%, -50%);
+      }
+
+      .edge-glow {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+      .edge-glow::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          ellipse 50% 50% at 0 0,
+          #ffffff08 0%,
+          color-mix(in srgb, #ffffff08 58%, transparent) 45%,
+          transparent 100%
+        );
+      }
+
+      .rail,
+      .view {
+        position: relative;
+        z-index: 5;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .rail {
+        display: flex;
+        flex-direction: column;
+        padding: 8px 16px 16px 8px;
+        overflow: hidden;
+      }
+      .rail::after {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: -8px;
+        z-index: 0;
+        width: 240px;
+        height: 240px;
+        border-radius: 9999px;
+        pointer-events: none;
+        background: #f7f8f808;
+        filter: blur(80px);
+        transform: translate(-50%, -50%);
+      }
+      .rail > * { position: relative; z-index: 1; }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 28px;
+        padding-inline: 4px;
+      }
+      .wordmark { font: 500 15px/1 var(--display); }
+      .ico {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        color: var(--mute);
+      }
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0f1011;
+        font-size: 13px;
+      }
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 2px;
+        background: #121414;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .meta {
+        margin: 4px 2px 0;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .nav {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 0;
+        margin-top: 14px;
+        overflow: auto;
+      }
+      .grp { display: flex; flex-direction: column; gap: 2px; }
+      .grp.rule { border-top: 1px solid #191d21; padding-top: 14px; }
+      .sec {
+        padding: 4px 6px 6px;
+        color: var(--dim);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        padding: 0 7px;
+        border-radius: 8px;
+        color: var(--mute);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .item.on { background: #ffffff0a; color: var(--snow); }
+      .item svg { flex: none; opacity: 0.7; }
+      .item .n {
+        margin-left: auto;
+        font: 500 12px/1 var(--mono);
+        color: var(--zero);
+      }
+      .setup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px solid #191d21;
+        color: var(--mute);
+        font-size: 12px;
+      }
+      .ring {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        flex: none;
+        border-radius: 99px;
+        background: conic-gradient(#252529 0deg, #252529 360deg);
+      }
+      .ring i {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 99px;
+        font-style: normal;
+        font-size: 10px;
+        font-family: var(--mono);
+      }
+      .setup small {
+        display: block;
+        margin-top: 2px;
+        color: var(--dim);
+        font-size: 11px;
+      }
+
+      .view {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 8px;
+        box-shadow: 0 0 0 2px #0003;
+      }
+
+      /* Live C — gray chrome, black work surface */
+      .now {
+        background: var(--black);
+      }
+      .now .frame-background { background: #101112; }
+      .now .view {
+        background: linear-gradient(#ffffff03, #ffffff03), #090a0b;
+        border: 1px solid #ffffff0d;
+      }
+      .now .ring i { background: #101112; }
+      .now .tile { background: #111113; }
+      .now .empty { background: #111113; }
+
+      /* Proposed — black chrome, gray work surface */
+      .gray {
+        background: var(--black);
+      }
+      .gray .frame-background {
+        background: #090a0b;
+        border-color: #ffffff10;
+      }
+      .gray .view {
+        background: #101112;
+        border: 1px solid #ffffff14;
+        border-radius: 12px;
+      }
+      .gray .ring i { background: #090a0b; }
+      .gray .tile { background: #18181b; }
+      .gray .empty { background: #0c0c0e; }
+      .gray .search { background: #0b0c0d; }
+
+      .cmd {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        flex: 1;
+        max-width: 22rem;
+        padding: 0 10px;
+        border: 1px solid #191d21;
+        border-radius: 6px;
+        background: #0b0c0d;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .search kbd {
+        margin-left: auto;
+        padding: 1px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        font: 500 11px/1 var(--mono);
+      }
+      .cmd strong { margin-left: auto; font-size: 13px; font-weight: 500; }
+      .chip {
+        padding: 3px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 99px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .av {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 99px;
+        font-size: 10px;
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+        padding: 0 20px;
+      }
+      .title-row h3 {
+        font: 500 28px/1 var(--display);
+        letter-spacing: -0.02em;
+      }
+      .ghost {
+        margin-left: auto;
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--mute);
+        font-size: 12px;
+      }
+
+      .track {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-bottom: 1px solid var(--line);
+      }
+      .track button {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 0;
+        background: transparent;
+        color: var(--dim);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .track button span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+      .track button.on { color: var(--snow); }
+      .track button.on span { border-bottom-color: var(--snow); }
+      .track b {
+        font: 500 13px/1 var(--mono);
+        color: var(--zero);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 0;
+        flex: 1;
+      }
+      .inbox { border-right: 1px solid rgba(255, 255, 255, 0.08); }
+      .empty {
+        margin: 16px;
+        padding: 14px 16px;
+        border: 1px dashed #3f3f46;
+        border-radius: 10px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .detail {
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 24px;
+      }
+      .detail strong { display: block; font-size: 14px; }
+      .detail small {
+        display: block;
+        margin-top: 6px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+
+      .page-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 18px 20px 24px;
+      }
+      .lede {
+        margin-top: 8px;
+        max-width: 40rem;
+        color: var(--mute);
+        font-size: 14px;
+      }
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .tile {
+        min-height: 88px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .tile.w4 { grid-column: span 4; }
+      .tile.w3 { grid-column: span 3; }
+      .tile.w2 { grid-column: span 2; }
+      .tile.dash { border-style: dashed; border-color: #3f3f46; }
+      .tile .n {
+        margin-top: 6px;
+        font: 500 22px/1 var(--display);
+        letter-spacing: -0.03em;
+        color: var(--zero);
+      }
+      .tile p { margin-top: 8px; color: var(--dim); font-size: 12px; }
+
+      @media (max-width: 860px) {
+        .frame { grid-template-columns: 1fr; }
+        .rail { display: none; }
+        .split { grid-template-columns: 1fr; }
+        .detail { display: none; }
+        .bento { grid-template-columns: 1fr 1fr; }
+        .tile.w2, .tile.w3, .tile.w4 { grid-column: span 2; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro">
+      <p class="kicker">2B · Gray stage</p>
+      <h1>Put the gray on the work surface</h1>
+      <p>
+        Live C uses Linear’s <code>#101112</code> as the chrome around a black
+        pane. This mock flips that: the sidebar sits on <code>#090a0b</code>,
+        and the main content <em>is</em> the gray plate — same
+        <code>#ffffff14</code> rim, now on the stage.
+      </p>
+      <p class="recipe">
+        <strong>Not this:</strong> painting the page <code>#141416</code>, or
+        shipping this to live Watch yet.
+        <strong>This:</strong> a mock. Tiles lift to <code>#18181b</code> so they
+        don’t disappear on the gray. Queues stay at 0. Live Watch stays C until
+        this is picked.
+      </p>
+    </div>
+
+    <nav class="jump" aria-label="Shots">
+      <a href="#now">A · Now (live C)</a>
+      <a href="#overview">B · Gray Overview</a>
+      <a href="#alerts">C · Gray Alerts</a>
+      <a href="?shot=now">A only</a>
+      <a href="?shot=overview">B only</a>
+      <a href="?shot=alerts">C only</a>
+    </nav>
+
+    <section class="block" id="now">
+      <div class="block-head">
+        <p class="kicker">A · what is live</p>
+        <h2>Gray is the gutter. Content is black.</h2>
+        <p>
+          The <code>#101112</code> plate shows in the 8px pad and under the
+          rail. Alerts stay <code>#090a0b</code>.
+        </p>
+      </div>
+      <div class="fill-wrap">
+        <div class="frame now" data-desk="now">
+          <div class="frame-background"></div>
+          <div class="corner-glow"></div>
+          <div class="edge-glow"></div>
+          <aside class="rail">
+            <div class="brand-row">
+              <span class="wordmark">NoSpoilers</span>
+              <span class="ico" aria-hidden>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg>
+              </span>
+            </div>
+            <div class="install"><span class="mark">NS</span><span>workspace</span></div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav" aria-label="Watch desk">
+              <div class="grp">
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item on">Alerts <span class="n">0</span></div>
+              </div>
+              <div class="grp rule">
+                <p class="sec">Evidence</p>
+                <div class="item">Sources</div>
+                <div class="item">Releases</div>
+                <div class="item">Timeline</div>
+              </div>
+              <div class="grp">
+                <p class="sec">Settings</p>
+                <div class="item">Notifications</div>
+                <div class="item">Policy &amp; allowlist</div>
+                <div class="item">Install health</div>
+              </div>
+            </nav>
+            <div class="setup">
+              <span class="ring"><i>0/5</i></span>
+              <span>Nothing covered yet<small>Coverage</small></span>
+            </div>
+          </aside>
+          <div class="view">
+            <header class="cmd">
+              <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+              <strong>Alerts</strong>
+              <span class="chip">Trial</span>
+              <span class="av">NS</span>
+            </header>
+            <div class="title-row"><h3>Alerts</h3><span class="ghost">Export</span></div>
+            <div class="track" role="tablist" aria-label="Alert queues">
+              <button type="button" class="on" data-q="open"><span>Triage <b>0</b></span></button>
+              <button type="button" data-q="waiting"><span>Waiting <b>0</b></span></button>
+              <button type="button" data-q="mine"><span>Mine <b>0</b></span></button>
+              <button type="button" data-q="done"><span>Resolved <b>0</b></span></button>
+            </div>
+            <div class="split">
+              <div class="inbox"><div class="empty" data-empty>This view is clear. No real alerts match this filter.</div></div>
+              <div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="overview">
+      <div class="block-head">
+        <p class="kicker">B · the thought</p>
+        <h2>The gray is the page. Rail stays black.</h2>
+        <p>
+          Overview’s canvas is <code>#101112</code>. Tiles lift to
+          <code>#18181b</code> so they still read as panels. The 8px pad is
+          black, so the gray is only the work surface.
+        </p>
+      </div>
+      <div class="fill-wrap">
+        <div class="frame gray">
+          <div class="frame-background"></div>
+          <div class="corner-glow"></div>
+          <div class="edge-glow"></div>
+          <aside class="rail">
+            <div class="brand-row">
+              <span class="wordmark">NoSpoilers</span>
+              <span class="ico" aria-hidden>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg>
+              </span>
+            </div>
+            <div class="install"><span class="mark">NS</span><span>workspace</span></div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav" aria-label="Watch desk">
+              <div class="grp">
+                <p class="sec">Work</p>
+                <div class="item on">Overview</div>
+                <div class="item">Alerts <span class="n">0</span></div>
+              </div>
+              <div class="grp rule">
+                <p class="sec">Evidence</p>
+                <div class="item">Sources</div>
+                <div class="item">Releases</div>
+                <div class="item">Timeline</div>
+              </div>
+              <div class="grp">
+                <p class="sec">Settings</p>
+                <div class="item">Finish setup</div>
+                <div class="item">Notifications</div>
+                <div class="item">Install health</div>
+              </div>
+            </nav>
+            <div class="setup">
+              <span class="ring"><i>0/5</i></span>
+              <span>Nothing covered yet<small>Coverage</small></span>
+            </div>
+          </aside>
+          <div class="view">
+            <header class="cmd">
+              <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+              <strong>Overview</strong>
+              <span class="chip">Trial</span>
+              <span class="av">NS</span>
+            </header>
+            <div class="page-body">
+              <p class="kicker">Friday</p>
+              <h3 style="margin-top:8px;font:500 26px/1.1 var(--display)">Nothing is being watched yet.</h3>
+              <p class="lede">Install on one repository. Every tile fills from what you connect.</p>
+              <div class="bento">
+                <div class="tile w4 dash">
+                  <span class="kicker">Start here</span>
+                  <p>Install NoSpoilers on one repository.</p>
+                </div>
+                <div class="tile w2">
+                  <span class="kicker">Coverage</span>
+                  <p>Nothing connected yet.</p>
+                </div>
+                <div class="tile w2">
+                  <span class="kicker">Open alerts</span>
+                  <div class="n">0</div>
+                </div>
+                <div class="tile w2">
+                  <span class="kicker">Queue</span>
+                  <div class="n">0</div>
+                </div>
+                <div class="tile w3">
+                  <span class="kicker">Packs read, 30 days</span>
+                  <p>No packs in the last 30 days.</p>
+                </div>
+                <div class="tile w3">
+                  <span class="kicker">Latest sealed</span>
+                  <p>No sealed releases yet.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="alerts">
+      <div class="block-head">
+        <p class="kicker">C · same gray, Alerts</p>
+        <h2>Queues on the gray plate</h2>
+        <p>
+          Same invert as B. The empty well recesses to <code>#0c0c0e</code>
+          instead of sitting on another gray.
+        </p>
+      </div>
+      <div class="fill-wrap">
+        <div class="frame gray" data-desk="alerts">
+          <div class="frame-background"></div>
+          <div class="corner-glow"></div>
+          <div class="edge-glow"></div>
+          <aside class="rail">
+            <div class="brand-row">
+              <span class="wordmark">NoSpoilers</span>
+              <span class="ico" aria-hidden>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg>
+              </span>
+            </div>
+            <div class="install"><span class="mark">NS</span><span>workspace</span></div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav" aria-label="Watch desk">
+              <div class="grp">
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item on">Alerts <span class="n">0</span></div>
+              </div>
+              <div class="grp rule">
+                <p class="sec">Evidence</p>
+                <div class="item">Sources</div>
+                <div class="item">Releases</div>
+                <div class="item">Timeline</div>
+              </div>
+              <div class="grp">
+                <p class="sec">Settings</p>
+                <div class="item">Notifications</div>
+                <div class="item">Policy &amp; allowlist</div>
+                <div class="item">Team &amp; roles</div>
+                <div class="item">Retention</div>
+                <div class="item">Audit log</div>
+                <div class="item">Install health</div>
+                <div class="item">Scan API tokens</div>
+                <div class="item">Private registries</div>
+              </div>
+            </nav>
+            <div class="setup">
+              <span class="ring"><i>0/5</i></span>
+              <span>Nothing covered yet<small>Coverage</small></span>
+            </div>
+          </aside>
+          <div class="view">
+            <header class="cmd">
+              <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+              <strong>Alerts</strong>
+              <span class="chip">Trial</span>
+              <span class="ghost" style="margin-left:0">Guide</span>
+              <span class="av">NS</span>
+            </header>
+            <div class="title-row"><h3>Alerts</h3><span class="ghost">Export</span></div>
+            <div class="track" role="tablist" aria-label="Alert queues">
+              <button type="button" class="on" data-q="open"><span>Triage <b>0</b></span></button>
+              <button type="button" data-q="waiting"><span>Waiting <b>0</b></span></button>
+              <button type="button" data-q="mine"><span>Mine <b>0</b></span></button>
+              <button type="button" data-q="done"><span>Resolved <b>0</b></span></button>
+            </div>
+            <div class="split">
+              <div class="inbox"><div class="empty" data-empty>This view is clear. No real alerts match this filter.</div></div>
+              <div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      const copy = {
+        open: "This view is clear. No real alerts match this filter.",
+        waiting: "Nothing waiting on rotation in this preview.",
+        mine: "Nothing assigned to you in this preview.",
+        done: "No resolved alerts in this preview.",
+      };
+      const params = new URLSearchParams(location.search);
+      const shot = params.get("shot");
+      if (shot === "now" || shot === "overview" || shot === "alerts") {
+        document.body.dataset.shot = shot;
+      }
+      const activate = (desk, key) => {
+        const empty = desk.querySelector("[data-empty]");
+        desk.querySelectorAll("[data-q]").forEach((el) => {
+          el.classList.toggle("on", el.getAttribute("data-q") === key);
+        });
+        if (empty) empty.textContent = copy[key] || copy.open;
+      };
+      document.querySelectorAll("[data-desk]").forEach((desk) => {
+        desk.querySelectorAll("[data-q]").forEach((btn) => {
+          btn.addEventListener("click", () => activate(desk, btn.getAttribute("data-q")));
+        });
+      });
+    </script>
+  </body>
+</html>
