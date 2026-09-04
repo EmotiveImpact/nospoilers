@@ -79,7 +79,9 @@ export function TimelineScreen({
       <div className="watch-card mt-[18px]">
         <div className="watch-kv">
           <span>Events</span>
-          <span className="text-dim">{ready ? timeline.entries.length : "—"}</span>
+          <span className={ready && timeline.entries.length > 0 ? "text-snow" : "text-dim"}>
+            {ready ? timeline.entries.length : "—"}
+          </span>
         </div>
         <div className="watch-kv">
           <span>Window</span>
@@ -108,11 +110,11 @@ export function TimelineScreen({
       ) : timeline.status === "error" ? (
         <WatchSectionError className="mt-6 max-w-2xl" message={timeline.message} onRetry={onRetryTimeline} />
       ) : !ready ? null : timeline.entries.length === 0 ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
+        <div className="watch-empty">
           {timeline.days === 0
             ? "Nothing on this install yet."
             : `Nothing in the last ${timeline.days} days on this install.`}
-        </p>
+        </div>
       ) : (
         <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
           {timeline.entries.map((entry, index) => (

@@ -30,7 +30,9 @@ export function PolicyScreen() {
                 <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
                   <div className="watch-stat">
                     <span className="watch-kicker">Active</span>
-                    <p className="watch-stat-n text-snow">{activeExceptions}</p>
+                    <p className={`watch-stat-n ${activeExceptions ? "text-warn" : "text-dim"}`}>
+                      {activeExceptions}
+                    </p>
                     <p className="watch-tiny mt-1 text-dim">Exact-rule exceptions</p>
                   </div>
                   <div className="watch-stat">
@@ -288,7 +290,7 @@ export function PolicyScreen() {
                     packages or exceptions.
                   </p>
                 ) : exceptions.length === 0 ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">No active allowlist entries.</p>
+                  <div className="watch-empty">No active allowlist entries.</div>
                 ) : (
                   <ul className="mt-6 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                     {exceptions.map((entry) => (
