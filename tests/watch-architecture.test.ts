@@ -54,9 +54,8 @@ describe("Watch architecture boundaries", () => {
     const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
     expect(shell).not.toMatch(/Alert views/);
     expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
-    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-queues/);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-n-open/);
-    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-seg-n \{[\s\S]*font-size: 9px;[\s\S]*top: -0\.55em;/);
+    expect(readFileSync("src/index.css", "utf8")).not.toMatch(/\.watch-seg-queues/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-empty/);
     expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/text-ok/);

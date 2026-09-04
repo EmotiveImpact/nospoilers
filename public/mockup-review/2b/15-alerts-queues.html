@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>15 · Alerts queues that are not squashed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --coral: #ff8a80;
+        --canvas: #09090b;
+        --panel-now: #111113;
+        --line-now: #2a2a2e;
+      }
+      .page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 28px 22px 100px;
+      }
+      .intro { max-width: 72ch; }
+      .board {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .ver {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel-now);
+        overflow: hidden;
+      }
+      .ver-meta {
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .ver-meta h2 { font-size: 17px; }
+      .desk {
+        display: grid;
+        grid-template-columns: 132px 1fr;
+        min-height: 420px;
+        background: var(--canvas);
+      }
+      .rail {
+        padding: 12px 8px;
+        background: #0b0b0d;
+        border-right: 1px solid var(--line-now);
+      }
+      .rail .kicker { padding: 0 8px 6px; }
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: #a1a1aa;
+        font-size: 13px;
+      }
+      .nav.on { background: rgba(255, 255, 255, 0.07); color: var(--snow); }
+      .nav .n { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--coral); }
+      .group { margin-top: 14px; }
+      .canvas { min-width: 0; }
+      .split {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 420px;
+      }
+      .split.wide-inbox { grid-template-columns: 24rem minmax(0, 1fr); }
+      .inbox {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--line-now);
+        background: var(--canvas);
+      }
+      .inbox-head {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .title-row h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 19px;
+        color: var(--snow);
+      }
+      .badge {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--coral);
+      }
+      .ghost {
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line-now);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--mute);
+        font: 500 12px var(--sans);
+        cursor: pointer;
+      }
+      .seg {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--line-now);
+        border-radius: 8px;
+        background: #0b0b0d;
+      }
+      .seg i,
+      .picker,
+      .menu button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 28px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #71717a;
+        font: 500 12px var(--sans);
+        cursor: pointer;
+      }
+      .seg i.on,
+      .picker,
+      .menu button.on {
+        background: rgba(255, 255, 255, 0.08);
+        color: #f4f4f5;
+      }
+      .seg b,
+      .picker b,
+      .menu b {
+        font-family: var(--mono);
+        font-weight: 500;
+        color: #71717a;
+      }
+      .seg i.on b.open,
+      .picker b.open,
+      .menu button.on b.open,
+      b.open {
+        color: var(--coral);
+      }
+      .empty {
+        margin: 16px;
+        padding: 14px 16px;
+        border: 1px dashed #3f3f46;
+        border-radius: 10px;
+        background: var(--panel-now);
+        color: #71717a;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .detail {
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        color: #71717a;
+        font-size: 13px;
+        text-align: center;
+      }
+      .picker-wrap { position: relative; }
+      .picker { width: 100%; justify-content: space-between; }
+      .picker em {
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid #71717a;
+        font-size: 0;
+      }
+      .menu {
+        position: absolute;
+        z-index: 3;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        display: none;
+        padding: 4px;
+        border: 1px solid var(--line-now);
+        border-radius: 8px;
+        background: var(--panel-now);
+      }
+      .menu.open { display: flex; flex-direction: column; }
+      .menu button { justify-content: space-between; width: 100%; }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--canvas);
+      }
+      .toolbar .seg { flex: 0 1 auto; }
+      .title-row .seg { margin: 0; }
+      @media (max-width: 980px) {
+        .board { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <p class="kicker">2B · Alerts queues</p>
+      <h1 style="margin-top: 8px">Do not squash the four pills</h1>
+      <p class="muted intro" style="margin-top: 10px">
+        The inbox rail is 20rem. Four comfortable pills with your live counts
+        (Triage 60, Waiting 3, Mine 1, Resolved) do not fit on one row.
+        Superscripting them made the row fit and made the chrome feel cheap.
+        That squash is reverted. The rest of the black desk stays.
+      </p>
+      <p class="dim intro" style="margin-top: 8px">
+        Click the queues in each frame. Empty wells only — no invented incidents.
+        Pick one and I will wire it.
+      </p>
+
+      <div class="board">
+        <article class="ver" data-frame="a">
+          <div class="ver-meta">
+            <span class="kicker">A · one control</span>
+            <h2>Queue picker</h2>
+            <p class="small muted" style="margin-top: 6px">
+              Keep the type size. The current queue is one full-size chip.
+              The other three live in a menu.
+            </p>
+          </div>
+          <div class="desk">
+            <aside class="rail">
+              <span class="kicker">Work</span>
+              <div class="nav">Overview</div>
+              <div class="nav on">Alerts <span class="n">60</span></div>
+              <div class="group">
+                <span class="kicker">Evidence</span>
+                <div class="nav">Sources</div>
+                <div class="nav">Releases</div>
+              </div>
+            </aside>
+            <div class="canvas">
+              <div class="split">
+                <div class="inbox">
+                  <div class="inbox-head">
+                    <div class="title-row">
+                      <h3>Alerts <span class="badge">60</span></h3>
+                      <button class="ghost" type="button">Export</button>
+                    </div>
+                    <div class="picker-wrap">
+                      <button class="picker" type="button" data-picker>
+                        <span><span data-label>Triage</span> <b class="open" data-count>60</b></span>
+                        <em></em>
+                      </button>
+                      <div class="menu" data-menu>
+                        <button type="button" data-q="open" class="on">Triage <b class="open">60</b></button>
+                        <button type="button" data-q="waiting">Waiting <b>3</b></button>
+                        <button type="button" data-q="mine">Mine <b>1</b></button>
+                        <button type="button" data-q="done">Resolved</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">Nothing selected.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver" data-frame="b">
+          <div class="ver-meta">
+            <span class="kicker">B · designed split</span>
+            <h2>Work queues, Resolved aside</h2>
+            <p class="small muted" style="margin-top: 6px">
+              Three work states fit at the original size. Resolved is a title
+              action, not a fourth pill fighting for the same 20rem.
+            </p>
+          </div>
+          <div class="desk">
+            <aside class="rail">
+              <span class="kicker">Work</span>
+              <div class="nav">Overview</div>
+              <div class="nav on">Alerts <span class="n">60</span></div>
+              <div class="group">
+                <span class="kicker">Evidence</span>
+                <div class="nav">Sources</div>
+                <div class="nav">Releases</div>
+              </div>
+            </aside>
+            <div class="canvas">
+              <div class="split">
+                <div class="inbox">
+                  <div class="inbox-head">
+                    <div class="title-row">
+                      <h3>Alerts <span class="badge">60</span></h3>
+                      <button class="ghost" type="button" data-q="done">Resolved</button>
+                    </div>
+                    <div class="seg" role="tablist">
+                      <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                      <i data-q="waiting">Waiting <b>3</b></i>
+                      <i data-q="mine">Mine <b>1</b></i>
+                    </div>
+                  </div>
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">Nothing selected.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver" data-frame="c">
+          <div class="ver-meta">
+            <span class="kicker">C · give them width</span>
+            <h2>Full-width queue bar</h2>
+            <p class="small muted" style="margin-top: 6px">
+              The four pills leave the 20rem column. They sit above the split,
+              so they can stay at the original size on one row.
+            </p>
+          </div>
+          <div class="desk">
+            <aside class="rail">
+              <span class="kicker">Work</span>
+              <div class="nav">Overview</div>
+              <div class="nav on">Alerts <span class="n">60</span></div>
+              <div class="group">
+                <span class="kicker">Evidence</span>
+                <div class="nav">Sources</div>
+                <div class="nav">Releases</div>
+              </div>
+            </aside>
+            <div class="canvas">
+              <div class="toolbar">
+                <div class="title-row">
+                  <h3>Alerts <span class="badge">60</span></h3>
+                </div>
+                <div class="seg" role="tablist">
+                  <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                  <i data-q="waiting">Waiting <b>3</b></i>
+                  <i data-q="mine">Mine <b>1</b></i>
+                  <i data-q="done">Resolved</i>
+                </div>
+              </div>
+              <div class="split">
+                <div class="inbox">
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">Nothing selected.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver" data-frame="d">
+          <div class="ver-meta">
+            <span class="kicker">D · keep the four</span>
+            <h2>Wider inbox</h2>
+            <p class="small muted" style="margin-top: 6px">
+              Same four pills, original padding, column grows from 20rem to
+              24rem. Least interaction change. The list steals less of the detail pane.
+            </p>
+          </div>
+          <div class="desk">
+            <aside class="rail">
+              <span class="kicker">Work</span>
+              <div class="nav">Overview</div>
+              <div class="nav on">Alerts <span class="n">60</span></div>
+              <div class="group">
+                <span class="kicker">Evidence</span>
+                <div class="nav">Sources</div>
+                <div class="nav">Releases</div>
+              </div>
+            </aside>
+            <div class="canvas">
+              <div class="split wide-inbox">
+                <div class="inbox">
+                  <div class="inbox-head">
+                    <div class="title-row">
+                      <h3>Alerts <span class="badge">60</span></h3>
+                      <button class="ghost" type="button">Export</button>
+                    </div>
+                    <div class="seg" role="tablist">
+                      <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                      <i data-q="waiting">Waiting <b>3</b></i>
+                      <i data-q="mine">Mine <b>1</b></i>
+                      <i data-q="done">Resolved</i>
+                    </div>
+                  </div>
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">Nothing selected.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver" data-frame="e">
+          <div class="ver-meta">
+            <span class="kicker">E · no second row</span>
+            <h2>Current queue in the title</h2>
+            <p class="small muted" style="margin-top: 6px">
+              Drop the pill strip. The title row holds a comfortable
+              “Triage · 60” picker. One line, original type.
+            </p>
+          </div>
+          <div class="desk">
+            <aside class="rail">
+              <span class="kicker">Work</span>
+              <div class="nav">Overview</div>
+              <div class="nav on">Alerts <span class="n">60</span></div>
+              <div class="group">
+                <span class="kicker">Evidence</span>
+                <div class="nav">Sources</div>
+                <div class="nav">Releases</div>
+              </div>
+            </aside>
+            <div class="canvas">
+              <div class="split">
+                <div class="inbox">
+                  <div class="inbox-head">
+                    <div class="title-row">
+                      <h3>Alerts</h3>
+                      <div class="picker-wrap" style="min-width: 148px">
+                        <button class="picker" type="button" data-picker>
+                          <span><span data-label>Triage</span> · <b class="open" data-count>60</b></span>
+                          <em></em>
+                        </button>
+                        <div class="menu" data-menu>
+                          <button type="button" data-q="open" class="on">Triage <b class="open">60</b></button>
+                          <button type="button" data-q="waiting">Waiting <b>3</b></button>
+                          <button type="button" data-q="mine">Mine <b>1</b></button>
+                          <button type="button" data-q="done">Resolved</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">Nothing selected.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <script>
+      const copy = {
+        open: "This view is clear. No real alerts match this filter.",
+        waiting: "Nothing waiting on rotation in this preview.",
+        mine: "Nothing assigned to you in this preview.",
+        done: "No resolved alerts in this preview.",
+      };
+      const names = { open: ["Triage", "60"], waiting: ["Waiting", "3"], mine: ["Mine", "1"], done: ["Resolved", ""] };
+
+      document.querySelectorAll("[data-frame]").forEach((frame) => {
+        const empty = frame.querySelector("[data-empty]");
+        const setQueue = (key) => {
+          frame.querySelectorAll("[data-q]").forEach((el) => {
+            el.classList.toggle("on", el.getAttribute("data-q") === key);
+          });
+          const label = frame.querySelector("[data-label]");
+          const count = frame.querySelector("[data-count]");
+          if (label) label.textContent = names[key][0];
+          if (count) {
+            count.textContent = names[key][1];
+            count.classList.toggle("open", key === "open" && names[key][1]);
+            count.style.display = names[key][1] ? "" : "none";
+          }
+          if (empty) empty.textContent = copy[key];
+        };
+        frame.querySelectorAll("[data-q]").forEach((el) => {
+          el.addEventListener("click", (event) => {
+            event.stopPropagation();
+            setQueue(el.getAttribute("data-q"));
+            const menu = el.closest("[data-menu]");
+            if (menu) menu.classList.remove("open");
+          });
+        });
+        const picker = frame.querySelector("[data-picker]");
+        const menu = frame.querySelector("[data-menu]");
+        if (picker && menu) {
+          picker.addEventListener("click", (event) => {
+            event.stopPropagation();
+            menu.classList.toggle("open");
+          });
+        }
+      });
+      document.addEventListener("click", () => {
+        document.querySelectorAll("[data-menu].open").forEach((menu) => menu.classList.remove("open"));
+      });
+    </script>
+  </body>
+</html>

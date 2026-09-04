@@ -167,7 +167,7 @@ export function WatchAlertsWorkspace({
                 <Button type="button" size="sm" variant="outline" onClick={onExport}>Export JSON</Button>
               ) : null}
             </div>
-            <div className="watch-seg watch-seg-queues" role="tablist" aria-label="Alert queues">
+            <div className="watch-seg" role="tablist" aria-label="Alert queues">
               {([
                 ["open", "Triage", queueCounts.open],
                 ["waiting", "Waiting", queueCounts.waiting],
