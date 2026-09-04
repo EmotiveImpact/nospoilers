@@ -4,6 +4,7 @@ import {
   WatchSkeleton,
   type WatchSectionState,
 } from "@/components/WatchDataState";
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import type { DeskAlert } from "@/watch/verdict";
 
 type TimelineEntry = {
@@ -25,6 +26,10 @@ type TimelineState =
   | { status: "ended" }
   | { status: "error"; message: string }
   | { status: "ready"; entries: TimelineEntry[]; days: number };
+
+function windowLabel(days: number): string {
+  return days === 0 ? "life of install" : `${days} days`;
+}
 
 function retainedWindow(days: number): string {
   return days === 0 ? "for the life of this install" : `for the last ${days} days`;
@@ -58,20 +63,30 @@ export function TimelineScreen({
   onRetryTimeline: () => void;
   onRetryAlerts: () => void;
 }) {
+  const ready = timeline.status === "ready";
   return (
     <section className="mt-4">
-      <h1 className="watch-page-title">
-        {timeline.status === "ready" ? heading(timeline.days) : "Timeline"}
-      </h1>
-      <p className="watch-page-lede">Alert and response activity within the retained window.</p>
-      <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+      <WatchPageHeader
+        title={ready ? heading(timeline.days) : "Timeline"}
+        lede="Alert and response activity within the retained window."
+      />
+      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
         Team and trial installs see this install’s alerts, acknowledgement activity, and
-        notification deliveries{" "}
-        {timeline.status === "ready" ? retainedWindow(timeline.days) : "for the list window"}.
+        notification deliveries {ready ? retainedWindow(timeline.days) : "for the list window"}.
         Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence stays
         until uninstall.
       </p>
-      {!previewing && timeline.status === "ready" && alertState.status === "ready" ? (
+      <div className="watch-card mt-[18px]">
+        <div className="watch-kv">
+          <span>Events</span>
+          <span className="text-dim">{ready ? timeline.entries.length : "—"}</span>
+        </div>
+        <div className="watch-kv">
+          <span>Window</span>
+          <span className="text-dim">{ready ? windowLabel(timeline.days) : "—"}</span>
+        </div>
+      </div>
+      {!previewing && ready && alertState.status === "ready" ? (
         <WatchExposureChart alerts={alerts} days={Math.max(7, timeline.days || 90)} />
       ) : timeline.status === "loading" || alertState.status === "loading" ? (
         <WatchSkeleton variant="detail" className="mt-6" />
@@ -79,21 +94,21 @@ export function TimelineScreen({
         <WatchSectionError className="mt-6 max-w-2xl" message={alertState.message} onRetry={onRetryAlerts} />
       ) : null}
       {previewing ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
           Preview cannot show a live timeline. No invented incident.
         </p>
       ) : timeline.status === "solo" ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
           The install timeline is on Team. Solo can still save a Watch email destination.
         </p>
       ) : timeline.status === "ended" ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
           Subscribe to Team to keep the install timeline.
         </p>
       ) : timeline.status === "error" ? (
         <WatchSectionError className="mt-6 max-w-2xl" message={timeline.message} onRetry={onRetryTimeline} />
-      ) : timeline.status !== "ready" ? null : timeline.entries.length === 0 ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">
+      ) : !ready ? null : timeline.entries.length === 0 ? (
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
           {timeline.days === 0
             ? "Nothing on this install yet."
             : `Nothing in the last ${timeline.days} days on this install.`}

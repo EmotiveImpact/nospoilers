@@ -1,7 +1,10 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { ProtectionImportResult, ReleaseDiffView } from "@/watch/types";
+import { useRef } from "react";
 
 export function RegistriesScreen() {
+  const registryOriginRef = useRef<HTMLInputElement>(null);
   const { Button, activeInstallId, allowReasonByCandidate, approvingId, baselineByPackage, baselineReason, beginConfirm, canManageEvidence, canReadEvidence, candidatesByPackage, checkingId, checkingNamespaceId, confirmBusy, confirmForm, confirming, deskCoverage, deskPackages, diffByPackage, diffingId, downloadingEvidenceId, ended, evidenceByPackage, identitySignals, importError, importNames, importResults, importingPackages, installAdmin, installations, loadJson, locked, namespaceError, namespaceScope, namespaces, packageError, packageName, packages, previewing, protectingId, protectionImportStatusLabel, protections, refreshSignedIn, registries, registryError, registryOriginInput, registryToken, riskByPackage, route, savingNamespace, savingRegistry, selectedInstallId, setAllowReasonByCandidate, setApprovingId, setCheckingId, setCheckingNamespaceId, setDiffByPackage, setDiffingId, setDownloadingEvidenceId, setImportError, setImportNames, setImportResults, setImportingPackages, setNamespaceError, setNamespaceScope, setPackageError, setPackageName, setProtectingId, setRegistryError, setRegistryOriginInput, setRegistryToken, setSavingNamespace, setSavingRegistry, setWatchRegistryOrigin, setWatchingPackage, sourceSectionState, user, watchRegistryOrigin, watchingPackage } = useWatchScreenContext();
   return (
     <>
@@ -11,7 +14,33 @@ export function RegistriesScreen() {
                   (previewing || sourceSectionState.status === "ready"))) && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 {route.view === "registries" ? (
-                  <h1 className="watch-page-title mb-5">Private registries</h1>
+                  <>
+                    <WatchPageHeader
+                      title="Private registries"
+                      lede="Encrypted read credentials for private hosts."
+                      action={
+                        !previewing && installAdmin ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => registryOriginRef.current?.focus()}
+                          >
+                            Save origin
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                    <div className="watch-card mt-[18px] mb-5">
+                      <div className="watch-kv">
+                        <span>Origins</span>
+                        <span className="text-dim">{previewing ? 0 : registries.length}</span>
+                      </div>
+                      <div className="watch-kv">
+                        <span>Tokens shown again</span>
+                        <span className="text-dim">never</span>
+                      </div>
+                    </div>
+                  </>
                 ) : null}
                 <section id="watch-source-npm" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                 <h2 className="text-sm font-semibold text-snow">
@@ -23,7 +52,7 @@ export function RegistriesScreen() {
                     : "Packages watched as customers receive them from the registry."}
                 </p>
                 {route.view === "registries" ? (
-                  <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                  <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
                     Save one read-only registry origin and token at a time. Tokens are encrypted,
                     never shown again, and tarball hosts must match the saved origin.
                   </p>
@@ -246,7 +275,9 @@ export function RegistriesScreen() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                       <label className="min-w-0 flex-1">
                         <span className="text-xs uppercase tracking-[0.16em] text-dim">Origin</span>
-                        <input
+                          <input
+                          ref={registryOriginRef}
+                          id="registry-origin"
                           value={registryOriginInput}
                           onChange={(event) => setRegistryOriginInput(event.target.value)}
                           placeholder="https://npm.pkg.github.com"
@@ -275,6 +306,11 @@ export function RegistriesScreen() {
                   </form>
                 )}
                 {registryError && <p className="mt-4 text-sm text-danger">{registryError}</p>}
+                {route.view === "registries" && !previewing && registries.length === 0 ? (
+                  <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-mute">
+                    No private registry saved. Public npm does not need this.
+                  </p>
+                ) : null}
                 {!previewing && registries.length > 0 && (
                   <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                     {registries.map((registry) => (

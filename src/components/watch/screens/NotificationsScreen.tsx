@@ -1,3 +1,4 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { useState } from "react";
 
@@ -20,8 +21,17 @@ export function NotificationsScreen() {
     <>
       {route.view === "notifications" && (
               <section className="mt-4">
-                <h1 className="watch-page-title">Notifications</h1>
-                <p className="watch-page-lede">Destinations and routing rules for real Watch alerts.</p>
+                <WatchPageHeader
+                  title="Notifications"
+                  lede="Destinations and routing rules for real Watch alerts."
+                  action={
+                    !previewing && !ended && installAdmin ? (
+                      <Button type="button" size="sm" onClick={() => setFlow("email")}>
+                        Add destination
+                      </Button>
+                    ) : undefined
+                  }
+                />
                 {datasetState.notifications.status === "loading" ? (
                   <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
                 ) : datasetState.notifications.status === "error" ? (
@@ -32,17 +42,24 @@ export function NotificationsScreen() {
                   />
                 ) : (
                 <>
+                <div className="mt-[18px] flex flex-wrap gap-2">
+                  {FLOWS.filter((item) => item.value !== "route" && item.value !== "route-test").map((item) => {
+                    const count = destinations.filter((destination) => destination.kind === item.value).length;
+                    return (
+                      <span key={item.value} className={count > 0 ? "watch-chip watch-chip-ok" : "watch-chip"}>
+                        {item.label}
+                        {count > 0 ? ` ${count}` : ""}
+                      </span>
+                    );
+                  })}
+                </div>
                 <WatchNotificationSummary destinations={destinations} routes={routes} />
                 <section id="watch-notification-config" className="mt-5 rounded-lg border border-white/8 bg-panel p-5">
                 <h2 className="text-sm font-semibold text-snow">Add, edit, or test a destination</h2>
-                <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                  Covered installs can send Watch alerts to email. Team and trial can also send Slack, a
-                  SIEM HTTPS webhook, Jira Cloud, and PagerDuty. Secrets and the full email address are
-                  encrypted and never shown again. A delivery test talks to the destination and never
-                  creates a Watch alert. Jira tests never open a ticket. PagerDuty tests send a change
-                  event and never open an incident. Email tests never invent an incident. Routes send a
-                  real alert or a routed test to matching destinations by severity, repository, package,
-                  and teammate. This host sends mail only when Resend keys are set.
+                <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
+                  Secrets are encrypted and never shown again. A delivery test talks to the destination
+                  and never creates a Watch alert. Jira tests never open a ticket. PagerDuty tests send a
+                  change event and never open an incident. Email tests never invent an incident.
                 </p>
                 {previewing ? (
                   <p className="mt-6 text-sm leading-relaxed text-mute">
@@ -142,19 +159,19 @@ export function NotificationsScreen() {
                     {!ended && installAdmin ? (
                       <div className="mt-6">
                         <p className="text-xs font-medium text-snow">Choose a focused flow</p>
-                        <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Notification configuration">
+                        <div className="watch-seg mt-3" role="tablist" aria-label="Notification configuration">
                           {FLOWS.map((item) => (
-                            <Button
+                            <button
                               key={item.value}
                               type="button"
-                              size="sm"
-                              variant={flow === item.value ? "default" : "outline"}
                               role="tab"
                               aria-selected={flow === item.value}
+                              aria-current={flow === item.value ? "page" : undefined}
+                              className="watch-seg-item"
                               onClick={() => setFlow(item.value)}
                             >
                               {item.label}
-                            </Button>
+                            </button>
                           ))}
                         </div>
                       </div>

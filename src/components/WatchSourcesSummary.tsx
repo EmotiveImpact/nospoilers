@@ -186,24 +186,20 @@ export function WatchSourcesSummary({
   return (
     <>
     <div className="mb-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="watch-kicker">Coverage</p>
-          <h1 className="watch-page-title mt-2">
-            Three exposure surfaces. One desk.
-          </h1>
-          <p className="watch-page-lede">
-            GitHub exposure, published artifacts, and production web report into the same inbox.
-            The artifact scanner also runs before release through Scan, CLI, or your existing CI.
-          </p>
-        </div>
-        {admin && sources.length > 0 ? (
-          <Button type="button" onClick={() => setAdding(true)}>
-            Add a source
-          </Button>
-        ) : null}
-      </div>
-      {sources.length > 0 ? (
+      <WatchPageHeader
+        title="Sources"
+        lede="GitHub exposure, published artifacts, production web, and map custody."
+        action={
+          admin ? (
+            <Button type="button" size="sm" onClick={() => setAdding(true)}>
+              Add a source
+            </Button>
+          ) : undefined
+        }
+      />
+      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
+        The artifact scanner also runs before release through Scan, CLI, or your existing CI.
+      </p>
         <div className="mt-5 flex flex-wrap gap-2">
           {SOURCE_FILTERS.map((option) => {
             const count =
@@ -252,7 +248,6 @@ export function WatchSourcesSummary({
             </span>
           </button>
         </div>
-      ) : null}
       {sources.length === 0 ? (
         <div className="mt-5 rounded-lg border border-white/8 bg-panel px-5 py-9 text-center">
           <p className="text-sm text-snow">No sources yet.</p>

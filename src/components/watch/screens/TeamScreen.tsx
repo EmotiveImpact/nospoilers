@@ -1,21 +1,29 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
+import { useRef } from "react";
 
 export function TeamScreen() {
+  const inviteLoginRef = useRef<HTMLInputElement>(null);
   const { Avatar, AvatarFallback, AvatarImage, Button, adminCount, beginConfirm, canManageRoles, confirmBusy, confirmForm, confirming, deskCoverage, ended, inviteLogin, inviteRole, invites, members, membersError, previewing, route, setInviteLogin, setInviteRole } = useWatchScreenContext();
   return (
     <>
       {route.view === "team" && (
               <section className="mt-4">
-                <h1 className="watch-page-title">Team &amp; roles</h1>
-                <p className="watch-page-lede">People who can view or administer this install.</p>
-                <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                  The first GitHub user to connect this install is admin. Later users become members. Admins
-                  change roles, remove people, and invite by GitHub login. They get that role the next time
-                  they sign in, if they can already see this App install. This does not send email. Invites
-                  stay GitHub-login only. This does not grant GitHub Administration. The last admin stays. GitHub
-                  suspend does not block this. An install admin also saves email on a covered install and
-                  Slack, SIEM, Jira, PagerDuty, routes, registries, scan
-                  tokens, allowlists, and baselines, and opens setup or remediation PRs.
+                <WatchPageHeader
+                  title="Team & roles"
+                  lede="People who can view or administer this install."
+                  action={
+                    canManageRoles ? (
+                      <Button type="button" size="sm" onClick={() => inviteLoginRef.current?.focus()}>
+                        Invite
+                      </Button>
+                    ) : undefined
+                  }
+                />
+                <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
+                  The first GitHub user to connect this install is admin. Later users become members.
+                  Admins change roles, remove people, and invite by GitHub login. Invites do not send
+                  email and do not grant GitHub Administration. The last admin stays.
                 </p>
                 {previewing ? (
                   <p className="mt-6 text-sm leading-relaxed text-mute">
@@ -54,6 +62,8 @@ export function TeamScreen() {
                             GitHub login
                           </span>
                           <input
+                            ref={inviteLoginRef}
+                            id="team-invite-login"
                             value={inviteLogin}
                             onChange={(event) => setInviteLogin(event.target.value)}
                             placeholder="octocat"
