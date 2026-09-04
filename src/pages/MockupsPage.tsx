@@ -25,7 +25,7 @@ export function MockupsPage() {
         Static HTML for shell and page studies. They are not the live desk.
       </p>
       <p className="mt-4">
-        <a href="/mockup-review/" className="text-snow underline underline-offset-4">
+        <a href="/mockup-review/index.html" className="text-snow underline underline-offset-4">
           All mockups
         </a>
       </p>

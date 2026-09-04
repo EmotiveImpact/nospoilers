@@ -158,7 +158,7 @@ describe("Watch architecture boundaries", () => {
     expect(index).toContain("../premium/watch-premium.html");
     expect(root).toContain("2b/20-gray-stage.html");
     expect(root).toContain("premium/watch-premium.html");
-    expect(readFileSync("src/pages/MockupsPage.tsx", "utf8")).toMatch(/\/mockup-review\//);
+    expect(readFileSync("src/pages/MockupsPage.tsx", "utf8")).toMatch(/\/mockup-review\/index\.html/);
   });
 
   it("keeps notification and registry settings focused", () => {
