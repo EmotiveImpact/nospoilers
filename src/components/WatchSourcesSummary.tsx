@@ -149,7 +149,7 @@ export function WatchSourcesSummary({
                     className={cn("watch-mark", done && "watch-mark-done", active && "watch-mark-now")}
                     aria-hidden
                   >
-                    {done ? "✓" : index + 1}
+                    {done ? <CheckCircle2 className="size-3" aria-hidden /> : index + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <strong className="watch-small block text-snow">{step.label}</strong>

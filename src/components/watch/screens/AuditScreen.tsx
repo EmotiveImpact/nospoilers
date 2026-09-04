@@ -55,11 +55,15 @@ export function AuditScreen({
         title="Audit log"
         lede="Administrative changes and response activity for this install."
         action={
-          canExport ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => void exportAudit()}>
-              Export audit JSON
-            </Button>
-          ) : null
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!canExport}
+            onClick={() => void exportAudit()}
+          >
+            Export audit JSON
+          </Button>
         }
       />
       <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">

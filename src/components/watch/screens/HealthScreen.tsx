@@ -116,17 +116,15 @@ export function HealthScreen() {
         title="Install health"
         lede="Permissions, deliveries, and recent work for this GitHub install."
         action={
-          previewing || !headerInstall ? null : (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={testingInstallId === headerInstall.id}
-              onClick={() => void testInstall(headerInstall.id)}
-            >
-              {testingInstallId === headerInstall.id ? "Testing…" : "Test install"}
-            </Button>
-          )
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={previewing || !headerInstall || testingInstallId === headerInstall?.id}
+            onClick={() => headerInstall && void testInstall(headerInstall.id)}
+          >
+            {headerInstall && testingInstallId === headerInstall.id ? "Testing…" : "Test install"}
+          </Button>
         }
       />
 
