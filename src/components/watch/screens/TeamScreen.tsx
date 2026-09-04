@@ -126,9 +126,7 @@ export function TeamScreen() {
                       </ul>
                     ) : null}
                     {members.length === 0 && invites.length === 0 ? (
-                      <p className="mt-6 text-sm leading-relaxed text-mute">
-                        Nobody linked on this install yet.
-                      </p>
+                      <div className="watch-empty">Nobody linked on this install yet.</div>
                     ) : (
                       <div className="mt-5 flex flex-wrap gap-2">
                         {members.map((member) => (

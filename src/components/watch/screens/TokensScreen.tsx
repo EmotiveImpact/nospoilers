@@ -24,7 +24,7 @@ export function TokensScreen() {
                 <div className="watch-card mt-[18px]">
                   <div className="watch-kv">
                     <span>Tokens</span>
-                    <span className="text-dim">{previewing ? 0 : scanTokens.length}</span>
+                    <span className={(!previewing && scanTokens.length) ? "text-snow" : "text-dim"}>{previewing ? 0 : scanTokens.length}</span>
                   </div>
                   <div className="watch-kv">
                     <span>Shown once</span>
@@ -53,7 +53,7 @@ export function TokensScreen() {
                   </div>
                 ) : null}
                 {previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
+                  <div className="watch-empty">No scan tokens yet.</div>
                 ) : (
                   <>
                     {user && installations.length > 0 && installAdmin && (
@@ -134,7 +134,7 @@ export function TokensScreen() {
                       </div>
                     ) : null}
                     {scanTokens.length === 0 ? (
-                      <p className="mt-6 text-sm leading-relaxed text-mute">No scan tokens yet.</p>
+                      <div className="watch-empty">No scan tokens yet.</div>
                     ) : (
                       <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                         {scanTokens.map((token) => (

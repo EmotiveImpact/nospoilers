@@ -33,11 +33,11 @@ export function RegistriesScreen() {
                     <div className="watch-card mt-[18px] mb-5">
                       <div className="watch-kv">
                         <span>Origins</span>
-                        <span className="text-dim">{previewing ? 0 : registries.length}</span>
+                        <span className={!previewing && registries.length > 0 ? "text-snow" : "text-dim"}>{previewing ? 0 : registries.length}</span>
                       </div>
                       <div className="watch-kv">
                         <span>Tokens shown again</span>
-                        <span className="text-dim">never</span>
+                        <span className="text-ok">never</span>
                       </div>
                     </div>
                   </>
@@ -307,9 +307,7 @@ export function RegistriesScreen() {
                 )}
                 {registryError && <p className="mt-4 text-sm text-danger">{registryError}</p>}
                 {route.view === "registries" && !previewing && registries.length === 0 ? (
-                  <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-mute">
-                    No private registry saved. Public npm does not need this.
-                  </p>
+                  <div className="watch-empty">No private registry saved. Public npm does not need this.</div>
                 ) : null}
                 {!previewing && registries.length > 0 && (
                   <ul className="mt-4 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
