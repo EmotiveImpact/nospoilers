@@ -4,10 +4,12 @@ import {
   WatchSkeleton,
   type WatchSectionState,
 } from "@/components/WatchDataState";
+import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { cn } from "@/lib/utils";
 import type { AlertListViewModel } from "@/watch/view-models.ts";
 import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
 import type { AlertTab } from "@/watch/routes.ts";
+import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -84,6 +86,14 @@ export function WatchAlertsWorkspace({
   onExport: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
+  const { deskAlerts, user } = useWatchScreenContext();
+  const login = user?.login ?? "";
+  const queueCounts = {
+    open: filterDeskAlerts(deskAlerts, "open", login).length,
+    waiting: filterDeskAlerts(deskAlerts, "waiting", login).length,
+    mine: filterDeskAlerts(deskAlerts, "mine", login).length,
+    done: filterDeskAlerts(deskAlerts, "done", login).length,
+  };
   const selectedIndex = selected ? alerts.findIndex((alert) => alert.id === selected.id) : -1;
   const previous = selectedIndex > 0 ? alerts[selectedIndex - 1] : null;
   const next = selectedIndex >= 0 && selectedIndex < alerts.length - 1 ? alerts[selectedIndex + 1] : null;
@@ -138,40 +148,38 @@ export function WatchAlertsWorkspace({
           No new jobs run. Existing alerts can still be acknowledged, assigned, resolved, and reopened.
         </div>
       ) : null}
-      <nav
-        className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/8 bg-inset px-3 py-2 lg:hidden"
-        aria-label="Alert views"
-      >
-        {([
-          ["open", "Needs triage"],
-          ["waiting", "Waiting"],
-          ...(teamOnly ? [["mine", "Mine"]] : []),
-          ["done", "Resolved"],
-        ] as [AlertTab, string][]).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-current={tab === value ? "page" : undefined}
-            className={cn(
-              "min-h-12 shrink-0 rounded-md px-3 text-xs text-mute hover:bg-white/5 hover:text-snow lg:min-h-9",
-              tab === value && "bg-white/8 text-snow",
-            )}
-            onClick={() => onTab(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-[#0d0d10] lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/8 px-4">
-            <div className="flex items-center gap-2">
-              <strong className="text-sm text-snow">Inbox</strong>
-              <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim">{rows.length}</span>
+          <div className="flex shrink-0 flex-col gap-2 border-b border-white/8 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <strong className="text-sm text-snow">Alerts</strong>
+                <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim">{rows.length}</span>
+              </div>
+              {!previewing ? (
+                <Button type="button" size="sm" variant="ghost" onClick={onExport}>Export JSON</Button>
+              ) : null}
             </div>
-            {!previewing ? (
-              <Button type="button" size="sm" variant="ghost" onClick={onExport}>Export JSON</Button>
-            ) : null}
+            <div className="watch-seg" role="tablist" aria-label="Alert queues">
+              {([
+                ["open", "Triage", queueCounts.open],
+                ["waiting", "Waiting", queueCounts.waiting],
+                ...(teamOnly ? [["mine", "Mine", queueCounts.mine] as const] : []),
+                ["done", "Resolved", queueCounts.done],
+              ] as [AlertTab, string, number][]).map(([value, label, count]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-current={tab === value ? "page" : undefined}
+                  className="watch-seg-item"
+                  onClick={() => onTab(value)}
+                >
+                  {label}
+                  {count > 0 ? <span className="font-mono text-dim">{count}</span> : null}
+                </button>
+              ))}
+            </div>
           </div>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
           {state.status === "loading" ? (

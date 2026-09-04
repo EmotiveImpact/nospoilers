@@ -114,9 +114,6 @@ export function WatchMonolithShell({
   login,
   sourceCount,
   openAlertCount,
-  waitingCount,
-  mineCount,
-  resolvedCount,
   setupDone,
   setupTotal,
   installations,
@@ -155,7 +152,6 @@ export function WatchMonolithShell({
   const [plansOpen, setPlansOpen] = useState(false);
   const hrefFor = (view: WatchView, tab?: AlertTab) =>
     watchHref(watchPath(view), search, tab ? { tab } : {});
-  const alertActive = (tab: AlertTab) => route.view === "alerts" && route.tab === tab;
   const closeNav = () => setNavOpen(false);
   const installIdentity =
     installations.find((installation) => installation.id === activeInstallId)?.account_login ??
@@ -214,22 +210,12 @@ export function WatchMonolithShell({
           <NavLink href={hrefFor("overview")} active={route.view === "overview"} onNavigate={closeNav}>
             Overview
           </NavLink>
-        </div>
-
-        <div>
-          <p className="watch-kicker px-2.5 pb-1.5">Alert views</p>
-          <div className="flex flex-col gap-0.5">
-            <NavLink href={hrefFor("alerts", "open")} active={alertActive("open")} onNavigate={closeNav}>
-              Needs triage
-              {openAlertCount > 0 ? <span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{openAlertCount}</span> : null}
-            </NavLink>
-            <NavLink href={hrefFor("alerts", "waiting")} active={alertActive("waiting")} onNavigate={closeNav}>
-              Waiting on rotation
-              {waitingCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{waitingCount}</span> : null}
-            </NavLink>
-            {teamOnly ? <NavLink href={hrefFor("alerts", "mine")} active={alertActive("mine")} onNavigate={closeNav}>Assigned to me{mineCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{mineCount}</span> : null}</NavLink> : null}
-            <NavLink href={hrefFor("alerts", "done")} active={alertActive("done")} onNavigate={closeNav}>Resolved{resolvedCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{resolvedCount}</span> : null}</NavLink>
-          </div>
+          <NavLink href={hrefFor("alerts")} active={route.view === "alerts"} onNavigate={closeNav}>
+            Alerts
+            {openAlertCount > 0 ? (
+              <span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{openAlertCount}</span>
+            ) : null}
+          </NavLink>
         </div>
 
         <div className="flex flex-col gap-0.5 border-t border-line pt-[17px]">

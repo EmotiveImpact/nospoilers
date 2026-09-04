@@ -1,36 +1,70 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
+import { useRef } from "react";
 
 export function PolicyScreen() {
+  const exceptionRuleRef = useRef<HTMLInputElement>(null);
   const { Button, SIGNING_POLICY_CLEAR_CONFIRM, SIGNING_POLICY_CONFIRM, activeInstallId, allowExpires, allowPath, allowReason, allowRule, baselineReason, beginConfirm, canManageSigningPolicy, confirmBusy, confirmForm, confirming, exceptions, installAdmin, locked, previewing, refreshSignedIn, route, savingAllow, selectedInstallId, setAllowExpires, setAllowPath, setAllowReason, setAllowRule, setBaselineReason, setPackageError, setSavingAllow, setSigningDraft, setSigningError, signingDraft, signingError, signingPolicy } = useWatchScreenContext();
+  const activeExceptions = exceptions.filter((entry) => entry.active).length;
+  const signingLabel =
+    signingPolicy.status === "ready" ? (signingPolicy.policy ? "on" : "off") : "—";
   return (
     <>
       {route.view === "policy" && (
               <section className="mt-4">
-                <h1 className="watch-page-title">Policy &amp; allowlist</h1>
-                <p className="watch-page-lede">Shipping evidence, time-bound exceptions, and approved baselines.</p>
-                <h2 className="mt-8 text-xs uppercase tracking-[0.22em] text-dim">Signing policy</h2>
-                <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                <WatchPageHeader
+                  title="Policy & allowlist"
+                  lede="Time-bound exceptions and shipping evidence."
+                  action={
+                    !previewing && installAdmin ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => exceptionRuleRef.current?.focus()}
+                      >
+                        Write exception
+                      </Button>
+                    ) : undefined
+                  }
+                />
+                <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
+                  <div className="watch-stat">
+                    <span className="watch-kicker">Active</span>
+                    <p className="watch-stat-n text-snow">{activeExceptions}</p>
+                    <p className="watch-tiny mt-1 text-dim">Exact-rule exceptions</p>
+                  </div>
+                  <div className="watch-stat">
+                    <span className="watch-kicker">Signing</span>
+                    <p className={`watch-stat-n ${signingLabel === "on" ? "text-snow" : "text-dim"}`}>
+                      {signingLabel}
+                    </p>
+                    <p className="watch-tiny mt-1 text-dim">Not Sigstore verification</p>
+                  </div>
+                </div>
+                <div className="watch-card mt-5 p-5">
+                <h2 className="watch-kicker">Signing policy</h2>
+                <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
                   Trial and Team can require a present GitHub or npm attestation document, or a builder
                   prefix, before a passing revision is approved to ship. Type signing-policy to save.
                   Type clear-signing-policy to remove it. Expired policies do not block. This is not
                   Sigstore verification and not a malware verdict.
                 </p>
                 {previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
+                  <p className="mt-6 text-[13px] leading-relaxed text-mute">
                     Preview cannot change a live signing policy. No invented incident.
                   </p>
                 ) : signingPolicy.status === "ended" ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
+                  <p className="mt-6 text-[13px] leading-relaxed text-mute">
                     Subscribe to Team to set a signing policy.
                   </p>
                 ) : signingPolicy.status === "solo" ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
+                  <p className="mt-6 text-[13px] leading-relaxed text-mute">
                     Subscribe to Team to set a signing policy.
                   </p>
                 ) : signingPolicy.status === "error" ? (
-                  <p className="mt-6 text-sm text-danger">{signingPolicy.message}</p>
+                  <p className="mt-6 text-[13px] text-danger">{signingPolicy.message}</p>
                 ) : signingPolicy.status === "loading" ? (
-                  <p className="mt-6 text-sm text-dim">Loading…</p>
+                  <p className="mt-6 text-[13px] text-dim">Loading…</p>
                 ) : (
                   <div className="mt-6 max-w-xl space-y-3">
                     <label className="flex items-center gap-2 text-sm text-snow">
@@ -144,13 +178,10 @@ export function PolicyScreen() {
                     )}
                   </div>
                 )}
-              </section>
-              )}
-      {route.view === "policy" && (
-              <section className="mt-4">
-                <h2 className="text-xs uppercase tracking-[0.22em] text-dim">Allowlist and baseline</h2>
-                <p className="mt-2 text-sm text-mute">Time-bound exceptions and the approved comparison receipt.</p>
-                <p className="watch-guidance mt-3 max-w-2xl text-sm leading-relaxed text-mute">
+                </div>
+                <h2 className="watch-kicker mt-8">Allowlist and baseline</h2>
+                <p className="mt-2 text-[13px] text-mute">Time-bound exceptions and the approved comparison receipt.</p>
+                <p className="watch-guidance mt-3 max-w-2xl text-[13px] leading-relaxed text-mute">
                   Exceptions are exact-rule, attributable, and they expire. They never suppress a different
                   rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
                   instead of whichever scan happened last.
@@ -207,6 +238,8 @@ export function PolicyScreen() {
                     <label>
                       <span className="text-xs uppercase tracking-[0.16em] text-dim">Rule</span>
                       <input
+                        ref={exceptionRuleRef}
+                        id="policy-exception-rule"
                         value={allowRule}
                         onChange={(event) => setAllowRule(event.target.value)}
                         placeholder="SRC-001"

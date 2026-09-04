@@ -1,3 +1,4 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function ReleasesScreen() {
@@ -6,42 +7,63 @@ export function ReleasesScreen() {
     <>
       {route.view === "releases" && (
               <section className="mt-4">
-                <h1 className="watch-page-title">Releases and receipts</h1>
-                <p className="watch-page-lede">Sealed artifact revisions, policy results, and delivery evidence.</p>
-                <div className="watch-guidance mt-4 grid max-w-4xl gap-3 sm:grid-cols-2">
-                  {[
-                    {
-                      title: "Receipt",
-                      detail:
-                        "The signed receipt identifies the exact bytes and policy result. Failed-policy and inconclusive are not clean.",
-                    },
-                    {
-                      title: "Delivery match",
-                      detail:
-                        "Verify that npm, GitHub, or a customer URL still serves the same SHA-256. Downloaded bytes are discarded.",
-                    },
-                    {
-                      title: "Approval and hold",
-                      detail:
-                        "Team admins approve or reject passing revisions. Failed-policy, inconclusive, and digest-changed revisions cannot be approved. A legal hold remains until another admin must release it.",
-                    },
-                    {
-                      title: "Attestation",
-                      detail:
-                        "GitHub/npm documents and builder IDs are recorded as evidence. Sigstore verification is not claimed yet.",
-                    },
-                  ].map((item) => (
-                    <article key={item.title} className="rounded-lg border border-white/8 bg-panel p-4">
-                      <h2 className="text-xs uppercase tracking-[0.16em] text-snow">{item.title}</h2>
-                      <p className="mt-2 text-xs leading-relaxed text-mute">{item.detail}</p>
-                    </article>
-                  ))}
+                <WatchPageHeader
+                  title="Releases"
+                  lede="Sealed artifact revisions, policy results, and delivery evidence."
+                  action={
+                    canExportReleases ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setLedgerExportError(null);
+                          void (async () => {
+                            try {
+                              const body = await loadJson<{ exportedAt: string }>(
+                                scopedApi("/api/releases/export", activeInstallId),
+                              );
+                              const blob = new Blob([JSON.stringify(body, null, 2)], {
+                                type: "application/json",
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = `nospoilers-releases-${body.exportedAt.slice(0, 10)}.json`;
+                              link.click();
+                              URL.revokeObjectURL(url);
+                            } catch (error) {
+                              setLedgerExportError(
+                                error instanceof Error ? error.message : "Could not export the release ledger.",
+                              );
+                            }
+                          })();
+                        }}
+                      >
+                        Export ledger
+                      </Button>
+                    ) : undefined
+                  }
+                />
+                <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
+                  <div className="watch-stat">
+                    <span className="watch-kicker">Sealed</span>
+                    <p className="watch-stat-n text-snow">{releases.length}</p>
+                    <p className="watch-tiny mt-1 text-dim">Receipts on this install</p>
+                  </div>
+                  <div className="watch-stat">
+                    <span className="watch-kicker">Failed policy</span>
+                    <p className={`watch-stat-n ${releases.some((row) => row.receiptStatus === "failed-policy") ? "text-danger" : "text-dim"}`}>
+                      {releases.filter((row) => row.receiptStatus === "failed-policy").length}
+                    </p>
+                    <p className="watch-tiny mt-1 text-dim">Never treated as clean</p>
+                  </div>
                 </div>
-                <p className="watch-guidance mt-3 max-w-4xl text-xs leading-relaxed text-dim">
-                  Failed-policy and inconclusive receipts are never clean. Failed-policy, inconclusive,
-                  and digest-changed revisions cannot be approved. A legal hold remains until
-                  another admin must release it. Solo may publish a passing verification page; delivery matching is
-                  on demand and is not scheduled CDN verification.
+                <p className="watch-guidance mt-3 max-w-3xl text-[13px] leading-relaxed text-mute">
+                  Failed-policy and inconclusive receipts are never clean and cannot be approved.
+                  Digest-changed revisions cannot be approved. A legal hold remains until another admin
+                  releases it. GitHub/npm attestations are recorded as evidence; Sigstore verification is
+                  not claimed. Delivery matching is on demand, not scheduled CDN verification.
                 </p>
                 {previewing ? (
                   <p className="mt-4 text-sm leading-relaxed text-mute">
@@ -53,41 +75,7 @@ export function ReleasesScreen() {
                     refresh GitHub or npm attestations, and set a signing policy.
                   </p>
                 ) : null}
-                {canExportReleases ? (
-                  <div className="mt-4">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setLedgerExportError(null);
-                        void (async () => {
-                          try {
-                            const body = await loadJson<{ exportedAt: string }>(
-                              scopedApi("/api/releases/export", activeInstallId),
-                            );
-                            const blob = new Blob([JSON.stringify(body, null, 2)], {
-                              type: "application/json",
-                            });
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = `nospoilers-releases-${body.exportedAt.slice(0, 10)}.json`;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                          } catch (error) {
-                            setLedgerExportError(
-                              error instanceof Error ? error.message : "Could not export the release ledger.",
-                            );
-                          }
-                        })();
-                      }}
-                    >
-                      Export ledger
-                    </Button>
-                    {ledgerExportError ? <p className="mt-2 text-sm text-danger">{ledgerExportError}</p> : null}
-                  </div>
-                ) : null}
+                {ledgerExportError ? <p className="mt-3 text-sm text-danger">{ledgerExportError}</p> : null}
                 {receiptError ? <p className="mt-3 text-sm text-danger">{receiptError}</p> : null}
                 {deliveryError ? <p className="mt-3 text-sm text-danger">{deliveryError}</p> : null}
                 {attestationError ? <p className="mt-3 text-sm text-danger">{attestationError}</p> : null}

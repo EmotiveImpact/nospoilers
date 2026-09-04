@@ -1,20 +1,41 @@
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
+import { useRef } from "react";
 
 export function TokensScreen() {
+  const tokenNameRef = useRef<HTMLInputElement>(null);
   const { Button, activeInstallId, beginConfirm, confirmBusy, confirmForm, confirming, ended, githubRunnersReachable, hostedOrigin, installAdmin, installations, locked, mintingScanToken, previewing, refreshSignedIn, revealedScanToken, route, scanTokenError, scanTokenName, scanTokens, selectedInstallId, setMintingScanToken, setRevealedScanToken, setScanTokenError, setScanTokenName, user } = useWatchScreenContext();
+  const canMint = !previewing && Boolean(user && installations.length > 0 && installAdmin);
   return (
     <>
       {route.view === "tokens" && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-                <h1 className="watch-page-title">Scan API tokens</h1>
-                <p className="watch-page-lede">Credentials for scanning packed artifacts from CI.</p>
-                <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+                <WatchPageHeader
+                  title="Scan API tokens"
+                  lede="Credentials for packed-artifact CI scans."
+                  action={
+                    canMint ? (
+                      <Button type="button" size="sm" onClick={() => tokenNameRef.current?.focus()}>
+                        Mint token
+                      </Button>
+                    ) : undefined
+                  }
+                />
+                <div className="watch-card mt-[18px]">
+                  <div className="watch-kv">
+                    <span>Tokens</span>
+                    <span className="text-dim">{previewing ? 0 : scanTokens.length}</span>
+                  </div>
+                  <div className="watch-kv">
+                    <span>Shown once</span>
+                    <span className="text-dim">hashed after</span>
+                  </div>
+                </div>
+                <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
                   Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
                   <code className="text-snow">/api/v1/scan</code>. We hash the secret, show it once, and
-                  delete the bytes after the scan. Generated Setup CI vendors a composite Action in your
-                  repo and needs this token plus repository variable{" "}
-                  <code className="text-snow">NOSPOILERS_API_URL</code>. This product repository still
-                  scans locally with <code className="text-snow">uses: ./</code>.
+                  delete the bytes after the scan. Generated Setup CI needs this token plus repository
+                  variable <code className="text-snow">NOSPOILERS_API_URL</code>.
                 </p>
                 {!previewing && hostedOrigin ? (
                   <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -72,6 +93,8 @@ export function TokensScreen() {
                         <label className="min-w-0 flex-1">
                           <span className="text-xs uppercase tracking-[0.16em] text-dim">Name</span>
                           <input
+                            ref={tokenNameRef}
+                            id="scan-token-name"
                             value={scanTokenName}
                             onChange={(event) => setScanTokenName(event.target.value)}
                             placeholder="CI"

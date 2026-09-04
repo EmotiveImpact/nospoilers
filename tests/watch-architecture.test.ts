@@ -50,6 +50,13 @@ describe("Watch architecture boundaries", () => {
     expect(dialogs.match(/motion-reduce:transition-none/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("collapses alert queues into one Alerts nav", () => {
+    const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
+    expect(shell).not.toMatch(/Alert views/);
+    expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
+    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg/);
+  });
+
   it("keeps notification and registry settings focused", () => {
     const notifications = readFileSync(
       "src/components/watch/screens/NotificationsScreen.tsx",

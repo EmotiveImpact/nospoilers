@@ -270,6 +270,36 @@ code {
   color: #7ee08a;
 }
 
+.watch-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-inset);
+}
+
+.watch-seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #71717a;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.watch-seg-item[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
 .watch-pill-info {
   border-color: rgba(91, 141, 239, 0.36);
   background: rgba(91, 141, 239, 0.1);
