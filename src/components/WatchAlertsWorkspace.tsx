@@ -149,15 +149,22 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-[#0d0d10] lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
+        <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-ink lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           <div className="flex shrink-0 flex-col gap-2 border-b border-white/8 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <strong className="text-sm text-snow">Alerts</strong>
-                <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim">{rows.length}</span>
+                <span
+                  className={cn(
+                    "rounded-full border border-white/10 px-2 py-0.5",
+                    queueCounts.open > 0 ? "font-mono text-[11px] text-[#ff8a80]" : "text-xs text-dim",
+                  )}
+                >
+                  {rows.length}
+                </span>
               </div>
               {!previewing ? (
-                <Button type="button" size="sm" variant="ghost" onClick={onExport}>Export JSON</Button>
+                <Button type="button" size="sm" variant="outline" onClick={onExport}>Export JSON</Button>
               ) : null}
             </div>
             <div className="watch-seg" role="tablist" aria-label="Alert queues">
@@ -193,9 +200,8 @@ export function WatchAlertsWorkspace({
           ) : (
           <ol ref={listRef} className="min-h-0 flex-1 divide-y divide-white/5 overflow-auto">
             {rows.length === 0 ? (
-              <li className="px-5 py-10 text-center">
-                <p className="text-sm text-snow">This view is clear.</p>
-                <p className="mt-1 text-xs text-dim">No real alerts match this saved view.</p>
+              <li>
+                <div className="watch-empty m-4">This view is clear. No real alerts match this filter.</div>
               </li>
             ) : (
               rows.map((row) => (
@@ -387,7 +393,7 @@ export function WatchAlertsWorkspace({
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
           <DialogPanel
             as="form"
-            className="w-full max-w-md rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none"
+            className="w-full max-w-md rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none"
             onSubmit={(event) => {
               event.preventDefault();
               if (!assignee.trim()) return;
