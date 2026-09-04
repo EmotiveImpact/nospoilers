@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>18 · Overlay value</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --color-ink: #09090b;
+        --color-rail: #050506;
+        --color-canvas: #09090b;
+        --color-panel: #111113;
+        --color-inset: #0b0b0d;
+        --color-line: #2a2a2e;
+        --color-line-strong: #3f3f46;
+        --color-snow: #f4f4f5;
+        --color-mute: #a1a1aa;
+        --color-dim: #71717a;
+        --coral: #ff8a80;
+      }
+
+      html,
+      body {
+        background: #000;
+      }
+
+      .page {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 22px 16px 80px;
+      }
+
+      .intro {
+        max-width: 74ch;
+      }
+
+      .intro h1 {
+        margin-top: 8px;
+        font-size: 30px;
+      }
+
+      .intro p {
+        margin-top: 10px;
+        color: var(--color-mute);
+      }
+
+      .intro code {
+        color: var(--color-snow);
+      }
+
+      .recipe {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--color-line);
+        border-radius: 10px;
+        background: #050506;
+        color: var(--color-dim);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .recipe strong {
+        color: var(--color-mute);
+        font-weight: 500;
+      }
+
+      .jump {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 0 14px;
+        background: color-mix(in srgb, #000 86%, transparent);
+        backdrop-filter: blur(12px);
+      }
+
+      .jump button {
+        height: 30px;
+        padding: 0 11px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+        font: 500 12px/30px var(--sans);
+        cursor: pointer;
+      }
+
+      .jump button.on,
+      .jump button:hover {
+        border-color: var(--color-line-strong);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-snow);
+      }
+
+      .block-meta {
+        max-width: 72ch;
+        margin: 0 0 12px;
+      }
+
+      .block-meta h2 {
+        margin-top: 6px;
+        font-size: 22px;
+      }
+
+      .block-meta p {
+        margin-top: 8px;
+        color: var(--color-mute);
+        font-size: 14px;
+      }
+
+      .desk {
+        position: relative;
+        display: grid;
+        grid-template-columns: 244px minmax(0, 1fr);
+        min-height: 820px;
+        overflow: hidden;
+        isolation: isolate;
+        background: var(--color-rail);
+        color: var(--color-snow);
+      }
+
+      .desk.collapsed {
+        grid-template-columns: 56px minmax(0, 1fr);
+      }
+
+      .rail {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        isolation: isolate;
+        overflow: hidden;
+      }
+
+      .rail::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 180px;
+        height: 180px;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at 28% 22%, #161618 0%, rgba(22, 22, 24, 0.35) 46%, transparent 72%);
+      }
+
+      .rail > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand {
+        padding: 18px 16px 0;
+      }
+
+      .desk.collapsed .brand {
+        padding: 18px 8px 0;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .desk.collapsed .brand-row {
+        justify-content: center;
+      }
+
+      .wordmark {
+        font-family: var(--display);
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .desk.collapsed .wordmark,
+      .desk.collapsed .install,
+      .desk.collapsed .sources-n,
+      .desk.collapsed .nav .kicker,
+      .desk.collapsed .item span,
+      .desk.collapsed .setup-copy {
+        display: none;
+      }
+
+      .collapse,
+      .hit {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+        cursor: pointer;
+      }
+
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 10px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: var(--color-inset);
+        cursor: pointer;
+        position: relative;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 5px;
+        background: linear-gradient(to bottom right, #52525b, #18181b);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .sources-n {
+        margin: 4px 16px 0;
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .nav {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 18px;
+        min-height: 0;
+        padding: 14px 10px;
+      }
+
+      .desk.collapsed .nav {
+        padding: 14px 8px;
+        align-items: center;
+      }
+
+      .nav .kicker {
+        padding: 0 10px 6px;
+      }
+
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 30px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+        font: 400 13px/1 var(--sans);
+        cursor: pointer;
+        position: relative;
+      }
+
+      .desk.collapsed .item {
+        width: 32px;
+        padding: 0;
+        justify-content: center;
+      }
+
+      .item.on {
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--color-snow);
+      }
+
+      .item svg {
+        flex: none;
+        opacity: 0.75;
+      }
+
+      .item .n {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--coral);
+      }
+
+      .group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .group.rule {
+        border-top: 1px solid var(--color-line);
+        padding-top: 17px;
+      }
+
+      .desk.collapsed .group.rule {
+        width: 100%;
+      }
+
+      .setup {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-top: 1px solid var(--color-line);
+      }
+
+      .desk.collapsed .setup {
+        justify-content: center;
+        padding: 12px 8px;
+      }
+
+      .ring {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex: none;
+        border-radius: 999px;
+        background: conic-gradient(#252529 0deg, #252529 360deg);
+      }
+
+      .desk.collapsed .ring {
+        width: 28px;
+        height: 28px;
+      }
+
+      .ring span {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--color-rail);
+        color: var(--color-snow);
+        font-size: 9px;
+      }
+
+      .desk.collapsed .ring span {
+        width: 22px;
+        height: 22px;
+        font-size: 8px;
+      }
+
+      .setup small {
+        display: block;
+        margin-top: 2px;
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .gutter {
+        display: flex;
+        min-width: 0;
+        padding: 8px;
+      }
+
+      .stage {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        border-radius: 16px;
+        background: var(--color-canvas);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+      }
+
+      .cmd {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 56px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--color-line);
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        max-width: 24rem;
+        flex: 1;
+        padding: 0 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: var(--color-inset);
+        color: var(--color-dim);
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .search kbd {
+        margin-left: auto;
+        padding: 1px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        font-family: var(--sans);
+        font-size: 11px;
+      }
+
+      .cmd-title {
+        margin-left: auto;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .chip {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        padding: 3px 8px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      .ghost {
+        border: 0;
+        background: transparent;
+        color: var(--color-mute);
+        font: 500 13px var(--sans);
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      .page-head,
+      .queue-track,
+      .split,
+      .inbox,
+      .detail {
+        background: var(--color-canvas);
+      }
+
+      .page-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 64px;
+        padding: 16px 32px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .page-head h2 {
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      .export-wrap {
+        position: relative;
+        margin-left: auto;
+      }
+
+      .export {
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+        font: 500 12px var(--sans);
+        cursor: pointer;
+      }
+
+      .queue-track {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-bottom: 1px solid var(--color-line);
+      }
+
+      .queue-track i {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 12px;
+        color: var(--color-dim);
+        font: 400 13px/1 var(--sans);
+        font-style: normal;
+      }
+
+      .queue-track i span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .queue-track i.on {
+        color: var(--color-snow);
+      }
+
+      .queue-track i.on span {
+        border-bottom-color: var(--color-snow);
+      }
+
+      .queue-track b {
+        font-family: var(--mono);
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: #3f3f46;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 0;
+        flex: 1;
+      }
+
+      .inbox {
+        position: relative;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .empty {
+        margin: 16px;
+        padding: 18px 16px;
+        border: 1px dashed var(--color-line);
+        border-radius: 10px;
+        background: #111113;
+        color: var(--color-dim);
+        font-size: 13px;
+      }
+
+      .detail {
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+      }
+
+      .detail strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .detail span {
+        display: block;
+        margin-top: 6px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      /* Overlay chrome */
+      .tip,
+      .menu,
+      .toast,
+      .palette {
+        font-family: var(--sans);
+      }
+
+      .tip {
+        position: absolute;
+        left: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 8;
+        padding: 5px 8px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: #18181b;
+        color: var(--color-snow);
+        font-size: 12px;
+        line-height: 1;
+        white-space: nowrap;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+      }
+
+      .tip b {
+        margin-left: 6px;
+        font-family: var(--mono);
+        font-weight: 500;
+        color: var(--coral);
+      }
+
+      .menu {
+        position: absolute;
+        z-index: 12;
+        min-width: 196px;
+        padding: 4px;
+        border: 1px solid var(--color-line);
+        border-radius: 8px;
+        background: #111113;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      }
+
+      .menu p {
+        padding: 6px 10px 4px;
+        color: var(--color-dim);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .menu button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        min-height: 32px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--color-snow);
+        font: 400 13px var(--sans);
+        cursor: pointer;
+      }
+
+      .menu button:hover,
+      .menu button.on {
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      .menu button[disabled] {
+        color: #52525b;
+        cursor: default;
+      }
+
+      .menu button kbd {
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .menu hr {
+        border: 0;
+        border-top: 1px solid var(--color-line);
+        margin: 4px 0;
+      }
+
+      .export-menu {
+        top: calc(100% + 6px);
+        right: 0;
+      }
+
+      .install-menu {
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+      }
+
+      .ctx {
+        top: 72px;
+        left: 20px;
+      }
+
+      .toast {
+        position: absolute;
+        right: 20px;
+        bottom: 20px;
+        z-index: 14;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 260px;
+        padding: 12px 14px;
+        border: 1px solid var(--color-line);
+        border-radius: 10px;
+        background: #111113;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+      }
+
+      .toast i {
+        width: 8px;
+        height: 8px;
+        border-radius: 99px;
+        background: #3fb950;
+      }
+
+      .toast.warn i {
+        background: #d99a2b;
+      }
+
+      .toast b {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .toast small {
+        display: block;
+        margin-top: 2px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      .scrim {
+        position: absolute;
+        inset: 0;
+        z-index: 16;
+        background: rgba(0, 0, 0, 0.46);
+      }
+
+      .palette {
+        position: absolute;
+        left: 50%;
+        top: 14%;
+        z-index: 17;
+        width: min(560px, calc(100% - 48px));
+        transform: translateX(-50%);
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        background: #111113;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
+        overflow: hidden;
+      }
+
+      .palette input {
+        width: 100%;
+        height: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-bottom: 1px solid var(--color-line);
+        background: transparent;
+        color: var(--color-snow);
+        font: 400 15px var(--sans);
+        outline: none;
+      }
+
+      .palette .opt {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 36px;
+        padding: 0 14px;
+        color: var(--color-mute);
+        font-size: 13px;
+      }
+
+      .palette .opt.on {
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--color-snow);
+      }
+
+      .palette .opt kbd {
+        margin-left: auto;
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .palette .sec {
+        padding: 10px 14px 4px;
+        color: var(--color-dim);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .hint {
+        margin-top: 10px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      [data-show] {
+        display: none;
+      }
+
+      .desk.dir-a [data-show~="a"],
+      .desk.dir-b [data-show~="b"],
+      .desk.dir-c [data-show~="c"],
+      .desk.dir-d [data-show~="d"],
+      .desk.dir-e [data-show~="e"],
+      .desk.dir-f [data-show~="f"] {
+        display: block;
+      }
+
+      .desk.dir-a [data-show~="a"].tip,
+      .desk.dir-f [data-show~="f"].tip {
+        display: block;
+      }
+
+      .desk.dir-b [data-show~="b"].toast,
+      .desk.dir-f [data-show~="f"].toast {
+        display: flex;
+      }
+
+      .desk.dir-c [data-show~="c"].menu,
+      .desk.dir-e [data-show~="e"].menu,
+      .desk.dir-f [data-show~="f"].menu {
+        display: block;
+      }
+
+      .desk.dir-d [data-show~="d"].scrim,
+      .desk.dir-d [data-show~="d"].palette {
+        display: block;
+      }
+
+      @media (max-width: 980px) {
+        .desk,
+        .desk.collapsed {
+          grid-template-columns: 1fr;
+        }
+        .rail {
+          display: none;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="intro">
+        <p class="kicker">2B · Overlay value</p>
+        <h1>What Base UI / Radix means for this desk</h1>
+        <p>
+          Not a new look. Not a grey theme. They are the <strong>overlay engine</strong> —
+          tooltip, menu, toast, combobox — so focus, keyboard, and placement stop being
+          hand-rolled. The desk chrome stays: rail <code>#050506</code>, E bloom, 16px stage,
+          canvas <code>#09090b</code>, Alerts track.
+        </p>
+        <p>
+          Today those five interactions are a <code>title</code> attribute, a native
+          <code>select</code>, a Headless dialog with homemade arrows, and silence after
+          Acknowledge. That is what feels cheap next to Linear. The primitives buy the
+          evening, not the paint.
+        </p>
+        <p class="recipe">
+          <strong>For us:</strong> add five overlays. Keep Headless dialogs.
+          New pieces on <strong>Base UI via shadcn</strong>, except toast
+          (Radix or Sonner — Base UI has no toast yet).
+          <strong>Not this:</strong> rewriting the app onto a new library.
+        </p>
+      </div>
+
+      <nav class="jump" aria-label="Overlay directions">
+        <button type="button" class="on" data-dir="a">A · Tooltip</button>
+        <button type="button" data-dir="b">B · Toast</button>
+        <button type="button" data-dir="c">C · Menu</button>
+        <button type="button" data-dir="d">D · Combobox</button>
+        <button type="button" data-dir="e">E · Context</button>
+        <button type="button" data-dir="f">F · Evening</button>
+      </nav>
+
+      <div class="block-meta" id="meta">
+        <p class="kicker">A</p>
+        <h2>Tooltip on a collapsed rail</h2>
+        <p>
+          Icon-only rail is already live. Without a tooltip, Alerts is a bell with no name.
+          Hover stays put, names the view, keeps the coral count. Primitive: Tooltip.
+        </p>
+      </div>
+      <p class="hint" id="hint">Hover is simulated on. Collapse is the point of A.</p>
+
+      <div class="desk dir-a collapsed" id="desk">
+        <aside class="rail">
+          <div class="brand">
+            <div class="brand-row">
+              <span class="wordmark">NoSpoilers</span>
+              <button class="collapse" type="button" aria-label="Expand sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                </svg>
+              </button>
+            </div>
+            <button class="install" type="button" id="install-btn" aria-haspopup="menu">
+              <span class="mark">WS</span>
+              <span>workspace</span>
+              <div class="menu install-menu" data-show="c">
+                <p>Install</p>
+                <button type="button" class="on">workspace</button>
+                <button type="button">second-org</button>
+              </div>
+            </button>
+            <p class="sources-n">nothing connected</p>
+          </div>
+          <nav class="nav" aria-label="Watch desk">
+            <div class="group">
+              <p class="kicker">Work</p>
+              <div class="item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2 2" /></svg>
+                <span>Overview</span>
+              </div>
+              <div class="item on" id="alerts-hit">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9" /><path d="M10 21h4" /></svg>
+                <span>Alerts</span>
+                <b class="n">0</b>
+                <div class="tip" data-show="a f">Alerts <b>0</b></div>
+              </div>
+            </div>
+            <div class="group rule">
+              <p class="kicker">Evidence</p>
+              <div class="item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7h7v4H3zM14 7h7v10h-7zM3 13h7v4H3z" /></svg>
+                <span>Sources</span>
+              </div>
+              <div class="item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H6a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V8z" /></svg>
+                <span>Releases</span>
+              </div>
+            </div>
+          </nav>
+          <div class="setup">
+            <span class="ring"><span>0/8</span></span>
+            <span class="setup-copy">
+              Nothing covered yet
+              <small>Coverage</small>
+            </span>
+          </div>
+        </aside>
+        <div class="gutter">
+          <div class="stage">
+            <header class="cmd">
+              <div class="search" id="search-hit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
+                Search or run a command…
+                <kbd>Ctrl K</kbd>
+              </div>
+              <strong class="cmd-title">Alerts</strong>
+              <span class="chip">Trial</span>
+              <span class="ghost">Guide</span>
+              <span class="avatar">RE</span>
+            </header>
+            <div class="page-head">
+              <h2>Alerts</h2>
+              <div class="export-wrap">
+                <button class="export" type="button" id="export-hit">Export JSON</button>
+                <div class="menu export-menu" data-show="c f">
+                  <p>Export</p>
+                  <button type="button">JSON receipt list</button>
+                  <button type="button">This queue only</button>
+                  <hr />
+                  <button type="button">Copy share link</button>
+                </div>
+              </div>
+            </div>
+            <div class="queue-track" role="tablist" aria-label="Alert queues">
+              <i class="on"><span>Triage <b>0</b></span></i>
+              <i><span>Waiting <b>0</b></span></i>
+              <i><span>Mine <b>0</b></span></i>
+              <i><span>Resolved <b>0</b></span></i>
+            </div>
+            <div class="split">
+              <div class="inbox" id="inbox">
+                <div class="empty">This view is clear. No real alerts match this filter.</div>
+                <div class="menu ctx" data-show="e">
+                  <p>On a row</p>
+                  <button type="button" disabled>Acknowledge <kbd>E</kbd></button>
+                  <button type="button" disabled>Assign… <kbd>A</kbd></button>
+                  <button type="button" disabled>Resolve… <kbd>R</kbd></button>
+                  <hr />
+                  <button type="button" disabled>Nothing selected</button>
+                </div>
+              </div>
+              <div class="detail">
+                <div>
+                  <strong>Nothing selected.</strong>
+                  <span>Findings, exposure, and activity open here.</span>
+                </div>
+              </div>
+            </div>
+            <div class="toast" data-show="b f">
+              <i></i>
+              <div>
+                <b>Alert acknowledged.</b>
+                <small>No invented incident. This is the confirmation that is missing today.</small>
+              </div>
+            </div>
+            <div class="scrim" data-show="d"></div>
+            <div class="palette" data-show="d">
+              <input value="al" readonly aria-label="Command search" />
+              <p class="sec">Jump</p>
+              <div class="opt on">
+                Alerts
+                <kbd>↵</kbd>
+              </div>
+              <div class="opt">Audit log</div>
+              <p class="sec">Work</p>
+              <div class="opt">Overview</div>
+              <div class="opt">Sources</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const dirs = {
+        a: {
+          kicker: "A",
+          title: "Tooltip on a collapsed rail",
+          copy: "Icon-only rail is already live. Without a tooltip, Alerts is a bell with no name. Hover stays put, names the view, keeps the coral count. Primitive: Tooltip. Base UI or Radix — either.",
+          hint: "Rail is collapsed on purpose. This is what E-bloom plus a 56px rail still needs.",
+          collapsed: true,
+        },
+        b: {
+          kicker: "B",
+          title: "Toast after a quiet action",
+          copy: "Acknowledge and Resolve currently die into silence. A toast is the receipt: what happened, then it leaves. Primitive: Toast. Radix has one; Base UI does not yet. Sonner is the Linear-shaped option.",
+          hint: "No fake finding. The copy is the status line the live desk already knows how to say.",
+          collapsed: false,
+        },
+        c: {
+          kicker: "C",
+          title: "Menu instead of a native select",
+          copy: "Export and install-switch are a flat button and a browser <select>. A menu typeaheads, stays on brand, and does not flash white options. Primitive: Menu. Base UI or Radix.",
+          hint: "Open on Export. Items are verbs we already have, not new product.",
+          collapsed: false,
+        },
+        d: {
+          kicker: "D",
+          title: "Combobox command palette",
+          copy: "Ctrl K is a Headless dialog with homemade arrows. A combobox filters as you type, groups Jump vs Work, and restores focus. This is Base UI’s actual win over Radix.",
+          hint: "Typed “al”. Matches Alerts and Audit — real destinations, no tenant rows.",
+          collapsed: false,
+        },
+        e: {
+          kicker: "E",
+          title: "Context menu on the inbox",
+          copy: "Right-click a row for Acknowledge / Assign / Resolve without travelling to the detail chrome. Empty inbox: the menu exists, the verbs stay disabled. No invented incident. Primitive: Context Menu. Radix has this; Base UI is weaker here.",
+          hint: "Anchored on the hollow well so you can see the slot. Actions enable when a real row exists.",
+          collapsed: false,
+        },
+        f: {
+          kicker: "F",
+          title: "The evening together",
+          copy: "This is the production-value jump: tooltip + menu + toast on the desk you already have. Not a new theme. Not a library rewrite. Three overlays and the app stops feeling homemade.",
+          hint: "Collapsed off. Tooltip on Alerts, Export menu open, toast in the corner.",
+          collapsed: false,
+        },
+      };
+
+      const desk = document.getElementById("desk");
+      const meta = document.getElementById("meta");
+      const hint = document.getElementById("hint");
+      const jumps = document.querySelectorAll(".jump button");
+
+      function show(id) {
+        const dir = dirs[id];
+        desk.className = "desk dir-" + id + (dir.collapsed ? " collapsed" : "");
+        meta.innerHTML =
+          '<p class="kicker">' +
+          dir.kicker +
+          "</p><h2>" +
+          dir.title +
+          "</h2><p>" +
+          dir.copy +
+          "</p>";
+        hint.textContent = dir.hint;
+        jumps.forEach((btn) => btn.classList.toggle("on", btn.dataset.dir === id));
+      }
+
+      jumps.forEach((btn) => btn.addEventListener("click", () => show(btn.dataset.dir)));
+      document.getElementById("search-hit").addEventListener("click", () => show("d"));
+      document.getElementById("export-hit").addEventListener("click", () => show("c"));
+      document.getElementById("inbox").addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        show("e");
+      });
+    </script>
+  </body>
+</html>
