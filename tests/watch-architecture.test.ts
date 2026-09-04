@@ -75,12 +75,15 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/watch-desk/);
     expect(shell).toMatch(/watch-gutter/);
     expect(shell).toMatch(/watch-stage/);
+    expect(shell).toMatch(/watch-stage-head/);
+    expect(shell).not.toMatch(/bg-canvas\/90/);
     expect(shell).not.toMatch(/watch-frame/);
     expect(shell).not.toMatch(/#101112/);
     expect(css).toMatch(/\.watch-desk/);
     expect(css).toMatch(/\.watch-gutter/);
-    expect(css).toMatch(/\.watch-stage::before/);
-    expect(css).toMatch(/\.watch-stage::after/);
+    expect(css).toMatch(/\.watch-stage::before[\s\S]*?z-index:\s*3/);
+    expect(css).toMatch(/\.watch-stage::after[\s\S]*?z-index:\s*4/);
+    expect(css).toMatch(/\.watch-stage-head/);
     expect(css).toMatch(/linear-gradient\(#ffffff03, #ffffff03\), #09090b/);
     expect(css).toMatch(/#ffffff0d/);
     expect(css).toMatch(/#ffffff0f/);

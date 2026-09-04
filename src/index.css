@@ -166,7 +166,7 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 3;
   pointer-events: none;
   border-radius: inherit;
   background: radial-gradient(
@@ -186,7 +186,7 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
   border-radius: inherit;
   border: 1px solid #ffffff0f;
@@ -197,6 +197,11 @@ code {
 .watch-stage > * {
   position: relative;
   z-index: 1;
+}
+
+.watch-stage-head {
+  background: transparent;
+  border-bottom-color: #ffffff0f;
 }
 
 .watch-card {
