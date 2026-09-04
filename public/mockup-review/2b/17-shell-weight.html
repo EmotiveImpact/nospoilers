@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>17 · Shell weight</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --color-ink: #09090b;
+        --color-rail: #050506;
+        --color-canvas: #09090b;
+        --color-panel: #111113;
+        --color-inset: #0b0b0d;
+        --color-line: #2a2a2e;
+        --color-line-strong: #3f3f46;
+        --color-snow: #f4f4f5;
+        --color-mute: #a1a1aa;
+        --color-dim: #71717a;
+        --coral: #ff8a80;
+        --lift: #161618;
+      }
+
+      html,
+      body {
+        background: #000;
+      }
+
+      .page {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 22px 16px 80px;
+      }
+
+      .intro {
+        max-width: 74ch;
+        margin: 0 0 18px;
+      }
+
+      .intro h1 {
+        margin-top: 8px;
+        font-size: 30px;
+      }
+
+      .intro p {
+        margin-top: 10px;
+        color: var(--color-mute);
+      }
+
+      .intro code {
+        color: var(--color-snow);
+      }
+
+      .recipe {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--color-line);
+        border-radius: 10px;
+        background: #050506;
+        color: var(--color-dim);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .recipe strong {
+        color: var(--color-mute);
+        font-weight: 500;
+      }
+
+      .jump {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 0 14px;
+        background: color-mix(in srgb, #000 86%, transparent);
+        backdrop-filter: blur(12px);
+      }
+
+      .jump a {
+        height: 30px;
+        padding: 0 11px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        color: var(--color-mute);
+        font-size: 12px;
+        line-height: 30px;
+      }
+
+      .jump a:hover,
+      .jump a.on {
+        border-color: var(--color-line-strong);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-snow);
+      }
+
+      .block {
+        margin: 0 0 42px;
+      }
+
+      .block-meta {
+        max-width: 72ch;
+        margin: 0 0 12px;
+      }
+
+      .block-meta h2 {
+        margin-top: 6px;
+        font-size: 22px;
+      }
+
+      .block-meta p {
+        margin-top: 8px;
+        color: var(--color-mute);
+        font-size: 14px;
+      }
+
+      .desk {
+        position: relative;
+        display: grid;
+        grid-template-columns: 244px minmax(0, 1fr);
+        min-height: 820px;
+        overflow: hidden;
+        isolation: isolate;
+        background: var(--color-rail);
+        color: var(--color-snow);
+      }
+
+      .desk::before,
+      .desk::after,
+      .rail::before,
+      .rail::after,
+      .stage::before,
+      .stage::after,
+      .cmd::before {
+        content: none;
+        pointer-events: none;
+      }
+
+      .rail {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: transparent;
+      }
+
+      .brand {
+        position: relative;
+        z-index: 1;
+        padding: 18px 16px;
+        border-bottom: 1px solid var(--color-line);
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .wordmark {
+        font-family: var(--display);
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .collapse {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+      }
+
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 8px 10px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: var(--color-inset);
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 5px;
+        background: linear-gradient(to bottom right, #52525b, #18181b);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .sources-n {
+        margin-top: 4px;
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .nav {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 18px;
+        min-height: 0;
+        padding: 14px 10px;
+        overflow: auto;
+      }
+
+      .nav .kicker {
+        padding: 0 10px 6px;
+      }
+
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 30px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: var(--color-mute);
+        font-size: 13px;
+      }
+
+      .item.on {
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--color-snow);
+      }
+
+      .item svg {
+        flex: none;
+        opacity: 0.75;
+      }
+
+      .item .n {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--coral);
+      }
+
+      .group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .group.rule {
+        border-top: 1px solid var(--color-line);
+        padding-top: 17px;
+      }
+
+      .setup {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-top: 1px solid var(--color-line);
+      }
+
+      .ring {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex: none;
+        border-radius: 999px;
+        background: conic-gradient(#252529 0deg, #252529 360deg);
+      }
+
+      .ring span {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--color-rail);
+        color: var(--color-snow);
+        font-size: 9px;
+      }
+
+      .setup small {
+        display: block;
+        margin-top: 2px;
+        color: var(--color-dim);
+        font-size: 11px;
+      }
+
+      .gutter {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        min-width: 0;
+        padding: 8px;
+      }
+
+      .stage {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        border-radius: 16px;
+        background: var(--color-canvas);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+      }
+
+      .cmd {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 56px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--color-line);
+        background: var(--color-canvas);
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        max-width: 24rem;
+        flex: 1;
+        padding: 0 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: var(--color-inset);
+        color: var(--color-dim);
+        font-size: 13px;
+      }
+
+      .search kbd {
+        margin-left: auto;
+        padding: 1px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        font-family: var(--sans);
+        font-size: 11px;
+      }
+
+      .cmd-title {
+        margin-left: auto;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .chip {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        padding: 3px 8px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      .ghost {
+        border: 0;
+        background: transparent;
+        color: var(--color-mute);
+        font: 500 13px var(--sans);
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      .page-head,
+      .split,
+      .inbox,
+      .detail {
+        background: var(--color-canvas);
+      }
+
+      .page-head {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+        min-height: 64px;
+        padding: 16px 32px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .page-head h2 {
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      .page-head .seg {
+        margin-left: auto;
+      }
+
+      .seg {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        width: max-content;
+        max-width: 100%;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--color-line);
+        border-radius: 8px;
+        background: var(--color-inset);
+      }
+
+      .seg i {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 5px;
+        color: var(--color-dim);
+        font: 400 12px/1 var(--sans);
+        font-style: normal;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .seg i.on {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-snow);
+      }
+
+      .seg b {
+        font-family: var(--mono);
+        font-weight: 500;
+        color: var(--color-dim);
+      }
+
+      .seg i.on b.open,
+      .seg b.open {
+        color: var(--coral);
+      }
+
+      .export {
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--color-line);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-mute);
+        font: 500 12px var(--sans);
+      }
+
+      .split {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 0;
+        flex: 1;
+      }
+
+      .inbox {
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .empty {
+        margin: 16px;
+        padding: 14px 16px;
+        border: 1px dashed var(--color-line-strong);
+        border-radius: 10px;
+        background: var(--color-panel);
+        color: var(--color-dim);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .detail {
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        text-align: center;
+      }
+
+      .detail strong {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .detail span {
+        display: block;
+        margin-top: 6px;
+        color: var(--color-dim);
+        font-size: 12px;
+      }
+
+      /* A — top-left radial on the window chrome only */
+      .dir-a .desk {
+        background:
+          radial-gradient(540px 440px at 0 0, var(--lift) 0%, #0b0b0d 38%, var(--color-rail) 72%);
+      }
+
+      /* B — 64px lid across the full top edge of the window */
+      .dir-b .desk {
+        background: linear-gradient(180deg, var(--lift) 0%, #0b0b0d 48px, var(--color-rail) 64px);
+      }
+
+      .dir-b .cmd {
+        background: linear-gradient(180deg, var(--lift) 0%, var(--color-canvas) 100%);
+      }
+
+      /* C — 1px specular + rail vignette. No grey fill. */
+      .dir-c .stage {
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 24px 64px rgba(0, 0, 0, 0.28);
+      }
+
+      .dir-c .stage::after {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 1px;
+        z-index: 3;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.08),
+          rgba(255, 255, 255, 0.04) 42%,
+          transparent 78%
+        );
+      }
+
+      .dir-c .rail::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 260px;
+        z-index: 0;
+        background: radial-gradient(120% 90% at 50% 100%, #000 0%, transparent 72%);
+      }
+
+      /* D — rail fade only; stage stays flat black */
+      .dir-d .rail {
+        background: linear-gradient(180deg, var(--lift) 0%, #0a0a0b 36%, var(--color-rail) 68%);
+      }
+
+      /* E — 180px bloom behind the wordmark only */
+      .dir-e .rail::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 180px;
+        height: 180px;
+        z-index: 0;
+        background: radial-gradient(circle at 28% 22%, var(--lift) 0%, rgba(22, 22, 24, 0.35) 46%, transparent 72%);
+      }
+
+      /* F — 56px lid inside the rounded stage, then black canvas */
+      .dir-f .cmd {
+        background: linear-gradient(180deg, var(--lift) 0%, #0c0c0e 52%, var(--color-canvas) 100%);
+      }
+
+      @media (max-width: 980px) {
+        .desk {
+          grid-template-columns: 1fr;
+        }
+        .rail {
+          display: none;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="intro">
+        <p class="kicker">2B · Shell weight</p>
+        <h1>What Linear is doing — chrome lighting, not a grey page</h1>
+        <p>
+          On <a href="https://linear.app">linear.app</a> the product shot is a darker frame
+          around a darker canvas. The lighter grey in the top-left is a
+          <strong>radial luminance wash</strong> (their <code>edgeGlow</code> is white at
+          about 4–8% over <code>#090a0b</code> / <code>#101112</code>, which reads as
+          ~<code>#161618</code>) plus a <strong>1px edge highlight / shine</strong> masked
+          to that same corner. The sidebar also gets a small blurred bloom behind the
+          wordmark. The inner issue view stays near-black. A vignette under the window
+          makes the shell feel heavy.
+        </p>
+        <p>
+          These six directions put that idea on the live Watch desk — rail
+          <code>#050506</code>, rounded 16px stage, Alerts C (30px title, four pills,
+          inbox list only). The work canvas stays <code>#09090b</code>. Live Watch is
+          unchanged until you pick one.
+        </p>
+        <p class="recipe">
+          <strong>Not this:</strong> filling Overview or Alerts with mid-grey
+          (<code>#141416</code>).
+          <strong>This:</strong> light on the rail, gutter, top edge, or command strip.
+        </p>
+      </div>
+
+      <nav class="jump" aria-label="Shell directions">
+        <a href="#a">A · Radial</a>
+        <a href="#b">B · Top wash</a>
+        <a href="#c">C · Highlight</a>
+        <a href="#d">D · Split</a>
+        <a href="#e">E · Bloom</a>
+        <a href="#f">F · Lid</a>
+      </nav>
+
+      <template id="desk-tpl">
+        <div class="desk">
+          <aside class="rail">
+            <div class="brand">
+              <div class="brand-row">
+                <span class="wordmark">NoSpoilers</span>
+                <span class="collapse" aria-label="Collapse sidebar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <path d="M9 4v16" />
+                  </svg>
+                </span>
+              </div>
+              <div class="install">
+                <span class="mark">NS</span>
+                <span>workspace</span>
+              </div>
+              <p class="sources-n">nothing connected</p>
+            </div>
+            <nav class="nav" aria-label="Watch desk">
+              <div class="group">
+                <p class="kicker">Work</p>
+                <div class="item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2 2" /></svg>
+                  Overview
+                </div>
+                <div class="item on">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9" /><path d="M10 21h4" /></svg>
+                  Alerts <span class="n">60</span>
+                </div>
+              </div>
+              <div class="group rule">
+                <p class="kicker">Evidence</p>
+                <div class="item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7h7v4H3zM14 7h7v10h-7zM3 13h7v4H3z" /></svg>
+                  Sources
+                </div>
+                <div class="item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H6a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V8z" /></svg>
+                  Releases
+                </div>
+                <div class="item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 19V5M4 12h12M10 6h10M10 18h10" /></svg>
+                  Timeline
+                </div>
+              </div>
+              <div class="group">
+                <p class="kicker">Settings</p>
+                <div class="item">Notifications</div>
+                <div class="item">Policy &amp; allowlist</div>
+                <div class="item">Team &amp; roles</div>
+                <div class="item">Retention</div>
+                <div class="item">Audit log</div>
+                <div class="item">Install health</div>
+              </div>
+            </nav>
+            <div class="setup">
+              <span class="ring"><span>0/8</span></span>
+              <span>
+                Nothing covered yet
+                <small>Coverage</small>
+              </span>
+            </div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <header class="cmd">
+                <div class="search">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
+                  Search or run a command…
+                  <kbd>Ctrl K</kbd>
+                </div>
+                <strong class="cmd-title">Alerts</strong>
+                <span class="chip">Trial</span>
+                <span class="ghost">Guide</span>
+                <span class="avatar">RE</span>
+              </header>
+              <div class="page-head">
+                <h2>Alerts</h2>
+                <div class="seg" role="tablist" aria-label="Alert queues">
+                  <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                  <i data-q="waiting">Waiting <b>3</b></i>
+                  <i data-q="mine">Mine <b>1</b></i>
+                  <i data-q="done">Resolved</i>
+                </div>
+                <span class="export">Export JSON</span>
+              </div>
+              <div class="split">
+                <div class="inbox">
+                  <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+                </div>
+                <div class="detail">
+                  <div>
+                    <strong>Nothing selected.</strong>
+                    <span>Findings, exposure, and activity open here.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <script>
+      const dirs = [
+        {
+          id: "a",
+          title: "A — Top-left radial",
+          copy: "A radial wash from ~#161618 at the logo corner, fading into #050506 on the rail and the 8px gutter. Pick this if you want Linear’s homepage corner light and the Alerts canvas must stay black.",
+        },
+        {
+          id: "b",
+          title: "B — Top-edge linear wash",
+          copy: "A 64px lid across the full top of the window — rail, gutter, and the 56px command strip — fading down into #050506. Pick this if the chrome should read as one piece of metal, not a lit corner.",
+        },
+        {
+          id: "c",
+          title: "C — Window highlight + vignette",
+          copy: "A 1px white specular (rgba 0.06) on the stage rim, plus a darker vignette at the bottom of the rail. Pick this if the weight should come from lighting alone, with no grey fill anywhere.",
+        },
+        {
+          id: "d",
+          title: "D — Split luminance",
+          copy: "The sidebar fades lighter at the top; the rounded stage stays flat #09090b. Pick this if the frame should have weight while the work surface stays black.",
+        },
+        {
+          id: "e",
+          title: "E — Corner bloom only",
+          copy: "A 180px radial sits only behind the NoSpoilers wordmark. Pick this if the quietest lift is enough and the rest of the chrome should stay #050506.",
+        },
+        {
+          id: "f",
+          title: "F — Stage lid",
+          copy: "A 56px wash lives inside the rounded stage’s command header, then drops to #09090b. Pick this if the lid should sit on the work window, not the sidebar.",
+        },
+      ];
+
+      const page = document.querySelector(".page");
+      const tpl = document.getElementById("desk-tpl");
+      const copy = {
+        open: "This view is clear. No real alerts match this filter.",
+        waiting: "Nothing waiting on rotation in this preview.",
+        mine: "Nothing assigned to you in this preview.",
+        done: "No resolved alerts in this preview.",
+      };
+
+      for (const dir of dirs) {
+        const block = document.createElement("section");
+        block.className = "block dir-" + dir.id;
+        block.id = dir.id;
+        block.innerHTML =
+          '<div class="block-meta"><p class="kicker">' +
+          dir.id.toUpperCase() +
+          "</p><h2>" +
+          dir.title +
+          '</h2><p>' +
+          dir.copy +
+          "</p></div>";
+        block.appendChild(tpl.content.cloneNode(true));
+        page.appendChild(block);
+
+        const desk = block.querySelector(".desk");
+        const empty = desk.querySelector("[data-empty]");
+        desk.querySelectorAll("[data-q]").forEach((el) => {
+          el.addEventListener("click", () => {
+            const key = el.getAttribute("data-q");
+            desk.querySelectorAll("[data-q]").forEach((pill) => {
+              pill.classList.toggle("on", pill.getAttribute("data-q") === key);
+            });
+            if (empty) empty.textContent = copy[key];
+          });
+        });
+      }
+
+      const marks = () => {
+        const id = (location.hash || "#a").slice(1);
+        document.querySelectorAll(".jump a").forEach((a) => {
+          a.classList.toggle("on", a.getAttribute("href") === "#" + id);
+        });
+      };
+      window.addEventListener("hashchange", marks);
+      marks();
+    </script>
+  </body>
+</html>
