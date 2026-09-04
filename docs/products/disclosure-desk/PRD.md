@@ -1,7 +1,10 @@
 # Disclosure Desk — Internal NoSpoilers PRD
 
-Disclosure Desk extends the current NoSpoilers Artifact Leads surface for our own responsible
-disclosure and acquisition operations. It is not a customer product today.
+**Status:** Phase 2 minus send is **built** on Artifact Leads. Nothing is mailed. Customer sessions
+stay 401. Aggregate research stays planned. [`docs/STATUS.md`](../../STATUS.md).
+
+Disclosure Desk extends Artifact Leads for our own responsible disclosure and acquisition.
+It is not a customer product.
 
 ## Product
 

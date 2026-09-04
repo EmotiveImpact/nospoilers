@@ -1,6 +1,10 @@
 # Package Identity — NoSpoilers Module PRD
 
-Package Identity is a later NoSpoilers module. It extends automatic package monitoring with
+**Status:** foundations are **built** (protect, snapshots, lookalikes, namespace watch, evidence
+page, risk score). Not a malware verdict. Needs an npm pack this install owns for a live protect
+proof. [`docs/STATUS.md`](../../STATUS.md).
+
+Package Identity is a NoSpoilers module. It extends automatic package monitoring with
 identity-continuity and impersonation signals.
 
 ## Product

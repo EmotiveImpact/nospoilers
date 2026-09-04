@@ -1,5 +1,8 @@
 # Employee Public Footprint — Standalone Product PRD
 
+**Status:** specification only. **Not this repository.** Do not start it here.
+[`docs/STATUS.md`](../../STATUS.md).
+
 Working name only. Build in a separate repository/application from NoSpoilers.
 
 ## Product

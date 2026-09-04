@@ -1,9 +1,19 @@
 # Complete feature inventory
 
 Nothing in this file is implied or silently discarded. It is the exhaustive inventory discussed
-through 2026-09-01. `docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md` assigns it to phases.
+through 2026-09-01. Implementation truth for “is it live?” is [`docs/STATUS.md`](../STATUS.md).
+`docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md` assigns phases.
+
+**Rollup (4 September 2026):** almost every customer and internal row is **Built** or **Partial**.
+Left as **Planned**: custom domain DNS, SBOM, Sigstore/SLSA verify, scheduled CDN, native
+Vercel/Netlify/Cloudflare OAuth, aggregate research. **Deferred**: Electron installer worker,
+SSO/SAML. **Separate product**: Employee Public Footprint. **Do not build**: malware verdicts,
+automated outreach, retaining source/secret values.
 
 Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**, **Do not build**.
+
+A **Built** adapter can still be dark (Stripe, Resend). **Partial** means the customer path is
+incomplete (Railway deploy, Checks write, required-check visibility).
 
 ## Commercial and platform foundation
 
@@ -21,7 +31,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Stripe lifecycle webhooks | Built: signed `checkout.session.completed`, subscription updated/deleted, `invoice.paid` / `invoice.payment_failed`; idempotent `stripe_events`; failed payment or cancel clears plan and stops hosted work | NoSpoilers |
 | Billing portal | Built: install admin opens portal when a customer exists; already-subscribed Checkout returns the portal | NoSpoilers |
 | Railway web/API and worker deployment | Partial: Vercel serves web/API; `railway.toml` defines `npm run worker`; `NOSPOILERS_ROLE=web|worker|all` splits HTTP from job claim; direct Neon `LISTEN` wakes the worker while normal queries stay pooled; Railway account/environment deployment is still human-gated | NoSpoilers |
-| Cloudflare DNS/custom domain | Planned | NoSpoilers |
+| Custom domain (`nospoilers.dev`) | Planned: registrar → Vercel; Cloudflare DNS is optional | NoSpoilers |
 | Resend email delivery | Built: Watch email destinations encrypt the address; AlertNotifier POSTs to Resend when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set; test and send stay 503 / `failed` without keys; this host has no keys (`resend: false`); Live Neon `060` applied, email destinations 0; Disclosure Desk `sent` stays false; invites stay GitHub-login only | NoSpoilers |
 | Job retry/backoff | Built: 5 attempts, exponential backoff | NoSpoilers |
 | Stale-lock recovery/dead-letter visibility | Built: stale running jobs requeued; tenant failed jobs listed on Watch; owner queue counts include failed and stale locks; job bodies stay off the owner page | NoSpoilers |
@@ -193,7 +203,7 @@ Legend: **Built**, **Partial**, **Planned**, **Deferred**, **Separate product**,
 | Audit-log export | Built: trial/Team append-only `audit_events` plus titles-only alerts/deliveries; typed confirmation on destructive writes; Solo 403; unpaid 402; never stores URLs, emails, tokens, or secret values | NoSpoilers Team |
 | Queue and usage health | Built: tenant-scoped job list with fairUse warning/exhausted/resetsAt; owner `GET /api/internal/queue` counts (customer vs prospect, stale locks, daily unpack aggregates); public `/status` liveness; no scan credits; job bodies stay off the owner page | NoSpoilers |
 | Public status page | Built: `/status` from `/api/health` (no tenant data, no URL); shows GitHub App, Stripe, Resend, process role, built UI on disk, Neon mode | Operations |
-| Watch desk 2B monolith | Built: signed-in and preview `/watch` use the 2B sidebar (Overview, Alerts + triage views, Sources, Releases, Timeline, Finish setup, Settings). Ember stays homepage-only. Wired to live Watch APIs; preview copy is layout-only. Leftover mockup PR #3 and earlier 2B PR #9 are not the product branch | NoSpoilers |
+| Watch desk 2B monolith | Built: signed-in and preview `/watch` use the 2B sidebar and extracted screens. Ember stays homepage-only. Live APIs; no invented rows. Chrome comps `19`–`21`; shot C is Linear view tokens on `.watch-stage` only | NoSpoilers |
 | Scan concurrency/fair-use controls without credits | Built: Solo 1 concurrent heavy unpack and 8 per UTC day per install, Team/trial 3 concurrent and 24/day; global heavy cap still applies; map custody is light; website/map crawl jobs use the heavy lane and only consume daily usage when changed bytes are scanned; no-download GitHub/npm jobs refund; job list is counts not credits | NoSpoilers |
 | Multiple notification destinations | Built: one email (covered installs), one Slack, one SIEM, one Jira Cloud, and one PagerDuty destination per install | NoSpoilers |
 

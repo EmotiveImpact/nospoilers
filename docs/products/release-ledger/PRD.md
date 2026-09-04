@@ -1,6 +1,10 @@
 # Release Ledger — NoSpoilers Module PRD
 
-Release Ledger is a later NoSpoilers module. It uses the existing repository, customer account,
+**Status:** foundations are **built** in this repo (revisions, receipts, on-demand delivery verify,
+approve/hold, `/verify/:token`, attestation presence, signing policy). SBOM, Sigstore verify, and
+scheduled CDN stay planned. Live vs leftover: [`docs/STATUS.md`](../../STATUS.md).
+
+Release Ledger is a NoSpoilers module. It uses the existing repository, customer account,
 artifact identity, policy, scan result, queue and billing system.
 
 ## Product

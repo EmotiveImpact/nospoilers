@@ -1,7 +1,7 @@
 # Access boundaries
 
-This file is the authorization source of truth for NoSpoilers. Product PRDs describe
-what exists; this file describes **who may see or change it**.
+This file is the authorization source of truth for NoSpoilers. What exists vs what is live:
+[`docs/STATUS.md`](STATUS.md). This file describes **who may see or change** what exists.
 
 Employee Public Footprint is a separate future application. It is not built in this
 repository and has no role here.

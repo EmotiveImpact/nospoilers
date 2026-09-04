@@ -1,9 +1,12 @@
 # NoSpoilers Ultimate — Product Requirements Document
 
-Status: expansion plan  
+Status: expansion plan. **Implementation truth:** [`docs/STATUS.md`](../STATUS.md).  
 Owner: Emotive Impact  
 Tagline: **no spoilers in production.**  
 Canonical feature inventory: `docs/expansion/FEATURE-INVENTORY.md`
+
+This PRD is the long-form product. It is not a second roadmap. Phases 0–2 customer work described
+here is in the repository. Go-live and ice items are [`docs/ROADMAP.md`](../ROADMAP.md).
 
 ## 1. Product definition
 

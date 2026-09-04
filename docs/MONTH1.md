@@ -1,6 +1,6 @@
 # Month 1 — where customers actually come from
 
-Estimates for the first 30 days after a **working** public launch (Stripe, install, first scan, unpaid-install kill all live). Not TAM. Not a promise.
+Estimates for the first 30 days after a **working** public launch (Stripe, install, first scan, unpaid-install kill all live). Not TAM. Not a promise. Launch leftovers: [`docs/STATUS.md`](STATUS.md).
 
 **Likely: 4–8 paying customers.** Low 0–2. Lucky 15–25 (front-page HN or a real incident with our name on it). 50+ is not a month-1 number without existing distribution.
 

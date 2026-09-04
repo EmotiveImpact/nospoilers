@@ -63,9 +63,10 @@ privacy, legal and authorization requirements.
 
 ## Development order
 
-1. Complete NoSpoilers Phases 0–2 from the Ultimate PRD.
-2. Continue Release Ledger and Package Identity as later NoSpoilers phases/modules.
-3. Expand Disclosure Desk only as an internal operator surface.
-4. Create Employee Public Footprint separately only when development is intentionally started.
+1. **Done in this repo:** NoSpoilers Phases 0–2 customer surfaces, Release Ledger and Package
+   Identity foundations, internal Disclosure Desk. See [`docs/STATUS.md`](../STATUS.md).
+2. **Next:** human-gated launch (Stripe, Resend, Railway, domain) in [`docs/ROADMAP.md`](../ROADMAP.md).
+3. Keep Disclosure Desk internal. Do not split it into a consultancy app.
+4. Create Employee Public Footprint in a new repository only when that work is intentionally started.
 
 Do not create four repositories or a multi-product monorepo.
