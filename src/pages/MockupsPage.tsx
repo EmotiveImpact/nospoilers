@@ -20,6 +20,15 @@ export function MockupsPage() {
           Unpaid locked scan
         </Button>
       </div>
+      <p className="mt-16 text-[11px] uppercase tracking-[0.28em] text-dim">Review comps</p>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
+        Static HTML for shell and page studies. They are not the live desk.
+      </p>
+      <p className="mt-4">
+        <a href="/mockup-review/" className="text-snow underline underline-offset-4">
+          All mockups
+        </a>
+      </p>
     </main>
   )
 }

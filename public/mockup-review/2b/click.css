@@ -1,0 +1,696 @@
+/* Click-through kit for the 1F–1I mockups.
+   Hidden radios and checkboxes sit before .app. Labels in the page flip them.
+   No JavaScript. Load after mockup.css and console.css. */
+
+.viewset,
+.alertset,
+.actset,
+.sceneset,
+.srcset,
+.ovset,
+.chipset,
+.modeset,
+.stepset {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- routes ---------- */
+
+.view {
+  display: none !important;
+}
+
+#v-overview:checked ~ .app .view-overview,
+#v-sources:checked ~ .app .view-sources,
+#v-releases:checked ~ .app .view-releases,
+#v-timeline:checked ~ .app .view-timeline,
+#v-notify:checked ~ .app .view-notify,
+#v-policy:checked ~ .app .view-policy,
+#v-team:checked ~ .app .view-team,
+#v-retention:checked ~ .app .view-retention,
+#v-audit:checked ~ .app .view-audit,
+#v-health:checked ~ .app .view-health,
+#v-tokens:checked ~ .app .view-tokens,
+#v-registries:checked ~ .app .view-registries,
+#v-setup:checked ~ .app .view-setup,
+#v-repo:checked ~ .app .view-repo {
+  display: block !important;
+}
+
+#v-alerts:checked ~ .app .view-alerts,
+#v-alerts-wait:checked ~ .app .view-alerts,
+#v-alerts-mine:checked ~ .app .view-alerts,
+#v-alerts-done:checked ~ .app .view-alerts {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+#v-alerts:checked ~ .app .shell,
+#v-alerts:checked ~ .app .main,
+#v-alerts-wait:checked ~ .app .shell,
+#v-alerts-wait:checked ~ .app .main,
+#v-alerts-mine:checked ~ .app .shell,
+#v-alerts-mine:checked ~ .app .main,
+#v-alerts-done:checked ~ .app .shell,
+#v-alerts-done:checked ~ .app .main {
+  height: 100svh;
+  overflow: hidden;
+}
+
+#v-alerts:checked ~ .app .view-alerts .panes,
+#v-alerts-wait:checked ~ .app .view-alerts .panes,
+#v-alerts-mine:checked ~ .app .view-alerts .panes,
+#v-alerts-done:checked ~ .app .view-alerts .panes {
+  flex: 1;
+  min-height: 0;
+}
+
+#v-overview:checked ~ .app .nav label[for="v-overview"],
+#v-alerts:checked ~ .app .nav label[for="v-alerts"],
+#v-alerts-wait:checked ~ .app .nav label[for="v-alerts"],
+#v-alerts-mine:checked ~ .app .nav label[for="v-alerts"],
+#v-alerts-done:checked ~ .app .nav label[for="v-alerts"],
+#v-alerts-wait:checked ~ .app .nav label[for="v-alerts-wait"],
+#v-alerts-mine:checked ~ .app .nav label[for="v-alerts-mine"],
+#v-alerts-done:checked ~ .app .nav label[for="v-alerts-done"],
+#v-sources:checked ~ .app .nav label[for="v-sources"],
+#v-releases:checked ~ .app .nav label[for="v-releases"],
+#v-timeline:checked ~ .app .nav label[for="v-timeline"],
+#v-notify:checked ~ .app .nav label[for="v-notify"],
+#v-policy:checked ~ .app .nav label[for="v-policy"],
+#v-team:checked ~ .app .nav label[for="v-team"],
+#v-retention:checked ~ .app .nav label[for="v-retention"],
+#v-audit:checked ~ .app .nav label[for="v-audit"],
+#v-health:checked ~ .app .nav label[for="v-health"],
+#v-tokens:checked ~ .app .nav label[for="v-tokens"],
+#v-registries:checked ~ .app .nav label[for="v-registries"],
+#v-setup:checked ~ .app .nav label[for="v-setup"],
+#v-repo:checked ~ .app .nav label[for="v-repo"] {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--snow);
+}
+
+.vt {
+  display: none;
+}
+#v-overview:checked ~ .app .vt-overview,
+#v-alerts:checked ~ .app .vt-alerts,
+#v-alerts-wait:checked ~ .app .vt-alerts,
+#v-alerts-mine:checked ~ .app .vt-alerts,
+#v-alerts-done:checked ~ .app .vt-alerts,
+#v-sources:checked ~ .app .vt-sources,
+#v-releases:checked ~ .app .vt-releases,
+#v-timeline:checked ~ .app .vt-timeline,
+#v-notify:checked ~ .app .vt-notify,
+#v-policy:checked ~ .app .vt-policy,
+#v-team:checked ~ .app .vt-team,
+#v-retention:checked ~ .app .vt-retention,
+#v-audit:checked ~ .app .vt-audit,
+#v-health:checked ~ .app .vt-health,
+#v-tokens:checked ~ .app .vt-tokens,
+#v-registries:checked ~ .app .vt-registries,
+#v-setup:checked ~ .app .vt-setup,
+#v-repo:checked ~ .app .vt-repo {
+  display: inline;
+}
+
+/* ---------- selected alert ---------- */
+
+.adetail {
+  display: none !important;
+}
+#a-map:checked ~ .app .adetail-map,
+#a-doc:checked ~ .app .adetail-doc,
+#a-pub:checked ~ .app .adetail-pub,
+#a-none:checked ~ .app .adetail-none {
+  display: block !important;
+}
+
+#a-map:checked ~ .app .aitem-map,
+#a-doc:checked ~ .app .aitem-doc,
+#a-pub:checked ~ .app .aitem-pub {
+  background: rgba(255, 255, 255, 0.055);
+  border-left-color: var(--snow);
+}
+
+.abar {
+  display: none !important;
+}
+#a-map:checked ~ .app .abar-map,
+#a-doc:checked ~ .app .abar-doc,
+#a-pub:checked ~ .app .abar-pub {
+  display: flex !important;
+}
+
+/* Saved alert lists. One list visible at a time. */
+.alist {
+  display: none !important;
+}
+#v-alerts:checked ~ .app .alist-triage,
+#v-alerts-wait:checked ~ .app .alist-wait,
+#v-alerts-mine:checked ~ .app .alist-mine,
+#v-alerts-done:checked ~ .app .alist-done {
+  display: block !important;
+}
+
+/* Acknowledge / resolve. Hidden until the matching checkbox is on. */
+.show-map-ack,
+.show-doc-ack,
+.show-map-res,
+.show-doc-res,
+.show-both-res,
+.show-dana {
+  display: none !important;
+}
+
+#ack-map:checked ~ .app .show-map-ack,
+#ack-doc:checked ~ .app .show-doc-ack,
+#res-map:checked ~ .app .show-map-res,
+#res-doc:checked ~ .app .show-doc-res,
+#as-dana:checked ~ .app .show-dana {
+  display: revert !important;
+}
+
+#ack-map:checked ~ .app .hide-map-ack,
+#ack-doc:checked ~ .app .hide-doc-ack,
+#res-map:checked ~ .app .hide-map-res,
+#res-doc:checked ~ .app .hide-doc-res,
+#as-dana:checked ~ .app .hide-dana {
+  display: none !important;
+}
+
+#res-map:checked ~ #res-doc:checked ~ .app .show-both-res {
+  display: revert !important;
+}
+#res-map:checked ~ #res-doc:checked ~ .app .hide-both-res {
+  display: none !important;
+}
+
+/* Counts in the sidebar: 2 → 1 → 0 as alerts resolve. */
+.c1,
+.c0 {
+  display: none;
+}
+#res-map:checked ~ .app .c2,
+#res-doc:checked ~ .app .c2 {
+  display: none;
+}
+#res-map:checked ~ .app .c1-map,
+#res-doc:checked ~ .app .c1-doc {
+  display: inline;
+}
+#res-map:checked ~ #res-doc:checked ~ .app .c1-map,
+#res-map:checked ~ #res-doc:checked ~ .app .c1-doc {
+  display: none;
+}
+#res-map:checked ~ #res-doc:checked ~ .app .c0 {
+  display: inline;
+}
+
+/* ---------- source chips ---------- */
+
+#sf-gh:checked ~ .app .srccard:not(.src-gh),
+#sf-npm:checked ~ .app .srccard:not(.src-npm),
+#sf-web:checked ~ .app .srccard:not(.src-web),
+#sf-map:checked ~ .app .srccard:not(.src-map),
+#sf-hot:checked ~ .app .srccard:not(.src-hot) {
+  display: none !important;
+}
+
+#sf-all:checked ~ .app .chip[for="sf-all"],
+#sf-gh:checked ~ .app .chip[for="sf-gh"],
+#sf-npm:checked ~ .app .chip[for="sf-npm"],
+#sf-web:checked ~ .app .chip[for="sf-web"],
+#sf-map:checked ~ .app .chip[for="sf-map"],
+#sf-hot:checked ~ .app .chip[for="sf-hot"] {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--line-strong);
+  color: var(--snow);
+}
+
+#src-npm-on:checked ~ .app .show-npm-on {
+  display: revert !important;
+}
+#src-npm-on:checked ~ .app .hide-npm-on {
+  display: none !important;
+}
+.show-npm-on {
+  display: none !important;
+}
+
+/* ---------- overlays: command palette, plans, add-source, assign, install ---------- */
+
+.scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(4, 4, 5, 0.55);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.palette,
+.modal,
+.drawer {
+  display: none;
+}
+
+#ov-cmd:checked ~ .scrim,
+#ov-plans:checked ~ .scrim,
+#ov-source:checked ~ .scrim,
+#ov-assign:checked ~ .scrim,
+#ov-repo:checked ~ .scrim {
+  display: block;
+}
+
+#ov-cmd:checked ~ .palette {
+  display: block;
+}
+
+#ov-plans:checked ~ .modal-plans,
+#ov-source:checked ~ .modal-source,
+#ov-assign:checked ~ .modal-assign,
+#ov-repo:checked ~ .modal-repo {
+  display: flex;
+}
+
+.palette {
+  position: fixed;
+  z-index: 41;
+  top: 14vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(600px, calc(100vw - 32px));
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: #0e0e11;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.palette input {
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--snow);
+  font-family: var(--sans);
+  font-size: 15px;
+}
+.palette input:focus {
+  outline: none;
+}
+.pgroup {
+  padding: 9px 0 4px;
+}
+.pgroup > .kicker {
+  padding: 0 18px 6px;
+  display: block;
+}
+.pitem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 18px;
+  font-size: 13px;
+  color: var(--mute);
+  cursor: pointer;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+}
+.pitem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--snow);
+}
+.pitem .ico {
+  width: 16px;
+  text-align: center;
+  opacity: 0.7;
+}
+.pfoot {
+  display: flex;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.modal {
+  position: fixed;
+  z-index: 41;
+  top: 14vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 22px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: #0e0e11;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+}
+
+.inst-pop {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  left: 12px;
+  right: 12px;
+  top: 92px;
+  padding: 6px;
+  border-radius: var(--r);
+  border: 1px solid var(--line-strong);
+  background: #1a1a1e;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+#ov-install:checked ~ .app .inst-pop {
+  display: block;
+}
+.inst-pop label,
+.inst-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--mute);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.inst-pop label:hover,
+.inst-pop button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--snow);
+}
+
+/* ---------- desk / settings mode (1I) ---------- */
+
+#m-desk:checked ~ .app .mode-settings,
+#m-settings:checked ~ .app .mode-desk {
+  display: none !important;
+}
+
+#m-desk:checked ~ .app .modeswitch label[for="m-desk"],
+#m-settings:checked ~ .app .modeswitch label[for="m-settings"] {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--snow);
+}
+
+.modeswitch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--inset);
+}
+.modeswitch label {
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.sv {
+  display: none !important;
+}
+#sv-notify:checked ~ .app .sv-notify,
+#sv-policy:checked ~ .app .sv-policy,
+#sv-team:checked ~ .app .sv-team,
+#sv-retention:checked ~ .app .sv-retention,
+#sv-audit:checked ~ .app .sv-audit,
+#sv-health:checked ~ .app .sv-health,
+#sv-tokens:checked ~ .app .sv-tokens,
+#sv-registries:checked ~ .app .sv-registries {
+  display: block !important;
+}
+
+#sv-notify:checked ~ .app .snav label[for="sv-notify"],
+#sv-policy:checked ~ .app .snav label[for="sv-policy"],
+#sv-team:checked ~ .app .snav label[for="sv-team"],
+#sv-retention:checked ~ .app .snav label[for="sv-retention"],
+#sv-audit:checked ~ .app .snav label[for="sv-audit"],
+#sv-health:checked ~ .app .snav label[for="sv-health"],
+#sv-tokens:checked ~ .app .snav label[for="sv-tokens"],
+#sv-registries:checked ~ .app .snav label[for="sv-registries"] {
+  color: var(--snow);
+  border-left-color: var(--snow);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.snav {
+  border-right: 1px solid var(--line);
+  padding: 24px 0 40px;
+}
+.snav-group {
+  margin-bottom: 20px;
+}
+.snav-group > .kicker {
+  display: block;
+  padding: 0 20px 7px;
+}
+.snav label {
+  display: block;
+  padding: 7px 20px;
+  font-size: 13px;
+  color: var(--mute);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.snav label:hover {
+  color: var(--snow);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.savebar {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 26px;
+  padding: 13px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: rgba(14, 14, 17, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- walkthrough scenes ---------- */
+
+.scene {
+  display: none !important;
+}
+#sc-1:checked ~ .app .scene-1,
+#sc-2:checked ~ .app .scene-2,
+#sc-3:checked ~ .app .scene-3,
+#sc-4:checked ~ .app .scene-4,
+#sc-5:checked ~ .app .scene-5,
+#sc-6:checked ~ .app .scene-6,
+#hi-1:checked ~ .app .scene-1,
+#hi-2:checked ~ .app .scene-2,
+#hi-3:checked ~ .app .scene-3,
+#hi-4:checked ~ .app .scene-4,
+#hi-5:checked ~ .app .scene-5,
+#hi-6:checked ~ .app .scene-6 {
+  display: block !important;
+}
+
+#hi-2:checked ~ .app .scene-2.flex-scene,
+#hi-3:checked ~ .app .scene-3.flex-scene,
+#hi-4:checked ~ .app .scene-4.flex-scene,
+#hi-5:checked ~ .app .scene-5.flex-scene {
+  display: flex !important;
+}
+
+.walk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(9, 9, 11, 0.92);
+}
+.walk label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+.walk label:hover {
+  color: var(--snow);
+  border-color: var(--line-strong);
+}
+#sc-1:checked ~ .app .walk label[for="sc-1"],
+#sc-2:checked ~ .app .walk label[for="sc-2"],
+#sc-3:checked ~ .app .walk label[for="sc-3"],
+#sc-4:checked ~ .app .walk label[for="sc-4"],
+#sc-5:checked ~ .app .walk label[for="sc-5"],
+#sc-6:checked ~ .app .walk label[for="sc-6"],
+#hi-1:checked ~ .app .walk label[for="hi-1"],
+#hi-2:checked ~ .app .walk label[for="hi-2"],
+#hi-3:checked ~ .app .walk label[for="hi-3"],
+#hi-4:checked ~ .app .walk label[for="hi-4"],
+#hi-5:checked ~ .app .walk label[for="hi-5"],
+#hi-6:checked ~ .app .walk label[for="hi-6"] {
+  background: var(--snow);
+  color: var(--ink);
+  border-color: var(--snow);
+}
+
+.click-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(91, 141, 239, 0.07);
+  color: #9dbaf5;
+  font-size: 12px;
+}
+
+/* ---------- loading skeletons (the state the first ten skipped) ---------- */
+
+.skel {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: skel 1.3s ease-in-out infinite;
+}
+@keyframes skel {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ---------- extras used by the click-through pages ---------- */
+
+.strip {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.strip:last-child {
+  border-bottom: 0;
+}
+
+label.btn,
+label.search,
+label.installer,
+label.chip,
+label.item,
+label.option,
+label.tile {
+  cursor: pointer;
+}
+
+label.search {
+  margin: 0;
+}
+
+.option + .option {
+  margin-top: 8px;
+}
+
+.laterlist {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.later {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--dim);
+}
+.later:last-child {
+  border-bottom: 0;
+}
+.later strong {
+  color: var(--mute);
+  font-weight: 500;
+}
+
+.live {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.live-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--inset);
+  border-bottom: 1px solid var(--line);
+}
+.live-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--mute);
+}
+.live-row:last-child {
+  border-bottom: 0;
+}
+
+.set-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100svh - 58px);
+}
+
+@media (max-width: 900px) {
+  .set-shell {
+    grid-template-columns: 1fr;
+  }
+  .strip {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,271 @@
+/* Four comparable full-app prototypes.
+   Each HTML file contains the same routes, states and incident workflow.
+   These classes change information architecture, not product scope. */
+
+.compare-note {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  background: #0d0d10;
+  color: var(--mute);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.compare-note strong {
+  color: var(--snow);
+}
+
+.compare-note .same-scope {
+  color: #a5f3a5;
+}
+
+.show-approval,
+.show-hold,
+.show-import {
+  display: none !important;
+}
+
+#approve-release:checked ~ .app .show-approval,
+#hold-release:checked ~ .app .show-hold,
+#import-protected:checked ~ .app .show-import {
+  display: revert !important;
+}
+
+#approve-release:checked ~ .app .hide-approval,
+#hold-release:checked ~ .app .hide-hold,
+#import-protected:checked ~ .app .hide-import {
+  display: none !important;
+}
+
+.capability-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--inset);
+}
+
+.release-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+/* 2A — Overview-first console. Balanced operational default. */
+.combined-a .side {
+  width: auto;
+}
+
+.combined-a .body {
+  max-width: 1120px;
+}
+
+.combined-a .nav-group:nth-child(3) {
+  display: none;
+}
+
+.combined-a .mode-desk-label,
+.combined-a .mode-settings-label {
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.combined-a .mode-desk-label {
+  background: var(--snow);
+  color: var(--ink);
+}
+
+#v-notify:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-notify:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-policy:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-policy:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-team:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-team:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-retention:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-retention:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-audit:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-audit:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-health:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-health:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-tokens:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-tokens:checked ~ .app.combined-a .nav-group:nth-child(2),
+#v-registries:checked ~ .app.combined-a .nav-group:nth-child(1),
+#v-registries:checked ~ .app.combined-a .nav-group:nth-child(2) {
+  display: none;
+}
+
+#v-notify:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-policy:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-team:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-retention:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-audit:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-health:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-tokens:checked ~ .app.combined-a .nav-group:nth-child(3),
+#v-registries:checked ~ .app.combined-a .nav-group:nth-child(3) {
+  display: block;
+  margin-top: 0;
+}
+
+#v-notify:checked ~ .app.combined-a .mode-settings-label,
+#v-policy:checked ~ .app.combined-a .mode-settings-label,
+#v-team:checked ~ .app.combined-a .mode-settings-label,
+#v-retention:checked ~ .app.combined-a .mode-settings-label,
+#v-audit:checked ~ .app.combined-a .mode-settings-label,
+#v-health:checked ~ .app.combined-a .mode-settings-label,
+#v-tokens:checked ~ .app.combined-a .mode-settings-label,
+#v-registries:checked ~ .app.combined-a .mode-settings-label {
+  background: var(--snow);
+  color: var(--ink);
+}
+
+#v-notify:checked ~ .app.combined-a .mode-desk-label,
+#v-policy:checked ~ .app.combined-a .mode-desk-label,
+#v-team:checked ~ .app.combined-a .mode-desk-label,
+#v-retention:checked ~ .app.combined-a .mode-desk-label,
+#v-audit:checked ~ .app.combined-a .mode-desk-label,
+#v-health:checked ~ .app.combined-a .mode-desk-label,
+#v-tokens:checked ~ .app.combined-a .mode-desk-label,
+#v-registries:checked ~ .app.combined-a .mode-desk-label {
+  background: transparent;
+  color: var(--dim);
+}
+
+/* 2B — Monolith sidebar. One grouped rail for every route. */
+.combined-b .shell {
+  grid-template-columns: 244px 1fr;
+}
+
+.combined-b .body {
+  max-width: 1120px;
+}
+
+.combined-b .nav-group:nth-child(3) {
+  border-top: 1px solid var(--line);
+  padding-top: 17px;
+}
+
+.combined-b .topbar {
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* 2C — Tabbed desk. One horizontal rail over a single working surface. */
+.combined-c .shell {
+  display: block;
+}
+
+.combined-c .side {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  height: auto;
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.combined-c .side-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px;
+}
+
+.combined-c .installer {
+  width: 230px;
+  margin: 0;
+}
+
+.combined-c .nav {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 7px 12px 9px;
+}
+
+.combined-c .nav-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 0;
+  flex: none;
+}
+
+.combined-c .nav-group + .nav-group {
+  padding-left: 18px;
+  border-left: 1px solid var(--line);
+}
+
+.combined-c .nav-group > .kicker {
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+.combined-c .nav label {
+  width: auto;
+  white-space: nowrap;
+}
+
+.combined-c .side-foot {
+  display: none;
+}
+
+.combined-c .main {
+  min-height: calc(100svh - 120px);
+}
+
+.combined-c .body {
+  max-width: 1180px;
+}
+
+/* 2D — Object-first. Install → source/repo → evidence and response. */
+.combined-d .shell {
+  grid-template-columns: 220px 1fr;
+}
+
+.combined-d .nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.combined-d .nav-group:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.combined-d .nav-group:first-child label[for="v-sources"] {
+  order: -2;
+}
+
+.combined-d .nav-group:first-child label[for="v-repo"] {
+  order: -1;
+}
+
+.combined-d .view-repo.body {
+  max-width: 940px;
+  padding: 36px 40px 80px;
+}
+
+.combined-d .view-repo .stats {
+  gap: 14px;
+}
+
+.combined-d .body {
+  max-width: 1020px;
+}
+
+@media (max-width: 900px) {
+  .combined-c .panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .combined-b .shell,
+  .combined-c .shell {
+    grid-template-columns: 1fr;
+  }
+}
