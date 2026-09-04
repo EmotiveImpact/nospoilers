@@ -66,6 +66,16 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
 
+  it("keeps a desktop sidebar collapse control on the logo row", () => {
+    const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
+    expect(shell).toMatch(/nospoilers\.watch\.sidebar-collapsed/);
+    expect(shell).toMatch(/aria-label=\{opts\.collapsed \? "Expand sidebar" : "Collapse sidebar"\}/);
+    expect(shell).toMatch(/showToggle: true/);
+    expect(shell).toMatch(/showToggle: false/);
+    expect(shell).toMatch(/w-\[244px\]/);
+    expect(shell).toMatch(/PanelLeftClose/);
+  });
+
   it("keeps notification and registry settings focused", () => {
     const notifications = readFileSync(
       "src/components/watch/screens/NotificationsScreen.tsx",

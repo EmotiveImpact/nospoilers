@@ -16,6 +16,8 @@ import {
   KeyRound,
   Menu,
   PackageSearch,
+  PanelLeft,
+  PanelLeftClose,
   Scale,
   Search,
   ShieldCheck,
@@ -32,6 +34,25 @@ import {
 } from "@/watch/routes.ts";
 import { useState, type MouseEvent, type ReactNode } from "react";
 
+const SIDEBAR_COLLAPSED_KEY = "nospoilers.watch.sidebar-collapsed";
+
+function readSidebarCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSidebarCollapsed(collapsed: boolean) {
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch {
+    // Ignore quota / private-mode failures; the session toggle still works.
+  }
+}
+
 type InstallRow = {
   id: number;
   account_login: string;
@@ -47,11 +68,13 @@ function go(event: MouseEvent<HTMLAnchorElement>, href: string) {
 function NavLink({
   href,
   active,
+  collapsed,
   children,
   onNavigate,
 }: {
   href: string;
   active: boolean;
+  collapsed?: boolean;
   children: ReactNode;
   onNavigate?: () => void;
 }) {
@@ -92,13 +115,14 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center gap-2.5 rounded-[6px] px-[9px] py-[7px] text-[13px] leading-[1.2]",
+        "flex items-center rounded-[6px] text-[13px] leading-[1.2]",
+        collapsed ? "justify-center px-1 py-[7px]" : "gap-2.5 px-[9px] py-[7px]",
         active ? "bg-white/[0.07] text-snow" : "text-mute hover:bg-white/[0.04] hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
     >
       <Icon className="size-[15px] shrink-0 opacity-75" aria-hidden />
-      {children}
+      <span className={cn(collapsed ? "sr-only" : "flex min-w-0 flex-1 items-center")}>{children}</span>
     </a>
   );
 }
@@ -150,9 +174,17 @@ export function WatchMonolithShell({
   const [navOpen, setNavOpen] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const hrefFor = (view: WatchView, tab?: AlertTab) =>
     watchHref(watchPath(view), search, tab ? { tab } : {});
   const closeNav = () => setNavOpen(false);
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      writeSidebarCollapsed(next);
+      return next;
+    });
+  };
   const installIdentity =
     installations.find((installation) => installation.id === activeInstallId)?.account_login ??
     installations[0]?.account_login ??
@@ -162,17 +194,37 @@ export function WatchMonolithShell({
       ? "⌘K"
       : "Ctrl K";
 
-  const nav = (
+  const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
-      <div className="border-b border-line px-4 py-[18px]">
-        <a
-          href="/"
-          onClick={(event) => go(event, "/")}
-          className="font-display text-[15px] text-snow hover:text-snow"
-        >
-          NoSpoilers
-        </a>
-        {installations.length > 1 ? (
+      <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
+        <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-end" : "justify-between")}>
+          <a
+            href="/"
+            onClick={(event) => go(event, "/")}
+            className={cn(
+              "font-display text-[15px] text-snow hover:text-snow",
+              opts.collapsed && "sr-only",
+            )}
+          >
+            NoSpoilers
+          </a>
+          {opts.showToggle ? (
+            <button
+              type="button"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
+              aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!opts.collapsed}
+              onClick={toggleCollapsed}
+            >
+              {opts.collapsed ? (
+                <PanelLeft className="size-4" aria-hidden />
+              ) : (
+                <PanelLeftClose className="size-4" aria-hidden />
+              )}
+            </button>
+          ) : null}
+        </div>
+        {opts.collapsed ? null : installations.length > 1 ? (
           <label className="mt-3 block">
             <span className="watch-kicker">Install</span>
             <select
@@ -199,18 +251,36 @@ export function WatchMonolithShell({
             <p className="min-w-0 flex-1 truncate text-[13px] text-snow">{installIdentity}</p>
           </div>
         )}
-        <p className="mt-1 text-[11px] text-dim">
-          {sourceCount > 0 ? `${sourceCount} sources` : "nothing connected"}
-        </p>
+        {opts.collapsed ? null : (
+          <p className="mt-1 text-[11px] text-dim">
+            {sourceCount > 0 ? `${sourceCount} sources` : "nothing connected"}
+          </p>
+        )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-[18px] overflow-auto px-2.5 py-3.5" aria-label="Watch desk">
+      <nav
+        className={cn(
+          "flex flex-1 flex-col gap-[18px] overflow-auto py-3.5",
+          opts.collapsed ? "px-1.5" : "px-2.5",
+        )}
+        aria-label="Watch desk"
+      >
         <div className="flex flex-col gap-0.5">
-          <p className="watch-kicker px-2.5 pb-1.5">Work</p>
-          <NavLink href={hrefFor("overview")} active={route.view === "overview"} onNavigate={closeNav}>
+          {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Work</p>}
+          <NavLink
+            href={hrefFor("overview")}
+            active={route.view === "overview"}
+            collapsed={opts.collapsed}
+            onNavigate={closeNav}
+          >
             Overview
           </NavLink>
-          <NavLink href={hrefFor("alerts")} active={route.view === "alerts"} onNavigate={closeNav}>
+          <NavLink
+            href={hrefFor("alerts")}
+            active={route.view === "alerts"}
+            collapsed={opts.collapsed}
+            onNavigate={closeNav}
+          >
             Alerts
             {openAlertCount > 0 ? (
               <span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{openAlertCount}</span>
@@ -218,59 +288,106 @@ export function WatchMonolithShell({
           </NavLink>
         </div>
 
-        <div className="flex flex-col gap-0.5 border-t border-line pt-[17px]">
-          <p className="watch-kicker px-2.5 pb-1.5">Evidence</p>
-          <NavLink href={hrefFor("sources")} active={route.view === "sources"} onNavigate={closeNav}>
+        <div className={cn("flex flex-col gap-0.5", !opts.collapsed && "border-t border-line pt-[17px]")}>
+          {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Evidence</p>}
+          <NavLink
+            href={hrefFor("sources")}
+            active={route.view === "sources"}
+            collapsed={opts.collapsed}
+            onNavigate={closeNav}
+          >
             Sources
             {sourceCount > 0 ? (
               <span className="ml-auto font-mono text-[11px] text-dim">{sourceCount}</span>
             ) : null}
           </NavLink>
-          <NavLink href={hrefFor("releases")} active={route.view === "releases"} onNavigate={closeNav}>
+          <NavLink
+            href={hrefFor("releases")}
+            active={route.view === "releases"}
+            collapsed={opts.collapsed}
+            onNavigate={closeNav}
+          >
             Releases
           </NavLink>
           {teamOnly ? (
-            <NavLink href={hrefFor("timeline")} active={route.view === "timeline"} onNavigate={closeNav}>
+            <NavLink
+              href={hrefFor("timeline")}
+              active={route.view === "timeline"}
+              collapsed={opts.collapsed}
+              onNavigate={closeNav}
+            >
               Timeline
             </NavLink>
           ) : null}
         </div>
 
         <div>
-          <p className="watch-kicker px-2.5 pb-1.5">Settings</p>
+          {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Settings</p>}
           <div className="flex flex-col gap-0.5">
             <NavLink
               href={hrefFor("notifications")}
               active={route.view === "notifications"}
+              collapsed={opts.collapsed}
               onNavigate={closeNav}
             >
               Notifications
             </NavLink>
-            <NavLink href={hrefFor("policy")} active={route.view === "policy"} onNavigate={closeNav}>
+            <NavLink
+              href={hrefFor("policy")}
+              active={route.view === "policy"}
+              collapsed={opts.collapsed}
+              onNavigate={closeNav}
+            >
               Policy &amp; allowlist
             </NavLink>
-            <NavLink href={hrefFor("team")} active={route.view === "team"} onNavigate={closeNav}>
+            <NavLink
+              href={hrefFor("team")}
+              active={route.view === "team"}
+              collapsed={opts.collapsed}
+              onNavigate={closeNav}
+            >
               Team &amp; roles
             </NavLink>
-            <NavLink href={hrefFor("retention")} active={route.view === "retention"} onNavigate={closeNav}>
+            <NavLink
+              href={hrefFor("retention")}
+              active={route.view === "retention"}
+              collapsed={opts.collapsed}
+              onNavigate={closeNav}
+            >
               Retention
             </NavLink>
             {teamOnly ? (
-              <NavLink href={hrefFor("audit")} active={route.view === "audit"} onNavigate={closeNav}>
+              <NavLink
+                href={hrefFor("audit")}
+                active={route.view === "audit"}
+                collapsed={opts.collapsed}
+                onNavigate={closeNav}
+              >
                 Audit log
               </NavLink>
             ) : null}
-            <NavLink href={hrefFor("health")} active={route.view === "health"} onNavigate={closeNav}>
+            <NavLink
+              href={hrefFor("health")}
+              active={route.view === "health"}
+              collapsed={opts.collapsed}
+              onNavigate={closeNav}
+            >
               Install health
             </NavLink>
             {adminOnly ? (
               <>
-                <NavLink href={hrefFor("tokens")} active={route.view === "tokens"} onNavigate={closeNav}>
+                <NavLink
+                  href={hrefFor("tokens")}
+                  active={route.view === "tokens"}
+                  collapsed={opts.collapsed}
+                  onNavigate={closeNav}
+                >
                   Scan API tokens
                 </NavLink>
                 <NavLink
                   href={hrefFor("registries")}
                   active={route.view === "registries"}
+                  collapsed={opts.collapsed}
                   onNavigate={closeNav}
                 >
                   Private registries
@@ -287,7 +404,10 @@ export function WatchMonolithShell({
           go(event, hrefFor("setup"));
           closeNav();
         }}
-        className="flex items-center gap-3 border-t border-line px-3.5 py-3 text-left hover:bg-white/[0.03]"
+        className={cn(
+          "flex items-center border-t border-line text-left hover:bg-white/[0.03]",
+          opts.collapsed ? "justify-center px-1.5 py-3" : "gap-3 px-3.5 py-3",
+        )}
       >
         <span
           className="grid size-10 shrink-0 place-items-center rounded-full"
@@ -297,7 +417,7 @@ export function WatchMonolithShell({
             {setupDone}/{setupTotal}
           </span>
         </span>
-        <span className="min-w-0">
+        <span className={cn("min-w-0", opts.collapsed && "sr-only")}>
           <span className="block text-[11px] text-snow">
             {setupDone > 0 ? `${setupDone} of ${setupTotal} leak paths covered` : "Nothing covered yet"}
           </span>
@@ -312,8 +432,13 @@ export function WatchMonolithShell({
 
   return (
     <div className="flex h-svh overflow-hidden bg-rail">
-      <aside className="hidden h-svh w-[244px] shrink-0 flex-col bg-rail md:flex">
-        {nav}
+      <aside
+        className={cn(
+          "hidden h-svh shrink-0 flex-col overflow-hidden bg-rail transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          collapsed ? "w-14" : "w-[244px]",
+        )}
+      >
+        {rail({ collapsed, showToggle: true })}
       </aside>
 
       <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
@@ -321,7 +446,7 @@ export function WatchMonolithShell({
         <div className="fixed inset-0 flex">
           <DialogPanel className="flex h-full w-[min(20rem,88vw)] flex-col border-r border-line bg-rail shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
-            {nav}
+            {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>
         </div>
       </Dialog>
