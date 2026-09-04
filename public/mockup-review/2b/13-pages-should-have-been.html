@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>13 · Pages that only got a title</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 22px 90px;
+      }
+      .intro {
+        max-width: 74ch;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .ver {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .ver-meta {
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .desk {
+        padding: 16px 16px 18px;
+        background: #141416;
+        flex: 1;
+      }
+      .now {
+        margin-top: 6px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .kv:last-child {
+        border-bottom: 0;
+      }
+      .card {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .stat {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+      .stat .n {
+        margin-top: 4px;
+        font-family: var(--display);
+        font-size: 20px;
+        letter-spacing: -0.03em;
+        color: var(--dim);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .empty {
+        margin-top: 12px;
+        padding: 14px;
+        border: 1px dashed var(--line-strong);
+        border-radius: 10px;
+        color: var(--dim);
+        font-size: 12.5px;
+      }
+      .seg {
+        display: flex;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0f0f12;
+      }
+      .seg i {
+        display: inline-flex;
+        height: 24px;
+        align-items: center;
+        padding: 0 8px;
+        border-radius: 5px;
+        color: var(--dim);
+        font-size: 11px;
+        font-style: normal;
+      }
+      .seg i.on {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--snow);
+      }
+      .rowline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--mute);
+      }
+      .rowline:last-child {
+        border-bottom: 0;
+      }
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <span class="kicker">Should have been · 2B layouts</span>
+      <h1 style="margin-top: 8px">These pages got a title. Not a rebuild.</h1>
+      <p class="intro muted" style="margin-top: 8px">
+        Setup, Health, and Audit were rebuilt as kickers, title-row actions, coloured stats, and
+        kv rows. These ten only inherited the 30px title and the black/grey shell. The frames
+        below are what a matching rebuild would look like — same live fields, empty states stay
+        hollow, no invented Slack or MAP-002 on the desk.
+      </p>
+
+      <div class="grid">
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Alerts</span>
+            <h2>One inbox, pills on the page</h2>
+            <p class="now">Now: four rail items + a second tab bar on mobile + list/detail.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Alerts</h3>
+                <p class="small muted" style="margin-top: 4px">Real findings only. Nothing invented.</p>
+              </div>
+              <span class="btn sm outline">Export</span>
+            </div>
+            <div class="chips">
+              <div class="seg">
+                <i class="on">Triage 0</i><i>Waiting</i><i>Mine</i><i>Resolved</i>
+              </div>
+            </div>
+            <div class="empty">This view is clear. No real alerts match this filter.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Sources</span>
+            <h2>Kind chips + one list</h2>
+            <p class="now">Now: long lede, filter pills, then a list that can sit above add-forms.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Sources</h3>
+                <p class="small muted" style="margin-top: 4px">GitHub, npm, websites, map custody.</p>
+              </div>
+              <span class="btn sm">Add a source</span>
+            </div>
+            <div class="chips">
+              <span class="chip on">All 0</span>
+              <span class="chip">GitHub</span>
+              <span class="chip">npm</span>
+              <span class="chip">Web</span>
+              <span class="chip">Maps</span>
+            </div>
+            <div class="empty">Nothing connected yet. A private throwaway repo is enough.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Releases</span>
+            <h2>Stats + sealed rows, not four essays</h2>
+            <p class="now">Now: four guidance cards, then a long list/detail of receipts.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Releases</h3>
+                <p class="small muted" style="margin-top: 4px">Sealed revisions and policy results.</p>
+              </div>
+              <span class="btn sm outline">Export ledger</span>
+            </div>
+            <div class="stats">
+              <div class="stat"><span class="kicker">30 days</span><div class="n">0</div></div>
+              <div class="stat"><span class="kicker">Failed policy</span><div class="n">0</div></div>
+            </div>
+            <div class="empty">No sealed releases yet. Receipts appear after the first pack.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Timeline</span>
+            <h2>Chart, then a kv activity list</h2>
+            <p class="now">Now: a paragraph, then the chart, then a raw event list.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Timeline</h3>
+                <p class="small muted" style="margin-top: 4px">Alert and response activity in the retained window.</p>
+              </div>
+            </div>
+            <div class="card" style="padding: 16px">
+              <span class="kicker">Exposure, retained window</span>
+              <p class="small dim" style="margin-top: 10px">No exposure to plot from real alert history.</p>
+            </div>
+            <div class="card">
+              <div class="kv"><span>Events</span><span class="dim">0</span></div>
+              <div class="kv"><span>Window</span><span class="dim">90 days</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Notifications</span>
+            <h2>Destinations as chips, routes as rows</h2>
+            <p class="now">Now: a wall of guidance, then one config panel with seven flows.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Notifications</h3>
+                <p class="small muted" style="margin-top: 4px">Destinations and routes for real alerts.</p>
+              </div>
+              <span class="btn sm">Add destination</span>
+            </div>
+            <div class="chips">
+              <span class="chip">Email</span>
+              <span class="chip">Slack</span>
+              <span class="chip">SIEM</span>
+              <span class="chip">Jira</span>
+              <span class="chip">PagerDuty</span>
+            </div>
+            <div class="empty">No destinations yet. Alerts stay in the desk until you add one.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Policy</span>
+            <h2>Exceptions first, signing as a card</h2>
+            <p class="now">Now: signing checkboxes, then allowlist fields, then a list.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Policy &amp; allowlist</h3>
+                <p class="small muted" style="margin-top: 4px">Time-bound exceptions and shipping evidence.</p>
+              </div>
+              <span class="btn sm">Write exception</span>
+            </div>
+            <div class="stats">
+              <div class="stat"><span class="kicker">Active</span><div class="n">0</div></div>
+              <div class="stat"><span class="kicker">Signing</span><div class="n" style="font-size: 15px; margin-top: 8px; color: var(--mute)">off</div></div>
+            </div>
+            <div class="empty">No exceptions written.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Team</span>
+            <h2>People as pills, invite on the title row</h2>
+            <p class="now">Now: a long capability paragraph, then invite form, then a list.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Team &amp; roles</h3>
+                <p class="small muted" style="margin-top: 4px">Who can view or administer this install.</p>
+              </div>
+              <span class="btn sm">Invite</span>
+            </div>
+            <div class="empty">No members loaded yet. Preview cannot manage roles.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Retention</span>
+            <h2>Four choices as cards</h2>
+            <p class="now">Now: a paragraph and a single select in a box.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Retention</h3>
+                <p class="small muted" style="margin-top: 4px">How long operational lists stay visible.</p>
+              </div>
+              <span class="btn sm outline">Save</span>
+            </div>
+            <div class="stats">
+              <div class="stat" style="border-color: var(--line-strong)"><span class="kicker">90 days</span><div class="tiny mute" style="margin-top: 6px">Current</div></div>
+              <div class="stat"><span class="kicker">180</span></div>
+              <div class="stat"><span class="kicker">365</span></div>
+              <div class="stat"><span class="kicker">Keep</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Tokens</span>
+            <h2>Mint on the title row, list below</h2>
+            <p class="now">Now: CI essay, origin box, then a mint form.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Scan API tokens</h3>
+                <p class="small muted" style="margin-top: 4px">Credentials for packed-artifact CI scans.</p>
+              </div>
+              <span class="btn sm">Mint token</span>
+            </div>
+            <div class="card">
+              <div class="kv"><span>Tokens</span><span class="dim">0</span></div>
+              <div class="kv"><span>Shown once</span><span class="dim">hashed after</span></div>
+            </div>
+            <div class="empty">No scan tokens yet.</div>
+          </div>
+        </article>
+
+        <article class="ver">
+          <div class="ver-meta">
+            <span class="kicker">Registries</span>
+            <h2>One credential card, not a novel</h2>
+            <p class="now">Now: a long npm essay sharing the page with Sources configure.</p>
+          </div>
+          <div class="desk">
+            <div class="head">
+              <div>
+                <h3>Private registries</h3>
+                <p class="small muted" style="margin-top: 4px">Encrypted read credentials for private hosts.</p>
+              </div>
+              <span class="btn sm">Save origin</span>
+            </div>
+            <div class="card">
+              <div class="kv"><span>Origins</span><span class="dim">0</span></div>
+              <div class="kv"><span>Tokens shown again</span><span class="dim">never</span></div>
+            </div>
+            <div class="empty">No private registry saved. Public npm does not need this.</div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>13</b> Pages that only got a title
+      <span class="sep"></span>
+      <span>Same fields · 2B chrome · hollow empty</span>
+      <span class="sep"></span>
+      <a href="11-alerts-one-inbox.html">11 alerts</a>
+      <a href="12-overview-setup-ring.html">12 ring</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

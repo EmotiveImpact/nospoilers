@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NoSpoilers watch desk — complete decision set</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      html,
+      body {
+        background: #09090b;
+        color: #f4f4f5;
+      }
+      .body {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 54px 24px 90px;
+      }
+      .lede {
+        max-width: 68ch;
+      }
+      .problem {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 30px 0 8px;
+      }
+      .problem div {
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--panel);
+      }
+      .problem .n {
+        font-family: var(--display);
+        font-size: 26px;
+        letter-spacing: -0.03em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 30px;
+      }
+      .mk {
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition:
+          border-color 0.15s ease,
+          transform 0.15s ease;
+      }
+      .mk:hover {
+        border-color: var(--line-strong);
+        transform: translateY(-2px);
+      }
+      .shot {
+        position: relative;
+        height: 168px;
+        border-bottom: 1px solid var(--line);
+        overflow: hidden;
+        background: #0b0b0d;
+        padding: 14px;
+        display: flex;
+        gap: 8px;
+      }
+      .shot .col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      .blk {
+        background: #161618;
+        border: 1px solid #232326;
+        border-radius: 6px;
+      }
+      .blk.red {
+        background: rgba(226, 69, 58, 0.16);
+        border-color: rgba(226, 69, 58, 0.35);
+      }
+      .blk.line {
+        height: 8px;
+        background: #2a2a2e;
+        border: 0;
+      }
+      .blk.wide {
+        flex: 1;
+      }
+      .mk-body {
+        padding: 16px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .mk-no {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+      }
+      .tagrow {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .mk .foot {
+        margin-top: auto;
+        padding-top: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .verdict-line {
+        font-size: 12.5px;
+        color: var(--dim);
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+      .verdict-line b {
+        color: var(--mute);
+        font-weight: 500;
+      }
+
+      @media (max-width: 900px) {
+        .grid,
+        .problem {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="body">
+        <span class="logo">NoSpoilers</span>
+        <h1 style="margin-top: 22px; font-size: 40px">Choose the complete watch desk.</h1>
+        <p class="muted lede" style="margin-top: 14px">
+          Start with the green 2A–2D decision set. Those four contain the same current-main
+          capabilities and states, organized through four different architectures. The older
+          studies remain below as evidence for individual patterns. The shared question is:
+          <strong class="snow"
+            >how does a person find the one thing that is exposed without scrolling past thirteen
+            configuration panels?</strong
+          >
+        </p>
+
+        <div class="problem">
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">15</div>
+            <p class="small dim" style="margin-top: 5px">
+              panels stacked on one page, no in-page navigation
+            </p>
+          </div>
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">~4,000</div>
+            <p class="small dim" style="margin-top: 5px">
+              lines in <code class="path">WatchPage.tsx</code>, one component
+            </p>
+          </div>
+          <div>
+            <span class="kicker">Today</span>
+            <div class="n">1</div>
+            <p class="small dim" style="margin-top: 5px">
+              visual weight shared by alerts and retention settings
+            </p>
+          </div>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 22px">
+          <div class="row gap12 wrap">
+            <h2>Try the hard states.</h2>
+            <span class="pill">Trial admin</span>
+            <span class="pill">Solo</span>
+            <span class="pill">Member</span>
+            <span class="pill crit">Ended</span>
+            <span class="pill">Empty</span>
+          </div>
+          <p class="small muted" style="margin-top: 10px; max-width: 76ch">
+            Every mockup carries that switcher in a bar at the bottom of the page. A layout is easy
+            to make look good with one critical alert and full coverage; the question is what it
+            does when the trial has lapsed, when the user is a member who cannot write, when Solo
+            hides half the features, and when a brand-new install has nothing to show. The locked
+            and gated copy is lifted from <code class="path">CoverageLock.tsx</code> and
+            <code class="path">WatchPage.tsx</code> rather than invented.
+          </p>
+        </div>
+
+        <div
+          class="card card-pad"
+          style="
+            margin-top: 22px;
+            border-color: rgba(165, 243, 165, 0.42);
+            background: radial-gradient(100% 180% at 0 0, rgba(165, 243, 165, 0.07), transparent 65%), var(--panel);
+          "
+        >
+          <div class="row gap12 wrap">
+            <h2>Decision set — four complete versions of the same app</h2>
+            <span class="pill solid">compare these</span>
+          </div>
+          <p class="small muted" style="margin-top: 10px; max-width: 76ch">
+            These four are directly comparable. Every version contains the same complete capability
+            set from the current Watch app: Overview, Alerts, Sources, Releases, Timeline, Setup,
+            source drill-down, Notifications, Policy, Team, Retention, Audit, Install health, Scan
+            API tokens, private registries, coverage gates, and acknowledge → assign → resolve.
+            Each also carries the same Trial admin, Solo, Member, Ended, and Empty switcher.
+            <strong class="snow">Only the information architecture changes.</strong>
+          </p>
+          <p class="small" style="margin-top: 10px; max-width: 76ch; color: #a5f3a5">
+            Accuracy key: the entities, gates, data fields, and actions map to current
+            <code>main</code>. Routing, saved filters, charts, command palette, unified Sources,
+            setup progress, and Desk / Settings chrome are proposed client presentation—not
+            features being claimed as already shipped.
+          </p>
+          <div class="row gap8 wrap" style="margin-top: 14px">
+            <a class="btn sm" href="2a-full-overview.html">2A · Split console →</a>
+            <a class="btn sm outline" href="2b-full-guided.html">2B · Monolith sidebar</a>
+            <a class="btn sm outline" href="2c-full-triage.html">2C · Tabbed desk</a>
+            <a class="btn sm outline" href="2d-full-sources.html">2D · Object-first</a>
+            <a class="btn sm outline" href="give-to-build-chat.html">Give one to the other chat</a>
+            <a class="btn sm" href="11-alerts-one-inbox.html">11 · One Alerts view</a>
+            <a class="btn sm" href="12-overview-setup-ring.html">12 · Setup ring on overview</a>
+            <a class="btn sm" href="13-pages-should-have-been.html">13 · Pages that only got a title</a>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top: 20px">
+          <a class="mk" href="2a-full-overview.html" style="border-color: rgba(165, 243, 165, 0.42)">
+            <div class="shot">
+              <div class="blk" style="width: 42px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 40%"></div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+                  <div class="blk" style="height:34px"></div><div class="blk" style="height:34px"></div>
+                  <div class="blk" style="height:34px"></div><div class="blk" style="height:34px"></div>
+                </div>
+                <div class="blk red" style="height: 38px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2A · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Overview-first · Desk / Settings</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens on the operational verdict. Desk keeps work; the top switch replaces its
+                sidebar with configuration. This is the full 1F depth inside the 1I split.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> the desk should answer “what needs me?” first.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2b-full-guided.html">
+            <div class="shot">
+              <div class="blk" style="width: 34px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 48%"></div>
+                <div class="blk" style="height: 22px"></div>
+                <div class="blk red" style="height: 30px"></div>
+                <div class="blk" style="height: 22px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2B · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Monolith sidebar</h2>
+              <p class="small muted" style="margin-top: 7px">
+                One grouped sidebar holds Work, alert filters, Evidence, and Settings. This keeps
+                every route visible and is the safest migration from the current Watch surface.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> one predictable navigation model matters most.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2c-full-triage.html">
+            <div class="shot">
+              <div class="blk" style="width: 52px; height: 100%"></div>
+              <div class="col" style="width: 32%">
+                <div class="blk line"></div><div class="blk red" style="height:35px"></div>
+                <div class="blk" style="height:35px"></div><div class="blk wide"></div>
+              </div>
+              <div class="col wide">
+                <div class="blk line" style="width: 45%"></div>
+                <div class="blk red" style="height: 24px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2C · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Tabbed desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                A horizontal route rail sits over one working surface. Alerts still become full
+                list + detail; Sources, Releases, Timeline, Setup and Settings use the same rail.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> the smallest conceptual jump from tabs is best.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="2d-full-sources.html">
+            <div class="shot" style="flex-direction:column">
+              <div class="blk" style="height: 28px"></div>
+              <div class="blk line" style="width: 42%"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1">
+                <div class="blk"></div><div class="blk red"></div>
+                <div class="blk"></div><div class="blk"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">2D · SAME COMPLETE APP</span>
+              <h2 style="margin-top: 4px">Object-first desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Opens inside a source/repository object: setup status, response controls, releases,
+                linked package and policy context. Global alerts and settings stay reachable.
+              </p>
+              <p class="verdict-line"><b>Decide this if</b> large installs ask “what is true for this repo?” first.</p>
+              <div class="foot"><span class="btn sm">Open complete app →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 22px">
+          <h2>Earlier studies — not four complete versions</h2>
+          <p class="small muted" style="margin-top: 10px; max-width: 76ch">
+            01–10 are structural sketches. 1A–1E combine selected pieces. 1F is the original broad
+            click-through. 1G is only the first-session workflow, 1H is only the incident workflow,
+            and 1I is only the Desk / Settings split study. They are useful evidence, but they were
+            not a fair side-by-side decision set.
+          </p>
+          <div class="row gap8 wrap" style="margin-top: 14px">
+            <a class="btn sm outline" href="1f-click-desk.html">1F original click-through</a>
+            <a class="btn sm outline" href="1g-first-session.html">1G first session</a>
+            <a class="btn sm outline" href="1h-clear-incident.html">1H incident</a>
+            <a class="btn sm outline" href="1i-desk-settings.html">1I split study</a>
+          </div>
+        </div>
+
+        <div class="grid">
+          <a class="mk" href="1f-click-desk.html" style="border-color: var(--line-strong)">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 48%"></div>
+                <div class="blk red" style="height: 28px"></div>
+                <div class="blk" style="height: 14px"></div>
+                <div class="blk" style="height: 14px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1F</span>
+              <h2 style="margin-top: 4px">Click-through desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                1E’s composite as a working console. Every sidebar route opens a screen. Alerts
+                select, acknowledge, resolve, and move to Resolved. ⌘K, See plans, Add a source,
+                Assign, and the install switcher are overlays. Source chips filter the list.
+              </p>
+              <div class="tagrow">
+                <span class="pill">routes</span><span class="pill">triage</span
+                ><span class="pill">overlays</span><span class="pill">1E + 03 + 02</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want to click around and feel the app before anyone writes React.
+              </p>
+              <div class="foot"><span class="btn sm">Open and click →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1g-first-session.html">
+            <div class="shot" style="flex-direction: column; align-items: stretch">
+              <div class="blk line" style="width: 36%"></div>
+              <div class="blk" style="height: 18px"></div>
+              <div class="blk" style="height: 18px"></div>
+              <div class="blk red" style="height: 28px"></div>
+              <div class="blk wide"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1G</span>
+              <h2 style="margin-top: 4px">First session</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Six scenes you step: empty install → pick repos → a real loading/job-queue state →
+                first clean check → watch npm → MAP-002 lands. The loading screen is the state the
+                first ten mockups never showed.
+              </p>
+              <div class="tagrow">
+                <span class="pill">10 setup</span><span class="pill">loading</span
+                ><span class="pill">walk</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want to see the first hour, not the steady-state desk.
+              </p>
+              <div class="foot"><span class="btn sm outline">Walk it →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1h-clear-incident.html">
+            <div class="shot">
+              <div class="blk" style="width: 36px; height: 100%"></div>
+              <div class="blk" style="width: 70px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk red" style="height: 26px"></div>
+                <div class="blk" style="height: 14px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1H</span>
+              <h2 style="margin-top: 4px">Clear an incident</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The daily job as six clicks: see the verdict → open MAP-002 → acknowledge (clock
+                still running) → tick the rotation checklist → resolve → a quieter desk with
+                DOC-001 left.
+              </p>
+              <div class="tagrow">
+                <span class="pill">03 triage</span><span class="pill">05 verdict</span
+                ><span class="pill">walk</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want to feel acknowledge → rotate → resolve before building it.
+              </p>
+              <div class="foot"><span class="btn sm outline">Walk it →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1i-desk-settings.html">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 30%; height: 10px"></div>
+                <div class="blk" style="height: 16px"></div>
+                <div class="blk" style="height: 16px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1I</span>
+              <h2 style="margin-top: 4px">Desk / Settings split</h2>
+              <p class="small muted" style="margin-top: 7px">
+                07 as a working app. Desk is Overview, Alerts, Sources. Settings is eight pages
+                with label-left rows and one sticky save. The top switch flips the whole chrome.
+                Acknowledge and resolve still work on the desk side.
+              </p>
+              <div class="tagrow">
+                <span class="pill">07 split</span><span class="pill">01 + 03</span
+                ><span class="pill">eight settings</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the structural move you want to feel is configuration leaving the desk.
+              </p>
+              <div class="foot"><span class="btn sm outline">Flip the switch →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 22px; border-color: var(--line)">
+          <div class="row gap12 wrap">
+            <h2>Built on 01</h2>
+            <span class="pill">static comps</span>
+          </div>
+          <p class="small muted" style="margin-top: 10px; max-width: 76ch">
+            Five earlier variants that keep 01's sidebar console as the chassis and bolt on the best
+            part of each other direction. Static — they do not switch routes. 1F is the same
+            composite with the clicks wired. Borrowed pieces are marked with a dashed
+            <span class="added">from 0X</span> tag.
+          </p>
+          <div class="row gap8 wrap" style="margin-top: 14px">
+            <a class="btn sm outline" href="1e-console-composite.html">1E · the composite</a>
+            <a class="btn sm outline" href="1a-console-verdict-steps.html">1A</a>
+            <a class="btn sm outline" href="1b-console-charts.html">1B</a>
+            <a class="btn sm outline" href="1c-console-triage.html">1C</a>
+            <a class="btn sm outline" href="1d-console-sources-settings.html">1D</a>
+          </div>
+        </div>
+
+        <div class="grid">
+          <a class="mk" href="1e-console-composite.html" style="border-color: var(--line-strong)">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 52%"></div>
+                <div class="row gap8" style="display: flex; gap: 6px">
+                  <div class="blk" style="flex: 1; height: 22px"></div>
+                  <div class="blk" style="flex: 1; height: 22px"></div>
+                  <div class="blk" style="flex: 1; height: 22px"></div>
+                  <div class="blk" style="flex: 1; height: 22px"></div>
+                </div>
+                <div class="blk red" style="height: 34px"></div>
+                <div class="blk" style="height: 12px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1E</span>
+              <h2 style="margin-top: 4px">Console composite</h2>
+              <p class="small muted" style="margin-top: 7px">
+                01's shell, then in order down the page: the verdict sentence, four stat tiles, the
+                critical alert with its actions, a compressed exposure strip, the unified source
+                list, the two remaining setup steps, and everything healthy folded away.
+              </p>
+              <div class="tagrow">
+                <span class="pill">05</span><span class="pill">09</span><span class="pill">08</span
+                ><span class="pill">04</span><span class="pill">10</span><span class="pill">02</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want one screen that answers the question, shows the numbers, and
+                still admits what is not set up.
+              </p>
+              <div class="foot"><span class="btn sm">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1a-console-verdict-steps.html">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 62%"></div>
+                <div class="blk red" style="height: 30px"></div>
+                <div class="blk" style="height: 26px"></div>
+                <div class="blk" style="height: 18px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1A</span>
+              <h2 style="margin-top: 4px">Console + verdict + steps</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Leads with 05's sentence and a numbered to-do, then reframes the unconnected parts
+                as 10's remaining setup rather than empty panels. Coverage becomes a ring in the
+                sidebar instead of a day counter.
+              </p>
+              <div class="tagrow">
+                <span class="pill">05 verdict</span><span class="pill">10 steps</span
+                ><span class="pill">05 folds</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the desk should read like a person telling you what to do next.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1b-console-charts.html">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="row" style="display: flex; gap: 6px">
+                  <div class="blk red" style="flex: 2; height: 40px"></div>
+                  <div class="blk" style="flex: 1; height: 40px"></div>
+                  <div class="blk" style="flex: 1; height: 40px"></div>
+                </div>
+                <div class="blk red" style="width: 70%; height: 11px; margin-left: 20%"></div>
+                <div class="blk" style="width: 34%; height: 11px; margin-left: 48%; background: rgba(217,154,43,0.25); border-color: rgba(217,154,43,0.4)"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1B</span>
+              <h2 style="margin-top: 4px">Console + charts</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The overview becomes 09's tiles — a coverage donut, a packs sparkline, time-exposed
+                — followed by 08's exposure bars and the incident spine inline underneath.
+              </p>
+              <div class="tagrow">
+                <span class="pill">09 tiles</span><span class="pill">08 gantt</span
+                ><span class="pill">08 spine</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want the numbers that prove the product works on the first
+                screen.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1c-console-triage.html">
+            <div class="shot">
+              <div class="blk" style="width: 36px; height: 100%"></div>
+              <div class="blk" style="width: 74px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 46%"></div>
+                <div class="blk red" style="height: 26px"></div>
+                <div class="blk" style="height: 14px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1C</span>
+              <h2 style="margin-top: 4px">Console + triage</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The Alerts route becomes 03's list-and-detail panes inside the sidebar shell, with
+                saved views promoted into the nav and 08's exposure clock embedded in the alert
+                itself.
+              </p>
+              <div class="tagrow">
+                <span class="pill">03 panes</span><span class="pill">03 checklist</span
+                ><span class="pill">08 clock</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> clearing alerts is the daily job and you want it to feel like an
+                inbox.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="1d-console-sources-settings.html">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 40%"></div>
+                <div class="blk" style="height: 16px"></div>
+                <div class="blk" style="height: 16px"></div>
+                <div class="blk" style="height: 16px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">1D</span>
+              <h2 style="margin-top: 4px">Console + sources + settings</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Repos, npm, websites, and map custody collapse into 04's single Sources list, and
+                configuration gets 07's label-left control-right rows. Ends with an explicit table
+                of where all fifteen of today's panels went.
+              </p>
+              <div class="tagrow">
+                <span class="pill">04 sources</span><span class="pill">07 settings</span
+                ><span class="pill">panel map</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the thing you most want gone is the configuration clutter.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="quiet-head" style="display: flex; align-items: center; gap: 12px; margin: 40px 0 4px">
+          <span class="kicker">The ten originals</span>
+        </div>
+
+        <div class="grid">
+          <a class="mk" href="01-console-sidebar.html">
+            <div class="shot">
+              <div class="blk" style="width: 42px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 40%"></div>
+                <div class="blk red" style="height: 44px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">01</span>
+              <h2 style="margin-top: 4px">Console sidebar</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The fourteen sections become a grouped left nav — Overview and Alerts on top, then
+                Watched, Evidence, Settings. The landing view is a verdict plus four numbers.
+              </p>
+              <div class="tagrow">
+                <span class="pill">familiar</span><span class="pill">scales</span
+                ><span class="pill">low risk</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want the safest large rewrite that keeps every existing feature
+                addressable.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="02-command-stream.html">
+            <div class="shot" style="flex-direction: column; align-items: center">
+              <div class="blk line" style="width: 30%"></div>
+              <div class="blk red" style="width: 70%; height: 36px"></div>
+              <div class="blk" style="width: 70%; height: 22px"></div>
+              <div class="blk" style="width: 70%; height: 22px"></div>
+              <div class="blk" style="width: 50%; height: 16px"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">02</span>
+              <h2 style="margin-top: 4px">Command stream</h2>
+              <p class="small muted" style="margin-top: 7px">
+                One reverse-chronological feed is the whole desk. Configuration has no page at all
+                — it lives behind ⌘K. Loud events get full cards, routine ones get one line.
+              </p>
+              <div class="tagrow">
+                <span class="pill">opinionated</span><span class="pill">keyboard-first</span
+                ><span class="pill">minimal chrome</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the product is for engineers who live in Linear and never want a
+                settings tour.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="03-triage-inbox.html">
+            <div class="shot">
+              <div class="blk" style="width: 36px; height: 100%"></div>
+              <div class="blk" style="width: 72px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 50%"></div>
+                <div class="blk red" style="height: 28px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">03</span>
+              <h2 style="margin-top: 4px">Triage inbox</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Three panes: saved views, alert list, alert detail. The rotation checklist becomes
+                real tasks and the alert gets a comment thread. Settings are a separate tab.
+              </p>
+              <div class="tagrow">
+                <span class="pill">workflow-first</span><span class="pill">fast triage</span
+                ><span class="pill">j/k navigation</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the daily job is clearing alerts, and everything else is rare.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="04-tabbed-desk.html">
+            <div class="shot" style="flex-direction: column">
+              <div class="blk line" style="width: 100%; height: 10px"></div>
+              <div class="blk line" style="width: 55%; height: 8px"></div>
+              <div class="blk wide"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">04</span>
+              <h2 style="margin-top: 4px">Tabbed desk</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Keeps the single-page shape but cuts it into seven tabs under a permanent status
+                strip. The big idea: repos, npm packages, websites, and map custody collapse into
+                one <em>Sources</em> list with identical rows.
+              </p>
+              <div class="tagrow">
+                <span class="pill">smallest diff</span><span class="pill">unifies 4 sections</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want most of the win without rebuilding navigation.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="05-verdict-first.html">
+            <div class="shot" style="flex-direction: column; align-items: center; justify-content: center">
+              <div class="blk red" style="width: 36px; height: 36px; border-radius: 999px"></div>
+              <div class="blk line" style="width: 62%"></div>
+              <div class="blk" style="width: 80%; height: 28px"></div>
+              <div class="blk" style="width: 80%; height: 28px"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">05</span>
+              <h2 style="margin-top: 4px">Verdict first</h2>
+              <p class="small muted" style="margin-top: 7px">
+                A single sentence answers “am I leaking?”, then a numbered to-do list. Everything
+                quiet is collapsed into folds you can actually open — try them, they work.
+              </p>
+              <div class="tagrow">
+                <span class="pill">calmest</span><span class="pill">plain language</span
+                ><span class="pill">demo-friendly</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> buyers include a founder or manager who wants an answer, not a
+                console.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="06-repo-drilldown.html">
+            <div class="shot">
+              <div class="col wide">
+                <div class="blk line" style="width: 45%"></div>
+                <div class="blk red" style="height: 36px"></div>
+                <div class="blk wide"></div>
+              </div>
+              <div class="blk" style="width: 56px; height: 100%"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">06</span>
+              <h2 style="margin-top: 4px">Repo drill-down</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The repository is the object you navigate. One page holds its watch state, release
+                history with per-version verdicts, linked npm pack and map destination, and its own
+                scoped policy.
+              </p>
+              <div class="tagrow">
+                <span class="pill">object-oriented</span><span class="pill">per-repo policy</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> customers think “what is the state of <em>this</em> repo”, and
+                installs get large.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="07-desk-settings-split.html">
+            <div class="shot">
+              <div class="blk" style="width: 40px; height: 100%"></div>
+              <div class="col wide">
+                <div class="blk line" style="width: 35%"></div>
+                <div class="blk" style="height: 18px"></div>
+                <div class="blk" style="height: 18px"></div>
+                <div class="blk wide"></div>
+              </div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">07</span>
+              <h2 style="margin-top: 4px">Desk / Settings split</h2>
+              <p class="small muted" style="margin-top: 7px">
+                A hard wall. The desk is only work; a real settings app holds retention, roles,
+                policy, registries, tokens, and routing — label-left, control-right rows with one
+                sticky save bar.
+              </p>
+              <div class="tagrow">
+                <span class="pill">removes 8 panels</span><span class="pill">admin clarity</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the fastest fix is simply moving configuration off the desk.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="08-exposure-timeline.html">
+            <div class="shot" style="flex-direction: column">
+              <div class="blk line" style="width: 24%"></div>
+              <div class="blk red" style="width: 88%; height: 14px; margin-left: 12%"></div>
+              <div class="blk" style="width: 40%; height: 14px; margin-left: 50%; background: rgba(217,154,43,0.25); border-color: rgba(217,154,43,0.4)"></div>
+              <div class="blk" style="width: 12%; height: 14px; margin-left: 62%; background: rgba(63,185,80,0.2); border-color: rgba(63,185,80,0.35)"></div>
+              <div class="blk wide"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">08</span>
+              <h2 style="margin-top: 4px">Exposure timeline</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Time is the primary axis. Bars show exactly how long each leak was publicly
+                reachable, an incident spine shows detect-to-notify-to-resolve, and the whole thing
+                exports for a write-up.
+              </p>
+              <div class="tagrow">
+                <span class="pill">sells the value</span><span class="pill">incident-ready</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> the number you want customers to repeat is “caught in 38 seconds”.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="09-bento-overview.html">
+            <div class="shot" style="flex-wrap: wrap">
+              <div class="blk red" style="width: 62%; height: 70px"></div>
+              <div class="blk" style="width: calc(38% - 8px); height: 70px"></div>
+              <div class="blk" style="width: calc(33% - 6px); height: 48px"></div>
+              <div class="blk" style="width: calc(33% - 6px); height: 48px"></div>
+              <div class="blk" style="width: calc(34% - 6px); height: 48px"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">09</span>
+              <h2 style="margin-top: 4px">Bento overview</h2>
+              <p class="small muted" style="margin-top: 7px">
+                Every section becomes a sized tile — the critical alert takes four columns, audit
+                takes one. Density with hierarchy, and no prose paragraph before any data.
+              </p>
+              <div class="tagrow">
+                <span class="pill">scannable</span><span class="pill">customisable</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> you want one screen that shows the whole install at a glance.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+
+          <a class="mk" href="10-guided-setup.html">
+            <div class="shot" style="flex-direction: column; align-items: stretch">
+              <div class="blk line" style="width: 48%"></div>
+              <div class="blk" style="height: 22px"></div>
+              <div class="blk" style="height: 22px"></div>
+              <div class="blk red" style="height: 36px"></div>
+              <div class="blk" style="height: 22px"></div>
+            </div>
+            <div class="mk-body">
+              <span class="mk-no">10</span>
+              <h2 style="margin-top: 4px">Guided setup</h2>
+              <p class="small muted" style="margin-top: 7px">
+                The desk only renders what you have connected. Coverage is framed as five leak
+                paths, three closed. Unconfigured features sit in a quiet “available when you need
+                it” list instead of shipping as empty panels.
+              </p>
+              <div class="tagrow">
+                <span class="pill">best first run</span><span class="pill">kills empty states</span>
+              </div>
+              <p class="verdict-line">
+                <b>Best if</b> trial-to-paid conversion is the problem you are actually solving.
+              </p>
+              <div class="foot"><span class="btn sm outline">Open full page →</span></div>
+            </div>
+          </a>
+        </div>
+
+        <div class="card card-pad" style="margin-top: 34px">
+          <h2>How to pick</h2>
+          <p class="small muted" style="margin-top: 9px; max-width: 74ch">
+            They are not mutually exclusive. Click
+            <a href="1f-click-desk.html" class="snow">1F</a> to use the composite as a desk,
+            <a href="1g-first-session.html" class="snow">1G</a> for the first hour,
+            <a href="1h-clear-incident.html" class="snow">1H</a> for acknowledge → resolve, and
+            <a href="1i-desk-settings.html" class="snow">1I</a> if configuration should leave the
+            desk. A likely end state is still <strong class="snow">07</strong> as the structural
+            move, <strong class="snow">01</strong> as the shell, <strong class="snow">03</strong> for
+            alerts, <strong class="snow">05</strong>’s opening sentence, and
+            <strong class="snow">10</strong> for the first session. Tell me the numbers you like and
+            I will build the combination for real against the existing API routes.
+          </p>
+          <p class="tiny dim" style="margin-top: 14px">
+            These files are design comps only. The sample content mirrors the real entities and rule
+            ids in this repo so the layouts are honest about density — no component here is wired to
+            data, and none of it ships in the app build.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
