@@ -101,7 +101,7 @@ export function RetentionScreen({
                   aria-pressed={selected}
                 >
                   <span className="watch-kicker">{option.label}</span>
-                  <p className="watch-tiny mt-2 text-dim">
+                  <p className={`watch-tiny mt-2 ${current ? "text-snow" : "text-dim"}`}>
                     {current ? "Current" : option.note}
                   </p>
                 </button>

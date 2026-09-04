@@ -336,6 +336,17 @@ code {
   color: #7ee08a;
 }
 
+.watch-empty {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px dashed var(--color-line-strong);
+  border-radius: 10px;
+  background: var(--color-panel);
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .watch-dot {
   width: 7px;
   height: 7px;
