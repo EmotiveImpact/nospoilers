@@ -109,6 +109,13 @@
         color: var(--snow);
         background: rgba(255, 255, 255, 0.06);
       }
+      body[data-shot] .intro,
+      body[data-shot] .jump,
+      body[data-shot] .block { display: none; }
+      body[data-shot="a"] #hero,
+      body[data-shot="b"] #overview,
+      body[data-shot="c"] #fill { display: block; }
+      body[data-shot="c"] { background: #08090a; }
 
       .block { margin-top: 28px; }
       .block-head {
@@ -596,12 +603,14 @@
       }
 
       @media (max-width: 1368px) {
+        .hero .scale-slot {
+          display: block;
+          overflow: hidden;
+          height: calc(720px * ((100vw - 32px) / 1320) + 12px);
+        }
         .hero .scale {
           transform: scale(calc((100vw - 32px) / 1320));
-        }
-        .hero .scale-slot {
-          height: calc(720px * ((100vw - 32px) / 1320) + 12px);
-          overflow: hidden;
+          transform-origin: top left;
         }
       }
 
@@ -640,6 +649,9 @@
       <a href="#hero">A · Product shot</a>
       <a href="#overview">B · Overview in the same frame</a>
       <a href="#fill">C · Desk fill</a>
+      <a href="?shot=a">A only</a>
+      <a href="?shot=b">B only</a>
+      <a href="?shot=c">C only</a>
     </nav>
 
     <section class="block" id="hero">
@@ -979,16 +991,24 @@
         mine: "Nothing assigned to you in this preview.",
         done: "No resolved alerts in this preview.",
       };
-      document.querySelectorAll("[data-desk]").forEach((desk) => {
+      const params = new URLSearchParams(location.search);
+      const shot = params.get("shot");
+      if (shot === "a" || shot === "b" || shot === "c") {
+        document.body.dataset.shot = shot;
+      }
+      const activate = (desk, key) => {
         const empty = desk.querySelector("[data-empty]");
-        desk.querySelectorAll("[data-q]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            desk.querySelectorAll("[data-q]").forEach((el) => {
-              el.classList.toggle("on", el === btn);
-            });
-            if (empty) empty.textContent = copy[btn.getAttribute("data-q")] || copy.open;
-          });
+        desk.querySelectorAll("[data-q]").forEach((el) => {
+          el.classList.toggle("on", el.getAttribute("data-q") === key);
         });
+        if (empty) empty.textContent = copy[key] || copy.open;
+      };
+      document.querySelectorAll("[data-desk]").forEach((desk) => {
+        desk.querySelectorAll("[data-q]").forEach((btn) => {
+          btn.addEventListener("click", () => activate(desk, btn.getAttribute("data-q")));
+        });
+        const tab = params.get("tab");
+        if (tab && copy[tab]) activate(desk, tab);
       });
     </script>
   </body>

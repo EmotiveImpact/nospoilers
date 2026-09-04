@@ -106,6 +106,8 @@ describe("Watch architecture boundaries", () => {
     expect(html).toMatch(/--frame-padding:\s*8px/);
     expect(html).toMatch(/--width:\s*1320px/);
     expect(html).toMatch(/--height:\s*720px/);
+    expect(html).toMatch(/dataset\.shot/);
+    expect(html).toMatch(/transform-origin:\s*top left/);
     expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
