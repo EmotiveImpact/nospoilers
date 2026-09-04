@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>03 · Triage inbox — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100svh;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 52px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line);
+        flex: none;
+      }
+      .tabs {
+        display: flex;
+        gap: 3px;
+        margin-left: 10px;
+      }
+      .tabs a {
+        padding: 6px 11px;
+        border-radius: var(--r-sm);
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .tabs a:hover {
+        color: var(--snow);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .tabs a[aria-current="page"] {
+        color: var(--snow);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .panes {
+        display: grid;
+        grid-template-columns: 300px 380px 1fr;
+        flex: 1;
+        min-height: 0;
+      }
+      .pane {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--line);
+      }
+      .pane:last-child {
+        border-right: 0;
+      }
+      .pane-head {
+        flex: none;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .pane-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      /* left rail: saved views */
+      .view {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 10px;
+        margin: 0 8px;
+        border-radius: var(--r-sm);
+        font-size: 13px;
+        color: var(--mute);
+        cursor: pointer;
+      }
+      .view:hover {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--snow);
+      }
+      .view[aria-current="true"] {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--snow);
+      }
+      .view .n {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+      }
+      .rail-group {
+        padding: 12px 0;
+      }
+      .rail-group > .kicker {
+        display: block;
+        padding: 0 18px 7px;
+      }
+
+      /* list */
+      .item {
+        display: block;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--line);
+        border-left: 2px solid transparent;
+        cursor: pointer;
+      }
+      .item:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .item[aria-selected="true"] {
+        background: rgba(255, 255, 255, 0.055);
+        border-left-color: var(--snow);
+      }
+      .item.unread strong {
+        color: var(--snow);
+      }
+      .item .sub {
+        margin-top: 5px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+
+      /* detail */
+      .detail {
+        padding: 24px 28px 60px;
+        max-width: 720px;
+      }
+      .block {
+        margin-top: 22px;
+      }
+      .finding {
+        display: flex;
+        gap: 11px;
+        align-items: flex-start;
+        padding: 11px 13px;
+        border-bottom: 1px solid var(--line);
+      }
+      .finding:last-child {
+        border-bottom: 0;
+      }
+      .actionbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 28px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(9, 9, 11, 0.9);
+        backdrop-filter: blur(10px);
+      }
+      .task {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .task:last-child {
+        border-bottom: 0;
+      }
+      .task input {
+        margin-top: 3px;
+      }
+      .thread {
+        display: flex;
+        gap: 11px;
+        padding: 11px 0;
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .av {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: linear-gradient(140deg, #3f3f46, #18181b);
+        flex: none;
+      }
+
+      @media (max-width: 1100px) {
+        .panes {
+          grid-template-columns: 340px 1fr;
+        }
+        .pane.rail {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <nav class="tabs">
+          <a href="#" aria-current="page">Inbox</a>
+          <a href="#">Sources</a>
+          <a href="#">Releases</a>
+          <a href="#">Settings</a>
+        </nav>
+        <div class="grow"></div>
+        <span class="pill has-data"><span class="dot ok"></span> Watching 6 repos</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div
+        class="s-ended row gap12"
+        style="
+          padding: 10px 18px;
+          border-bottom: 1px solid rgba(226, 69, 58, 0.3);
+          background: rgba(226, 69, 58, 0.07);
+        "
+      >
+        <span class="dot crit"></span>
+        <span class="small"
+          ><strong class="snow">Coverage ended.</strong> No new jobs or scans run, so nothing new
+          arrives in this inbox. The four alerts already open can still be acknowledged and
+          resolved.</span
+        >
+        <div class="grow"></div>
+        <button class="btn sm">See plans</button>
+      </div>
+
+      <div class="panes">
+        <aside class="pane rail">
+          <div class="rail-group">
+            <div class="view" aria-current="true">
+              ▲ Needs triage <span class="n has-data">2</span>
+            </div>
+            <div class="view">◷ Waiting on rotation <span class="n has-data">1</span></div>
+            <div class="view team-only">☺ Assigned to me <span class="n has-data">1</span></div>
+            <div class="view">✓ Resolved <span class="n has-data">37</span></div>
+          </div>
+          <hr class="hr" />
+          <div class="rail-group">
+            <span class="kicker">By severity</span>
+            <div class="view">Critical <span class="n">1</span></div>
+            <div class="view">Warn <span class="n">1</span></div>
+          </div>
+          <hr class="hr" />
+          <div class="rail-group">
+            <span class="kicker">By source</span>
+            <div class="view">GitHub visibility <span class="n">0</span></div>
+            <div class="view">Release packs <span class="n">1</span></div>
+            <div class="view">npm registry <span class="n">1</span></div>
+            <div class="view">Websites <span class="n">0</span></div>
+            <div class="view">Map custody <span class="n">0</span></div>
+          </div>
+          <div class="grow"></div>
+          <div style="padding: 14px 18px; border-top: 1px solid var(--line)">
+            <p class="tiny dim">
+              Configuration moved to Settings. This pane is only work. The other twelve sections —
+              retention, audit, team, health, notifications, websites, map custody, npm packages,
+              registries, scan tokens, releases, policy — live behind the Settings tab.
+            </p>
+            <p class="tiny dim s-solo" style="margin-top: 9px">
+              “Assigned to me” needs Team. On Solo every alert lands in one shared queue.
+            </p>
+            <p class="tiny dim s-member" style="margin-top: 9px">
+              As a member you can triage everything here. Settings opens read-only.
+            </p>
+          </div>
+        </aside>
+
+        <section class="pane">
+          <div class="pane-head between">
+            <div class="row gap8">
+              <strong class="small">Needs triage</strong>
+              <span class="pill has-data">2</span>
+              <span class="pill s-empty">0</span>
+            </div>
+            <span class="small dim has-data">Newest ⌄</span>
+          </div>
+          <div class="pane-body scroll">
+            <p class="empty s-empty">
+              <strong>Inbox is clear.</strong>
+              Nothing on this install yet. Once a repo is connected, anything we find lands here.
+            </p>
+            <div class="item unread has-data" aria-selected="true">
+              <div class="row gap8 wrap">
+                <span class="dot crit pulse"></span>
+                <strong class="grow truncate">Original source in published pack</strong>
+                <span class="tiny dim">41m</span>
+              </div>
+              <div class="sub">
+                <code class="path">nospoilers@0.4.2</code> · MAP-002
+              </div>
+            </div>
+
+            <div class="item unread has-data">
+              <div class="row gap8 wrap">
+                <span class="dot warn"></span>
+                <strong class="grow truncate">Internal docs in release asset</strong>
+                <span class="tiny dim">3h</span>
+              </div>
+              <div class="sub">
+                <code class="path">EmotiveImpact/desk</code> v2.1.0 · DOC-001
+              </div>
+            </div>
+
+            <div class="item has-data team-only">
+              <div class="row gap8 wrap">
+                <span class="dot"></span>
+                <strong class="grow truncate">Lookalike package registered</strong>
+                <span class="tiny dim">1d</span>
+              </div>
+              <div class="sub">
+                <code class="path">no-spoilers</code> · acknowledged by @dana
+              </div>
+            </div>
+
+            <div class="item has-data">
+              <div class="row gap8 wrap">
+                <span class="dot ok"></span>
+                <strong class="grow truncate">Repository went public</strong>
+                <span class="tiny dim">1d</span>
+              </div>
+              <div class="sub">
+                <code class="path">EmotiveImpact/relay-worker</code> · resolved
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="actionbar has-data">
+            <button class="btn sm">Acknowledge</button>
+            <button class="btn sm outline">Resolve…</button>
+            <button class="btn sm outline team-only">Assign</button>
+            <div class="grow"></div>
+            <button class="btn sm ghost">↑</button>
+            <button class="btn sm ghost">↓</button>
+            <span class="tiny dim">1 of 2</span>
+          </div>
+          <div class="pane-body scroll">
+            <div class="empty s-empty" style="padding-top: 90px">
+              <strong>Nothing selected.</strong>
+              When an alert arrives, its findings, rotation checklist, and activity open here.
+            </div>
+            <div class="detail has-data">
+              <div class="row gap8 wrap">
+                <span class="pill crit">critical</span>
+                <span class="pill">MAP-002</span>
+                <span class="pill"><span class="dot crit"></span> open · 41 min exposed</span>
+              </div>
+              <h1 style="margin-top: 13px">
+                <code class="path" style="font-size: 26px">dist/cli.js.map</code> embeds original
+                source
+              </h1>
+              <p class="muted" style="margin-top: 10px; max-width: 62ch">
+                The <code>latest</code> tarball for
+                <code class="path">nospoilers@0.4.2</code> contains a source map with a populated
+                <code>sourcesContent</code> array. Anyone who runs
+                <code>npm pack nospoilers</code> can reconstruct the pre-build TypeScript.
+              </p>
+
+              <div class="block">
+                <span class="kicker">Where</span>
+                <div class="card" style="margin-top: 9px">
+                  <div class="finding">
+                    <span class="rulecode" style="width: 66px; flex: none">MAP-002</span>
+                    <span class="grow path">dist/cli.js.map</span>
+                    <span class="pill crit">critical</span>
+                  </div>
+                  <div class="finding">
+                    <span class="rulecode" style="width: 66px; flex: none">MAP-001</span>
+                    <span class="grow path">dist/index.js.map</span>
+                    <span class="pill crit">critical</span>
+                  </div>
+                  <div class="finding">
+                    <span class="rulecode" style="width: 66px; flex: none">MAP-003</span>
+                    <span class="grow path">dist/index.js</span>
+                    <span class="pill warn">sourceMappingURL comment</span>
+                  </div>
+                </div>
+                <p class="tiny dim" style="margin-top: 8px">
+                  Credential values are never stored or shown. Paths and rule ids only.
+                </p>
+                <div class="gate admin-only" style="margin-top: 12px">
+                  <span class="tagword">Admin</span>
+                  <span
+                    >You can allow <code class="path">dist/*.map</code> for this repo with a reason
+                    and an expiry, instead of resolving this by hand every release.
+                    <a href="#" class="snow">Write an exception →</a></span
+                  >
+                </div>
+                <div class="gate s-member" style="margin-top: 12px">
+                  <span class="tagword">Member</span>
+                  <span
+                    >Writing a policy exception is admin-only, so that control is not shown here.
+                    Triage, notes, and resolution are yours.</span
+                  >
+                </div>
+              </div>
+
+              <div class="block">
+                <span class="kicker">Rotation checklist</span>
+                <div style="margin-top: 6px">
+                  <label class="task"
+                    ><input type="checkbox" checked /><span
+                      ><s class="dim">Confirm the pack is still on the latest tag</s></span
+                    ></label
+                  >
+                  <label class="task"
+                    ><input type="checkbox" /><span
+                      >Publish 0.4.3 built with <code>hidden-source-map</code>, then
+                      <code>npm deprecate nospoilers@0.4.2</code></span
+                    ></label
+                  >
+                  <label class="task"
+                    ><input type="checkbox" /><span
+                      >Upload maps to Sentry instead of packing them</span
+                    ></label
+                  >
+                  <label class="task"
+                    ><input type="checkbox" /><span
+                      >Add the CI gate so the next release fails closed</span
+                    ></label
+                  >
+                </div>
+              </div>
+
+              <div class="block">
+                <span class="kicker">Activity</span>
+                <div style="margin-top: 6px">
+                  <div class="thread">
+                    <span class="av"></span>
+                    <div>
+                      <span class="snow">NoSpoilers</span> opened this from a registry check
+                      <span class="dim">· 09:14</span>
+                    </div>
+                  </div>
+                  <div class="thread">
+                    <span class="av"></span>
+                    <div>
+                      <span class="snow">Slack</span> delivered to
+                      <code>#sec-alerts</code> <span class="dim">· 09:14</span>
+                    </div>
+                  </div>
+                  <div class="thread">
+                    <span class="av"></span>
+                    <div class="grow">
+                      <input
+                        class="field"
+                        placeholder="Add a resolution note…"
+                        style="margin-top: 2px"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>03</b> Triage inbox
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

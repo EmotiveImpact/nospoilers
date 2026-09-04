@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -113,6 +113,9 @@ describe("Watch architecture boundaries", () => {
     expect(html).toMatch(/19-linear-frame\.html/);
     expect(html).toMatch(/desk\.html/);
     expect(html).toMatch(/11-alerts-one-inbox\.html/);
+    expect(html).toMatch(/03-triage-inbox\.html/);
+    expect(html).toMatch(/2a-full-overview\.html/);
+    expect(html).toMatch(/watch-premium\.html/);
     expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
@@ -140,6 +143,22 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-frame-background/);
+  });
+
+  it("lists every committed mockup HTML file on the 2B index", () => {
+    const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
+    const root = readFileSync("public/mockup-review/index.html", "utf8");
+    const files = readdirSync("public/mockup-review/2b").filter(
+      (name) => name.endsWith(".html") && name !== "index.html",
+    );
+    expect(files.length).toBeGreaterThanOrEqual(20);
+    for (const file of files) {
+      expect(index).toContain(file);
+    }
+    expect(index).toContain("../premium/watch-premium.html");
+    expect(root).toContain("2b/20-gray-stage.html");
+    expect(root).toContain("premium/watch-premium.html");
+    expect(readFileSync("src/pages/MockupsPage.tsx", "utf8")).toMatch(/\/mockup-review\/index\.html/);
   });
 
   it("keeps notification and registry settings focused", () => {

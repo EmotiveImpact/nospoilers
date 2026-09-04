@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>09 · Bento overview — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .body {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 26px 22px 70px;
+      }
+
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-top: 20px;
+      }
+      .tile {
+        position: relative;
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        min-height: 132px;
+        overflow: hidden;
+        transition:
+          border-color 0.15s ease,
+          transform 0.15s ease;
+      }
+      .tile:hover {
+        border-color: var(--line-strong);
+        transform: translateY(-1px);
+      }
+      .tile .go {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        color: var(--dim);
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      .tile:hover .go {
+        opacity: 1;
+      }
+      .tile .n {
+        font-family: var(--display);
+        font-size: 30px;
+        letter-spacing: -0.035em;
+        line-height: 1;
+        margin-top: 10px;
+      }
+      .tile .foot {
+        margin-top: auto;
+        padding-top: 12px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+
+      .w2 {
+        grid-column: span 2;
+      }
+      .w3 {
+        grid-column: span 3;
+      }
+      .w4 {
+        grid-column: span 4;
+      }
+      .w6 {
+        grid-column: span 6;
+      }
+      .h2 {
+        grid-row: span 2;
+      }
+
+      .tile.alarm {
+        border-color: rgba(226, 69, 58, 0.34);
+        background:
+          radial-gradient(110% 130% at 0% 0%, rgba(226, 69, 58, 0.14), transparent 60%),
+          var(--panel);
+      }
+
+      .mini {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--mute);
+      }
+      .mini:last-child {
+        border-bottom: 0;
+      }
+
+      .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 46px;
+        margin-top: 12px;
+      }
+      .spark i {
+        flex: 1;
+        border-radius: 1px;
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .spark i.bad {
+        background: var(--danger);
+      }
+      .spark i.warn {
+        background: var(--warn);
+      }
+
+      .donut {
+        width: 74px;
+        height: 74px;
+        border-radius: 999px;
+        background: conic-gradient(
+          var(--ok) 0 72%,
+          var(--warn) 72% 92%,
+          var(--danger) 92% 100%
+        );
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .donut span {
+        width: 54px;
+        height: 54px;
+        border-radius: 999px;
+        background: var(--panel);
+        display: grid;
+        place-items: center;
+        font-family: var(--display);
+        font-size: 15px;
+      }
+
+      .legend {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--mute);
+      }
+
+      @media (max-width: 1000px) {
+        .bento {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .w4,
+        .w6 {
+          grid-column: span 4;
+        }
+      }
+      @media (max-width: 680px) {
+        .bento {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .w2,
+        .w3,
+        .w4,
+        .w6 {
+          grid-column: span 2;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <select class="field" style="width: 200px; margin-left: 8px">
+          <option>EmotiveImpact (Team)</option>
+        </select>
+        <div class="grow"></div>
+        <button class="btn sm outline">⌕ Search</button>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="body">
+        <div class="between">
+          <div>
+            <span class="kicker">Wednesday, 9:55</span>
+            <h1 class="has-data s-trial" style="margin-top: 8px">
+              One critical, everything else steady.
+            </h1>
+            <h1 class="has-data s-solo" style="margin-top: 8px">
+              One critical, everything else steady.
+            </h1>
+            <h1 class="has-data s-member" style="margin-top: 8px">
+              One critical, everything else steady.
+            </h1>
+            <h1 class="s-ended" style="margin-top: 8px">Stale since Thursday.</h1>
+            <h1 class="s-empty" style="margin-top: 8px">Nothing to show yet.</h1>
+          </div>
+          <div class="row gap8">
+            <button class="btn sm outline has-data">Scan a pack</button>
+            <button class="btn sm outline admin-only">Customise tiles</button>
+            <button class="btn sm s-empty">Install on GitHub</button>
+          </div>
+        </div>
+
+        <div class="bento">
+          <a class="tile alarm w4 has-data" href="#">
+            <span class="go">→</span>
+            <div class="row gap8 wrap">
+              <span class="pill crit">MAP-002 critical</span>
+              <span class="tiny dim">41 minutes exposed</span>
+            </div>
+            <h2 style="margin-top: 12px">
+              <code class="path" style="font-size: 19px">nospoilers@0.4.2</code> ships original
+              source
+            </h2>
+            <p class="small muted" style="margin-top: 7px; max-width: 56ch">
+              <code class="path">dist/cli.js.map</code> carries <code>sourcesContent</code> and is
+              still the <code>latest</code> tag. Two more map findings in the same pack.
+            </p>
+            <div class="row gap8" style="margin-top: auto; padding-top: 14px">
+              <span class="btn sm">Open rotation checklist</span>
+              <span class="btn sm outline">Acknowledge</span>
+            </div>
+          </a>
+
+          <a
+            class="tile w4 s-empty"
+            href="#"
+            style="border-style: dashed; border-color: var(--line-strong)"
+          >
+            <span class="kicker">Start here</span>
+            <h2 style="margin-top: 12px">Install NoSpoilers on one repository.</h2>
+            <p class="small muted" style="margin-top: 7px; max-width: 54ch">
+              Every tile on this page fills itself in from what you connect. Nothing here needs
+              configuring first — a private throwaway repo is enough to see the whole loop.
+            </p>
+            <div class="row gap8" style="margin-top: auto; padding-top: 14px">
+              <span class="btn sm">Install on GitHub</span>
+              <span class="btn sm outline">Scan a pack by hand</span>
+            </div>
+          </a>
+
+          <a
+            class="tile w4 s-ended"
+            href="#"
+            style="
+              border-color: rgba(226, 69, 58, 0.34);
+              background:
+                radial-gradient(110% 130% at 0% 0%, rgba(226, 69, 58, 0.14), transparent 60%),
+                var(--panel);
+            "
+          >
+            <span class="kicker bad">Hosted coverage is off</span>
+            <h2 style="margin-top: 12px">These tiles stopped updating six days ago.</h2>
+            <p class="small muted" style="margin-top: 7px; max-width: 56ch">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos
+              stay listed, receipts stay downloadable, and open alerts can still be acknowledged
+              and resolved.
+            </p>
+            <div class="row gap8" style="margin-top: auto; padding-top: 14px">
+              <span class="btn sm">See plans</span>
+              <span class="btn sm outline">Locked scan</span>
+            </div>
+          </a>
+
+          <a class="tile w2 h2" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Coverage</span>
+            <div class="row gap12 has-data" style="margin-top: 16px">
+              <div class="donut"><span>92%</span></div>
+              <div class="legend">
+                <span class="row gap8"><i class="dot ok"></i> 11 clean</span>
+                <span class="row gap8"><i class="dot warn"></i> 1 warn</span>
+                <span class="row gap8"><i class="dot crit"></i> 1 critical</span>
+              </div>
+            </div>
+            <p class="small dim s-empty" style="margin-top: 16px">Nothing connected yet.</p>
+            <hr class="hr" style="margin: 15px 0" />
+            <div class="mini">
+              <span class="grow">GitHub repos</span><span class="snow has-data">6</span
+              ><span class="dim s-empty">0</span>
+            </div>
+            <div class="mini">
+              <span class="grow">npm packages</span><span class="snow has-data">3</span
+              ><span class="dim s-empty">0</span>
+            </div>
+            <div class="mini">
+              <span class="grow">Websites</span><span class="snow has-data">2</span
+              ><span class="dim s-empty">0</span>
+            </div>
+            <div class="mini">
+              <span class="grow">Map custody</span><span class="snow has-data">1</span
+              ><span class="dim s-empty">0</span>
+            </div>
+            <span class="foot">Add a source →</span>
+          </a>
+
+          <a class="tile w2" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Open alerts</span>
+            <div class="n bad has-data">2</div>
+            <div class="n dim s-empty">0</div>
+            <span class="foot has-data">1 critical · 1 warn · 0 assigned to you</span>
+            <span class="foot s-empty">Nothing on this install yet</span>
+          </a>
+
+          <a class="tile w2" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Queue</span>
+            <div class="n">0</div>
+            <span class="foot has-data">Idle · 48 jobs done in 30 d · 0 failed</span>
+            <span class="foot s-empty">Idle · nothing has run</span>
+          </a>
+
+          <a class="tile w3 has-data" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Packs read, 30 days</span>
+            <div class="spark">
+              <i style="height: 22%"></i><i style="height: 40%"></i><i style="height: 16%"></i
+              ><i class="warn" style="height: 62%"></i><i style="height: 28%"></i
+              ><i style="height: 35%"></i><i style="height: 20%"></i><i style="height: 48%"></i
+              ><i style="height: 30%"></i><i class="warn" style="height: 55%"></i
+              ><i style="height: 24%"></i><i style="height: 38%"></i><i style="height: 18%"></i
+              ><i style="height: 44%"></i><i class="bad" style="height: 88%"></i>
+            </div>
+            <span class="foot">48 packs · 4 failed policy · median 6.2 s</span>
+          </a>
+
+          <a class="tile w3 has-data" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Latest sealed releases</span>
+            <div style="margin-top: 10px">
+              <div class="mini">
+                <span class="dot crit"></span>
+                <span class="grow path">nospoilers 0.4.2</span>
+                <span class="tiny dim">9f31…c0a</span>
+              </div>
+              <div class="mini">
+                <span class="dot ok"></span>
+                <span class="grow path">desk 2.1.0</span>
+                <span class="tiny dim">4b02…e71</span>
+              </div>
+              <div class="mini">
+                <span class="dot ok"></span>
+                <span class="grow path">acme-ui 3.8.1</span>
+                <span class="tiny dim">7c5d…20a</span>
+              </div>
+            </div>
+            <span class="foot">31 receipts available to download</span>
+          </a>
+
+          <a class="tile w2 team-only" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Delivery</span>
+            <div class="row gap8 has-data" style="margin-top: 14px">
+              <span class="pill ok"><span class="dot ok"></span> Slack</span>
+              <span class="pill ok"><span class="dot ok"></span> Jira</span>
+            </div>
+            <p class="small dim s-empty" style="margin-top: 14px">No destinations yet</p>
+            <span class="foot has-data">Last delivery 41 m ago · 2 routes</span>
+            <span class="foot s-empty">Alerts stay in the desk until you add one</span>
+          </a>
+
+          <a class="tile w2 s-solo" href="#" style="border-style: dashed">
+            <span class="go">→</span>
+            <span class="kicker">Delivery</span>
+            <p class="small muted" style="margin-top: 12px">
+              Slack, SIEM, and Jira tickets are on Team.
+            </p>
+            <span class="foot">Email for Solo waits on Resend · Compare plans</span>
+          </a>
+
+          <a class="tile w2" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Policy</span>
+            <div class="n has-data">2</div>
+            <div class="n dim s-empty">0</div>
+            <span class="foot has-data">Active exceptions · next expires 2026-06-30</span>
+            <span class="foot s-empty">No exceptions written</span>
+          </a>
+
+          <a class="tile w2 team-only" href="#">
+            <span class="go">→</span>
+            <span class="kicker">Team</span>
+            <div class="row gap8" style="margin-top: 14px">
+              <span class="pill">@ryan admin</span>
+              <span class="pill">@dana admin</span>
+              <span class="pill has-data">+2</span>
+            </div>
+            <span class="foot has-data">180-day retention · audit log on</span>
+            <span class="foot s-empty">180-day retention</span>
+          </a>
+
+          <a class="tile w2 s-solo" href="#" style="border-style: dashed">
+            <span class="go">→</span>
+            <span class="kicker">Team &amp; audit</span>
+            <p class="small muted" style="margin-top: 12px">
+              Roles, the install timeline, and the audit log are on Team.
+            </p>
+            <span class="foot">Subscribe to Team to keep the audit log</span>
+          </a>
+
+          <a class="tile w6 s-trial" href="#" style="min-height: 0">
+            <span class="go">→</span>
+            <div class="row gap12 wrap">
+              <span class="dot info"></span>
+              <strong class="small"
+                >Your trial ends in 11 days. Solo $29 keeps GitHub watch and pack reads for one
+                person; Team $99 adds routing, roles, audit, and lookalike signals.</strong
+              >
+              <div class="grow"></div>
+              <span class="btn sm">Compare plans</span>
+            </div>
+          </a>
+
+          <a class="tile w6 s-solo" href="#" style="min-height: 0">
+            <span class="go">→</span>
+            <div class="row gap12 wrap">
+              <span class="dot info"></span>
+              <strong class="small"
+                >On Solo, four tiles are replaced by upgrade prompts rather than removed — so the
+                shape of the page does not change when you upgrade.</strong
+              >
+              <div class="grow"></div>
+              <span class="btn sm">Compare plans</span>
+            </div>
+          </a>
+
+          <a class="tile w6 s-member" href="#" style="min-height: 0">
+            <span class="go">→</span>
+            <div class="row gap12 wrap">
+              <span class="dot"></span>
+              <strong class="small"
+                >As a member you see every tile. Customise tiles is admin-only, and opening a tile
+                that writes — policy, tokens, registries, roles — lands you on a read-only
+                view.</strong
+              >
+              <div class="grow"></div>
+              <span class="btn sm outline">Who are the admins?</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>09</b> Bento overview
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>
