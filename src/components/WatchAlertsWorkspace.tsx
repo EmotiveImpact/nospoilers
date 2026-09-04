@@ -130,7 +130,7 @@ export function WatchAlertsWorkspace({
   }, [next, onSelect, previous, selected]);
 
   return (
-    <section className="-mx-5 -my-8 flex h-[calc(100svh-3.5rem)] min-h-[560px] flex-col md:-mx-8">
+    <section className="flex h-full min-h-0 flex-col">
       <p className="sr-only" role="status" aria-live="polite">
         {error ??
           exportError ??
@@ -148,50 +148,40 @@ export function WatchAlertsWorkspace({
           No new jobs run. Existing alerts can still be acknowledged, assigned, resolved, and reopened.
         </div>
       ) : null}
+      <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-white/8 px-5 py-4 md:px-8">
+        <h1 className="watch-page-title">Alerts</h1>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="watch-seg" role="tablist" aria-label="Alert queues">
+            {([
+              ["open", "Triage", queueCounts.open],
+              ["waiting", "Waiting", queueCounts.waiting],
+              ...(teamOnly ? [["mine", "Mine", queueCounts.mine] as const] : []),
+              ["done", "Resolved", queueCounts.done],
+            ] as [AlertTab, string, number][]).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-current={tab === value ? "page" : undefined}
+                className="watch-seg-item"
+                onClick={() => onTab(value)}
+              >
+                {label}
+                {count > 0 ? (
+                  <span className={value === "open" ? "watch-seg-n watch-seg-n-open" : "watch-seg-n"}>
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+          {!previewing ? (
+            <Button type="button" size="sm" variant="outline" onClick={onExport}>Export JSON</Button>
+          ) : null}
+        </div>
+      </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-ink lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
-          <div className="flex shrink-0 flex-col gap-2 border-b border-white/8 px-3 py-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-[19px] tracking-tight text-snow">Alerts</h1>
-                <span
-                  className={cn(
-                    "rounded-full border border-white/10 px-2 py-0.5",
-                    queueCounts.open > 0 ? "font-mono text-[11px] text-[#ff8a80]" : "text-xs text-dim",
-                  )}
-                >
-                  {rows.length}
-                </span>
-              </div>
-              {!previewing ? (
-                <Button type="button" size="sm" variant="outline" onClick={onExport}>Export JSON</Button>
-              ) : null}
-            </div>
-            <div className="watch-seg" role="tablist" aria-label="Alert queues">
-              {([
-                ["open", "Triage", queueCounts.open],
-                ["waiting", "Waiting", queueCounts.waiting],
-                ...(teamOnly ? [["mine", "Mine", queueCounts.mine] as const] : []),
-                ["done", "Resolved", queueCounts.done],
-              ] as [AlertTab, string, number][]).map(([value, label, count]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-current={tab === value ? "page" : undefined}
-                  className="watch-seg-item"
-                  onClick={() => onTab(value)}
-                >
-                  {label}
-                  {count > 0 ? (
-                    <span className={value === "open" ? "watch-seg-n watch-seg-n-open" : "watch-seg-n"}>
-                      {count}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          </div>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
           {state.status === "loading" ? (
             <WatchSkeleton variant="list" className="min-h-0 flex-1 overflow-hidden" />
