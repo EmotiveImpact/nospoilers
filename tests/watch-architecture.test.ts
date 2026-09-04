@@ -69,15 +69,23 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
 
-  it("applies shell-weight E bloom behind the live rail wordmark", () => {
+  it("applies Linear's product frame to the live Watch shell", () => {
     const css = readFileSync("src/index.css", "utf8");
     const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
-    expect(shell).toMatch(/watch-rail/);
-    expect(css).toMatch(/\.watch-rail::before/);
-    expect(css).toMatch(/radial-gradient\(circle at 28% 22%, #161618/);
+    expect(shell).toMatch(/watch-desk/);
+    expect(shell).toMatch(/watch-frame/);
+    expect(shell).toMatch(/watch-frame-background/);
+    expect(shell).toMatch(/watch-stage/);
+    expect(css).toMatch(/\.watch-desk/);
+    expect(css).toMatch(/\.watch-frame-background/);
+    expect(css).toMatch(/background:\s*#101112/);
+    expect(css).toMatch(/#ffffff14/);
+    expect(css).toMatch(/#ffffff03/);
+    expect(css).toMatch(/#ffffff0d/);
     expect(css).toMatch(/--color-canvas: #09090b;/);
-    expect(css).toMatch(/--color-rail: #050506;/);
+    expect(css).not.toMatch(/#141416/);
     expect(css).not.toMatch(/540px 440px/);
+    expect(css).not.toMatch(/radial-gradient\(circle at 28% 22%, #161618/);
     expect(css).toMatch(/\.watch-queue-track/);
   });
 
@@ -111,7 +119,7 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
-    expect(readFileSync("src/index.css", "utf8")).not.toMatch(/#101112/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-frame-background/);
   });
 
   it("keeps notification and registry settings focused", () => {
