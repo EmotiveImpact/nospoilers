@@ -176,7 +176,11 @@ export function WatchAlertsWorkspace({
                   onClick={() => onTab(value)}
                 >
                   {label}
-                  {count > 0 ? <span className="font-mono text-dim">{count}</span> : null}
+                  {count > 0 ? (
+                    <span className={value === "open" ? "watch-seg-n watch-seg-n-open" : "watch-seg-n"}>
+                      {count}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>

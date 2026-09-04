@@ -54,7 +54,8 @@ describe("Watch architecture boundaries", () => {
     const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
     expect(shell).not.toMatch(/Alert views/);
     expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
-    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg/);
+    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-n-open/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
   });
 
   it("keeps notification and registry settings focused", () => {

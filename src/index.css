@@ -3,9 +3,9 @@
 @theme {
   --color-ink: #09090b;
   --color-rail: #0b0b0d;
-  --color-canvas: #141416;
-  --color-panel: #1a1a1d;
-  --color-inset: #0f0f12;
+  --color-canvas: #09090b;
+  --color-panel: #111113;
+  --color-inset: #0b0b0d;
   --color-line: #2a2a2e;
   --color-line-strong: #3f3f46;
   --color-snow: #f4f4f5;
@@ -298,6 +298,16 @@ code {
 .watch-seg-item[aria-current="page"] {
   background: rgba(255, 255, 255, 0.08);
   color: #f4f4f5;
+}
+
+.watch-seg-n {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  color: #71717a;
+}
+
+.watch-seg-n-open {
+  color: #ff8a80;
 }
 
 .watch-pill-info {

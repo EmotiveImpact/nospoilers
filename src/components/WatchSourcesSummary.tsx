@@ -215,11 +215,7 @@ export function WatchSourcesSummary({
                     }),
                   )
                 }
-                className={
-                  filter === option.value
-                    ? "min-h-12 rounded-full border border-white/25 bg-white/8 px-3 py-1.5 text-xs text-snow sm:min-h-9"
-                    : "min-h-12 rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20 sm:min-h-9"
-                }
+                className={filter === option.value ? "watch-chip watch-chip-ok min-h-9" : "watch-chip min-h-9"}
                 aria-pressed={filter === option.value}
               >
                 {option.label} <span className="ml-1 text-dim">{count}</span>
