@@ -104,7 +104,8 @@
 
       body[data-shot] .intro,
       body[data-shot] .jump,
-      body[data-shot] .block { display: none; }
+      body[data-shot] .block,
+      body[data-shot] .catalog { display: none; }
       body[data-shot="now"] #now,
       body[data-shot="overview"] #overview,
       body[data-shot="alerts"] #alerts { display: block; }
@@ -528,6 +529,42 @@
       }
       .tile p { margin-top: 8px; color: var(--dim); font-size: 12px; }
 
+      .catalog {
+        max-width: 76ch;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+        border-top: 1px solid var(--line);
+      }
+      .catalog h2 {
+        margin-top: 8px;
+        font: 500 22px/1.2 var(--display);
+      }
+      .catalog p {
+        margin-top: 8px;
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .catalog ol {
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 10px;
+      }
+      .catalog li {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        align-items: baseline;
+      }
+      .catalog a {
+        color: var(--snow);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .catalog a:hover { color: #fff; }
+      .catalog .muted { color: var(--dim); font-size: 13px; }
+
       @media (max-width: 860px) {
         .frame { grid-template-columns: 1fr; }
         .rail { display: none; }
@@ -564,6 +601,7 @@
       <a href="?shot=now">A only</a>
       <a href="?shot=overview">B only</a>
       <a href="?shot=alerts">C only</a>
+      <a href="#catalog">All mockups</a>
     </nav>
 
     <section class="block" id="now">
@@ -802,6 +840,59 @@
         </div>
       </div>
     </section>
+
+    <nav class="catalog" id="catalog" aria-label="All mockups">
+      <p class="kicker">All mockups</p>
+      <h2>Every 2B comp on this site</h2>
+      <p>These are the review pages. Live Watch is still C until a shot is picked.</p>
+      <ol>
+        <li>
+          <a href="20-gray-stage.html">20 · Gray stage</a>
+          <span class="muted"> — this page. #101112 on the work surface</span>
+        </li>
+        <li>
+          <a href="19-linear-frame.html">19 · Linear product frame</a>
+          <span class="muted"> — #101112 chrome, black canvas. Shot C is live Watch</span>
+        </li>
+        <li>
+          <a href="18-overlays.html">18 · Overlay value</a>
+          <span class="muted"> — tooltip, toast, menu, combobox</span>
+        </li>
+        <li>
+          <a href="17-shell-weight.html">17 · Shell weight</a>
+          <span class="muted"> — six chrome-only directions</span>
+        </li>
+        <li>
+          <a href="16-alerts-bc.html">16 · Alerts B and C</a>
+          <span class="muted"> — work/archive, full-width header</span>
+        </li>
+        <li>
+          <a href="15-alerts-queues.html">15 · Alerts queues</a>
+          <span class="muted"> — queues that are not squashed</span>
+        </li>
+        <li>
+          <a href="desk.html">Clickable desk</a>
+          <span class="muted"> — all 14 pages, rail switches views</span>
+        </li>
+        <li>
+          <a href="14-remaining-pages.html">14 · Remaining pages</a>
+          <span class="muted"> — Overview, Setup, Health, Audit</span>
+        </li>
+        <li>
+          <a href="13-pages-should-have-been.html">13 · Ten pages that only got a title</a>
+        </li>
+        <li>
+          <a href="12-overview-setup-ring.html">12 · Setup ring on overview</a>
+        </li>
+        <li>
+          <a href="11-alerts-one-inbox.html">11 · One Alerts inbox</a>
+        </li>
+        <li>
+          <a href="index.html">2B index</a>
+          <span class="muted"> — the same list on its own page</span>
+        </li>
+      </ol>
+    </nav>
 
     <script>
       const copy = {
