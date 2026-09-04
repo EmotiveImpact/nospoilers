@@ -83,6 +83,9 @@
         grid-template-columns: 20rem minmax(0, 1fr);
         min-height: 720px;
       }
+      .split.tight {
+        grid-template-columns: 17.5rem minmax(0, 1fr);
+      }
       .inbox {
         display: flex;
         flex-direction: column;
@@ -144,8 +147,10 @@
         font: 500 12px var(--sans);
       }
       .seg {
-        display: flex;
+        display: inline-flex;
         flex-wrap: nowrap;
+        width: max-content;
+        max-width: 100%;
         gap: 3px;
         padding: 3px;
         border: 1px solid var(--line-now);
@@ -231,9 +236,9 @@
           <p class="kicker">B</p>
           <h2 style="margin-top: 6px">Work queues, archive in the title</h2>
           <p class="muted" style="margin-top: 6px">
-            Triage, Waiting, and Mine stay at the original size. They fit.
-            Resolved is a quiet word in the title, not a fourth pill and not a button
-            that looks like Resolve.
+            Inbox comes in from 20rem to 17.5rem. The queue track hugs the three
+            pills, so Mine is not sitting next to an empty bar. Resolved stays a
+            title word, not a fourth pill.
           </p>
         </div>
         <div class="desk" data-frame="b">
@@ -258,7 +263,7 @@
             </div>
           </aside>
           <div class="canvas">
-            <div class="split">
+            <div class="split tight">
               <div class="inbox">
                 <div class="inbox-head">
                   <div class="title-row">
