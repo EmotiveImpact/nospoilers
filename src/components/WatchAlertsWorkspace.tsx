@@ -48,7 +48,6 @@ export function WatchAlertsWorkspace({
   activityState,
   detailOpen,
   tab,
-  teamOnly,
   onSelect,
   onBack,
   onRetry,
@@ -148,37 +147,43 @@ export function WatchAlertsWorkspace({
           No new jobs run. Existing alerts can still be acknowledged, assigned, resolved, and reopened.
         </div>
       ) : null}
-      <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-white/8 px-5 py-4 md:px-8">
+      <div className="flex shrink-0 items-center gap-4 border-b border-white/8 px-5 py-4 md:px-8">
         <h1 className="watch-page-title">Alerts</h1>
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          <div className="watch-seg" role="tablist" aria-label="Alert queues">
-            {([
-              ["open", "Triage", queueCounts.open],
-              ["waiting", "Waiting", queueCounts.waiting],
-              ...(teamOnly ? [["mine", "Mine", queueCounts.mine] as const] : []),
-              ["done", "Resolved", queueCounts.done],
-            ] as [AlertTab, string, number][]).map(([value, label, count]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-current={tab === value ? "page" : undefined}
-                className="watch-seg-item"
-                onClick={() => onTab(value)}
+        {!previewing ? (
+          <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
+            Export JSON
+          </Button>
+        ) : null}
+      </div>
+      <div className="watch-queue-track" role="tablist" aria-label="Alert queues">
+        {([
+          ["open", "Triage", queueCounts.open],
+          ["waiting", "Waiting", queueCounts.waiting],
+          ["mine", "Mine", queueCounts.mine],
+          ["done", "Resolved", queueCounts.done],
+        ] as [AlertTab, string, number][]).map(([value, label, count]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-current={tab === value ? "page" : undefined}
+            className="watch-queue-item"
+            onClick={() => onTab(value)}
+          >
+            <span className="watch-queue-pair">
+              <span className="watch-queue-label">{label}</span>
+              <span
+                className={cn(
+                  "watch-seg-n",
+                  value === "open" && count > 0 && "watch-seg-n-open",
+                  count === 0 && "watch-seg-n-zero",
+                )}
               >
-                {label}
-                {count > 0 ? (
-                  <span className={value === "open" ? "watch-seg-n watch-seg-n-open" : "watch-seg-n"}>
-                    {count}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-          {!previewing ? (
-            <Button type="button" size="sm" variant="outline" onClick={onExport}>Export JSON</Button>
-          ) : null}
-        </div>
+                {count}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 bg-ink lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>

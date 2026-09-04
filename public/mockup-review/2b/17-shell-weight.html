@@ -380,6 +380,7 @@
       }
 
       .page-head,
+      .queue-track,
       .split,
       .inbox,
       .detail {
@@ -390,7 +391,6 @@
         position: relative;
         z-index: 1;
         display: flex;
-        flex-wrap: wrap;
         align-items: center;
         gap: 16px;
         min-height: 64px;
@@ -403,50 +403,62 @@
         line-height: 1.1;
       }
 
-      .page-head .seg {
+      .page-head .export {
         margin-left: auto;
       }
 
-      .seg {
-        display: inline-flex;
-        flex-wrap: nowrap;
-        width: max-content;
-        max-width: 100%;
-        gap: 3px;
-        padding: 3px;
-        border: 1px solid var(--color-line);
-        border-radius: 8px;
-        background: var(--color-inset);
+      .queue-track {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-bottom: 1px solid var(--color-line);
       }
 
-      .seg i {
-        display: inline-flex;
+      .queue-track i {
+        display: flex;
         align-items: center;
-        gap: 6px;
-        min-height: 28px;
-        padding: 0 10px;
-        border-radius: 5px;
+        min-height: 44px;
+        padding: 0 12px;
         color: var(--color-dim);
-        font: 400 12px/1 var(--sans);
+        font: 400 13px/1 var(--sans);
         font-style: normal;
-        white-space: nowrap;
         cursor: pointer;
       }
 
-      .seg i.on {
-        background: rgba(255, 255, 255, 0.08);
+      .queue-track i span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+
+      .queue-track i.on {
         color: var(--color-snow);
       }
 
-      .seg b {
+      .queue-track i.on span {
+        border-bottom-color: var(--color-snow);
+      }
+
+      @media (min-width: 768px) {
+        .queue-track i {
+          padding: 0 20px;
+        }
+      }
+
+      .queue-track b {
         font-family: var(--mono);
         font-weight: 500;
+        font-variant-numeric: tabular-nums;
         color: var(--color-dim);
       }
 
-      .seg i.on b.open,
-      .seg b.open {
+      .queue-track b.open {
         color: var(--coral);
+      }
+
+      .queue-track b.zero {
+        color: #3f3f46;
       }
 
       .export {
@@ -707,13 +719,13 @@
             </header>
             <div class="page-head">
               <h2>Alerts</h2>
-              <div class="seg" role="tablist" aria-label="Alert queues">
-                <i class="on" data-q="open">Triage <b class="open">60</b></i>
-                <i data-q="waiting">Waiting <b>3</b></i>
-                <i data-q="mine">Mine <b>1</b></i>
-                <i data-q="done">Resolved</i>
-              </div>
               <span class="export">Export JSON</span>
+            </div>
+            <div class="queue-track" role="tablist" aria-label="Alert queues">
+              <i class="on" data-q="open"><span>Triage <b class="open">60</b></span></i>
+              <i data-q="waiting"><span>Waiting <b>3</b></span></i>
+              <i data-q="mine"><span>Mine <b>1</b></span></i>
+              <i data-q="done"><span>Resolved <b class="zero">0</b></span></i>
             </div>
             <div class="split">
               <div class="inbox">

@@ -55,8 +55,11 @@ describe("Watch architecture boundaries", () => {
     expect(shell).not.toMatch(/Alert views/);
     expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-page-title/);
+    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-queue-track/);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-n-open/);
+    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).not.toMatch(/className="watch-seg"/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-stage/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-queue-track/);
     expect(readFileSync("src/index.css", "utf8")).not.toMatch(/\.watch-seg-queues/);
     expect(readFileSync("src/components/WatchMonolithShell.tsx", "utf8")).toMatch(/watch-stage/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);

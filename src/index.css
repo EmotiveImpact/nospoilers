@@ -324,6 +324,61 @@ code {
   color: #ff8a80;
 }
 
+.watch-seg-n-zero {
+  color: #3f3f46;
+}
+
+.watch-queue-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.watch-queue-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.watch-queue-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 0 10px;
+  border-bottom: 2px solid transparent;
+}
+
+.watch-queue-item[aria-current="page"] {
+  color: #f4f4f5;
+}
+
+.watch-queue-item[aria-current="page"] .watch-queue-pair {
+  border-bottom-color: #f4f4f5;
+}
+
+.watch-queue-label {
+  white-space: nowrap;
+}
+
+.watch-queue-item .watch-seg-n {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .watch-queue-item {
+    padding: 0 20px;
+  }
+}
+
 .watch-pill-info {
   border-color: rgba(91, 141, 239, 0.36);
   background: rgba(91, 141, 239, 0.1);
