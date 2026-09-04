@@ -34,17 +34,18 @@ The trigger token is stored only as a SHA-256 hash. Repeating the same provider/
 idempotent. Provider-specific Vercel, Netlify, and Cloudflare account integrations remain later
 convenience layers over this endpoint.
 
-Product decisions (pricing, queue, what to buy later) live in **[docs/PRODUCT.md](docs/PRODUCT.md)**.
-Execution order is in **[docs/ROADMAP.md](docs/ROADMAP.md)**, completed work in
-**[CHANGELOG.md](CHANGELOG.md)**, and the next-agent brief in
-**[docs/HANDOFF.md](docs/HANDOFF.md)**.
+**Is it all built?** Specified product code is in the repo. Customers still cannot pay, get email,
+or hit a production worker / `nospoilers.dev`. Read **[docs/STATUS.md](docs/STATUS.md)**.
 
-The complete expansion PRD is
-**[docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md](docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md)**.
-The exhaustive feature ledger is
-**[docs/expansion/FEATURE-INVENTORY.md](docs/expansion/FEATURE-INVENTORY.md)**, the value model is
-**[docs/expansion/VALUE-MODEL.md](docs/expansion/VALUE-MODEL.md)**, and product/module PRDs are
-indexed in **[docs/products/README.md](docs/products/README.md)**.
+| File | Job |
+| --- | --- |
+| [docs/STATUS.md](docs/STATUS.md) | Built vs live vs leftover vs ice |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What is left |
+| [docs/PRODUCT.md](docs/PRODUCT.md) | Pricing and invariants |
+| [CHANGELOG.md](CHANGELOG.md) | What shipped |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | Live host facts |
+| [docs/expansion/FEATURE-INVENTORY.md](docs/expansion/FEATURE-INVENTORY.md) | Every discussed row |
+| [docs/products/README.md](docs/products/README.md) | Module vs separate-app boundary |
 
 ## Run locally
 

@@ -1,6 +1,7 @@
 # NoSpoilers value model
 
-This is a scenario model, not a promise or fundraising valuation.
+This is a scenario model, not a promise or fundraising valuation. It is not a feature list.
+What is built vs live: [`docs/STATUS.md`](../STATUS.md). Month-1 acquisition: [`docs/MONTH1.md`](../MONTH1.md).
 
 ## Assumptions
 

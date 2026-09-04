@@ -1,6 +1,7 @@
 # nospoilers-throwaway
 
 Disposable Phase 1 proof for [NoSpoilers](https://github.com/EmotiveImpact/nospoilers).
+Hosted-loop proof status: [docs/STATUS.md](../docs/STATUS.md).
 
 This repository is **safe to publicize**. It is not a product, not a customer, and not a real
 secret store. It exists so the GitHub App can prove:

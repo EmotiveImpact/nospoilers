@@ -1,10 +1,8 @@
 # NoSpoilers — product bible
 
-This file is the source of truth for what we are building and why. Chat can run out of context. **Read this before changing product, pricing, or hosted architecture.**
+This file is the source of truth for what we sell and why. Chat can run out of context. **Read this before changing product, pricing, or hosted architecture.**
 
-The exhaustive future product is specified in `docs/expansion/NO-SPOILERS-ULTIMATE-PRD.md`.
-Every discussed feature is accounted for in `docs/expansion/FEATURE-INVENTORY.md`. Standalone
-product PRDs live under `docs/products/`.
+What is actually built vs live is [`docs/STATUS.md`](STATUS.md). What is left is [`docs/ROADMAP.md`](ROADMAP.md). Every discussed feature is [`docs/expansion/FEATURE-INVENTORY.md`](expansion/FEATURE-INVENTORY.md). Module PRDs live under `docs/products/`.
 
 Tagline: **no spoilers in production.**
 Category: **release exposure protection** — final-artifact and production-web inspection plus
@@ -43,32 +41,31 @@ OAuth installations remain convenience work after customer demand, not separate 
 
 ## What is already built (this repo)
 
-Hosted GitHub App on Neon (sign-in, install, webhook → queue → worker, Watch/Scan). Scanner, CLI,
-and Action still run locally. Stripe and Resend stay dark without keys. Production deploy is not live.
+The specified customer product is in the repository: Watch, scanner, GitHub loop, unpaid-install
+kill, Release Ledger, Package Identity, notifications, and the owner-only Disclosure Desk. See
+[`docs/STATUS.md`](STATUS.md) for the honest live/dark split.
 
 | Piece | Where |
 | --- | --- |
 | Scanner kernel | `src/scanner/` — dir, `.tgz`/`.tar.gz`, `.zip`, `.vsix`, `.crx`, `.xpi`, Chrome extension ZIP, `.whl`, Python sdist (PKG-INFO), `.jar`/`.war`, `.nupkg`, `.gem`, Docker/OCI image tar, `.apk`/`.aab`/`.ipa`, serverless zip, Electron `.asar`; bounded in-memory source-map reconstruction; npm/pnpm/Yarn/Bun workspace listing |
 | CLI | `src/cli.ts` — `npx tsx src/cli.ts scan <path> [--strict] [--json] [--sarif file]` |
 | GitHub Action | `action.yml` (this repo, `uses: ./`). Customer Setup PR vendors `.github/actions/nospoilers`, which POSTs packed bytes to `/api/v1/scan`. |
-| Local drop-zone UI | Vite + React + Tailwind. `POST /api/scan` via `src/plugin.ts`. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
+| Watch / Scan UI | Vite + React + Tailwind. Port **4347**. Hosted `POST /api/v1/scan` with a hashed install token. |
 | Fixtures | `fixtures/` + `scripts/build-fixtures.ts` |
-| Tests | `tests/scanner.test.ts`, `tests/fixtures.test.ts` |
+| Tests | `tests/` — scanner, fixtures, hosted, Watch architecture |
 
 **Rules:** MAP-001/002/003, SEC-001/002/003/004, AI-001, NET-001, DBG-001, CRASH-001,
 GIT-001, SRC-001, SIZE-001/002/003. Credential values never appear in reports.
 
 **Scanner safety:** default hard limits are 80 MiB input, 500 MiB unpacked, 25,000 files,
-25 MiB per file, and 90 seconds. `.dmg`, `.exe`, `.msi`, and `.AppImage` are future isolated-job
-formats, not current claims; see `docs/ELECTRON.md`.
+25 MiB per file, and 90 seconds. `.dmg`, `.exe`, `.msi`, and `.AppImage` are skipped on the
+normal worker; the isolated installer job stays on ice. See `docs/ELECTRON.md`.
 
 **Exit codes:** 0 clean, 1 failed-policy, 2 error or inconclusive (never a passing receipt).
 
-**Built:** scanner kernel, bounded in-memory embedded-source reconstruction, CLI, Action, local
-pack drop-zone, production website/map scanning, and the **hosted GitHub App loop** (sign-in,
-install, webhook → Postgres queue → worker, visibility poller, log notifier, dashboard).
-
-**Not built / Phase B:** custom domain, Railway/Fly account and DNS, Marketplace. The production process split is in code (`npm run build` + `npm run host`; `NOSPOILERS_ROLE=web|worker`). This host is not deployed. Stripe Checkout/portal/webhooks and Resend Watch email are implemented and stay dark without keys.
+**Not live:** Stripe keys, Resend keys, Railway worker deploy, `nospoilers.dev`. Adapters and the
+process split (`NOSPOILERS_ROLE=web|worker`) are in code. Vercel serves web/API on a temporary
+alias. Marketplace is optional after ~100 installs.
 
 ---
 
@@ -191,9 +188,9 @@ Queue pickup is event-driven inside the API process: a successful enqueue wakes 
 immediately. A 15-minute timer is recovery only. Do not return to sub-second empty-queue polling;
 it keeps serverless Postgres awake without improving webhook latency.
 
-**v1 ops:** Fly.io (or Railway if Fly fights us) + Neon Postgres + Cloudflare DNS + Stripe + GitHub App + Resend. Queue **inside Postgres** first. Not Inngest ($99) until revenue. Not Vercel/Cloudflare Workers for unpack. Not GCP/AWS day one.
+**v1 ops:** Vercel web/API + Railway worker + Neon Postgres + registrar DNS + Stripe + GitHub App + Resend. Queue **inside Postgres** first. Not Inngest ($99) until revenue. Not Vercel/Cloudflare Workers for unpack. Not GCP/AWS day one.
 
-**Do not buy domain / Fly / Resend / Stripe until the loop works on a throwaway repo** (see phases).
+**Do not buy domain / Railway / Resend / Stripe until a human approves.** The throwaway loop already works.
 
 ---
 
@@ -234,34 +231,29 @@ Railway Hobby max **6** replicas, Pro **42**. Fly more flexible; org may cap mac
 
 ---
 
-## Phases — do not skip
+## Phases — current
 
-### Phase A — hosted loop in this environment (next build)
+### Phase A — hosted loop — done
 
-Prove on a **throwaway GitHub repo** (a junk private repo you publicize on purpose):
+Throwaway install → webhook 200 → queue → Watch alert → fixture release scan. Proven on
+`EmotiveImpact/nospoilers-throwaway`. Slack, Team routing, fair-use caps, and one-click GitHub
+responses (409 without Administration) are already in the product. They are not “Phase C ideas.”
 
-Install App → webhook 200 → job queue → visibility alert in dashboard → release asset scan with **existing** scanner → notifier = logs + DB.
+### Phase B — go live — human-gated
 
-**Use:** local Postgres, smee.io or cloudflared for a public webhook URL, log notifier. **Do not** buy `nospoilers.dev`, Fly, Resend, or Stripe in this phase.
+Adapters are written. Keys and accounts are not.
 
-Out of scope for Phase A: Stripe, Slack, make-private, Marketplace, npm publish, GCP, license-key fortress, scanning all of GitHub, full git clone on every push.
-
-### Phase B — go live (the “short prompt” after A works)
-
-This is what “domain + Fly + Resend + Stripe, not before” means:
-
-| Piece | Why we waited |
+| Piece | Why it is still waiting |
 | --- | --- |
-| **Domain** (`nospoilers.dev`) | Pretty URL and email DNS (SPF/DKIM). GitHub can already knock on a **tunnel** in Phase A. |
-| **Fly** (or Railway) | Always-on public API. Need it to sell; not needed to prove the loop locally. |
-| **Resend** | Real email. Needs a domain. Until then, write alerts to the dashboard + server logs. |
-| **Stripe** | Take money. Do this after install → alert is real, or you are charging for a demo. |
+| **Domain** (`nospoilers.dev`) | Public URL and email DNS. GitHub can already hit a tunnel or the Vercel alias. |
+| **Railway worker** | Always-on job consumer. Vercel is web/API. Code split exists. |
+| **Resend** | Real email. Needs a domain and keys. Until then, Watch + logs. |
+| **Stripe** | Take money after the loop is real. This host has no keys. |
 
-Not before = do not rent production or buy DNS while the GitHub loop is still vapor.
+### Phase C — later / ice
 
-### Phase C — later
-
-Slack, make-private from alert, Marketplace listing, CLI license enforcement, fair-use heavy-scan caps in product, GCP if a contract demands it.
+Marketplace listing, CLI license bump, isolated Electron worker, SBOM, Sigstore verify, scheduled
+CDN, native cloud-account deploy adapters, GCP if a contract demands it. See [`docs/ROADMAP.md`](ROADMAP.md).
 
 ---
 
@@ -273,7 +265,12 @@ Rejected: RepoRadar, Hatchdoor, RepoLarm, Leakwake, LeakRadar.
 
 ---
 
-## Goal prompt for Phase A (paste to an agent)
+## Archival goal prompts
+
+Phase A is done. Phase B is keys and deploy, not a greenfield build. The prompts below are
+historical. Use [`docs/STATUS.md`](STATUS.md) and [`docs/HANDOFF.md`](HANDOFF.md) instead.
+
+### Goal prompt for Phase A (paste to an agent)
 
 ```
 Build NoSpoilers hosted v1 in this repo. Read docs/PRODUCT.md first. Do not buy a domain, Fly, Railway, Resend, or Stripe. Do not add Google Cloud. Do not rewrite the existing scanner.
@@ -319,7 +316,7 @@ Begin by mapping src/scanner into the worker. Ship the loop above as one usable 
 
 ---
 
-## Goal prompt for Phase B (only after throwaway-repo proof)
+### Goal prompt for Phase B (only after throwaway-repo proof)
 
 ```
 NoSpoilers Phase B go-live. Read docs/PRODUCT.md. Phase A loop already works.

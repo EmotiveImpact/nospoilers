@@ -1,10 +1,16 @@
 # Watch desk UX mockups
 
-Ten static HTML directions for the logged-in desk, plus a gallery. Design comps only — no
-framework, no build step, nothing wired to data, and nothing here ships in the app build.
+Static HTML comps. Live Watch is the 2B monolith in the app. Product status:
+[`docs/STATUS.md`](../../../docs/STATUS.md).
 
-The prompt that generated these, and the follow-up prompts for narrowing down, are in
-[PROMPT.md](PROMPT.md). If you are an agent picking this up, start with [HANDOFF.md](HANDOFF.md).
+**Current visual spec:** [21 · Stage gets Linear, shot C](21-stage-linear.html) — glow and rim on
+`.stage` only (`?shot=c`). Rail stays canvas black. Link the `.html` file; a directory URL rewrites
+to the SPA.
+
+The 2B desk (sidebar, alerts track, sources, setup ring) is **live**, not proposed. These files are
+direction and leftover studies. They are not wired to data.
+
+The prompt that generated the early set is in [PROMPT.md](PROMPT.md). Gallery: [index.html](index.html).
 
 ## Decision set (compare these)
 

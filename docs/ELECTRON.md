@@ -1,5 +1,7 @@
 # Electron installer scanning — intentionally on ice
 
+Product status: [`docs/STATUS.md`](STATUS.md). Do not start this worker until paying demand.
+
 NoSpoilers currently scans an `app.asar` directly. It does **not** claim to unpack `.dmg`, `.exe`,
 `.msi`, `.AppImage`, or platform application bundles.
 
