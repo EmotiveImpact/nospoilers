@@ -24,6 +24,7 @@
         --color-mute: #a1a1aa;
         --color-dim: #71717a;
         --coral: #ff8a80;
+        --lift: #161618;
       }
 
       html,
@@ -104,9 +105,11 @@
 
       .use {
         width: 100%;
-        margin: 2px 0 0;
-        color: var(--color-dim);
-        font-size: 12px;
+        margin: 4px 0 0;
+        max-width: 74ch;
+        color: var(--color-mute);
+        font-size: 13px;
+        line-height: 1.45;
       }
 
       .desk {
@@ -500,39 +503,29 @@
         font-size: 12px;
       }
 
-      /* A — top-left radial on the window chrome, dead by mid-rail */
-      .desk.dir-a::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 0;
+      /* A — top-left radial on the window chrome only */
+      .desk.dir-a {
         background: radial-gradient(
-          520px 440px at 0 0,
-          #2a2a32 0%,
-          #1a1a1f 30%,
-          #0c0c0e 54%,
-          #050506 74%
+          540px 440px at 0 0,
+          var(--lift) 0%,
+          #0b0b0d 38%,
+          var(--color-rail) 72%
         );
       }
 
-      /* B — 64px horizontal band across rail + stage chrome */
-      .desk.dir-b::before {
-        content: "";
-        position: absolute;
-        inset: 0 0 auto;
-        height: 64px;
-        z-index: 2;
-        background: linear-gradient(180deg, #1c1c22 0%, rgba(28, 28, 34, 0) 100%);
+      /* B — 64px lid on rail/gutter + command strip. No overlay on Alerts. */
+      .desk.dir-b {
+        background: linear-gradient(180deg, var(--lift) 0%, #0b0b0d 48px, var(--color-rail) 64px);
       }
 
       .desk.dir-b .cmd {
-        background: linear-gradient(180deg, #1c1c22 0%, var(--color-canvas) 100%);
+        background: linear-gradient(180deg, var(--lift) 0%, var(--color-canvas) 100%);
       }
 
       /* C — 1px stage highlight + rail vignette, no grey fill */
       .desk.dir-c .stage {
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.07),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
           0 24px 64px rgba(0, 0, 0, 0.28);
       }
 
@@ -562,17 +555,8 @@
       }
 
       /* D — rail fade only; stage stays flat black */
-      .desk.dir-d .rail::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        background: radial-gradient(
-          280px 340px at 0 0,
-          #2a2a32 0%,
-          #1a1a1f 40%,
-          #050506 74%
-        );
+      .desk.dir-d .rail {
+        background: linear-gradient(180deg, var(--lift) 0%, #0a0a0b 36%, var(--color-rail) 68%);
       }
 
       /* E — 180px bloom behind logo / collapse only */
@@ -584,25 +568,12 @@
         width: 180px;
         height: 180px;
         z-index: 0;
-        background: radial-gradient(circle at 22% 18%, #2a2a32 0%, rgba(42, 42, 50, 0.4) 44%, transparent 72%);
+        background: radial-gradient(circle at 28% 22%, var(--lift) 0%, rgba(22, 22, 24, 0.35) 46%, transparent 72%);
       }
 
       /* F — fade in the 56px command header; rail stays flat */
       .desk.dir-f .cmd {
-        background: transparent;
-      }
-
-      .desk.dir-f .cmd::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        background: linear-gradient(180deg, #22222a 0%, #121216 48%, #09090b 100%);
-      }
-
-      .desk.dir-f .cmd > * {
-        position: relative;
-        z-index: 1;
+        background: linear-gradient(180deg, var(--lift) 0%, #0c0c0e 52%, var(--color-canvas) 100%);
       }
 
       @media (max-width: 980px) {
@@ -624,15 +595,15 @@
         <p class="kicker">2B · Shell weight</p>
         <h1>What Linear is doing — chrome lighting, not a grey page</h1>
         <p>
-          On <a href="https://linear.app">linear.app</a> the product frame uses an
-          <strong>edge glow</strong> (cool radial wash from the top-left of the
-          window) plus a masked <strong>edge highlight / shine</strong> on the 1px
-          border. Their utilities are named <code>edgeGlow</code> and
-          <code>edgeHighlight</code>: white at about 4–8% over
-          <code>#090a0b</code> / <code>#101112</code>, which reads as a lift in
-          the <code>#1a1a1f</code>–<code>#2a2a32</code> range. The sidebar and
-          issue panel sit on that weighted chrome. The inner canvas stays
-          near-black.
+          On <a href="https://linear.app">linear.app</a> the product shot is a
+          darker frame around a darker canvas. The lighter grey in the top-left
+          is a <strong>radial luminance wash</strong> (their
+          <code>edgeGlow</code> is white at about 4–8% over <code>#090a0b</code>
+          / <code>#101112</code>, which reads as ~<code>#161618</code>) plus a
+          <strong>1px edge highlight / shine</strong> masked to that same corner.
+          The sidebar also gets a small blurred bloom behind the wordmark. The
+          inner issue view stays near-black. A vignette under the window makes
+          the shell feel heavy.
         </p>
         <p>
           These six directions put that idea on the live Watch desk — rail
@@ -762,12 +733,12 @@
 
     <script>
       const uses = {
-        a: "Use if you want Linear’s corner light on the whole window, dying before the stage.",
-        b: "Use if a single top-edge band should read as one piece of chrome across rail and command row.",
-        c: "Use if the stage should feel like a pane (hairline + vignette) without any grey fill.",
-        d: "Use if only the rail should lift, like Linear’s sidebar versus the issue panel.",
-        e: "Use if the logo corner is enough and the rest of the desk should stay flat black.",
-        f: "Use if the weight should live in the 56px command header, not the sidebar.",
+        a: "A radial wash from ~#161618 at the logo corner, fading into #050506 on the rail and the 8px gutter. Pick this if you want Linear’s homepage corner light and the Alerts canvas must stay black.",
+        b: "A 64px lid across the full top of the window — rail, gutter, and the 56px command strip — fading down into #050506. Pick this if the chrome should read as one piece of metal, not a lit corner.",
+        c: "A 1px white specular (rgba 0.06) on the stage rim, plus a darker vignette at the bottom of the rail. Pick this if the weight should come from lighting alone, with no grey fill anywhere.",
+        d: "The sidebar fades lighter at the top; the rounded stage stays flat #09090b. Pick this if the frame should have weight while the work surface stays black.",
+        e: "A 180px radial sits only behind the NoSpoilers wordmark. Pick this if the quietest lift is enough and the rest of the chrome should stay #050506.",
+        f: "A 56px wash lives inside the rounded stage’s command header, then drops to #09090b. Pick this if the lid should sit on the work window, not the sidebar.",
       };
       const desk = document.getElementById("desk");
       const useLine = document.getElementById("use-line");
