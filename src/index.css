@@ -127,7 +127,8 @@ code {
 /* Shot C from 21-stage-linear: Linear view tokens on .watch-stage only.
    Rail, gutter, and page stay canvas black. No gray plate under the rail.
    C's wash on #09090b is invisible next to #111113 tiles, so the pane
-   floor is the tile color — command row and title sit on the lit stage. */
+   floor is the tile color. A wider stage-only glow keeps the command row
+   and title visibly on that surface without lifting the surrounding chrome. */
 .watch-desk {
   display: flex;
   height: 100svh;
@@ -160,14 +161,12 @@ code {
   overflow: hidden;
   background:
     radial-gradient(
-      ellipse 50% 50% at 0 0,
-      #ffffff08 0%,
-      color-mix(in srgb, #ffffff08 94%, transparent) 15%,
-      color-mix(in srgb, #ffffff08 78%, transparent) 30%,
-      color-mix(in srgb, #ffffff08 58%, transparent) 45%,
-      color-mix(in srgb, #ffffff08 35%, transparent) 60%,
-      color-mix(in srgb, #ffffff08 16%, transparent) 75%,
-      color-mix(in srgb, #ffffff08 3%, transparent) 90%,
+      ellipse 62% 58% at 0 0,
+      #ffffff0a 0%,
+      color-mix(in srgb, #ffffff0a 92%, transparent) 18%,
+      color-mix(in srgb, #ffffff0a 68%, transparent) 38%,
+      color-mix(in srgb, #ffffff0a 34%, transparent) 62%,
+      color-mix(in srgb, #ffffff0a 8%, transparent) 82%,
       transparent 100%
     ),
     linear-gradient(#ffffff03, #ffffff03),
@@ -185,14 +184,12 @@ code {
   pointer-events: none;
   border-radius: inherit;
   background: radial-gradient(
-    ellipse 50% 50% at 0 0,
-    #ffffff08 0%,
-    color-mix(in srgb, #ffffff08 94%, transparent) 15%,
-    color-mix(in srgb, #ffffff08 78%, transparent) 30%,
-    color-mix(in srgb, #ffffff08 58%, transparent) 45%,
-    color-mix(in srgb, #ffffff08 35%, transparent) 60%,
-    color-mix(in srgb, #ffffff08 16%, transparent) 75%,
-    color-mix(in srgb, #ffffff08 3%, transparent) 90%,
+    ellipse 62% 58% at 0 0,
+    #ffffff12 0%,
+    color-mix(in srgb, #ffffff12 90%, transparent) 18%,
+    color-mix(in srgb, #ffffff12 64%, transparent) 38%,
+    color-mix(in srgb, #ffffff12 28%, transparent) 62%,
+    color-mix(in srgb, #ffffff12 6%, transparent) 82%,
     transparent 100%
   );
 }

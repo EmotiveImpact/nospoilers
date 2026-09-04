@@ -176,7 +176,7 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/Triage <b>60<\/b>/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-gutter/);
-    expect(readFileSync("src/index.css", "utf8")).toMatch(/ellipse 50% 50% at 0 0/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/ellipse 62% 58% at 0 0/);
   });
 
   it("lists every committed mockup HTML file on the 2B index", () => {
