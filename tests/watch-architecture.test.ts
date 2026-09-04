@@ -91,6 +91,27 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/PanelLeftClose/);
   });
 
+  it("keeps the Linear product-frame mock on Linear's homepage tokens", () => {
+    const html = readFileSync("public/mockup-review/2b/19-linear-frame.html", "utf8");
+    const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
+    expect(index).toMatch(/19-linear-frame\.html/);
+    expect(html).toMatch(/\.frame-background/);
+    expect(html).toMatch(/background:\s*#101112/);
+    expect(html).toMatch(/#ffffff14/);
+    expect(html).toMatch(/#090a0b/);
+    expect(html).toMatch(/#ffffff03/);
+    expect(html).toMatch(/#ffffff0d/);
+    expect(html).toMatch(/border-radius:\s*var\(--app-radius\)/);
+    expect(html).toMatch(/--app-radius:\s*12px/);
+    expect(html).toMatch(/--frame-padding:\s*8px/);
+    expect(html).toMatch(/--width:\s*1320px/);
+    expect(html).toMatch(/--height:\s*720px/);
+    expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
+    expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
+    expect(readFileSync("src/index.css", "utf8")).not.toMatch(/#101112/);
+  });
+
   it("keeps notification and registry settings focused", () => {
     const notifications = readFileSync(
       "src/components/watch/screens/NotificationsScreen.tsx",
