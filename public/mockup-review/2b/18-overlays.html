@@ -19,7 +19,6 @@
         --color-panel: #111113;
         --color-inset: #0b0b0d;
         --color-line: #2a2a2e;
-        --color-line-strong: #3f3f46;
         --color-snow: #f4f4f5;
         --color-mute: #a1a1aa;
         --color-dim: #71717a;
@@ -37,7 +36,8 @@
         padding: 22px 16px 80px;
       }
 
-      .intro {
+      .intro,
+      .block-meta {
         max-width: 74ch;
       }
 
@@ -46,7 +46,8 @@
         font-size: 30px;
       }
 
-      .intro p {
+      .intro p,
+      .block-meta p {
         margin-top: 10px;
         color: var(--color-mute);
       }
@@ -63,7 +64,7 @@
         background: #050506;
         color: var(--color-dim);
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.55;
       }
 
       .recipe strong {
@@ -74,36 +75,34 @@
       .jump {
         position: sticky;
         top: 0;
-        z-index: 30;
+        z-index: 40;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         padding: 10px 0 14px;
-        background: color-mix(in srgb, #000 86%, transparent);
+        background: color-mix(in srgb, #000 88%, transparent);
         backdrop-filter: blur(12px);
       }
 
-      .jump button {
+      .jump a {
         height: 30px;
         padding: 0 11px;
         border: 1px solid var(--color-line);
         border-radius: 6px;
-        background: transparent;
         color: var(--color-mute);
-        font: 500 12px/30px var(--sans);
-        cursor: pointer;
+        font-size: 12px;
+        line-height: 30px;
+        text-decoration: none;
       }
 
-      .jump button.on,
-      .jump button:hover {
-        border-color: var(--color-line-strong);
+      .jump a:hover {
+        border-color: #3f3f46;
         background: rgba(255, 255, 255, 0.08);
         color: var(--color-snow);
       }
 
-      .block-meta {
-        max-width: 72ch;
-        margin: 0 0 12px;
+      .block {
+        margin: 0 0 56px;
       }
 
       .block-meta h2 {
@@ -111,35 +110,25 @@
         font-size: 22px;
       }
 
-      .block-meta p {
-        margin-top: 8px;
-        color: var(--color-mute);
-        font-size: 14px;
-      }
-
       .desk {
         position: relative;
         display: grid;
         grid-template-columns: 244px minmax(0, 1fr);
-        min-height: 820px;
-        overflow: hidden;
-        isolation: isolate;
+        min-height: 760px;
         background: var(--color-rail);
         color: var(--color-snow);
       }
 
-      .desk.collapsed {
+      .desk.is-collapsed {
         grid-template-columns: 56px minmax(0, 1fr);
       }
 
       .rail {
         position: relative;
-        z-index: 1;
+        z-index: 2;
         display: flex;
         flex-direction: column;
-        min-height: 0;
         isolation: isolate;
-        overflow: hidden;
       }
 
       .rail::before {
@@ -163,7 +152,7 @@
         padding: 18px 16px 0;
       }
 
-      .desk.collapsed .brand {
+      .is-collapsed .brand {
         padding: 18px 8px 0;
       }
 
@@ -171,10 +160,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
       }
 
-      .desk.collapsed .brand-row {
+      .is-collapsed .brand-row {
         justify-content: center;
       }
 
@@ -184,39 +172,37 @@
         font-weight: 500;
       }
 
-      .desk.collapsed .wordmark,
-      .desk.collapsed .install,
-      .desk.collapsed .sources-n,
-      .desk.collapsed .nav .kicker,
-      .desk.collapsed .item span,
-      .desk.collapsed .setup-copy {
+      .is-collapsed .wordmark,
+      .is-collapsed .install,
+      .is-collapsed .sources-n,
+      .is-collapsed .kicker,
+      .is-collapsed .item-label,
+      .is-collapsed .item-n,
+      .is-collapsed .setup-copy {
         display: none;
       }
 
-      .collapse,
-      .hit {
+      .collapse {
         display: grid;
         place-items: center;
         width: 32px;
         height: 32px;
-        border: 0;
-        border-radius: 6px;
-        background: transparent;
         color: var(--color-mute);
-        cursor: pointer;
       }
 
       .install {
         display: flex;
         align-items: center;
         gap: 8px;
+        width: 100%;
         margin-top: 12px;
         padding: 8px 10px;
         border: 1px solid var(--color-line);
         border-radius: 6px;
         background: var(--color-inset);
+        color: var(--color-snow);
+        font: 400 13px var(--sans);
         cursor: pointer;
-        position: relative;
       }
 
       .mark {
@@ -231,7 +217,7 @@
       }
 
       .sources-n {
-        margin: 4px 16px 0;
+        margin: 4px 0 0;
         color: var(--color-dim);
         font-size: 11px;
       }
@@ -241,38 +227,38 @@
         flex: 1;
         flex-direction: column;
         gap: 18px;
-        min-height: 0;
         padding: 14px 10px;
       }
 
-      .desk.collapsed .nav {
-        padding: 14px 8px;
+      .is-collapsed .nav {
         align-items: center;
+        padding: 14px 8px;
       }
 
-      .nav .kicker {
+      .kicker {
         padding: 0 10px 6px;
       }
 
       .item {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 10px;
+        width: 100%;
         height: 30px;
         padding: 0 9px;
         border: 0;
         border-radius: 6px;
         background: transparent;
         color: var(--color-mute);
-        font: 400 13px/1 var(--sans);
-        cursor: pointer;
-        position: relative;
+        font: 400 13px var(--sans);
+        cursor: default;
       }
 
-      .desk.collapsed .item {
+      .is-collapsed .item {
         width: 32px;
-        padding: 0;
         justify-content: center;
+        padding: 0;
       }
 
       .item.on {
@@ -285,7 +271,7 @@
         opacity: 0.75;
       }
 
-      .item .n {
+      .item-n {
         margin-left: auto;
         font-family: var(--mono);
         font-size: 11px;
@@ -303,10 +289,6 @@
         padding-top: 17px;
       }
 
-      .desk.collapsed .group.rule {
-        width: 100%;
-      }
-
       .setup {
         display: flex;
         align-items: center;
@@ -315,7 +297,7 @@
         border-top: 1px solid var(--color-line);
       }
 
-      .desk.collapsed .setup {
+      .is-collapsed .setup {
         justify-content: center;
         padding: 12px 8px;
       }
@@ -325,12 +307,11 @@
         place-items: center;
         width: 40px;
         height: 40px;
-        flex: none;
         border-radius: 999px;
         background: conic-gradient(#252529 0deg, #252529 360deg);
       }
 
-      .desk.collapsed .ring {
+      .is-collapsed .ring {
         width: 28px;
         height: 28px;
       }
@@ -342,19 +323,16 @@
         height: 32px;
         border-radius: 999px;
         background: var(--color-rail);
-        color: var(--color-snow);
         font-size: 9px;
       }
 
-      .desk.collapsed .ring span {
+      .is-collapsed .ring span {
         width: 22px;
         height: 22px;
-        font-size: 8px;
       }
 
       .setup small {
         display: block;
-        margin-top: 2px;
         color: var(--color-dim);
         font-size: 11px;
       }
@@ -371,7 +349,6 @@
         flex: 1;
         min-width: 0;
         flex-direction: column;
-        overflow: hidden;
         border: 1px solid var(--color-line);
         border-radius: 16px;
         background: var(--color-canvas);
@@ -400,7 +377,6 @@
         background: var(--color-inset);
         color: var(--color-dim);
         font-size: 13px;
-        cursor: pointer;
       }
 
       .search kbd {
@@ -408,7 +384,6 @@
         padding: 1px 6px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 4px;
-        font-family: var(--sans);
         font-size: 11px;
       }
 
@@ -419,18 +394,11 @@
       }
 
       .chip {
+        padding: 3px 8px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 999px;
-        padding: 3px 8px;
         color: var(--color-dim);
         font-size: 12px;
-      }
-
-      .ghost {
-        border: 0;
-        background: transparent;
-        color: var(--color-mute);
-        font: 500 13px var(--sans);
       }
 
       .avatar {
@@ -443,14 +411,6 @@
         font-size: 11px;
       }
 
-      .page-head,
-      .queue-track,
-      .split,
-      .inbox,
-      .detail {
-        background: var(--color-canvas);
-      }
-
       .page-head {
         display: flex;
         align-items: center;
@@ -460,7 +420,7 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
 
-      .page-head h2 {
+      .page-head h3 {
         font-size: 30px;
         line-height: 1.1;
       }
@@ -497,34 +457,34 @@
         font-style: normal;
       }
 
-      .queue-track i span {
+      .queue-track i em {
         display: inline-flex;
         align-items: baseline;
         gap: 8px;
         padding: 12px 0 10px;
         border-bottom: 2px solid transparent;
+        font-style: normal;
       }
 
       .queue-track i.on {
         color: var(--color-snow);
       }
 
-      .queue-track i.on span {
+      .queue-track i.on em {
         border-bottom-color: var(--color-snow);
       }
 
       .queue-track b {
         font-family: var(--mono);
         font-weight: 500;
-        font-variant-numeric: tabular-nums;
         color: #3f3f46;
       }
 
       .split {
         display: grid;
         grid-template-columns: 20rem minmax(0, 1fr);
-        min-height: 0;
         flex: 1;
+        min-height: 0;
       }
 
       .inbox {
@@ -551,7 +511,6 @@
 
       .detail strong {
         display: block;
-        font-size: 14px;
       }
 
       .detail span {
@@ -561,21 +520,13 @@
         font-size: 12px;
       }
 
-      /* Overlay chrome */
-      .tip,
-      .menu,
-      .toast,
-      .palette {
-        font-family: var(--sans);
-      }
-
       .tip {
         position: absolute;
         left: calc(100% + 10px);
         top: 50%;
-        transform: translateY(-50%);
         z-index: 8;
-        padding: 5px 8px;
+        transform: translateY(-50%);
+        padding: 6px 8px;
         border: 1px solid var(--color-line);
         border-radius: 6px;
         background: #18181b;
@@ -583,21 +534,20 @@
         font-size: 12px;
         line-height: 1;
         white-space: nowrap;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
         pointer-events: none;
       }
 
       .tip b {
         margin-left: 6px;
         font-family: var(--mono);
-        font-weight: 500;
         color: var(--coral);
       }
 
       .menu {
         position: absolute;
         z-index: 12;
-        min-width: 196px;
+        min-width: 200px;
         padding: 4px;
         border: 1px solid var(--color-line);
         border-radius: 8px;
@@ -625,7 +575,6 @@
         background: transparent;
         color: var(--color-snow);
         font: 400 13px var(--sans);
-        cursor: pointer;
       }
 
       .menu button:hover,
@@ -633,9 +582,8 @@
         background: rgba(255, 255, 255, 0.07);
       }
 
-      .menu button[disabled] {
+      .menu button:disabled {
         color: #52525b;
-        cursor: default;
       }
 
       .menu button kbd {
@@ -654,15 +602,9 @@
         right: 0;
       }
 
-      .install-menu {
-        top: calc(100% + 6px);
-        left: 0;
-        right: 0;
-      }
-
       .ctx {
-        top: 72px;
-        left: 20px;
+        top: 88px;
+        left: 24px;
       }
 
       .toast {
@@ -673,7 +615,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        min-width: 260px;
+        width: min(320px, calc(100% - 40px));
         padding: 12px 14px;
         border: 1px solid var(--color-line);
         border-radius: 10px;
@@ -688,14 +630,9 @@
         background: #3fb950;
       }
 
-      .toast.warn i {
-        background: #d99a2b;
-      }
-
       .toast b {
         display: block;
         font-size: 13px;
-        font-weight: 500;
       }
 
       .toast small {
@@ -715,7 +652,7 @@
       .palette {
         position: absolute;
         left: 50%;
-        top: 14%;
+        top: 12%;
         z-index: 17;
         width: min(560px, calc(100% - 48px));
         transform: translateX(-50%);
@@ -738,17 +675,25 @@
         outline: none;
       }
 
+      .palette .sec {
+        padding: 10px 14px 4px;
+        color: var(--color-dim);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
       .palette .opt {
         display: flex;
-        align-items: center;
-        gap: 10px;
         min-height: 36px;
+        align-items: center;
         padding: 0 14px;
         color: var(--color-mute);
         font-size: 13px;
       }
 
-      .palette .opt.on {
+      .palette .opt.on,
+      .palette .opt:hover {
         background: rgba(255, 255, 255, 0.07);
         color: var(--color-snow);
       }
@@ -759,61 +704,14 @@
         font-size: 11px;
       }
 
-      .palette .sec {
-        padding: 10px 14px 4px;
-        color: var(--color-dim);
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
+      .hide {
+        display: none !important;
       }
 
-      .hint {
-        margin-top: 10px;
-        color: var(--color-dim);
-        font-size: 12px;
-      }
-
-      [data-show] {
-        display: none;
-      }
-
-      .desk.dir-a [data-show~="a"],
-      .desk.dir-b [data-show~="b"],
-      .desk.dir-c [data-show~="c"],
-      .desk.dir-d [data-show~="d"],
-      .desk.dir-e [data-show~="e"],
-      .desk.dir-f [data-show~="f"] {
-        display: block;
-      }
-
-      .desk.dir-a [data-show~="a"].tip,
-      .desk.dir-f [data-show~="f"].tip {
-        display: block;
-      }
-
-      .desk.dir-b [data-show~="b"].toast,
-      .desk.dir-f [data-show~="f"].toast {
-        display: flex;
-      }
-
-      .desk.dir-c [data-show~="c"].menu,
-      .desk.dir-e [data-show~="e"].menu,
-      .desk.dir-f [data-show~="f"].menu {
-        display: block;
-      }
-
-      .desk.dir-d [data-show~="d"].scrim,
-      .desk.dir-d [data-show~="d"].palette {
-        display: block;
-      }
-
-      @media (max-width: 980px) {
+      @media (max-width: 720px) {
         .desk,
-        .desk.collapsed {
-          grid-template-columns: 1fr;
-        }
-        .rail {
-          display: none;
+        .desk.is-collapsed {
+          grid-template-columns: 56px minmax(0, 1fr);
         }
         .split {
           grid-template-columns: 1fr;
@@ -827,65 +725,44 @@
         <p class="kicker">2B · Overlay value</p>
         <h1>What Base UI / Radix means for this desk</h1>
         <p>
-          Not a new look. Not a grey theme. They are the <strong>overlay engine</strong> —
-          tooltip, menu, toast, combobox — so focus, keyboard, and placement stop being
-          hand-rolled. The desk chrome stays: rail <code>#050506</code>, E bloom, 16px stage,
-          canvas <code>#09090b</code>, Alerts track.
-        </p>
-        <p>
-          Today those five interactions are a <code>title</code> attribute, a native
-          <code>select</code>, a Headless dialog with homemade arrows, and silence after
-          Acknowledge. That is what feels cheap next to Linear. The primitives buy the
-          evening, not the paint.
+          Not a new look. They are the overlay engine: tooltip, toast, menu, combobox,
+          context menu. The desk stays black. Each block below is its own desk so nothing
+          has to “switch on.”
         </p>
         <p class="recipe">
-          <strong>For us:</strong> add five overlays. Keep Headless dialogs.
-          New pieces on <strong>Base UI via shadcn</strong>, except toast
-          (Radix or Sonner — Base UI has no toast yet).
-          <strong>Not this:</strong> rewriting the app onto a new library.
+          <strong>For us:</strong> add these five. Keep Headless dialogs.
+          New pieces on Base UI via shadcn, except toast (Radix or Sonner).
+          <strong>Not this:</strong> rewriting the app.
         </p>
       </div>
 
       <nav class="jump" aria-label="Overlay directions">
-        <button type="button" class="on" data-dir="a">A · Tooltip</button>
-        <button type="button" data-dir="b">B · Toast</button>
-        <button type="button" data-dir="c">C · Menu</button>
-        <button type="button" data-dir="d">D · Combobox</button>
-        <button type="button" data-dir="e">E · Context</button>
-        <button type="button" data-dir="f">F · Evening</button>
+        <a href="#a">A · Tooltip</a>
+        <a href="#b">B · Toast</a>
+        <a href="#c">C · Menu</a>
+        <a href="#d">D · Combobox</a>
+        <a href="#e">E · Context</a>
+        <a href="#f">F · Evening</a>
       </nav>
+    </div>
 
-      <div class="block-meta" id="meta">
-        <p class="kicker">A</p>
-        <h2>Tooltip on a collapsed rail</h2>
-        <p>
-          Icon-only rail is already live. Without a tooltip, Alerts is a bell with no name.
-          Hover stays put, names the view, keeps the coral count. Primitive: Tooltip.
-        </p>
-      </div>
-      <p class="hint" id="hint">Hover is simulated on. Collapse is the point of A.</p>
-
-      <div class="desk dir-a collapsed" id="desk">
+    <template id="desk-tpl">
+      <div class="desk">
         <aside class="rail">
           <div class="brand">
             <div class="brand-row">
               <span class="wordmark">NoSpoilers</span>
-              <button class="collapse" type="button" aria-label="Expand sidebar">
+              <span class="collapse" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
                   <path d="M9 3v18" />
                 </svg>
-              </button>
+              </span>
             </div>
-            <button class="install" type="button" id="install-btn" aria-haspopup="menu">
+            <div class="install" data-install>
               <span class="mark">WS</span>
-              <span>workspace</span>
-              <div class="menu install-menu" data-show="c">
-                <p>Install</p>
-                <button type="button" class="on">workspace</button>
-                <button type="button">second-org</button>
-              </div>
-            </button>
+              workspace
+            </div>
             <p class="sources-n">nothing connected</p>
           </div>
           <nav class="nav" aria-label="Watch desk">
@@ -893,53 +770,52 @@
               <p class="kicker">Work</p>
               <div class="item">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2 2" /></svg>
-                <span>Overview</span>
+                <span class="item-label">Overview</span>
+                <span class="tip hide" data-tip>Overview</span>
               </div>
-              <div class="item on" id="alerts-hit">
+              <div class="item on" data-alerts>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9" /><path d="M10 21h4" /></svg>
-                <span>Alerts</span>
-                <b class="n">0</b>
-                <div class="tip" data-show="a f">Alerts <b>0</b></div>
+                <span class="item-label">Alerts</span>
+                <span class="item-n">0</span>
+                <span class="tip hide" data-tip>Alerts <b>0</b></span>
               </div>
             </div>
             <div class="group rule">
               <p class="kicker">Evidence</p>
               <div class="item">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7h7v4H3zM14 7h7v10h-7zM3 13h7v4H3z" /></svg>
-                <span>Sources</span>
+                <span class="item-label">Sources</span>
+                <span class="tip hide" data-tip>Sources</span>
               </div>
               <div class="item">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H6a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V8z" /></svg>
-                <span>Releases</span>
+                <span class="item-label">Releases</span>
+                <span class="tip hide" data-tip>Releases</span>
               </div>
             </div>
           </nav>
           <div class="setup">
             <span class="ring"><span>0/8</span></span>
-            <span class="setup-copy">
-              Nothing covered yet
-              <small>Coverage</small>
-            </span>
+            <span class="setup-copy">Nothing covered yet<small>Coverage</small></span>
           </div>
         </aside>
         <div class="gutter">
           <div class="stage">
             <header class="cmd">
-              <div class="search" id="search-hit">
+              <div class="search" data-search>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
                 Search or run a command…
                 <kbd>Ctrl K</kbd>
               </div>
               <strong class="cmd-title">Alerts</strong>
               <span class="chip">Trial</span>
-              <span class="ghost">Guide</span>
               <span class="avatar">RE</span>
             </header>
             <div class="page-head">
-              <h2>Alerts</h2>
+              <h3>Alerts</h3>
               <div class="export-wrap">
-                <button class="export" type="button" id="export-hit">Export JSON</button>
-                <div class="menu export-menu" data-show="c f">
+                <button class="export" type="button" data-export>Export JSON</button>
+                <div class="menu export-menu hide" data-export-menu>
                   <p>Export</p>
                   <button type="button">JSON receipt list</button>
                   <button type="button">This queue only</button>
@@ -948,20 +824,20 @@
                 </div>
               </div>
             </div>
-            <div class="queue-track" role="tablist" aria-label="Alert queues">
-              <i class="on"><span>Triage <b>0</b></span></i>
-              <i><span>Waiting <b>0</b></span></i>
-              <i><span>Mine <b>0</b></span></i>
-              <i><span>Resolved <b>0</b></span></i>
+            <div class="queue-track">
+              <i class="on"><em>Triage <b>0</b></em></i>
+              <i><em>Waiting <b>0</b></em></i>
+              <i><em>Mine <b>0</b></em></i>
+              <i><em>Resolved <b>0</b></em></i>
             </div>
             <div class="split">
-              <div class="inbox" id="inbox">
-                <div class="empty">This view is clear. No real alerts match this filter.</div>
-                <div class="menu ctx" data-show="e">
+              <div class="inbox" data-inbox>
+                <div class="empty">This view is clear. No real alerts match this filter. Right-click this well on E.</div>
+                <div class="menu ctx hide" data-ctx>
                   <p>On a row</p>
                   <button type="button" disabled>Acknowledge <kbd>E</kbd></button>
-                  <button type="button" disabled>Assign… <kbd>A</kbd></button>
-                  <button type="button" disabled>Resolve… <kbd>R</kbd></button>
+                  <button type="button" disabled>Assign <kbd>A</kbd></button>
+                  <button type="button" disabled>Resolve <kbd>R</kbd></button>
                   <hr />
                   <button type="button" disabled>Nothing selected</button>
                 </div>
@@ -973,104 +849,164 @@
                 </div>
               </div>
             </div>
-            <div class="toast" data-show="b f">
+            <div class="toast hide" data-toast>
               <i></i>
               <div>
                 <b>Alert acknowledged.</b>
                 <small>No invented incident. This is the confirmation that is missing today.</small>
               </div>
             </div>
-            <div class="scrim" data-show="d"></div>
-            <div class="palette" data-show="d">
-              <input value="al" readonly aria-label="Command search" />
-              <p class="sec">Jump</p>
-              <div class="opt on">
-                Alerts
-                <kbd>↵</kbd>
-              </div>
-              <div class="opt">Audit log</div>
-              <p class="sec">Work</p>
-              <div class="opt">Overview</div>
-              <div class="opt">Sources</div>
+            <div class="scrim hide" data-scrim></div>
+            <div class="palette hide" data-palette>
+              <input data-q type="search" value="al" aria-label="Command search" />
+              <div data-opts></div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <script>
-      const dirs = {
-        a: {
-          kicker: "A",
-          title: "Tooltip on a collapsed rail",
-          copy: "Icon-only rail is already live. Without a tooltip, Alerts is a bell with no name. Hover stays put, names the view, keeps the coral count. Primitive: Tooltip. Base UI or Radix — either.",
-          hint: "Rail is collapsed on purpose. This is what E-bloom plus a 56px rail still needs.",
-          collapsed: true,
+      const dirs = [
+        {
+          id: "a",
+          title: "A — Tooltip on a collapsed rail",
+          copy: "The 56px rail is already live. A tooltip names Alerts and keeps the count. Hover the other icons. Primitive: Tooltip.",
         },
-        b: {
-          kicker: "B",
-          title: "Toast after a quiet action",
-          copy: "Acknowledge and Resolve currently die into silence. A toast is the receipt: what happened, then it leaves. Primitive: Toast. Radix has one; Base UI does not yet. Sonner is the Linear-shaped option.",
-          hint: "No fake finding. The copy is the status line the live desk already knows how to say.",
-          collapsed: false,
+        {
+          id: "b",
+          title: "B — Toast after a quiet action",
+          copy: "Acknowledge currently dies into silence. The toast is the receipt. Primitive: Toast (Radix or Sonner — Base UI has none yet).",
         },
-        c: {
-          kicker: "C",
-          title: "Menu instead of a native select",
-          copy: "Export and install-switch are a flat button and a browser <select>. A menu typeaheads, stays on brand, and does not flash white options. Primitive: Menu. Base UI or Radix.",
-          hint: "Open on Export. Items are verbs we already have, not new product.",
-          collapsed: false,
+        {
+          id: "c",
+          title: "C — Menu instead of a native select",
+          copy: "Export is open. Same pattern as an install switcher. Stays on brand. Primitive: Menu.",
         },
-        d: {
-          kicker: "D",
-          title: "Combobox command palette",
-          copy: "Ctrl K is a Headless dialog with homemade arrows. A combobox filters as you type, groups Jump vs Work, and restores focus. This is Base UI’s actual win over Radix.",
-          hint: "Typed “al”. Matches Alerts and Audit — real destinations, no tenant rows.",
-          collapsed: false,
+        {
+          id: "d",
+          title: "D — Combobox command palette",
+          copy: "Type in the field. “al” hits Alerts and Audit. Real destinations only. This is Base UI’s win.",
         },
-        e: {
-          kicker: "E",
-          title: "Context menu on the inbox",
-          copy: "Right-click a row for Acknowledge / Assign / Resolve without travelling to the detail chrome. Empty inbox: the menu exists, the verbs stay disabled. No invented incident. Primitive: Context Menu. Radix has this; Base UI is weaker here.",
-          hint: "Anchored on the hollow well so you can see the slot. Actions enable when a real row exists.",
-          collapsed: false,
+        {
+          id: "e",
+          title: "E — Context menu on the inbox",
+          copy: "Right-click the hollow well. Verbs stay disabled until a real row exists. No invented incident. Primitive: Context Menu (Radix).",
         },
-        f: {
-          kicker: "F",
-          title: "The evening together",
-          copy: "This is the production-value jump: tooltip + menu + toast on the desk you already have. Not a new theme. Not a library rewrite. Three overlays and the app stops feeling homemade.",
-          hint: "Collapsed off. Tooltip on Alerts, Export menu open, toast in the corner.",
-          collapsed: false,
+        {
+          id: "f",
+          title: "F — The evening together",
+          copy: "Tooltip + export menu + toast on the desk you already have. That is the production-value jump. Not a new theme.",
         },
-      };
+      ];
 
-      const desk = document.getElementById("desk");
-      const meta = document.getElementById("meta");
-      const hint = document.getElementById("hint");
-      const jumps = document.querySelectorAll(".jump button");
+      const jumps = [
+        { name: "Alerts", group: "Jump" },
+        { name: "Audit log", group: "Jump" },
+        { name: "Overview", group: "Work" },
+        { name: "Sources", group: "Work" },
+        { name: "Releases", group: "Work" },
+      ];
 
-      function show(id) {
-        const dir = dirs[id];
-        desk.className = "desk dir-" + id + (dir.collapsed ? " collapsed" : "");
-        meta.innerHTML =
-          '<p class="kicker">' +
-          dir.kicker +
+      const page = document.querySelector(".page");
+      const tpl = document.getElementById("desk-tpl");
+
+      function fillOpts(box, query) {
+        const q = query.trim().toLowerCase();
+        const hits = jumps.filter((item) => !q || item.name.toLowerCase().includes(q));
+        const groups = [...new Set(hits.map((item) => item.group))];
+        box.innerHTML = groups
+          .map((group) => {
+            const rows = hits
+              .filter((item) => item.group === group)
+              .map(
+                (item, index) =>
+                  '<div class="opt' +
+                  (index === 0 && group === groups[0] ? " on" : "") +
+                  '">' +
+                  item.name +
+                  (index === 0 && group === groups[0] ? "<kbd>↵</kbd>" : "") +
+                  "</div>",
+              )
+              .join("");
+            return '<p class="sec">' + group + "</p>" + rows;
+          })
+          .join("");
+        if (!hits.length) box.innerHTML = '<p class="sec">No destinations match</p>';
+      }
+
+      for (const dir of dirs) {
+        const block = document.createElement("section");
+        block.className = "block";
+        block.id = dir.id;
+        block.innerHTML =
+          '<div class="block-meta"><p class="kicker">' +
+          dir.id.toUpperCase() +
           "</p><h2>" +
           dir.title +
           "</h2><p>" +
           dir.copy +
-          "</p>";
-        hint.textContent = dir.hint;
-        jumps.forEach((btn) => btn.classList.toggle("on", btn.dataset.dir === id));
-      }
+          "</p></div>";
+        const desk = tpl.content.firstElementChild.cloneNode(true);
+        if (dir.id === "a") desk.classList.add("is-collapsed");
+        const tip = desk.querySelector("[data-alerts] [data-tip]");
+        const toast = desk.querySelector("[data-toast]");
+        const exportMenu = desk.querySelector("[data-export-menu]");
+        const ctx = desk.querySelector("[data-ctx]");
+        const scrim = desk.querySelector("[data-scrim]");
+        const palette = desk.querySelector("[data-palette]");
+        const input = desk.querySelector("[data-q]");
+        const opts = desk.querySelector("[data-opts]");
 
-      jumps.forEach((btn) => btn.addEventListener("click", () => show(btn.dataset.dir)));
-      document.getElementById("search-hit").addEventListener("click", () => show("d"));
-      document.getElementById("export-hit").addEventListener("click", () => show("c"));
-      document.getElementById("inbox").addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        show("e");
-      });
+        if (dir.id === "a" || dir.id === "f") tip.classList.remove("hide");
+        if (dir.id === "b" || dir.id === "f") toast.classList.remove("hide");
+        if (dir.id === "c" || dir.id === "f") exportMenu.classList.remove("hide");
+        if (dir.id === "e") ctx.classList.remove("hide");
+        if (dir.id === "d") {
+          scrim.classList.remove("hide");
+          palette.classList.remove("hide");
+          fillOpts(opts, input.value);
+          input.addEventListener("input", () => fillOpts(opts, input.value));
+        }
+
+        desk.querySelectorAll(".item").forEach((item) => {
+          const local = item.querySelector("[data-tip]");
+          if (!local) return;
+          item.addEventListener("mouseenter", () => {
+            desk.querySelectorAll("[data-tip]").forEach((node) => node.classList.add("hide"));
+            local.classList.remove("hide");
+          });
+        });
+
+        desk.querySelector("[data-export]").addEventListener("click", () => {
+          exportMenu.classList.toggle("hide");
+        });
+
+        desk.querySelector("[data-search]").addEventListener("click", () => {
+          scrim.classList.remove("hide");
+          palette.classList.remove("hide");
+          fillOpts(opts, input.value);
+          input.focus();
+          input.select();
+        });
+
+        scrim.addEventListener("click", () => {
+          if (dir.id === "d") return;
+          scrim.classList.add("hide");
+          palette.classList.add("hide");
+        });
+
+        desk.querySelector("[data-inbox]").addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          const box = event.currentTarget.getBoundingClientRect();
+          ctx.classList.remove("hide");
+          ctx.style.top = event.clientY - box.top + "px";
+          ctx.style.left = event.clientX - box.left + "px";
+        });
+
+        block.appendChild(desk);
+        page.appendChild(block);
+      }
     </script>
   </body>
 </html>
