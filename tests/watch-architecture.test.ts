@@ -145,6 +145,25 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-frame-background/);
   });
 
+  it("keeps Linear's plate, rim, and glow on .stage only", () => {
+    const html = readFileSync("public/mockup-review/2b/21-stage-linear.html", "utf8");
+    expect(html).toMatch(/\.page > #desk > \.gutter > \.stage/);
+    expect(html).toMatch(/\.stage-bg/);
+    expect(html).toMatch(/\.stage-glow/);
+    expect(html).toMatch(/background:\s*#101112/);
+    expect(html).toMatch(/#ffffff14/);
+    expect(html).toMatch(/treat-plate/);
+    expect(html).toMatch(/treat-view/);
+    expect(html).toMatch(/treat-nested/);
+    expect(html).toMatch(/treat-glow/);
+    expect(html).toMatch(/\?shot=a/);
+    expect(html).toMatch(/\?shot=f/);
+    expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
+    expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
+    expect(html).not.toMatch(/Triage <b>60<\/b>/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
+  });
+
   it("lists every committed mockup HTML file on the 2B index", () => {
     const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
     const root = readFileSync("public/mockup-review/index.html", "utf8");
@@ -156,6 +175,7 @@ describe("Watch architecture boundaries", () => {
       expect(index).toContain(file);
     }
     expect(index).toContain("../premium/watch-premium.html");
+    expect(root).toContain("2b/21-stage-linear.html");
     expect(root).toContain("2b/20-gray-stage.html");
     expect(root).toContain("premium/watch-premium.html");
     expect(readFileSync("src/pages/MockupsPage.tsx", "utf8")).toMatch(/\/mockup-review\/index\.html/);

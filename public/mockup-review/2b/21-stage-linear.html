@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>21 · Stage gets Linear</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --black: #090a0b;
+        --gray: #101112;
+        --panel: #18181b;
+        --panel-on-black: #111113;
+        --inset: #0c0c0e;
+        --line: #2a2a2e;
+        --snow: #f4f4f5;
+        --mute: #a1a1aa;
+        --dim: #71717a;
+        --zero: #3f3f46;
+        --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+        --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        background: #08090a;
+        color: var(--snow);
+        font: 14px/1.5 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      h1, h2, h3, p { margin: 0; }
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; color: inherit; }
+
+      .intro { max-width: 76ch; margin: 0 auto; padding: 28px 20px 8px; }
+      .kicker {
+        color: var(--dim);
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+      .intro h1 { margin-top: 8px; font: 500 30px/1.1 var(--display); }
+      .intro p { margin-top: 10px; color: var(--mute); }
+      .intro code, .recipe code, .block-head code {
+        color: var(--snow);
+        font-family: var(--mono);
+        font-size: 0.92em;
+      }
+      .recipe {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #050506;
+        color: var(--dim);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .recipe strong { color: var(--mute); font-weight: 500; }
+      .jump {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 18px 20px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .jump a {
+        height: 30px;
+        padding: 0 11px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--mute);
+        font-size: 12px;
+        line-height: 28px;
+      }
+      .jump a:hover { border-color: #3f3f46; color: var(--snow); background: rgba(255,255,255,.06); }
+
+      body[data-shot] .intro,
+      body[data-shot] .jump,
+      body[data-shot] .block,
+      body[data-shot] .catalog { display: none; }
+      body[data-shot="a"] #shot-a,
+      body[data-shot="b"] #shot-b,
+      body[data-shot="c"] #shot-c,
+      body[data-shot="d"] #shot-d,
+      body[data-shot="e"] #shot-e,
+      body[data-shot="f"] #shot-f { display: block; }
+
+      .block { margin-top: 28px; }
+      .block-head { max-width: 1320px; margin: 0 auto; padding: 0 20px 14px; }
+      .block-head h2 { font: 500 22px/1.2 var(--display); }
+      .block-head p { margin-top: 6px; max-width: 72ch; color: var(--mute); font-size: 13px; }
+
+      /* Exact path they selected: .page > #desk > .gutter > .stage */
+      .page { padding: 10px 12px 36px; }
+      .desk {
+        display: grid;
+        grid-template-columns: 244px minmax(0, 1fr);
+        height: min(860px, calc(100svh - 24px));
+        overflow: hidden;
+        background: #09090b;
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        padding: 18px 16px 16px;
+        overflow: hidden;
+        background: #09090b;
+      }
+      .wordmark { font: 500 15px/1 var(--display); }
+      .install {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0b0b0d;
+        font-size: 13px;
+      }
+      .meta { margin: 4px 2px 0; color: var(--dim); font-size: 12px; }
+      .nav { display: flex; flex: 1; flex-direction: column; gap: 16px; margin-top: 16px; overflow: auto; }
+      .sec { padding: 4px 6px 6px; color: var(--dim); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+      .item {
+        display: flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--mute);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .item.on { background: #ffffff0a; color: var(--snow); }
+      .item .n { margin-left: auto; font: 500 12px/1 var(--mono); color: var(--zero); }
+      .setup {
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px solid #191d21;
+        color: var(--mute);
+        font-size: 12px;
+      }
+      .setup small { display: block; margin-top: 2px; color: var(--dim); font-size: 11px; }
+
+      .gutter {
+        display: flex;
+        min-width: 0;
+        padding: 8px;
+        background: #09090b;
+      }
+
+      .stage {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+        isolation: isolate;
+        border-radius: 12px;
+      }
+      .stage > *:not(.stage-bg):not(.stage-glow):not(.stage-edge) { position: relative; z-index: 5; }
+
+      .stage-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      .stage-glow {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+      .stage-glow::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+          ellipse 50% 50% at 0 0,
+          #ffffff08 0%,
+          color-mix(in srgb, #ffffff08 94%, transparent) 15%,
+          color-mix(in srgb, #ffffff08 78%, transparent) 30%,
+          color-mix(in srgb, #ffffff08 58%, transparent) 45%,
+          color-mix(in srgb, #ffffff08 35%, transparent) 60%,
+          color-mix(in srgb, #ffffff08 16%, transparent) 75%,
+          color-mix(in srgb, #ffffff08 3%, transparent) 90%,
+          transparent 100%
+        );
+      }
+      .stage-edge {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+      .stage-edge::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        border: 1px solid #ffffff0f;
+        mask: radial-gradient(ellipse 17.18% 28.57% at 0 0, #000 0%, #000 0%, transparent 90%);
+        -webkit-mask: radial-gradient(ellipse 17.18% 28.57% at 0 0, #000 0%, #000 0%, transparent 90%);
+      }
+
+      /* A / B / F — Linear frameBackground lives on .stage */
+      .treat-plate .stage-bg {
+        background: #101112;
+        border: 1px solid #ffffff14;
+      }
+      .treat-plate .tile { background: #18181b; }
+      .treat-plate .empty { background: #0c0c0e; }
+
+      /* C — Linear view tokens on .stage */
+      .treat-view .stage {
+        border-radius: 8px;
+        box-shadow: 0 0 0 2px #0003;
+      }
+      .treat-view .stage-bg {
+        background: linear-gradient(#ffffff03, #ffffff03), #090a0b;
+        border: 1px solid #ffffff0d;
+      }
+      .treat-view .tile { background: #111113; }
+      .treat-view .empty { background: #111113; }
+
+      /* D — stage IS the Linear frame: gray plate, black inner pane */
+      .treat-nested .stage {
+        padding: 8px;
+        background: #101112;
+        border: 1px solid #ffffff14;
+      }
+      .treat-nested .stage-bg { display: none; }
+      .treat-nested .inner {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+        background: linear-gradient(#ffffff03, #ffffff03), #090a0b;
+        border: 1px solid #ffffff0d;
+        border-radius: 8px;
+        box-shadow: 0 0 0 2px #0003;
+      }
+      .treat-nested .tile { background: #111113; }
+      .treat-nested .empty { background: #111113; }
+
+      /* E — same plate, louder top-left light */
+      .treat-glow .stage-bg {
+        background: #101112;
+        border: 1px solid #ffffff14;
+      }
+      .treat-glow .stage-glow::before {
+        background: radial-gradient(
+          ellipse 62% 58% at 0 0,
+          #ffffff14 0%,
+          color-mix(in srgb, #ffffff12 70%, transparent) 28%,
+          color-mix(in srgb, #ffffff08 40%, transparent) 52%,
+          transparent 78%
+        );
+      }
+      .treat-glow .tile { background: #18181b; }
+      .treat-glow .empty { background: #0c0c0e; }
+
+      .cmd {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 12px;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        flex: 1;
+        max-width: 22rem;
+        padding: 0 10px;
+        border: 1px solid #191d21;
+        border-radius: 6px;
+        background: #0b0c0d;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .search kbd {
+        margin-left: auto;
+        padding: 1px 6px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 4px;
+        font: 500 11px/1 var(--mono);
+      }
+      .cmd strong { margin-left: auto; font-size: 13px; font-weight: 500; }
+      .chip {
+        padding: 3px 8px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 99px;
+        color: var(--dim);
+        font-size: 12px;
+      }
+      .av {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 99px;
+        font-size: 10px;
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+        padding: 0 20px;
+      }
+      .title-row h3 { font: 500 28px/1 var(--display); letter-spacing: -0.02em; }
+      .ghost {
+        margin-left: auto;
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--mute);
+        font-size: 12px;
+        background: transparent;
+      }
+      .track {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        border-bottom: 1px solid var(--line);
+      }
+      .track button {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 0;
+        background: transparent;
+        color: var(--dim);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .track button span {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 12px 0 10px;
+        border-bottom: 2px solid transparent;
+      }
+      .track button.on { color: var(--snow); }
+      .track button.on span { border-bottom-color: var(--snow); }
+      .track b { font: 500 13px/1 var(--mono); color: var(--zero); }
+      .split {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 0;
+        flex: 1;
+      }
+      .inbox { border-right: 1px solid rgba(255,255,255,.08); }
+      .empty {
+        margin: 16px;
+        padding: 14px 16px;
+        border: 1px dashed #3f3f46;
+        border-radius: 10px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .detail { display: grid; place-items: center; text-align: center; padding: 24px; }
+      .detail strong { display: block; font-size: 14px; }
+      .detail small { display: block; margin-top: 6px; color: var(--dim); font-size: 12px; }
+      .page-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px 24px; }
+      .lede { margin-top: 8px; max-width: 40rem; color: var(--mute); font-size: 14px; }
+      .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 16px; }
+      .tile {
+        min-height: 88px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .tile.w4 { grid-column: span 4; }
+      .tile.w3 { grid-column: span 3; }
+      .tile.w2 { grid-column: span 2; }
+      .tile.dash { border-style: dashed; border-color: #3f3f46; }
+      .tile .n { margin-top: 6px; font: 500 22px/1 var(--display); letter-spacing: -0.03em; color: var(--zero); }
+      .tile p { margin-top: 8px; color: var(--dim); font-size: 12px; }
+
+      .catalog {
+        max-width: 76ch;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+        border-top: 1px solid var(--line);
+      }
+      .catalog h2 { margin-top: 8px; font: 500 22px/1.2 var(--display); }
+      .catalog p { margin-top: 8px; color: var(--mute); font-size: 13px; }
+      .catalog ol { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+      .catalog a { color: var(--snow); text-decoration: underline; text-underline-offset: 3px; }
+      .catalog .muted { color: var(--dim); font-size: 13px; }
+
+      @media (max-width: 860px) {
+        .desk { grid-template-columns: 1fr; }
+        .rail { display: none; }
+        .split { grid-template-columns: 1fr; }
+        .detail { display: none; }
+        .bento { grid-template-columns: 1fr 1fr; }
+        .tile.w2, .tile.w3, .tile.w4 { grid-column: span 2; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro">
+      <p class="kicker">2B · Stage gets Linear</p>
+      <h1>The treatment is on <code>.stage</code>, not the rail</h1>
+      <p>
+        Same node you selected: <code>div.page &gt; #desk &gt; .gutter &gt; .stage</code>.
+        Linear’s <code>#101112</code> plate, <code>#ffffff14</code> rim, and top-left
+        edge glow sit on that pane. The sidebar stays flat <code>#09090b</code>.
+        Queues stay at 0. Live Watch is unchanged.
+      </p>
+      <p class="recipe">
+        <strong>Not this:</strong> glow on the rail, or greying the whole window
+        <code>#141416</code>.
+        <strong>This:</strong> six stage-only recipes.
+      </p>
+    </div>
+
+    <nav class="jump" aria-label="Shots">
+      <a href="#shot-a">A · Plate / Alerts</a>
+      <a href="#shot-b">B · Plate / Overview</a>
+      <a href="#shot-c">C · View / Alerts</a>
+      <a href="#shot-d">D · Nested / Alerts</a>
+      <a href="#shot-e">E · Strong glow / Overview</a>
+      <a href="#shot-f">F · Plate / Sources</a>
+      <a href="?shot=a">A only</a>
+      <a href="?shot=b">B only</a>
+      <a href="?shot=c">C only</a>
+      <a href="?shot=d">D only</a>
+      <a href="?shot=e">E only</a>
+      <a href="?shot=f">F only</a>
+      <a href="#catalog">All mockups</a>
+    </nav>
+
+    <section class="block" id="shot-a">
+      <div class="block-head">
+        <p class="kicker">A · plate on Alerts</p>
+        <h2><code>.stage</code> is Linear’s <code>#101112</code></h2>
+        <p>Rail is black. The selected pane is the gray plate, rim, and glow.</p>
+      </div>
+      <div class="page">
+        <div class="desk treat-plate" id="desk">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item on">Alerts <span class="n">0</span></div>
+              </div>
+              <div>
+                <p class="sec">Evidence</p>
+                <div class="item">Sources</div>
+                <div class="item">Releases</div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-bg"></div>
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <header class="cmd">
+                <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                <strong>Alerts</strong>
+                <span class="chip">Trial</span>
+                <span class="av">NS</span>
+              </header>
+              <div class="title-row"><h3>Alerts</h3><span class="ghost">Export</span></div>
+              <div class="track" data-desk="a">
+                <button type="button" class="on" data-q="open"><span>Triage <b>0</b></span></button>
+                <button type="button" data-q="waiting"><span>Waiting <b>0</b></span></button>
+                <button type="button" data-q="mine"><span>Mine <b>0</b></span></button>
+                <button type="button" data-q="done"><span>Resolved <b>0</b></span></button>
+              </div>
+              <div class="split">
+                <div class="inbox"><div class="empty" data-empty>This view is clear. No real alerts match this filter.</div></div>
+                <div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="shot-b">
+      <div class="block-head">
+        <p class="kicker">B · plate on Overview</p>
+        <h2>Same gray stage, tiles lift</h2>
+        <p>Tiles are <code>#18181b</code> so they still read on <code>#101112</code>.</p>
+      </div>
+      <div class="page">
+        <div class="desk treat-plate">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item on">Overview</div>
+                <div class="item">Alerts <span class="n">0</span></div>
+              </div>
+              <div>
+                <p class="sec">Evidence</p>
+                <div class="item">Sources</div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-bg"></div>
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <header class="cmd">
+                <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                <strong>Overview</strong>
+                <span class="chip">Trial</span>
+                <span class="av">NS</span>
+              </header>
+              <div class="page-body">
+                <p class="kicker">Friday</p>
+                <h3 style="margin-top:8px;font:500 26px/1.1 var(--display)">Nothing is being watched yet.</h3>
+                <p class="lede">Install on one repository. Every tile fills from what you connect.</p>
+                <div class="bento">
+                  <div class="tile w4 dash"><span class="kicker">Start here</span><p>Install NoSpoilers on one repository.</p></div>
+                  <div class="tile w2"><span class="kicker">Coverage</span><p>Nothing connected yet.</p></div>
+                  <div class="tile w2"><span class="kicker">Open alerts</span><div class="n">0</div></div>
+                  <div class="tile w2"><span class="kicker">Queue</span><div class="n">0</div></div>
+                  <div class="tile w3"><span class="kicker">Packs read, 30 days</span><p>No packs in the last 30 days.</p></div>
+                  <div class="tile w3"><span class="kicker">Latest sealed</span><p>No sealed releases yet.</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="shot-c">
+      <div class="block-head">
+        <p class="kicker">C · Linear view on Alerts</p>
+        <h2>Glow and rim on a black stage</h2>
+        <p>
+          Stage uses Linear’s view: <code>#090a0b</code> under
+          <code>#ffffff03</code>, <code>#ffffff0d</code>, 8px radius, plus the
+          same top-left glow. Still not on the rail.
+        </p>
+      </div>
+      <div class="page">
+        <div class="desk treat-view" data-desk="c">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item on">Alerts <span class="n">0</span></div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-bg"></div>
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <header class="cmd">
+                <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                <strong>Alerts</strong>
+                <span class="chip">Trial</span>
+                <span class="av">NS</span>
+              </header>
+              <div class="title-row"><h3>Alerts</h3><span class="ghost">Export</span></div>
+              <div class="track">
+                <button type="button" class="on" data-q="open"><span>Triage <b>0</b></span></button>
+                <button type="button" data-q="waiting"><span>Waiting <b>0</b></span></button>
+                <button type="button" data-q="mine"><span>Mine <b>0</b></span></button>
+                <button type="button" data-q="done"><span>Resolved <b>0</b></span></button>
+              </div>
+              <div class="split">
+                <div class="inbox"><div class="empty" data-empty>This view is clear. No real alerts match this filter.</div></div>
+                <div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="shot-d">
+      <div class="block-head">
+        <p class="kicker">D · nested inside the stage</p>
+        <h2>The stage is the Linear frame</h2>
+        <p>
+          Gray plate and glow are the stage. An 8px pad inside it shows
+          <code>#101112</code>. The work surface inside stays
+          <code>#090a0b</code>. The rail never gets the plate.
+        </p>
+      </div>
+      <div class="page">
+        <div class="desk treat-nested" data-desk="d">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item on">Alerts <span class="n">0</span></div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <div class="inner">
+                <header class="cmd">
+                  <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                  <strong>Alerts</strong>
+                  <span class="chip">Trial</span>
+                  <span class="av">NS</span>
+                </header>
+                <div class="title-row"><h3>Alerts</h3><span class="ghost">Export</span></div>
+                <div class="track">
+                  <button type="button" class="on" data-q="open"><span>Triage <b>0</b></span></button>
+                  <button type="button" data-q="waiting"><span>Waiting <b>0</b></span></button>
+                  <button type="button" data-q="mine"><span>Mine <b>0</b></span></button>
+                  <button type="button" data-q="done"><span>Resolved <b>0</b></span></button>
+                </div>
+                <div class="split">
+                  <div class="inbox"><div class="empty" data-empty>This view is clear. No real alerts match this filter.</div></div>
+                  <div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="shot-e">
+      <div class="block-head">
+        <p class="kicker">E · stronger light</p>
+        <h2>Same plate, louder top-left glow</h2>
+        <p>If A feels too quiet, this is the same stage recipe with more light.</p>
+      </div>
+      <div class="page">
+        <div class="desk treat-glow">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item on">Overview</div>
+                <div class="item">Alerts <span class="n">0</span></div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-bg"></div>
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <header class="cmd">
+                <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                <strong>Overview</strong>
+                <span class="chip">Trial</span>
+                <span class="av">NS</span>
+              </header>
+              <div class="page-body">
+                <p class="kicker">Friday</p>
+                <h3 style="margin-top:8px;font:500 26px/1.1 var(--display)">Nothing is being watched yet.</h3>
+                <p class="lede">Install on one repository.</p>
+                <div class="bento">
+                  <div class="tile w4 dash"><span class="kicker">Start here</span><p>Install NoSpoilers on one repository.</p></div>
+                  <div class="tile w2"><span class="kicker">Coverage</span><p>Nothing connected yet.</p></div>
+                  <div class="tile w2"><span class="kicker">Open alerts</span><div class="n">0</div></div>
+                  <div class="tile w2"><span class="kicker">Queue</span><div class="n">0</div></div>
+                  <div class="tile w3"><span class="kicker">Packs read, 30 days</span><p>No packs in the last 30 days.</p></div>
+                  <div class="tile w3"><span class="kicker">Latest sealed</span><p>No sealed releases yet.</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="shot-f">
+      <div class="block-head">
+        <p class="kicker">F · plate on Sources</p>
+        <h2>Third page, same stage plate</h2>
+        <p>Proof the treatment is the content pane, not an Alerts-only trick.</p>
+      </div>
+      <div class="page">
+        <div class="desk treat-plate">
+          <aside class="rail">
+            <span class="wordmark">NoSpoilers</span>
+            <div class="install">workspace</div>
+            <p class="meta">nothing connected</p>
+            <nav class="nav">
+              <div>
+                <p class="sec">Work</p>
+                <div class="item">Overview</div>
+                <div class="item">Alerts <span class="n">0</span></div>
+              </div>
+              <div>
+                <p class="sec">Evidence</p>
+                <div class="item on">Sources</div>
+                <div class="item">Releases</div>
+              </div>
+            </nav>
+            <div class="setup">Nothing covered yet<small>Coverage</small></div>
+          </aside>
+          <div class="gutter">
+            <div class="stage">
+              <div class="stage-bg"></div>
+              <div class="stage-glow"></div>
+              <div class="stage-edge"></div>
+              <header class="cmd">
+                <div class="search">Search or run a command…<kbd>Ctrl K</kbd></div>
+                <strong>Sources</strong>
+                <span class="chip">Trial</span>
+                <span class="av">NS</span>
+              </header>
+              <div class="page-body">
+                <div class="title-row" style="padding:0 0 8px"><h3>Sources</h3><span class="ghost">Add a source</span></div>
+                <p class="lede">Nothing connected yet. The list fills after a real install.</p>
+                <div class="empty" style="margin:16px 0">Nothing connected yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="catalog" id="catalog" aria-label="All mockups">
+      <p class="kicker">All mockups</p>
+      <h2>Every 2B comp on this site</h2>
+      <ol>
+        <li><a href="21-stage-linear.html">21 · Stage gets Linear</a><span class="muted"> — this page</span></li>
+        <li><a href="20-gray-stage.html">20 · Gray stage</a></li>
+        <li><a href="19-linear-frame.html">19 · Linear product frame</a></li>
+        <li><a href="18-overlays.html">18 · Overlay value</a></li>
+        <li><a href="17-shell-weight.html">17 · Shell weight</a></li>
+        <li><a href="16-alerts-bc.html">16 · Alerts B and C</a></li>
+        <li><a href="15-alerts-queues.html">15 · Alerts queues</a></li>
+        <li><a href="desk.html">Clickable desk</a></li>
+        <li><a href="14-remaining-pages.html">14 · Remaining pages</a></li>
+        <li><a href="13-pages-should-have-been.html">13 · Ten pages that only got a title</a></li>
+        <li><a href="12-overview-setup-ring.html">12 · Setup ring on overview</a></li>
+        <li><a href="11-alerts-one-inbox.html">11 · One Alerts inbox</a></li>
+        <li><a href="10-guided-setup.html">10 · Guided setup</a></li>
+        <li><a href="09-bento-overview.html">09 · Bento overview</a></li>
+        <li><a href="06-repo-drilldown.html">06 · Repo drill-down</a></li>
+        <li><a href="03-triage-inbox.html">03 · Triage inbox</a></li>
+        <li><a href="1g-first-session.html">1G · First session</a></li>
+        <li><a href="2a-full-overview.html">2A · Split console</a></li>
+        <li><a href="2b-full-guided.html">2B · Grouped sidebar</a></li>
+        <li><a href="2c-full-triage.html">2C · Tabbed desk</a></li>
+        <li><a href="2d-full-sources.html">2D · Object-first sources</a></li>
+        <li><a href="../premium/watch-premium.html">Premium Watch prototype</a></li>
+        <li><a href="index.html">2B index</a></li>
+        <li><a href="../index.html">Mockup review home</a></li>
+      </ol>
+    </nav>
+
+    <script>
+      const copy = {
+        open: "This view is clear. No real alerts match this filter.",
+        waiting: "Nothing waiting on rotation in this preview.",
+        mine: "Nothing assigned to you in this preview.",
+        done: "No resolved alerts in this preview.",
+      };
+      const params = new URLSearchParams(location.search);
+      const shot = params.get("shot");
+      if ("abcdef".includes(shot || "") && (shot || "").length === 1) {
+        document.body.dataset.shot = shot;
+      }
+      document.querySelectorAll("[data-desk], .track").forEach((desk) => {
+        desk.querySelectorAll("[data-q]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const root = btn.closest("[data-desk]") || btn.closest(".desk") || desk;
+            root.querySelectorAll("[data-q]").forEach((el) => {
+              el.classList.toggle("on", el === btn);
+            });
+            const empty = root.querySelector("[data-empty]");
+            if (empty) empty.textContent = copy[btn.getAttribute("data-q")] || copy.open;
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
