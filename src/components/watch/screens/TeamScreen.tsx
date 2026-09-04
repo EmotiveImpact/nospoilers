@@ -26,9 +26,12 @@ export function TeamScreen() {
                   email and do not grant GitHub Administration. The last admin stays.
                 </p>
                 {previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
-                    Preview cannot manage Team roles. No invented incident.
-                  </p>
+                  <>
+                    <p className="mt-6 text-sm leading-relaxed text-mute">
+                      Preview cannot manage Team roles. No invented incident.
+                    </p>
+                    <div className="watch-empty">Nobody linked on this install yet.</div>
+                  </>
                 ) : deskCoverage?.plan === "solo" ? (
                   <p className="mt-6 text-sm leading-relaxed text-mute">
                     Team roles are on trial and Team.

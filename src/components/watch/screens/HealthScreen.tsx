@@ -157,7 +157,7 @@ export function HealthScreen() {
 
       <div className="watch-capability">
         <span className="watch-kicker">When the cap is reached</span>
-        <p className="watch-small mt-[5px] text-dim">
+        <p className="watch-guidance watch-small mt-[5px] text-dim">
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
           reports Contents and Metadata reads, Members read (collaborator alerts), optional
           Contents/Pull requests/Checks write, and whether Administration was granted — it should

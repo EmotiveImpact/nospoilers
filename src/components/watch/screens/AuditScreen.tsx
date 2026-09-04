@@ -89,9 +89,12 @@ export function AuditScreen({
         </p>
       ) : null}
       {previewing ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          Preview cannot export a live audit log. No invented incident.
-        </p>
+        <>
+          <p className="mt-6 text-[13px] leading-relaxed text-mute">
+            Preview cannot export a live audit log. No invented incident.
+          </p>
+          <div className="watch-empty">No admin writes recorded on this install yet.</div>
+        </>
       ) : audit.status === "solo" ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">The audit log is on Team.</p>
       ) : audit.status === "ended" ? (

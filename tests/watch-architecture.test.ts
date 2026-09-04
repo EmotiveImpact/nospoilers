@@ -56,6 +56,10 @@ describe("Watch architecture boundaries", () => {
     expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-n-open/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-empty/);
+    expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/text-ok/);
+    expect(readFileSync("src/components/watch/screens/HealthScreen.tsx", "utf8")).toMatch(/watch-empty/);
+    expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
 
   it("keeps notification and registry settings focused", () => {

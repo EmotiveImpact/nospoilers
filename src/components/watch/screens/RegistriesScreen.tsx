@@ -86,11 +86,16 @@ export function RegistriesScreen() {
                 </p>
                 )}
                 {previewing ? (
-                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-                    {route.view === "registries"
-                      ? "Preview cannot save registry credentials."
-                      : "Preview cannot watch lookalike names. No invented incident."}
-                  </p>
+                  <>
+                    <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
+                      {route.view === "registries"
+                        ? "Preview cannot save registry credentials."
+                        : "Preview cannot watch lookalike names. No invented incident."}
+                    </p>
+                    {route.view === "registries" ? (
+                      <div className="watch-empty">No private registry saved. Public npm does not need this.</div>
+                    ) : null}
+                  </>
                 ) : route.view === "sources" && deskCoverage?.plan === "solo" ? (
                   <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
                     Lookalike, dormant, burst, new-dependency, packument-size, provenance, namespace

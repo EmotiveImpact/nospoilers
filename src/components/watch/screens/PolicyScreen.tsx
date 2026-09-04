@@ -52,9 +52,12 @@ export function PolicyScreen() {
                   Sigstore verification and not a malware verdict.
                 </p>
                 {previewing ? (
-                  <p className="mt-6 text-[13px] leading-relaxed text-mute">
-                    Preview cannot change a live signing policy. No invented incident.
-                  </p>
+                  <>
+                    <p className="mt-6 text-[13px] leading-relaxed text-mute">
+                      Preview cannot change a live signing policy. No invented incident.
+                    </p>
+                    <div className="watch-empty">No exceptions written.</div>
+                  </>
                 ) : signingPolicy.status === "ended" ? (
                   <p className="mt-6 text-[13px] leading-relaxed text-mute">
                     Subscribe to Team to set a signing policy.

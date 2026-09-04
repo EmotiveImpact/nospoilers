@@ -153,7 +153,7 @@ export function WatchAlertsWorkspace({
           <div className="flex shrink-0 flex-col gap-2 border-b border-white/8 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <strong className="text-sm text-snow">Alerts</strong>
+                <h1 className="font-display text-[19px] tracking-tight text-snow">Alerts</h1>
                 <span
                   className={cn(
                     "rounded-full border border-white/10 px-2 py-0.5",

@@ -80,7 +80,7 @@ export function TimelineScreen({
         <div className="watch-kv">
           <span>Events</span>
           <span className={ready && timeline.entries.length > 0 ? "text-snow" : "text-dim"}>
-            {ready ? timeline.entries.length : "—"}
+            {ready ? timeline.entries.length : previewing ? 0 : "—"}
           </span>
         </div>
         <div className="watch-kv">
@@ -96,9 +96,12 @@ export function TimelineScreen({
         <WatchSectionError className="mt-6 max-w-2xl" message={alertState.message} onRetry={onRetryAlerts} />
       ) : null}
       {previewing ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          Preview cannot show a live timeline. No invented incident.
-        </p>
+        <>
+          <p className="mt-6 text-[13px] leading-relaxed text-mute">
+            Preview cannot show a live timeline. No invented incident.
+          </p>
+          <div className="watch-empty">No exposure to plot from real alert history.</div>
+        </>
       ) : timeline.status === "solo" ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">
           The install timeline is on Team. Solo can still save a Watch email destination.
