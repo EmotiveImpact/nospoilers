@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>16 · Alerts B and C</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --coral: #ff8a80;
+        --canvas: #09090b;
+        --panel-now: #111113;
+        --line-now: #2a2a2e;
+        --rail: #0b0b0d;
+      }
+      html, body { background: var(--canvas); }
+      .page { padding: 28px 22px 80px; }
+      .intro { max-width: 68ch; margin: 0 auto 22px; }
+      .jump {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 0 14px;
+        background: color-mix(in srgb, var(--canvas) 88%, transparent);
+        backdrop-filter: blur(10px);
+      }
+      .jump a {
+        height: 30px;
+        padding: 0 12px;
+        border: 1px solid var(--line-now);
+        border-radius: 6px;
+        color: var(--mute);
+        font-size: 12px;
+        line-height: 30px;
+      }
+      .block { max-width: 1440px; margin: 0 auto 36px; }
+      .block-meta { max-width: 68ch; margin: 0 0 12px; }
+      .desk {
+        display: grid;
+        grid-template-columns: 244px 1fr;
+        min-height: 720px;
+        border: 1px solid var(--line-now);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--canvas);
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        padding: 14px 10px 18px;
+        background: var(--rail);
+        border-right: 1px solid var(--line-now);
+      }
+      .rail .kicker { padding: 0 8px 8px; }
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 30px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #a1a1aa;
+        font: 400 13px var(--sans);
+        text-align: left;
+        width: 100%;
+      }
+      .nav.on { background: rgba(255, 255, 255, 0.07); color: var(--snow); }
+      .nav .n { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--coral); }
+      .group { margin-top: 16px; }
+      .canvas { min-width: 0; background: var(--canvas); }
+      .split {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr);
+        min-height: 720px;
+      }
+      .inbox {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--canvas);
+      }
+      .inbox-head {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px 12px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+      }
+      .title-row h2 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 19px;
+        color: var(--snow);
+      }
+      .badge {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--coral);
+      }
+      .badge.dim { color: #71717a; }
+      .title-row .push { margin-left: auto; }
+      .archive {
+        border: 0;
+        background: transparent;
+        color: #71717a;
+        font: 500 12px var(--sans);
+        padding: 0;
+        cursor: pointer;
+      }
+      .archive.on { color: #f4f4f5; }
+      .rule {
+        width: 1px;
+        height: 14px;
+        background: var(--line-now);
+      }
+      .export {
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line-now);
+        border-radius: 6px;
+        background: transparent;
+        color: #a1a1aa;
+        font: 500 12px var(--sans);
+      }
+      .seg {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--line-now);
+        border-radius: 8px;
+        background: #0b0b0d;
+      }
+      .seg i {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 5px;
+        color: #71717a;
+        font: 400 12px/1 var(--sans);
+        font-style: normal;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .seg i.on { background: rgba(255, 255, 255, 0.08); color: #f4f4f5; }
+      .seg b {
+        font-family: var(--mono);
+        font-weight: 500;
+        color: #71717a;
+      }
+      .seg i.on b.open, .seg b.open { color: var(--coral); }
+      .empty {
+        margin: 16px;
+        padding: 14px 16px;
+        border: 1px dashed #3f3f46;
+        border-radius: 10px;
+        background: var(--panel-now);
+        color: #71717a;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .detail {
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        text-align: center;
+      }
+      .detail strong { display: block; font-size: 14px; color: var(--snow); font-weight: 500; }
+      .detail span { display: block; margin-top: 6px; color: #71717a; font-size: 12px; }
+      .page-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 64px;
+        padding: 16px 24px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .page-head h2 {
+        font-size: 30px;
+        line-height: 1.1;
+        color: var(--snow);
+      }
+      .page-head .seg { margin-left: auto; }
+      @media (max-width: 980px) {
+        .desk { grid-template-columns: 1fr; }
+        .rail { display: none; }
+        .split { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="intro">
+        <p class="kicker">2B · Alerts queues</p>
+        <h1 style="margin-top: 8px">B and C at desk size</h1>
+        <p class="muted" style="margin-top: 10px">
+          Same live counts. Original pill size. No invented rows.
+          B keeps the inbox in charge. C gives the four words the full canvas.
+        </p>
+      </div>
+      <div class="jump">
+        <a href="#b">B · work / archive</a>
+        <a href="#c">C · full-width bar</a>
+      </div>
+
+      <section class="block" id="b">
+        <div class="block-meta">
+          <p class="kicker">B</p>
+          <h2 style="margin-top: 6px">Work queues, archive in the title</h2>
+          <p class="muted" style="margin-top: 6px">
+            Triage, Waiting, and Mine stay at the original size. They fit.
+            Resolved is a quiet word in the title, not a fourth pill and not a button
+            that looks like Resolve.
+          </p>
+        </div>
+        <div class="desk" data-frame="b">
+          <aside class="rail">
+            <p class="kicker">Work</p>
+            <div class="nav">Overview</div>
+            <div class="nav on">Alerts <span class="n">60</span></div>
+            <div class="group">
+              <p class="kicker">Evidence</p>
+              <div class="nav">Sources</div>
+              <div class="nav">Releases</div>
+              <div class="nav">Timeline</div>
+            </div>
+            <div class="group">
+              <p class="kicker">Settings</p>
+              <div class="nav">Notifications</div>
+              <div class="nav">Policy &amp; allowlist</div>
+              <div class="nav">Team &amp; roles</div>
+              <div class="nav">Retention</div>
+              <div class="nav">Audit log</div>
+              <div class="nav">Install health</div>
+            </div>
+          </aside>
+          <div class="canvas">
+            <div class="split">
+              <div class="inbox">
+                <div class="inbox-head">
+                  <div class="title-row">
+                    <h2>Alerts <span class="badge" data-badge>60</span></h2>
+                    <button class="archive push" type="button" data-q="done">Resolved</button>
+                    <span class="rule" aria-hidden="true"></span>
+                    <span class="export">Export</span>
+                  </div>
+                  <div class="seg" role="tablist" aria-label="Work queues">
+                    <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                    <i data-q="waiting">Waiting <b>3</b></i>
+                    <i data-q="mine">Mine <b>1</b></i>
+                  </div>
+                </div>
+                <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+              </div>
+              <div class="detail">
+                <div>
+                  <strong>Nothing selected.</strong>
+                  <span>Findings, exposure, and activity open here.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="c">
+        <div class="block-meta">
+          <p class="kicker">C</p>
+          <h2 style="margin-top: 6px">Page title, then the four pills</h2>
+          <p class="muted" style="margin-top: 6px">
+            Alerts becomes a 30px page like Health and Audit. The four queues
+            sit on that header, so they have the whole canvas. The inbox is just
+            the list.
+          </p>
+        </div>
+        <div class="desk" data-frame="c">
+          <aside class="rail">
+            <p class="kicker">Work</p>
+            <div class="nav">Overview</div>
+            <div class="nav on">Alerts <span class="n">60</span></div>
+            <div class="group">
+              <p class="kicker">Evidence</p>
+              <div class="nav">Sources</div>
+              <div class="nav">Releases</div>
+              <div class="nav">Timeline</div>
+            </div>
+            <div class="group">
+              <p class="kicker">Settings</p>
+              <div class="nav">Notifications</div>
+              <div class="nav">Policy &amp; allowlist</div>
+              <div class="nav">Team &amp; roles</div>
+              <div class="nav">Retention</div>
+              <div class="nav">Audit log</div>
+              <div class="nav">Install health</div>
+            </div>
+          </aside>
+          <div class="canvas">
+            <div class="page-head">
+              <h2>Alerts</h2>
+              <div class="seg" role="tablist" aria-label="Alert queues">
+                <i class="on" data-q="open">Triage <b class="open">60</b></i>
+                <i data-q="waiting">Waiting <b>3</b></i>
+                <i data-q="mine">Mine <b>1</b></i>
+                <i data-q="done">Resolved</i>
+              </div>
+              <span class="export">Export</span>
+            </div>
+            <div class="split">
+              <div class="inbox">
+                <div class="empty" data-empty>This view is clear. No real alerts match this filter.</div>
+              </div>
+              <div class="detail">
+                <div>
+                  <strong>Nothing selected.</strong>
+                  <span>Findings, exposure, and activity open here.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      const copy = {
+        open: "This view is clear. No real alerts match this filter.",
+        waiting: "Nothing waiting on rotation in this preview.",
+        mine: "Nothing assigned to you in this preview.",
+        done: "No resolved alerts in this preview.",
+      };
+      const badges = { open: "60", waiting: "3", mine: "1", done: "" };
+      document.querySelectorAll("[data-frame]").forEach((frame) => {
+        const empty = frame.querySelector("[data-empty]");
+        const badge = frame.querySelector("[data-badge]");
+        const setQueue = (key) => {
+          frame.querySelectorAll("[data-q]").forEach((el) => {
+            el.classList.toggle("on", el.getAttribute("data-q") === key);
+          });
+          if (empty) empty.textContent = copy[key];
+          if (badge) {
+            badge.textContent = badges[key] || "0";
+            badge.classList.toggle("dim", key !== "open");
+            badge.style.color = key === "open" ? "#ff8a80" : "";
+          }
+        };
+        frame.querySelectorAll("[data-q]").forEach((el) => {
+          el.addEventListener("click", () => setQueue(el.getAttribute("data-q")));
+        });
+      });
+    </script>
+  </body>
+</html>
