@@ -4,6 +4,8 @@ import {
   WatchSkeleton,
   type WatchSectionState,
 } from "@/components/WatchDataState";
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
+import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import {
   watchHref,
@@ -73,10 +75,10 @@ export function WatchSourcesSummary({
   if (state.status === "error") {
     return (
       <div className="mb-8">
-        <h1 className="font-display text-3xl tracking-tight text-snow">
+        <h1 className="watch-page-title">
           {mode === "setup" ? "Setup proof unavailable" : "Sources unavailable"}
         </h1>
-        <p className="mt-2 text-sm text-mute">
+        <p className="watch-page-lede">
           Existing connections are not treated as empty while this read is failing.
         </p>
         <WatchSectionError className="mt-6 max-w-2xl" message={state.message} onRetry={onRetry} />
@@ -85,100 +87,98 @@ export function WatchSourcesSummary({
   }
 
   if (mode === "setup") {
+    const covered = setup.steps.filter((step) => step.proof === "covered");
+    const remaining = setup.steps.filter((step) => step.proof !== "covered");
+    const headline =
+      setup.done === setup.total
+        ? "All five leak paths are covered."
+        : `${setup.total - setup.done} leak path${setup.total - setup.done === 1 ? "" : "s"} still need proof.`;
+    const goToStep = (key: (typeof setup.steps)[number]["key"]) =>
+      navigate(
+        watchHref(watchPath("sources"), search, {
+          configure: key === "registry" ? "npm" : key === "production" ? "website" : "github",
+        }),
+      );
+
     return (
-      <div className="mb-8 max-w-3xl">
-        <h1 className="font-display text-3xl tracking-tight text-snow">
-          {setup.done === setup.total
-            ? "All five leak paths are covered."
-            : `${setup.total - setup.done} leak path${setup.total - setup.done === 1 ? "" : "s"} still need proof.`}
-        </h1>
-        <p className="mt-2 text-sm text-mute">
-          Connected is not the same as proven. Unknown steps stay open until a real check supplies evidence.
-        </p>
-        <div className="mt-5 flex items-center gap-5 rounded-lg border border-white/8 bg-panel p-5">
+      <div className="watch-narrow mb-8">
+        <WatchPageHeader
+          title={headline}
+          lede="Connected is not the same as proven. Unknown steps stay open until a real check supplies evidence."
+        />
+        <div className="watch-progress mt-[18px]">
           <div
-            className="grid size-20 shrink-0 place-items-center rounded-full"
+            className="watch-ring"
             style={{
-              background: `conic-gradient(#f4f4f5 ${(setup.done / setup.total) * 360}deg, #252529 0)`,
+              background: `conic-gradient(#f4f4f5 ${(setup.done / setup.total) * 100}%, rgba(255,255,255,0.09) 0)`,
             }}
             aria-label={`${setup.done} of ${setup.total} leak paths covered`}
           >
-            <span className="grid size-[66px] place-items-center rounded-full bg-panel font-display text-lg text-snow">
+            <span>
               {setup.done}/{setup.total}
             </span>
           </div>
-          <div>
-            <p className="text-sm text-snow">{setup.done} paths have direct proof</p>
-            <p className="mt-1 text-xs leading-relaxed text-dim">
-              GitHub visibility, release assets, packed-artifact checks, registry tarballs, and production/map handling.
+          <div className="min-w-0 flex-1">
+            <strong className="watch-small text-snow">
+              {covered.length
+                ? `${covered.map((step) => step.label).join(", ")} ${covered.length === 1 ? "is" : "are"} connected`
+                : "Nothing connected yet"}
+            </strong>
+            <p className="watch-tiny mt-1 text-dim">
+              {remaining.length
+                ? `${remaining.map((step) => step.label).join(", ")} ${remaining.length === 1 ? "is" : "are"} not.`
+                : "Every leak path in this pass has proof."}
             </p>
           </div>
         </div>
-        {setup.next ? (
-          <section className="mt-4 overflow-hidden rounded-lg border border-white/12 bg-panel">
-            <div className="flex items-start gap-3 p-5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-white/20 text-xs text-snow">
-                {setup.steps.indexOf(setup.next) + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm font-semibold text-snow">{setup.next.label}</h2>
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs uppercase tracking-[0.14em] text-dim">
-                    {setup.next.proof === "check-needed" ? "check needed" : setup.next.proof}
+        <div className="mt-4">
+          {setup.steps.map((step, index) => {
+            const active = setup.next?.key === step.key;
+            const done = step.proof === "covered";
+            return (
+              <article
+                key={step.key}
+                className={cn(
+                  "watch-stepcard",
+                  done && "watch-stepcard-done",
+                  active && "watch-stepcard-active",
+                )}
+              >
+                <div className="watch-stephead">
+                  <span
+                    className={cn("watch-mark", done && "watch-mark-done", active && "watch-mark-now")}
+                    aria-hidden
+                  >
+                    {done ? "✓" : index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <strong className="watch-small block text-snow">{step.label}</strong>
+                    <p className="watch-tiny mt-[3px] text-dim">{step.summary}</p>
+                  </div>
+                  <span className="watch-tiny shrink-0 text-dim">
+                    {step.proof === "check-needed" ? "check needed" : step.proof}
                   </span>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-mute">{setup.next.summary}</p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() =>
-                  navigate(
-                    watchHref(watchPath("sources"), search, {
-                      configure:
-                        setup.next?.key === "registry"
-                          ? "npm"
-                          : setup.next?.key === "production"
-                            ? "website"
-                            : "github",
-                    }),
-                  )
-                }
-              >
-                {setup.next.action}
-              </Button>
-            </div>
-          </section>
-        ) : null}
-        <ol className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
-          {setup.steps.map((step, index) => (
-            <li key={step.key} className="flex items-center gap-3 px-4 py-3">
-              <span
-                className={
-                  step.proof === "covered"
-                    ? "grid size-6 place-items-center rounded-full bg-white text-xs text-ink"
-                    : "grid size-6 place-items-center rounded-full border border-white/15 text-xs text-dim"
-                }
-              >
-                {step.proof === "covered" ? (
-                  <>
-                    <CheckCircle2 className="size-3.5" aria-hidden />
-                    <span className="sr-only">Covered</span>
-                  </>
-                ) : (
-                  index + 1
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-snow">{step.label}</p>
-                <p className="mt-0.5 text-xs text-dim">{step.summary}</p>
-              </div>
-              <span className="text-xs uppercase tracking-[0.14em] text-dim">
-                {step.proof === "check-needed" ? "check needed" : step.proof}
-              </span>
-            </li>
-          ))}
-        </ol>
+                {active ? (
+                  <div className="watch-stepbody">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-line bg-inset px-3.5 py-3">
+                      <p className="watch-tiny min-w-0 flex-1 text-mute">{step.summary}</p>
+                      <Button type="button" size="sm" onClick={() => goToStep(step.key)}>
+                        {step.action}
+                      </Button>
+                    </div>
+                  </div>
+                ) : !done ? (
+                  <div className="flex justify-end px-4 pb-3">
+                    <Button type="button" size="sm" variant="outline" onClick={() => goToStep(step.key)}>
+                      {step.action}
+                    </Button>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -188,11 +188,11 @@ export function WatchSourcesSummary({
     <div className="mb-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-dim">Coverage</p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-snow">
+          <p className="watch-kicker">Coverage</p>
+          <h1 className="watch-page-title mt-2">
             Three exposure surfaces. One desk.
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-mute">
+          <p className="watch-page-lede">
             GitHub exposure, published artifacts, and production web report into the same inbox.
             The artifact scanner also runs before release through Scan, CLI, or your existing CI.
           </p>

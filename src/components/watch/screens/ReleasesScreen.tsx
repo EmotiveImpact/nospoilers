@@ -6,8 +6,8 @@ export function ReleasesScreen() {
     <>
       {route.view === "releases" && (
               <section className="mt-4">
-                <h1 className="font-display text-3xl tracking-tight text-snow">Releases and receipts</h1>
-                <p className="mt-2 text-sm text-mute">Sealed artifact revisions, policy results, and delivery evidence.</p>
+                <h1 className="watch-page-title">Releases and receipts</h1>
+                <p className="watch-page-lede">Sealed artifact revisions, policy results, and delivery evidence.</p>
                 <div className="watch-guidance mt-4 grid max-w-4xl gap-3 sm:grid-cols-2">
                   {[
                     {

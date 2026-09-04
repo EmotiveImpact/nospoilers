@@ -6,8 +6,8 @@ export function TeamScreen() {
     <>
       {route.view === "team" && (
               <section className="mt-4">
-                <h1 className="font-display text-3xl tracking-tight text-snow">Team &amp; roles</h1>
-                <p className="mt-2 text-sm text-mute">People who can view or administer this install.</p>
+                <h1 className="watch-page-title">Team &amp; roles</h1>
+                <p className="watch-page-lede">People who can view or administer this install.</p>
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                   The first GitHub user to connect this install is admin. Later users become members. Admins
                   change roles, remove people, and invite by GitHub login. They get that role the next time

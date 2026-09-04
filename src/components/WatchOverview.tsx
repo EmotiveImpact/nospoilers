@@ -84,8 +84,8 @@ export function WatchOverview({
   if (state.status === "error") {
     return (
       <div className="mx-auto max-w-5xl">
-        <h1 className="font-display text-3xl tracking-tight text-snow">Overview unavailable</h1>
-        <p className="mt-3 max-w-xl text-sm text-mute">
+        <h1 className="watch-page-title">Overview unavailable</h1>
+        <p className="watch-page-lede">
           No verdict is shown until the alert and source reads succeed.
         </p>
         <WatchSectionError className="mt-6 max-w-2xl" message={state.message} onRetry={onRetry} />
@@ -95,8 +95,8 @@ export function WatchOverview({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="font-display text-3xl tracking-tight text-snow md:text-4xl">{verdict.title}</h1>
-      <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">{verdict.detail}</p>
+      <h1 className="watch-page-title md:text-[34px]">{verdict.title}</h1>
+      <p className="watch-page-lede max-w-xl">{verdict.detail}</p>
       {verdict.tone === "ended" ? (
         <div className="mt-4 flex gap-2">
           <Button type="button" onClick={() => navigate("/pricing")}>

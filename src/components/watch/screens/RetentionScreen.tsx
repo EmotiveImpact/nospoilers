@@ -30,8 +30,8 @@ export function RetentionScreen({
 }) {
   return (
     <section className="mt-4">
-      <h1 className="font-display text-3xl tracking-tight text-snow">Retention</h1>
-      <p className="mt-2 text-sm text-mute">Choose how long operational lists remain visible.</p>
+      <h1 className="watch-page-title">Retention</h1>
+      <p className="watch-page-lede">Choose how long operational lists remain visible.</p>
       <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
         Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
         Append-only evidence is not deleted. Uninstall still drops the tenant.

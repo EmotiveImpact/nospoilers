@@ -11,7 +11,7 @@ export function RegistriesScreen() {
                   (previewing || sourceSectionState.status === "ready"))) && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 {route.view === "registries" ? (
-                  <h1 className="mb-5 font-display text-3xl tracking-tight text-snow">Private registries</h1>
+                  <h1 className="watch-page-title mb-5">Private registries</h1>
                 ) : null}
                 <section id="watch-source-npm" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                 <h2 className="text-sm font-semibold text-snow">

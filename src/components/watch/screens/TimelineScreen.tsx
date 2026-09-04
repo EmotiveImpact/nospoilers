@@ -60,10 +60,10 @@ export function TimelineScreen({
 }) {
   return (
     <section className="mt-4">
-      <h1 className="font-display text-3xl tracking-tight text-snow">
+      <h1 className="watch-page-title">
         {timeline.status === "ready" ? heading(timeline.days) : "Timeline"}
       </h1>
-      <p className="mt-2 text-sm text-mute">Alert and response activity within the retained window.</p>
+      <p className="watch-page-lede">Alert and response activity within the retained window.</p>
       <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
         Team and trial installs see this install’s alerts, acknowledgement activity, and
         notification deliveries{" "}
