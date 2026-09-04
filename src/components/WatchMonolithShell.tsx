@@ -413,7 +413,7 @@ export function WatchMonolithShell({
           className="grid size-10 shrink-0 place-items-center rounded-full"
           style={{ background: `conic-gradient(#f4f4f5 ${(setupDone / setupTotal) * 360}deg, #252529 0)` }}
         >
-          <span className="grid size-[32px] place-items-center rounded-full bg-[#101112] text-[9px] text-snow">
+          <span className="grid size-[32px] place-items-center rounded-full bg-canvas text-[9px] text-snow">
             {setupDone}/{setupTotal}
           </span>
         </span>
@@ -432,29 +432,26 @@ export function WatchMonolithShell({
 
   return (
     <div className="watch-desk">
-      <div className="watch-frame">
-        <div className="watch-frame-background" aria-hidden />
-        <div className="watch-frame-glow" aria-hidden />
-        <div className="watch-frame-edge" aria-hidden />
-        <aside
-          className={cn(
-            "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
-            collapsed ? "w-14" : "w-[244px]",
-          )}
-        >
-          {rail({ collapsed, showToggle: true })}
-        </aside>
+      <aside
+        className={cn(
+          "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          collapsed ? "w-14" : "w-[244px]",
+        )}
+      >
+        {rail({ collapsed, showToggle: true })}
+      </aside>
 
-        <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
-          <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-          <div className="fixed inset-0 flex">
-            <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-[#101112] shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
-              <DialogTitle className="sr-only">Watch navigation</DialogTitle>
-              {rail({ collapsed: false, showToggle: false })}
-            </DialogPanel>
-          </div>
-        </Dialog>
+      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
+        <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
+        <div className="fixed inset-0 flex">
+          <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+            <DialogTitle className="sr-only">Watch navigation</DialogTitle>
+            {rail({ collapsed: false, showToggle: false })}
+          </DialogPanel>
+        </div>
+      </Dialog>
 
+      <div className="watch-gutter">
         <div className="watch-stage">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/90 px-2 backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
           <button

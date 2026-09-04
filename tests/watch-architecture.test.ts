@@ -69,21 +69,29 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
 
-  it("applies Linear's product frame to the live Watch shell", () => {
+  it("applies Linear view tokens to the live Watch stage only", () => {
     const css = readFileSync("src/index.css", "utf8");
     const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
     expect(shell).toMatch(/watch-desk/);
-    expect(shell).toMatch(/watch-frame/);
-    expect(shell).toMatch(/watch-frame-background/);
+    expect(shell).toMatch(/watch-gutter/);
     expect(shell).toMatch(/watch-stage/);
+    expect(shell).not.toMatch(/watch-frame/);
+    expect(shell).not.toMatch(/#101112/);
     expect(css).toMatch(/\.watch-desk/);
-    expect(css).toMatch(/\.watch-frame-background/);
-    expect(css).toMatch(/background:\s*#101112/);
-    expect(css).toMatch(/#ffffff14/);
-    expect(css).toMatch(/#ffffff03/);
+    expect(css).toMatch(/\.watch-gutter/);
+    expect(css).toMatch(/\.watch-stage::before/);
+    expect(css).toMatch(/\.watch-stage::after/);
+    expect(css).toMatch(/linear-gradient\(#ffffff03, #ffffff03\), #09090b/);
     expect(css).toMatch(/#ffffff0d/);
+    expect(css).toMatch(/#ffffff0f/);
+    expect(css).toMatch(/box-shadow:\s*0 0 0 2px #0003/);
+    expect(css).toMatch(/border-radius:\s*8px/);
     expect(css).toMatch(/--color-canvas: #09090b;/);
     expect(css).not.toMatch(/#141416/);
+    expect(css).not.toMatch(/#101112/);
+    expect(css).not.toMatch(/#ffffff14/);
+    expect(css).not.toMatch(/\.watch-frame/);
+    expect(css).not.toMatch(/#f7f8f808/);
     expect(css).not.toMatch(/540px 440px/);
     expect(css).not.toMatch(/radial-gradient\(circle at 28% 22%, #161618/);
     expect(css).toMatch(/\.watch-queue-track/);
@@ -119,7 +127,7 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
-    expect(readFileSync("src/components/WatchMonolithShell.tsx", "utf8")).toMatch(/watch-frame-background/);
+    expect(readFileSync("src/components/WatchMonolithShell.tsx", "utf8")).not.toMatch(/watch-frame/);
   });
 
   it("keeps the Linear product-frame mock on Linear's homepage tokens", () => {
@@ -142,7 +150,7 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/background(?:-color)?:\s*#141416/);
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
-    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-frame-background/);
+    expect(readFileSync("src/index.css", "utf8")).not.toMatch(/\.watch-frame/);
   });
 
   it("keeps Linear's plate, rim, and glow on .stage only", () => {
@@ -162,6 +170,8 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/DRV-8852|MAP-002|vehicle_state|Faster app launch/);
     expect(html).not.toMatch(/Triage <b>60<\/b>/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-gutter/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/ellipse 50% 50% at 0 0/);
   });
 
   it("lists every committed mockup HTML file on the 2B index", () => {
