@@ -312,7 +312,7 @@ export function WatchMonolithShell({
 
   return (
     <div className="flex h-svh overflow-hidden bg-rail">
-      <aside className="hidden h-svh w-[244px] shrink-0 flex-col border-r border-line bg-rail md:flex">
+      <aside className="hidden h-svh w-[244px] shrink-0 flex-col bg-rail md:flex">
         {nav}
       </aside>
 
@@ -326,8 +326,9 @@ export function WatchMonolithShell({
         </div>
       </Dialog>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-canvas">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/90 px-2 shadow-[0_10px_32px_rgba(0,0,0,.12)] backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
+      <div className="flex min-w-0 flex-1 p-2">
+        <div className="watch-stage">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/90 px-2 backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
           <button
             type="button"
             className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
@@ -389,11 +390,13 @@ export function WatchMonolithShell({
         </header>
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-auto px-5 py-8 md:px-8",
+            "min-h-0 flex-1",
+            route.view === "alerts" ? "overflow-hidden" : "overflow-auto px-5 py-8 md:px-8",
             !guidanceOpen && "[&_.watch-guidance]:hidden",
           )}
         >
           {children}
+        </div>
         </div>
       </div>
       <Dialog open={plansOpen} onClose={setPlansOpen} className="relative z-50">

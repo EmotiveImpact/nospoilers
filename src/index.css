@@ -2,7 +2,7 @@
 
 @theme {
   --color-ink: #09090b;
-  --color-rail: #0b0b0d;
+  --color-rail: #050506;
   --color-canvas: #09090b;
   --color-panel: #111113;
   --color-inset: #0b0b0d;
@@ -122,6 +122,18 @@ code {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.watch-stage {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: var(--color-canvas);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
 }
 
 .watch-card {
@@ -271,8 +283,10 @@ code {
 }
 
 .watch-seg {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--color-line);
