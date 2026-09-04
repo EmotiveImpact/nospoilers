@@ -265,9 +265,257 @@ code {
 }
 
 .watch-pill-ok {
-  border-color: rgba(91, 177, 111, 0.28);
-  background: rgba(91, 177, 111, 0.08);
-  color: #8bcc9a;
+  border-color: rgba(63, 185, 80, 0.36);
+  background: rgba(63, 185, 80, 0.09);
+  color: #7ee08a;
+}
+
+.watch-pill-info {
+  border-color: rgba(91, 141, 239, 0.36);
+  background: rgba(91, 141, 239, 0.1);
+  color: #9dbaf5;
+}
+
+.watch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-strong);
+  color: #a1a1aa;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.watch-chip-ok {
+  border-color: rgba(63, 185, 80, 0.36);
+  background: rgba(63, 185, 80, 0.09);
+  color: #7ee08a;
+}
+
+.watch-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: #71717a;
+}
+
+.watch-dot-ok {
+  background: var(--color-ok);
+}
+
+.watch-dot-warn {
+  background: var(--color-warn);
+}
+
+.watch-dot-crit {
+  background: var(--color-danger);
+}
+
+.watch-dot-info {
+  background: var(--color-info);
+}
+
+.watch-bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.watch-tile {
+  position: relative;
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-panel);
+  padding: 17px;
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.watch-tile:hover {
+  border-color: var(--color-line-strong);
+  transform: translateY(-1px);
+}
+
+.watch-tile-alarm {
+  border-color: rgba(226, 69, 58, 0.34);
+  background:
+    radial-gradient(110% 130% at 0% 0%, rgba(226, 69, 58, 0.14), transparent 60%),
+    var(--color-panel);
+}
+
+.watch-tile-dashed {
+  border-style: dashed;
+  border-color: var(--color-line-strong);
+}
+
+.watch-tile-banner {
+  min-height: 0;
+}
+
+.watch-tile-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.watch-tile-go {
+  pointer-events: none;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 1;
+  color: #71717a;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.watch-tile:hover .watch-tile-go {
+  opacity: 1;
+}
+
+.watch-tile-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.watch-tile-body a,
+.watch-tile-body button {
+  pointer-events: auto;
+}
+
+.watch-tile-n {
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.watch-tile-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  color: #71717a;
+  font-size: 12px;
+}
+
+.watch-w2 {
+  grid-column: span 2;
+}
+
+.watch-w3 {
+  grid-column: span 3;
+}
+
+.watch-w4 {
+  grid-column: span 4;
+}
+
+.watch-w6 {
+  grid-column: span 6;
+}
+
+.watch-h2 {
+  grid-row: span 2;
+}
+
+.watch-mini {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-line);
+  color: #a1a1aa;
+  font-size: 12.5px;
+}
+
+.watch-mini:last-child {
+  border-bottom: 0;
+}
+
+.watch-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 46px;
+  margin-top: 12px;
+}
+
+.watch-spark i {
+  flex: 1;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.watch-spark i.warn {
+  background: var(--color-warn);
+}
+
+.watch-spark i.bad {
+  background: var(--color-danger);
+}
+
+.watch-donut {
+  display: grid;
+  width: 74px;
+  height: 74px;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.watch-donut > span {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-panel);
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+@media (max-width: 1000px) {
+  .watch-bento {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .watch-w4,
+  .watch-w6 {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 680px) {
+  .watch-bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .watch-w2,
+  .watch-w3,
+  .watch-w4,
+  .watch-w6 {
+    grid-column: span 2;
+  }
 }
 
 .watch-gantt {
@@ -296,6 +544,15 @@ code {
 @media (prefers-reduced-motion: reduce) {
   :where(button, a, input, textarea, select) {
     transition: none;
+  }
+
+  .watch-tile,
+  .watch-tile-go {
+    transition: none;
+  }
+
+  .watch-tile:hover {
+    transform: none;
   }
 
   .fade-up,

@@ -5,11 +5,18 @@ import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { previewAlerts, previewRepos } from "../src/preview.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";
 import {
+  buildPackSpark,
   buildSetupViewModel,
   buildSourceViewModels,
   buildTimelineLanes,
+  countOpenAlerts,
+  coverageDonut,
   filterSourceViewModels,
+  latestSealedReleases,
+  nextExceptionExpiry,
+  sourceKindCounts,
 } from "../src/watch/view-models.ts";
+import { formatAgo, shortDigest } from "../src/watch/format.ts";
 import {
   loadSelectedAlertActivity,
   shouldLoadAlertActivity,
@@ -397,5 +404,83 @@ describe("command palette keyboard model", () => {
     expect(items.map((item) => item.href)).toContain("/watch/sources?install=7&source=npm-4");
     expect(items.map((item) => item.href)).toContain("/watch/releases?install=7&release=9");
     expect(items.some((item) => item.id === "do-add-source")).toBe(false);
+  });
+});
+
+describe("overview bento", () => {
+  it("keeps empty coverage, alerts, and sparks hollow instead of inventing rows", () => {
+    expect(coverageDonut([])).toEqual({
+      clean: 0,
+      warn: 0,
+      crit: 0,
+      total: 0,
+      pct: 0,
+      okEnd: 0,
+      warnEnd: 0,
+    });
+    expect(sourceKindCounts([])).toEqual({ github: 0, npm: 0, website: 0, map: 0 });
+    expect(countOpenAlerts([])).toEqual({ open: 0, critical: 0, warning: 0, assigned: 0 });
+    expect(buildPackSpark([])).toEqual({ bars: [], packCount: 0, failedPolicy: 0 });
+    expect(latestSealedReleases([])).toEqual([]);
+    expect(nextExceptionExpiry([])).toBeNull();
+  });
+
+  it("colors spark bars from real receipt statuses in the 30-day window", () => {
+    const now = Date.parse("2026-09-04T12:00:00Z");
+    const spark = buildPackSpark(
+      [
+        { createdAt: "2026-08-01T12:00:00Z", receiptStatus: "failed-policy" },
+        { createdAt: "2026-08-20T12:00:00Z", receiptStatus: "inconclusive" },
+        { createdAt: "2026-09-03T12:00:00Z", receiptStatus: "passed" },
+        { createdAt: "2026-09-04T08:00:00Z", receiptStatus: "failed-policy" },
+      ],
+      now,
+    );
+    expect(spark.packCount).toBe(3);
+    expect(spark.failedPolicy).toBe(1);
+    expect(spark.bars.some((bar) => bar.tone === "bad")).toBe(true);
+    expect(spark.bars.some((bar) => bar.tone === "warn")).toBe(true);
+  });
+
+  it("counts assigned open alerts from the live login only", () => {
+    const counts = countOpenAlerts(
+      [
+        {
+          id: 1,
+          kind: "release_scan",
+          title: "Map",
+          body: "",
+          findings: [{ rule: "MAP-002", path: "dist/cli.js.map" }],
+          created_at: "2026-09-04T10:00:00Z",
+          assigned_to_login: "red",
+        },
+        {
+          id: 2,
+          kind: "repo_publicized",
+          title: "Public",
+          body: "",
+          findings: null,
+          created_at: "2026-09-04T11:00:00Z",
+          assigned_to_login: "other",
+        },
+        {
+          id: 3,
+          kind: "release_scan",
+          title: "Done",
+          body: "",
+          findings: [{ rule: "MAP-001", path: "dist/app.js.map" }],
+          created_at: "2026-09-01T10:00:00Z",
+          resolved_at: "2026-09-02T10:00:00Z",
+        },
+      ],
+      "Red",
+    );
+    expect(counts).toEqual({ open: 2, critical: 1, warning: 1, assigned: 1 });
+  });
+
+  it("shortens digests and relative times without inventing values", () => {
+    expect(shortDigest("9f31abc0a")).toBe("9f31…c0a");
+    expect(shortDigest("ab")).toBe("ab");
+    expect(formatAgo("2026-09-04T11:20:00Z", Date.parse("2026-09-04T12:00:00Z"))).toBe("40m ago");
   });
 });

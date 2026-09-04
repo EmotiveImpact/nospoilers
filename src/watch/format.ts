@@ -87,3 +87,21 @@ export function leadFinding(alert: {
   const first = asFindingList(alert.findings)[0];
   return first ? { rule: first.rule, path: first.path } : null;
 }
+
+export function formatAgo(iso: string, now = Date.now()): string {
+  const start = Date.parse(iso);
+  if (!Number.isFinite(start)) return "";
+  const ms = Math.max(0, now - start);
+  if (ms < 60_000) return "just now";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+export function shortDigest(value: string): string {
+  const digest = value.trim();
+  if (digest.length < 8) return digest;
+  return `${digest.slice(0, 4)}…${digest.slice(-3)}`;
+}

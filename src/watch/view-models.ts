@@ -1,6 +1,6 @@
 import type { Finding } from "../report-types.ts";
 import { asFindingList } from "./format.ts";
-import type { DeskAlert } from "./verdict.ts";
+import { isOpenAlert, type DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";
 export type SourceAttention = "critical" | "warning" | "ok" | "unknown";
@@ -435,4 +435,147 @@ export function buildAlertListViewModels(
       exposure: formatExposure(alert),
     };
   });
+}
+
+export function alertSeverity(alert: DeskAlert): "critical" | "warning" {
+  return severityFor(findingOf(alert)?.rule ?? alert.kind);
+}
+
+export function countOpenAlerts(
+  alerts: DeskAlert[],
+  login = "",
+): { open: number; critical: number; warning: number; assigned: number } {
+  const open = alerts.filter(isOpenAlert);
+  const critical = open.filter((alert) => alertSeverity(alert) === "critical").length;
+  const who = login.trim().toLowerCase();
+  return {
+    open: open.length,
+    critical,
+    warning: open.length - critical,
+    assigned: who
+      ? open.filter((alert) => (alert.assigned_to_login ?? "").trim().toLowerCase() === who).length
+      : 0,
+  };
+}
+
+export function sourceKindCounts(sources: WatchSourceViewModel[]): {
+  github: number;
+  npm: number;
+  website: number;
+  map: number;
+} {
+  return {
+    github: sources.filter((source) => source.kind === "github").length,
+    npm: sources.filter((source) => source.kind === "npm").length,
+    website: sources.filter((source) => source.kind === "website").length,
+    map: sources.filter((source) => source.kind === "map").length,
+  };
+}
+
+export type CoverageDonut = {
+  clean: number;
+  warn: number;
+  crit: number;
+  total: number;
+  pct: number;
+  okEnd: number;
+  warnEnd: number;
+};
+
+export function coverageDonut(sources: WatchSourceViewModel[]): CoverageDonut {
+  const clean = sources.filter((source) => source.attention === "ok").length;
+  const warn = sources.filter(
+    (source) => source.attention === "warning" || source.attention === "unknown",
+  ).length;
+  const crit = sources.filter((source) => source.attention === "critical").length;
+  const total = sources.length;
+  return {
+    clean,
+    warn,
+    crit,
+    total,
+    pct: total === 0 ? 0 : Math.round((clean / total) * 100),
+    okEnd: total === 0 ? 0 : (clean / total) * 100,
+    warnEnd: total === 0 ? 0 : ((clean + warn) / total) * 100,
+  };
+}
+
+export type SparkBar = {
+  height: number;
+  tone: "ok" | "warn" | "bad";
+};
+
+export function buildPackSpark(
+  releases: { createdAt: string; receiptStatus: string | null }[],
+  now = Date.now(),
+  days = 30,
+  buckets = 15,
+): { bars: SparkBar[]; packCount: number; failedPolicy: number } {
+  const windowMs = days * 86_400_000;
+  const start = now - windowMs;
+  const recent = releases.filter((release) => {
+    const at = Date.parse(release.createdAt);
+    return Number.isFinite(at) && at >= start && at <= now;
+  });
+  if (recent.length === 0) {
+    return { bars: [], packCount: 0, failedPolicy: 0 };
+  }
+  const width = windowMs / buckets;
+  const cells = Array.from({ length: buckets }, () => ({ count: 0, failed: 0, warn: 0 }));
+  for (const release of recent) {
+    const index = Math.min(buckets - 1, Math.max(0, Math.floor((Date.parse(release.createdAt) - start) / width)));
+    const cell = cells[index];
+    if (!cell) continue;
+    cell.count += 1;
+    if (release.receiptStatus === "failed-policy") cell.failed += 1;
+    else if (release.receiptStatus === "inconclusive") cell.warn += 1;
+  }
+  const max = Math.max(1, ...cells.map((cell) => cell.count));
+  return {
+    bars: cells.map((cell) => ({
+      height: cell.count === 0 ? 10 : Math.max(16, Math.round((cell.count / max) * 100)),
+      tone: cell.failed ? "bad" : cell.warn ? "warn" : "ok",
+    })),
+    packCount: recent.length,
+    failedPolicy: recent.filter((release) => release.receiptStatus === "failed-policy").length,
+  };
+}
+
+export function latestSealedReleases<T extends { createdAt: string }>(releases: T[], limit = 3): T[] {
+  return [...releases]
+    .filter((release) => Number.isFinite(Date.parse(release.createdAt)))
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    .slice(0, limit);
+}
+
+export function receiptDotTone(
+  status: string | null | undefined,
+): "ok" | "warn" | "crit" | "dim" {
+  if (status === "failed-policy") return "crit";
+  if (status === "inconclusive") return "warn";
+  if (status === "passed") return "ok";
+  return "dim";
+}
+
+export function nextExceptionExpiry(
+  exceptions: { active: boolean; expiresAt: string }[],
+): string | null {
+  const upcoming = exceptions
+    .filter((row) => row.active && Number.isFinite(Date.parse(row.expiresAt)))
+    .map((row) => row.expiresAt)
+    .sort((left, right) => Date.parse(left) - Date.parse(right));
+  return upcoming[0] ?? null;
+}
+
+export function latestDeliveryAt(destinations: { lastDeliveryAt: string | null }[]): string | null {
+  let latest = 0;
+  let iso: string | null = null;
+  for (const row of destinations) {
+    if (!row.lastDeliveryAt) continue;
+    const at = Date.parse(row.lastDeliveryAt);
+    if (!Number.isFinite(at) || at <= latest) continue;
+    latest = at;
+    iso = row.lastDeliveryAt;
+  }
+  return iso;
 }
