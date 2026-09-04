@@ -3,6 +3,7 @@ import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext"
 
 export function ReleasesScreen() {
   const { Button, WatchSectionError, WatchSkeleton, activeInstallId, attachingReleaseId, attestationError, beginConfirm, canExportReleases, canGovernReleases, canPublishVerify, cn, confirmForm, confirming, datasetState, deliveryError, deliveryUrlByRelease, deskCoverage, downloadingReceiptId, formatSealedBytes, governanceReasonByRelease, installAdmin, ledgerExportError, loadJson, locked, navigate, previewing, receiptError, receiptStatusMark, refreshSignedIn, releases, retryDeskSection, route, scopedApi, search, selectedInstallId, selectedRelease, setAttachingReleaseId, setAttestationError, setDeliveryError, setDeliveryUrlByRelease, setDownloadingReceiptId, setGovernanceReasonByRelease, setLedgerExportError, setReceiptError, setVerifyingLocationId, verifyingLocationId, watchHref, watchPath } = useWatchScreenContext();
+  const failedPolicy = releases.filter((row) => row.receiptStatus === "failed-policy").length;
   return (
     <>
       {route.view === "releases" && (
@@ -48,15 +49,15 @@ export function ReleasesScreen() {
                 <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
                   <div className="watch-stat">
                     <span className="watch-kicker">Sealed</span>
-                    <p className="watch-stat-n text-snow">{releases.length}</p>
+                    <p className={`watch-stat-n ${releases.length ? "text-snow" : "text-dim"}`}>{releases.length}</p>
                     <p className="watch-tiny mt-1 text-dim">Receipts on this install</p>
                   </div>
                   <div className="watch-stat">
                     <span className="watch-kicker">Failed policy</span>
-                    <p className={`watch-stat-n ${releases.some((row) => row.receiptStatus === "failed-policy") ? "text-danger" : "text-dim"}`}>
-                      {releases.filter((row) => row.receiptStatus === "failed-policy").length}
+                    <p className={`watch-stat-n ${failedPolicy ? "text-danger" : "text-ok"}`}>
+                      {failedPolicy}
                     </p>
-                    <p className="watch-tiny mt-1 text-dim">Never treated as clean</p>
+                    <p className="watch-tiny mt-1 text-dim">{failedPolicy ? "Never treated as clean" : "Clear"}</p>
                   </div>
                 </div>
                 <p className="watch-guidance mt-3 max-w-3xl text-[13px] leading-relaxed text-mute">
@@ -88,9 +89,9 @@ export function ReleasesScreen() {
                     onRetry={() => void retryDeskSection("releases")}
                   />
                 ) : previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
+                  <div className="watch-empty mt-6">No sealed releases yet.</div>
                 ) : releases.length === 0 ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">No sealed releases yet.</p>
+                  <div className="watch-empty mt-6">No sealed releases yet.</div>
                 ) : (
                   <div className="mt-6 grid overflow-hidden rounded-lg border border-white/8 bg-panel lg:grid-cols-[18rem_minmax(0,1fr)]">
                     <ol className="max-h-[52rem] divide-y divide-white/5 overflow-auto border-b border-white/8 lg:border-b-0 lg:border-r">

@@ -62,16 +62,21 @@ export function NotificationsScreen() {
                   change event and never open an incident. Email tests never invent an incident.
                 </p>
                 {previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
-                    Preview cannot send email, Slack, SIEM, Jira, or PagerDuty. Preview cannot route a
-                    test. No invented incident.
-                  </p>
+                  <>
+                    <p className="mt-6 text-sm leading-relaxed text-mute">
+                      Preview cannot send email, Slack, SIEM, Jira, or PagerDuty. Preview cannot route a
+                      test. No invented incident.
+                    </p>
+                    <div className="watch-empty">
+                      No destinations yet. Alerts stay in the desk until you add one.
+                    </div>
+                  </>
                 ) : (
                   <>
                     {destinations.length === 0 ? (
-                      <p className="mt-6 text-sm leading-relaxed text-mute">
-                        No email, Slack, SIEM, Jira, or PagerDuty destination saved on this install.
-                      </p>
+                      <div className="watch-empty">
+                        No destinations yet. Alerts stay in the desk until you add one.
+                      </div>
                     ) : (
                       <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                         {destinations.map((destination) => (

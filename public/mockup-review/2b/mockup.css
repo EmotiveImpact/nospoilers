@@ -1,0 +1,670 @@
+/* Shared shell for the NoSpoilers watch-desk UX mockups.
+   Tokens mirror src/index.css so the comps read as this product, not a generic template.
+   These files are static design comps: no build step, no framework, no live data. */
+
+:root {
+  --ink: #09090b;
+  --panel: #111113;
+  --inset: #0c0c0e;
+  --line: #1f1f23;
+  --line-strong: #3f3f46;
+  --snow: #f4f4f5;
+  --mute: #a1a1aa;
+  --dim: #71717a;
+  --danger: #e2453a;
+  --warn: #d99a2b;
+  --ok: #3fb950;
+  --info: #5b8def;
+
+  --sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 14px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100svh;
+  background: var(--ink);
+  color: var(--snow);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The grain overlay the real app paints over everything. */
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.1;
+}
+h2 {
+  font-size: 19px;
+}
+h3 {
+  font-size: 15px;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code,
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--snow);
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- primitives ---------- */
+
+.kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--dim);
+}
+
+.muted {
+  color: var(--mute);
+}
+.dim {
+  color: var(--dim);
+}
+.snow {
+  color: var(--snow);
+}
+.bad {
+  color: var(--danger);
+}
+.warnc {
+  color: var(--warn);
+}
+.okc {
+  color: var(--ok);
+}
+
+.small {
+  font-size: 12px;
+}
+.tiny {
+  font-size: 11px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+.card-pad {
+  padding: 18px;
+}
+
+.inset {
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.hr {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.gap4 {
+  gap: 4px;
+}
+.gap8 {
+  gap: 8px;
+}
+.gap12 {
+  gap: 12px;
+}
+.gap16 {
+  gap: 16px;
+}
+.gap24 {
+  gap: 24px;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* buttons mirror src/components/ui/button.tsx */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: var(--snow);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.btn:hover {
+  background: #fff;
+}
+.btn.outline {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--snow);
+}
+.btn.outline:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.04);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--mute);
+}
+.btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--snow);
+}
+.btn.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: rgba(226, 69, 58, 0.3);
+}
+.btn.danger:hover {
+  background: rgba(226, 69, 58, 0.1);
+}
+.btn.sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.btn.lg {
+  height: 44px;
+  padding: 0 22px;
+  font-size: 14px;
+}
+.btn[disabled],
+.btn.disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.pill.crit {
+  border-color: rgba(226, 69, 58, 0.42);
+  background: rgba(226, 69, 58, 0.11);
+  color: #ff8a80;
+}
+.pill.warn {
+  border-color: rgba(217, 154, 43, 0.4);
+  background: rgba(217, 154, 43, 0.1);
+  color: #e8bf6d;
+}
+.pill.ok {
+  border-color: rgba(63, 185, 80, 0.36);
+  background: rgba(63, 185, 80, 0.09);
+  color: #7ee08a;
+}
+.pill.info {
+  border-color: rgba(91, 141, 239, 0.36);
+  background: rgba(91, 141, 239, 0.1);
+  color: #9dbaf5;
+}
+.pill.solid {
+  background: var(--snow);
+  color: var(--ink);
+  border-color: var(--snow);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: none;
+  background: var(--dim);
+}
+.dot.crit {
+  background: var(--danger);
+}
+.dot.warn {
+  background: var(--warn);
+}
+.dot.ok {
+  background: var(--ok);
+}
+.dot.info {
+  background: var(--info);
+}
+.dot.pulse {
+  box-shadow: 0 0 0 0 rgba(226, 69, 58, 0.55);
+  animation: pulse 2.2s ease-out infinite;
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 7px rgba(226, 69, 58, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(226, 69, 58, 0);
+  }
+}
+
+.field {
+  height: 34px;
+  padding: 0 11px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--snow);
+  font-family: var(--sans);
+  font-size: 13px;
+  width: 100%;
+}
+.field::placeholder {
+  color: var(--dim);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--line-strong);
+}
+select.field {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%),
+    linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 15px,
+    calc(100% - 10px) 15px;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--inset);
+  color: var(--mute);
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--line-strong);
+  color: var(--snow);
+}
+.chip[aria-selected="true"],
+.chip.on {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--line-strong);
+  color: var(--snow);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  background: var(--inset);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mute);
+}
+
+.rulecode {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--mute);
+}
+
+.path {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--snow);
+  word-break: break-all;
+}
+
+.bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--snow);
+}
+
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.tbl th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 0 12px 9px;
+  border-bottom: 1px solid var(--line);
+}
+table.tbl td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--mute);
+  vertical-align: middle;
+}
+table.tbl tr:last-child td {
+  border-bottom: 0;
+}
+table.tbl tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ---------- state presets ----------
+   Radio inputs sit before .app in every mockup. Each preset exercises one of the
+   states the real desk has to handle, so a layout can be judged on the hard cases
+   and not just the happy path. Pure CSS, no script. */
+
+.stateset {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#p-trial:checked ~ .app :is(.s-solo, .s-member, .s-ended, .s-empty),
+#p-solo:checked ~ .app :is(.s-trial, .s-member, .s-ended, .s-empty),
+#p-member:checked ~ .app :is(.s-trial, .s-solo, .s-ended, .s-empty),
+#p-ended:checked ~ .app :is(.s-trial, .s-solo, .s-member, .s-empty),
+#p-empty:checked ~ .app :is(.s-trial, .s-solo, .s-member, .s-ended) {
+  display: none !important;
+}
+
+/* Controls an install admin has and a member does not. */
+#p-member:checked ~ .app .admin-only {
+  display: none !important;
+}
+/* Features the Solo plan does not include. */
+#p-solo:checked ~ .app .team-only {
+  display: none !important;
+}
+/* Anything that only exists once something is connected. */
+#p-empty:checked ~ .app .has-data {
+  display: none !important;
+}
+/* For content a dedicated .s-ended block replaces, so the two never stack. */
+#p-ended:checked ~ .app .hide-ended {
+  display: none !important;
+}
+
+/* Mirrors CoverageLock.tsx: it covers the panel rather than dimming it. */
+.lockable {
+  position: relative;
+}
+.lockveil {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  flex-direction: column;
+  justify-content: center;
+  gap: 11px;
+  padding: 24px;
+  background: rgba(9, 9, 11, 0.92);
+  backdrop-filter: blur(1px);
+  border-radius: inherit;
+}
+#p-ended:checked ~ .app .lockveil {
+  display: flex;
+}
+.lockveil .kicker {
+  color: var(--danger);
+}
+
+.gate {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r);
+  background: rgba(255, 255, 255, 0.015);
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.gate .tagword {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-top: 2px;
+}
+
+.empty {
+  padding: 26px 18px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 13px;
+}
+.empty strong {
+  display: block;
+  color: var(--mute);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+/* ---------- mockup framing (not part of the proposed product UI) ---------- */
+
+.mock-bar {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(9, 9, 11, 0.94);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-size: 11px;
+  color: var(--mute);
+  max-width: calc(100vw - 20px);
+  overflow: auto;
+  scrollbar-width: none;
+}
+.mock-bar::-webkit-scrollbar {
+  display: none;
+}
+.mock-bar b {
+  color: var(--snow);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.mock-bar .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  flex: none;
+}
+.mock-bar label {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mock-bar label:hover {
+  color: var(--snow);
+  background: rgba(255, 255, 255, 0.05);
+}
+.mock-bar a {
+  color: var(--dim);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.mock-bar a:hover {
+  color: var(--snow);
+}
+
+#p-trial:checked ~ .mock-bar label[for="p-trial"],
+#p-solo:checked ~ .mock-bar label[for="p-solo"],
+#p-member:checked ~ .mock-bar label[for="p-member"],
+#p-ended:checked ~ .mock-bar label[for="p-ended"],
+#p-empty:checked ~ .mock-bar label[for="p-empty"] {
+  background: var(--snow);
+  color: var(--ink);
+}
+
+.logo {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-size: 15px;
+  color: var(--snow);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--snow);
+  transform: rotate(45deg);
+}
+
+.scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.scroll::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 3px solid var(--ink);
+}
+.scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -26,9 +26,12 @@ export function TeamScreen() {
                   email and do not grant GitHub Administration. The last admin stays.
                 </p>
                 {previewing ? (
-                  <p className="mt-6 text-sm leading-relaxed text-mute">
-                    Preview cannot manage Team roles. No invented incident.
-                  </p>
+                  <>
+                    <p className="mt-6 text-sm leading-relaxed text-mute">
+                      Preview cannot manage Team roles. No invented incident.
+                    </p>
+                    <div className="watch-empty">Nobody linked on this install yet.</div>
+                  </>
                 ) : deskCoverage?.plan === "solo" ? (
                   <p className="mt-6 text-sm leading-relaxed text-mute">
                     Team roles are on trial and Team.
@@ -125,11 +128,25 @@ export function TeamScreen() {
                         ))}
                       </ul>
                     ) : null}
-                    {members.length === 0 ? (
-                      <p className="mt-6 text-sm leading-relaxed text-mute">
-                        Nobody linked on this install yet.
-                      </p>
+                    {members.length === 0 && invites.length === 0 ? (
+                      <div className="watch-empty">Nobody linked on this install yet.</div>
                     ) : (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {members.map((member) => (
+                          <span key={`pill-${member.userId}`} className="watch-chip">
+                            @{member.login}
+                            <span className="text-dim">{member.role}</span>
+                          </span>
+                        ))}
+                        {invites.map((invite) => (
+                          <span key={`pill-${invite.id}`} className="watch-chip">
+                            @{invite.githubLogin}
+                            <span className="text-dim">pending {invite.role}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {members.length === 0 ? null : (
                       <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                         {members.map((member) => (
                           <li key={member.userId} className="py-3">

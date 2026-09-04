@@ -215,11 +215,7 @@ export function WatchSourcesSummary({
                     }),
                   )
                 }
-                className={
-                  filter === option.value
-                    ? "min-h-12 rounded-full border border-white/25 bg-white/8 px-3 py-1.5 text-xs text-snow sm:min-h-9"
-                    : "min-h-12 rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20 sm:min-h-9"
-                }
+                className={filter === option.value ? "watch-chip watch-chip-ok min-h-9" : "watch-chip min-h-9"}
                 aria-pressed={filter === option.value}
               >
                 {option.label} <span className="ml-1 text-dim">{count}</span>
@@ -249,11 +245,8 @@ export function WatchSourcesSummary({
           </button>
         </div>
       {sources.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-white/8 bg-panel px-5 py-9 text-center">
-          <p className="text-sm text-snow">No sources yet.</p>
-          <p className="mt-2 text-xs text-dim">
-            Install on a private repository, connect a published package, or watch your production URL.
-          </p>
+        <div className="watch-empty mt-5">
+          Nothing connected yet. A private throwaway repo is enough.
           {admin ? (
             <Button type="button" size="sm" className="mt-4" onClick={() => setAdding(true)}>
               Add the first source
@@ -314,7 +307,7 @@ export function WatchSourcesSummary({
       <Dialog open={adding} onClose={setAdding} className="relative z-50">
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
-          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-[#0e0e11] p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
+          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-dim">Add source</p>

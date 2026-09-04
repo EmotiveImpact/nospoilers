@@ -3,9 +3,9 @@
 @theme {
   --color-ink: #09090b;
   --color-rail: #0b0b0d;
-  --color-canvas: #141416;
-  --color-panel: #1a1a1d;
-  --color-inset: #0f0f12;
+  --color-canvas: #09090b;
+  --color-panel: #111113;
+  --color-inset: #0b0b0d;
   --color-line: #2a2a2e;
   --color-line-strong: #3f3f46;
   --color-snow: #f4f4f5;
@@ -300,6 +300,16 @@ code {
   color: #f4f4f5;
 }
 
+.watch-seg-n {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  color: #71717a;
+}
+
+.watch-seg-n-open {
+  color: #ff8a80;
+}
+
 .watch-pill-info {
   border-color: rgba(91, 141, 239, 0.36);
   background: rgba(91, 141, 239, 0.1);
@@ -324,6 +334,17 @@ code {
   border-color: rgba(63, 185, 80, 0.36);
   background: rgba(63, 185, 80, 0.09);
   color: #7ee08a;
+}
+
+.watch-empty {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px dashed var(--color-line-strong);
+  border-radius: 10px;
+  background: var(--color-panel);
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .watch-dot {

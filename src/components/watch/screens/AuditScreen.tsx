@@ -71,15 +71,30 @@ export function AuditScreen({
         and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
         emails, tokens, and other secret values are never stored here.
       </p>
+      <div className="watch-card mt-[18px]">
+        <div className="watch-kv">
+          <span>Rows</span>
+          <span className={audit.status === "ready" && audit.rows.length ? "text-snow" : "text-dim"}>
+            {audit.status === "ready" ? audit.rows.length : 0}
+          </span>
+        </div>
+        <div className="watch-kv">
+          <span>Secrets stored</span>
+          <span className="text-ok">never</span>
+        </div>
+      </div>
       {exportError ? (
         <p role="alert" className="mt-3 text-[13px] text-danger">
           {exportError}
         </p>
       ) : null}
       {previewing ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          Preview cannot export a live audit log. No invented incident.
-        </p>
+        <>
+          <p className="mt-6 text-[13px] leading-relaxed text-mute">
+            Preview cannot export a live audit log. No invented incident.
+          </p>
+          <div className="watch-empty">No admin writes recorded on this install yet.</div>
+        </>
       ) : audit.status === "solo" ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">The audit log is on Team.</p>
       ) : audit.status === "ended" ? (
@@ -93,9 +108,7 @@ export function AuditScreen({
           Loading audit activity…
         </p>
       ) : audit.rows.length === 0 ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          No admin writes recorded on this install yet.
-        </p>
+        <div className="watch-empty">No admin writes recorded on this install yet.</div>
       ) : (
         <div className="watch-card mt-4">
           {audit.rows.map((row) => (

@@ -8,6 +8,13 @@ type RetentionState =
   | { status: "error"; message: string }
   | { status: "ready"; days: RetentionDays };
 
+const WINDOWS: { days: RetentionDays; label: string; note: string }[] = [
+  { days: 90, label: "90 days", note: "Lists hide after 90 days" },
+  { days: 180, label: "180 days", note: "Lists hide after 180 days" },
+  { days: 365, label: "365 days", note: "Lists hide after a year" },
+  { days: 0, label: "Keep", note: "While this install exists" },
+];
+
 export function RetentionScreen({
   previewing,
   ended,
@@ -57,9 +64,19 @@ export function RetentionScreen({
         Append-only evidence is not deleted. Uninstall still drops the tenant.
       </p>
       {previewing ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          Preview cannot change live retention. No invented incident.
-        </p>
+        <>
+          <p className="mt-6 text-[13px] leading-relaxed text-mute">
+            Preview cannot change live retention. No invented incident.
+          </p>
+          <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
+            {WINDOWS.map((option) => (
+              <div key={option.days} className="watch-stat">
+                <span className="watch-kicker">{option.label}</span>
+                <p className="watch-tiny mt-2 text-dim">{option.note}</p>
+              </div>
+            ))}
+          </div>
+        </>
       ) : ended ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">
           Subscribe to keep configurable retention.
@@ -69,27 +86,34 @@ export function RetentionScreen({
       ) : retention.status === "loading" ? (
         <p className="mt-6 text-[13px] text-dim" aria-live="polite">Loading retention…</p>
       ) : (
-        <div className="watch-card mt-[18px] p-5">
-          <label className="flex flex-col gap-1">
-            <span className="watch-kicker">List window</span>
-            <select
-              value={draft}
-              disabled={!canChange || busy}
-              onChange={(event) => onDraft(Number(event.target.value) as RetentionDays)}
-              className="mt-2 h-12 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40 disabled:opacity-50"
-            >
-              <option value={90}>90 days</option>
-              <option value={180}>180 days</option>
-              <option value={365}>365 days</option>
-              <option value={0}>Keep while this install exists</option>
-            </select>
-          </label>
+        <>
+          <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
+            {WINDOWS.map((option) => {
+              const selected = draft === option.days;
+              const current = retention.days === option.days;
+              return (
+                <button
+                  key={option.days}
+                  type="button"
+                  disabled={!canChange || busy}
+                  onClick={() => onDraft(option.days)}
+                  className={`watch-stat text-left ${selected ? "border-line-strong" : ""}`}
+                  aria-pressed={selected}
+                >
+                  <span className="watch-kicker">{option.label}</span>
+                  <p className={`watch-tiny mt-2 ${current ? "text-snow" : "text-dim"}`}>
+                    {current ? "Current" : option.note}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
           {!canChange ? (
             <p className="mt-3 text-[13px] leading-relaxed text-mute">
               An install admin has to change this window.
             </p>
           ) : null}
-        </div>
+        </>
       )}
     </section>
   );

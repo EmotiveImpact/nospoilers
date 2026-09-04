@@ -141,7 +141,9 @@ export function HealthScreen() {
         </div>
         <div className="watch-stat">
           <span className="watch-kicker">Queue</span>
-          <p className="watch-stat-n text-snow">{jobSummary.queued + jobSummary.running}</p>
+          <p className={`watch-stat-n ${jobSummary.queued + jobSummary.running ? "text-warn" : "text-dim"}`}>
+            {jobSummary.queued + jobSummary.running}
+          </p>
           <p className="watch-tiny mt-1 text-dim">
             {jobSummary.done} done · {jobSummary.failed} failed
           </p>
@@ -155,7 +157,7 @@ export function HealthScreen() {
 
       <div className="watch-capability">
         <span className="watch-kicker">When the cap is reached</span>
-        <p className="watch-small mt-[5px] text-dim">
+        <p className="watch-guidance watch-small mt-[5px] text-dim">
           Live permission tests talk to GitHub. They never create a Watch alert. Test install
           reports Contents and Metadata reads, Members read (collaborator alerts), optional
           Contents/Pull requests/Checks write, and whether Administration was granted — it should
@@ -183,9 +185,8 @@ export function HealthScreen() {
           Preview cannot reach GitHub. No invented incident.
         </p>
       ) : visibleInstalls.length === 0 ? (
-        <div className="watch-card mt-6 px-4 py-5">
-          <p className="text-[13px] text-snow">Nothing on this install yet.</p>
-          <p className="watch-tiny mt-1 text-dim">Health fills in after the GitHub app can see a repo.</p>
+        <div className="watch-empty">
+          Nothing on this install yet. Health fills in after the GitHub app can see a repo.
         </div>
       ) : (
         <div className="watch-card mt-6">
@@ -231,7 +232,7 @@ export function HealthScreen() {
       {testError ? <p className="mt-4 text-[13px] text-danger">{testError}</p> : null}
 
       {previewing || jobs.length === 0 ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">No recent jobs.</p>
+        <div className="watch-empty">No jobs on this install yet. The list fills after a real scan or webhook.</div>
       ) : (
         <div className="watch-card mt-6">
           {jobs.map((job) => (

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Watch desk · black + panels mock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+    <style>
+      :root {
+        --coral: #ff8a80;
+        --canvas: #09090b;
+        --panel-now: #111113;
+        --line-now: #2a2a2e;
+      }
+      html, body { height: 100%; overflow: hidden; }
+      .app {
+        display: grid;
+        grid-template-columns: 244px 1fr;
+        height: 100svh;
+        background: var(--canvas);
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--line-now);
+        background: #0b0b0d;
+        padding: 14px 10px 18px;
+      }
+      .rail .kicker { padding: 0 8px 8px; }
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 30px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: #a1a1aa;
+        font-size: 13px;
+        cursor: pointer;
+        border: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+      }
+      .nav.on { background: rgba(255,255,255,0.07); color: var(--snow); }
+      .nav .n { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--dim); }
+      .group { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
+      .canvas {
+        overflow: auto;
+        padding: 28px 32px 80px;
+        background: var(--canvas);
+      }
+      .view { display: none; max-width: 1140px; }
+      .view.on { display: block; }
+      .view h1 {
+        font-size: 30px;
+        line-height: 1.1;
+      }
+      .lede { margin-top: 8px; max-width: 40rem; color: var(--mute); font-size: 14px; }
+      .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+      .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
+      .stats.four { grid-template-columns: repeat(4, 1fr); }
+      .stat, .card, .empty, .progress, .step, .tile {
+        border: 1px solid var(--line-now);
+        border-radius: 10px;
+        background: var(--panel-now);
+      }
+      .stat { padding: 14px; }
+      .stat .n, .tile .n {
+        margin-top: 6px;
+        font-family: var(--display);
+        font-size: 24px;
+        letter-spacing: -0.03em;
+        color: var(--dim);
+      }
+      .stat .n.ok, .okc { color: var(--ok); }
+      .stat .n.mute { color: var(--mute); }
+      .empty {
+        margin-top: 14px;
+        padding: 14px;
+        border-style: dashed;
+        border-color: var(--line-strong);
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+      .seg {
+        display: flex; gap: 3px; padding: 3px;
+        border: 1px solid var(--line-now); border-radius: 8px; background: #0b0b0d;
+      }
+      .seg i {
+        display: inline-flex; align-items: center; height: 24px; padding: 0 8px;
+        border-radius: 5px; color: var(--dim); font-size: 11px; font-style: normal;
+      }
+      .seg i.on { background: rgba(255,255,255,0.08); color: var(--snow); }
+      .kv {
+        display: flex; justify-content: space-between; gap: 12px;
+        padding: 12px 16px; border-bottom: 1px solid var(--line-now);
+        color: var(--mute); font-size: 13px;
+      }
+      .kv:last-child { border-bottom: 0; }
+      .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 18px; }
+      .tile { min-height: 112px; padding: 14px; border-radius: 14px; }
+      .tile.w4 { grid-column: span 4; }
+      .tile.w3 { grid-column: span 3; }
+      .tile.w2 { grid-column: span 2; }
+      .tile.dash { border-style: dashed; border-color: var(--line-strong); }
+      .progress {
+        display: flex; align-items: center; gap: 14px;
+        margin-top: 18px; padding: 15px 17px; border-radius: 14px;
+      }
+      .ring {
+        width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center;
+        background: conic-gradient(#f4f4f5 0%, rgba(255,255,255,0.09) 0);
+      }
+      .ring > span {
+        width: 34px; height: 34px; border-radius: 999px; background: var(--panel-now);
+        display: grid; place-items: center; font-family: var(--mono); font-size: 11px;
+      }
+      .step { margin-top: 8px; }
+      .step.on { border-color: var(--line-strong); }
+      .stephead { display: flex; align-items: center; gap: 13px; padding: 13px 16px; }
+      .mark {
+        width: 22px; height: 22px; display: grid; place-items: center;
+        border: 1px solid var(--line-strong); border-radius: 999px;
+        font-family: var(--mono); font-size: 10px; color: var(--dim);
+      }
+      .step.on .mark { background: var(--snow); color: var(--canvas); border-color: var(--snow); }
+      @media (max-width: 860px) {
+        .app { grid-template-columns: 1fr; }
+        .rail { display: none; }
+        .stats, .stats.four, .bento { grid-template-columns: 1fr 1fr; }
+        .tile.w2, .tile.w3, .tile.w4 { grid-column: span 2; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail">
+        <p class="kicker">Work</p>
+        <button class="nav on" data-go="overview">Overview</button>
+        <button class="nav" data-go="alerts">Alerts</button>
+        <div class="group">
+          <p class="kicker">Evidence</p>
+          <button class="nav" data-go="sources">Sources</button>
+          <button class="nav" data-go="releases">Releases</button>
+          <button class="nav" data-go="timeline">Timeline</button>
+        </div>
+        <div class="group">
+          <p class="kicker">Settings</p>
+          <button class="nav" data-go="setup">Finish setup</button>
+          <button class="nav" data-go="notifications">Notifications</button>
+          <button class="nav" data-go="policy">Policy &amp; allowlist</button>
+          <button class="nav" data-go="team">Team &amp; roles</button>
+          <button class="nav" data-go="retention">Retention</button>
+          <button class="nav" data-go="audit">Audit log</button>
+          <button class="nav" data-go="health">Install health</button>
+          <button class="nav" data-go="tokens">Scan API tokens</button>
+          <button class="nav" data-go="registries">Private registries</button>
+        </div>
+      </aside>
+
+      <main class="canvas">
+        <section class="view on" id="overview">
+          <div class="head">
+            <div>
+              <span class="kicker">Friday</span>
+              <h1 class="mt-2">Nothing is being watched yet.</h1>
+              <p class="lede">Install on one repository. Every tile fills from what you connect.</p>
+            </div>
+            <span class="btn sm">Install on GitHub</span>
+          </div>
+          <div class="bento">
+            <div class="tile w4 dash">
+              <span class="kicker">Start here</span>
+              <p class="small snow" style="margin-top:10px">Install NoSpoilers on one repository.</p>
+              <p class="tiny dim" style="margin-top:6px">A private throwaway repo is enough.</p>
+            </div>
+            <div class="tile w2"><span class="kicker">Coverage</span><p class="tiny dim" style="margin-top:10px">Nothing connected yet.</p></div>
+            <div class="tile w2"><span class="kicker">Open alerts</span><div class="n">0</div></div>
+            <div class="tile w2"><span class="kicker">Queue</span><div class="n">0</div></div>
+            <div class="tile w3"><span class="kicker">Packs read, 30 days</span><p class="tiny dim" style="margin-top:10px">No packs in the last 30 days.</p></div>
+            <div class="tile w3"><span class="kicker">Latest sealed</span><p class="tiny dim" style="margin-top:10px">No sealed releases yet.</p></div>
+            <div class="tile w2"><span class="kicker">Delivery</span><p class="tiny dim" style="margin-top:10px">No destinations yet</p></div>
+            <div class="tile w2"><span class="kicker">Policy</span><div class="n">0</div></div>
+            <div class="tile w2 dash"><span class="kicker">Team &amp; audit</span><p class="tiny mute" style="margin-top:10px">Roles, timeline, and audit are on Team.</p></div>
+          </div>
+        </section>
+
+        <section class="view" id="setup">
+          <h1>5 leak paths still need proof.</h1>
+          <p class="lede">Connected is not the same as proven. Unknown steps stay open.</p>
+          <div class="progress">
+            <div class="ring"><span>0/5</span></div>
+            <div>
+              <p class="small snow">Nothing connected yet</p>
+              <p class="tiny dim" style="margin-top:4px">Watch GitHub visibility, release assets, workflow check, registry, production are not.</p>
+            </div>
+          </div>
+          <div class="step on"><div class="stephead"><span class="mark">1</span><div><strong class="small snow">Watch GitHub visibility</strong><p class="tiny dim">Install on at least one repository</p></div></div></div>
+          <div class="step"><div class="stephead"><span class="mark">2</span><div><strong class="small snow">Read GitHub release assets</strong><p class="tiny dim">Connect a repository first</p></div></div></div>
+          <div class="step"><div class="stephead"><span class="mark">3</span><div><strong class="small snow">Run the packed-artifact workflow and check</strong><p class="tiny dim">Connect a repository before checking setup</p></div></div></div>
+          <div class="step"><div class="stephead"><span class="mark">4</span><div><strong class="small snow">Watch a published package</strong><p class="tiny dim">No registry package connected</p></div></div></div>
+          <div class="step"><div class="stephead"><span class="mark">5</span><div><strong class="small snow">Watch production web</strong><p class="tiny dim">No production origin connected</p></div></div></div>
+        </section>
+
+        <section class="view" id="health">
+          <div class="head">
+            <div>
+              <h1>Install health</h1>
+              <p class="lede">Permissions, deliveries, and recent work for this GitHub install.</p>
+            </div>
+            <span class="btn sm outline">Test install</span>
+          </div>
+          <div class="stats four">
+            <div class="stat"><span class="kicker">Webhook</span><div class="n mute">check needed</div><p class="tiny dim" style="margin-top:8px">No invented delivery proof</p></div>
+            <div class="stat"><span class="kicker">Permissions</span><div class="n mute">unknown</div><p class="tiny dim" style="margin-top:8px">Run the live install test</p></div>
+            <div class="stat"><span class="kicker">Queue</span><div class="n">0</div><p class="tiny dim" style="margin-top:8px">0 done · 0 failed</p></div>
+            <div class="stat"><span class="kicker">Fair use</span><div class="n mute">unknown</div><p class="tiny dim" style="margin-top:8px">Hosted unpacks · not scan credits</p></div>
+          </div>
+          <div class="empty">No jobs on this install yet.</div>
+        </section>
+
+        <section class="view" id="audit">
+          <div class="head">
+            <div>
+              <h1>Audit log</h1>
+              <p class="lede">Administrative changes and response activity for this install.</p>
+            </div>
+            <span class="btn sm outline disabled">Export audit JSON</span>
+          </div>
+          <div class="card" style="margin-top:18px">
+            <div class="kv"><span>Rows</span><span class="dim">0</span></div>
+            <div class="kv"><span>Secrets stored</span><span class="okc">never</span></div>
+          </div>
+          <div class="empty">No admin writes recorded on this install yet.</div>
+        </section>
+
+        <section class="view" id="alerts">
+          <div class="head">
+            <div>
+              <h1>Alerts</h1>
+              <p class="lede">Real findings only. Nothing invented.</p>
+            </div>
+            <span class="btn sm outline">Export</span>
+          </div>
+          <div class="chips"><div class="seg"><i class="on">Triage</i><i>Waiting</i><i>Mine</i><i>Resolved</i></div></div>
+          <div class="empty">This view is clear. No real alerts match this filter.</div>
+        </section>
+
+        <section class="view" id="sources">
+          <div class="head">
+            <div>
+              <h1>Sources</h1>
+              <p class="lede">GitHub, npm, websites, map custody.</p>
+            </div>
+            <span class="btn sm">Add a source</span>
+          </div>
+          <div class="chips">
+            <span class="chip on">All 0</span><span class="chip">GitHub</span><span class="chip">npm</span><span class="chip">Web</span><span class="chip">Maps</span>
+          </div>
+          <div class="empty">Nothing connected yet. A private throwaway repo is enough.</div>
+        </section>
+
+        <section class="view" id="releases">
+          <div class="head">
+            <div>
+              <h1>Releases</h1>
+              <p class="lede">Sealed revisions and policy results.</p>
+            </div>
+            <span class="btn sm outline">Export ledger</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="kicker">30 days</span><div class="n">0</div></div>
+            <div class="stat"><span class="kicker">Failed policy</span><div class="n ok">0</div><p class="tiny dim" style="margin-top:6px">Clear</p></div>
+          </div>
+          <div class="empty">No sealed releases yet.</div>
+        </section>
+
+        <section class="view" id="timeline">
+          <h1>Timeline</h1>
+          <p class="lede">Alert and response activity in the retained window.</p>
+          <div class="card" style="margin-top:18px;padding:16px">
+            <span class="kicker">Exposure, retained window</span>
+            <p class="small dim" style="margin-top:10px">No exposure to plot from real alert history.</p>
+          </div>
+          <div class="card" style="margin-top:10px">
+            <div class="kv"><span>Events</span><span class="dim">0</span></div>
+            <div class="kv"><span>Window</span><span class="dim">90 days</span></div>
+          </div>
+        </section>
+
+        <section class="view" id="notifications">
+          <div class="head">
+            <div>
+              <h1>Notifications</h1>
+              <p class="lede">Destinations and routes for real alerts.</p>
+            </div>
+            <span class="btn sm">Add destination</span>
+          </div>
+          <div class="chips">
+            <span class="chip">Email</span><span class="chip">Slack</span><span class="chip">SIEM</span><span class="chip">Jira</span><span class="chip">PagerDuty</span>
+          </div>
+          <div class="empty">No destinations yet. Alerts stay in the desk until you add one.</div>
+        </section>
+
+        <section class="view" id="policy">
+          <div class="head">
+            <div>
+              <h1>Policy &amp; allowlist</h1>
+              <p class="lede">Time-bound exceptions and shipping evidence.</p>
+            </div>
+            <span class="btn sm">Write exception</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="kicker">Active</span><div class="n">0</div></div>
+            <div class="stat"><span class="kicker">Signing</span><div class="n mute" style="font-size:15px;margin-top:8px">off</div></div>
+          </div>
+          <div class="empty">No exceptions written.</div>
+        </section>
+
+        <section class="view" id="team">
+          <div class="head">
+            <div>
+              <h1>Team &amp; roles</h1>
+              <p class="lede">Who can view or administer this install.</p>
+            </div>
+            <span class="btn sm">Invite</span>
+          </div>
+          <div class="empty">No members loaded yet. Preview cannot manage roles.</div>
+        </section>
+
+        <section class="view" id="retention">
+          <div class="head">
+            <div>
+              <h1>Retention</h1>
+              <p class="lede">How long operational lists stay visible.</p>
+            </div>
+            <span class="btn sm outline">Save</span>
+          </div>
+          <div class="stats">
+            <div class="stat" style="border-color:var(--line-strong)"><span class="kicker">90 days</span><p class="tiny snow" style="margin-top:6px">Current</p></div>
+            <div class="stat"><span class="kicker">180</span></div>
+            <div class="stat"><span class="kicker">365</span></div>
+            <div class="stat"><span class="kicker">Keep</span></div>
+          </div>
+        </section>
+
+        <section class="view" id="tokens">
+          <div class="head">
+            <div>
+              <h1>Scan API tokens</h1>
+              <p class="lede">Credentials for packed-artifact CI scans.</p>
+            </div>
+            <span class="btn sm">Mint token</span>
+          </div>
+          <div class="card" style="margin-top:18px">
+            <div class="kv"><span>Tokens</span><span class="dim">0</span></div>
+            <div class="kv"><span>Shown once</span><span class="dim">hashed after</span></div>
+          </div>
+          <div class="empty">No scan tokens yet.</div>
+        </section>
+
+        <section class="view" id="registries">
+          <div class="head">
+            <div>
+              <h1>Private registries</h1>
+              <p class="lede">Encrypted read credentials for private hosts.</p>
+            </div>
+            <span class="btn sm">Save origin</span>
+          </div>
+          <div class="card" style="margin-top:18px">
+            <div class="kv"><span>Origins</span><span class="dim">0</span></div>
+            <div class="kv"><span>Tokens shown again</span><span class="okc">never</span></div>
+          </div>
+          <div class="empty">No private registry saved. Public npm does not need this.</div>
+        </section>
+      </main>
+    </div>
+
+    <div class="mock-bar">
+      <b>Desk</b> Black + panels
+      <span class="sep"></span>
+      <span>Click the rail · hollow empty</span>
+      <span class="sep"></span>
+      <a href="14-remaining-pages.html">14 remaining</a>
+      <a href="13-pages-should-have-been.html">13</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+    <script>
+      const views = [...document.querySelectorAll(".view")];
+      const navs = [...document.querySelectorAll(".nav")];
+      function show(id) {
+        views.forEach((el) => el.classList.toggle("on", el.id === id));
+        navs.forEach((el) => el.classList.toggle("on", el.dataset.go === id));
+        if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+      }
+      navs.forEach((el) => el.addEventListener("click", () => show(el.dataset.go)));
+      const start = location.hash.slice(1);
+      show(views.some((el) => el.id === start) ? start : "overview");
+    </script>
+  </body>
+</html>
