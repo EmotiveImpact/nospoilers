@@ -10,733 +10,297 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="mockup.css" />
     <style>
       :root {
-        --color-ink: #09090b;
-        --color-rail: #050506;
-        --color-canvas: #09090b;
-        --color-panel: #111113;
-        --color-inset: #0b0b0d;
-        --color-line: #2a2a2e;
-        --color-snow: #f4f4f5;
-        --color-mute: #a1a1aa;
-        --color-dim: #71717a;
+        --ink: #09090b;
+        --rail: #050506;
+        --panel: #111113;
+        --inset: #0b0b0d;
+        --line: #2a2a2e;
+        --snow: #f4f4f5;
+        --mute: #a1a1aa;
+        --dim: #71717a;
         --coral: #ff8a80;
+        --sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+        --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
 
-      html,
-      body {
-        background: #000;
-      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #000; color: var(--snow); font: 14px/1.5 var(--sans); }
+      a { color: inherit; text-decoration: none; }
+      button, input { font: inherit; color: inherit; }
+      h1, h2, p { margin: 0; }
 
-      .page {
-        max-width: 1440px;
-        margin: 0 auto;
-        padding: 22px 16px 80px;
+      .wrap { max-width: 1440px; margin: 0 auto; padding: 28px 16px 80px; }
+      .intro { max-width: 72ch; }
+      .kicker { color: var(--dim); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; }
+      .intro h1 { margin-top: 8px; font: 500 30px/1.1 var(--display); }
+      .intro p { margin-top: 10px; color: var(--mute); }
+      .note {
+        margin-top: 14px; padding: 12px 14px;
+        border: 1px solid var(--line); border-radius: 10px;
+        background: var(--rail); color: var(--dim); font-size: 13px;
       }
-
-      .intro,
-      .block-meta {
-        max-width: 74ch;
-      }
-
-      .intro h1 {
-        margin-top: 8px;
-        font-size: 30px;
-      }
-
-      .intro p,
-      .block-meta p {
-        margin-top: 10px;
-        color: var(--color-mute);
-      }
-
-      .intro code {
-        color: var(--color-snow);
-      }
-
-      .recipe {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border: 1px solid var(--color-line);
-        border-radius: 10px;
-        background: #050506;
-        color: var(--color-dim);
-        font-size: 13px;
-        line-height: 1.55;
-      }
-
-      .recipe strong {
-        color: var(--color-mute);
-        font-weight: 500;
-      }
+      .note b { color: var(--mute); font-weight: 500; }
 
       .jump {
-        position: sticky;
-        top: 0;
-        z-index: 40;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 10px 0 14px;
-        background: color-mix(in srgb, #000 88%, transparent);
-        backdrop-filter: blur(12px);
+        position: sticky; top: 0; z-index: 20;
+        display: flex; flex-wrap: wrap; gap: 8px;
+        padding: 12px 0; margin: 18px 0 8px;
+        background: #000;
       }
-
       .jump a {
-        height: 30px;
-        padding: 0 11px;
-        border: 1px solid var(--color-line);
-        border-radius: 6px;
-        color: var(--color-mute);
-        font-size: 12px;
-        line-height: 30px;
-        text-decoration: none;
+        height: 30px; padding: 0 11px;
+        border: 1px solid var(--line); border-radius: 6px;
+        color: var(--mute); font-size: 12px; line-height: 28px;
       }
+      .jump a:hover { border-color: #3f3f46; color: var(--snow); background: rgba(255,255,255,0.06); }
 
-      .jump a:hover {
-        border-color: #3f3f46;
-        background: rgba(255, 255, 255, 0.08);
-        color: var(--color-snow);
-      }
-
-      .block {
-        margin: 0 0 56px;
-      }
-
-      .block-meta h2 {
-        margin-top: 6px;
-        font-size: 22px;
-      }
+      .block { margin-top: 42px; }
+      .block h2 { margin-top: 6px; font: 500 22px/1.2 var(--display); }
+      .block > p { margin: 8px 0 14px; max-width: 72ch; color: var(--mute); }
 
       .desk {
         position: relative;
         display: grid;
         grid-template-columns: 244px minmax(0, 1fr);
-        min-height: 760px;
-        background: var(--color-rail);
-        color: var(--color-snow);
+        height: 640px;
+        background: var(--rail);
+        overflow: hidden;
       }
-
-      .desk.is-collapsed {
-        grid-template-columns: 56px minmax(0, 1fr);
-      }
+      .desk.narrow { grid-template-columns: 56px minmax(0, 1fr); }
+      .desk.a { grid-template-columns: 148px minmax(0, 1fr); }
+      .desk.a .rail { width: 56px; }
 
       .rail {
         position: relative;
-        z-index: 2;
         display: flex;
         flex-direction: column;
+        min-width: 0;
         isolation: isolate;
       }
-
       .rail::before {
         content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 180px;
-        height: 180px;
-        z-index: 0;
+        position: absolute; top: 0; left: 0; width: 180px; height: 180px;
         pointer-events: none;
-        background: radial-gradient(circle at 28% 22%, #161618 0%, rgba(22, 22, 24, 0.35) 46%, transparent 72%);
+        background: radial-gradient(circle at 28% 22%, #161618 0%, rgba(22,22,24,0.35) 46%, transparent 72%);
       }
+      .rail > * { position: relative; z-index: 1; }
 
-      .rail > * {
-        position: relative;
-        z-index: 1;
+      .brand { padding: 16px 14px 0; }
+      .narrow .brand { padding: 16px 8px 0; }
+      .brand-row { display: flex; align-items: center; justify-content: space-between; }
+      .narrow .brand-row { justify-content: center; }
+      .wordmark { font: 500 15px var(--display); }
+      .narrow .wordmark, .narrow .install, .narrow .meta, .narrow .lbl, .narrow .count, .narrow .setup span { display: none; }
+      .ico {
+        display: grid; place-items: center;
+        width: 32px; height: 32px; color: var(--mute);
       }
-
-      .brand {
-        padding: 18px 16px 0;
-      }
-
-      .is-collapsed .brand {
-        padding: 18px 8px 0;
-      }
-
-      .brand-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .is-collapsed .brand-row {
-        justify-content: center;
-      }
-
-      .wordmark {
-        font-family: var(--display);
-        font-size: 15px;
-        font-weight: 500;
-      }
-
-      .is-collapsed .wordmark,
-      .is-collapsed .install,
-      .is-collapsed .sources-n,
-      .is-collapsed .kicker,
-      .is-collapsed .item-label,
-      .is-collapsed .item-n,
-      .is-collapsed .setup-copy {
-        display: none;
-      }
-
-      .collapse {
-        display: grid;
-        place-items: center;
-        width: 32px;
-        height: 32px;
-        color: var(--color-mute);
-      }
-
       .install {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        margin-top: 12px;
-        padding: 8px 10px;
-        border: 1px solid var(--color-line);
-        border-radius: 6px;
-        background: var(--color-inset);
-        color: var(--color-snow);
-        font: 400 13px var(--sans);
-        cursor: pointer;
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 12px; padding: 8px 10px;
+        border: 1px solid var(--line); border-radius: 6px;
+        background: var(--inset); font-size: 13px;
       }
-
       .mark {
-        display: grid;
-        place-items: center;
-        width: 22px;
-        height: 22px;
-        border-radius: 5px;
+        display: grid; place-items: center;
+        width: 22px; height: 22px; border-radius: 5px;
         background: linear-gradient(to bottom right, #52525b, #18181b);
-        font-size: 10px;
-        font-weight: 600;
+        font-size: 10px; font-weight: 600;
       }
+      .meta { margin-top: 4px; color: var(--dim); font-size: 11px; }
 
-      .sources-n {
-        margin: 4px 0 0;
-        color: var(--color-dim);
-        font-size: 11px;
-      }
-
-      .nav {
-        display: flex;
-        flex: 1;
-        flex-direction: column;
-        gap: 18px;
-        padding: 14px 10px;
-      }
-
-      .is-collapsed .nav {
-        align-items: center;
-        padding: 14px 8px;
-      }
-
-      .kicker {
-        padding: 0 10px 6px;
-      }
-
+      .nav { display: flex; flex: 1; flex-direction: column; gap: 16px; padding: 14px 10px; }
+      .narrow .nav { align-items: center; padding: 20px 8px; }
+      .sec { padding: 0 10px 6px; }
       .item {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-        height: 30px;
-        padding: 0 9px;
-        border: 0;
-        border-radius: 6px;
-        background: transparent;
-        color: var(--color-mute);
-        font: 400 13px var(--sans);
-        cursor: default;
+        display: flex; align-items: center; gap: 10px;
+        height: 30px; padding: 0 9px; border-radius: 6px; color: var(--mute); font-size: 13px;
       }
-
-      .is-collapsed .item {
-        width: 32px;
-        justify-content: center;
-        padding: 0;
-      }
-
-      .item.on {
-        background: rgba(255, 255, 255, 0.07);
-        color: var(--color-snow);
-      }
-
-      .item svg {
-        flex: none;
-        opacity: 0.75;
-      }
-
-      .item-n {
-        margin-left: auto;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--coral);
-      }
-
-      .group {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .group.rule {
-        border-top: 1px solid var(--color-line);
-        padding-top: 17px;
-      }
+      .narrow .item { width: 32px; justify-content: center; padding: 0; }
+      .item.on { background: rgba(255,255,255,0.07); color: var(--snow); }
+      .item svg { flex: none; opacity: 0.75; }
+      .count { margin-left: auto; font: 500 11px var(--mono); color: var(--coral); }
+      .grp { display: flex; flex-direction: column; gap: 2px; }
+      .grp.line { border-top: 1px solid var(--line); padding-top: 16px; }
 
       .setup {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 14px;
-        border-top: 1px solid var(--color-line);
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px; border-top: 1px solid var(--line); color: var(--mute); font-size: 12px;
       }
-
-      .is-collapsed .setup {
-        justify-content: center;
-        padding: 12px 8px;
-      }
-
+      .narrow .setup { justify-content: center; }
       .ring {
-        display: grid;
-        place-items: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 999px;
+        display: grid; place-items: center;
+        width: 36px; height: 36px; border-radius: 99px;
         background: conic-gradient(#252529 0deg, #252529 360deg);
       }
-
-      .is-collapsed .ring {
-        width: 28px;
-        height: 28px;
+      .narrow .ring { width: 26px; height: 26px; }
+      .ring i {
+        display: grid; place-items: center;
+        width: 28px; height: 28px; border-radius: 99px;
+        background: var(--rail); font-size: 9px; font-style: normal;
       }
+      .narrow .ring i { width: 20px; height: 20px; }
 
-      .ring span {
-        display: grid;
-        place-items: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: var(--color-rail);
-        font-size: 9px;
-      }
-
-      .is-collapsed .ring span {
-        width: 22px;
-        height: 22px;
-      }
-
-      .setup small {
-        display: block;
-        color: var(--color-dim);
-        font-size: 11px;
-      }
-
-      .gutter {
-        display: flex;
-        min-width: 0;
-        padding: 8px;
-      }
-
+      .gutter { min-width: 0; padding: 8px; }
       .stage {
         position: relative;
-        display: flex;
-        flex: 1;
-        min-width: 0;
-        flex-direction: column;
-        border: 1px solid var(--color-line);
-        border-radius: 16px;
-        background: var(--color-canvas);
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+        display: flex; flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid var(--line); border-radius: 16px;
+        background: var(--ink);
+        box-shadow: 0 24px 64px rgba(0,0,0,0.28);
       }
 
+      .cmd, .head {
+        position: relative; z-index: 4;
+        background: var(--ink);
+      }
       .cmd {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        height: 56px;
-        padding: 0 20px;
-        border-bottom: 1px solid var(--color-line);
+        display: flex; align-items: center; gap: 10px;
+        height: 52px; padding: 0 16px;
+        border-bottom: 1px solid var(--line);
       }
-
       .search {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 32px;
-        max-width: 24rem;
-        flex: 1;
-        padding: 0 12px;
-        border: 1px solid var(--color-line);
-        border-radius: 6px;
-        background: var(--color-inset);
-        color: var(--color-dim);
-        font-size: 13px;
+        display: flex; align-items: center; gap: 8px;
+        height: 32px; flex: 1; max-width: 22rem; padding: 0 10px;
+        border: 1px solid var(--line); border-radius: 6px;
+        background: var(--inset); color: var(--dim); font-size: 13px;
       }
-
       .search kbd {
-        margin-left: auto;
-        padding: 1px 6px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
-        font-size: 11px;
+        margin-left: auto; padding: 1px 6px;
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; font-size: 11px;
+      }
+      .cmd strong { margin-left: auto; font-size: 13px; font-weight: 500; }
+      .chip { padding: 3px 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 99px; color: var(--dim); font-size: 12px; }
+      .av {
+        display: grid; place-items: center;
+        width: 28px; height: 28px; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 99px; font-size: 11px;
       }
 
-      .cmd-title {
-        margin-left: auto;
-        font-size: 14px;
-        font-weight: 500;
+      .head {
+        display: flex; align-items: center; gap: 12px;
+        height: 64px; padding: 0 24px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
       }
-
-      .chip {
-        padding: 3px 8px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 999px;
-        color: var(--color-dim);
-        font-size: 12px;
-      }
-
-      .avatar {
-        display: grid;
-        place-items: center;
-        width: 32px;
-        height: 32px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 999px;
-        font-size: 11px;
-      }
-
-      .page-head {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        min-height: 64px;
-        padding: 16px 32px 14px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      .page-head h3 {
-        font-size: 30px;
-        line-height: 1.1;
-      }
-
-      .export-wrap {
-        position: relative;
-        margin-left: auto;
-      }
-
+      .head h3 { margin: 0; font: 500 28px/1 var(--display); }
+      .export-wrap { position: relative; margin-left: auto; }
       .export {
-        height: 28px;
-        padding: 0 10px;
-        border: 1px solid var(--color-line);
-        border-radius: 6px;
-        background: transparent;
-        color: var(--color-mute);
-        font: 500 12px var(--sans);
-        cursor: pointer;
+        height: 28px; padding: 0 10px;
+        border: 1px solid var(--line); border-radius: 6px;
+        background: transparent; color: var(--mute); font-size: 12px; cursor: pointer;
       }
 
-      .queue-track {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        border-bottom: 1px solid var(--color-line);
+      .track {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        border-bottom: 1px solid var(--line);
       }
+      .track span {
+        display: flex; align-items: baseline; gap: 8px;
+        height: 42px; padding: 0 16px; align-items: center;
+        color: var(--dim); font-size: 13px;
+      }
+      .track span.on { color: var(--snow); box-shadow: inset 0 -2px 0 var(--snow); }
+      .track b { font: 500 13px var(--mono); color: #3f3f46; }
 
-      .queue-track i {
-        display: flex;
-        align-items: center;
-        min-height: 44px;
-        padding: 0 12px;
-        color: var(--color-dim);
-        font: 400 13px/1 var(--sans);
-        font-style: normal;
+      .split { display: grid; grid-template-columns: 20rem 1fr; min-height: 0; flex: 1; }
+      .inbox { position: relative; border-right: 1px solid rgba(255,255,255,0.08); }
+      .well {
+        margin: 16px; padding: 16px;
+        border: 1px dashed var(--line); border-radius: 10px;
+        background: var(--panel); color: var(--dim); font-size: 13px;
       }
-
-      .queue-track i em {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 12px 0 10px;
-        border-bottom: 2px solid transparent;
-        font-style: normal;
-      }
-
-      .queue-track i.on {
-        color: var(--color-snow);
-      }
-
-      .queue-track i.on em {
-        border-bottom-color: var(--color-snow);
-      }
-
-      .queue-track b {
-        font-family: var(--mono);
-        font-weight: 500;
-        color: #3f3f46;
-      }
-
-      .split {
-        display: grid;
-        grid-template-columns: 20rem minmax(0, 1fr);
-        flex: 1;
-        min-height: 0;
-      }
-
-      .inbox {
-        position: relative;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      .empty {
-        margin: 16px;
-        padding: 18px 16px;
-        border: 1px dashed var(--color-line);
-        border-radius: 10px;
-        background: #111113;
-        color: var(--color-dim);
-        font-size: 13px;
-      }
-
-      .detail {
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        text-align: center;
-      }
-
-      .detail strong {
-        display: block;
-      }
-
-      .detail span {
-        display: block;
-        margin-top: 6px;
-        color: var(--color-dim);
-        font-size: 12px;
-      }
+      .detail { display: grid; place-items: center; text-align: center; padding: 24px; }
+      .detail strong { display: block; font-size: 14px; }
+      .detail small { display: block; margin-top: 6px; color: var(--dim); font-size: 12px; }
 
       .tip {
-        position: absolute;
-        left: calc(100% + 10px);
-        top: 50%;
-        z-index: 8;
-        transform: translateY(-50%);
+        position: absolute; z-index: 8;
         padding: 6px 8px;
-        border: 1px solid var(--color-line);
-        border-radius: 6px;
-        background: #18181b;
-        color: var(--color-snow);
-        font-size: 12px;
-        line-height: 1;
-        white-space: nowrap;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        border: 1px solid var(--line); border-radius: 6px;
+        background: #18181b; color: var(--snow);
+        font-size: 12px; line-height: 1; white-space: nowrap;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
         pointer-events: none;
       }
-
-      .tip b {
-        margin-left: 6px;
-        font-family: var(--mono);
-        color: var(--coral);
-      }
+      .tip b { margin-left: 6px; font: 500 12px var(--mono); color: var(--coral); }
+      .desk.a .tip { top: 118px; left: 64px; }
+      .desk.f .tip { top: 154px; left: 172px; }
 
       .menu {
-        position: absolute;
-        z-index: 12;
-        min-width: 200px;
-        padding: 4px;
-        border: 1px solid var(--color-line);
-        border-radius: 8px;
-        background: #111113;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+        position: absolute; z-index: 9; min-width: 196px; padding: 4px;
+        border: 1px solid var(--line); border-radius: 8px;
+        background: var(--panel); box-shadow: 0 16px 48px rgba(0,0,0,0.5);
       }
-
       .menu p {
-        padding: 6px 10px 4px;
-        color: var(--color-dim);
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
+        padding: 6px 10px 4px; color: var(--dim);
+        font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
       }
-
       .menu button {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        min-height: 32px;
-        padding: 0 10px;
-        border: 0;
-        border-radius: 5px;
-        background: transparent;
-        color: var(--color-snow);
-        font: 400 13px var(--sans);
+        display: flex; justify-content: space-between; align-items: center;
+        width: 100%; min-height: 32px; padding: 0 10px;
+        border: 0; border-radius: 5px; background: transparent; color: var(--snow);
+        font-size: 13px; cursor: pointer;
       }
-
-      .menu button:hover,
-      .menu button.on {
-        background: rgba(255, 255, 255, 0.07);
-      }
-
-      .menu button:disabled {
-        color: #52525b;
-      }
-
-      .menu button kbd {
-        color: var(--color-dim);
-        font-size: 11px;
-      }
-
-      .menu hr {
-        border: 0;
-        border-top: 1px solid var(--color-line);
-        margin: 4px 0;
-      }
-
-      .export-menu {
-        top: calc(100% + 6px);
-        right: 0;
-      }
-
-      .ctx {
-        top: 88px;
-        left: 24px;
-      }
+      .menu button:hover { background: rgba(255,255,255,0.07); }
+      .menu button:disabled { color: #52525b; cursor: default; }
+      .menu kbd { color: var(--dim); font-size: 11px; }
+      .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+      .export-menu { top: calc(100% + 6px); right: 0; }
+      .ctx { top: 72px; left: 20px; }
 
       .toast {
-        position: absolute;
-        right: 20px;
-        bottom: 20px;
-        z-index: 14;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: min(320px, calc(100% - 40px));
-        padding: 12px 14px;
-        border: 1px solid var(--color-line);
-        border-radius: 10px;
-        background: #111113;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+        position: absolute; right: 16px; bottom: 16px; z-index: 9;
+        display: flex; align-items: flex-start; gap: 10px;
+        width: min(300px, calc(100% - 32px)); padding: 12px 14px;
+        border: 1px solid var(--line); border-radius: 10px;
+        background: var(--panel); box-shadow: 0 16px 48px rgba(0,0,0,0.45);
       }
+      .toast i { width: 8px; height: 8px; margin-top: 5px; border-radius: 99px; background: #3fb950; }
+      .toast b { display: block; font-size: 13px; }
+      .toast small { display: block; margin-top: 2px; color: var(--dim); font-size: 12px; }
 
-      .toast i {
-        width: 8px;
-        height: 8px;
-        border-radius: 99px;
-        background: #3fb950;
-      }
-
-      .toast b {
-        display: block;
-        font-size: 13px;
-      }
-
-      .toast small {
-        display: block;
-        margin-top: 2px;
-        color: var(--color-dim);
-        font-size: 12px;
-      }
-
-      .scrim {
-        position: absolute;
-        inset: 0;
-        z-index: 16;
-        background: rgba(0, 0, 0, 0.46);
-      }
-
+      .scrim { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,0.46); }
       .palette {
-        position: absolute;
-        left: 50%;
-        top: 12%;
-        z-index: 17;
-        width: min(560px, calc(100% - 48px));
+        position: absolute; left: 50%; top: 56px; z-index: 11;
+        width: min(520px, calc(100% - 40px));
         transform: translateX(-50%);
-        border: 1px solid var(--color-line);
-        border-radius: 12px;
-        background: #111113;
-        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--line); border-radius: 12px;
+        background: var(--panel); box-shadow: 0 32px 80px rgba(0,0,0,0.55);
         overflow: hidden;
       }
-
       .palette input {
-        width: 100%;
-        height: 48px;
-        padding: 0 16px;
-        border: 0;
-        border-bottom: 1px solid var(--color-line);
-        background: transparent;
-        color: var(--color-snow);
-        font: 400 15px var(--sans);
-        outline: none;
+        width: 100%; height: 46px; padding: 0 14px;
+        border: 0; border-bottom: 1px solid var(--line);
+        background: transparent; outline: none; font-size: 15px;
       }
+      .palette .sec { padding: 10px 14px 4px; color: var(--dim); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
+      .palette .opt { display: flex; align-items: center; min-height: 34px; padding: 0 14px; color: var(--mute); font-size: 13px; }
+      .palette .opt.on { background: rgba(255,255,255,0.07); color: var(--snow); }
+      .palette .opt kbd { margin-left: auto; color: var(--dim); font-size: 11px; }
 
-      .palette .sec {
-        padding: 10px 14px 4px;
-        color: var(--color-dim);
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-      }
-
-      .palette .opt {
-        display: flex;
-        min-height: 36px;
-        align-items: center;
-        padding: 0 14px;
-        color: var(--color-mute);
-        font-size: 13px;
-      }
-
-      .palette .opt.on,
-      .palette .opt:hover {
-        background: rgba(255, 255, 255, 0.07);
-        color: var(--color-snow);
-      }
-
-      .palette .opt kbd {
-        margin-left: auto;
-        color: var(--color-dim);
-        font-size: 11px;
-      }
-
-      .hide {
-        display: none !important;
-      }
-
-      @media (max-width: 720px) {
-        .desk,
-        .desk.is-collapsed {
-          grid-template-columns: 56px minmax(0, 1fr);
-        }
-        .split {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 800px) {
+        .desk { grid-template-columns: 56px 1fr; }
+        .desk.a { grid-template-columns: 120px 1fr; }
+        .split { grid-template-columns: 1fr; }
+        .desk.f .tip { display: none; }
       }
     </style>
   </head>
   <body>
-    <div class="page">
+    <div class="wrap">
       <div class="intro">
         <p class="kicker">2B · Overlay value</p>
         <h1>What Base UI / Radix means for this desk</h1>
-        <p>
-          Not a new look. They are the overlay engine: tooltip, toast, menu, combobox,
-          context menu. The desk stays black. Each block below is its own desk so nothing
-          has to “switch on.”
-        </p>
-        <p class="recipe">
-          <strong>For us:</strong> add these five. Keep Headless dialogs.
-          New pieces on Base UI via shadcn, except toast (Radix or Sonner).
-          <strong>Not this:</strong> rewriting the app.
-        </p>
+        <p>Not a new look. Five overlays on the desk you already have. Scroll each block. Nothing here is a tenant.</p>
+        <p class="note"><b>For us:</b> add these five. Keep Headless dialogs. New pieces on Base UI via shadcn, except toast (Radix or Sonner). <b>Not this:</b> rewriting the app.</p>
       </div>
 
-      <nav class="jump" aria-label="Overlay directions">
+      <nav class="jump">
         <a href="#a">A · Tooltip</a>
         <a href="#b">B · Toast</a>
         <a href="#c">C · Menu</a>
@@ -744,78 +308,86 @@
         <a href="#e">E · Context</a>
         <a href="#f">F · Evening</a>
       </nav>
-    </div>
 
-    <template id="desk-tpl">
-      <div class="desk">
-        <aside class="rail">
-          <div class="brand">
-            <div class="brand-row">
-              <span class="wordmark">NoSpoilers</span>
-              <span class="collapse" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 3v18" />
-                </svg>
-              </span>
+      <section class="block" id="a">
+        <p class="kicker">Direction A</p>
+        <h2>Tooltip on a collapsed rail</h2>
+        <p>Icon-only rail is live. The label sits in the gutter next to the bell, not on top of the page title. Primitive: Tooltip.</p>
+        <div class="desk narrow a">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div></div>
+            <nav class="nav">
+              <div class="grp">
+                <div class="item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg><span class="lbl">Overview</span></div>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
+              </div>
+              <div class="grp line">
+                <div class="item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7h7v4H3zM14 7h7v10h-7zM3 13h7v4H3z"/></svg><span class="lbl">Sources</span></div>
+              </div>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3><div class="export-wrap"><button class="export" type="button">Export JSON</button></div></div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox"><div class="well">This view is clear. No real alerts match this filter.</div></div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+          </div></div>
+          <div class="tip">Alerts <b>0</b></div>
+        </div>
+      </section>
+
+      <section class="block" id="b">
+        <p class="kicker">Direction B</p>
+        <h2>Toast after a quiet action</h2>
+        <p>Acknowledge currently dies into silence. This is the receipt. Primitive: Toast (Radix or Sonner).</p>
+        <div class="desk">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div>
+              <div class="install"><span class="mark">WS</span>workspace</div>
+              <p class="meta">nothing connected</p>
             </div>
-            <div class="install" data-install>
-              <span class="mark">WS</span>
-              workspace
+            <nav class="nav">
+              <div class="grp"><p class="kicker sec">Work</p>
+                <div class="item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg><span class="lbl">Overview</span></div>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
+              </div>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3><div class="export-wrap"><button class="export" type="button">Export JSON</button></div></div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox"><div class="well">This view is clear. No real alerts match this filter.</div></div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+            <div class="toast"><i></i><div><b>Alert acknowledged.</b><small>No invented incident. The live desk already knows this line and does not show it.</small></div></div>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="block" id="c">
+        <p class="kicker">Direction C</p>
+        <h2>Menu instead of a native select</h2>
+        <p>Export is open. Same pattern for an install switcher. Primitive: Menu.</p>
+        <div class="desk">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div>
+              <div class="install"><span class="mark">WS</span>workspace</div>
+              <p class="meta">nothing connected</p>
             </div>
-            <p class="sources-n">nothing connected</p>
-          </div>
-          <nav class="nav" aria-label="Watch desk">
-            <div class="group">
-              <p class="kicker">Work</p>
-              <div class="item">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2 2" /></svg>
-                <span class="item-label">Overview</span>
-                <span class="tip hide" data-tip>Overview</span>
+            <nav class="nav">
+              <div class="grp"><p class="kicker sec">Work</p>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
               </div>
-              <div class="item on" data-alerts>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9" /><path d="M10 21h4" /></svg>
-                <span class="item-label">Alerts</span>
-                <span class="item-n">0</span>
-                <span class="tip hide" data-tip>Alerts <b>0</b></span>
-              </div>
-            </div>
-            <div class="group rule">
-              <p class="kicker">Evidence</p>
-              <div class="item">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 7h7v4H3zM14 7h7v10h-7zM3 13h7v4H3z" /></svg>
-                <span class="item-label">Sources</span>
-                <span class="tip hide" data-tip>Sources</span>
-              </div>
-              <div class="item">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H6a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V8z" /></svg>
-                <span class="item-label">Releases</span>
-                <span class="tip hide" data-tip>Releases</span>
-              </div>
-            </div>
-          </nav>
-          <div class="setup">
-            <span class="ring"><span>0/8</span></span>
-            <span class="setup-copy">Nothing covered yet<small>Coverage</small></span>
-          </div>
-        </aside>
-        <div class="gutter">
-          <div class="stage">
-            <header class="cmd">
-              <div class="search" data-search>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
-                Search or run a command…
-                <kbd>Ctrl K</kbd>
-              </div>
-              <strong class="cmd-title">Alerts</strong>
-              <span class="chip">Trial</span>
-              <span class="avatar">RE</span>
-            </header>
-            <div class="page-head">
-              <h3>Alerts</h3>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3>
               <div class="export-wrap">
-                <button class="export" type="button" data-export>Export JSON</button>
-                <div class="menu export-menu hide" data-export-menu>
+                <button class="export" type="button">Export JSON</button>
+                <div class="menu export-menu">
                   <p>Export</p>
                   <button type="button">JSON receipt list</button>
                   <button type="button">This queue only</button>
@@ -824,189 +396,152 @@
                 </div>
               </div>
             </div>
-            <div class="queue-track">
-              <i class="on"><em>Triage <b>0</b></em></i>
-              <i><em>Waiting <b>0</b></em></i>
-              <i><em>Mine <b>0</b></em></i>
-              <i><em>Resolved <b>0</b></em></i>
-            </div>
-            <div class="split">
-              <div class="inbox" data-inbox>
-                <div class="empty">This view is clear. No real alerts match this filter. Right-click this well on E.</div>
-                <div class="menu ctx hide" data-ctx>
-                  <p>On a row</p>
-                  <button type="button" disabled>Acknowledge <kbd>E</kbd></button>
-                  <button type="button" disabled>Assign <kbd>A</kbd></button>
-                  <button type="button" disabled>Resolve <kbd>R</kbd></button>
-                  <hr />
-                  <button type="button" disabled>Nothing selected</button>
-                </div>
-              </div>
-              <div class="detail">
-                <div>
-                  <strong>Nothing selected.</strong>
-                  <span>Findings, exposure, and activity open here.</span>
-                </div>
-              </div>
-            </div>
-            <div class="toast hide" data-toast>
-              <i></i>
-              <div>
-                <b>Alert acknowledged.</b>
-                <small>No invented incident. This is the confirmation that is missing today.</small>
-              </div>
-            </div>
-            <div class="scrim hide" data-scrim></div>
-            <div class="palette hide" data-palette>
-              <input data-q type="search" value="al" aria-label="Command search" />
-              <div data-opts></div>
-            </div>
-          </div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox"><div class="well">This view is clear. No real alerts match this filter.</div></div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+          </div></div>
         </div>
-      </div>
-    </template>
+      </section>
+
+      <section class="block" id="d">
+        <p class="kicker">Direction D</p>
+        <h2>Combobox command palette</h2>
+        <p>Type in the field. “al” hits Alerts and Audit. Real destinations only. This is Base UI’s win.</p>
+        <div class="desk">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div>
+              <div class="install"><span class="mark">WS</span>workspace</div>
+              <p class="meta">nothing connected</p>
+            </div>
+            <nav class="nav">
+              <div class="grp"><p class="kicker sec">Work</p>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
+              </div>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3><div class="export-wrap"><button class="export" type="button">Export JSON</button></div></div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox"><div class="well">This view is clear. No real alerts match this filter.</div></div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+            <div class="scrim"></div>
+            <div class="palette">
+              <input id="q" type="search" value="al" aria-label="Command search" />
+              <div id="opts"></div>
+            </div>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="block" id="e">
+        <p class="kicker">Direction E</p>
+        <h2>Context menu on the inbox</h2>
+        <p>Right-click the hollow well to move the menu. Verbs stay disabled until a real row exists. Primitive: Context Menu.</p>
+        <div class="desk">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div>
+              <div class="install"><span class="mark">WS</span>workspace</div>
+              <p class="meta">nothing connected</p>
+            </div>
+            <nav class="nav">
+              <div class="grp"><p class="kicker sec">Work</p>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
+              </div>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3><div class="export-wrap"><button class="export" type="button">Export JSON</button></div></div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox" id="inbox">
+              <div class="well">This view is clear. No real alerts match this filter. Right-click here.</div>
+              <div class="menu ctx" id="ctx">
+                <p>On a row</p>
+                <button type="button" disabled>Acknowledge <kbd>E</kbd></button>
+                <button type="button" disabled>Assign <kbd>A</kbd></button>
+                <button type="button" disabled>Resolve <kbd>R</kbd></button>
+                <hr />
+                <button type="button" disabled>Nothing selected</button>
+              </div>
+            </div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="block" id="f">
+        <p class="kicker">Direction F</p>
+        <h2>The evening together</h2>
+        <p>Tooltip + export menu + toast. That is the production-value jump. Not a new theme.</p>
+        <div class="desk f">
+          <aside class="rail">
+            <div class="brand"><div class="brand-row"><span class="wordmark">NoSpoilers</span><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span></div>
+              <div class="install"><span class="mark">WS</span>workspace</div>
+              <p class="meta">nothing connected</p>
+            </div>
+            <nav class="nav">
+              <div class="grp"><p class="kicker sec">Work</p>
+                <div class="item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg><span class="lbl">Overview</span></div>
+                <div class="item on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg><span class="lbl">Alerts</span><span class="count">0</span></div>
+              </div>
+            </nav>
+            <div class="setup"><span class="ring"><i>0/8</i></span><span>Nothing covered yet</span></div>
+          </aside>
+          <div class="gutter"><div class="stage">
+            <div class="cmd"><div class="search">Search or run a command…<kbd>Ctrl K</kbd></div><span class="chip">Trial</span><span class="av">RE</span></div>
+            <div class="head"><h3>Alerts</h3>
+              <div class="export-wrap">
+                <button class="export" type="button">Export JSON</button>
+                <div class="menu export-menu">
+                  <p>Export</p>
+                  <button type="button">JSON receipt list</button>
+                  <button type="button">This queue only</button>
+                </div>
+              </div>
+            </div>
+            <div class="track"><span class="on">Triage <b>0</b></span><span>Waiting <b>0</b></span><span>Mine <b>0</b></span><span>Resolved <b>0</b></span></div>
+            <div class="split"><div class="inbox"><div class="well">This view is clear. No real alerts match this filter.</div></div><div class="detail"><div><strong>Nothing selected.</strong><small>Findings, exposure, and activity open here.</small></div></div></div>
+            <div class="toast"><i></i><div><b>Alert acknowledged.</b><small>Confirmation, then it leaves.</small></div></div>
+          </div></div>
+          <div class="tip">Alerts <b>0</b></div>
+        </div>
+      </section>
+    </div>
 
     <script>
-      const dirs = [
-        {
-          id: "a",
-          title: "A — Tooltip on a collapsed rail",
-          copy: "The 56px rail is already live. A tooltip names Alerts and keeps the count. Hover the other icons. Primitive: Tooltip.",
-        },
-        {
-          id: "b",
-          title: "B — Toast after a quiet action",
-          copy: "Acknowledge currently dies into silence. The toast is the receipt. Primitive: Toast (Radix or Sonner — Base UI has none yet).",
-        },
-        {
-          id: "c",
-          title: "C — Menu instead of a native select",
-          copy: "Export is open. Same pattern as an install switcher. Stays on brand. Primitive: Menu.",
-        },
-        {
-          id: "d",
-          title: "D — Combobox command palette",
-          copy: "Type in the field. “al” hits Alerts and Audit. Real destinations only. This is Base UI’s win.",
-        },
-        {
-          id: "e",
-          title: "E — Context menu on the inbox",
-          copy: "Right-click the hollow well. Verbs stay disabled until a real row exists. No invented incident. Primitive: Context Menu (Radix).",
-        },
-        {
-          id: "f",
-          title: "F — The evening together",
-          copy: "Tooltip + export menu + toast on the desk you already have. That is the production-value jump. Not a new theme.",
-        },
-      ];
-
-      const jumps = [
+      const items = [
         { name: "Alerts", group: "Jump" },
         { name: "Audit log", group: "Jump" },
         { name: "Overview", group: "Work" },
         { name: "Sources", group: "Work" },
         { name: "Releases", group: "Work" },
       ];
-
-      const page = document.querySelector(".page");
-      const tpl = document.getElementById("desk-tpl");
-
-      function fillOpts(box, query) {
-        const q = query.trim().toLowerCase();
-        const hits = jumps.filter((item) => !q || item.name.toLowerCase().includes(q));
+      const opts = document.getElementById("opts");
+      const q = document.getElementById("q");
+      function render(query) {
+        const needle = query.trim().toLowerCase();
+        const hits = items.filter((item) => item.name.toLowerCase().includes(needle));
         const groups = [...new Set(hits.map((item) => item.group))];
-        box.innerHTML = groups
-          .map((group) => {
-            const rows = hits
-              .filter((item) => item.group === group)
-              .map(
-                (item, index) =>
-                  '<div class="opt' +
-                  (index === 0 && group === groups[0] ? " on" : "") +
-                  '">' +
-                  item.name +
-                  (index === 0 && group === groups[0] ? "<kbd>↵</kbd>" : "") +
-                  "</div>",
-              )
-              .join("");
-            return '<p class="sec">' + group + "</p>" + rows;
-          })
-          .join("");
-        if (!hits.length) box.innerHTML = '<p class="sec">No destinations match</p>';
+        opts.innerHTML = groups.map((group, gi) => {
+          const rows = hits.filter((item) => item.group === group).map((item, i) => {
+            const on = gi === 0 && i === 0 ? " on" : "";
+            const kbd = on ? "<kbd>↵</kbd>" : "";
+            return '<div class="opt' + on + '">' + item.name + kbd + "</div>";
+          }).join("");
+          return '<p class="sec">' + group + "</p>" + rows;
+        }).join("") || '<p class="sec">No destinations match</p>';
       }
+      render(q.value);
+      q.addEventListener("input", () => render(q.value));
 
-      for (const dir of dirs) {
-        const block = document.createElement("section");
-        block.className = "block";
-        block.id = dir.id;
-        block.innerHTML =
-          '<div class="block-meta"><p class="kicker">' +
-          dir.id.toUpperCase() +
-          "</p><h2>" +
-          dir.title +
-          "</h2><p>" +
-          dir.copy +
-          "</p></div>";
-        const desk = tpl.content.firstElementChild.cloneNode(true);
-        if (dir.id === "a") desk.classList.add("is-collapsed");
-        const tip = desk.querySelector("[data-alerts] [data-tip]");
-        const toast = desk.querySelector("[data-toast]");
-        const exportMenu = desk.querySelector("[data-export-menu]");
-        const ctx = desk.querySelector("[data-ctx]");
-        const scrim = desk.querySelector("[data-scrim]");
-        const palette = desk.querySelector("[data-palette]");
-        const input = desk.querySelector("[data-q]");
-        const opts = desk.querySelector("[data-opts]");
-
-        if (dir.id === "a" || dir.id === "f") tip.classList.remove("hide");
-        if (dir.id === "b" || dir.id === "f") toast.classList.remove("hide");
-        if (dir.id === "c" || dir.id === "f") exportMenu.classList.remove("hide");
-        if (dir.id === "e") ctx.classList.remove("hide");
-        if (dir.id === "d") {
-          scrim.classList.remove("hide");
-          palette.classList.remove("hide");
-          fillOpts(opts, input.value);
-          input.addEventListener("input", () => fillOpts(opts, input.value));
-        }
-
-        desk.querySelectorAll(".item").forEach((item) => {
-          const local = item.querySelector("[data-tip]");
-          if (!local) return;
-          item.addEventListener("mouseenter", () => {
-            desk.querySelectorAll("[data-tip]").forEach((node) => node.classList.add("hide"));
-            local.classList.remove("hide");
-          });
-        });
-
-        desk.querySelector("[data-export]").addEventListener("click", () => {
-          exportMenu.classList.toggle("hide");
-        });
-
-        desk.querySelector("[data-search]").addEventListener("click", () => {
-          scrim.classList.remove("hide");
-          palette.classList.remove("hide");
-          fillOpts(opts, input.value);
-          input.focus();
-          input.select();
-        });
-
-        scrim.addEventListener("click", () => {
-          if (dir.id === "d") return;
-          scrim.classList.add("hide");
-          palette.classList.add("hide");
-        });
-
-        desk.querySelector("[data-inbox]").addEventListener("contextmenu", (event) => {
-          event.preventDefault();
-          const box = event.currentTarget.getBoundingClientRect();
-          ctx.classList.remove("hide");
-          ctx.style.top = event.clientY - box.top + "px";
-          ctx.style.left = event.clientX - box.left + "px";
-        });
-
-        block.appendChild(desk);
-        page.appendChild(block);
-      }
+      const inbox = document.getElementById("inbox");
+      const ctx = document.getElementById("ctx");
+      inbox.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        const box = inbox.getBoundingClientRect();
+        ctx.style.top = Math.min(event.clientY - box.top, box.height - 180) + "px";
+        ctx.style.left = Math.min(event.clientX - box.left, box.width - 210) + "px";
+      });
     </script>
   </body>
 </html>
