@@ -201,6 +201,7 @@ export function WatchBentoBoard({
     exceptions,
     jobSummary,
     members,
+    previewing,
     releases,
     retention,
     routes,
@@ -223,7 +224,9 @@ export function WatchBentoBoard({
   const solo = deskCoverage?.plan === "solo";
   const trial = deskCoverage?.status === "trial";
   const retentionLabel =
-    retention.status === "ready" && retention.days > 0 ? `${retention.days}-day retention` : null;
+    !previewing && retention.status === "ready" && retention.days > 0
+      ? `${retention.days}-day retention`
+      : null;
 
   return (
     <div className="watch-bento mt-8">
@@ -298,7 +301,7 @@ export function WatchBentoBoard({
 
       <Tile span="watch-w2" label="Open install health" onOpen={() => navigate(href("health"))}>
         <span className="watch-kicker">Queue</span>
-        <div className={cn("watch-tile-n", inQueue ? "text-warn" : "text-snow")}>{inQueue}</div>
+        <div className={cn("watch-tile-n", inQueue ? "text-warn" : "text-dim")}>{inQueue}</div>
         <span className="watch-tile-foot">
           {jobSummary.done === 0 && jobSummary.failed === 0 && inQueue === 0
             ? "Idle · nothing has run"
