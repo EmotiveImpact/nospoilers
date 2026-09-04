@@ -124,39 +124,130 @@ code {
   gap: 12px;
 }
 
-.watch-stage {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
+/* Linear homepage frame on the live desk — mock C.
+   Plate #101112 under the rail. Work surface stays #09090b. */
+.watch-desk {
+  height: 100svh;
+  padding: 10px 12px;
   overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: var(--color-canvas);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  background: #08090a;
 }
 
-/* E — 180px bloom behind logo / collapse only */
-.watch-rail {
+.watch-frame {
   position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  padding: 8px;
+  border-radius: 12px;
+  background: #090a0b;
+  overflow: hidden;
   isolation: isolate;
 }
 
-.watch-rail::before {
-  content: "";
+.watch-frame-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: #101112;
+  border: 1px solid #ffffff14;
+}
+
+.watch-frame-glow {
   position: absolute;
   top: 0;
   left: 0;
-  width: 180px;
-  height: 180px;
-  z-index: 0;
+  z-index: 1;
+  width: 400px;
+  height: 400px;
+  border-radius: 400px;
   pointer-events: none;
-  background: radial-gradient(circle at 28% 22%, #161618 0%, rgba(22, 22, 24, 0.35) 46%, transparent 72%);
+  background: radial-gradient(50% 50%, #ffffff0a 0%, transparent 90%);
+  transform: translate(-50%, -50%);
+}
+
+.watch-frame-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.watch-frame-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 50% 50% at 0 0,
+    #ffffff08 0%,
+    color-mix(in srgb, #ffffff08 94%, transparent) 15%,
+    color-mix(in srgb, #ffffff08 78%, transparent) 30%,
+    color-mix(in srgb, #ffffff08 58%, transparent) 45%,
+    color-mix(in srgb, #ffffff08 35%, transparent) 60%,
+    color-mix(in srgb, #ffffff08 16%, transparent) 75%,
+    color-mix(in srgb, #ffffff08 3%, transparent) 90%,
+    transparent 100%
+  );
+}
+
+.watch-frame-edge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid #ffffff0f;
+  mask: radial-gradient(ellipse 17.18% 28.57% at 0 0, #000 0%, #000 0%, transparent 90%);
+  -webkit-mask: radial-gradient(ellipse 17.18% 28.57% at 0 0, #000 0%, #000 0%, transparent 90%);
+}
+
+.watch-stage {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(#ffffff03, #ffffff03), #09090b;
+  border: 1px solid #ffffff0d;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px #0003;
+}
+
+.watch-rail {
+  position: relative;
+  z-index: 5;
+  isolation: isolate;
+}
+
+.watch-rail::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  z-index: 0;
+  width: 240px;
+  height: 240px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: #f7f8f808;
+  filter: blur(80px);
+  transform: translate(-50%, -50%);
 }
 
 .watch-rail > * {
   position: relative;
   z-index: 1;
+}
+
+@media (max-width: 767px) {
+  .watch-desk {
+    padding: 8px;
+  }
 }
 
 .watch-card {
