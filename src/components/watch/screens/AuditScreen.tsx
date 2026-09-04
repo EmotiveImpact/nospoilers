@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { loadWatchJson, scopedWatchApi } from "@/watch/api";
 import { useState } from "react";
 
@@ -46,67 +47,67 @@ export function AuditScreen({
     }
   }
 
+  const canExport = !previewing && audit.status === "ready";
+
   return (
-    <section className="mt-4">
-      <h1 className="font-display text-3xl tracking-tight text-snow">Audit log</h1>
-      <p className="mt-2 text-sm text-mute">Administrative changes and response activity for this install.</p>
-      <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
+    <section className="watch-narrow">
+      <WatchPageHeader
+        title="Audit log"
+        lede="Administrative changes and response activity for this install."
+        action={
+          canExport ? (
+            <Button type="button" size="sm" variant="outline" onClick={() => void exportAudit()}>
+              Export audit JSON
+            </Button>
+          ) : null
+        }
+      />
+      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
         Team and trial installs can export this install’s admin writes, notification deliveries,
         and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
         emails, tokens, and other secret values are never stored here.
       </p>
+      {exportError ? (
+        <p role="alert" className="mt-3 text-[13px] text-danger">
+          {exportError}
+        </p>
+      ) : null}
       {previewing ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
           Preview cannot export a live audit log. No invented incident.
         </p>
       ) : audit.status === "solo" ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">The audit log is on Team.</p>
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">The audit log is on Team.</p>
       ) : audit.status === "ended" ? (
-        <p className="mt-6 text-sm leading-relaxed text-mute">Subscribe to Team to keep the audit log.</p>
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">Subscribe to Team to keep the audit log.</p>
       ) : audit.status === "error" ? (
-        <p role="alert" className="mt-6 text-sm text-danger">{audit.message}</p>
+        <p role="alert" className="mt-6 text-[13px] text-danger">
+          {audit.message}
+        </p>
       ) : audit.status === "loading" ? (
-        <p className="mt-6 text-sm text-dim" aria-live="polite">Loading audit activity…</p>
+        <p className="mt-6 text-[13px] text-dim" aria-live="polite">
+          Loading audit activity…
+        </p>
+      ) : audit.rows.length === 0 ? (
+        <p className="mt-6 text-[13px] leading-relaxed text-mute">
+          No admin writes recorded on this install yet.
+        </p>
       ) : (
-        <>
-          <div className="mt-4">
-            <Button type="button" size="sm" variant="outline" onClick={() => void exportAudit()}>
-              Export audit log
-            </Button>
-            {exportError ? <p role="alert" className="mt-2 text-sm text-danger">{exportError}</p> : null}
-          </div>
-          {audit.rows.length === 0 ? (
-            <p className="mt-6 text-sm leading-relaxed text-mute">
-              No admin writes recorded on this install yet.
-            </p>
-          ) : (
-            <div className="mt-6 max-w-3xl overflow-x-auto rounded-lg border border-white/8 bg-panel">
-              <table className="w-full border-collapse text-left text-sm">
-                <caption className="sr-only">Administrative changes and response activity</caption>
-                <thead>
-                  <tr className="border-b border-white/8 text-xs text-dim">
-                    <th className="px-4 py-3 font-normal">Time</th>
-                    <th className="px-4 py-3 font-normal">Summary</th>
-                    <th className="px-4 py-3 font-normal">Actor</th>
-                    <th className="px-4 py-3 font-normal">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {audit.rows.map((row) => (
-                    <tr key={row.id} className="border-b border-white/5 last:border-0">
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-dim">
-                        <time dateTime={row.at}>{new Date(row.at).toLocaleString()}</time>
-                      </td>
-                      <td className="min-w-56 px-4 py-3 text-snow">{row.summary}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-mute">{row.actorLogin}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-mute">{row.action}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="watch-card mt-4">
+          {audit.rows.map((row) => (
+            <div key={row.id} className="watch-kv items-start">
+              <div className="min-w-0">
+                <p className="text-[13px] text-snow">{row.summary}</p>
+                <p className="watch-tiny mt-1 font-mono text-dim">
+                  {row.actorLogin} · {row.action}
+                </p>
+              </div>
+              <time className="watch-tiny shrink-0 text-dim" dateTime={row.at}>
+                {new Date(row.at).toLocaleString()}
+              </time>
             </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
     </section>
   );

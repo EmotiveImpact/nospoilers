@@ -6,8 +6,8 @@ export function PolicyScreen() {
     <>
       {route.view === "policy" && (
               <section className="mt-4">
-                <h1 className="font-display text-3xl tracking-tight text-snow">Policy &amp; allowlist</h1>
-                <p className="mt-2 text-sm text-mute">Shipping evidence, time-bound exceptions, and approved baselines.</p>
+                <h1 className="watch-page-title">Policy &amp; allowlist</h1>
+                <p className="watch-page-lede">Shipping evidence, time-bound exceptions, and approved baselines.</p>
                 <h2 className="mt-8 text-xs uppercase tracking-[0.22em] text-dim">Signing policy</h2>
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                   Trial and Team can require a present GitHub or npm attestation document, or a builder

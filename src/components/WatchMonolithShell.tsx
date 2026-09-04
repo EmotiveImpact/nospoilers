@@ -92,12 +92,12 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2.5 py-[7px] text-[13px]",
-        active ? "bg-white/8 text-snow" : "text-mute hover:bg-white/5 hover:text-snow",
+        "flex items-center gap-2.5 rounded-[6px] px-[9px] py-[7px] text-[13px] leading-[1.2]",
+        active ? "bg-white/[0.07] text-snow" : "text-mute hover:bg-white/[0.04] hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className="size-4 shrink-0 text-dim" aria-hidden />
+      <Icon className="size-[15px] shrink-0 opacity-75" aria-hidden />
       {children}
     </a>
   );
@@ -168,24 +168,24 @@ export function WatchMonolithShell({
 
   const nav = (
     <>
-      <div className="border-b border-white/8 px-4 py-4">
+      <div className="border-b border-line px-4 py-[18px]">
         <a
           href="/"
           onClick={(event) => go(event, "/")}
-          className="font-display text-sm text-snow hover:text-snow"
+          className="font-display text-[15px] text-snow hover:text-snow"
         >
           NoSpoilers
         </a>
         {installations.length > 1 ? (
           <label className="mt-3 block">
-            <span className="text-xs uppercase tracking-[0.16em] text-dim">Install</span>
+            <span className="watch-kicker">Install</span>
             <select
               value={activeInstallId ?? ""}
               onChange={(event) => {
                 const id = Number(event.target.value);
                 if (Number.isFinite(id) && id > 0) onInstall(id);
               }}
-              className="mt-1 h-9 w-full rounded-md border border-white/15 bg-ink px-2 text-sm text-snow outline-none focus:border-white/40"
+              className="mt-1 h-9 w-full rounded-md border border-line bg-inset px-2 text-[13px] text-snow outline-none focus:border-line-strong"
             >
               {installations.map((row) => (
                 <option key={row.id} value={row.id}>
@@ -196,48 +196,48 @@ export function WatchMonolithShell({
             </select>
           </label>
         ) : (
-          <div className="mt-3 flex items-center gap-2 rounded-md border border-white/8 bg-white/[0.025] px-2 py-2">
-            <span className="grid size-6 place-items-center rounded-md bg-white/10 text-xs font-semibold text-snow">
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-line bg-inset px-2.5 py-2">
+            <span className="grid size-[22px] place-items-center rounded-[5px] bg-gradient-to-br from-zinc-600 to-zinc-900 text-[10px] font-semibold text-snow">
               {installIdentity.slice(0, 2).toUpperCase()}
             </span>
-            <p className="min-w-0 flex-1 truncate text-xs text-snow">{installIdentity}</p>
+            <p className="min-w-0 flex-1 truncate text-[13px] text-snow">{installIdentity}</p>
           </div>
         )}
-        <p className="mt-1 text-xs text-dim">
+        <p className="mt-1 text-[11px] text-dim">
           {sourceCount > 0 ? `${sourceCount} sources` : "nothing connected"}
         </p>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-5 overflow-auto px-3 py-4" aria-label="Watch desk">
+      <nav className="flex flex-1 flex-col gap-[18px] overflow-auto px-2.5 py-3.5" aria-label="Watch desk">
         <div className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1 text-xs uppercase tracking-[0.16em] text-dim">Work</p>
+          <p className="watch-kicker px-2.5 pb-1.5">Work</p>
           <NavLink href={hrefFor("overview")} active={route.view === "overview"} onNavigate={closeNav}>
             Overview
           </NavLink>
         </div>
 
         <div>
-          <p className="px-2.5 pb-1 text-xs uppercase tracking-[0.16em] text-dim">Alert views</p>
+          <p className="watch-kicker px-2.5 pb-1.5">Alert views</p>
           <div className="flex flex-col gap-0.5">
             <NavLink href={hrefFor("alerts", "open")} active={alertActive("open")} onNavigate={closeNav}>
               Needs triage
-              {openAlertCount > 0 ? <span className="ml-auto text-xs text-danger">{openAlertCount}</span> : null}
+              {openAlertCount > 0 ? <span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{openAlertCount}</span> : null}
             </NavLink>
             <NavLink href={hrefFor("alerts", "waiting")} active={alertActive("waiting")} onNavigate={closeNav}>
               Waiting on rotation
-              {waitingCount > 0 ? <span className="ml-auto text-xs text-dim">{waitingCount}</span> : null}
+              {waitingCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{waitingCount}</span> : null}
             </NavLink>
-            {teamOnly ? <NavLink href={hrefFor("alerts", "mine")} active={alertActive("mine")} onNavigate={closeNav}>Assigned to me{mineCount > 0 ? <span className="ml-auto text-xs text-dim">{mineCount}</span> : null}</NavLink> : null}
-            <NavLink href={hrefFor("alerts", "done")} active={alertActive("done")} onNavigate={closeNav}>Resolved{resolvedCount > 0 ? <span className="ml-auto text-xs text-dim">{resolvedCount}</span> : null}</NavLink>
+            {teamOnly ? <NavLink href={hrefFor("alerts", "mine")} active={alertActive("mine")} onNavigate={closeNav}>Assigned to me{mineCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{mineCount}</span> : null}</NavLink> : null}
+            <NavLink href={hrefFor("alerts", "done")} active={alertActive("done")} onNavigate={closeNav}>Resolved{resolvedCount > 0 ? <span className="ml-auto font-mono text-[11px] text-dim">{resolvedCount}</span> : null}</NavLink>
           </div>
         </div>
 
-        <div className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1 text-xs uppercase tracking-[0.16em] text-dim">Evidence</p>
+        <div className="flex flex-col gap-0.5 border-t border-line pt-[17px]">
+          <p className="watch-kicker px-2.5 pb-1.5">Evidence</p>
           <NavLink href={hrefFor("sources")} active={route.view === "sources"} onNavigate={closeNav}>
             Sources
             {sourceCount > 0 ? (
-              <span className="ml-auto text-xs text-dim">{sourceCount}</span>
+              <span className="ml-auto font-mono text-[11px] text-dim">{sourceCount}</span>
             ) : null}
           </NavLink>
           <NavLink href={hrefFor("releases")} active={route.view === "releases"} onNavigate={closeNav}>
@@ -251,7 +251,7 @@ export function WatchMonolithShell({
         </div>
 
         <div>
-          <p className="px-2.5 pb-1 text-xs uppercase tracking-[0.16em] text-dim">Configure</p>
+          <p className="watch-kicker px-2.5 pb-1.5">Settings</p>
           <div className="flex flex-col gap-0.5">
             <NavLink
               href={hrefFor("notifications")}
@@ -301,21 +301,21 @@ export function WatchMonolithShell({
           go(event, hrefFor("setup"));
           closeNav();
         }}
-        className="flex items-center gap-3 border-t border-white/8 px-4 py-3 text-left hover:bg-white/3"
+        className="flex items-center gap-3 border-t border-line px-3.5 py-3 text-left hover:bg-white/[0.03]"
       >
         <span
           className="grid size-10 shrink-0 place-items-center rounded-full"
           style={{ background: `conic-gradient(#f4f4f5 ${(setupDone / setupTotal) * 360}deg, #252529 0)` }}
         >
-          <span className="grid size-[32px] place-items-center rounded-full bg-[#0c0c0e] text-[9px] text-snow">
+          <span className="grid size-[32px] place-items-center rounded-full bg-rail text-[9px] text-snow">
             {setupDone}/{setupTotal}
           </span>
         </span>
         <span className="min-w-0">
-          <span className="block text-xs text-snow">
+          <span className="block text-[11px] text-snow">
             {setupDone > 0 ? `${setupDone} of ${setupTotal} leak paths covered` : "Nothing covered yet"}
           </span>
-          <span className={cn("mt-0.5 block text-xs", ended ? "text-danger" : "text-dim")}>
+          <span className={cn("mt-0.5 block text-[11px]", ended ? "text-danger" : "text-dim")}>
             {coverage?.label ?? "Coverage"}
             {role ? ` · ${role}` : ""}
           </span>
@@ -325,23 +325,23 @@ export function WatchMonolithShell({
   );
 
   return (
-    <div className="flex h-svh overflow-hidden bg-ink">
-      <aside className="hidden h-svh w-[244px] shrink-0 flex-col border-r border-white/8 bg-[#0c0c0e] md:flex">
+    <div className="flex h-svh overflow-hidden bg-rail">
+      <aside className="hidden h-svh w-[244px] shrink-0 flex-col border-r border-line bg-rail md:flex">
         {nav}
       </aside>
 
       <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel className="flex h-full w-[min(20rem,88vw)] flex-col border-r border-white/8 bg-[#0c0c0e] shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel className="flex h-full w-[min(20rem,88vw)] flex-col border-r border-line bg-rail shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {nav}
           </DialogPanel>
         </div>
       </Dialog>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/8 bg-ink px-2 shadow-[0_10px_32px_rgba(0,0,0,.12)] sm:gap-3 sm:px-4 md:px-5">
+      <div className="flex min-w-0 flex-1 flex-col bg-canvas">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-canvas/90 px-2 shadow-[0_10px_32px_rgba(0,0,0,.12)] backdrop-blur-md sm:gap-3 sm:px-4 md:px-5">
           <button
             type="button"
             className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
@@ -354,7 +354,7 @@ export function WatchMonolithShell({
           <button
             type="button"
             onClick={onOpenPalette}
-            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-white/10 bg-white/3 text-sm text-dim hover:border-white/20 sm:h-9 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
+            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
           >
             <Search className="size-4 shrink-0" aria-hidden />
             <span className="hidden truncate sm:inline">Search or run a command…</span>

@@ -6,8 +6,8 @@ export function TokensScreen() {
     <>
       {route.view === "tokens" && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
-                <h1 className="font-display text-3xl tracking-tight text-snow">Scan API tokens</h1>
-                <p className="mt-2 text-sm text-mute">Credentials for scanning packed artifacts from CI.</p>
+                <h1 className="watch-page-title">Scan API tokens</h1>
+                <p className="watch-page-lede">Credentials for scanning packed artifacts from CI.</p>
                 <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
                   Mint a token to <code className="text-snow">POST</code> a packed artifact to{" "}
                   <code className="text-snow">/api/v1/scan</code>. We hash the secret, show it once, and

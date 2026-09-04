@@ -20,8 +20,8 @@ export function NotificationsScreen() {
     <>
       {route.view === "notifications" && (
               <section className="mt-4">
-                <h1 className="font-display text-3xl tracking-tight text-snow">Notifications</h1>
-                <p className="mt-2 text-sm text-mute">Destinations and routing rules for real Watch alerts.</p>
+                <h1 className="watch-page-title">Notifications</h1>
+                <p className="watch-page-lede">Destinations and routing rules for real Watch alerts.</p>
                 {datasetState.notifications.status === "loading" ? (
                   <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
                 ) : datasetState.notifications.status === "error" ? (
