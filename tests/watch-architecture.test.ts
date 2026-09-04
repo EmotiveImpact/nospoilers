@@ -69,6 +69,18 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
 
+  it("applies shell-weight E bloom behind the live rail wordmark", () => {
+    const css = readFileSync("src/index.css", "utf8");
+    const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
+    expect(shell).toMatch(/watch-rail/);
+    expect(css).toMatch(/\.watch-rail::before/);
+    expect(css).toMatch(/radial-gradient\(circle at 28% 22%, #161618/);
+    expect(css).toMatch(/--color-canvas: #09090b;/);
+    expect(css).toMatch(/--color-rail: #050506;/);
+    expect(css).not.toMatch(/540px 440px/);
+    expect(css).toMatch(/\.watch-queue-track/);
+  });
+
   it("keeps a desktop sidebar collapse control on the logo row", () => {
     const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
     expect(shell).toMatch(/nospoilers\.watch\.sidebar-collapsed/);

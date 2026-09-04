@@ -434,7 +434,7 @@ export function WatchMonolithShell({
     <div className="flex h-svh overflow-hidden bg-rail">
       <aside
         className={cn(
-          "hidden h-svh shrink-0 flex-col overflow-hidden bg-rail transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          "watch-rail hidden h-svh shrink-0 flex-col overflow-hidden bg-rail transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
           collapsed ? "w-14" : "w-[244px]",
         )}
       >
@@ -444,7 +444,7 @@ export function WatchMonolithShell({
       <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel className="flex h-full w-[min(20rem,88vw)] flex-col border-r border-line bg-rail shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-rail shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>
