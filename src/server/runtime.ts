@@ -7,6 +7,10 @@ import {
   stripeConfigured,
   type AppConfig,
 } from "./config.ts";
+import { Hono } from 'hono';
+import { migrateReleaseIntelligence } from './release-intelligence-schema.ts';
+import { withReleaseIntelligence } from './release-intelligence-app.ts';
+import { intelligencePorts } from './release-intelligence-adapter.ts';
 import { listenJobQueued } from "./job-wake.ts";
 import { createGithubPort } from "./github.ts";
 import { logJson } from "./log.ts";
@@ -31,6 +35,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   await migrateIfNeeded(sql, {
     databaseUrl: config.databaseUrl,
   });
+  await migrateReleaseIntelligence(sql);
   const store = createStore(sql, {
     jobMaxAttempts: config.jobMaxAttempts,
     tokenSecret: config.sessionSecret,
@@ -86,13 +91,24 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       return { ...result, expiredPendingScans };
     },
   });
-  const app = withReleaseAssurance(coreApp, {
+  const assuranceApp = withReleaseAssurance(coreApp, {
     receiptSecret: config.receiptSecret,
     scopeForRelease: async (id) => {
       const row = await store.getReleaseRevision(id);
       return row ? { installationId: row.installation_id, receiptId: row.receipt_id } : null;
     },
   });
+  const intelligenceSecrets = { sessionSecret: config.sessionSecret, receiptSecret: config.receiptSecret };
+  const intelligenceApp = withReleaseIntelligence(assuranceApp, {
+    sql,
+    appBaseUrl: config.appBaseUrl,
+    ports: request => intelligencePorts(request, intelligenceSecrets),
+    reserve: request => intelligencePorts(request, intelligenceSecrets).reserve(sql),
+    context: (request, ref) => intelligencePorts(request, intelligenceSecrets).context(sql, ref),
+  });
+  // Retain Hono's request/fetch interface used by existing hosts and integration tests.
+  const app = new Hono();
+  app.all('*', c => intelligenceApp.fetch(c.req.raw));
   const poller = runJobs ? startPoller(pollerDeps, config.pollIntervalMs) : { stop() {} };
   let stopListen: (() => Promise<void>) | undefined;
   return {
