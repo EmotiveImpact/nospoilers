@@ -2,37 +2,23 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "codex/gate-b-evidence-integrity-20260908": false
+      "codex/gate-b-evidence-integrity-20260908": false,
+      "codex/website-docs-completion": false,
+      "codex/release-assurance-spine-v1": false
     }
   },
   "framework": "vite",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
-  "git": {
-    "deploymentEnabled": {
-      "codex/website-docs-completion": false
-    }
-  },
   "functions": {
     "api/index.mjs": {
       "includeFiles": "{.vercel-runtime/**,src/server/schema.sql}",
       "maxDuration": 300
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/jobs",
-      "schedule": "0 * * * *"
-    }
-  ],
+  "crons": [{"path": "/api/cron/jobs", "schedule": "0 * * * *"}],
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/index.html"
-    }
+    {"source": "/api/:path*", "destination": "/api"},
+    {"source": "/:path*", "destination": "/index.html"}
   ]
 }

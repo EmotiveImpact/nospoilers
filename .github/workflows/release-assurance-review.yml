@@ -1,0 +1,56 @@
+name: Release assurance review
+
+on:
+  push:
+    branches: [codex/release-assurance-spine-v1]
+  pull_request:
+    paths:
+      - 'src/assurance/**'
+      - 'src/components/watch/ReleaseAssurance*'
+      - 'tests/assurance*'
+      - '.github/workflows/release-assurance-review.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assurance-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NOSPOILERS_INTERNAL_LOCAL_SCAN: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Export tracked source for offline private review
+        run: |
+          mkdir -p review-bundle
+          git archive --format=tar HEAD | gzip > review-bundle/source.tar.gz
+          git rev-parse HEAD > review-bundle/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assurance-source-${{ github.sha }}
+          path: review-bundle/
+          retention-days: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Export locked Linux dependencies for offline private review
+        run: tar -czf review-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assurance-dependencies-${{ github.sha }}
+          path: review-dependencies.tar.gz
+          retention-days: 1
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --maxWorkers=2
+      - run: npm run build
+      - run: npm run build:api
