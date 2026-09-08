@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { navigate } from "@/nav.ts"
 import { useEffect, useState } from "react"
+import { PUBLIC_LINKS } from "@/website/page-paths.ts"
+import "@/website/website.css"
 
 type Me = {
   user: { login: string } | null
@@ -79,102 +81,58 @@ export function PricingPage() {
   }
 
   return (
-    <main className="fade-up mx-auto max-w-5xl px-5 py-16 md:py-24">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">Coverage subscription</p>
-      <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-        Pay to keep the bot thinking.
-      </h1>
-      <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-        Not scan credits. Credits train people to turn it off. 5-day full trial, then the card
-        bills. Yearly is 10 months for the price of 12.
-      </p>
-      {canceled ? (
-        <p className="mt-6 text-sm text-mute">Checkout canceled. Coverage is unchanged.</p>
-      ) : null}
-      {adminInstalls.length > 1 ? (
-        <label className="mt-8 flex max-w-sm flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-dim">GitHub install</span>
-          <select
-            value={selected?.id ?? ""}
-            onChange={(event) => setInstallId(Number(event.target.value))}
-            className="h-10 rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
-          >
-            {adminInstalls.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.account_login}
-              </option>
-            ))}
+    <div className="nsw">
+      <a className="nsw-skip" href="#nsw-main">Skip to pricing</a>
+      <nav className="nsw-public-nav" aria-label="Explore NoSpoilers">
+        {PUBLIC_LINKS.map(([href, label]) => <a key={href} href={href} aria-current={href === '/pricing' ? 'page' : undefined}>{label}</a>)}
+      </nav>
+      <main id="nsw-main" className="nsw-public-main">
+        <header className="nsw-public-hero">
+          <p className="nsw-eyebrow">Coverage subscription</p>
+          <h1 className="nsw-title">Evaluate with a real release.</h1>
+          <p className="nsw-lede">A five-day trial, then an active subscription for new scans and monitoring. There is no permanent free scanner. Verification of an existing proof is a separate operation.</p>
+        </header>
+        {canceled ? <p role="status" className="nsw-note">Checkout cancelled. Coverage is unchanged.</p> : null}
+        {adminInstalls.length > 1 ? <label className="nsw-field">
+          GitHub connection for the existing checkout flow
+          <select value={selected?.id ?? ""} onChange={event => setInstallId(Number(event.target.value))}>
+            {adminInstalls.map(row => <option key={row.id} value={row.id}>{row.account_login}</option>)}
           </select>
-        </label>
-      ) : null}
-      <div className="mt-12 grid gap-4 md:grid-cols-2">
-        <article className="border border-white/10 p-6 md:p-8">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Solo</p>
-          <p className="mt-4 font-display text-5xl tracking-tight text-snow">
-            $29<span className="text-lg text-dim"> / month</span>
-          </p>
-          <p className="mt-2 text-sm text-dim">$290 / year</p>
-          <ul className="mt-6 flex flex-col gap-2 text-sm leading-relaxed text-mute">
-            <li>One GitHub user or one org they own</li>
-            <li>All repos they grant the App</li>
-            <li>Unlimited-feeling visibility alerts</li>
-            <li>Hosted pack scans, fair use</li>
-            <li>CLI included</li>
-            <li>Email</li>
-            <li>Configurable retention</li>
-          </ul>
-          {canCheckout ? (
-            <div className="mt-8 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" disabled={Boolean(busy)} onClick={() => void startCheckout("solo", "month")}>
-                {busy === "solo:month" ? "Starting…" : "Subscribe monthly"}
-              </Button>
-              <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => void startCheckout("solo", "year")}>
-                {busy === "solo:year" ? "Starting…" : "Subscribe yearly"}
-              </Button>
-            </div>
-          ) : (
-            <Button type="button" className="mt-8" onClick={openWatch}>
-              {me?.user ? "Open watch desk" : "Start trial"}
-            </Button>
-          )}
-        </article>
-        <article className="border border-white/10 p-6 md:p-8">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Team</p>
-          <p className="mt-4 font-display text-5xl tracking-tight text-snow">
-            $99<span className="text-lg text-dim"> / month</span>
-          </p>
-          <p className="mt-2 text-sm text-dim">$990 / year</p>
-          <ul className="mt-6 flex flex-col gap-2 text-sm leading-relaxed text-mute">
-            <li>A company org</li>
-            <li>All repos in that install</li>
-            <li>Unlimited-feeling visibility alerts</li>
-            <li>Hosted pack scans, higher fair use</li>
-            <li>CLI included</li>
-            <li>Slack + Jira + routing + 90-day timeline + roles + audit export + identity signals + configurable retention</li>
-          </ul>
-          {canCheckout ? (
-            <div className="mt-8 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" disabled={Boolean(busy)} onClick={() => void startCheckout("team", "month")}>
-                {busy === "team:month" ? "Starting…" : "Subscribe monthly"}
-              </Button>
-              <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => void startCheckout("team", "year")}>
-                {busy === "team:year" ? "Starting…" : "Subscribe yearly"}
-              </Button>
-            </div>
-          ) : (
-            <Button type="button" className="mt-8" onClick={openWatch}>
-              {me?.user ? "Open watch desk" : "Start trial"}
-            </Button>
-          )}
-        </article>
-      </div>
-      {error ? <p className="mt-6 text-sm text-danger">{error}</p> : null}
-      <p className="mt-8 max-w-2xl text-sm leading-relaxed text-dim">
-        When the trial ends unpaid: we stop processing webhooks (still 200 so GitHub is happy), stop
-        the poller, and Watch says subscribe to keep watching. Checkout collects a card through
-        Stripe before the remaining trial days bill. Yearly: $290 Solo · $990 Team. This host
-        {stripeLive ? " can start Checkout when you are an install admin." : " does not take cards until Stripe keys are set."}
-      </p>
-    </main>
+        </label> : null}
+        <div className="nsw-price-grid">
+          {([{ key: 'solo', name: 'Solo', monthly: 29, yearly: 290, description: 'For an individual release workflow.' }, { key: 'team', name: 'Team', monthly: 99, yearly: 990, description: 'For collaborative release review and response.' }] as const).map(plan => <article className="nsw-price-plan" key={plan.key}>
+            <h2>{plan.name}</h2>
+            <div className="nsw-price">${plan.monthly}<small> USD / month</small></div>
+            <p>${plan.yearly} USD / year, billed annually</p>
+            <p>{plan.description}</p>
+            <ul>
+              <li>Authenticated hosted scanning, subject to entitlement and fair-use limits.</li>
+              <li>Saved release evidence with recorded scope and policy.</li>
+              <li>{plan.key === 'team' ? 'Workspace invitations and supported team notification paths.' : 'A focused starting point for package and source checks.'}</li>
+            </ul>
+            {canCheckout ? <div className="nsw-actions">
+              <Button className="nsw-button nsw-primary" type="button" disabled={Boolean(busy)} onClick={() => void startCheckout(plan.key, 'month')}>{busy === `${plan.key}:month` ? 'Starting…' : 'Subscribe monthly'}</Button>
+              <Button className="nsw-button" type="button" variant="outline" disabled={Boolean(busy)} onClick={() => void startCheckout(plan.key, 'year')}>{busy === `${plan.key}:year` ? 'Starting…' : 'Subscribe yearly'}</Button>
+            </div> : <Button className="nsw-button nsw-primary" type="button" onClick={openWatch}>{me?.user ? 'Open app' : 'Start trial'}</Button>}
+          </article>)}
+        </div>
+        {error ? <p role="alert" className="nsw-note nsw-warning">{error}</p> : null}
+        <div className="nsw-prose">
+          <section className="nsw-section" aria-labelledby="pricing-terms"><h2 id="pricing-terms">Understand the commercial boundary</h2>
+            <p>Annual prices equal ten monthly payments for a year of coverage. Prices are shown in US dollars. Review the configured checkout, its final total and applicable terms before confirming a purchase.</p>
+            <p>Additional workspaces share the organisation’s subscription and allowance; they do not create new trials or unlimited scan capacity. Seat counts and workspace caps are not published as confirmed plan promises here.</p>
+            <p>{me === null ? 'Checking whether this host can offer the existing checkout flow…' : stripeLive ? 'Checkout is available only to an eligible administrator through the existing billing flow.' : 'Checkout availability is not confirmed on this host. Open the app or contact support; no payment is taken by these pages.'} Independent-workspace billing is managed in the application; this public page preserves the existing connection-based checkout flow.</p>
+          </section>
+          <section className="nsw-section" aria-labelledby="pricing-trial"><h2 id="pricing-trial">What happens after the trial?</h2>
+            <p>New scans and monitoring require active entitlement. An unpaid trial does not grant permanent scanning access. Creating a new workspace does not reset the trial. Selecting a file publicly is intake, not an anonymous scan or a vulnerability report.</p>
+            <p>Do not assume that starting a trial automatically enters a payment contract. Any card collection and subscription action use the configured checkout, not a simulated form on this site.</p>
+          </section>
+          <section className="nsw-section" aria-labelledby="pricing-enterprise"><h2 id="pricing-enterprise">Evaluate with your team</h2>
+            <p>Enterprise scope, identity requirements, operational readiness and commercial terms need an explicit agreement. We do not publish an enterprise price or imply SSO, SCIM, dedicated hosting or contractual service guarantees are available.</p>
+            <p><a href="/enterprise">Plan an enterprise evaluation</a> or <a href="/docs/getting-started">read the first-scan guide</a>. <a href="/terms">Contract material remains a review draft</a> until approved.</p>
+          </section>
+        </div>
+      </main>
+    </div>
   )
 }

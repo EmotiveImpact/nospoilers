@@ -1,0 +1,50 @@
+name: Website and docs review
+
+on:
+  pull_request:
+    branches: [codex/v20-homepage-auth-mock3]
+    paths:
+      - src/website/**
+      - src/pages/DocsPage.tsx
+      - src/pages/WebsitePage.tsx
+      - src/pages/PricingPage.tsx
+      - src/pages/LegalPage.tsx
+      - src/App.tsx
+      - tests/website-*.test.tsx
+      - .github/workflows/website-docs-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  public-website:
+    if: github.head_ref == 'codex/website-docs-completion'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Public content regression
+        run: npm test -- tests/website-docs.test.tsx tests/website-docs-ui.test.tsx
+      - run: npm run typecheck
+      - name: Production build with the review variable deliberately set
+        run: npm run build
+        env:
+          VITE_WEBSITE_CAPTURE_REVIEW: '1'
+      - name: Production JavaScript excludes development capture instructions
+        run: |
+          node --input-type=module <<'JS'
+          import { readdirSync, readFileSync } from 'node:fs';
+          for (const file of readdirSync('dist/assets')) {
+            if (!file.endsWith('.js')) continue;
+            const text = readFileSync(`dist/assets/${file}`, 'utf8');
+            if (text.includes('Image capture review:') || text.includes('Use only approved local QA data.')) {
+              throw new Error(`Development capture instructions leaked into ${file}`);
+            }
+          }
+          JS
+      - run: npm run lint
