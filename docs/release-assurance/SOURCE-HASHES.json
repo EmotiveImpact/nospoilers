@@ -1,0 +1,30 @@
+{
+  "algorithm": "Git blob SHA-1",
+  "baseCommit": "675916b4b9b843bff2cb0651ec13034f2f62775d",
+  "files": {
+    "src/assurance/assistant.ts": "424fd0690f12a33543e91e7b6661a47056520edd",
+    "src/assurance/client.ts": "06feea36cd1808b3fdcab7a50b6b89573619aea1",
+    "src/assurance/decision.ts": "93a7d7ec605e3e7513839909a95f9729bed85028",
+    "src/assurance/evidence.ts": "0977b2a8eaf3c26f68802892c0f489c683becb69",
+    "src/assurance/history.ts": "2db7b562483592a0bd2b88e6ca357313964bb0ee",
+    "src/assurance/index.ts": "88db5c143d66f1eb990d9a55273c00eed6268fbb",
+    "src/assurance/passport.ts": "d70293d71be1edd5585c2cbaa5f611e415247c30",
+    "src/assurance/render.ts": "92a64b547731a45a2edca020e88ee1cd88eb4d87",
+    "src/assurance/types.ts": "8381548ab023320d7868aff994ba115717940937",
+    "src/components/watch/HostedReleaseEvidence.tsx": "c7a25729491882da217543eebbb93b0cbd25f233",
+    "src/components/watch/ReleaseAssurancePanel.tsx": "117fc88fc04bf5786e5b8ac68efb69ab18ed19e8",
+    "src/components/watch/UploadedReleaseBrief.tsx": "f918a65c90a58609d2272b154b008a0d514508da",
+    "src/components/watch/release-assurance.css": "ef7470af85196146e2d80640cbddbd72a8414930",
+    "src/server/assurance-api.ts": "63c2bbcfc4248a4e58cb20d554935c84670fd3b2",
+    "src/server/assurance-app.ts": "71049b1827ccca764b4bc37e4bbaf077350e01d6",
+    "src/server/runtime.ts": "5adc2635fce63126d1ccf8b7e87736a6171c636d",
+    "tests/assurance-api-cases.ts": "4a76c99933ad845943f0429a88ecbb1aed61246c",
+    "tests/assurance-api.test.ts": "7c3c832740eace286c9412c45ab0ae75dbb62d28",
+    "tests/assurance-cases.ts": "f5eec003e4adaa911bb02ebe312873dfb336a19c",
+    "tests/assurance-fixtures.ts": "3a8b20504ca8bbc26caea0d58e57dc35487c4ad1",
+    "tests/assurance.test.ts": "318ae715e98cda0b98cec45cb7265ba932eca526",
+    "scripts/check-assurance-browser.py": "c05459ac8490f5514090554667da693ddaff9cb0",
+    "scripts/prepare-assurance-browser.mjs": "62200bd97f37f252e4e80384921a4f056e0c152e",
+    "scripts/test-assurance.mjs": "84932c02ba110abda2435a1186e56c4b174d1a19"
+  }
+}

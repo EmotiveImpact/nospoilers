@@ -6,8 +6,14 @@ on:
   pull_request:
     paths:
       - 'src/assurance/**'
+      - 'src/server/assurance-*.ts'
+      - 'src/server/runtime.ts'
       - 'src/components/watch/ReleaseAssurance*'
+      - 'src/components/watch/release-assurance.css'
+      - 'src/components/watch/HostedReleaseEvidence.tsx'
+      - 'src/components/watch/UploadedReleaseBrief.tsx'
       - 'tests/assurance*'
+      - 'scripts/*assurance*'
       - '.github/workflows/release-assurance-review.yml'
 
 permissions:
@@ -27,28 +33,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Export tracked source for offline private review
-        run: |
-          mkdir -p review-bundle
-          git archive --format=tar HEAD | gzip > review-bundle/source.tar.gz
-          git rev-parse HEAD > review-bundle/commit.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: assurance-source-${{ github.sha }}
-          path: review-bundle/
-          retention-days: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Export locked Linux dependencies for offline private review
-        run: tar -czf review-dependencies.tar.gz node_modules
-      - uses: actions/upload-artifact@v4
-        with:
-          name: assurance-dependencies-${{ github.sha }}
-          path: review-dependencies.tar.gz
-          retention-days: 1
+      - run: node --experimental-strip-types --test scripts/test-assurance.mjs
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --maxWorkers=2
