@@ -101,7 +101,8 @@ export function buildSourceViewModels(input: {
         alert.full_name,
         ...asFindingList(alert.findings).map((finding) => finding.path),
       ].filter((value): value is string => Boolean(value));
-      return values.some((value) =>
+      // Missing package versions must not match every unrelated alert via includes("").
+      return values.filter((value) => value.trim().length > 0).some((value) =>
         coordinates.some(
           (coordinate) =>
             coordinate === value ||
@@ -213,7 +214,20 @@ export function buildSourceViewModels(input: {
       alertCount: alertCountFor([map.host, map.projectSlug]),
       primaryAction: map.lastCheckedAt ? "Check custody" : "Verify custody",
     })),
-  ].map((source):WatchSourceViewModel=>({...source,attention:source.attention!=='critical'&&source.monitoring?.freshness==='delayed'?'warning':source.attention,connectionLabel:input.connections?.find(connection=>connection.id===source.connectionId)?.account_login??null}));
+  ].map((source): WatchSourceViewModel => {
+    let attention = source.attention;
+    // Freshness can downgrade a clean result, never erase exposure or a pending/error state.
+    if (attention !== "critical" && source.monitoring?.freshness === "delayed") {
+      attention = "warning";
+    } else if (attention === "ok" && source.monitoring && source.monitoring.freshness !== "recent") {
+      attention = "unknown";
+    }
+    return {
+      ...source,
+      attention,
+      connectionLabel: input.connections?.find((connection) => connection.id === source.connectionId)?.account_login ?? null,
+    };
+  });
 }
 
 export function filterSourceViewModels(
@@ -280,11 +294,19 @@ export function buildSetupViewModel(input: {
   const registryChecked = input.packages.some(
     (pkg) => Boolean(pkg.last_checked_at || pkg.last_version || pkg.last_sha256),
   );
-  const originChecked = input.origins.some((origin) => Boolean(origin.last_checked_at));
+  const originChecked = input.origins.some((origin) => {
+    const status = (origin.last_scan_status ?? "").toLowerCase();
+    // A timestamp alone also accompanies failed and inconclusive attempts. A found
+    // public map proves inspection, not safety; it still needs custody evidence below.
+    return origin.last_checked_at !== null && Number.isFinite(Date.parse(origin.last_checked_at)) &&
+      (status === "passed" || (status === "failed" && origin.last_public_map === true));
+  });
   const publicMapFound = input.origins.some((origin) => origin.last_public_map === true);
   const mapVerified = input.maps.some((map) => {
     const status = (map.lastStatus ?? "").toLowerCase();
-    return Boolean(map.lastCheckedAt) && !map.lastError && (status.includes("verified") || status.includes("match"));
+    // "unverified" and "mismatch" are not positive verification outcomes.
+    return map.lastCheckedAt !== null && Number.isFinite(Date.parse(map.lastCheckedAt)) &&
+      !map.lastError && (status === "passed" || status === "verified" || status === "match");
   });
   const productionCovered = originChecked && (!publicMapFound || mapVerified);
 
@@ -350,7 +372,7 @@ export function buildSetupViewModel(input: {
       label: "Crawl production and prove map custody",
       summary: productionCovered
         ? publicMapFound
-          ? "Production crawl and private map upload verified"
+          ? "Production crawl and private map upload recorded; public exposure still needs action"
           : "Production origin checked; no public map found"
         : input.origins.length
           ? publicMapFound
