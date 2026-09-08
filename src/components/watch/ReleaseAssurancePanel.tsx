@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {renderAssurancePanel} from '../../assurance/render';
 import {downloadPassport,readAssuranceView} from '../../assurance/client';
 import type {AssuranceView} from '../../assurance/types';
+import {ReleaseIntelligenceFromRecord} from './ReleaseIntelligencePanel';
 import './release-assurance.css';
 type Props={kind:'release'|'upload';recordId:number|string;evidenceId:string};
 export function ReleaseAssurancePanel(props:Props){return <ScopedPanel key={`${props.kind}:${props.recordId}`} {...props}/>;}
@@ -41,5 +42,6 @@ function ScopedPanel({kind,recordId,evidenceId}:Props){
   return <div className="release-assurance-slot">
     {!view?<section className="ns-assurance" aria-label="Release assurance companion" aria-busy={!error&&!pending}><h2>Release assurance</h2><p role={error?'alert':'status'}>{error||pending||'Reading this release’s saved evidence…'}</p>{error||pending?<button type="button" onClick={()=>setRetry(value=>value+1)}>Retry saved evidence</button>:null}<p className="ns-assurance__muted">The original findings and controls below remain available. No passing decision is inferred from missing data.</p></section>:null}
     <div ref={root}/>
+    {view?<ReleaseIntelligenceFromRecord record={{kind,id:String(recordId)}}/>:null}
   </div>;
 }
