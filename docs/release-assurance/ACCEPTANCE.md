@@ -1,49 +1,60 @@
 # Complete vision: implementation and acceptance map
 
-This table is a status ledger, not a feature-completeness claim. No row becomes production-proven because a helper exists or a native test passes.
+Latest continuation: 8 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact new contracts and verification boundaries. This table is a status ledger, not a feature-completeness or launch claim.
 
-| Discussed capability | Repository state after this increment | Remaining evidence or work |
+| Discussed capability | Current branch implementation | Remaining work or evidence |
 | --- | --- | --- |
-| Release as central object and canonical detail | Existing ledger/detail preserved; new companion mounted in both detail paths | Integrated visual and route acceptance; reconcile legacy headline |
-| Persistent release history | Existing records/retention reused | No perpetual-retention promise; no new history store |
-| Release comparison and unexpected files | New bounded, source/channel/format-compatible manifest comparison and UI | Real historical fixtures; stable stream identity for arbitrary uploads |
-| Customer-specific normal behaviour | Tested median/MAD helper only | Persist explicit baseline adoption, exclusion/revocation, drift history and alerts |
-| Deterministic readiness | New receipt-bound interpretation with ready/review/blocked/unknown | Advisory only; whole-app verdict cutover still open |
-| Policy engine and exceptions | Existing policy/exception engine reused | No newly persisted custom assurance policies |
-| Policy preview | New reversible stricter-findings preview, labelled unsaved | Not a full policy editor or auto-adoption flow |
-| Before/after separation | Implemented in the companion | Reconcile legacy headline and future CI enforcement contract |
-| Production verification | Existing saved delivery checks interpreted with binding/freshness | Runtime proof; no new verification worker |
-| Production multi-asset parity | Not built by this increment | Deployment/manifest binding, approved representations, multi-origin coverage and races |
-| Continuous Coverage | Existing product retained | Existing operational go-live gates; no new CDN schedule |
-| Release Passport | New private, redacted unsigned export tied to receipt identity | No independent signature/certification; reuse existing public-sharing approval |
-| Remediation to rescan | Existing controls preserved; new rule-based guidance points to them | Direct resolved-by/new-receipt linkage across every source and real end-to-end proof |
-| Investigation agent | Deterministic assistant and machine-readable read API built | No LLM investigation or root-cause attribution |
-| Model-generated remediation PR | Existing bounded remediation PR workflow retained | No new model provider; explicit review, permissions, budgets and tests required |
-| Agent evidence summaries | New rule-based structured summary | No new provider-backed text generation |
-| No automatic merges or disclosure | Preserved; new API has no write methods | Verify in full composition/integration tests |
-| Artifact Leads / Disclosure Desk separation | Untouched and remains internal | No new commercial CRM lifecycle implemented |
-| Commercial versus disclosure states | Separation documented in outreach and handoff | Any commercial-state expansion requires its own implementation |
-| Navigation and homepage | Approved baseline preserved | No wholesale navigation or brand redesign in this change |
-| Accessibility/behavioural UI | Single main action, native details, keyboard preview, honest states, private export | Native checks pass; real React/assistive-tech/user testing remains |
-| Long-term retention | Product/experiment plan documented | No empirical retention result or guarantee |
-| Agency portfolio | Not implemented here | Authorised multi-client model, delegated access, reporting and billing scope |
-| Enterprise SSO, SBOM, Sigstore | Remain on ice | Separate paying demand/owner approval and implementation |
-| Tests | 101 focused cases, 55 native browser checks; wrappers/scripts saved | Full locked Vitest, React, Hono/store, build/lint/CI and private deployment |
+| Release as central object and canonical detail | Existing ledger/detail retained; assurance and historical intelligence mounted in both hosted and uploaded details | Integrated visual/route acceptance and one-authority headline cutover |
+| Persistent release history | Existing signed records plus new compact FK-linked historical snapshots | Real adapter/retention/deletion integration and production PostgreSQL validation; no perpetual archive promise |
+| Stable release-stream identity | Implemented explicit workspace/name/key/artefact-role streams; source/channel/format bound from authorised evidence | Operator must select the correct product; no automatic filename grouping; no automatic bulk migration |
+| Release comparison and unexpected files | Existing comparison plus new bounded exact-path/finding history and approved-reference comparisons | Full actual historical dataset and browser acceptance; content-hashed paths can be legitimately novel |
+| Human-approved baselines | Implemented adopt/revoke events, revision checks, reasons, audit and current/as-of reference distinction | Production concurrency, real auth and retention/tombstone validation |
+| Customer-specific normal behaviour | Implemented median/MAD advisory analysis, minimum eligible samples, deduplication, exclusions/restoration and explicit comparison windows | Not an ML model; heuristics need customer calibration and load testing; no calibrated probability or security score |
+| Automatic history capture | Explicit UI/API capture and CI scan-and-record command implemented | An opt-in capture hook for every original GitHub/npm/website worker completion is NOT implemented |
+| Deterministic readiness | Original receipt-bound assurance interpretation retained | Advisory only; whole-app verdict cutover remains open |
+| Policy engine and exceptions | Existing policy/exception engine preserved; historical reference changes never rewrite them | No newly adopted enforcement policy in this continuation |
+| Policy preview | Existing reversible stricter-findings preview retained | Not a full policy editor or automatic adoption flow |
+| Before/after separation | Implemented in the original companion | Reconcile legacy headline and future enforcement contract |
+| Production verification | Existing saved delivery checks interpreted with binding/freshness | Runtime verification; no new delivery worker |
+| Production multi-asset parity | Not implemented here | Approved manifest/deployment identity, transformations, origin scope and race handling |
+| Continuous Coverage | Existing product retained | Existing operational launch gates and explicit stream linkage; no new CDN schedule |
+| Release Passport | Private redacted unsigned summary tied to original receipt; new private history metadata export | Not independent certification, not a new public proof authority |
+| Remediation to rescan | Existing controls and rule-based guidance retained | Durable original finding to reviewed PR/build/new receipt resolution linkage |
+| Investigation agent | Existing deterministic assistance and machine-readable assurance reads retained | No new LLM investigation or root-cause attribution |
+| Model-generated remediation PR | Existing bounded remediation workflow retained | Provider integration, cost limits, evaluations, authority separation and human approval |
+| Agent evidence summaries | Structured deterministic summaries retained | No new provider-backed generation or MCP server |
+| No automatic merges or disclosure | Preserved | Verify all new composition paths in full integration |
+| Artifact Leads / Disclosure Desk separation | Untouched and internal | No new commercial CRM lifecycle in this continuation |
+| Commercial versus disclosure states | Separation documented in outreach and handoff | Commercial-state expansion remains separate implementation |
+| Navigation and homepage | Approved baseline preserved; history appears within current release details | No wholesale redesign |
+| Accessible behavioural UI | Existing companion plus actual history selection, explicit reasons, reversible exclusions, private export, keyboard/reduced-motion styles | New real React/browser/accessibility review remains; not an empirically proven retention improvement |
+| Long-term retention | Useful compounding history and reference workflows implemented as product hypotheses | Measure real repeat-release use, investigation effort and retained subscribers |
+| Agency portfolio | Not implemented here | Delegation, multi-client visibility, privacy and commercial controls |
+| Enterprise SSO, SBOM, Sigstore | Remain on ice | Separate demand/approval and implementation |
+| Tests | New native/Vitest domain, request and CI cases; actual PGlite schema/service suite written | Final committed source needs full locked test/type/build/lint, real auth/HMAC/Hono, PostgreSQL and browser checks |
 
-## Next implementation sequence
+## Verification precedence
 
-RA-01: finish integrated verification and remove conflicting legacy readiness labels without changing policy semantics silently.
+The original companion's 101 native and 55 browser checks describe its historical checkpoint. They are NOT test counts for this continuation. The database suite uses actual new SQL and service logic but injected access/evidence ports. No green full-branch CI or complete runtime integration is asserted here.
 
-RA-02: introduce a stable release-stream identifier covering workspace, source, product, channel and artefact role. Migrate conservatively; unknown stays unlinked. Require authorised human linking of arbitrary upload streams.
+The new migration is `ra_002_release_intelligence`, applied after the existing schema chain. Do not run it against production merely to review the branch. Baseline and history operations now include writes; preserve CSRF, token capability and workspace authority checks.
 
-RA-03: baseline adoption must reference eligible immutable receipts, be tenant-scoped, record approver/reason/time/policy, and support revision/revocation. Exclude inconclusive/failed/exception-covered evidence by default. Do not train on findings merely suppressed to clear a screen.
+## Continuation sequence
 
-RA-04: build post-deploy asset parity for a deliberately bounded supported path. Store the approved manifest hash and deploy ID; report missing, extra, mismatched, unobserved and unsupported separately. Test CDN compression, transformed assets, cache propagation, redirects, ownership expiry and late deliveries.
+RA-01: run integrated verification and remove conflicting legacy readiness labels without silently changing policy semantics. In particular, attestation presence is not cryptographic identity verification.
 
-RA-05: version and adopt a new preflight enforcement contract, initially advisory. Test timeout and stale-receipt rejection, decision-to-digest binding, concurrency, audited override and rollback. Do not require post-deployment evidence for permission to deploy.
+RA-02: explicit stream identity and compact capture are implemented. Verify tenant/source boundaries and add opt-in worker completion capture only with stable, authorised stream identity and idempotent job semantics. Unknown identity stays unlinked.
 
-RA-06: add durable remediation linkage: original finding -> reviewed PR -> build -> new signed evidence -> verified resolution. Acknowledgement or exception must not masquerade as resolution.
+RA-03: versioned baseline adoption/revocation, exclusions and advisory analysis are implemented. Verify real auth/retention/concurrency behaviour, then calibrate thresholds with customer evidence. Repeated mistakes and accepted exceptions cannot silently define a known-good baseline.
 
-RA-07: only then add opt-in provider-backed assistance with tenant data boundaries, untrusted-content handling, read/write capability separation, cost ceilings, evaluators and auditable human approval. Never have a model mint a passing receipt.
+RA-04: implement bounded post-deploy asset parity with approved manifest hash and deployment ID. Missing, extra, mismatched, unobserved and unsupported states remain distinct. Test compressed/transformed assets, cache propagation, redirects, ownership expiry and delayed observations.
 
-RA-08: add opt-in outcome summaries and customer research instrumentation after privacy/retention decisions. Use real release events and scoped denominators, not hypothetical money saved or logins as a success proxy.
+RA-05: version and explicitly adopt a new preflight enforcement contract. Test timeout, stale receipt, digest binding, concurrent policy changes, audited override and rollback. Post-deployment evidence must not be required before permission to deploy.
+
+RA-06: durable remediation linkage from original finding to reviewed PR, build, new signed evidence and verified resolution. Acknowledgement or an accepted exception is not a fix.
+
+RA-07: opt-in provider-backed assistance, tenant data boundaries, untrusted-content treatment, read/write capability separation, cost ceilings, evaluations and human review. A model never mints a passing receipt.
+
+RA-08: opt-in outcome summaries and research instrumentation after privacy decisions. Use real release events and scoped denominators, not invented financial savings, forced logins or obstructed cancellation.
+
+Keep PR #44 draft and preserve the branch deployment guard until applicable review and operational approvals are complete.
