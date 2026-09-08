@@ -2,6 +2,16 @@
 
 Copy the prompt below into a later task.
 
+## Handoff update — 8 September 2026
+
+Owner clarification: substantial implementation already exists across **all B0–B8 sections**. An Open section means remaining requirements or acceptance evidence, not an untouched feature. Preserve completed implementation, identify concrete gaps, verify existing flows and close individual requirements. Do not rebuild all eight sections. Gate B continues in the local Codex task; separate website work must not modify these product flows.
+
+Start from the latest `codex/v20-homepage-auth-mock3` branch, not the older PR #41 branch. PR #41's changes have been integrated locally and this handoff is being published with the reviewed checkpoint. The working branch also includes the follow-up exact-source Coverage release-link correction. `backup89` is the preserved pre-integration checkpoint and must remain untouched.
+
+Read the newest entry in `GATE-B-COMPLETION-AUDIT.md` for final verification evidence. GitHub Actions currently reports an account payment/spending-limit failure before any job steps start; do not infer a code failure or alter assertions to compensate. Run verification in a real checkout with project dependencies. A standalone replacement test harness cannot establish full project acceptance.
+
+Create a fresh `codex/` branch from the current working branch and open a PR back to it. Complete the entire B0–B8 scope below, not another small evidence-fix slice. Maintain a bounded requirement checklist with code/API/browser evidence. Finish required missing workflows and state handling; do not restart completed screens or expand into deferred gates. If the execution environment lacks repository editing or test/browser capabilities, identify that limitation immediately instead of promising completion through prose alone. Return the branch, commit, changed requirements, actual verification results and precise outstanding blockers. Do not merge, deploy, force-push, alter `backup89`, or push to `main`.
+
 ```text
 Continue NoSpoilers in /Users/augustusedem/Nospoilers. Finish the entire agreed Gate B, not just the most recently edited feature. Inspect the current repository and running application before relying on earlier conversation summaries. Do not give an unsupported completion percentage or infer completion from a passing test count.
 

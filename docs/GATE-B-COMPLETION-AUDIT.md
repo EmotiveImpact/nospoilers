@@ -1,5 +1,19 @@
 # Gate B completion audit
 
+## Local integration and continuation — 8 September 2026
+
+Verification recovery: the subsequent full-run session 9422 and its wrapper became unavailable after conversation interruptions; its terminal result was not recovered and must not be called a pass. The earlier completed 862-test PR run below remains valid for that snapshot. The later Coverage correction has separate focused/build evidence. Owner clarified that all B0–B8 have substantial implementation: Open rows represent remaining gaps/acceptance, not instructions to rebuild completed sections.
+
+PR #41 (`a50ea7007efbc3660aace91131cf4ff4784fbecd`) was reviewed in a separate checkout and fast-forwarded into the local working branch after **862/862 tests across 185 files passed** (242.34 seconds), together with semantic typecheck and production build. `backup89` remains at `eb46118`. No remote merge or deployment was performed.
+
+The GitHub CI failure is now explained: check-run 102022502098 reports that the job did not start because recent account payments failed or the Actions spending limit needs increasing. This is an account-side blocker; local test success does not change that remote check result.
+
+Subsequent B3 correction: Coverage now selects release evidence by the scanner's exact typed source coordinate instead of partial name matching. Similar package/repository names and different source kinds cannot supply another source's latest-release link; website URLs preserve protocol/path distinctions; latest selection is timestamp-based and leaves history order intact. Eight focused tests across three files and the production build/typecheck pass. The 862-test result predates this correction and is not a full-suite result for the later source.
+
+Local review server restarted at `http://127.0.0.1:4347` with role `web` (background jobs disabled). Browser sign-in successfully reopened the existing personal workspace and real saved scan evidence. This verifies local login/Overview only, not connected Coverage lifecycle acceptance. Remaining work is still the B0–B8 ledger below; next is connected-source lifecycle parity and rendered Coverage/selected-release navigation.
+
+Owner's latest authorisation permits local integration and continued Gate B implementation; the review-branch-only publication boundary recorded below describes the earlier ChatGPT handoff, not a prohibition on this authorised local integration.
+
 ## Current checkpoint: 8 September 2026
 
 **Gate B remains incomplete. All B0-B8 acceptance rows remain open.** This checkpoint implements bounded B1/B3 evidence-presentation corrections, not the entire continuation prompt or launch acceptance.

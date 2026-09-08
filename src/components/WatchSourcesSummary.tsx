@@ -19,7 +19,7 @@ import {
   type WatchSetupViewModel,
   type WatchSourceViewModel,
 } from "@/watch/view-models.ts";
-import { releaseFamily } from "@/watch/release-brief.ts";
+import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X } from "lucide-react";
@@ -65,22 +65,7 @@ export function WatchSourcesSummary({
   const [adding, setAdding] = useState(false);
   const filteredSources = filterSourceViewModels(sources, filter, attention);
   const selectedSource = sources.find((source) => source.key === selectedSourceKey) ?? null;
-  const relatedRelease = selectedSource
-    ? releases.find((release) => {
-        const family = releaseFamily(release.coordinate).toLowerCase();
-        if (!family) return false;
-        const candidates = [
-          selectedSource.name,
-          selectedSource.coordinate,
-          selectedSource.kind === "website" ? selectedSource.coordinate.replace(/^https?:\/\//, "") : "",
-        ]
-          .filter(Boolean)
-          .map((value) => value.toLowerCase());
-        return candidates.some(
-          (candidate) => family === candidate || family.includes(candidate) || candidate.includes(family),
-        );
-      })
-    : null;
+  const relatedRelease = selectedSource ? latestSourceRelease(selectedSource, releases) : null;
 
   if (state.status === "loading") {
     return (

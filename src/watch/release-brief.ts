@@ -200,3 +200,23 @@ export function releaseFamily(coordinate: string): string {
   const at = withoutSuffix.lastIndexOf("@");
   return at > 0 ? withoutSuffix.slice(0, at) : withoutSuffix;
 }
+
+/** Match the scanner's typed source coordinate, never a substring of another source. */
+export function latestSourceRelease(
+  source: { kind: string; name: string },
+  releases: ReleaseRevision[],
+): ReleaseRevision | null {
+  const prefix = source.kind === "github" ? "github:" : source.kind === "npm" ? "npm:" : source.kind === "website" ? "web:" : null;
+  if (!prefix) return null;
+  const expected = `${prefix}${source.name}`;
+  const matches = releases.filter((release) => {
+    if (source.kind === "website") {
+      try {
+        if (!release.coordinate.startsWith(prefix)) return false;
+        return new URL(release.coordinate.slice(prefix.length)).href === new URL(source.name).href;
+      } catch { return false; }
+    }
+    return releaseFamily(release.coordinate).toLowerCase() === expected.toLowerCase();
+  });
+  return matches.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0) || b.id - a.id)[0] ?? null;
+}
