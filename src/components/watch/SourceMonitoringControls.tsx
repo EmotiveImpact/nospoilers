@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 type Row={id:number;kind:'npm'|'map';name:string;paused:boolean;canManage:boolean};
@@ -36,7 +37,7 @@ export function SourceMonitoringControls({installationId,refreshKey}:{installati
     <h2 className="text-lg font-semibold">Monitoring controls</h2>
     <p className="mt-2 text-sm text-mute">Pause checks without disconnecting or removing evidence. Resuming allows future checks; it does not mark saved results current.</p>
     {error?<div role="alert"><p className="mt-3 text-sm">{error}</p><Button variant="outline" onClick={()=>setRetry(n=>n+1)}>Refresh controls</Button></div>:null}
-    {!rows&&!error?<p role="status" className="mt-3 text-sm text-mute">Loading monitoring controls…</p>:null}
+    {!rows&&!error?<WatchSkeleton variant="list" className="mt-4" />:null}
     <ul className="mt-3 divide-y divide-white/10">{rows?.map(row=><li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div><p>{row.name}</p><p className="text-xs text-mute">{row.paused?'Paused':'Enabled'}{!row.canManage?' · Requires source management permission':''}</p></div>
       <Button variant="outline" disabled={!row.canManage||busy!==null} onClick={()=>void toggle(row)}>{busy===`${row.kind}-${row.id}`?'Saving…':row.paused?'Resume monitoring':'Pause monitoring'}</Button>

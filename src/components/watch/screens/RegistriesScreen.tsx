@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { ProtectionImportResult, ReleaseDiffView } from "@/watch/types";
@@ -239,7 +240,7 @@ export function RegistriesScreen() {
                     ) : null}
                   </div>
                 )}
-                {route.view === "sources" && !previewing && packages.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+                {route.view === "sources" && !previewing && packages.status === "loading" && <WatchSkeleton variant="list" className="mt-4" />}
                 {route.view === "sources" && !previewing && packages.status === "error" && (
                   <p className="mt-6 text-sm text-danger">{packages.message}</p>
                 )}

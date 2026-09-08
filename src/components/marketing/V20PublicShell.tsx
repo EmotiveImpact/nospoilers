@@ -8,16 +8,19 @@ export function V20PublicShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    void fetch("/api/me", { credentials: "include" })
+    const refresh = () => { void fetch("/api/me", { credentials: "include", cache: "no-store" })
       .then(async (response) => {
         const body = (await response.json()) as MarketingSession
         if (!cancelled && response.ok) setMe(body)
       })
-      .catch(() => {
-        if (!cancelled) setMe({ user: null, githubApp: false })
-      })
+      .catch(() => {}) }
+    refresh()
+    window.addEventListener('focus', refresh)
+    window.addEventListener('pageshow', refresh)
     return () => {
       cancelled = true
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('pageshow', refresh)
     }
   }, [])
 

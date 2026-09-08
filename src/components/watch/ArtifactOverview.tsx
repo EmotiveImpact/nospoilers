@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {WatchFirstProofOverview} from './WatchFirstProofOverview';
 import {Button} from '@/components/ui/button';
@@ -16,7 +17,7 @@ function OverviewScope({workspaceId,search,nowLabel}:{workspaceId:string;search:
  },[workspaceId,retry]);
  function go(view:string,status?:string,id?:string){const params=new URLSearchParams();params.set('workspace',workspaceId);if(status)params.set('uploadStatus',status);if(id){params.set('upload',id);params.set('uploadView','detail');}navigate(`/watch/${view}?${params}`);}
  if(error)return <section className="watch-empty" role="alert"><h1 className="watch-page-title">Overview unavailable</h1><p>{error} No other workspace’s evidence is shown.</p><Button onClick={()=>{setError('');setData(null);setRetry(value=>value+1);}}>Retry</Button></section>;
- if(!data)return <p role="status">Loading your workspace overview…</p>;
+ if(!data)return <WatchSkeleton variant="list" className="mt-4" />;
  const nextAction=overviewNextAction(data,workspaceId);
  const connectionLinks=data.connectedCoverage?.connections?.map(connection=><Button key={connection.installationId} variant="outline" onClick={()=>navigate(`/watch/sources?${new URLSearchParams({workspace:workspaceId,install:String(connection.installationId)})}`)}>Review {connection.name} coverage</Button>);
  const unavailableNotice=!!data.connectedCoverage?.unavailable?<p role="status">{data.connectedCoverage.unavailable} sources unavailable because their connection is suspended. Review connection access in Coverage.</p>:null;

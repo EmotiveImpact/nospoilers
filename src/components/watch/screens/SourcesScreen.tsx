@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { RemediationFileView, SetupStatusFacts } from "@/watch/types";
 import {DisconnectedRepositories} from '../DisconnectedRepositories';
@@ -88,7 +89,7 @@ export function SourcesScreen() {
                       invented incident.
                     </p>
                   ) : null}
-                  {!previewing && repos.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+                  {!previewing && repos.status === "loading" && <WatchSkeleton variant="list" className="mt-4" />}
                   {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
                   {deskRepos.length === 0 && (previewing || repos.status === "ready") && (
                     <p className="mt-6 text-sm leading-relaxed text-mute">

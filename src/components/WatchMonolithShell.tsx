@@ -1,4 +1,5 @@
 import { signOut } from "@/auth.ts";
+import './watch/trial-indicator.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -118,13 +119,13 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center rounded-[6px] text-[13px] leading-[1.2]",
+        "flex items-center rounded-[6px] border-0 text-[13px] leading-[1.2]",
         collapsed ? "justify-center px-1 py-[7px]" : "gap-2.5 px-[9px] py-[7px]",
-        active ? "bg-white/[0.07] text-snow" : "text-mute hover:bg-white/[0.04] hover:text-snow",
+        active ? "text-snow" : "text-mute hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className="size-[15px] shrink-0 opacity-75" aria-hidden />
+      <Icon className={cn("size-[15px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
       <span className={cn(collapsed ? "sr-only" : "flex min-w-0 flex-1 items-center")}>{children}</span>
     </a>
   );
@@ -210,7 +211,7 @@ export function WatchMonolithShell({
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
-        <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-end" : "justify-between")}>
+          <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
           <a
             href="/"
             onClick={(event) => go(event, "/")}
@@ -517,8 +518,8 @@ export function WatchMonolithShell({
           <span className="hidden flex-1 md:block" />
           <strong className="hidden shrink-0 text-sm text-snow lg:inline">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
           {coverage ? (
-            <span className={cn("hidden rounded-full border px-2 py-1 text-xs sm:inline", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
-              {coverage.label}
+            <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
+              <span className={coverage.status === "trial" ? "watch-trial-text" : undefined}>{coverage.label}</span>
             </span>
           ) : null}
           <Button

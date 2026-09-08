@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {WorkspaceExceptions} from './WorkspaceExceptions';
@@ -30,7 +31,7 @@ function ScopedPolicy({workspaceId}:{workspaceId:string}){
   }catch(error){if(alive.current)setError(error instanceof Error?error.message:'Scan policy could not be saved.');}finally{if(alive.current)setBusy(false);}
  }
  return <section className="watch-empty" aria-label="Workspace scan policy"><h1 className="watch-page-title">Independent scan policy</h1><p>Applies to independent artifact and website scans in this workspace. GitHub-connected scans keep their connection policy. Each scan keeps the policy captured when it starts; saved evidence is never rewritten.</p>
-  {!policy&&!error&&<p role="status">Loading scan policy…</p>}
+  {!policy&&!error&&<WatchSkeleton variant="list" className="mt-4" />}
   {error&&<div role="alert"><p>{error}</p><Button variant="outline" disabled={busy} onClick={()=>{setSaved(false);setRetry(value=>value+1);}}>Reload policy</Button></div>}
   {policy&&<>{!policy.supported?<p>Independent scan policy is unavailable for this workspace.</p>:<form onSubmit={event=>{event.preventDefault();void save();}}>
    <label className="flex items-center gap-3"><input type="checkbox" checked={strict} disabled={!policy.canEdit||busy||conflict} onChange={event=>{setStrict(event.target.checked);setSaved(false);}}/>Strict policy: any finding blocks a pass</label>

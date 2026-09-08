@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
@@ -35,7 +36,7 @@ function Recheck({alertId,installationId,workspaceId,canRespond,ended}:Props){
       {target.endpoint?<Button size="sm" disabled={!canRespond||ended||busy||!!message} onClick={()=>void run()}>{busy?'Starting scan…':target.label}</Button>:null}
       <a className="underline underline-offset-4" href={`/watch/sources?${params}`}>Open Coverage</a>
       {message?<a className="underline underline-offset-4" href={`/watch/releases?${params}`}>View releases</a>:null}
-    </div>{!canRespond?<p className="mt-2 text-xs text-dim">Viewer access is read-only.</p>:ended?<p className="mt-2 text-xs text-dim">Active coverage is required to run checks.</p>:null}</>:!error?<p role="status">Loading recheck options…</p>:null}
+    </div>{!canRespond?<p className="mt-2 text-xs text-dim">Viewer access is read-only.</p>:ended?<p className="mt-2 text-xs text-dim">Active coverage is required to run checks.</p>:null}</>:!error?<WatchSkeleton variant="list" className="mt-4" />:null}
     {error?<><p role="alert" className="mt-2">{error}</p>{!target?<Button size="sm" variant="outline" onClick={()=>{setError(null);setRetry(value=>value+1);}}>Retry recheck options</Button>:null}</>:null}
     {message?<p role="status" className="mt-2 text-mute">{message}</p>:null}
   </section>;

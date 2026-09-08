@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {WorkspaceDeletionRequest} from './WorkspaceDeletionRequest';
@@ -12,7 +13,7 @@ function EvidenceSettings({workspaceId,view}:{workspaceId:string;view:'retention
  function page(cursor:string){setData(null);setError('');setBefore(cursor);}
  return <section className="watch-empty" aria-label={view==='audit'?'Workspace audit log':'Workspace retention'}>
   <h1 className="watch-page-title">{view==='audit'?'Audit log':'Retention & history'}</h1>
-  {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setData(null);setRetry(value=>value+1);}}>Retry</Button>{before?<Button variant="outline" onClick={()=>page('')}>Newest activity</Button>:null}</div>:!data?<p role="status">Loading workspace settings…</p>:view==='retention'?<>
+  {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setData(null);setRetry(value=>value+1);}}>Retry</Button>{before?<Button variant="outline" onClick={()=>page('')}>Newest activity</Button>:null}</div>:!data?<WatchSkeleton variant="list" className="mt-4" />:view==='retention'?<>
    <p>Evidence belongs to {data.workspace.name}. Disconnecting a source stops monitoring but keeps history available to authorised members. Cancelling a subscription does not authorise deletion.</p>
    <dl className="grid gap-4 sm:grid-cols-2 my-6"><div><dt>Saved upload records</dt><dd>{data.retention.savedScans}</dd></div><div><dt>Uploads queued or running</dt><dd>{data.retention.activeScans}</dd></div></dl>
    <p>Staged upload files are removed after processing or expiry. Saved findings and receipts are separate from those temporary files.</p>

@@ -45,7 +45,9 @@ type ScanMode = "github" | "package" | "website" | "receipt"
 
 function scanModeFromSearch(search: string): ScanMode {
   const mode = new URLSearchParams(search).get("mode")
-  return mode === "github" || mode === "website" || mode === "receipt" ? mode : "package"
+  // GitHub is the primary scan entry: packages, websites and receipts remain
+  // explicit choices in the mode switcher.
+  return mode === "package" || mode === "website" || mode === "receipt" ? mode : "github"
 }
 
 const EXAMPLES = [

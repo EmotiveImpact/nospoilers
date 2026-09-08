@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { useRef, useState } from "react";
@@ -71,7 +72,7 @@ export function PolicyScreen() {
                 ) : signingPolicy.status === "error" ? (
                   <p className="mt-6 text-[13px] text-danger">{signingPolicy.message}</p>
                 ) : signingPolicy.status === "loading" ? (
-                  <p className="mt-6 text-[13px] text-dim">Loading…</p>
+                  <WatchSkeleton variant="list" className="mt-4" />
                 ) : (
                   <div className="mt-6 max-w-xl space-y-3">
                     <label className="flex items-center gap-2 text-sm text-snow">

@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
@@ -35,7 +36,7 @@ function DeletionForm({organizationId,workspaceId,workspaceName}:{organizationId
  }
  return <section className="watch-empty mt-6" aria-label="Data deletion"><h3>History and account closure</h3><p>Disconnecting GitHub stops monitoring; it does not delete saved evidence or cancel billing.</p><p>Deletion requires explicit authorisation from an organisation owner. Requests are saved for review only: no history is deleted, no account is closed and no subscription is cancelled by this form. Automated deletion is not available yet.</p>
   {requestId?<p role="status">Request {requestId} saved — pending review. Your history and account remain unchanged.</p>:null}
-  {loading?<p>Loading existing requests…</p>:null}
+  {loading?<WatchSkeleton variant="list" className="mt-4" />:null}
   {requests.length?<ul aria-label="Recorded requests">{requests.map(request=><li key={request.id}>{request.scope==='organization_closure'?'Organisation closure':'Workspace history'} · {request.id} · {request.status==='withdrawn'?'Withdrawn — nothing deleted':<>Pending review — nothing deleted <Button variant="outline" disabled={busy} onClick={()=>void withdraw(request.id)}>Withdraw request</Button></>}</li>)}</ul>:null}
   {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setRetry(value=>value+1);}}>Reload requests</Button></div>:null}
   <form onSubmit={event=>{event.preventDefault();void submit();}}>
