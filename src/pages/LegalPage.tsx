@@ -1,45 +1,23 @@
-import { LEGAL_NAV, LEGAL_PAGES, LEGAL_EFFECTIVE, type LegalSlug } from "@/legal.ts"
-import { navigate } from "@/nav.ts"
-import { type MouseEvent } from "react"
+import { LEGAL_NAV, LEGAL_PAGES, type LegalSlug } from '@/legal.ts';
+import { PUBLIC_LINKS } from '@/website/page-paths.ts';
+import '@/website/website.css';
 
-function go(event: MouseEvent<HTMLAnchorElement>, href: string) {
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
-  event.preventDefault()
-  navigate(href)
-}
-
+/** Existing public policy material remains a review draft; no legal terms are enacted here. */
 export function LegalPage({ slug }: { slug: LegalSlug }) {
-  const page = LEGAL_PAGES[slug]
-
-  return (
-    <main className="fade-up mx-auto max-w-3xl px-5 py-16 md:py-24">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">{page.kicker}</p>
-      <h1 className="mt-4 font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-        {page.title}
-      </h1>
-      <p className="mt-4 text-sm text-dim">Effective {LEGAL_EFFECTIVE}.</p>
-      <nav className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm" aria-label="Legal">
-        {LEGAL_NAV.map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            onClick={(event) => go(event, item.href)}
-            className={item.slug === slug ? "text-snow" : "text-mute hover:text-snow"}
-          >
-            {item.label}
-          </a>
-        ))}
-      </nav>
-      {page.sections.map((section) => (
-        <section key={section.heading} className="mt-12">
-          <h2 className="font-display text-xl tracking-tight text-snow">{section.heading}</h2>
-          {section.paragraphs.map((paragraph) => (
-            <p key={paragraph} className="mt-3 text-sm leading-relaxed text-mute">
-              {paragraph}
-            </p>
-          ))}
-        </section>
-      ))}
+  const page = LEGAL_PAGES[slug];
+  return <div className="nsw">
+    <a className="nsw-skip" href="#nsw-main">Skip to policy information</a>
+    <nav className="nsw-public-nav" aria-label="Explore NoSpoilers">{PUBLIC_LINKS.map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav>
+    <main id="nsw-main" className="nsw-public-main">
+      <header className="nsw-public-hero"><p className="nsw-eyebrow">Policy material · Review draft</p><h1 className="nsw-title">{page.title}</h1><p className="nsw-lede">This material has not been confirmed as approved terms for the completed service.</p></header>
+      <div className="nsw-prose">
+        <aside className="nsw-note nsw-warning" aria-label="Legal review required"><strong>Draft for review, not an approved commitment</strong><p>The retained text below may contain historical descriptions that no longer match implementation. It must receive product, operational and appropriate legal review before publication as effective policy. No effective date, certification, service guarantee or universal deletion commitment is established by this page.</p></aside>
+        <p>For the current implementation boundaries, read <a href="/security">Security and trust</a>, <a href="/docs/retention-and-deletion">retention and deletion requests</a> and <a href="/pricing">the pricing explanation</a>. Contact details are on <a href="/support">Support</a>.</p>
+        <nav className="nsw-public-nav" aria-label="Policy documents">{LEGAL_NAV.map(item => <a key={item.href} href={item.href} aria-current={item.slug === slug ? 'page' : undefined}>{item.label}</a>)}</nav>
+        <details className="nsw-legal-draft"><summary>Read the retained draft for review</summary>
+          {page.sections.map((section, index) => <section className="nsw-section" key={section.heading} aria-labelledby={`draft-section-${index}`}><h2 id={`draft-section-${index}`}>{section.heading}</h2>{section.paragraphs.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{paragraph}</p>)}</section>)}
+        </details>
+      </div>
     </main>
-  )
+  </div>;
 }

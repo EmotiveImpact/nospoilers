@@ -1,3 +1,6 @@
+import { V20PublicShell } from "@/components/marketing/V20PublicShell.tsx"
+import { WebsitePage } from "@/pages/WebsitePage.tsx"
+import { isWebsitePath } from "@/website/page-paths.ts"
 import { SiteChrome } from "@/components/SiteChrome.tsx"
 import { legalSlugFromPath } from "@/legal.ts"
 import { LandingPage } from "@/pages/LandingPage.tsx"
@@ -70,13 +73,16 @@ export default function App() {
                       ? path.replace(/\/$/, "") || "/advisory"
                       : "/internal/prospects"
 
+  // Supporting public routes are isolated from authenticated application routing.
+  if (isWebsitePath(path)) return <V20PublicShell><WebsitePage path={path} /></V20PublicShell>
+
   return (
     <SiteChrome path={chromePath} search={search}>
       {page === "home" && <LandingPage />}
       {page === "watch" && <WatchPage path={path} search={search} />}
       {page === "scan" && <ScanPage search={search} />}
       {page === "pricing" && <PricingPage />}
-      {page === "docs" && <DocsPage />}
+      {page === "docs" && <DocsPage path={path} />}
       {page === "mockups" && <MockupsPage />}
       {page === "prospects" && <ProspectsPage />}
       {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}

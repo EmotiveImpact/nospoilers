@@ -1,0 +1,242 @@
+/* Public website only. No unscoped element, root, body or /watch overrides. */
+.nsw {
+  --nsw-bg: #0b0c0f; --nsw-surface: #111318; --nsw-line: #272a32;
+  --nsw-text: #f2f3f5; --nsw-muted: #b0b4bf; --nsw-subtle: #959ca9; --nsw-accent: #ff6b83;
+  color: var(--nsw-text); background: radial-gradient(ellipse 650px 420px at 63% 0%, #20232b55, transparent), var(--nsw-bg);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px; line-height: 1.75; min-width: 0; text-align: left;
+}
+.nsw *, .nsw *::before, .nsw *::after { box-sizing: border-box; }
+.nsw [hidden] { display: none !important; }
+.nsw a { color: inherit; text-decoration: none; }
+.nsw button, .nsw input, .nsw select { font: inherit; }
+.nsw button { cursor: pointer; color: inherit; }
+.nsw button:disabled { cursor: not-allowed; opacity: .6; }
+.nsw a:focus-visible, .nsw button:focus-visible, .nsw summary:focus-visible, .nsw input:focus-visible,
+.nsw [tabindex="0"]:focus-visible { outline: 2px solid var(--nsw-accent); outline-offset: 4px; }
+.nsw h1:focus, .nsw h2:focus, .nsw main:focus { outline: none; }
+.nsw h1, .nsw h2, .nsw h3, .nsw p, .nsw figure, .nsw ul, .nsw ol { margin: 0; }
+.nsw svg { width: 18px; height: 18px; flex-shrink: 0; vertical-align: middle; }
+.nsw .nsw-title { font-size: clamp(30px, 3.1vw, 44px); font-weight: 550; letter-spacing: -1.6px; line-height: 1.15; max-width: 760px; }
+.nsw .nsw-lede { font-size: 16px; line-height: 1.75; color: var(--nsw-muted); margin-top: 21px; max-width: 640px; }
+.nsw .nsw-eyebrow { font: 11px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: 1.65px; color: var(--nsw-subtle); margin-bottom: 17px; }
+.nsw .nsw-eyebrow::before { content: ''; display: inline-block; background: #ff2d47; width: 5px; height: 5px; border-radius: 50%; margin: 0 9px 2px 0; }
+.nsw .nsw-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.nsw .nsw-skip { position: fixed; z-index: 1000; left: 16px; top: 12px; transform: translateY(-180%); background: var(--nsw-text); color: #111; padding: 10px 18px; border-radius: 6px; }
+.nsw .nsw-skip:focus { transform: none; }
+.nsw .nsw-public-nav { max-width: 1328px; margin: 0 auto; display: flex; gap: 26px; padding: 17px 32px; border-bottom: 1px solid var(--nsw-line); overflow-x: auto; font-size: 12px; color: var(--nsw-muted); }
+.nsw .nsw-public-nav a { white-space: nowrap; padding: 4px 0; }
+.nsw .nsw-public-nav a:hover, .nsw .nsw-public-nav a[aria-current] { color: var(--nsw-text); }
+.nsw .nsw-public-nav a[aria-current] { box-shadow: 0 1px var(--nsw-accent); }
+.nsw .nsw-docs-top { max-width: 1328px; margin: auto; padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.nsw .nsw-docs-brand { font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 11px; }
+.nsw .nsw-docs-brand svg { color: var(--nsw-subtle); }
+.nsw .nsw-docs-tools { display: flex; align-items: center; gap: 12px; }
+.nsw .nsw-search-open { display: flex; align-items: center; gap: 10px; border: 1px solid #353943; background: #16181e; border-radius: 7px; padding: 9px 11px; color: var(--nsw-muted); font-size: 12px; min-height: 40px; }
+.nsw .nsw-search-open:hover { background: #1e2129; color: var(--nsw-text); }
+.nsw kbd { font: 10px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; border: 1px solid #393d47; border-radius: 4px; padding: 2px 5px; color: var(--nsw-subtle); white-space: nowrap; }
+.nsw .nsw-icon-button { display: inline-flex; align-items: center; justify-content: center; background: #181b21; border: 1px solid #363a44; border-radius: 6px; width: 40px; height: 40px; }
+.nsw .nsw-icon-button:hover { background: #262a33; }
+.nsw .nsw-mobile-toggle { display: none; }
+.nsw .nsw-docs-layout { display: grid; grid-template-columns: 212px minmax(0, 1fr) 156px; align-items: start; gap: 50px; max-width: 1328px; margin: auto; padding: 24px 32px 88px; }
+.nsw .nsw-docs-layout.nsw-no-toc { grid-template-columns: 212px minmax(0, 1fr); gap: 66px; }
+.nsw .nsw-docs-sidebar { position: sticky; top: 105px; max-height: calc(100svh - 125px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #343944 transparent; padding: 2px 12px 18px 0; }
+.nsw .nsw-nav-home { display: block; font-size: 12px; padding: 7px 10px; margin-bottom: 21px; color: var(--nsw-muted); }
+.nsw .nsw-nav-group { margin-bottom: 24px; }
+.nsw .nsw-nav-group h2, .nsw .nsw-nav-label { font-size: 11px; font-weight: 600; color: var(--nsw-subtle); line-height: 1.6; padding: 0 10px; margin: 0 0 7px; }
+.nsw .nsw-nav-group ul { list-style: none; padding: 0; }
+.nsw .nsw-nav-group a { display: block; padding: 7px 10px; font-size: 12px; line-height: 1.5; color: var(--nsw-muted); border-radius: 5px; margin-bottom: 2px; }
+.nsw .nsw-nav-group a:hover, .nsw .nsw-nav-home:hover { background: #1a1d24; color: var(--nsw-text); }
+.nsw .nsw-nav-group a[aria-current="page"], .nsw .nsw-nav-home[aria-current="page"] { color: var(--nsw-text); background: #24202a; box-shadow: inset 2px 0 0 #ff4964; border-radius: 5px; }
+.nsw .nsw-sidebar-help { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--nsw-muted); padding: 12px 10px; border-top: 1px solid var(--nsw-line); }
+.nsw .nsw-docs-main { min-width: 0; max-width: 720px; width: 100%; margin: 0 auto; }
+.nsw .nsw-docs-home { max-width: 920px; }
+.nsw .nsw-article-header { padding: 9px 0 32px; }
+.nsw .nsw-breadcrumbs { display: flex; flex-wrap: wrap; gap: 9px; font-size: 11px; color: var(--nsw-subtle); margin: 3px 0 21px; }
+.nsw .nsw-breadcrumbs a:hover { color: var(--nsw-text); }
+.nsw .nsw-prose p { color: var(--nsw-muted); margin: 17px 0; overflow-wrap: anywhere; }
+.nsw .nsw-prose .nsw-lede { margin-top: 21px; }
+.nsw .nsw-prose p a, .nsw .nsw-prose li a, .nsw .nsw-note a { color: var(--nsw-text); text-decoration: underline; text-decoration-color: #606775; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.nsw .nsw-prose p a:hover, .nsw .nsw-prose li a:hover, .nsw .nsw-note a:hover { text-decoration-color: var(--nsw-accent); }
+.nsw .nsw-section { padding: 28px 0 18px; border-top: 1px solid var(--nsw-line); }
+.nsw .nsw-section h2 { scroll-margin-top: 114px; font-size: 21px; font-weight: 550; line-height: 1.4; letter-spacing: -.55px; margin: 0 0 19px; }
+.nsw .nsw-heading-link { display: inline; }
+.nsw .nsw-heading-link span { font: 15px/1.4 ui-monospace, monospace; padding-left: 10px; opacity: 0; color: var(--nsw-subtle); }
+.nsw .nsw-heading-link:hover span, .nsw .nsw-heading-link:focus-visible span { opacity: 1; }
+.nsw .nsw-prose ul, .nsw .nsw-prose ol { padding-left: 22px; margin: 18px 0 25px; color: var(--nsw-muted); }
+.nsw .nsw-prose li { padding-left: 6px; margin: 11px 0; overflow-wrap: anywhere; }
+.nsw .nsw-prose li::marker { color: var(--nsw-subtle); font-variant-numeric: tabular-nums; }
+.nsw .nsw-prose code { font: 12px/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; padding: 2px 5px; border-radius: 4px; background: #20232b; color: #e3e7ee; overflow-wrap: anywhere; }
+.nsw .nsw-note { margin: 25px 0; border: 1px solid #343a47; border-radius: 7px; padding: 16px 19px; background: #171b2380; }
+.nsw .nsw-note strong { display: block; font-size: 12px; line-height: 1.6; font-weight: 600; color: #e2e6ee; }
+.nsw .nsw-note p { font-size: 13px; line-height: 1.75; margin: 7px 0 0; color: var(--nsw-muted); }
+.nsw .nsw-warning { background: #21171c88; border-color: #54313d; }
+.nsw .nsw-warning strong { color: #ffbac7; }
+.nsw .nsw-table-scroll { max-width: 100%; overflow-x: auto; margin: 24px 0; border: 1px solid var(--nsw-line); border-radius: 7px; }
+.nsw table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 450px; text-align: left; }
+.nsw th, .nsw td { padding: 14px 16px; vertical-align: top; line-height: 1.7; border-bottom: 1px solid var(--nsw-line); }
+.nsw thead th { background: #171a20; color: var(--nsw-subtle); font-weight: 500; }
+.nsw tbody th { min-width: 140px; font-weight: 500; color: #e4e7ed; }
+.nsw td { color: var(--nsw-muted); }
+.nsw tr:last-child td, .nsw tr:last-child th { border-bottom: 0; }
+.nsw .nsw-code { margin: 25px 0; border: 1px solid #343944; border-radius: 7px; background: #101218; overflow: hidden; }
+.nsw .nsw-code figcaption { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 10px 9px 17px; background: #181b23; border-bottom: 1px solid #2c313d; font-size: 11px; color: var(--nsw-muted); }
+.nsw .nsw-code button { display: flex; align-items: center; gap: 6px; border: 1px solid #424857; border-radius: 5px; padding: 6px 9px; background: #242936; font-size: 11px; min-height: 34px; }
+.nsw .nsw-code button:hover { background: #343b4b; }
+.nsw .nsw-code button svg { width: 13px; height: 13px; }
+.nsw .nsw-code pre { margin: 0; padding: 19px; overflow-x: auto; max-width: 100%; font-size: 12px; }
+.nsw .nsw-code pre code { padding: 0; background: none; color: #e8ecf4; font-size: 12px; line-height: 1.9; white-space: pre; overflow-wrap: normal; }
+.nsw .nsw-code-comment { color: #989faf; }
+.nsw .nsw-code-key { color: #f1b9c7; }
+.nsw .nsw-code .nsw-copy-status { margin: 0; font-size: 11px; padding: 0 17px; }
+.nsw .nsw-code .nsw-copy-status:not(:empty) { padding-bottom: 12px; }
+.nsw .nsw-toc { position: sticky; top: 110px; font-size: 11px; padding-top: 4px; }
+.nsw .nsw-toc .nsw-nav-label { padding: 0; margin-bottom: 14px; }
+.nsw .nsw-toc ol, .nsw .nsw-mobile-toc ol { list-style: none; padding: 0; margin: 0; }
+.nsw .nsw-toc a { display: block; color: var(--nsw-subtle); padding: 5px 0 5px 12px; border-left: 1px solid var(--nsw-line); line-height: 1.7; }
+.nsw [data-nsw-toc]:hover { color: var(--nsw-text); }
+.nsw [data-nsw-toc][aria-current] { color: var(--nsw-text); border-color: var(--nsw-accent); }
+.nsw .nsw-mobile-toc { display: none; margin: 0 0 30px; border: 1px solid var(--nsw-line); border-radius: 6px; padding: 13px 16px; font-size: 13px; }
+.nsw .nsw-mobile-toc summary { cursor: pointer; color: var(--nsw-muted); }
+.nsw .nsw-mobile-toc nav { padding: 16px 0 5px; }
+.nsw .nsw-mobile-toc .nsw-nav-label { display: none; }
+.nsw .nsw-mobile-toc li { padding: 0; margin: 4px 0; }
+.nsw .nsw-mobile-toc a { display: inline-block; padding: 5px 0; }
+.nsw .nsw-article-pagination { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 46px 0 0; padding: 24px 0; border-top: 1px solid var(--nsw-line); }
+.nsw .nsw-article-pagination a { position: relative; padding: 12px 28px 12px 0; }
+.nsw .nsw-article-pagination small { display: block; color: var(--nsw-subtle); font-size: 10px; margin-bottom: 4px; }
+.nsw .nsw-article-pagination strong { font-size: 13px; font-weight: 500; }
+.nsw .nsw-article-pagination svg { position: absolute; right: 0; top: 25px; width: 16px; }
+.nsw .nsw-help-row { border-top: 1px solid var(--nsw-line); display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 20px 0 0; padding: 25px 0; font-size: 12px; color: var(--nsw-subtle); }
+.nsw .nsw-help-row a { color: var(--nsw-text); white-space: nowrap; }
+.nsw .nsw-help-row svg { width: 14px; margin-left: 6px; }
+.nsw .nsw-quick-start { padding: 20px 0 28px; }
+.nsw .nsw-quick-start h2 { font-size: 14px; font-weight: 550; margin: 0 0 19px; }
+.nsw .nsw-quick-link { display: flex; align-items: center; gap: 21px; padding: 22px 0; border-top: 1px solid var(--nsw-line); }
+.nsw .nsw-quick-link:hover strong { color: var(--nsw-accent); }
+.nsw .nsw-quick-link > span:nth-child(2) { flex: 1; }
+.nsw .nsw-quick-number { color: var(--nsw-subtle); background: #1c1e25; border: 1px solid #353842; border-radius: 7px; width: 37px; height: 37px; display: grid; place-items: center; font: 11px ui-monospace, monospace; flex-shrink: 0; }
+.nsw .nsw-quick-link strong { display: block; font-size: 14px; font-weight: 550; }
+.nsw .nsw-quick-link small { display: block; color: var(--nsw-subtle); font-size: 12px; line-height: 1.6; margin-top: 4px; }
+.nsw .nsw-quick-link > svg { width: 16px; color: var(--nsw-subtle); }
+.nsw .nsw-topic-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 38px 45px; margin: 20px 0 45px; }
+.nsw .nsw-topic-groups section { border-top: 1px solid var(--nsw-line); padding-top: 24px; }
+.nsw .nsw-topic-groups .nsw-eyebrow { margin: 0 0 8px; }
+.nsw .nsw-topic-groups .nsw-eyebrow::before { display: none; }
+.nsw .nsw-topic-groups h2 { font-size: 17px; font-weight: 550; letter-spacing: -.35px; }
+.nsw .nsw-topic-groups p:not(.nsw-eyebrow) { margin: 9px 0 16px; color: var(--nsw-subtle); font-size: 12px; }
+.nsw .nsw-topic-groups ul { list-style: none; padding: 0; }
+.nsw .nsw-topic-groups a { display: flex; align-items: center; justify-content: space-between; gap: 13px; font-size: 12px; line-height: 1.7; padding: 9px 0; }
+.nsw .nsw-topic-groups a:hover { color: var(--nsw-accent); }
+.nsw .nsw-topic-groups svg { width: 13px; color: var(--nsw-subtle); }
+.nsw dialog { color: var(--nsw-text); background: #13161c; border: 1px solid #424854; box-shadow: 0 25px 100px #0009; padding: 0; border-radius: 12px; max-height: calc(100svh - 48px); }
+.nsw dialog::backdrop { background: #050609bf; backdrop-filter: blur(5px); }
+.nsw .nsw-search-dialog { width: min(650px, calc(100% - 32px)); margin: 10svh auto auto; }
+.nsw .nsw-dialog-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #2e3440; }
+.nsw .nsw-dialog-top h2 { font-size: 14px; font-weight: 550; }
+.nsw .nsw-search-field { margin: 19px 20px 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #444b5b; border-radius: 7px; background: #0d1016; padding: 8px 10px; }
+.nsw .nsw-search-field input { background: transparent; border: 0; color: var(--nsw-text); min-width: 0; width: 100%; padding: 5px 0; font-size: 14px; }
+.nsw .nsw-search-field input::placeholder { color: #9ca3b2; }
+.nsw .nsw-search-field button { background: #252b36; border: 0; border-radius: 4px; padding: 6px 8px; font-size: 11px; }
+.nsw .nsw-search-help, .nsw .nsw-result-count { font-size: 11px; color: var(--nsw-subtle); padding: 0 20px; margin: 10px 0; }
+.nsw .nsw-result-count { color: #e0e4ec; }
+.nsw .nsw-search-results { max-height: 47svh; overflow-y: auto; padding: 0 12px 14px; }
+.nsw .nsw-search-result { display: block; padding: 13px; border-radius: 6px; border-bottom: 1px solid #2b303b; }
+.nsw .nsw-search-result:hover, .nsw .nsw-search-result:focus { background: #242a36; }
+.nsw .nsw-search-result small { font-size: 10px; color: var(--nsw-subtle); display: block; }
+.nsw .nsw-search-result strong { display: block; font-size: 14px; font-weight: 550; margin: 2px 0; }
+.nsw .nsw-search-result span { font-size: 11px; color: #efb3c1; }
+.nsw .nsw-search-result p { font-size: 12px; line-height: 1.65; color: var(--nsw-muted); margin-top: 6px; overflow-wrap: anywhere; }
+.nsw .nsw-search-empty { font-size: 13px; line-height: 1.7; color: var(--nsw-muted); padding: 20px 8px; overflow-wrap: anywhere; }
+.nsw .nsw-dialog-foot { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #2c3340; font-size: 10px; color: var(--nsw-subtle); }
+.nsw .nsw-nav-dialog { width: min(420px, calc(100% - 32px)); }
+.nsw .nsw-nav-dialog > nav { padding: 20px; max-height: calc(100svh - 150px); overflow: auto; }
+.nsw .nsw-public-main { max-width: 1120px; padding: 0 32px 60px; margin: auto; }
+.nsw .nsw-public-hero { padding: 70px 0 62px; }
+.nsw .nsw-public-hero .nsw-title { max-width: 740px; }
+.nsw .nsw-public-hero .nsw-lede { max-width: 650px; }
+.nsw .nsw-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 29px; }
+.nsw .nsw-button { display: inline-flex; align-items: center; justify-content: center; gap: 13px; border: 1px solid #444a55; border-radius: 6px; padding: 11px 16px; font-size: 12px; font-weight: 550; line-height: 1.6; background: #212630; min-height: 44px; }
+.nsw .nsw-button:hover { background: #303642; }
+.nsw .nsw-primary { background: #cb1938; border-color: #e63150; color: #fff; }
+.nsw .nsw-primary:hover { background: #b61531; }
+.nsw .nsw-text-link { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; color: var(--nsw-muted); }
+.nsw .nsw-public-body { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 66px; }
+.nsw .nsw-public-toc { position: sticky; top: 112px; align-self: start; padding-top: 28px; border-top: 1px solid var(--nsw-line); }
+.nsw .nsw-public-toc .nsw-nav-label { padding: 0; margin-bottom: 17px; }
+.nsw .nsw-public-toc > a:not(.nsw-sidebar-help) { display: block; padding: 7px 0 7px 12px; border-left: 1px solid var(--nsw-line); font-size: 12px; color: var(--nsw-muted); }
+.nsw .nsw-public-toc .nsw-sidebar-help { margin-top: 28px; padding: 17px 0; }
+.nsw .nsw-price-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 28px; margin: 10px 0 45px; }
+.nsw .nsw-price-plan { border: 1px solid #343841; border-radius: 8px; padding: 28px; background: linear-gradient(130deg,#1d202888,#101216); }
+.nsw .nsw-price-plan h2 { font-size: 18px; font-weight: 550; }
+.nsw .nsw-price { font-size: 36px; line-height: 1.3; font-weight: 500; letter-spacing: -1px; margin: 20px 0 6px; }
+.nsw .nsw-price small { font-size: 13px; color: var(--nsw-subtle); letter-spacing: 0; }
+.nsw .nsw-price-plan > p { font-size: 13px; color: var(--nsw-muted); }
+.nsw .nsw-price-plan ul { margin: 24px 0; padding-left: 17px; font-size: 13px; color: var(--nsw-muted); }
+.nsw .nsw-price-plan li { margin: 9px 0; }
+.nsw .nsw-price-plan .nsw-actions { gap: 12px; }
+.nsw .nsw-field { display: block; max-width: 440px; font-size: 12px; color: var(--nsw-muted); margin: 18px 0; }
+.nsw .nsw-field select { display: block; width: 100%; color: var(--nsw-text); background: #181c24; border: 1px solid #444b59; border-radius: 6px; padding: 11px; margin-top: 8px; }
+.nsw .nsw-review-capture { aspect-ratio: 16/10; display: flex; flex-direction: column; justify-content: center; margin: 28px 0; padding: 22px; border: 1px dashed #b0687a; border-radius: 8px; background: #231a2288; font-size: 12px; overflow-wrap: anywhere; }
+.nsw .nsw-review-capture strong { color: #ffbac7; }
+.nsw .nsw-review-capture p { margin: 8px 0; font-size: 12px; }
+@media (max-width: 1150px) {
+  .nsw .nsw-docs-layout, .nsw .nsw-docs-layout.nsw-no-toc { grid-template-columns: 195px minmax(0,1fr); gap: 40px; }
+  .nsw .nsw-toc { display: none; }
+  .nsw .nsw-mobile-toc { display: block; }
+  .nsw .nsw-public-body { grid-template-columns: 180px minmax(0,1fr); gap: 35px; }
+}
+@media (max-width: 850px) {
+  .nsw .nsw-docs-layout, .nsw .nsw-docs-layout.nsw-no-toc { display: block; padding: 24px 28px 60px; }
+  .nsw .nsw-docs-sidebar { display: none; }
+  .nsw .nsw-mobile-toggle { display: inline-flex; }
+  .nsw .nsw-docs-top { padding: 19px 28px; }
+  .nsw .nsw-public-nav { padding-left: 28px; padding-right: 28px; gap: 24px; }
+  .nsw .nsw-public-body { display: block; }
+  .nsw .nsw-public-toc { display: none; }
+  .nsw .nsw-public-main { padding-left: 28px; padding-right: 28px; }
+  .nsw .nsw-public-hero { padding: 52px 0 46px; }
+  .nsw .nsw-prose { max-width: 720px; margin: auto; }
+}
+@media (max-width: 520px) {
+  .nsw { font-size: 14px; }
+  .nsw .nsw-title { font-size: 32px; letter-spacing: -1.15px; }
+  .nsw .nsw-lede { font-size: 15px; }
+  .nsw .nsw-docs-layout, .nsw .nsw-docs-layout.nsw-no-toc { padding: 19px 20px 42px; }
+  .nsw .nsw-docs-top { padding: 18px 20px; gap: 10px; }
+  .nsw .nsw-docs-brand { font-size: 12px; gap: 7px; }
+  .nsw .nsw-docs-brand svg { width: 16px; }
+  .nsw .nsw-docs-tools { gap: 8px; }
+  .nsw .nsw-search-open { gap: 7px; font-size: 11px; padding: 9px; }
+  .nsw .nsw-search-open kbd { display: none; }
+  .nsw .nsw-public-nav { padding: 13px 20px; gap: 23px; font-size: 11px; }
+  .nsw .nsw-article-header { padding-top: 10px; padding-bottom: 26px; }
+  .nsw .nsw-desktop-break { display: none; }
+  .nsw .nsw-topic-groups { grid-template-columns: 1fr; gap: 30px; }
+  .nsw .nsw-quick-link { gap: 14px; }
+  .nsw .nsw-quick-link small { font-size: 11px; }
+  .nsw .nsw-help-row { flex-wrap: wrap; gap: 9px; }
+  .nsw .nsw-article-pagination { gap: 17px; }
+  .nsw .nsw-article-pagination strong { font-size: 12px; }
+  .nsw .nsw-section h2 { font-size: 20px; }
+  .nsw .nsw-search-dialog { margin-top: 24px; }
+  .nsw .nsw-search-results { max-height: 52svh; }
+  .nsw .nsw-public-main { padding: 0 20px 36px; }
+  .nsw .nsw-public-hero { padding: 45px 0 38px; }
+  .nsw .nsw-actions { gap: 18px; }
+  .nsw .nsw-price-grid { grid-template-columns: 1fr; gap: 20px; }
+  .nsw .nsw-price-plan { padding: 23px; }
+  .nsw .nsw-review-capture { aspect-ratio: auto; min-height: 260px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nsw *, .nsw *::before, .nsw *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+@media print {
+  .nsw .nsw-docs-sidebar, .nsw .nsw-toc, .nsw .nsw-public-nav, .nsw .nsw-docs-top,
+  .nsw .nsw-article-pagination, .nsw .nsw-mobile-toc, .nsw dialog, .nsw .nsw-review-capture { display: none; }
+  .nsw { background: #fff; color: #111; }
+  .nsw .nsw-docs-layout { display: block; }
+  .nsw .nsw-prose p, .nsw .nsw-prose li { color: #222; }
+}
+.nsw .nsw-legal-draft { margin: 28px 0; }
+.nsw .nsw-legal-draft > summary { cursor: pointer; padding: 17px 0; color: var(--nsw-muted); font-size: 13px; }

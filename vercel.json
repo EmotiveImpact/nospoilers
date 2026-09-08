@@ -3,6 +3,11 @@
   "framework": "vite",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "codex/website-docs-completion": false
+    }
+  },
   "functions": {
     "api/index.mjs": {
       "includeFiles": "{.vercel-runtime/**,src/server/schema.sql}",
