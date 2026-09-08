@@ -1,0 +1,45 @@
+.watch-trial-indicator {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f1f1f3;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 500;
+  transition: background-color .2s ease, border-color .2s ease;
+}
+.watch-trial-indicator:hover {
+  border-color: rgba(255, 45, 71, .32);
+  background-color: rgba(255, 45, 71, .09);
+}
+.watch-trial-text {
+  color: transparent;
+  background-image: linear-gradient(105deg, #f1f1f3 40%, #ff4665 48%, #ffd2db 50%, #ff4665 52%, #f1f1f3 60%);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: watch-trial-glimmer 5s ease-in-out infinite;
+}
+@keyframes watch-trial-glimmer {
+  0%, 65% { background-position: 100% 0; }
+  95%, 100% { background-position: 0% 0; }
+}
+/* Removing is-pulsing restores the saved sweeping glimmer alternative. */
+.watch-trial-indicator { --trial-pulse-period: 20s; }
+.watch-trial-indicator[data-days-left="4"] { --trial-pulse-period: 15s; }
+.watch-trial-indicator[data-days-left="3"] { --trial-pulse-period: 10s; }
+.watch-trial-indicator[data-days-left="2"] { --trial-pulse-period: 7s; }
+.watch-trial-indicator[data-days-left="1"] { --trial-pulse-period: 5s; }
+.watch-trial-indicator.is-pulsing .watch-trial-text {
+  background: none;
+  animation: watch-trial-pulse var(--trial-pulse-period) ease-in-out infinite;
+}
+@keyframes watch-trial-pulse {
+  0%, 65%, 100% { color: #f1f1f3; text-shadow: none; }
+  80% { color: #ff667d; text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .watch-trial-indicator { animation: none; transition: none; }
+  .watch-trial-indicator .watch-trial-text { animation: none; background: none; color: #f1f1f3; }
+}

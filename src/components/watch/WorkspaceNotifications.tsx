@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {notificationFailureMessage,notificationTestLabel} from '@/watch/notification-status';
@@ -48,7 +49,7 @@ function NotificationScope({workspaceId}:{workspaceId:string}){
  return <section className="space-y-6" aria-label="Workspace notifications">
   <header><p className="watch-kicker">Workspace settings</p><h1 className="watch-page-title">Notifications</h1><p className="watch-page-lede">Know when monitored websites need attention. Private findings stay inside the app.</p></header>
   <p className="text-sm text-mute">These destinations receive independent website alerts. Uploaded packages produce scan evidence, not ongoing alerts. Slack requires Team or an active trial.</p>
-  {loadError?<div role="alert">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<p role="status">Loading notifications…</p>:null}
+  {loadError?<div role="alert">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<WatchSkeleton variant="list" className="mt-4" />:null}
   {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
   {page?.canManage?<form className="watch-card flex flex-wrap items-end gap-4" onSubmit={e=>{e.preventDefault();void act('save');}}>
    <label>Destination type<select disabled={busy} className="block rounded border border-white/15 bg-back p-2" value={kind} onChange={e=>{setKind(e.target.value as 'email'|'slack');setValue('');}}><option value="email">Email</option><option value="slack">Slack</option></select></label>

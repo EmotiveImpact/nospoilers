@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
-import {MarketingNav} from '../src/components/marketing/V20Homepage';
+import {MarketingNav,V20Homepage} from '../src/components/marketing/V20Homepage';
 const originalShow=Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype,'showModal');
 const originalClose=Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype,'close');
 afterEach(()=>{cleanup();vi.restoreAllMocks();for(const [key,descriptor] of [['showModal',originalShow],['close',originalClose]] as const){if(descriptor)Object.defineProperty(HTMLDialogElement.prototype,key,descriptor);else Reflect.deleteProperty(HTMLDialogElement.prototype,key)}});
@@ -18,6 +18,18 @@ it('opens a modal mobile menu, locks scrolling and restores it when closed',()=>
  fireEvent.click(screen.getByRole('button',{name:'Close menu'}));
  expect(document.body.style.overflow).toBe(previous);
  expect(document.querySelector('dialog')?.open).toBe(false);
+});
+it('uses one account action alongside the scan action for each session state',()=>{
+ const openApp=vi.fn();
+ const {rerender}=render(<MarketingNav me={null} openApp={openApp}/>);
+ expect(screen.queryByRole('button',{name:'Open app'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Log in'}));
+ expect(openApp).toHaveBeenCalledOnce();
+ expect(screen.getByRole('button',{name:'Start a scan'})).toBeTruthy();
+ rerender(<MarketingNav me={{user:{login:'tester'},githubApp:true}} openApp={openApp}/>);
+ expect(screen.queryByRole('button',{name:'Log in'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Back to workspace'}));
+ expect(openApp).toHaveBeenCalledTimes(2);
 });
 it('opens grouped product links and closes them with Escape',()=>{
  render(<MarketingNav me={null} openApp={vi.fn()}/>);
@@ -46,4 +58,22 @@ it('switches menus and closes when focus leaves the navigation group',()=>{
  expect(panel.querySelector('a')?.getAttribute('href')).toBe('/docs');
  fireEvent.blur(resources,{relatedTarget:document.body});
  expect(resources.getAttribute('aria-expanded')).toBe('false');
+});
+it('ships the approved Homepage D story as the real homepage',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ render(<V20Homepage/>);
+ expect(screen.getByRole('heading',{name:/Security does not\s*stop at Git\./})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:/The build has\s*the last word\./})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:/Shipping isn’t\s*the finish line\./})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Questions, answered.'})).toBeTruthy();
+ const github=screen.getByRole('button',{name:'GitHub'});
+ fireEvent.click(github);
+ expect(github.getAttribute('aria-pressed')).toBe('true');
+ expect(screen.getByText('release.zip / config.json')).toBeTruthy();
+ expect(screen.getByText('Internal config in release asset')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Secrets',exact:true}));
+ expect(document.querySelector<HTMLElement>('[data-kind="maps"]')?.hidden).toBe(true);
+ expect(document.querySelector<HTMLElement>('[data-kind="secrets"]')?.hidden).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'What does a release proof verify?'}));
+ expect(screen.getByRole('button',{name:'What does a release proof verify?'}).getAttribute('aria-expanded')).toBe('true');
 });

@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
@@ -24,7 +25,7 @@ function TeamScope({workspaceId}:{workspaceId:string}){
   return <section className="workspace-management"><header className="watch-release-heading"><div><span className="watch-kicker">Workspace settings</span><h1>Team & access</h1><p>Access to this workspace—not a GitHub login or permission to every workspace in the organisation.</p></div></header>
     {error?<div role="alert" className="watch-empty"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setRevision(v=>v+1);}}>Retry</Button></div>:null}
     {notice?<p role="status" className="watch-empty">{notice}</p>:null}
-    {!team&&!error?<p role="status">Loading workspace access…</p>:null}
+    {!team&&!error?<WatchSkeleton variant="list" className="mt-4" />:null}
     {team?.archived?<p className="watch-empty">Archived workspaces are read-only. Restore this workspace before changing access.</p>:null}
     {canManage?<form className="workspace-create" onSubmit={event=>{event.preventDefault();void mutate(`/api/workspaces/${workspaceId}/invitations`,'POST',{login,role});}}><h2>Invite a teammate</h2><p>Enter their existing NoSpoilers account name. The invitation appears in their Workspaces inbox and expires after seven days. Email delivery and additional sign-in providers are not enabled yet.</p><label>Account name<input required maxLength={100} value={login} onChange={event=>setLogin(event.target.value)} autoComplete="off"/></label><label>Workspace role<select value={role} onChange={event=>setRole(event.target.value as Role)}><option value="viewer">Viewer · read evidence</option><option value="member">Member · scan and respond</option>{team.role==='owner'?<option value="admin">Admin · manage workspace access</option>:null}</select></label><Button type="submit" disabled={busy||!login.trim()}>Send invitation</Button></form>:null}
     {team?<><div className="workspace-cards" aria-label="Workspace members">{team.members.map(member=><MemberRow key={`${member.user_id}:${member.role}`} member={member} owner={team.role==='owner'} canManage={!!canManage} busy={busy} save={next=>mutate(`/api/workspaces/${workspaceId}/members/${encodeURIComponent(member.user_id)}`,next===null?'DELETE':'PATCH',next===null?undefined:{role:next})}/>)}</div>
@@ -60,7 +61,7 @@ export function WorkspaceInvitationInbox(){
     finally{submitting.current=false;if(active.current)setBusy(null);}
   }
   return <section aria-label="Workspace invitations">
-    {!error&&invites===null?<p className="watch-empty" role="status">Loading workspace invitations…</p>:null}
+    {!error&&invites===null?<WatchSkeleton variant="list" className="mt-4" />:null}
     {!error&&invites?.length===0?<p className="watch-empty">No pending workspace invitations.</p>:null}
     {error?<div className="watch-empty" role="alert">{error}<Button variant="outline" disabled={!!busy} onClick={()=>{setError('');setInvites(null);setRevision(v=>v+1);}}>Retry invitations</Button></div>:null}
     {invites?.map(invite=><article key={invite.id} className="watch-empty"><h2>Invitation to {invite.workspace_name}</h2><p>{invite.invited_by} invited you as {invite.role}. Expires {new Date(invite.expires_at).toLocaleDateString()}. Accepting does not connect your GitHub account or start a new trial.</p><Button disabled={!!busy} onClick={()=>void accept(invite.id)}>Accept invitation to {invite.workspace_name}</Button></article>)}

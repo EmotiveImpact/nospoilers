@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { loadWatchJson, scopedWatchApi } from "@/watch/api";
@@ -104,9 +105,7 @@ export function AuditScreen({
           {audit.message}
         </p>
       ) : audit.status === "loading" ? (
-        <p className="mt-6 text-[13px] text-dim" aria-live="polite">
-          Loading audit activity…
-        </p>
+        <WatchSkeleton variant="list" className="mt-4" />
       ) : audit.rows.length === 0 ? (
         <div className="watch-empty">No admin writes recorded on this install yet.</div>
       ) : (
@@ -129,3 +128,5 @@ export function AuditScreen({
     </section>
   );
 }
+
+undefined

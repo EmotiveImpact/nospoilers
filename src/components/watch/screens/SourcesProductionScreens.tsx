@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { WatchedOrigin } from "@/watch/types";
 import { useState } from "react";
@@ -123,7 +124,7 @@ export function SourcesProductionScreens() {
                     Subscribe to unpack production websites on our servers.
                   </p>
                 ) : null}
-                {!previewing && origins.status === "loading" && <p className="mt-6 text-sm text-dim">Loading…</p>}
+                {!previewing && origins.status === "loading" && <WatchSkeleton variant="list" className="mt-4" />}
                 {!previewing && origins.status === "error" && (
                   <p className="mt-6 text-sm text-danger">{origins.message}</p>
                 )}

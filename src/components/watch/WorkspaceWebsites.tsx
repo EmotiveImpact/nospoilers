@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
@@ -49,7 +50,7 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
   {disabledReason?<p className="mt-3 text-sm" role="status">{disabledReason}</p>:null}
   {error||loadError?<div className="mt-3"><p role="alert">{error||loadError}{loadError&&rows?' Displayed source details are from the last successful refresh.':''}</p><Button type="button" variant="outline" onClick={()=>{setError('');setLoadError('');setRefresh(value=>value+1);}}>Refresh websites</Button></div>:null}
   {busy?<p className="mt-3 text-sm" role="status">Processing your request…</p>:null}
-  {!rows&&!error&&!loadError?<p role="status">Loading websites…</p>:null}
+  {!rows&&!error&&!loadError?<WatchSkeleton variant="list" className="mt-4" />:null}
   {healthFilter==='attention'||healthFilter==='delayed'?<p className="mt-3 text-sm">Showing {healthFilter==='delayed'?'delayed monitoring':'websites needing attention'}. <Button variant="ghost" onClick={()=>{const params=new URLSearchParams(window.location.search);params.delete('websiteHealth');navigate(`/watch/sources?${params}`);}}>Show all websites</Button></p>:null}
   {rows&&filteredRows?.length===0?<p className="mt-4 text-sm">{rows.length?'No websites match this health filter.':'No websites connected yet.'}</p>:null}
   {filteredRows?.map(row=><article key={row.id} className="mt-5 border-t border-white/10 pt-4">

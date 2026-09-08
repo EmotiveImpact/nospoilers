@@ -1,3 +1,4 @@
+import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import type { ReactNode } from "react";
@@ -84,7 +85,7 @@ export function RetentionScreen({
       ) : retention.status === "error" ? (
         <p role="alert" className="mt-6 text-[13px] text-danger">{retention.message}</p>
       ) : retention.status === "loading" ? (
-        <p className="mt-6 text-[13px] text-dim" aria-live="polite">Loading retention…</p>
+        <WatchSkeleton variant="list" className="mt-4" />
       ) : (
         <>
           <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
