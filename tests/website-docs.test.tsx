@@ -86,10 +86,15 @@ describe('NoSpoilers public documentation content', () => {
   it('keeps the supporting navigation consistent and its destinations known', () => {
     assert.equal(PUBLIC_LINKS.length, 7);
     for (const [href] of PUBLIC_LINKS) assert.ok(href === '/pricing' || isWebsitePath(href));
-    for (const path of ['/docs', ...WEBSITE_PATHS]) {
+    for (const path of WEBSITE_PATHS) {
       const html = path === '/docs' ? renderDocs(path) : renderWebsite(path);
       for (const [href] of PUBLIC_LINKS) assert.ok(html.includes(`href="${href}"`));
     }
+    const docs = renderDocs('/docs');
+    assert.ok(!docs.includes('Explore NoSpoilers'));
+    assert.ok(docs.includes('nsw-reader-header'));
+    assert.ok(docs.includes('href="/watch"'));
+    assert.ok(docs.includes('nsw-guide-grid'));
   });
 });
 

@@ -515,11 +515,14 @@ export async function persistIdentityCandidates(
   store: Store,
   pkg: Pick<WatchedPackageRow, "id" | "installation_id" | "package_name">,
 ): Promise<number> {
+  const connectionGeneration=await store.packageConnectionGeneration(pkg.id,pkg.installation_id);
+  if(connectionGeneration===null)return 0;
   const candidates = generateIdentityCandidates(pkg.package_name);
   if (candidates.length === 0) return 0;
   return await store.insertIdentityCandidates({
     installationId: pkg.installation_id,
     packageId: pkg.id,
+    connectionGeneration,
     candidates,
   });
 }
@@ -712,6 +715,8 @@ async function checkLookalikeCandidates(input: {
   auth?: NpmAuth;
   candidateStaleMs?: number;
 }): Promise<number> {
+  const generation=await input.store.packageConnectionGeneration(input.pkg.id,input.pkg.installation_id);
+  if(generation===null)return 0;
   const staleBefore =
     input.candidateStaleMs && input.candidateStaleMs > 0
       ? new Date(Date.now() - input.candidateStaleMs)
@@ -723,14 +728,17 @@ async function checkLookalikeCandidates(input: {
   );
   let alerts = 0;
   for (const row of due) {
+    if(await input.store.packageConnectionGeneration(input.pkg.id,input.pkg.installation_id)!==generation)break;
     let pack: NpmPack | null = null;
     try {
       pack = await input.npm.getPack(row.candidate_name, input.auth);
     } catch {
-      pack = null;
+      // An unavailable registry is not evidence that the candidate is unregistered.
+      continue;
     }
+    if(await input.store.packageConnectionGeneration(input.pkg.id,input.pkg.installation_id)!==generation)break;
     if (!pack) {
-      await input.store.touchIdentityCandidateCheck(row.id);
+      await input.store.touchIdentityCandidateCheck(row.id,generation);
       continue;
     }
     const publishedAt = pack.publishedAt ?? null;
@@ -738,6 +746,7 @@ async function checkLookalikeCandidates(input: {
     const newVersion = Boolean(row.last_version && row.last_version !== pack.version);
     await input.store.recordIdentityCandidatePack({
       id: row.id,
+      connectionGeneration:generation,
       registeredAt: row.registered_at ?? new Date().toISOString(),
       lastVersion: pack.version,
       lastPublishedAt: publishedAt,

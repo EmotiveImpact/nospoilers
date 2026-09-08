@@ -1,5 +1,15 @@
 # Next-agent handoff
 
+## Current handoff — 8 September
+
+**Gate B is complete.** This paragraph supersedes the earlier active-status checkpoint below. Final regression38375 passes986/198, build27665 passes, lint exits0 with warnings. No verification remains running. See the closure at the top of `GATE-B-COMPLETION-AUDIT.md` and the affirmative `GATE-B-FINAL-EVIDENCE-MATRIX.md`. Preserve all local changes; no new push/deployment was made. Next work belongs to separately agreed gates, not another rebuild of B0–B8.
+
+Use `GATE-B-COMPLETION-AUDIT.md` for current B0–B8 evidence and `CONTINUE-GATE-B-PROMPT.md` for the bounded requirements. Gate B is active pending final acceptance closure. Final combined regression 59716 passed 986 tests / 198 files against unchanged source; build 19524 passed. No test/build process from that checkpoint remains running. Other running-session references in historical notes are stale. Preserve the dirty worktree and `backup89`; do not deploy, migrate production, activate providers or use Docker.
+
+Current code reaches migration 121 and includes atomic repository/package/website publication, lifecycle generation fencing, mixed-source First Proof guidance and exact-source Overview/Coverage navigation. Real-browser acceptance includes independent reviewer exception approval, redacted proof publication/revocation, viewer restrictions and mobile release preview/detail/Back selection. The final requirement matrix remains under review. Do not rebuild completed features or claim a percentage from test counts.
+
+## Historical checkpoints (not active instructions or process status)
+
 Full run 19160 is TERMINAL: 733/746 passed, 13 failures. Diagnosed fixture-path tests missing explicit NOSPOILERS_INTERNAL_LOCAL_SCAN and sandbox EPERM for CLI pipes/loopback listeners. Fixed only affected describe-block test setup with scoped stubEnv/restore; production guards unchanged. Fixed new HTTP test response typing. Permission-enabled rerun66673 passes all87 tests in six affected files plus typecheck/diff. This is NOT a new full-suite pass. Workspace Alerts work and other B0–B8 acceptance remain open; proceed with bounded pagination/export, aggregate counts, browser and Settings.
 
 ACTIVE full-suite verification: session 19160, report /private/tmp/nospoilers-gate-b-alert-cutover-full.json. Confirmed live with hosted/usage/notification test output. Do not edit source/tests during this run. New workspace-alert-api HTTP regression passes (sign-in, no-store, foreign/viewer/revoked/archive and cross-origin writes, response history without jobs). Typecheck found two TS18046 errors in that new test: `detail` from response.json is unknown at lines42–43; add an explicit response type AFTER full run terminates, then rerun typecheck. No runtime failure inferred from these typing errors. Recent UI adds real source counts, 30-second access refresh and explicit website recheck using existing quota-checked endpoint. See GATE-B-ALERT-CUTOVER.md; full Gate B still open.

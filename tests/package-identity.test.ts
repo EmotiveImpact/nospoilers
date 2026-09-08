@@ -19,6 +19,7 @@ import {
 } from "../src/server/identity-evidence.ts";
 import {
   generateIdentityCandidates,
+  checkIdentitySignals,
   identityPlanDenied,
   identityRiskSignalsFromFacts,
   scoreIdentityRisk,
@@ -30,6 +31,34 @@ import {
   IDENTITY_RISK_NOT_MALWARE,
   IDENTITY_RISK_POINTS,
 } from "../src/server/identity-signals.ts";
+
+it.each(['registry failure','source change'])('does not save lookalike observations after %s',async(mode)=>{
+ const sql=await openSql('pglite://:memory:');
+ try{
+  await migrate(sql);const store=createStore(sql);
+  await store.upsertInstallation({id:7,accountLogin:'octo',accountType:'User',accountId:1});
+  const pkg=(await store.insertWatchedPackage(7,'example-package'))!;
+  await store.insertPackageProtection({installationId:7,packageId:pkg.id,verifiedVia:'scope_match'});
+  let requested=0;
+  const npm:NpmPort={getPack:async()=>{
+    requested++;
+    if(mode==='registry failure')throw new Error('unavailable');
+    await sql.query('UPDATE watched_packages SET connection_generation=connection_generation+1 WHERE id=$1',[pkg.id]);
+    return ownedPack();
+  },downloadTarball:async()=>{throw new Error('unused');},searchScope:async()=>[]};
+  await checkIdentitySignals({store,npm,pkg,pack:ownedPack(),previous:null});
+  expect(requested).toBeGreaterThan(0);
+  if(mode==='source change')expect(requested).toBe(1);
+  const candidates=await store.listIdentityCandidates(pkg.id);
+  expect(candidates.length).toBeGreaterThan(0);
+  expect(candidates.every(row=>row.last_checked_at===null)).toBe(true);
+  if(mode==='source change'){
+    await store.touchIdentityCandidateCheck(candidates[0]!.id,'0');
+    await expect(store.recordIdentityCandidatePack({id:candidates[0]!.id,connectionGeneration:'0',registeredAt:new Date(),lastVersion:'stale'})).rejects.toThrow('connection changed');
+    expect((await store.listIdentityCandidates(pkg.id)).every(row=>row.last_checked_at===null)).toBe(true);
+  }
+ }finally{await sql.close();}
+});
 import { ADMIN_REQUIRED_ERROR } from "../src/server/roles.ts";
 import {
   emptyPackageIdentity,
@@ -2555,4 +2584,3 @@ describe("npm namespace watchlists", () => {
     }
   });
 });
-

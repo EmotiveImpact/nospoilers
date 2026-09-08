@@ -21,7 +21,7 @@ import {
   type NpmPort,
 } from "../src/server/npm.ts";
 import { parseRegistryOrigin } from "../src/server/npm-registry.ts";
-import { checkWatchedPackage, connectWatchedPackage, runNpmWatchPoll } from "../src/server/npm-watch.ts";
+import { checkWatchedPackage, connectWatchedPackage, importProtectedPackages, protectWatchedPackage, runNpmWatchPoll } from "../src/server/npm-watch.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { skippedGithubWrites } from "../src/server/github.ts";
 import { looksEncrypted } from "../src/server/secret-box.ts";
@@ -293,6 +293,82 @@ describe("public packument cache", () => {
 });
 
 describe("hosted npm watch", () => {
+  it.each(['single','bulk'])('rejects %s protection when a source changes during the ownership lookup',async(mode)=>{
+    const sql=await openSql('pglite://:memory:');
+    try {
+      await migrate(sql);const store=createStore(sql);
+      await store.upsertInstallation({id:7,accountLogin:'fixture',accountType:'User',accountId:7});
+      const pkg=(await store.insertWatchedPackage(7,'@fixture/demo'))!;
+      const npm=stubNpm({pack:pack()});
+      npm.getPack=async(name)=>{
+        if(name==='@fixture/demo')await sql.query('UPDATE watched_packages SET connection_generation=connection_generation+1 WHERE id=$1',[pkg.id]);
+        return pack({name});
+      };
+      if(mode==='single')await expect(protectWatchedPackage(store,npm,pkg)).rejects.toThrow('connection changed');
+      else {
+        const imported=await importProtectedPackages(store,npm,{installationId:7,names:['@fixture/demo','@fixture/next']});
+        expect(imported.results.map(row=>row.status)).toEqual(['connection_changed','protected']);
+        const next=await store.getWatchedPackageByName(7,'@fixture/next');
+        expect(next).not.toBeNull();
+        expect(await store.getPackageProtection(next!.id)).not.toBeNull();
+      }
+      expect(await store.getPackageProtection(pkg.id)).toBeNull();
+      expect(await store.latestPackageIdentitySnapshot(pkg.id)).toBeNull();
+    }finally{await sql.close();}
+  });
+  it.each(['paused_at','disconnected_at'])('does not fetch registry metadata for a source with %s',async(column)=>{
+    const sql=await openSql('pglite://:memory:');
+    try {
+      await migrate(sql);const store=createStore(sql);
+      await store.upsertInstallation({id:7,accountLogin:'fixture',accountType:'User',accountId:7});
+      const pkg=(await store.insertWatchedPackage(7,'demo-pack'))!;
+      await sql.query(`UPDATE watched_packages SET ${column}=now() WHERE id=$1`,[pkg.id]);
+      let fetched=false;
+      const npm=stubNpm({pack:pack()});
+      npm.getPack=async()=>{fetched=true;return pack();};
+      expect((await checkWatchedPackage(store,npm,pkg)).queued).toBe(false);
+      expect(fetched).toBe(false);
+    }finally{await sql.close();}
+  });
+  it('does not refresh successful-check time when a registry request fails',async()=>{
+    const sql=await openSql('pglite://:memory:');
+    try {
+      await migrate(sql);const store=createStore(sql);
+      await store.upsertInstallation({id:7,accountLogin:'fixture',accountType:'User',accountId:7});
+      const pkg=(await store.insertWatchedPackage(7,'demo-pack'))!;
+      await checkWatchedPackage(store,stubNpm({pack:null,error:new Error('registry unavailable')}),pkg);
+      expect((await store.getWatchedPackage(pkg.id))?.last_checked_at).toBeNull();
+    }finally{await sql.close();}
+  });
+  it.each(['before execution','during scanning'] as const)('rejects a source generation change %s', async (phase) => {
+    const sql=await openSql('pglite://:memory:');
+    try {
+      await migrate(sql);
+      const store=createStore(sql);
+      await store.upsertInstallation({id:7,accountLogin:'octo',accountType:'User',accountId:1});
+      const downloads:string[]=[];
+      const npm=stubNpm({pack:pack()},downloads);
+      const source=await connectWatchedPackage(store,npm,{installationId:7,packageName:'demo-pack'});
+      // Simulate a completed lifecycle change after enqueue, before worker admission.
+      const changeGeneration=()=>sql.query('UPDATE watched_packages SET connection_generation=connection_generation+1 WHERE id=$1',[source.package.id]);
+      if(phase==='before execution')await changeGeneration();
+      const worker=createWorker({store,github:unusedGithub(),npm,notifier:createLogNotifier(store),scan:async (...args)=>{
+        const result=await scan(...args);
+        if(phase==='during scanning')await changeGeneration();
+        return result;
+      },receiptSecret:'test-receipt-secret',heavyConcurrency:2,lightConcurrency:2,maxAssetBytes:80*1024*1024,intervalMs:60_000});
+      try {
+        await worker.tick();
+        await worker.stop();
+        expect(downloads).toEqual(phase==='before execution'?[]:[TARBALL]);
+        expect((await sql.query('SELECT id FROM alerts')).rows).toEqual([]);
+        expect((await store.getWatchedPackage(source.package.id))?.last_scanned_at).toBeNull();
+        const jobs=(await sql.query<{status:string}>('SELECT status FROM jobs')).rows;
+        expect(jobs.length).toBeGreaterThan(0);
+        expect(jobs.every(job=>job.status==='done')).toBe(true);
+      } finally {await worker.stop();}
+    } finally {await sql.close();}
+  });
   it("connects a package, scans the current tarball, and alerts without keeping source", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -532,6 +608,10 @@ describe("hosted npm watch", () => {
         return { kind: row.kind, version: payload.version };
       });
       expect(versions.some((row) => row.kind === "npm_scan" && row.version === "1.2.0")).toBe(true);
+      for (const row of rows.filter(row => row.kind === 'npm_scan')) {
+        const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+        expect(payload).toHaveProperty('connectionGeneration', '0');
+      }
       const fresh = await store.getWatchedPackage(first.package.id);
       expect(fresh).not.toBeNull();
       const check = await checkWatchedPackage(store, npm, fresh!);
@@ -1018,4 +1098,3 @@ describe("private npm registries", () => {
     }
   });
 });
-

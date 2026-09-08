@@ -32,7 +32,11 @@ function NotificationScope({workspaceId}:{workspaceId:string}){
   if(action==='test'&&!testKeys.current.has(destination!.id))testKeys.current.set(destination!.id,crypto.randomUUID());
   try{
    const response=await fetch(base+(action==='save'?'':`/${destination!.id}${action==='test'?'/test':''}`),{method:action==='disconnect'?'DELETE':'POST',signal:request.signal,headers:{'content-type':'application/json'},body:JSON.stringify(action==='save'?{kind,value}:action==='test'?{requestKey:testKeys.current.get(destination!.id)}:{confirm})});
-   const data=await response.json();if(!response.ok)throw new Error(data.error??'Request could not be completed.');
+   const data=await response.json();
+   if(!request.signal.aborted&&(response.status===401||response.status===403)){
+    setPage(null);setSelected(null);setConfirm('');setValue('');setRevision(n=>n+1);
+   }
+   if(!response.ok)throw new Error(data.error??'Request could not be completed.');
    if(request.signal.aborted)return;
    if(action==='save'){setValue('');testKeys.current.clear();setNotice('Destination saved. Delivery has not been tested.');}
    if(action==='test'){setNotice(`Test ${data.status}. Check the destination status below; queued does not mean delivered.`);testKeys.current.delete(destination!.id);}
@@ -47,8 +51,8 @@ function NotificationScope({workspaceId}:{workspaceId:string}){
   {loadError?<div role="alert">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<p role="status">Loading notifications…</p>:null}
   {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
   {page?.canManage?<form className="watch-card flex flex-wrap items-end gap-4" onSubmit={e=>{e.preventDefault();void act('save');}}>
-   <label>Destination type<select className="block rounded border border-white/15 bg-back p-2" value={kind} onChange={e=>{setKind(e.target.value as 'email'|'slack');setValue('');}}><option value="email">Email</option><option value="slack">Slack</option></select></label>
-   <label className="min-w-0 flex-1">{kind==='email'?'Email address':'Slack webhook URL'}<input className="block w-full rounded border border-white/15 bg-transparent p-2" type={kind==='email'?'email':'password'} autoComplete="off" value={value} onChange={e=>setValue(e.target.value)} required maxLength={300}/></label>
+   <label>Destination type<select disabled={busy} className="block rounded border border-white/15 bg-back p-2" value={kind} onChange={e=>{setKind(e.target.value as 'email'|'slack');setValue('');}}><option value="email">Email</option><option value="slack">Slack</option></select></label>
+   <label className="min-w-0 flex-1">{kind==='email'?'Email address':'Slack webhook URL'}<input disabled={busy} className="block w-full rounded border border-white/15 bg-transparent p-2" type={kind==='email'?'email':'password'} autoComplete="off" value={value} onChange={e=>setValue(e.target.value)} required maxLength={300}/></label>
    <Button type="submit" disabled={busy||!value.trim()}>Save destination</Button>
    <p className="w-full text-sm text-mute">Saving replaces this workspace’s existing destination of the same type. {page.providers[kind]?'Send a test after saving.':'Provider sending is not configured on this host; saving alone will not enable it.'}</p>
   </form>:page?<p>Only administrators of an active workspace can change destinations.</p>:null}

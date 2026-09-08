@@ -141,6 +141,7 @@ export type OwnerQueueHealth = {
 };
 
 export type RepoRow = {
+  connection_generation?: string;
   id: number;
   installation_id: number;
   owner: string;
@@ -203,6 +204,8 @@ export type WatchedPackageRow = {
 };
 
 export type WatchedOriginRow = {
+  connection_generation?: string;
+  paused_at?: string | null;
   id: number;
   installation_id: number;
   origin_url: string;
@@ -1760,6 +1763,8 @@ function watchedPackageRow(row: {
 }
 
 function watchedOriginRow(row: {
+  connection_generation?: unknown;
+  paused_at?: string | Date | null;
   id: unknown;
   installation_id: unknown;
   origin_url: string;
@@ -1777,6 +1782,8 @@ function watchedOriginRow(row: {
   deploy_token_prefix?: string | null;
 }): WatchedOriginRow {
   return {
+    connection_generation: String(row.connection_generation ?? 0),
+    paused_at: iso(row.paused_at ?? null),
     id: num(row.id),
     installation_id: num(row.installation_id),
     origin_url: row.origin_url,
@@ -2861,6 +2868,9 @@ export function createStore(
 
     async insertAlert(input: {
       installationId: number;
+      packageConnection?: {id:number;generation:string};
+      originConnection?: {id:number;generation:string};
+      custodyConnection?: {id:number;configurationVersion:string};
       repoId?: number | null;
       kind: string;
       title: string;
@@ -2869,6 +2879,34 @@ export function createStore(
       githubDeliveryId?: string | null;
       releaseRevisionIds?: number[];
     }): Promise<number> {
+      if (input.originConnection) {
+        return sql.transaction(async tx => {
+          const source=await tx.query(`SELECT id FROM watched_origins WHERE id=$1 AND installation_id=$2
+            AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.originConnection!.id,input.installationId,input.originConnection!.generation]);
+          if(!source.rows.length)throw new Error('Website connection changed before alert publication.');
+          return insertAlertWithReleaseLinks(tx,input);
+        });
+      }
+      if (input.custodyConnection) {
+        return sql.transaction(async tx => {
+          const source=await tx.query(`SELECT id FROM map_destinations WHERE id=$1 AND installation_id=$2
+            AND md5(token_ciphertext || ':' || connection_generation::text)=$3
+            AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.custodyConnection!.id,input.installationId,input.custodyConnection!.configurationVersion]);
+          if(!source.rows.length)throw new Error('Custody connection changed before alert publication.');
+          return insertAlertWithReleaseLinks(tx,input);
+        });
+      }
+      if (input.packageConnection) {
+        return sql.transaction(async tx => {
+          const source=await tx.query(`SELECT id FROM watched_packages WHERE id=$1 AND installation_id=$2
+            AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.packageConnection!.id,input.installationId,input.packageConnection!.generation]);
+          if(!source.rows.length)throw new Error('Package connection changed before alert publication.');
+          return insertAlertWithReleaseLinks(tx,input);
+        });
+      }
       return insertAlertWithReleaseLinks(sql, input);
     },
 
@@ -4945,6 +4983,7 @@ export function createStore(
          JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = wp.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR wp.installation_id = $2)
+           AND wp.disconnected_at IS NULL
          ORDER BY wp.package_name`,
         [userId, scoped],
       );
@@ -4965,7 +5004,7 @@ export function createStore(
         last_checked_at: string | Date | null;
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
-      }>(`SELECT * FROM watched_packages ORDER BY id`);
+      }>(`SELECT * FROM watched_packages WHERE disconnected_at IS NULL AND paused_at IS NULL ORDER BY id`);
       return rows.map(watchedPackageRow);
     },
 
@@ -4983,7 +5022,7 @@ export function createStore(
         last_checked_at: string | Date | null;
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
-      }>(`SELECT * FROM watched_packages WHERE id = $1`, [id]);
+      }>(`SELECT * FROM watched_packages WHERE id = $1 AND disconnected_at IS NULL`, [id]);
       return rows[0] ? watchedPackageRow(rows[0]) : null;
     },
 
@@ -5007,7 +5046,7 @@ export function createStore(
         last_scan_status: string | null;
       }>(
         `SELECT * FROM watched_packages
-         WHERE installation_id = $1 AND package_name = $2 AND registry_origin = $3`,
+         WHERE installation_id = $1 AND package_name = $2 AND registry_origin = $3 AND disconnected_at IS NULL`,
         [installationId, packageName, registryOrigin],
       );
       return rows[0] ? watchedPackageRow(rows[0]) : null;
@@ -5016,9 +5055,19 @@ export function createStore(
     async insertPackageProtection(input: {
       installationId: number;
       packageId: number;
+      connectionGeneration?: string;
       verifiedVia: PackageProtectionRow["verified_via"];
       githubRepo?: string | null;
     }): Promise<PackageProtectionRow | null> {
+      if(input.connectionGeneration !== undefined){
+        return sql.transaction(async tx=>{
+          const source=await tx.query(`SELECT id FROM watched_packages WHERE id=$1 AND installation_id=$2
+            AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.packageId,input.installationId,input.connectionGeneration]);
+          if(!source.rows.length)throw Object.assign(new Error('Package connection changed. Refresh before enabling protection.'),{status:409});
+          return createStore(tx).insertPackageProtection({...input,connectionGeneration:undefined});
+        });
+      }
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -5134,6 +5183,7 @@ export function createStore(
     async insertPackageIdentitySnapshot(input: {
       installationId: number;
       packageId: number;
+      connectionGeneration?: string;
       version?: string | null;
       maintainers: string[];
       repositoryUrl?: string | null;
@@ -5149,6 +5199,15 @@ export function createStore(
       publisherName?: string | null;
       trustedPublisher?: string | null;
     }): Promise<PackageIdentitySnapshotRow> {
+      if(input.connectionGeneration !== undefined){
+        return sql.transaction(async tx=>{
+          const source=await tx.query(`SELECT id FROM watched_packages WHERE id=$1 AND installation_id=$2
+            AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.packageId,input.installationId,input.connectionGeneration]);
+          if(!source.rows.length)throw new Error('Package connection changed before identity publication.');
+          return createStore(tx).insertPackageIdentitySnapshot({...input,connectionGeneration:undefined});
+        });
+      }
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -5203,8 +5262,18 @@ export function createStore(
     async insertIdentityCandidates(input: {
       installationId: number;
       packageId: number;
+      connectionGeneration?: string;
       candidates: Array<{ name: string; transformation: string }>;
     }): Promise<number> {
+      if(input.connectionGeneration !== undefined){
+        return sql.transaction(async tx=>{
+          const source=await tx.query(`SELECT id FROM watched_packages WHERE id=$1 AND installation_id=$2
+            AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+            [input.packageId,input.installationId,input.connectionGeneration]);
+          if(!source.rows.length)return 0;
+          return createStore(tx).insertIdentityCandidates({...input,connectionGeneration:undefined});
+        });
+      }
       let inserted = 0;
       for (const candidate of input.candidates) {
         const { rows } = await sql.query<{ id: unknown }>(
@@ -5296,16 +5365,35 @@ export function createStore(
       return rows.map(identityCandidateRow);
     },
 
-    async touchIdentityCandidateCheck(id: number): Promise<void> {
+    async touchIdentityCandidateCheck(id: number, generation?: string): Promise<void> {
+      if(generation!==undefined){
+        await sql.transaction(async tx=>{
+          const source=await tx.query(`SELECT p.id FROM watched_packages p JOIN identity_candidates c ON c.package_id=p.id
+            WHERE c.id=$1 AND p.connection_generation=$2 AND p.disconnected_at IS NULL AND p.paused_at IS NULL FOR UPDATE OF p`,[id,generation]);
+          if(!source.rows.length)return;
+          await createStore(tx).touchIdentityCandidateCheck(id);
+        });
+        return;
+      }
       await sql.query(`UPDATE identity_candidates SET last_checked_at = now() WHERE id = $1`, [id]);
     },
 
     async recordIdentityCandidatePack(input: {
       id: number;
+      connectionGeneration?: string;
       registeredAt: string | Date;
       lastVersion: string;
       lastPublishedAt?: string | Date | null;
     }): Promise<void> {
+      if(input.connectionGeneration!==undefined){
+        await sql.transaction(async tx=>{
+          const source=await tx.query(`SELECT p.id FROM watched_packages p JOIN identity_candidates c ON c.package_id=p.id
+            WHERE c.id=$1 AND p.connection_generation=$2 AND p.disconnected_at IS NULL AND p.paused_at IS NULL FOR UPDATE OF p`,[input.id,input.connectionGeneration]);
+          if(!source.rows.length)throw new Error('Package connection changed before candidate publication.');
+          await createStore(tx).recordIdentityCandidatePack({...input,connectionGeneration:undefined});
+        });
+        return;
+      }
       await sql.query(
         `UPDATE identity_candidates
          SET last_checked_at = now(),
@@ -5687,7 +5775,7 @@ export function createStore(
 
     async countWatchedPackages(installationId: number): Promise<number> {
       const { rows } = await sql.query<{ n: unknown }>(
-        `SELECT count(*)::int AS n FROM watched_packages WHERE installation_id = $1`,
+        `SELECT count(*)::int AS n FROM watched_packages WHERE installation_id = $1 AND disconnected_at IS NULL`,
         [installationId],
       );
       return num(rows[0]?.n ?? 0);
@@ -5714,7 +5802,8 @@ export function createStore(
       }>(
         `INSERT INTO watched_packages (installation_id, package_name, registry_origin)
          VALUES ($1, $2, $3)
-         ON CONFLICT (installation_id, package_name, registry_origin) DO NOTHING
+         ON CONFLICT (installation_id, package_name, registry_origin) DO UPDATE SET disconnected_at=NULL, last_checked_at=NULL,connection_generation=watched_packages.connection_generation+1
+         WHERE watched_packages.disconnected_at IS NOT NULL
          RETURNING *`,
         [installationId, packageName, registryOrigin],
       );
@@ -5723,15 +5812,63 @@ export function createStore(
 
     async deleteWatchedPackageForUser(id: number, userId: string): Promise<boolean> {
       const { rows } = await sql.query<{ id: unknown }>(
-        `DELETE FROM watched_packages wp
-         USING installation_users iu
+        `UPDATE watched_packages wp SET disconnected_at=COALESCE(disconnected_at,now()),connection_generation=connection_generation+1
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE wp.id = $1
            AND wp.installation_id = iu.installation_id
            AND iu.user_id = $2
+           AND iu.role IN ('admin','member')
          RETURNING wp.id`,
         [id, userId],
       );
       return Boolean(rows[0]);
+    },
+
+    async listRetainedSourcesForUser(userId: string, installationId: number) {
+      const { rows } = await sql.query<{id: unknown; kind: 'npm'|'map'; name: string; disconnected_at: string|Date}>(`
+        SELECT p.id,'npm' AS kind,p.package_name AS name,p.disconnected_at
+        FROM watched_packages p JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=p.installation_id
+        WHERE m.user_id=$1 AND p.installation_id=$2 AND p.disconnected_at IS NOT NULL
+        UNION ALL
+        SELECT d.id,'map' AS kind,d.kind || ' · ' || d.host || ' / ' || d.project_slug AS name,d.disconnected_at
+        FROM map_destinations d JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=d.installation_id
+        WHERE m.user_id=$1 AND d.installation_id=$2 AND d.disconnected_at IS NOT NULL
+        ORDER BY disconnected_at DESC`, [userId, installationId]);
+      return rows.map(row => ({ id:num(row.id), kind:row.kind, name:row.name, disconnectedAt:iso(row.disconnected_at) }));
+    },
+
+    async packageConnectionGeneration(id:number,installationId:number):Promise<string|null> {
+      const row=(await sql.query<{generation:string}>(`SELECT connection_generation::text AS generation FROM watched_packages WHERE id=$1 AND installation_id=$2 AND disconnected_at IS NULL AND paused_at IS NULL`,[id,installationId])).rows[0];
+      return row?.generation??null;
+    },
+
+    async setSourcePausedForUser(kind:'npm'|'map',id:number,userId:string,paused:boolean) {
+      const table=kind==='npm'?'watched_packages':'map_destinations';
+      const roles=kind==='npm'?"('admin','member')":"('admin')";
+      return sql.transaction(async tx=>{
+        const permitted=(await tx.query<{installation_id:unknown;paused:boolean}>(`SELECT s.installation_id,s.paused_at IS NOT NULL AS paused FROM ${table} s
+          JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=s.installation_id
+          WHERE s.id=$1 AND m.user_id=$2 AND m.role IN ${roles} AND s.disconnected_at IS NULL FOR UPDATE OF s`,[id,userId])).rows[0];
+        if(!permitted)return false;
+        if(permitted.paused===paused)return true;
+        await tx.query(`UPDATE ${table} SET paused_at=CASE WHEN $2 THEN now() ELSE NULL END,
+          connection_generation=connection_generation+1,last_checked_at=NULL WHERE id=$1`,[id,paused]);
+        await tx.query(`INSERT INTO audit_events(installation_id,actor_login,action,summary,target_kind,target_id)
+          SELECT $1,login,$3,$4,$5,$6 FROM users WHERE id=$2`,[permitted.installation_id,userId,paused?'source.pause':'source.resume',paused?'Paused source monitoring':'Resumed source monitoring',kind,String(id)]);
+        return true;
+      });
+    },
+
+    async listSourceMonitoringForUser(userId:string,installationId:number) {
+      const rows=(await sql.query<{id:unknown;kind:'npm'|'map';name:string;paused:boolean;can_manage:boolean}>(`
+        SELECT p.id,'npm' AS kind,p.package_name AS name,p.paused_at IS NOT NULL AS paused,m.role IN ('admin','member') AS can_manage
+        FROM watched_packages p JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=p.installation_id
+        WHERE m.user_id=$1 AND p.installation_id=$2 AND p.disconnected_at IS NULL
+        UNION ALL
+        SELECT d.id,'map' AS kind,d.kind || ' · ' || d.project_slug AS name,d.paused_at IS NOT NULL AS paused,m.role='admin' AS can_manage
+        FROM map_destinations d JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=d.installation_id
+        WHERE m.user_id=$1 AND d.installation_id=$2 AND d.disconnected_at IS NULL`,[userId,installationId])).rows;
+      return rows.map(row=>({id:num(row.id),kind:row.kind,name:row.name,paused:row.paused,canManage:row.can_manage}));
     },
 
     async countWatchedOrigins(installationId: number): Promise<number> {
@@ -5779,7 +5916,7 @@ export function createStore(
         last_checked_at: string | Date | null;
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
-      }>(`SELECT * FROM watched_origins WHERE disconnected_at IS NULL AND installation_id IS NOT NULL ORDER BY id`);
+      }>(`SELECT * FROM watched_origins WHERE disconnected_at IS NULL AND paused_at IS NULL AND installation_id IS NOT NULL ORDER BY id`);
       return rows.map(watchedOriginRow);
     },
 
@@ -5932,51 +6069,56 @@ export function createStore(
       return Boolean(rows[0]);
     },
 
-    async touchWatchedOrigin(id: number): Promise<void> {
-      await sql.query(`UPDATE watched_origins SET last_checked_at = now() WHERE id = $1`, [id]);
+    async touchWatchedOrigin(id: number, connectionGeneration?: string): Promise<boolean> {
+      const result = await sql.query(`UPDATE watched_origins SET last_checked_at = now() WHERE id = $1
+        AND ($2::bigint IS NULL OR (connection_generation=$2 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`, [id, connectionGeneration ?? null]);
+      return result.rows.length > 0;
     },
 
     async recordWatchedOriginScan(
       id: number,
-      input: { sha256: string | null; status: string },
-    ): Promise<void> {
-      await sql.query(
+      input: { sha256: string | null; status: string; connectionGeneration?: string },
+    ): Promise<boolean> {
+      const result = await sql.query(
         `UPDATE watched_origins SET
            last_checked_at = now(),
            last_scanned_at = now(),
            last_scan_status = $2,
            last_sha256 = COALESCE($3, last_sha256)
-         WHERE id = $1`,
-        [id, input.status, input.sha256],
+         WHERE id = $1 AND ($4::bigint IS NULL OR (connection_generation=$4 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`,
+        [id, input.status, input.sha256, input.connectionGeneration ?? null],
       );
+      return result.rows.length > 0;
     },
 
     async recordOriginMapIdentity(
       id: number,
-      input: { debugIds: string[]; release: string | null; publicMap: boolean },
-    ): Promise<void> {
-      await sql.query(
+      input: { debugIds: string[]; release: string | null; publicMap: boolean; connectionGeneration?: string },
+    ): Promise<boolean> {
+      const result = await sql.query(
         `UPDATE watched_origins SET
            last_debug_ids = $2::jsonb,
            last_release = $3,
            last_public_map = $4
-         WHERE id = $1`,
-        [id, JSON.stringify(input.debugIds), input.release, input.publicMap],
+         WHERE id = $1 AND ($5::bigint IS NULL OR (connection_generation=$5 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`,
+        [id, JSON.stringify(input.debugIds), input.release, input.publicMap, input.connectionGeneration ?? null],
       );
+      return result.rows.length > 0;
     },
 
     async recordPackageMapIdentity(
       id: number,
-      input: { debugIds: string[]; release: string | null; publicMap: boolean },
-    ): Promise<void> {
-      await sql.query(
+      input: { debugIds: string[]; release: string | null; publicMap: boolean; connectionGeneration?: string },
+    ): Promise<boolean> {
+      const result = await sql.query(
         `UPDATE watched_packages SET
            last_debug_ids = $2::jsonb,
            last_release = $3,
            last_public_map = $4
-         WHERE id = $1`,
-        [id, JSON.stringify(input.debugIds), input.release, input.publicMap],
+         WHERE id = $1 AND ($5::bigint IS NULL OR (connection_generation=$5 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`,
+        [id, JSON.stringify(input.debugIds), input.release, input.publicMap, input.connectionGeneration ?? null],
       );
+      return result.rows.length > 0;
     },
 
     async listMapIdentities(installationId: number): Promise<MapIdentityRow[]> {
@@ -5989,7 +6131,7 @@ export function createStore(
       }>(
         `SELECT id, host, last_debug_ids, last_release, last_public_map
          FROM watched_origins
-         WHERE installation_id = $1
+         WHERE installation_id = $1 AND disconnected_at IS NULL
          ORDER BY id`,
         [installationId],
       );
@@ -6002,7 +6144,7 @@ export function createStore(
       }>(
         `SELECT id, package_name, last_debug_ids, last_release, last_public_map
          FROM watched_packages
-         WHERE installation_id = $1
+         WHERE installation_id = $1 AND disconnected_at IS NULL
          ORDER BY id`,
         [installationId],
       );
@@ -6158,6 +6300,7 @@ export function createStore(
          JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR d.installation_id = $2)
+           AND d.disconnected_at IS NULL
          ORDER BY d.kind`,
         [userId, scoped],
       );
@@ -6183,7 +6326,7 @@ export function createStore(
                 last_checked_at, last_status, last_error, last_fingerprint,
                 created_at, updated_at
          FROM map_destinations
-         WHERE installation_id = $1
+         WHERE installation_id = $1 AND disconnected_at IS NULL AND paused_at IS NULL
          ORDER BY kind`,
         [installationId],
       );
@@ -6209,6 +6352,7 @@ export function createStore(
                 last_checked_at, last_status, last_error, last_fingerprint,
                 created_at, updated_at
          FROM map_destinations
+         WHERE disconnected_at IS NULL AND paused_at IS NULL
          ORDER BY id`,
       );
       return rows.map(mapDestinationRow);
@@ -6233,7 +6377,7 @@ export function createStore(
                 last_checked_at, last_status, last_error, last_fingerprint,
                 created_at, updated_at
          FROM map_destinations
-         WHERE id = $1`,
+         WHERE id = $1 AND disconnected_at IS NULL`,
         [id],
       );
       return rows[0] ? mapDestinationRow(rows[0]) : null;
@@ -6272,6 +6416,11 @@ export function createStore(
          )
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (installation_id, kind) DO UPDATE SET
+           disconnected_at = NULL,
+           last_checked_at = NULL,
+           last_status = NULL,
+           last_error = NULL,
+           last_fingerprint = NULL,
            host = excluded.host,
            org_slug = excluded.org_slug,
            project_slug = excluded.project_slug,
@@ -6296,11 +6445,12 @@ export function createStore(
 
     async deleteMapDestinationForUser(id: number, userId: string): Promise<boolean> {
       const { rows } = await sql.query<{ id: unknown }>(
-        `DELETE FROM map_destinations d
-         USING installation_users iu
+        `UPDATE map_destinations d SET disconnected_at=COALESCE(disconnected_at,now()),token_ciphertext=NULL
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE d.id = $1
            AND d.installation_id = iu.installation_id
            AND iu.user_id = $2
+           AND iu.role = 'admin'
          RETURNING d.id`,
         [id, userId],
       );
@@ -6315,7 +6465,7 @@ export function createStore(
         kind: string;
         token_ciphertext: string;
       }>(
-        `SELECT id, kind, token_ciphertext FROM map_destinations WHERE id = $1`,
+        `SELECT id, kind, token_ciphertext FROM map_destinations WHERE id = $1 AND disconnected_at IS NULL`,
         [id],
       );
       const row = rows[0];
@@ -6327,20 +6477,31 @@ export function createStore(
       };
     },
 
+    async getMapDestinationForCheck(id: number) {
+      const row = (await sql.query<Parameters<typeof mapDestinationRow>[0] & {token_ciphertext:string; configuration_version:string}>(
+        `SELECT *,md5(token_ciphertext || ':' || connection_generation::text) AS configuration_version FROM map_destinations WHERE id=$1 AND disconnected_at IS NULL AND paused_at IS NULL`, [id],
+      )).rows[0];
+      if (!row || !tokenSecret || !row.token_ciphertext) return null;
+      return {destination:mapDestinationRow(row),token:decryptSecret(row.token_ciphertext,tokenSecret),configurationVersion:row.configuration_version};
+    },
+
     async recordMapDestinationCheck(
       id: number,
-      input: { status: string; error: string | null; fingerprint: string },
-    ): Promise<void> {
-      await sql.query(
+      input: { status: string; error: string | null; fingerprint: string; configurationVersion?: string },
+    ): Promise<boolean> {
+      const result = await sql.query(
         `UPDATE map_destinations SET
            last_checked_at = now(),
            last_status = $2,
            last_error = $3,
            last_fingerprint = $4,
            updated_at = now()
-         WHERE id = $1`,
-        [id, input.status, input.error, input.fingerprint],
+         WHERE id = $1 AND disconnected_at IS NULL AND paused_at IS NULL
+           AND ($5::text IS NULL OR md5(token_ciphertext || ':' || connection_generation::text)=$5)
+         RETURNING id`,
+        [id, input.status, input.error, input.fingerprint,input.configurationVersion??null],
       );
+      return result.rows.length > 0;
     },
 
     async listNotificationDestinationsForUser(
@@ -7071,38 +7232,42 @@ export function createStore(
         distTags?: Record<string, string> | null;
         tarballUrl?: string | null;
         shasum?: string | null;
+        connectionGeneration?: string;
       },
-    ): Promise<void> {
-      await sql.query(
+    ): Promise<boolean> {
+      const result=await sql.query(
         `UPDATE watched_packages SET
            last_checked_at = now(),
            last_version = COALESCE($2, last_version),
            last_dist_tags = COALESCE($3::jsonb, last_dist_tags),
            last_tarball_url = COALESCE($4, last_tarball_url),
            last_shasum = COALESCE($5, last_shasum)
-         WHERE id = $1`,
+         WHERE id = $1 AND ($6::bigint IS NULL OR (connection_generation=$6 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`,
         [
           id,
           input.version ?? null,
           input.distTags ? JSON.stringify(input.distTags) : null,
           input.tarballUrl ?? null,
           input.shasum ?? null,
+          input.connectionGeneration ?? null,
         ],
       );
+      return result.rows.length>0;
     },
 
     async recordWatchedPackageScan(
       id: number,
-      input: { sha256: string | null; status: string },
-    ): Promise<void> {
-      await sql.query(
+      input: { sha256: string | null; status: string; connectionGeneration?: string },
+    ): Promise<boolean> {
+      const result = await sql.query(
         `UPDATE watched_packages SET
            last_scanned_at = now(),
            last_scan_status = $2,
            last_sha256 = COALESCE($3, last_sha256)
-         WHERE id = $1`,
-        [id, input.status, input.sha256],
+         WHERE id = $1 AND ($4::bigint IS NULL OR (connection_generation=$4 AND disconnected_at IS NULL AND paused_at IS NULL)) RETURNING id`,
+        [id, input.status, input.sha256, input.connectionGeneration ?? null],
       );
+      return result.rows.length > 0;
     },
 
     async insertScanReceipt(input: {
@@ -7380,7 +7545,7 @@ export function createStore(
 
     async listReleaseRevisionsForUser(
       userId: string,
-      opts: { limit?: number; installationId?: number | null } = {},
+      opts: { limit?: number; installationId?: number | null; hostedDecision?: 'all'|'passed'|'attention'; before?:number;workspaceId?:string } = {},
     ): Promise<ReleaseRevisionRow[]> {
       const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
       const scoped = optionalInstallId(opts.installationId);
@@ -7391,6 +7556,11 @@ export function createStore(
          LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE iu.user_id = $1
            AND ($3::bigint IS NULL OR rr.installation_id = $3)
+           AND ($4::text IS NULL OR NOT EXISTS(SELECT 1 FROM uploaded_scans u WHERE u.revision_id=rr.id))
+           AND ($4::text IS NULL OR $4='all' OR ($4='passed' AND sr.status='passed' AND NOT rr.mismatch)
+             OR ($4='attention' AND (sr.status<>'passed' OR rr.mismatch)))
+           AND ($5::bigint IS NULL OR rr.id<$5)
+           AND ($6::text IS NULL OR EXISTS(SELECT 1 FROM product_workspace_installations wi WHERE wi.installation_id=rr.installation_id AND wi.workspace_id::text=$6))
            AND (
              row_within_retention(rr.installation_id, rr.created_at)
              OR EXISTS (
@@ -7403,9 +7573,9 @@ export function createStore(
                  AND h.action = 'place'
              )
            )
-         ORDER BY rr.created_at DESC, rr.id DESC
+         ORDER BY CASE WHEN $4::text IS NULL THEN rr.created_at ELSE NULL END DESC, rr.id DESC
          LIMIT $2`,
-        [userId, limit, scoped],
+        [userId, limit, scoped, opts.hostedDecision ?? null, opts.before ?? null,opts.workspaceId??null],
       );
       return rows.map(releaseRevisionRow);
     },

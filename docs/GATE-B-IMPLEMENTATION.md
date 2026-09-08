@@ -1,5 +1,13 @@
 # Gate B implementation tracker
 
+## Current checkpoint — 8 September 2026
+
+**Gate B accepted:** final regression38375 passes986 tests/198 files; build27665 passes. The requirement matrix and completion audit record the closure. This supersedes the pending-status paragraph below and all historical next-work notes. No source/test/build process remains active.
+
+The entries below are historical implementation records, not a queue of features still to build. Current code includes migration `121_repo_connection_generation`, real workspace-aware GitHub connection APIs/UI, independent membership and billing ownership, source lifecycle controls, and atomic repository/package/website evidence publication. Do not restart the old schema 089 prerequisite work described below.
+
+Use `GATE-B-COMPLETION-AUDIT.md` for current acceptance evidence and `CONTINUE-GATE-B-PROMPT.md` for the unchanged B0–B8 scope. Final combined regression 59716 passed 986 tests in 198 files against unchanged source; build 19524 passed. No test/build from this checkpoint remains running. Gate B is not yet declared complete; the final evidence matrix is being checked.
+
 ## Follow-up — local server and mapped-source refresh protection
 
 - Still schema 089. `upsertInstallation` now atomically updates source metadata and only bootstraps legacy organisation/billing when no workspace mapping exists. This closes a leftover webhook path that could manufacture a second trial/account for an additional mapped source.

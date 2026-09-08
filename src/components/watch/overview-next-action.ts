@@ -4,6 +4,7 @@ type Evidence = {
  hostedSources?: Array<{installationId:number;attention:number;total:number}>;
  connectedActivity?: Array<{queued:number;running:number}>;
  websiteCoverage?: {total:number;attention:number;delayed:number};
+ connectedCoverage?: {unknown:number;delayed:number;unavailable?:number};
 };
 
 export function overviewNextAction(data:Evidence,workspaceId:string){
@@ -36,6 +37,9 @@ export function overviewNextAction(data:Evidence,workspaceId:string){
  if(data.websiteCoverage?.attention){
   params.set('websiteHealth',data.websiteCoverage.delayed?'delayed':'attention');
   return result(data.websiteCoverage.delayed?'Scheduled website monitoring is delayed. Historical scan results do not establish current coverage.':'Website coverage needs attention. Verify ownership or complete the next check before relying on monitoring.',data.websiteCoverage.delayed?'Review delayed monitoring':'Review website coverage','sources');
+ }
+ if(data.connectedCoverage && (data.connectedCoverage.unknown+data.connectedCoverage.delayed+(data.connectedCoverage.unavailable??0)>0)){
+  return result('Connected monitoring needs attention. Unknown, delayed or suspended coverage does not establish current safety, even when an older release passed.','Review connected coverage','sources');
  }
  const source=data.hostedSources?.find(item=>item.total>0);
  if(source)params.set('install',String(source.installationId));

@@ -121,7 +121,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
           <h1 id="release-brief-title">{release.coordinate}</h1>
           <p>
             {release.channel} channel
-            {release.sourceRevision ? ` · commit ${release.sourceRevision}` : ""}
+            {release.sourceRevision ? ` · source revision ${release.sourceRevision}` : ""}
             {release.createdAt ? ` · ${new Date(release.createdAt).toLocaleString()}` : ""}
           </p>
         </div>

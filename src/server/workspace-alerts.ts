@@ -94,7 +94,7 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
  const sources=await sql.query<{count:number|string}>(`SELECT
   (SELECT count(*) FROM watched_origins s WHERE s.workspace_id=$1 AND s.disconnected_at IS NULL AND (s.installation_id IS NULL OR EXISTS(SELECT 1 FROM installations i WHERE i.id=s.installation_id AND i.disconnected_at IS NULL))) +
   (SELECT count(*) FROM repos r JOIN product_workspace_installations c ON c.installation_id=r.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND r.disconnected_at IS NULL AND i.disconnected_at IS NULL) +
-  (SELECT count(*) FROM watched_packages p JOIN product_workspace_installations c ON c.installation_id=p.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND i.disconnected_at IS NULL) AS count`,[workspaceId]);
+  (SELECT count(*) FROM watched_packages p JOIN product_workspace_installations c ON c.installation_id=p.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND i.disconnected_at IS NULL AND p.disconnected_at IS NULL) AS count`,[workspaceId]);
  return {alerts:rows.slice(0,50),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
 }
 

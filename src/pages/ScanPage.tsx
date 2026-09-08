@@ -8,7 +8,7 @@ import type { Finding, ScanReport } from "@/report-types"
 import { watchHref, watchPath } from "@/watch/routes.ts"
 import { Box, ChevronRight, FileJson, GitBranch, Globe2, Loader2, LockKeyhole, ShieldCheck, Upload } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react"
-import { uploadArtifact } from '@/watch/upload-transport'
+import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
 
 type ViewState =
@@ -25,6 +25,20 @@ type ScanSubmission = ScanReport | PendingScan | QueuedScan
 
 function isPendingScan(value: ScanSubmission): value is PendingScan {
   return "pending" in value && value.pending === true
+}
+
+function requireQueuedScan(value: unknown): asserts value is QueuedScan {
+  if(!value || typeof value!=='object' || !('queued' in value) || value.queued!==true ||
+    !('uploadId' in value) || typeof value.uploadId!=='string' || !value.uploadId.trim()) {
+    throw new Error('The server did not confirm a saved attempt. Check Releases before retrying.');
+  }
+}
+
+function requireSubmission(value: unknown): asserts value is PendingScan | QueuedScan {
+  if(value && typeof value==='object' && 'pending' in value && value.pending===true &&
+    'target' in value && typeof value.target==='string' && value.target.trim() &&
+    'expiresInMinutes' in value && typeof value.expiresInMinutes==='number' && value.expiresInMinutes>0 && Number.isFinite(value.expiresInMinutes))return
+  requireQueuedScan(value)
 }
 
 type ScanMode = "github" | "package" | "website" | "receipt"
@@ -172,8 +186,9 @@ const EXAMPLES = [
   },
 ] as const
 
-async function scanPath(path: string): Promise<ScanSubmission> {
-  const response = await fetch("/api/scan", {
+async function scanPath(path: string, search: string): Promise<ScanSubmission> {
+  const scope = new URLSearchParams(search)
+  const response = await fetch(scanSubmissionUrl(scope.get('install'),scope.get('workspace')), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path }),
@@ -267,7 +282,8 @@ async function checkReceipt(receiptFile: File, packFile: File | null, signal: Ab
 }
 
 export function ScanPage({ search, embedded = false,workspace }: { search: string; embedded?: boolean;workspace?:import('@/watch/workspace-types').ProductWorkspace }) {
-  return <ScanPageScope key={workspace?.id??new URLSearchParams(search).get('install')??'personal'} search={search} embedded={embedded} productWorkspace={workspace}/>;
+  const params=new URLSearchParams(search)
+  return <ScanPageScope key={JSON.stringify([workspace?.id??params.get('workspace'),params.get('install')])} search={search} embedded={embedded} productWorkspace={workspace}/>;
 }
 
 function ScanPageScope({ search, embedded = false,productWorkspace }: { search: string; embedded?: boolean;productWorkspace?:import('@/watch/workspace-types').ProductWorkspace }) {
@@ -280,12 +296,14 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const [sessionReady,setSessionReady]=useState(false)
   const [sessionError,setSessionError]=useState<string|null>(null)
   const [sessionRetry,setSessionRetry]=useState(0)
+  const [claimRetry,setClaimRetry]=useState(0)
   const [websiteUrl, setWebsiteUrl] = useState("")
   const [websiteError, setWebsiteError] = useState<string | null>(null)
   const [savingWebsite, setSavingWebsite] = useState(false)
   const uploadController=useRef<AbortController|null>(null)
+  const mounted=useRef(true)
   const [uploadProgress,setUploadProgress]=useState<number|null>(null)
-  useEffect(()=>()=>uploadController.current?.abort(),[])
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;uploadController.current?.abort();}},[])
 
   useEffect(() => {
     let cancelled = false
@@ -307,16 +325,17 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   }, [sessionRetry])
 
   useEffect(() => {
-    if (new URLSearchParams(search).get("reveal") !== "1") return
+    const params=new URLSearchParams(search)
+    if (params.get("reveal") !== "1") return
     let cancelled = false
     setState({ status: "loading", label: "your staged artifact" })
-    void fetch("/api/scan/pending", { method: 'POST', credentials: "include" })
+    void fetch(scanSubmissionUrl(params.get('install'),params.get('workspace'),'claim'), { method: 'POST', credentials: "include" })
       .then(async (response) => {
         const body = (await response.json()) as ScanReport | QueuedScan | { error?: string }
         if (cancelled) return
         if (!response.ok) throw new Error("error" in body && body.error ? body.error : "Could not reveal this scan.")
-        if ('queued' in body && body.queued) { navigate(`/watch/releases?upload=${encodeURIComponent(body.uploadId)}`); return }
-        setState({ status: "done", report: body as ScanReport, label: (body as ScanReport).target })
+        requireQueuedScan(body)
+        navigate(`/watch/releases?upload=${encodeURIComponent(body.uploadId)}`)
       })
       .catch((error) => {
         if (!cancelled) setState({ status: "error", message: error instanceof Error ? error.message : "Could not reveal this scan." })
@@ -324,7 +343,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     return () => {
       cancelled = true
     }
-  }, [search])
+  }, [search,claimRetry])
 
   useEffect(() => {
     setMode(scanModeFromSearch(search))
@@ -374,7 +393,10 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     setState({ status: "loading", label })
     try {
       const report = await job()
+      if(!mounted.current)return
+      requireSubmission(report)
       if ('queued' in report) {
+        requireQueuedScan(report)
         const params = new URLSearchParams({ upload: report.uploadId })
         if (selectedInstall) params.set('install', selectedInstall)
         const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId)
@@ -383,6 +405,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       }
       setState(isPendingScan(report) ? { status: "pending", label: report.target } : { status: "done", report, label })
     } catch (error) {
+      if(!mounted.current)return
       setState({
         status: "error",
         message: error instanceof Error ? error.message : "Scan failed.",
@@ -527,15 +550,17 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </Field>
               </div>
             </section>
-            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} auth={auth} />}
+            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} lockReason={lockReason} auth={auth} />}
           </div>
 
+          {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}
           {auth.developmentLogin ? <details className={cn("scan-examples", locked && "pointer-events-none opacity-40")}>
-            <summary>{locked ? "Example library" : "Try a safe example"}</summary>
+            <summary>Local review examples</summary>
+            <p className="text-sm text-mute">Development only. These fixtures use the same workspace scan queue and limits as uploads, and create saved attempts. This library is not available on the production website.</p>
             <ul>
               {EXAMPLES.map((example) => (
                 <li key={example.path}>
-                  <HeadlessButton type="button" disabled={locked || state.status==='loading'} onClick={() => !locked && state.status!=='loading' && void run(example.label, () => scanPath(example.path))}>
+                  <HeadlessButton type="button" disabled={locked || state.status==='loading'} onClick={() => !locked && state.status!=='loading' && void run(example.label, () => scanPath(example.path, search))}>
                     <span><strong>{example.label}</strong><small>{example.hint}</small></span>
                     <span>Run <ChevronRight className="h-3.5 w-3.5" aria-hidden /></span>
                   </HeadlessButton>
@@ -842,14 +867,14 @@ export function ReceiptVerifyPanel() {
   )
 }
 
-function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boolean; auth: { githubApp: boolean; developmentLogin?: boolean } }) {
+function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; locked: boolean; lockReason: string|null; auth: { githubApp: boolean; developmentLogin?: boolean } }) {
   if (locked && state.status === "idle") {
     return (
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Report</p>
         <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">No hosted scan yet.</h2>
         <p className="mt-2 text-sm leading-relaxed text-mute">
-          Choose an active workspace or renew coverage to start a hosted scan. Existing release records remain separate from new scan access.
+          {lockReason??'Choose an active workspace or renew coverage to start a hosted scan.'} Existing release records remain separate from new scan access.
         </p>
       </div>
     )
@@ -860,7 +885,7 @@ function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boole
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-sm text-dim">No scan yet.</p>
         <p className="mt-2 text-sm text-mute">
-          {auth.developmentLogin ? "Drop a pack or run a fixture. Empty is a good state." : "Drop the packed artifact you intend to release."}
+          {auth.developmentLogin ? "Drop the packed artifact you intend to release, or choose a local review fixture below." : "Drop the packed artifact you intend to release."}
         </p>
       </div>
     )
@@ -870,7 +895,7 @@ function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boole
     return (
       <div className="flex min-h-52 items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
-        <p className="text-sm text-mute">Scanning {state.label}…</p>
+        <p className="text-sm text-mute">Submitting {state.label}… Waiting for the server to confirm the saved attempt.</p>
       </div>
     )
   }

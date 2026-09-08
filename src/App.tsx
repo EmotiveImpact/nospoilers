@@ -73,6 +73,9 @@ export default function App() {
                       ? path.replace(/\/$/, "") || "/advisory"
                       : "/internal/prospects"
 
+  // Documentation is a standalone reading workspace, not a marketing page.
+  if (page === "docs") return <DocsPage path={path} />
+
   // Supporting public routes are isolated from authenticated application routing.
   if (isWebsitePath(path)) return <V20PublicShell><WebsitePage path={path} /></V20PublicShell>
 
@@ -82,7 +85,6 @@ export default function App() {
       {page === "watch" && <WatchPage path={path} search={search} />}
       {page === "scan" && <ScanPage search={search} />}
       {page === "pricing" && <PricingPage />}
-      {page === "docs" && <DocsPage path={path} />}
       {page === "mockups" && <MockupsPage />}
       {page === "prospects" && <ProspectsPage />}
       {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}

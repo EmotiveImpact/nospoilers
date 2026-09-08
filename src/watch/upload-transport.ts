@@ -1,11 +1,17 @@
+export function scanSubmissionUrl(installationId?:string|null,workspaceId?:string|null,kind:'upload'|'claim'='upload'):string {
+  const params=new URLSearchParams();
+  if(installationId)params.set('installationId',installationId);
+  if(workspaceId)params.set('workspaceId',workspaceId);
+  return `/api/scan${kind==='claim'?'/pending':''}${params.size?`?${params}`:''}`;
+}
+
 /** Reports transmitted bytes, never fabricated scanner progress. */
 export function uploadArtifact(file:File, installationId:string|null, onProgress:(percent:number)=>void, signal:AbortSignal,workspaceId?:string|null):Promise<Response> {
   return new Promise((resolve,reject)=>{
     const request=new XMLHttpRequest();
     const abort=()=>request.abort();
     const cleanup=()=>signal.removeEventListener('abort',abort);
-    const params=new URLSearchParams();if(installationId)params.set('installationId',installationId);if(workspaceId)params.set('workspaceId',workspaceId);
-    request.open('POST',`/api/scan${params.size?`?${params}`:''}`);
+    request.open('POST',scanSubmissionUrl(installationId,workspaceId));
     request.withCredentials=true;
     request.timeout=120_000;
     request.setRequestHeader('X-Filename',file.name);

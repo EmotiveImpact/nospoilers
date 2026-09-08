@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
+
+it('drops release pagination when leaving history while preserving workspace and scan mode',()=>{
+ const search='?workspace=team&install=7&uploadBefore=old&upload=record&uploadView=detail&mode=github';
+ expect(watchHref('/watch/scan',search)).toBe('/watch/scan?workspace=team&install=7&mode=github');
+ expect(new URL(watchHref('/watch/releases',search),'http://localhost').searchParams.get('uploadBefore')).toBe('old');
+});
 import { deskVerdict, filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";
 import {

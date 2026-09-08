@@ -5,6 +5,7 @@ import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
+import { persistHostedReceipt } from "../src/server/receipts.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker, handleJob } from "../src/server/worker.ts";
@@ -391,6 +392,9 @@ describe("hosted website watch", () => {
         "SELECT count(*)::text AS n FROM jobs WHERE kind = 'web_origin_scan'",
       );
       expect(Number(rows[0]?.n)).toBe(2);
+      await sql.query('UPDATE watched_origins SET paused_at=now() WHERE id=$1',[originId]);
+      expect((await trigger()).status).toBe(409);
+      expect((await sql.query("SELECT count(*)::text AS n FROM jobs WHERE kind='web_origin_scan'")).rows).toEqual(rows);
     } finally {
       await sql.close();
     }
@@ -591,6 +595,59 @@ describe("hosted website watch", () => {
       const { rows: alerts } = await sql.query<{ title: string }>("SELECT title FROM alerts");
       expect(alerts).toHaveLength(1);
       expect(alerts[0]?.title).toMatch(/app.example.com is allowed to ship/);
+      // An inconclusive observation cannot reuse the earlier content digest as proof
+      // that scanning these bytes again is unnecessary.
+      await sql.query("UPDATE watched_origins SET last_scan_status='inconclusive' WHERE installation_id=7");
+      const recoveryOrigin=(await store.listAllWatchedOrigins())[0];
+      await store.enqueueJob({deliveryId:'recovery-next-poll',priority:'heavy',kind:'web_origin_scan',payload:{installationId:7,originId:recoveryOrigin.id,connectionGeneration:recoveryOrigin.connection_generation,url:recoveryOrigin.origin_url,reason:'poll'}});
+      let rescans=0;
+      const recovery=createWorker({store,github:unusedGithub(),notifier:createLogNotifier(store),scan:async(...args)=>{rescans++;return scan(...args);},heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:80*1024*1024,intervalMs:60000,webFetch,webLookup:publicLookup});
+      await recovery.tick();await recovery.stop();
+      expect(rescans).toBe(1);
+      expect((await sql.query<{last_scan_status:string}>("SELECT last_scan_status FROM watched_origins WHERE installation_id=7")).rows[0]?.last_scan_status).toBe('passed');
+      await sql.query("UPDATE watched_origins SET paused_at=now() WHERE installation_id=7");
+      expect((await runWebOriginPoll({store})).queued).toBe(0);
+      expect((await store.getWatchedOrigin(recoveryOrigin.id))?.paused_at).toBeTruthy();
+      const jobsBeforePausedCheck=(await sql.query('SELECT count(*) AS count FROM jobs')).rows;
+      await expect(checkWatchedOrigin(store,(await store.getWatchedOrigin(recoveryOrigin.id))!)).rejects.toMatchObject({status:409,message:'Resume monitoring before scanning this production website.'});
+      expect((await sql.query('SELECT count(*) AS count FROM jobs')).rows).toEqual(jobsBeforePausedCheck);
+      await store.enqueueJob({deliveryId:'already-queued-before-pause',priority:'heavy',kind:'web_origin_scan',payload:{installationId:7,originId:recoveryOrigin.id}});
+      let pausedFetches=0;
+      const pausedWorker=createWorker({store,github:unusedGithub(),notifier:createLogNotifier(store),scan,heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:80*1024*1024,intervalMs:60000,webFetch:async(...args)=>{pausedFetches++;return webFetch(...args);},webLookup:publicLookup});
+      await pausedWorker.tick();await pausedWorker.stop();
+      expect(pausedFetches).toBe(0);
+      await sql.query("UPDATE watched_origins SET paused_at=NULL,last_scan_status='inconclusive' WHERE installation_id=7");
+      await store.enqueueJob({deliveryId:'pause-during-crawl',priority:'heavy',kind:'web_origin_scan',payload:{installationId:7,originId:recoveryOrigin.id,connectionGeneration:(await store.getWatchedOrigin(recoveryOrigin.id))?.connection_generation}});
+      let lateScans=0;
+      const changingWorker=createWorker({store,github:unusedGithub(),notifier:createLogNotifier(store),scan:async(...args)=>{lateScans++;return scan(...args);},heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:80*1024*1024,intervalMs:60000,webFetch:async(...args)=>{await sql.query('UPDATE watched_origins SET paused_at=now() WHERE id=$1',[recoveryOrigin.id]);await sql.query('UPDATE watched_origins SET paused_at=NULL WHERE id=$1',[recoveryOrigin.id]);return webFetch(...args);},webLookup:publicLookup});
+      await changingWorker.tick();await changingWorker.stop();
+      expect(lateScans).toBe(0);
+      expect((await store.getWatchedOrigin(recoveryOrigin.id))?.paused_at).toBeNull();
+      expect((await sql.query<{last_scan_status:string}>('SELECT last_scan_status FROM watched_origins WHERE id=$1',[recoveryOrigin.id])).rows[0]?.last_scan_status).toBe('inconclusive');
+      await store.enqueueJob({deliveryId:'obsolete-connection-job',priority:'heavy',kind:'web_origin_scan',payload:{installationId:7,originId:recoveryOrigin.id,connectionGeneration:recoveryOrigin.connection_generation}});
+      let obsoleteFetches=0;
+      const obsoleteWorker=createWorker({store,github:unusedGithub(),notifier:createLogNotifier(store),scan,heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:80*1024*1024,intervalMs:60000,webFetch:async(...args)=>{obsoleteFetches++;return webFetch(...args);},webLookup:publicLookup});
+      await obsoleteWorker.tick();await obsoleteWorker.stop();
+      expect(obsoleteFetches).toBe(0);
+      const beforeRejectedWrites=await store.getWatchedOrigin(recoveryOrigin.id);
+      expect(await store.touchWatchedOrigin(recoveryOrigin.id,recoveryOrigin.connection_generation)).toBe(false);
+      expect(await store.recordWatchedOriginScan(recoveryOrigin.id,{sha256:'obsolete',status:'passed',connectionGeneration:recoveryOrigin.connection_generation})).toBe(false);
+      expect(await store.recordOriginMapIdentity(recoveryOrigin.id,{debugIds:['obsolete'],release:'obsolete',publicMap:true,connectionGeneration:recoveryOrigin.connection_generation})).toBe(false);
+      expect(await store.getWatchedOrigin(recoveryOrigin.id)).toEqual(beforeRejectedWrites);
+      expect(await store.touchWatchedOrigin(recoveryOrigin.id,beforeRejectedWrites!.connection_generation)).toBe(true);
+      const originConnection={id:recoveryOrigin.id,generation:recoveryOrigin.connection_generation!};
+      const countsBefore=(await sql.query('SELECT (SELECT count(*) FROM alerts) AS alerts,(SELECT count(*) FROM scan_receipts) AS receipts')).rows;
+      await expect(store.insertAlert({installationId:7,originConnection,kind:'web_origin_scan',title:'Obsolete',body:'Obsolete'})).rejects.toThrow('Website connection changed');
+      await expect(persistHostedReceipt({store,secret:'test-secret',installationId:7,originConnection,coordinate:`web:${ORIGIN}`,report:await scan(CLEAN)})).rejects.toThrow('Website connection changed');
+      expect((await sql.query('SELECT (SELECT count(*) FROM alerts) AS alerts,(SELECT count(*) FROM scan_receipts) AS receipts')).rows).toEqual(countsBefore);
+      const currentConnection={id:recoveryOrigin.id,generation:beforeRejectedWrites!.connection_generation!};
+      const persisted=await persistHostedReceipt({store,secret:'test-secret',installationId:7,originConnection:currentConnection,coordinate:`web:${ORIGIN}`,report:await scan(CLEAN)});
+      expect(persisted.report.status).toBe('passed');
+      expect(await store.insertAlert({installationId:7,originConnection:currentConnection,kind:'web_origin_scan',title:'Current',body:'Current',releaseRevisionIds:[persisted.revision.id]})).toBeGreaterThan(0);
+      await sql.query('UPDATE watched_origins SET paused_at=now() WHERE id=$1',[recoveryOrigin.id]);
+      const pausedConnection={id:recoveryOrigin.id,generation:(await store.getWatchedOrigin(recoveryOrigin.id))!.connection_generation!};
+      await expect(store.insertAlert({installationId:7,originConnection:pausedConnection,kind:'web_origin_scan',title:'Paused',body:'Paused'})).rejects.toThrow('Website connection changed');
+      await expect(persistHostedReceipt({store,secret:'test-secret',installationId:7,originConnection:pausedConnection,coordinate:`web:${ORIGIN}`,report:await scan(CLEAN)})).rejects.toThrow('Website connection changed');
     } finally {
       await sql.close();
     }

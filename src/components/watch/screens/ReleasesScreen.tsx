@@ -1,5 +1,6 @@
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';
+import {HostedDecisionList} from '../HostedDecisionList';
 import { WatchReleaseBrief } from "@/components/watch/WatchReleaseBrief";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { buildReleaseBriefModel } from "@/watch/release-brief";
@@ -58,6 +59,7 @@ export function ReleasesScreen() {
 
   if (route.view !== "releases") return null;
   if (route.releaseId && selectedRelease) return <WatchReleaseBrief release={selectedRelease} />;
+  if (['all','passed','attention'].includes(new URLSearchParams(search).get('hostedDecision')??'') && new URLSearchParams(search).get('install')) return <HostedDecisionList key={search} search={search}/>;
 
   const readyCount = releases.filter((release) => releaseStatus(release).ready).length;
   const blockedCount = releases.filter((release) => releaseStatus(release).blocked).length;
@@ -202,7 +204,7 @@ export function ReleasesScreen() {
               </div>
               <h2>{preview.coordinate}</h2>
               <p className="watch-release-preview-meta">
-                {preview.channel} channel · {preview.sourceRevision ? `commit ${preview.sourceRevision}` : `sha256 ${preview.artifactSha256.slice(0, 12)}`} · {new Date(preview.createdAt).toLocaleString()}
+                {preview.channel} channel · {preview.sourceRevision ? `source revision ${preview.sourceRevision}` : `sha256 ${preview.artifactSha256.slice(0, 12)}`} · {new Date(preview.createdAt).toLocaleString()}
               </p>
 
               <div className="watch-release-preview-verdict">

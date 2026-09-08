@@ -1,12 +1,12 @@
 import {
-  Activity, ArrowRight, ArrowUpRight, BookOpen, Bot, Building2, Check, Code2,
-  Database, ExternalLink, FileCode2, FolderLock, GitFork, Globe2, KeyRound, Menu,
-  MessageCircleQuestion, Package, PackageCheck, PackageSearch, Radar, ScanLine, Send,
-  Settings2, ShieldAlert, ShieldCheck, TriangleAlert, UserRound, UsersRound, X,
+  ArrowRight, ArrowUpRight, Bot, Building2, Check, Code2,
+  Database, FileCode2, FolderLock, GitFork, Globe2, KeyRound, Menu,
+  Package, PackageSearch, Radar, Send,
+  Settings2, ShieldAlert, UserRound, UsersRound, X,
   type LucideIcon,
 } from "lucide-react"
 import { navigate } from "@/nav.ts"
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import "./v20-homepage.css"
 
 export type MarketingSession = { user: { login: string } | null; githubApp: boolean; developmentLogin?: boolean }
@@ -47,46 +47,60 @@ export function MarketingNav({ me, openApp, home = true }: { me: MarketingSessio
   const [menu, setMenu] = useState<"product" | "resources" | null>(null)
   const [mobile, setMobile] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [slider, setSlider] = useState({ left: 0, width: 0, visible: false })
+  const mobileDialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = mobileDialog.current
+    if (!mobile || !dialog) return
+    dialog.showModal()
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const resized = () => { if (window.innerWidth > 980) setMobile(false) }
+    window.addEventListener('resize', resized)
+    return () => { dialog.close(); document.body.style.overflow = overflow; window.removeEventListener('resize', resized) }
+  }, [mobile])
   useEffect(() => { const update = () => setScrolled(window.scrollY > 14); update(); window.addEventListener("scroll", update, { passive: true }); return () => window.removeEventListener("scroll", update) }, [])
   useEffect(() => { const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setMenu(null); setMobile(false) } }; document.addEventListener("keydown", close); return () => document.removeEventListener("keydown", close) }, [])
-  function slide(target: HTMLElement) { const base = target.closest("nav")?.getBoundingClientRect(); const rect = target.getBoundingClientRect(); if (base) setSlider({ left: rect.left - base.left, width: rect.width, visible: true }) }
   const scan = () => navigate(me?.user ? "/watch/scan" : "/scan")
-  const landing = (hash: string) => home ? hash : `/${hash}`
   return <>
     <header className={`v20-nav${scrolled ? " scrolled" : ""}`}>
       <div className="v20-wrap v20-nav-inner"><a href={home ? "#top" : "/"}><Brand /></a>
-        <nav className="v20-nav-links" aria-label="Primary" onMouseLeave={() => setSlider((s) => ({ ...s, visible: Boolean(menu) }))}>
-          <span className="v20-nav-slider" style={{ width: slider.width, transform: `translate3d(${slider.left}px,-50%,0)`, opacity: slider.visible ? 1 : 0 }} />
-          <NavMenu label="Product" open={menu === "product"} setOpen={() => setMenu(menu === "product" ? null : "product")} hover={() => setMenu("product")} leave={() => setMenu(null)} slide={slide}>
-            <MenuItem icon={PackageCheck} href={landing("#supply")} title="Release protection" copy="Scan the exact artefacts customers receive." />
-            <MenuItem icon={Radar} action={openApp} title="Coverage" copy="Monitor repositories, packages, sites, and release changes." />
-            <MenuItem icon={ScanLine} action={scan} title="Scan" copy="Inspect a package before publishing." />
-            <MenuItem icon={TriangleAlert} href={landing("#findings")} title="Findings" copy="Source maps, secrets, AI context and more." />
+        <nav className="v20-nav-links" aria-label="Primary">
+          <NavMenu label="Product" open={menu === "product"} setOpen={() => setMenu("product")} hover={() => setMenu("product")} leave={() => setMenu(null)} footer>
+            <div className="v20-mega-column"><MenuItem href="/product#inspect" title="Inspect what ships" copy="Find exposure in the bytes your customers receive." /><MenuItem href="/use-cases#websites" title="Monitor the boundary" copy="Follow supported sources after release." /></div>
+            <div className="v20-mega-column"><MenuItem href="/use-cases#response" title="Respond with context" copy="Review findings and keep the response together." /><MenuItem href="/product#evidence" title="Keep the evidence" copy="Return to a scoped record of every check." /></div>
+            <div className="v20-mega-column v20-mega-quick"><a href="/product">Product overview</a><a href="/use-cases">Use cases</a><a href="/integrations">Integration directory</a><a href="/security">Security</a><a href="/enterprise">For enterprise</a></div>
           </NavMenu>
-          <NavMenu label="Resources" right open={menu === "resources"} setOpen={() => setMenu(menu === "resources" ? null : "resources")} hover={() => setMenu("resources")} leave={() => setMenu(null)} slide={slide}>
-            <MenuItem icon={BookOpen} action={() => navigate("/docs")} title="Documentation" copy="Setup, CLI, Watch and release scanning." />
-            <MenuItem icon={Activity} action={() => navigate("/status")} title="Status" copy="Current NoSpoilers service health." />
-            <MenuItem icon={ShieldCheck} action={() => navigate("/disclosure")} title="Disclosure" copy="Responsible security reporting." />
-            <MenuItem icon={MessageCircleQuestion} action={() => navigate("/support")} title="Support" copy="Get help with installs, scans and coverage." />
+          <NavMenu label="Resources" open={menu === "resources"} setOpen={() => setMenu("resources")} hover={() => setMenu("resources")} leave={() => setMenu(null)}>
+            <div className="v20-mega-column"><MenuItem href="/docs" title="Documentation" copy="Understand the product, one clear guide at a time." /><MenuItem href="/docs/getting-started" title="Get started" copy="From your first package to saved evidence." /></div>
+            <div className="v20-mega-column"><MenuItem href="/docs/api-tokens-and-ci" title="API and CI" copy="Bring release checks into your build workflow." /><MenuItem href="/support" title="Get support" copy="Find the next step when something gets stuck." /></div>
+            <div className="v20-mega-column v20-mega-quick"><a href="/docs/github">Connect GitHub</a><a href="/docs/supported-inputs">Supported inputs</a><a href="/docs/proof">Release proof</a><a href="/status">Service status</a><a href="/disclosure">Security disclosure</a></div>
           </NavMenu>
-          {[[landing("#pricing"), "Pricing"], [landing("#security"), "Security"]].map(([href, label]) => <a key={href} className="v20-nav-link" href={href} onMouseEnter={(e) => slide(e.currentTarget)} onFocus={(e) => slide(e.currentTarget)}>{label}</a>)}
-          <button className="v20-nav-link" onClick={() => navigate("/docs")} onMouseEnter={(e) => slide(e.currentTarget)} onFocus={(e) => slide(e.currentTarget)}>Docs</button>
+          {[["/pricing", "Pricing"], ["/security", "Security"]].map(([href, label]) => <a key={href} className="v20-nav-link" href={href}>{label}</a>)}
+          <button className="v20-nav-link" onClick={() => navigate("/docs")}>Docs</button>
         </nav>
         <div className="v20-nav-right"><button className="v20-nav-link" onClick={openApp}>Open app</button>{!me?.user && <button className="v20-nav-link" onClick={openApp}>Log in</button>}<button className="v20-nav-cta" onClick={scan}>Start a scan</button><button className="v20-mobile-menu-button" aria-label="Open menu" aria-expanded={mobile} onClick={() => setMobile(!mobile)}>{mobile ? <X /> : <Menu />}</button></div>
       </div>
     </header>
-    <div className={`v20-mobile-menu${mobile ? " open" : ""}`} aria-hidden={!mobile}><div className="v20-mobile-menu-inner">{[[landing("#product"), "Product"], [landing("#supply"), "How it works"], [landing("#findings"), "Findings"], [landing("#pricing"), "Pricing"]].map(([href, label]) => <a key={href} href={href} onClick={() => setMobile(false)}><span>{label}</span><ArrowRight /></a>)}<button onClick={() => navigate("/docs")}><span>Docs</span><ArrowRight /></button><button onClick={openApp}><span>Open app</span><ExternalLink /></button><div className="v20-mobile-actions"><button className="v20-button" onClick={openApp}>Log in</button><button className="v20-button primary" onClick={scan}>Start a scan</button></div></div></div>
+    <dialog ref={mobileDialog} className="v20-mobile-menu" aria-label="Site navigation" onCancel={() => setMobile(false)} onClose={() => setMobile(false)}>
+      <div className="v20-mobile-head"><a href="/" onClick={() => setMobile(false)}><Brand /></a><div>{!me?.user && <button className="v20-mobile-login" onClick={() => {setMobile(false);openApp()}}>Log in</button>}<button className="v20-nav-cta" onClick={() => {setMobile(false);scan()}}>Start a scan</button><button autoFocus className="v20-mobile-menu-button" aria-label="Close menu" onClick={() => setMobile(false)}><X /></button></div></div>
+      <nav className="v20-mobile-menu-inner" aria-label="Mobile navigation">
+        {[
+          {title:'Product',links:[['/product#inspect','Inspect what ships'],['/use-cases#websites','Monitor the boundary'],['/use-cases#response','Respond with context'],['/product#evidence','Keep the evidence']]},
+          {title:'Explore',links:[['/product','Product overview'],['/use-cases','Use cases'],['/integrations','Integrations'],['/pricing','Pricing'],['/security','Security'],['/enterprise','Enterprise']]},
+          {title:'Resources',links:[['/docs','Documentation'],['/docs/getting-started','Get started'],['/docs/api-tokens-and-ci','API and CI'],['/support','Support'],['/status','Service status'],['/disclosure','Security disclosure']]},
+        ].map(group=><section key={group.title}><h2>{group.title}</h2>{group.links.map(([href,label])=><a key={href} href={href} onClick={()=>setMobile(false)}>{label}</a>)}</section>)}
+      </nav>
+    </dialog>
   </>
 }
 
-function NavMenu({ label, open, right, setOpen, hover, leave, slide, children }: { label: string; open: boolean; right?: boolean; setOpen: () => void; hover: () => void; leave: () => void; slide: (target: HTMLElement) => void; children: React.ReactNode }) {
-  return <div className="v20-nav-wrap" onMouseEnter={hover} onMouseLeave={leave}><button className={`v20-nav-trigger${open ? " open" : ""}`} aria-expanded={open} onMouseEnter={(e) => slide(e.currentTarget)} onFocus={(e) => slide(e.currentTarget)} onClick={setOpen}>{label}</button><div className={`v20-mega${right ? " right" : ""}${open ? " open" : ""}`}><div className="v20-mega-grid">{children}</div><div className="v20-mega-footer"><span>Release exposure protection</span><span>No source retained</span></div></div></div>
+function NavMenu({ label, open, footer, setOpen, hover, leave, children }: { label: string; open: boolean; footer?: boolean; setOpen: () => void; hover: () => void; leave: () => void; children: React.ReactNode }) {
+  const id = `v20-menu-${label.toLowerCase()}`;
+  return <div className="v20-nav-wrap" onMouseEnter={hover} onMouseLeave={leave} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) leave() }} onKeyDown={(event) => { if(event.key==='Escape'){ leave(); event.currentTarget.querySelector('button')?.focus() } }}><button className={`v20-nav-trigger${open ? " open" : ""}`} aria-expanded={open} aria-controls={id} onClick={setOpen} onKeyDown={(event)=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen();requestAnimationFrame(()=>document.getElementById(id)?.querySelector('a')?.focus())}}}>{label}</button><div id={id} aria-label={`${label} links`} className={`v20-mega${open ? " open" : ""}`} inert={!open}><div className="v20-mega-grid">{children}</div>{footer?<a className="v20-mega-footer" href="/docs/getting-started"><span><b>Start here</b> Your first release check</span><span>Read the guide <ArrowRight aria-hidden="true" /></span></a>:null}</div></div>
 }
 
-function MenuItem({ icon: Icon, title, copy, href, action }: { icon: LucideIcon; title: string; copy: string; href?: string; action?: () => void }) {
-  const content = <><span className="v20-mega-icon"><Icon /></span><span><b>{title}</b><small>{copy}</small></span></>
-  return href ? <a href={href}>{content}</a> : <button onClick={action}>{content}</button>
+function MenuItem({ title, copy, href }: { title: string; copy: string; href: string }) {
+  return <a href={href}><b>{title}</b><small>{copy}</small></a>
 }
 
 function HeroAndSupply({ active, scanning, progress, runScan, scanPath }: { active: string | null; scanning: boolean; progress: string; runScan: () => void; scanPath: string }) {

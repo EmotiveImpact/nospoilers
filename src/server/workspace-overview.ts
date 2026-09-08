@@ -2,10 +2,12 @@ import type {SqlClient} from './sql.ts';
 import {workspaceEvidenceSettings} from './workspace-evidence-settings.ts';
 import {listWorkspaceOrigins} from './workspace-origins.ts';
 import {websiteHealth} from '../watch/website-health.ts';
+import {workspaceCoverageSummary} from './workspace-coverage-summary.ts';
 
 /** Counts are SQL aggregates over the authorised workspace, not the first history page. */
-export async function workspaceOverview(sql:SqlClient,userId:string,workspaceId:string){
+export async function workspaceOverview(sql:SqlClient,userId:string,workspaceId:string,intervalMs=NaN){
  const access=await workspaceEvidenceSettings(sql,userId,workspaceId);
+ const connectedCoverage=await workspaceCoverageSummary(sql,workspaceId,intervalMs);
  const passed="status='done' AND report_json->'ok'='true'::jsonb AND (report_json->>'status' IS NULL OR report_json->>'status'='passed')";
  const [counts,recent,websites,alerts,hosted,jobs]=await Promise.all([
   sql.query<{total:number|string;active:number|string;attention:number|string;passed:number|string}>(`SELECT count(*) AS total,
@@ -53,5 +55,5 @@ export async function workspaceOverview(sql:SqlClient,userId:string,workspaceId:
  const hostedSources=hosted.rows.map(h=>({installationId:Number(h.installation_id),name:h.account_login,total:Number(h.total),passed:Number(h.passed),attention:Number(h.attention)}));
  const hostedReleases=hostedSources.reduce((sum,h)=>({total:sum.total+h.total,passed:sum.passed+h.passed,attention:sum.attention+h.attention}),{total:0,passed:0,attention:0});
  const connectedActivity=jobs.rows.map(j=>({installationId:Number(j.installation_id),name:j.account_login,queued:Number(j.queued),running:Number(j.running)}));
- return {workspace:{name:access.workspace.name,archived:!!access.workspace.archived_at},counts:{total:Number(row.total),active:Number(row.active),attention:Number(row.attention),passed:Number(row.passed)},recent:recent.rows,websiteCoverage,alertCounts,hostedReleases,hostedSources,connectedActivity};
+ return {workspace:{name:access.workspace.name,archived:!!access.workspace.archived_at},counts:{total:Number(row.total),active:Number(row.active),attention:Number(row.attention),passed:Number(row.passed)},recent:recent.rows,websiteCoverage,connectedCoverage,alertCounts,hostedReleases,hostedSources,connectedActivity};
 }

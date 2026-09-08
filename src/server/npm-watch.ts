@@ -38,6 +38,7 @@ export const PROTECTION_IMPORT_STATUSES = [
   "not_found",
   "invalid",
   "watch_cap",
+  "connection_changed",
 ] as const;
 
 export type ProtectionImportStatus = (typeof PROTECTION_IMPORT_STATUSES)[number];
@@ -128,7 +129,10 @@ export async function syncProtectedIdentity(
   pkg: WatchedPackageRow,
   pack: NpmPack,
   notifier?: AlertNotifier,
+  connectionGeneration?: string,
 ): Promise<{ snapshot: boolean; alerts: number }> {
+  const activeGeneration = connectionGeneration ?? await store.packageConnectionGeneration(pkg.id,pkg.installation_id);
+  if(activeGeneration === null)return {snapshot:false,alerts:0};
   const protection = await store.getPackageProtection(pkg.id);
   if (!protection) return { snapshot: false, alerts: 0 };
   const identity = identityOf(pack);
@@ -182,6 +186,7 @@ export async function syncProtectedIdentity(
     return { snapshot: false, alerts: 0 };
   }
   await store.insertPackageIdentitySnapshot({
+    connectionGeneration:activeGeneration,
     installationId: pkg.installation_id,
     packageId: pkg.id,
     version: pack.version,
@@ -206,6 +211,7 @@ export async function syncProtectedIdentity(
       installationId: pkg.installation_id,
       packageName: pkg.package_name,
       kind: described.kind,
+      packageConnection:{id:pkg.id,generation:activeGeneration},
       title: described.title,
       body: described.body,
     };
@@ -219,6 +225,7 @@ export async function syncProtectedIdentity(
       installationId: pkg.installation_id,
       packageName: pkg.package_name,
       kind: described.kind,
+      packageConnection:{id:pkg.id,generation:activeGeneration},
       title: described.title,
       body: described.body,
     };
@@ -245,6 +252,8 @@ export async function protectWatchedPackage(
   npm: NpmPort,
   pkg: WatchedPackageRow,
 ): Promise<{ protection: PackageProtectionRow; snapshot: boolean }> {
+  const generation=await store.packageConnectionGeneration(pkg.id,pkg.installation_id);
+  if(generation===null)throw Object.assign(new Error('Reconnect and resume this package before enabling protection.'),{status:409});
   await requireHostedWork(
     store,
     pkg.installation_id,
@@ -281,6 +290,7 @@ export async function protectWatchedPackage(
     );
   }
   const protection = await store.insertPackageProtection({
+    connectionGeneration:generation,
     installationId: pkg.installation_id,
     packageId: pkg.id,
     verifiedVia: proof.via,
@@ -291,7 +301,7 @@ export async function protectWatchedPackage(
       status: 409,
     });
   }
-  const synced = await syncProtectedIdentity(store, pkg, pack);
+  const synced = await syncProtectedIdentity(store, pkg, pack, undefined, generation);
   const billing = await store.installationBilling(pkg.installation_id);
   if (!identityPlanDeniedFromBilling(billing?.trialEndsAt, billing?.plan)) {
     await persistIdentityCandidates(store, pkg);
@@ -332,6 +342,7 @@ export async function importProtectedPackages(
   const results: ProtectionImportRow[] = [];
   for (const request of requested) {
     const name = request.name;
+    try {
     if (!name) {
       results.push({
         name: request.input,
@@ -344,6 +355,8 @@ export async function importProtectedPackages(
       continue;
     }
     const existing = await store.getWatchedPackageByName(input.installationId, name, parsed.origin);
+    const existingGeneration=existing ? await store.packageConnectionGeneration(existing.id,input.installationId) : undefined;
+    if(existingGeneration===null)throw Object.assign(new Error(`Resume ${name} before enabling protection.`),{status:409});
     if (existing) {
       const already = await store.getPackageProtection(existing.id);
       if (already) {
@@ -428,7 +441,10 @@ export async function importProtectedPackages(
         shasum: pack.shasum,
       });
     }
+    const generation=existingGeneration ?? await store.packageConnectionGeneration(pkg.id,input.installationId);
+    if(generation===null)throw Object.assign(new Error(`Connection changed for ${name}. Refresh before importing again.`),{status:409});
     const protection = await store.insertPackageProtection({
+      connectionGeneration:generation,
       installationId: input.installationId,
       packageId: pkg.id,
       verifiedVia: proof.via,
@@ -446,7 +462,7 @@ export async function importProtectedPackages(
       });
       continue;
     }
-    await syncProtectedIdentity(store, pkg, pack);
+    await syncProtectedIdentity(store, pkg, pack, undefined, generation);
     if (teamSignals) await persistIdentityCandidates(store, pkg);
     results.push({
       name,
@@ -456,6 +472,11 @@ export async function importProtectedPackages(
       githubRepo: protection.github_repo,
       watched: true,
     });
+    } catch(error) {
+      if(!(error instanceof Error) || !/connection changed|resume .* before enabling protection/i.test(error.message))throw error;
+      const current=name?await store.getWatchedPackageByName(input.installationId,name,parsed.origin):null;
+      results.push({name:name??request.input,status:'connection_changed',packageId:current?.id??null,verifiedVia:null,githubRepo:null,watched:Boolean(current)});
+    }
   }
   return { results, queued: false };
 }
@@ -487,6 +508,8 @@ async function enqueueNpmScan(
     distTag?: string;
   },
 ): Promise<boolean> {
+  const connectionGeneration = await store.packageConnectionGeneration(pkg.id, pkg.installation_id);
+  if (connectionGeneration === null) return false;
   const result = await store.enqueueJob({
     deliveryId: npmScanDeliveryId(
       pkg.installation_id,
@@ -494,12 +517,13 @@ async function enqueueNpmScan(
       input.version,
       input.shasum,
       pkg.registry_origin,
-    ),
+    ) + `:connection:${connectionGeneration}`,
     priority: "heavy",
     kind: "npm_scan",
     payload: {
       installationId: pkg.installation_id,
       packageId: pkg.id,
+      connectionGeneration,
       packageName: pkg.package_name,
       registryOrigin: pkg.registry_origin,
       version: input.version,
@@ -639,10 +663,11 @@ async function noteMissingWatchedPack(
   store: Store,
   pkg: WatchedPackageRow,
   notifier?: AlertNotifier,
+  generation?: string,
 ): Promise<{ queued: boolean; deltas: WatchDelta[] }> {
   const lastVersion = pkg.last_version?.trim();
   if (!lastVersion) {
-    await store.touchWatchedPackage(pkg.id, {});
+    await store.touchWatchedPackage(pkg.id, {connectionGeneration:generation});
     return { queued: false, deltas: [{ type: "unchanged" }] };
   }
   const origin = pkg.registry_origin || PUBLIC_NPM_ORIGIN;
@@ -650,6 +675,7 @@ async function noteMissingWatchedPack(
     installationId: pkg.installation_id,
     packageName: pkg.package_name,
     kind: "package_unpublished",
+    packageConnection: generation === undefined ? undefined : {id:pkg.id,generation},
     title: `npm ${pkg.package_name} is no longer on the registry`,
     body: `${pkg.package_name} last recorded as ${lastVersion} is gone from ${origin}. This is a registry fact, not a malware verdict.`,
     githubDeliveryId: npmGoneDeliveryId(
@@ -661,7 +687,7 @@ async function noteMissingWatchedPack(
   };
   if (notifier) await notifier.send(payload);
   else await store.insertAlert(payload);
-  await store.touchWatchedPackage(pkg.id, {});
+  await store.touchWatchedPackage(pkg.id, {connectionGeneration:generation});
   return { queued: false, deltas: [{ type: "unpublished" }] };
 }
 
@@ -672,27 +698,35 @@ export async function checkWatchedPackage(
   notifier?: AlertNotifier,
   opts?: { candidateStaleMs?: number },
 ): Promise<{ queued: boolean; deltas: WatchDelta[] }> {
+  const generation = await store.packageConnectionGeneration(pkg.id, pkg.installation_id);
+  if (generation === null) return { queued: false, deltas: [{ type: 'unchanged' }] };
+  const scopedNotifier: AlertNotifier = {
+    async send(alert) {
+      const guarded={...alert,packageConnection:{id:pkg.id,generation}};
+      if(notifier)await notifier.send(guarded);
+      else await store.insertAlert(guarded);
+    },
+  };
   if (!(await store.installationWorkAllowed(pkg.installation_id))) {
-    await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
   }
   let auth: NpmAuth | undefined;
   try {
     auth = await authForPackage(store, pkg);
   } catch {
-    await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
   }
   let pack: NpmPack | null = null;
   try {
     pack = await npm.getPack(pkg.package_name, auth, { fresh: true });
   } catch {
-    await store.touchWatchedPackage(pkg.id, {});
     return { queued: false, deltas: [{ type: "unchanged" }] };
   }
   if (!pack) {
-    return await noteMissingWatchedPack(store, pkg, notifier);
+    if (await store.packageConnectionGeneration(pkg.id,pkg.installation_id) !== generation) return { queued:false,deltas:[{type:'unchanged'}] };
+    return await noteMissingWatchedPack(store, pkg, scopedNotifier, generation);
   }
+  if (await store.packageConnectionGeneration(pkg.id,pkg.installation_id) !== generation) return { queued:false,deltas:[{type:'unchanged'}] };
   const deltas = diffWatchedPack(
     {
       version: pkg.last_version,
@@ -701,18 +735,19 @@ export async function checkWatchedPackage(
     },
     pack,
   );
-  await store.touchWatchedPackage(pkg.id, {
+  if (!await store.touchWatchedPackage(pkg.id, {
+    connectionGeneration:generation,
     version: pack.version,
     distTags: pack.distTags,
     tarballUrl: pack.tarballUrl,
     shasum: pack.shasum,
-  });
+  })) return {queued:false,deltas:[{type:'unchanged'}]};
   const previous = await store.latestPackageIdentitySnapshot(pkg.id);
-  await syncProtectedIdentity(store, pkg, pack, notifier);
+  await syncProtectedIdentity(store, pkg, pack, scopedNotifier, generation);
   await checkIdentitySignals({
     store,
     npm,
-    notifier,
+    notifier: scopedNotifier,
     pkg,
     pack,
     previous,

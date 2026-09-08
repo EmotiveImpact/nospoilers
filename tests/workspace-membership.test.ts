@@ -109,6 +109,9 @@ describe('explicit workspace membership',()=>{
       await revokeWorkspaceInvite(sql,'owner',workspace.id,invite.id);
       await expect(acceptWorkspaceInvite(sql,'member',invite.id)).rejects.toMatchObject({status:409});
       expect((await pendingWorkspaceInvites(sql,'member'))).toHaveLength(0);
+      await sql.query("INSERT INTO product_workspace_events(id,workspace_id,actor_user_id,action,detail) VALUES($1,$2,'owner','proof-published','{}'::jsonb)",[crypto.randomUUID(),workspace.id]);
+      expect((await workspaceTeam(sql,'owner',workspace.id)).events).not.toEqual(expect.arrayContaining([expect.objectContaining({action:'proof-published'})]));
+      expect((await sql.query("SELECT id FROM product_workspace_events WHERE workspace_id=$1 AND action='proof-published'",[workspace.id])).rows).toHaveLength(1);
       expect((await workspaceTeam(sql,'owner',workspace.id)).events).toEqual(expect.arrayContaining([expect.objectContaining({action:'invite_revoked'})]));
       await expect(workspaceTeam(sql,'other',workspace.id)).rejects.toMatchObject({status:404});
     }finally{await sql.close();}

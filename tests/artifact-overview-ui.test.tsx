@@ -6,6 +6,42 @@ import {navigate} from '../src/nav';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
 const data={workspace:{name:'Product',archived:false},counts:{total:60,active:0,attention:2,passed:58},recent:[{id:'scan',target:'package.tgz',status:'done',created_at:'2026-09-05T12:00:00Z',verdict:'Policy passed'}]};
+it.each([{total:2,paused:1,unavailable:0},{total:2,paused:0,unavailable:1},{total:3,paused:1,unavailable:1}])('keeps first-check guidance when another source remains available: %j',async coverage=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[],connectedCoverage:{...coverage,unknown:1,delayed:0,recent:0}}))));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Choose a connected source to check'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace');
+});
+it('first-proof package action replaces a remembered GitHub mode while retaining workspace scope',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[]}))));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace&mode=github" nowLabel="Today"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Scan a package instead'}));
+ expect(screen.getByText('Completed checks preserve their outcome')).toBeTruthy();
+ expect(screen.getByText(/A signature does not mean the release passed/)).toBeTruthy();
+ const destination=new URL(String(vi.mocked(navigate).mock.calls.at(-1)?.[0]),'http://localhost');
+ expect(destination.pathname).toBe('/watch/scan');
+ expect(destination.searchParams.get('workspace')).toBe('workspace');
+ expect(destination.searchParams.get('mode')).toBe('package');
+});
+it.each([true,false])('shows suspended connection warning with first-proof=%s',async(firstProof)=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,...(firstProof?{counts:{total:0,active:0,attention:0,passed:0},recent:[]}:{}),connectedCoverage:{total:1,paused:0,unknown:0,delayed:0,recent:0,unavailable:1}}))));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ expect(await screen.findByText(/1 sources unavailable because their connection is suspended/)).toBeTruthy();
+ if(firstProof)expect(screen.getByRole('heading',{name:'Prove your first release is clean.'})).toBeTruthy();
+ else expect(screen.getByRole('button',{name:/^Policy passed\s*58$/})).toBeTruthy();
+});
+it('shows connected monitoring separately from passing release totals',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,connectedCoverage:{total:4,paused:1,unknown:1,delayed:1,recent:1,connections:[{installationId:9,name:'Second org'}]}}))));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ expect(await screen.findByRole('button',{name:'4 sources'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'1 delayed'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&coverageHealth=delayed');
+ fireEvent.click(screen.getByRole('button',{name:'Review connected coverage'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&coverageHealth=all');
+ fireEvent.click(screen.getByRole('button',{name:'Review Second org coverage'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&install=9');
+ expect(screen.getByRole('button',{name:/^Policy passed\s*58$/})).toBeTruthy();
+});
 it.each([{unverified:1,unchecked:0,title:'Your website is added. Verify ownership next.',action:'Verify website ownership'},{unverified:0,unchecked:1,title:'Ownership verified. Run your first check.',action:'Run your first website check'}])('reflects website preparation before the first result: $action',async state=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[],websiteCoverage:{total:1,attention:1,delayed:0,...state}}))));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);

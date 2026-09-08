@@ -118,7 +118,9 @@ export function watchHref(
 ): string {
   const params = paramsOf(search);
   // Keep tenant scope across navigation, but never carry a detail screen into another page.
-  if(path!=="/watch/releases")for(const key of ['release','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor'])params.delete(key);
+  if(path!=="/watch/sources")params.delete('coverageHealth');
+  if(path!=="/watch/releases"&&params.has('hostedDecision')){params.delete('hostedDecision');params.delete('before');}
+  if(path!=="/watch/releases")for(const key of ['release','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore'])params.delete(key);
   if(path!=="/watch/alerts")for(const key of ['alert','tab','mine'])params.delete(key);
   if(extra.release || extra.previewRelease)for(const key of ['upload','uploadView','uploadFinding','uploadTab'])params.delete(key);
   if (extra.install !== undefined) {

@@ -18,12 +18,12 @@ import {
 } from "./paths.ts";
 import {captureHostedPolicy,applyHostedPolicySnapshot} from './hosted-policy-snapshot.ts';
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
-import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
+import { publishWebsiteObservation } from './website-publication.ts';
+import { publishPackageObservation } from './package-publication.ts';
+import { publishReleaseObservation } from './release-publication.ts';
 import { inferReleaseChannel } from "./release-ledger.ts";
 import {
-  attachCanonicalDeliveryUrl,
   DELIVERY_VERIFY_KIND,
-  isSealedArtifactDigest,
   publicGithubReleaseDownloadUrl,
   runDeliveryVerifyJob,
 } from "./delivery-verify.ts";
@@ -31,12 +31,10 @@ import { scanProspectArtifact } from "./prospects.ts";
 import type { JobRow, Store } from "./store.ts";
 import type { WebhookHostLookup } from "./siem.ts";
 import { crawlOrigin, WebCrawlError, type WebCrawlOpts } from "./web-origin.ts";
-import { publicMapFromFindings } from "../scanner/debug-id.ts";
 import {
   custodyFingerprint,
   runMapCustodyCheck,
 } from "./map-custody.ts";
-import { enqueueMapCustodyChecks } from "./map-watch.ts";
 import { NAMESPACE_CHECK_KIND, runNamespaceCheck } from "./namespace-watch.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
@@ -256,6 +254,10 @@ export async function handleJob(
 
   if (job.kind === "scan_latest_release") {
     if (!repo) throw new Error("scan_latest_release job missing repo");
+    const currentRepo = await deps.store.getRepo(repo.id);
+    if (!currentRepo || String(currentRepo.connection_generation ?? '0') !== String(payload.connectionGeneration ?? '0')) {
+      await refundUnusedHostedUnpack(); return;
+    }
     const latest = await deps.github.getLatestRelease(installationId, repo.owner, repo.name);
     if (!latest) {
       await refundUnusedHostedUnpack();
@@ -276,6 +278,11 @@ export async function handleJob(
 
   if (job.kind === "release_scan") {
     if (!repo) throw new Error("release_scan job missing repo");
+    const generation = String(payload.connectionGeneration ?? '0');
+    const currentRepo = await deps.store.getRepo(repo.id);
+    if (!currentRepo || String(currentRepo.connection_generation ?? '0') !== generation) {
+      await refundUnusedHostedUnpack(); return;
+    }
     const releaseId = Number(payload.releaseId);
     const tag = String(payload.tag ?? payload.name ?? releaseId);
     const assets = await deps.github.listReleaseAssets(
@@ -307,10 +314,8 @@ export async function handleJob(
       return;
     }
 
-    const allFindings: ScanReport["findings"] = [];
-    const releaseRevisionIds: number[] = [];
+    const observations: Parameters<typeof publishReleaseObservation>[0]['assets'] = [];
     const notes: string[] = [];
-    const statuses: ScanStatus[] = [];
     let unpacked = false;
     if (installers.length > 0) {
       notes.push(
@@ -338,61 +343,32 @@ export async function handleJob(
           await rm(dir, { recursive: true, force: true });
         }
       }
-      if (deps.receiptSecret) {
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.receiptSecret,
-          installationId,
-          repoId: repo.id,
-          coordinate,
-          report,
-          channel: inferReleaseChannel(tag),
-          sourceRevision: tag,
-        });
-        report = persisted.report;
-        releaseRevisionIds.push(persisted.revision.id);
-        statuses.push(report.status);
-        allFindings.push(...report.findings);
-        notes.push(noteForAsset(asset.name, report));
-        if (report.suppressed.length > 0) {
-          notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
-        }
-        const diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
-        if (diffNote) notes.push(diffNote);
-        if (report.artifactSha256) notes.push(`sha256 ${report.artifactSha256}`);
-        if (!repo.private && isSealedArtifactDigest(persisted.revision.artifact_sha256)) {
-          const downloadUrl = publicGithubReleaseDownloadUrl({
-            owner: repo.owner,
-            repo: repo.name,
-            tag,
-            name: asset.name,
-          });
-          if (downloadUrl) {
-            await attachCanonicalDeliveryUrl(deps.store, {
-              installationId,
-              revisionId: persisted.revision.id,
-              url: downloadUrl,
-            });
-          }
-        }
-      } else {
-        statuses.push(report.status);
-        allFindings.push(...report.findings);
-        notes.push(noteForAsset(asset.name, report));
-        if (report.suppressed.length > 0) {
-          notes.push(`${report.suppressed.length} finding(s) suppressed by allowlist.`);
-        }
-      }
+      observations.push({name: asset.name, coordinate, report,
+        publicUrl: repo.private ? null : publicGithubReleaseDownloadUrl({owner: repo.owner,repo: repo.name,tag,name: asset.name})});
     }
     if (!unpacked) await refundUnusedHostedUnpack();
 
-    const status = foldScanStatus(statuses);
-    const title = titleForScan(
-      status,
-      `${repo.fullName} ${tag} is allowed to ship`,
-      `Spoilers in ${repo.fullName} ${tag}`,
-      `Inconclusive scan of ${repo.fullName} ${tag}`,
-    );
+    const published = await publishReleaseObservation({store: deps.store, installationId,
+      repoId: repo.id, secret: deps.receiptSecret, tag, assets: observations, generation,
+      alert: assets => {
+        for (const asset of assets) {
+          notes.push(noteForAsset(asset.name, asset.report));
+          if (asset.report.suppressed.length) notes.push(`${asset.report.suppressed.length} finding(s) suppressed by allowlist.`);
+          if (asset.diffNote) notes.push(asset.diffNote);
+          if (deps.receiptSecret && asset.report.artifactSha256) notes.push(`sha256 ${asset.report.artifactSha256}`);
+        }
+        const status = foldScanStatus(assets.map(asset => asset.report.status));
+        const title = titleForScan(
+          status,
+          `${repo.fullName} ${tag} is allowed to ship`,
+          `Spoilers in ${repo.fullName} ${tag}`,
+          `Inconclusive scan of ${repo.fullName} ${tag}`,
+        );
+        return {...alertBase,kind:job.kind,title,body:notes.join(' '),findings:assets.flatMap(asset => asset.report.findings)};
+      }});
+    if (!published) return;
+    const status = foldScanStatus(published.assets.map(asset => asset.report.status));
+    const allFindings = published.assets.flatMap(asset => asset.report.findings);
     let sha: string | null = null;
     for (const ref of commitRefsForCheck(tag, String(payload.targetCommitish ?? ""))) {
       sha = await deps.github.getRefSha(installationId, repo.owner, repo.name, ref);
@@ -409,14 +385,7 @@ export async function handleJob(
       });
       if (!("skipped" in check) && check.htmlUrl) notes.push(`Check ${check.htmlUrl}`);
     }
-    await deps.notifier.send({
-      ...alertBase,
-      kind: job.kind,
-      title,
-      body: notes.join(" "),
-      findings: allFindings,
-      releaseRevisionIds,
-    });
+    await deps.notifier.send({...published.alert,body:notes.join(' ')}, published.alertId);
   }
 
   if (job.kind === NAMESPACE_CHECK_KIND) {
@@ -458,6 +427,20 @@ export async function handleJob(
     const tarballUrl = String(payload.tarballUrl ?? "");
     const packageId = Number(payload.packageId);
     const registryOrigin = String(payload.registryOrigin ?? PUBLIC_NPM_ORIGIN);
+    let connectionGeneration: string|null = null;
+    if (Number.isFinite(packageId) && packageId > 0) {
+      const source = await deps.store.getWatchedPackage(packageId);
+      if (!source || source.installation_id !== installationId || source.package_name !== packageName || source.registry_origin !== registryOrigin) {
+        await refundUnusedHostedUnpack();
+        return;
+      }
+      connectionGeneration = await deps.store.packageConnectionGeneration(packageId,installationId);
+      // Legacy jobs are valid only for the original, never-reconfigured connection.
+      const queuedGeneration = payload.connectionGeneration ?? '0';
+      if (connectionGeneration === null || String(queuedGeneration) !== connectionGeneration) { await refundUnusedHostedUnpack(); return; }
+    }
+    const stillConnected = async () => connectionGeneration === null ||
+      await deps.store.packageConnectionGeneration(packageId,installationId) === connectionGeneration;
     let auth: NpmAuth | undefined;
     if (!isPublicNpmOrigin(registryOrigin)) {
       const saved = await deps.store.getNpmRegistryAuth(installationId, registryOrigin);
@@ -467,6 +450,7 @@ export async function handleJob(
           ...alertBase,
           kind: job.kind,
           title: `Missing registry token for ${packageName || "a package"}`,
+          packageConnection: connectionGeneration === null ? undefined : {id:packageId,generation:connectionGeneration},
           body: "Save an encrypted private-registry token on Watch, then check the package again. The token is not stored on the job.",
           packageName: packageName || null,
         });
@@ -476,57 +460,23 @@ export async function handleJob(
     }
     const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-npm-"));
     const dest = path.join(dir, `${packageName.replace(/[^\w.-]+/g, "_") || "package"}-${version}.tgz`);
+    let publicationCommitted = false;
     try {
       const policySnapshot=await captureHostedPolicy(deps.store.sql,installationId,Number.isFinite(packageId) && packageId>0 ? packageId:null);
       const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes, auth);
+      if (!await stillConnected()) { await refundUnusedHostedUnpack(); return; }
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
-      let report = applyHostedPolicySnapshot(await deps.scan(dest),policySnapshot);
-      let diffNote = "";
-      const releaseRevisionIds: number[] = [];
-      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.receiptSecret,
-          installationId,
-          packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
-          coordinate: `npm:${packageName}@${version}`,
-          report,
-          channel,
-          sourceRevision: version,
-        });
-        report = persisted.report;
-        releaseRevisionIds.push(persisted.revision.id);
-        diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
-        if (
-          isPublicNpmOrigin(registryOrigin) &&
-          isSealedArtifactDigest(persisted.revision.artifact_sha256)
-        ) {
-          await attachCanonicalDeliveryUrl(deps.store, {
-            installationId,
-            revisionId: persisted.revision.id,
-            url: tarballUrl,
-          });
-        }
-      }
+      const report = applyHostedPolicySnapshot(await deps.scan(dest),policySnapshot);
+      if (!await stillConnected()) return;
+      const published = await publishPackageObservation({store: deps.store, installationId,
+        packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+        generation: connectionGeneration, packageName, version, report,
+        sha256: report.artifactSha256 ?? sha256, secret: deps.receiptSecret, channel,
+        publicTarballUrl: isPublicNpmOrigin(registryOrigin) ? tarballUrl : undefined,
+        updateIdentity: true, alert: (report, diffNote) => {
       const status = report.status;
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
-      if (Number.isFinite(packageId) && packageId > 0) {
-        await deps.store.recordWatchedPackageScan(packageId, {
-          sha256: report.artifactSha256 ?? sha256,
-          status,
-        });
-        await deps.store.recordPackageMapIdentity(packageId, {
-          debugIds: report.debugIds ?? [],
-          release: version || report.releaseHints?.[0] || null,
-          publicMap: publicMapFromFindings(report.findings),
-        });
-        await enqueueMapCustodyChecks(
-          deps.store,
-          installationId,
-          `pkg:${packageId}:${version || "latest"}`,
-        );
-      }
       const notes = [
         status === "inconclusive"
           ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
@@ -542,8 +492,9 @@ export async function handleJob(
       const workspaceNote = summarizeWorkspaces(report.workspaces);
       if (workspaceNote) notes.push(workspaceNote);
       if (diffNote) notes.push(diffNote);
-      await deps.notifier.send({
+      return {
         ...alertBase,
+        packageConnection: connectionGeneration === null ? undefined : {id:packageId,generation:connectionGeneration},
         kind: job.kind,
         title: titleForScan(
           status,
@@ -554,38 +505,31 @@ export async function handleJob(
         body: notes.join(" "),
         findings: report.findings,
         packageName: packageName || null,
-        releaseRevisionIds,
-      });
+      };
+      }});
+      if (!published) return;
+      publicationCommitted = true;
+      await deps.notifier.send(published.alert, published.alertId);
     } catch (error) {
+      if (publicationCommitted) throw error;
       const message = error instanceof Error ? error.message : String(error);
+      if (!await stillConnected()) return;
       if (message.includes("larger than")) {
         const report = inconclusiveReport(message);
-        if (Number.isFinite(packageId) && packageId > 0) {
-          await deps.store.recordWatchedPackageScan(packageId, {
-            sha256: null,
-            status: "inconclusive",
-          });
-        }
-        if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
-          await persistHostedReceipt({
-            store: deps.store,
-            secret: deps.receiptSecret,
-            installationId,
-            packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
-            coordinate: `npm:${packageName}@${version}`,
-            report,
-            channel,
-            sourceRevision: version,
-          });
-        }
-        await refundUnusedHostedUnpack();
-        await deps.notifier.send({
+        const published = await publishPackageObservation({store: deps.store, installationId,
+          packageId: Number.isFinite(packageId) && packageId > 0 ? packageId : null,
+          generation: connectionGeneration, packageName, version, report, sha256: null,
+          secret: deps.receiptSecret, channel, updateIdentity: false, alert: () => ({
           ...alertBase,
           kind: job.kind,
           title: `Inconclusive scan of npm ${npmLabel}`,
+          packageConnection: connectionGeneration === null ? undefined : {id:packageId,generation:connectionGeneration},
           body: `${message} This is not a clean bill of health.`,
           packageName: packageName || null,
-        });
+        })});
+        if (!published) return;
+        await refundUnusedHostedUnpack();
+        await deps.notifier.send(published.alert, published.alertId);
         return;
       }
       throw error;
@@ -599,20 +543,34 @@ export async function handleJob(
     const origin = Number.isFinite(originId) && originId > 0
       ? await deps.store.getWatchedOrigin(originId)
       : null;
-    if (!origin || origin.installation_id!==installationId || (origin.verification_token&&!origin.verified_at)) {
+    if (!origin || origin.paused_at || origin.installation_id!==installationId || (origin.verification_token&&!origin.verified_at)) {
       await refundUnusedHostedUnpack();
       return;
+    }
+    if(String(payload.connectionGeneration??'0')!==String(origin.connection_generation??'0')){
+      await refundUnusedHostedUnpack();return;
     }
     const crawlOpts: WebCrawlOpts = {
       fetch: deps.webFetch,
       lookup: deps.webLookup,
     };
     const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-web-"));
+    let scanStarted=false;
+    let publicationCommitted=false;
+    async function originStillActive(){
+      const current=await deps.store.getWatchedOrigin(originId);
+      return !!current&&!current.paused_at&&current.installation_id===installationId&&
+        current.connection_generation===origin!.connection_generation&&
+        current.origin_url===origin!.origin_url&&current.verification_token===origin!.verification_token&&
+        current.verified_at===origin!.verified_at;
+    }
     try {
       const policySnapshot=await captureHostedPolicy(deps.store.sql,installationId);
       const crawled = await crawlOrigin(origin.origin_url, crawlOpts);
-      if (origin.last_sha256 && origin.last_sha256 === crawled.sha256 && !crawled.truncated) {
-        await deps.store.touchWatchedOrigin(origin.id);
+      if(!await originStillActive()){await refundUnusedHostedUnpack();return;}
+      if (origin.last_sha256 && origin.last_sha256 === crawled.sha256 && !crawled.truncated &&
+          (origin.last_scan_status==='passed'||origin.last_scan_status==='failed-policy')) {
+        await deps.store.touchWatchedOrigin(origin.id, origin.connection_generation);
         await refundUnusedHostedUnpack();
         return;
       }
@@ -622,7 +580,9 @@ export async function handleJob(
         await mkdir(path.dirname(dest), { recursive: true });
         await writeFile(dest, file.bytes);
       }
+      scanStarted=true;
       let report = applyHostedPolicySnapshot(await deps.scan(dir),policySnapshot);
+      if(!await originStillActive())return;
       if (crawled.truncated) {
         report = {
           ...report,
@@ -637,61 +597,30 @@ export async function handleJob(
         artifactSha256: crawled.sha256,
         artifactBytes: crawled.files.reduce((sum, file) => sum + file.bytes.length, 0),
       };
-      await deps.store.recordWatchedOriginScan(origin.id, {
-        sha256: crawled.sha256,
-        status: report.status,
+      const published = await publishWebsiteObservation({
+        store: deps.store, installationId, origin, report, sha256: crawled.sha256,
+        secret: deps.receiptSecret, updateIdentity: true,
+        alert: (savedReport, diffNote) => {
+          const critical = savedReport.findings.filter(finding => finding.severity === 'critical').length;
+          const notes = [savedReport.status === 'inconclusive'
+            ? `${savedReport.inconclusiveReason ?? 'Scan could not finish.'} This is not a clean bill of health.`
+            : critical > 0 ? `${critical} critical finding(s).` : 'No critical findings.',
+            `sha256 ${crawled.sha256}`,
+            `${crawled.files.length} file(s) from ${origin.host}. Source was deleted after the scan.`];
+          if (diffNote) notes.push(diffNote);
+          return {...alertBase, kind: job.kind,
+            title: titleForScan(savedReport.status, `${origin.host} is allowed to ship`,
+              `Spoilers on ${origin.host}`, `Inconclusive crawl of ${origin.host}`),
+            body: notes.join(' '), findings: savedReport.findings};
+        },
       });
-      await deps.store.recordOriginMapIdentity(origin.id, {
-        debugIds: report.debugIds ?? [],
-        release: report.releaseHints?.[0] ?? null,
-        publicMap: publicMapFromFindings(report.findings),
-      });
-      await enqueueMapCustodyChecks(
-        deps.store,
-        installationId,
-        `origin:${origin.id}:${crawled.sha256.slice(0, 12)}`,
-      );
-      let diffNote = "";
-      const releaseRevisionIds: number[] = [];
-      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.receiptSecret,
-          installationId,
-          coordinate: `web:${origin.origin_url}`,
-          report,
-          channel: "stable",
-          sourceRevision: crawled.sha256.slice(0, 12),
-        });
-        report = persisted.report;
-        releaseRevisionIds.push(persisted.revision.id);
-        diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
-      }
-      const critical = report.findings.filter((finding) => finding.severity === "critical").length;
-      const notes = [
-        report.status === "inconclusive"
-          ? `${report.inconclusiveReason ?? "Scan could not finish."} This is not a clean bill of health.`
-          : critical > 0
-            ? `${critical} critical finding(s).`
-            : "No critical findings.",
-        `sha256 ${crawled.sha256}`,
-        `${crawled.files.length} file(s) from ${origin.host}. Source was deleted after the scan.`,
-      ];
-      if (diffNote) notes.push(diffNote);
-      await deps.notifier.send({
-        ...alertBase,
-        kind: job.kind,
-        title: titleForScan(
-          report.status,
-          `${origin.host} is allowed to ship`,
-          `Spoilers on ${origin.host}`,
-          `Inconclusive crawl of ${origin.host}`,
-        ),
-        body: notes.join(" "),
-        findings: report.findings,
-        releaseRevisionIds,
-      });
+      if (!published) return;
+      publicationCommitted=true;
+      await deps.notifier.send(published.alert, published.alertId);
     } catch (error) {
+      // Delivery failures must never replace already committed scan evidence.
+      if(publicationCommitted)throw error;
+      if(!await originStillActive()){if(!scanStarted)await refundUnusedHostedUnpack();return;}
       const message =
         error instanceof WebCrawlError
           ? error.message
@@ -699,29 +628,16 @@ export async function handleJob(
             ? error.message
             : String(error);
       const report = inconclusiveReport(message);
-      await deps.store.recordWatchedOriginScan(origin.id, {
-        sha256: null,
-        status: "inconclusive",
+      const published = await publishWebsiteObservation({store: deps.store, installationId,
+        origin, report, sha256: null, secret: deps.receiptSecret, updateIdentity: false,
+        alert: () => ({...alertBase, kind: job.kind, title: `Inconclusive crawl of ${origin.host}`,
+          body: `${message} This is not a clean bill of health.`}),
       });
-      if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
-        await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.receiptSecret,
-          installationId,
-          coordinate: `web:${origin.origin_url}`,
-          report,
-          channel: "stable",
-        });
-      }
+      if(!published)return;
       if (error instanceof WebCrawlError) {
         await refundUnusedHostedUnpack();
       }
-      await deps.notifier.send({
-        ...alertBase,
-        kind: job.kind,
-        title: `Inconclusive crawl of ${origin.host}`,
-        body: `${message} This is not a clean bill of health.`,
-      });
+      await deps.notifier.send(published.alert, published.alertId);
       if (!(error instanceof WebCrawlError)) throw error;
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -749,20 +665,13 @@ export async function handleJob(
 
   if (job.kind === "map_custody_check") {
     const destinationId = Number(payload.destinationId);
-    const destination =
+    const snapshot =
       Number.isFinite(destinationId) && destinationId > 0
-        ? await deps.store.getMapDestination(destinationId)
+        ? await deps.store.getMapDestinationForCheck(destinationId)
         : null;
+    const destination = snapshot?.destination;
     if (!destination || destination.installation_id !== installationId) return;
-    const auth = await deps.store.getMapDestinationAuth(destination.id);
-    if (!auth) {
-      await deps.store.recordMapDestinationCheck(destination.id, {
-        status: "inconclusive",
-        error: "Map destination token is missing on this instance.",
-        fingerprint: "missing-token",
-      });
-      return;
-    }
+    if (!snapshot) return;
     const identities = await deps.store.listMapIdentities(installationId);
     const verdict = await runMapCustodyCheck({
       kind: destination.kind,
@@ -770,18 +679,20 @@ export async function handleJob(
       origin: `https://${destination.host}`,
       orgSlug: destination.org_slug,
       projectSlug: destination.project_slug,
-      token: auth.token,
+      token: snapshot.token,
       identities,
       fetch: deps.webFetch,
       lookup: deps.webLookup,
     });
     const fingerprint = custodyFingerprint(verdict);
     const previous = destination.last_fingerprint;
-    await deps.store.recordMapDestinationCheck(destination.id, {
+    const recorded = await deps.store.recordMapDestinationCheck(destination.id, {
       status: verdict.status,
       error: verdict.inconclusiveReason,
       fingerprint,
+      configurationVersion: snapshot.configurationVersion,
     });
+    if (!recorded) return;
     if (previous === fingerprint) return;
     if (verdict.status === "passed" && verdict.findings.length === 0) return;
     const label = destination.kind === "sentry" ? "Sentry" : "Bugsnag";
@@ -804,6 +715,7 @@ export async function handleJob(
       ),
       body: notes.join(" "),
       findings: verdict.findings,
+      custodyConnection: {id:destination.id,configurationVersion:snapshot.configurationVersion},
     });
   }
 }

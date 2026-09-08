@@ -1,9 +1,37 @@
 // @vitest-environment jsdom
 import {it,expect,vi,afterEach} from 'vitest';
-import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {act,render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceNotifications} from '../src/components/watch/WorkspaceNotifications';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const page={destinations:[{id:1,kind:'email',host:'example.com',independent:true,last_delivery_status:null,test_status:null}],deliveries:[],nextCursor:null,canManage:true,providers:{email:true,slack:true}};
+it('locks destination editing during a save and restores it after a service failure',async()=>{
+ let finish!:(response:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>init?.method?new Promise<Response>(resolve=>{finish=resolve;}):new Response(JSON.stringify(page))));
+ render(<WorkspaceNotifications workspaceId="one"/>);
+ fireEvent.change(await screen.findByLabelText('Email address'),{target:{value:'person@example.com'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save destination'}));
+ expect(screen.getByLabelText('Email address')).toHaveProperty('disabled',true);
+ expect(screen.getByLabelText('Destination type')).toHaveProperty('disabled',true);
+ await act(async()=>finish(new Response(JSON.stringify({error:'Service unavailable.'}),{status:503})));
+ expect(screen.getByLabelText('Email address')).toHaveProperty('disabled',false);
+ expect(screen.getByLabelText('Email address')).toHaveProperty('value','person@example.com');
+ expect(screen.getByRole('alert').textContent).toBe('Service unavailable.');
+});
+it('refreshes authority and clears sensitive form input after a forbidden save',async()=>{
+ let rejected=false;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>{
+  if(init?.method){rejected=true;return new Response(JSON.stringify({error:'Workspace access changed.'}),{status:403});}
+  return new Response(JSON.stringify({...page,canManage:!rejected}));
+ }));
+ render(<WorkspaceNotifications workspaceId="one"/>);
+ fireEvent.change(await screen.findByLabelText('Email address'),{target:{value:'private@example.com'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save destination'}));
+ await screen.findByText('Only administrators of an active workspace can change destinations.');
+ expect(screen.queryByRole('button',{name:'Save destination'})).toBeNull();
+ expect(screen.queryByDisplayValue('private@example.com')).toBeNull();
+ expect(screen.getByRole('alert').textContent).toBe('Workspace access changed.');
+ expect(screen.queryByText('Destination saved. Delivery has not been tested.')).toBeNull();
+});
 it('saves without claiming delivery and requires exact confirmation to disconnect',async()=>{
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>new Response(JSON.stringify(init?.method?{destination:{id:1}}:page)));
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceNotifications workspaceId="one"/>);

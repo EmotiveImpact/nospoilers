@@ -1,14 +1,22 @@
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { RemediationFileView, SetupStatusFacts } from "@/watch/types";
 import {DisconnectedRepositories} from '../DisconnectedRepositories';
+import {RetainedSources} from '../RetainedSources';
+import {SourceMonitoringControls} from '../SourceMonitoringControls';
+import {WorkspaceCoverageHealth,hasWorkspaceCoverageHealthFilter} from '../WorkspaceCoverageHealth';
 
 export function SourcesScreen() {
   const { Button, CoverageLock, DELETE_PACK_ASSETS_COPY, DISABLE_WORKFLOW_COPY, GithubResponseResult, MAKE_PRIVATE_COPY, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, githubRunnersReachable, hostedOrigin, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, releases, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
+  const healthWorkspace=new URLSearchParams(search).get('workspace');
+  if(route.view==='sources'&&healthWorkspace&&hasWorkspaceCoverageHealthFilter(search))return <WorkspaceCoverageHealth workspaceId={healthWorkspace} search={search}/>;
   return (
     <>
       {route.view === "sources" && (
                 <section className="relative min-h-72">
-                  {selectedInstallId?<DisconnectedRepositories key={selectedInstallId} installationId={selectedInstallId}/>:null}
+                  {new URLSearchParams(search).get('workspace')?<WorkspaceCoverageHealth workspaceId={new URLSearchParams(search).get('workspace')!} search={search}/>:null}
+                  {selectedInstallId?<DisconnectedRepositories key={selectedInstallId} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
+                  {selectedInstallId?<RetainedSources key={`retained-${selectedInstallId}`} installationId={selectedInstallId} search={search} refreshKey={JSON.stringify(sourceRows)}/>:null}
+                  {selectedInstallId?<SourceMonitoringControls key={`monitoring-${selectedInstallId}`} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
                   {ended ? (
                     <CoverageLock variant="watch" title="Subscribe to keep watching." />
                   ) : null}

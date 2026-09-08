@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {afterEach,describe,it,expect,vi} from 'vitest';
-import { uploadArtifact } from '../src/watch/upload-transport.ts';
+import { uploadArtifact, scanSubmissionUrl } from '../src/watch/upload-transport.ts';
 class FakeRequest {
   static latest:FakeRequest;
   upload:{onprogress?: (event:{lengthComputable:boolean;loaded:number;total:number})=>void}={};
@@ -15,6 +15,16 @@ class FakeRequest {
 }
 afterEach(()=>vi.unstubAllGlobals());
 describe('artifact upload transport',()=>{
+  it('shares explicit destination routing between uploads and local fixtures',async()=>{
+    expect(scanSubmissionUrl(null,'workspace-one')).toBe('/api/scan?workspaceId=workspace-one');
+    expect(scanSubmissionUrl('7','workspace-one')).toBe('/api/scan?installationId=7&workspaceId=workspace-one');
+    expect(scanSubmissionUrl()).toBe('/api/scan');
+    expect(scanSubmissionUrl(null,'workspace-one','claim')).toBe('/api/scan/pending?workspaceId=workspace-one');
+    vi.stubGlobal('XMLHttpRequest',FakeRequest);
+    const pending=uploadArtifact(new File(['bytes'],'pack.zip'),'7',()=>{},new AbortController().signal,'workspace-one');
+    expect(FakeRequest.latest.url).toBe(scanSubmissionUrl('7','workspace-one'));
+    FakeRequest.latest.onload?.();await pending;
+  });
   it('reports actual transferred bytes and retains destination scope',async()=>{
     vi.stubGlobal('XMLHttpRequest',FakeRequest);const progress=vi.fn();
     const pending=uploadArtifact(new File(['bytes'],'pack.zip'),'7',progress,new AbortController().signal);

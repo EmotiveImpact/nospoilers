@@ -118,6 +118,8 @@ async function persistHostedReceiptTransaction(opts: {
   secret: string;
   installationId: number;
   packageId?: number | null;
+  packageConnectionGeneration?: string;
+  originConnection?: {id:number;generation:string};
   repoId?: number | null;
   coordinate: string;
   report: ScanReport;
@@ -133,6 +135,21 @@ async function persistHostedReceiptTransaction(opts: {
   baseline: ScanBaselineRow | null;
   revision: ReleaseRevisionRow;
 }> {
+  if (opts.originConnection) {
+    const source=await opts.store.sql.query(`SELECT id FROM watched_origins WHERE id=$1 AND installation_id=$2
+      AND connection_generation=$3 AND disconnected_at IS NULL AND paused_at IS NULL FOR UPDATE`,
+      [opts.originConnection.id,opts.installationId,opts.originConnection.generation]);
+    if(!source.rows.length)throw new Error('Website connection changed before receipt publication.');
+  }
+  if (opts.packageConnectionGeneration !== undefined) {
+    const source = await opts.store.sql.query(
+      `SELECT id FROM watched_packages WHERE id=$1 AND installation_id=$2
+       AND disconnected_at IS NULL AND paused_at IS NULL AND connection_generation=$3
+       FOR UPDATE`,
+      [opts.packageId, opts.installationId, opts.packageConnectionGeneration],
+    );
+    if (!source.rows.length) throw new Error('Package connection changed before receipt publication.');
+  }
   const channel = opts.channel ?? inferReleaseChannelFromCoordinate(opts.coordinate);
   const sourceRevision =
     opts.sourceRevision ?? versionFromCoordinate(opts.coordinate) ?? null;

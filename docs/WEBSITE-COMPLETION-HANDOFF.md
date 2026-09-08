@@ -1,5 +1,15 @@
 # Public website and documentation handoff
 
+## Navigation and page-specific direction — 8 September 2026
+
+Owner refinements applied: compact collapsible docs groups, neutral active text without a coloured panel/stripe, black search, right-hand mobile trigger and full-viewport navigation dialog. Live390px browser checks confirm menu fills390×844, search closes the menu and focuses its input, and both use the near-black background.1440px docs rendering has no horizontal overflow. Live integration-page and docs screenshots were used for QA only, not embedded as customer product captures.
+
+Marketing navigation now routes desktop/mobile visitors to actual Product, Use cases, Integrations, Pricing, Security, Enterprise and Support pages rather than substituting homepage sections. Heroes are page-specific conceptual illustrations: artifact inspection, integration map, workflow paths, trust boundary, pilot plan and help links. Use cases and Integrations also have distinct section grids. These are not simulated customer scan results. The original homepage body is preserved.
+
+## Owner layout correction — 8 September 2026
+
+The first integrated version incorrectly nested docs beneath marketing navigation and presented supporting website pages too much like articles. Corrected locally: docs now owns a standalone reader shell and12 linked guide cards; public pages use marketing section/card layouts and conceptual diagrams, not a documentation contents sidebar. No product screenshots or claims were invented. Header competition is removed; supplementary public links are below content.29 focused tests pass, including new application-route isolation checks; build/typecheck pass. These changes supersede the shell description in the original handoff below. Final visual review and page-specific polish are still required before public launch.
+
 ## Local integration review — 8 September 2026
 
 PR #42 is integrated into the working branch, not main. The original handoff below is historical, not a recurring request to rebuild these pages. Supporting pages and fifteen guides now exist; subsequent tasks should change them only for specific new requirements or verified defects.

@@ -25,6 +25,9 @@ export type AlertInput = {
   repoId?: number | null;
   repoFullName?: string | null;
   packageName?: string | null;
+  packageConnection?: {id:number;generation:string};
+  originConnection?: {id:number;generation:string};
+  custodyConnection?: {id:number;configurationVersion:string};
   kind: string;
   title: string;
   body: string;
@@ -34,7 +37,8 @@ export type AlertInput = {
 };
 
 export type AlertNotifier = {
-  send: (alert: AlertInput) => Promise<void>;
+  // Internal publication transactions may already have saved the alert.
+  send: (alert: AlertInput, persistedAlertId?: number) => Promise<void>;
 };
 
 export async function deliverSlackAlert(
@@ -242,8 +246,8 @@ export function createLogNotifier(
 ): AlertNotifier {
   const fetchImpl = opts.fetch ?? fetch;
   return {
-    async send(alert) {
-      const id = await store.insertAlert(alert);
+    async send(alert, persistedAlertId) {
+      const id = persistedAlertId ?? await store.insertAlert(alert);
       logJson("info", "alert.sent", {
         id,
         kind: alert.kind,

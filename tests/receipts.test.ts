@@ -29,6 +29,20 @@ const FIXTURE = path.join(root, "fixtures/sourcemap.tgz");
 const CLEAN = path.join(root, "fixtures/clean.tgz");
 const TARBALL = "https://registry.npmjs.org/demo-pack/-/demo-pack-1.0.0.tgz";
 
+it('rejects receipt publication for an outdated package connection inside persistence',async()=>{
+  const sql=await openSql('pglite://:memory:');
+  try {
+    await migrate(sql);
+    const store=createStore(sql);
+    await store.upsertInstallation({id:77,accountLogin:'fixture',accountType:'User',accountId:77});
+    const pkg=(await store.insertWatchedPackage(77,'fixture'))!;
+    await sql.query('UPDATE watched_packages SET connection_generation=1 WHERE id=$1',[pkg.id]);
+    await expect(persistHostedReceipt({store,secret:SECRET,installationId:77,packageId:pkg.id,packageConnectionGeneration:'0',coordinate:'npm:fixture@1.0.0',report:passedReport()})).rejects.toThrow('connection changed');
+    expect((await sql.query('SELECT id FROM scan_receipts')).rows).toEqual([]);
+    await expect(persistHostedReceipt({store,secret:SECRET,installationId:77,packageId:pkg.id,packageConnectionGeneration:'1',coordinate:'npm:fixture@1.0.0',report:passedReport()})).resolves.toBeTruthy();
+  }finally{await sql.close();}
+});
+
 async function waitUntil(fn: () => Promise<boolean>, label: string): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < 4000) {
@@ -791,6 +805,17 @@ describe("public receipt verify", () => {
       });
       expect(mismatch.status).toBe(400);
       expect(((await mismatch.json()) as { ok: boolean; reason?: string }).ok).toBe(false);
+      const inconclusive = signReceipt(buildUnsignedReceipt(passedReport({ok:false,status:'inconclusive'}), 'npm:uncertain@1.0.0'), SECRET);
+      const uncertain = await app.request('/api/receipts/verify', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({receipt:inconclusive})});
+      expect(uncertain.status).toBe(200);
+      expect(await uncertain.json()).toMatchObject({ok:true,status:'inconclusive',receiptOk:false});
+      const malformed = await app.request('/api/receipts/verify', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({receipt:{invalid:true}})});
+      expect(malformed.status).toBe(400);
+      const effects = await sql.query(`SELECT
+        (SELECT count(*)::int FROM jobs) AS jobs,
+        (SELECT count(*)::int FROM scan_receipts) AS receipts,
+        (SELECT COALESCE(sum(heavy_jobs),0)::text FROM hosted_usage_days) AS usage`);
+      expect(effects.rows).toEqual([{jobs:0,receipts:0,usage:'0'}]);
     } finally {
       await sql.close();
     }
@@ -830,6 +855,10 @@ describe("public receipt verify", () => {
       });
       expect(scan1.status).toBe(202);
       expect(scan2.status).toBe(429);
+      const beforeVerification = await sql.query(`SELECT
+        (SELECT count(*)::int FROM jobs) AS jobs,
+        (SELECT count(*)::int FROM scan_receipts) AS receipts,
+        (SELECT COALESCE(sum(heavy_jobs),0)::text FROM hosted_usage_days) AS usage`);
       const verified = await app.request("/api/receipts/verify", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -837,6 +866,11 @@ describe("public receipt verify", () => {
       });
       expect(verified.status).toBe(200);
       expect(((await verified.json()) as { ok: boolean }).ok).toBe(true);
+      const afterVerification = await sql.query(`SELECT
+        (SELECT count(*)::int FROM jobs) AS jobs,
+        (SELECT count(*)::int FROM scan_receipts) AS receipts,
+        (SELECT COALESCE(sum(heavy_jobs),0)::text FROM hosted_usage_days) AS usage`);
+      expect(afterVerification.rows).toEqual(beforeVerification.rows);
     } finally {
       await sql.close();
     }

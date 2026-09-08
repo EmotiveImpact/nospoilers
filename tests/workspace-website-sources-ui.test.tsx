@@ -15,3 +15,9 @@ it('does not invent workspace scope for legacy URLs or unrelated pages',()=>{
  context.search='?install=7';const view=render(<WorkspaceWebsiteSources/>);expect(view.container.textContent).toBe('');
  context.search='?workspace=one';context.route.view='releases';view.rerender(<WorkspaceWebsiteSources/>);expect(view.container.textContent).toBe('');
 });
+it('does not append unrelated independent websites to a connected health result',()=>{
+ context.search='?workspace=one&coverageHealth=delayed';
+ const view=render(<WorkspaceWebsiteSources/>);expect(view.container.textContent).toBe('');
+ context.search='?workspace=one&coverageHealth=invalid';view.rerender(<WorkspaceWebsiteSources/>);
+ expect(screen.getByText('one editable')).toBeTruthy();
+});

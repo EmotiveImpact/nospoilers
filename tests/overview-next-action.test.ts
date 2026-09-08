@@ -26,3 +26,16 @@ it('keeps active scans and ongoing response actionable',()=>{
  expect(overviewNextAction({counts:{total:1,attention:0,active:1}},'w').href).toContain('uploadStatus=active');
  expect(overviewNextAction({counts:{total:0,attention:0,active:0},alertCounts:{open:0,waiting:2}},'w').href).toContain('tab=waiting');
 });
+
+it.each(['unknown','delayed','unavailable'] as const)('routes %s connected monitoring to coverage despite saved passes',health=>{
+ const data={counts:{total:4,attention:0,active:0},connectedCoverage:{unknown:0,delayed:0,unavailable:0,[health]:1}};
+ const next=overviewNextAction(data,'workspace with spaces');
+ expect(next.href).toBe('/watch/sources?workspace=workspace+with+spaces');
+ expect(next.text).toContain('does not establish current safety');
+ expect(overviewNextAction({...data,alertCounts:{open:1,waiting:0}},'w').href).toContain('/watch/alerts?');
+ expect(overviewNextAction({...data,counts:{...data.counts,active:1}},'w').href).toContain('uploadStatus=active');
+});
+
+it('keeps saved evidence accessible when connected monitoring has no attention state',()=>{
+ expect(overviewNextAction({counts:{total:4,attention:0,active:0},connectedCoverage:{unknown:0,delayed:0,unavailable:0}},'w').href).toBe('/watch/releases?workspace=w');
+});

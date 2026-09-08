@@ -44,7 +44,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "115_hosted_exceptions";
+export const CURRENT_SCHEMA_MIGRATION = "121_repo_connection_generation";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -1229,6 +1229,60 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     await tx.exec(hostedExceptionSchema);
     await tx.query("INSERT INTO schema_migrations(id) VALUES ('115_hosted_exceptions')");
   });
+  await sql.transaction(async tx => {
+    if ((await tx.query("SELECT id FROM schema_migrations WHERE id='116_retained_source_connections'")).rows.length) return;
+    await tx.exec(`
+      ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ;
+      ALTER TABLE map_destinations ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ;
+      ALTER TABLE map_destinations ALTER COLUMN token_ciphertext DROP NOT NULL;
+    `);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('116_retained_source_connections')");
+  });
+  await sql.transaction(async tx => {
+    if ((await tx.query("SELECT id FROM schema_migrations WHERE id='117_package_connection_generation'")).rows.length) return;
+    await tx.exec('ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS connection_generation BIGINT NOT NULL DEFAULT 0');
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('117_package_connection_generation')");
+  });
+  await sql.transaction(async tx => {
+    if ((await tx.query("SELECT id FROM schema_migrations WHERE id='118_source_monitoring_pause'")).rows.length) return;
+    await tx.exec(`ALTER TABLE watched_packages ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+      ALTER TABLE map_destinations ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+      ALTER TABLE map_destinations ADD COLUMN IF NOT EXISTS connection_generation BIGINT NOT NULL DEFAULT 0;`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('118_source_monitoring_pause')");
+  });
+  await sql.query("INSERT INTO schema_migrations(id) VALUES ('119_source_monitoring_audit') ON CONFLICT DO NOTHING");
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='120_origin_connection_generation'")).rows.length)return;
+    await tx.exec(`ALTER TABLE watched_origins ADD COLUMN connection_generation BIGINT NOT NULL DEFAULT 0;
+      CREATE FUNCTION advance_origin_connection_generation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF ROW(NEW.paused_at,NEW.disconnected_at,NEW.verification_token,NEW.verified_at,NEW.origin_url,NEW.installation_id)
+          IS DISTINCT FROM ROW(OLD.paused_at,OLD.disconnected_at,OLD.verification_token,OLD.verified_at,OLD.origin_url,OLD.installation_id)
+        THEN NEW.connection_generation := OLD.connection_generation + 1;
+        ELSE NEW.connection_generation := OLD.connection_generation;
+        END IF;
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER origin_connection_generation BEFORE UPDATE ON watched_origins
+      FOR EACH ROW EXECUTE FUNCTION advance_origin_connection_generation();`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('120_origin_connection_generation')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='121_repo_connection_generation'")).rows.length)return;
+    await tx.exec(`ALTER TABLE repos ADD COLUMN connection_generation BIGINT NOT NULL DEFAULT 0;
+      CREATE FUNCTION advance_repo_connection_generation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF ROW(NEW.disconnected_at,NEW.installation_id,NEW.owner,NEW.name,NEW.private)
+          IS DISTINCT FROM ROW(OLD.disconnected_at,OLD.installation_id,OLD.owner,OLD.name,OLD.private)
+        THEN NEW.connection_generation := OLD.connection_generation + 1;
+        ELSE NEW.connection_generation := OLD.connection_generation;
+        END IF;
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER repo_connection_generation BEFORE UPDATE ON repos
+      FOR EACH ROW EXECUTE FUNCTION advance_repo_connection_generation();`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('121_repo_connection_generation')");
+  });
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1674,6 +1728,8 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
   await sql.exec(`
     ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS audit_events_action_check;
     ALTER TABLE audit_events ADD CONSTRAINT audit_events_action_check CHECK (action IN (
+      'source.pause',
+      'source.resume',
       'destination.save',
       'destination.delete',
       'route.save',

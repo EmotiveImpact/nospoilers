@@ -139,6 +139,7 @@ export function protectionImportStatusLabel(status: ProtectionImportResult["stat
   if (status === "not_found") return "not on the registry";
   if (status === "invalid") return "invalid name";
   if (status === "watch_cap") return "watch cap";
+  if (status === "connection_changed") return "connection changed — refresh and retry";
   return "protected";
 }
 

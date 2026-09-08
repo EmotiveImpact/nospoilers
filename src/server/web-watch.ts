@@ -54,12 +54,13 @@ export async function connectWatchedOrigin(
     options.enqueue === false
       ? { inserted: false }
       : await store.enqueueJob({
-          deliveryId: webOriginScanDeliveryId(input.installationId, inserted.id, "initial"),
+          deliveryId: webOriginScanDeliveryId(input.installationId, inserted.id, `initial:${inserted.connection_generation??'0'}`),
           priority: "heavy",
           kind: "web_origin_scan",
           payload: {
             installationId: input.installationId,
             originId: inserted.id,
+            connectionGeneration: inserted.connection_generation??'0',
             url: parsed.url,
             reason: "first",
           },
@@ -72,6 +73,9 @@ export async function checkWatchedOrigin(
   origin: WatchedOriginRow,
   _notifier?: AlertNotifier,
 ): Promise<{ queued: boolean }> {
+  if (origin.paused_at) {
+    throw Object.assign(new Error("Resume monitoring before scanning this production website."), { status: 409 });
+  }
   if (origin.verification_token && !origin.verified_at) {
     throw Object.assign(
       new Error("Verify domain control before scanning this production website."),
@@ -91,6 +95,7 @@ export async function checkWatchedOrigin(
     payload: {
       installationId: origin.installation_id,
       originId: origin.id,
+      connectionGeneration: origin.connection_generation??'0',
       url: origin.origin_url,
       reason: "check",
     },
@@ -108,12 +113,13 @@ export async function runWebOriginPoll(deps: {
     if (origin.verification_token && !origin.verified_at) continue;
     if (!(await deps.store.installationWorkAllowed(origin.installation_id))) continue;
     const result = await deps.store.enqueueJob({
-      deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, `hour:${hour}`),
+      deliveryId: webOriginScanDeliveryId(origin.installation_id, origin.id, `hour:${hour}:connection:${origin.connection_generation??'0'}`),
       priority: "heavy",
       kind: "web_origin_scan",
       payload: {
         installationId: origin.installation_id,
         originId: origin.id,
+        connectionGeneration: origin.connection_generation??'0',
         url: origin.origin_url,
         reason: "poll",
       },

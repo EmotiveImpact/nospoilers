@@ -32,8 +32,8 @@ const NEXT_STEPS = [
   },
   {
     icon: FileCheck2,
-    label: "Clean checks create release proof",
-    detail: "Signed proof and release history appear after NoSpoilers has evidence it can stand behind.",
+    label: "Completed checks preserve their outcome",
+    detail: "A signed scan record preserves the recorded scope and decision, including findings. A signature does not mean the release passed.",
   },
 ] as const;
 
@@ -59,14 +59,17 @@ export function WatchFirstProofOverview({
   search,
   nowLabel,
   websiteStage,
+  connectedSources = false,
 }: {
   search: string;
   installUrl?: string;
   nowLabel: string;
   websiteStage?: 'verify' | 'scan' | 'configured';
+  connectedSources?: boolean;
 }) {
   const setupHref = watchHref(watchPath("setup"), search);
   const sourcesHref = watchHref(watchPath("sources"), search);
+  const readyToInspect = websiteStage === 'scan' || (!websiteStage && connectedSources);
 
   return (
     <div className="watch-first-proof mx-auto max-w-[1140px]">
@@ -81,11 +84,12 @@ export function WatchFirstProofOverview({
         </p>
         <div className="mt-5 flex flex-wrap gap-2.5">
           {websiteStage && <Button type="button" onClick={()=>navigate(sourcesHref)}>{websiteStage==='verify'?'Verify website ownership':websiteStage==='scan'?'Run your first website check':'Review website setup'}</Button>}
-            <Button type="button" onClick={() => { const params=new URLSearchParams(search);params.set('mode','github');navigate(`${watchPath('scan')}?${params}`); }}>
+          {!websiteStage && connectedSources && <Button type="button" onClick={()=>navigate(sourcesHref)}>Choose a connected source to check</Button>}
+            <Button type="button" onClick={() => { const params=new URLSearchParams(search);params.set('mode','github');navigate(watchHref(watchPath('scan'),`?${params}`)); }}>
               <GitBranch className="size-4" aria-hidden />
               Connect a GitHub repo
             </Button>
-          <Button type="button" variant="outline" onClick={() => navigate(watchHref(watchPath("scan"), search))}>
+          <Button type="button" variant="outline" onClick={() => {const params=new URLSearchParams(search);params.set('mode','package');navigate(watchHref(watchPath("scan"),`?${params}`));}}>
             Scan a package instead
           </Button>
         </div>
@@ -93,7 +97,7 @@ export function WatchFirstProofOverview({
 
       <ol className="watch-proof-steps" aria-label="What happens after you connect">
         {PROOF_STEPS.map(([label, detail], index) => (
-          <li key={label} className={index === (websiteStage==='scan'?1:0) ? "is-active" : undefined} aria-current={index === (websiteStage==='scan'?1:0)?'step':undefined}>
+          <li key={label} className={index === (readyToInspect?1:0) ? "is-active" : undefined} aria-current={index === (readyToInspect?1:0)?'step':undefined}>
             <span className="watch-proof-step-number">{index + 1}</span>
             <span className="watch-proof-step-copy">
               <strong>{label}</strong>
@@ -105,8 +109,8 @@ export function WatchFirstProofOverview({
 
       <section className="watch-proof-next" aria-labelledby="proof-next-title">
         <div className="watch-proof-next-main">
-          <span className="watch-kicker">{websiteStage==='scan'?'Step 2 of 4 · inspect':'Step 1 of 4 · source'}</span>
-          <h2 id="proof-next-title">{websiteStage==='verify'?'Your website is added. Verify ownership next.':websiteStage==='scan'?'Ownership verified. Run your first check.':websiteStage==='configured'?'Review your existing website connection.':'Connect the release you actually ship.'}</h2>
+          <span className="watch-kicker">{readyToInspect?'Step 2 of 4 · inspect':'Step 1 of 4 · source'}</span>
+          <h2 id="proof-next-title">{websiteStage==='verify'?'Your website is added. Verify ownership next.':websiteStage==='scan'?'Ownership verified. Run your first check.':websiteStage==='configured'?'Review your existing website connection.':connectedSources?'Your sources are connected. Choose one for your first check.':'Connect the release you actually ship.'}</h2>
           <div className="watch-proof-next-rows">
             {NEXT_STEPS.map(({ icon: Icon, label, detail }, index) => (
               <div key={label}>

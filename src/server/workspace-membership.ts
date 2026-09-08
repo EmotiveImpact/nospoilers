@@ -49,7 +49,7 @@ export async function workspaceTeam(sql:SqlClient,userId:string,workspaceId:stri
       WHERE m.workspace_id=$1 AND (m.access_source='explicit' OR o.legacy_installation_id IS NULL OR legacy.user_id IS NOT NULL)
       ORDER BY u.login,m.user_id`,[workspaceId]);
     const {rows:invites}=await tx.query(`SELECT i.id,i.role,u.login,i.expires_at FROM product_workspace_invites i JOIN users u ON u.id=i.recipient_user_id WHERE i.workspace_id=$1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>now() ORDER BY i.created_at`,[workspaceId]);
-    const {rows:events}=await tx.query(`SELECT e.id,e.action,e.detail,e.created_at,u.login AS actor,s.login AS subject FROM product_workspace_events e LEFT JOIN users u ON u.id=e.actor_user_id LEFT JOIN users s ON s.id=e.subject_user_id WHERE e.workspace_id=$1 ORDER BY e.created_at DESC,e.id DESC LIMIT 100`,[workspaceId]);
+    const {rows:events}=await tx.query(`SELECT e.id,e.action,e.detail,e.created_at,u.login AS actor,s.login AS subject FROM product_workspace_events e LEFT JOIN users u ON u.id=e.actor_user_id LEFT JOIN users s ON s.id=e.subject_user_id WHERE e.workspace_id=$1 AND e.action IN ('invited','invite_accepted','invite_revoked','member_removed','role_changed') ORDER BY e.created_at DESC,e.id DESC LIMIT 100`,[workspaceId]);
     return {role:actor.role,archived:!!actor.archived_at,members,invites,events};
   });
 }

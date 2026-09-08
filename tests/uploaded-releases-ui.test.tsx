@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UploadedReleases } from '../src/components/watch/UploadedReleases';
 
@@ -8,9 +8,41 @@ const json=(body:unknown)=>Promise.resolve(new Response(JSON.stringify(body)));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 
 describe('uploaded release workspace flow',()=>{
+  it('changes the decision preview with selection and restores it from the URL',async()=>{
+    vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7),upload('second',7)]})));
+    const view=render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first"/>);
+    await screen.findByRole('heading',{name:'first.zip'});
+    fireEvent.click(screen.getByRole('button',{name:/second.zip/}));
+    expect(new URLSearchParams(window.location.search).get('upload')).toBe('second');
+    expect(new URLSearchParams(window.location.search).get('workspace')).toBe('team');
+    view.rerender(<UploadedReleases installationId={7} search={window.location.search}/>);
+    await screen.findByRole('heading',{name:'second.zip'});
+    expect(screen.queryByRole('heading',{name:'first.zip'})).toBeNull();
+    view.rerender(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first"/>);
+    await screen.findByRole('heading',{name:'first.zip'});
+    expect(screen.queryByRole('heading',{name:'second.zip'})).toBeNull();
+  });
+  it('ignores an older list response after the selected release changes',async()=>{
+    let finish!:(response:Response)=>void;
+    const oldResponse=new Promise<Response>(resolve=>{finish=resolve;});
+    vi.stubGlobal('fetch',vi.fn().mockReturnValueOnce(oldResponse).mockImplementation(()=>json({uploads:[upload('second',7)]})));
+    const view=render(<UploadedReleases installationId={7} search="?install=7&upload=first"/>);
+    view.rerender(<UploadedReleases installationId={7} search="?install=7&upload=second"/>);
+    await screen.findByRole('heading',{name:'second.zip'});
+    await act(async()=>finish(new Response(JSON.stringify({uploads:[upload('first',7)]}))));
+    expect(screen.getByRole('heading',{name:'second.zip'})).toBeTruthy();
+    expect(screen.queryByRole('heading',{name:'first.zip'})).toBeNull();
+  });
+  it('explains a linked attempt outside the active status filter',async()=>{
+    vi.stubGlobal('fetch',vi.fn((url:string)=>url.startsWith('/api/uploads/')?json({upload:upload('failed',7)}):json({uploads:[]})));
+    render(<UploadedReleases installationId={7} search="?install=7&upload=failed&uploadStatus=passed"/>);
+    expect(await screen.findByRole('heading',{name:'failed.zip'})).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('outside the selected status filter');
+    expect(screen.getByText('No results match this status. Change the filter to see other releases.')).toBeTruthy();
+  });
   it('routes website retry to coverage instead of asking for an artifact upload',async()=>{
     vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('website',7),workspace_id:'team',source_origin_id:4,target:'https://example.com/'}]})));
-    render(<UploadedReleases installationId={7} workspaceId="team" search="?workspace=team&install=7&upload=website"/>);
+    render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=website"/>);
     fireEvent.click(await screen.findByRole('button',{name:'Open website controls'}));
     expect(window.location.pathname+window.location.search).toBe('/watch/sources?workspace=team&configure=website');
     expect(screen.queryByRole('button',{name:'Upload a new attempt'})).toBeNull();

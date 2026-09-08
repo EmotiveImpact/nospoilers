@@ -396,7 +396,7 @@ export type PackageProtection = {
 
 export type ProtectionImportResult = {
   name: string;
-  status: "protected" | "already_protected" | "not_owned" | "not_found" | "invalid" | "watch_cap";
+  status: "protected" | "already_protected" | "not_owned" | "not_found" | "invalid" | "watch_cap" | "connection_changed";
   packageId: number | null;
   verifiedVia: "scope_match" | "github_repository" | null;
   githubRepo: string | null;

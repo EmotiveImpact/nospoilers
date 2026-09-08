@@ -3,6 +3,37 @@ import {render,screen,cleanup,fireEvent,waitFor,act} from '@testing-library/reac
 import {afterEach,it,expect,vi} from 'vitest';
 import {WorkspaceWebsites} from '../src/components/watch/WorkspaceWebsites';
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
+it('does not restore stale inventory when an older poll finishes after denied mutation',async()=>{
+ vi.useFakeTimers();let reads=0;let finish!:(value:Response)=>void;
+ const oldPoll=new Promise<Response>(resolve=>{finish=resolve;});
+ const inventory={origins:[{id:1,host:'example.com',origin_url:'https://example.com/',verified_at:'2026-09-05'}]};
+ vi.stubGlobal('fetch',vi.fn((_url,options)=>{
+  if(options?.method==='POST')return Promise.resolve(Response.json({error:'Access revoked.'},{status:403}));
+  reads++;
+  return reads===1?Promise.resolve(Response.json(inventory)):reads===2?oldPoll:Promise.resolve(Response.json({error:'Access revoked.'},{status:403}));
+ }));
+ await act(async()=>{render(<WorkspaceWebsites workspaceId="workspace"/>);});
+ await act(async()=>{await vi.advanceTimersByTimeAsync(30000);});
+ expect(reads).toBe(2);
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Scan website'}));});
+ await act(async()=>{finish(Response.json(inventory));await oldPoll;});
+ expect(screen.queryByRole('button',{name:'Scan website'})).toBeNull();
+ expect(screen.queryByRole('heading',{name:'example.com'})).toBeNull();
+ expect(screen.getByRole('alert').textContent).toContain('Access revoked.');
+});
+it('removes cached source controls immediately when a mutation denies access',async()=>{
+ let denied=false;
+ vi.stubGlobal('fetch',vi.fn(async(_url,options)=>{
+  if(options?.method==='POST'){denied=true;return Response.json({error:'Access revoked.'},{status:403});}
+  if(denied)return Response.json({error:'Refresh unavailable.'},{status:503});
+  return Response.json({origins:[{id:1,host:'example.com',origin_url:'https://example.com/',verified_at:'2026-09-05'}]});
+ }));
+ render(<WorkspaceWebsites workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Scan website'}));
+ await screen.findByText('Access revoked.');
+ expect(screen.queryByRole('button',{name:'Scan website'})).toBeNull();
+ expect(screen.queryByRole('heading',{name:'example.com'})).toBeNull();
+});
 it('shows the exact configured target and does not imply whole-domain coverage',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({origins:[{id:1,host:'example.com',origin_url:'https://example.com/app/',verified_at:'2026-09-05',last_checked_at:null,schedule_hours:0}]}))));
  render(<WorkspaceWebsites workspaceId="workspace"/>);

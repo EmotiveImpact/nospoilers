@@ -2393,7 +2393,7 @@ export function createApp(deps: AppDeps): Hono {
     const body=jsonObj(await c.req.json().catch(()=>null));
     return revokeWorkspaceToken(deps.store.sql,userId,c.req.param('id'),c.req.param('tokenId'),body.confirm);
   }));
-  app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'),deps.config.pollIntervalMs)));
   app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
   app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1'})));
   app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
@@ -2489,6 +2489,30 @@ export function createApp(deps: AppDeps): Hono {
     const installationId=queryInstallationId(c);
     if(!installationId)return c.json({error:'Choose a connection.'},400);
     return c.json({repos:await deps.store.listDisconnectedReposForUser(user.userId,installationId)});
+  });
+
+  app.get('/api/sources/disconnected', async c => {
+    const user = await currentUser(c);
+    if (!user) return c.json({error:'Sign in first.'},401);
+    const installationId = queryInstallationId(c);
+    if (!installationId) return c.json({error:'Choose a connection.'},400);
+    c.header('Cache-Control','private, no-store');
+    return c.json({sources:await deps.store.listRetainedSourcesForUser(user.userId,installationId)});
+  });
+
+  app.get('/api/sources/monitoring',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const installationId=queryInstallationId(c);if(!installationId)return c.json({error:'Choose a connection.'},400);
+    c.header('Cache-Control','private, no-store');
+    return c.json({sources:await deps.store.listSourceMonitoringForUser(user.userId,installationId)});
+  });
+  app.post('/api/sources/:kind/:id/monitoring',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const kind=c.req.param('kind'),id=Number(c.req.param('id'));
+    const body=jsonObj(await c.req.json().catch(()=>({})));
+    if((kind!=='npm'&&kind!=='map')||!Number.isSafeInteger(id)||id<=0||typeof body.paused!=='boolean')return c.json({error:'Choose a source and monitoring state.'},400);
+    if(!await deps.store.setSourcePausedForUser(kind,id,user.userId,body.paused))return c.json({error:'Source unavailable or insufficient permission.'},403);
+    return c.json({ok:true});
   });
 
   app.get("/api/alerts", async (c) => {
@@ -3193,6 +3217,7 @@ export function createApp(deps: AppDeps): Hono {
       priority: "heavy",
       kind: "scan_latest_release",
       payload: {
+        connectionGeneration: String(repo.connection_generation ?? '0'),
         installationId: repo.installation_id,
         repo: {
           id: repo.id,
@@ -4357,6 +4382,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!token) return c.json({ error: "Valid deployment token required." }, 401);
     const origin = await deps.store.getOriginByDeployTokenHash(hashDeployToken(token));
     if (!origin) return c.json({ error: "Valid deployment token required." }, 401);
+    if (origin.paused_at) return c.json({ error: "Resume monitoring before scanning this production website." }, 409);
     const checkDenied = await hostedWorkDenied(
       deps.store,
       origin.installation_id,
@@ -4376,7 +4402,7 @@ export function createApp(deps: AppDeps): Hono {
       deliveryId: webOriginScanDeliveryId(
         origin.installation_id,
         origin.id,
-        `deploy:${provider}:${deploymentId}`,
+        `deploy:${provider}:${deploymentId}:connection:${origin.connection_generation??'0'}`,
       ),
       priority: "heavy",
       kind: "web_origin_scan",
@@ -4385,6 +4411,7 @@ export function createApp(deps: AppDeps): Hono {
         originId: origin.id,
         url: origin.origin_url,
         reason: "deployment",
+        connectionGeneration: origin.connection_generation??'0',
         provider,
         deploymentId,
       },
@@ -5254,8 +5281,24 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/releases", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    if(c.req.query('hostedDecision')&&!queryInstallationId(c))return c.json({error:'Choose a connection for release decisions.'},400);
+    if(c.req.query('hostedDecision')&&!['all','passed','attention'].includes(c.req.query('hostedDecision')!))return c.json({error:'Unknown release decision filter.'},400);
+    if(c.req.query('before')&&(!Number.isSafeInteger(Number(c.req.query('before')))||Number(c.req.query('before'))<=0))return c.json({error:'Invalid release cursor.'},400);
+    if(c.req.query('hostedDecision')&&!c.req.query('workspace'))return c.json({error:'Choose a workspace for release decisions.'},400);
+    let hostedContext: {workspaceName:string;connectionName:string}|undefined;
+    if(c.req.query('hostedDecision')){
+      try{
+        const access=await workspaceEvidenceSettings(deps.store.sql,user.userId,c.req.query('workspace')!);
+        const connection=(await deps.store.sql.query<{account_login:string}>(`SELECT i.account_login FROM product_workspace_installations wi JOIN installations i ON i.id=wi.installation_id WHERE wi.workspace_id::text=$1 AND wi.installation_id=$2`,[c.req.query('workspace'),queryInstallationId(c)])).rows[0];
+        if(!connection)return c.json({error:'Connection is not in this workspace.'},404);
+        hostedContext={workspaceName:access.workspace.name,connectionName:connection.account_login};
+      }catch{return c.json({error:'Workspace is unavailable.'},404);}
+    }
     const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
       installationId: queryInstallationId(c),
+      hostedDecision: ['all','passed','attention'].includes(c.req.query('hostedDecision')??'') ? c.req.query('hostedDecision') as 'all'|'passed'|'attention' : undefined,
+      before: /^\d+$/.test(c.req.query('before')??'') ? Number(c.req.query('before')) : undefined,
+      workspaceId:c.req.query('hostedDecision')?c.req.query('workspace'):undefined,
     });
     const revisionIds = releases.map((row) => row.id);
     const locations = await deps.store.listDeliveryLocationsForRevisions(revisionIds);
@@ -5284,6 +5327,7 @@ export function createApp(deps: AppDeps): Hono {
       byRevision.set(location.revision_id, list);
     }
     return c.json({
+      ...(hostedContext?{context:hostedContext}:{}),
       releases: releases.map((row) =>
         publicRelease(
           row,

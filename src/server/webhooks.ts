@@ -446,11 +446,13 @@ export async function enqueueFromWebhook(
       return { queued: false, kind: "release_scan" };
     }
 
+    const connectionGeneration = String((await store.getRepo(repo.id))?.connection_generation ?? '0');
     return await enqueueCovered(store, installationId, {
-      deliveryId: releaseScanDeliveryId(installationId, releaseId, fingerprint),
+      deliveryId: releaseScanDeliveryId(installationId, releaseId, fingerprint) + (connectionGeneration === '0' ? '' : `:connection:${connectionGeneration}`),
       priority: fingerprint === "empty" ? "light" : "heavy",
       kind: "release_scan",
       payload: {
+        connectionGeneration,
         installationId,
         repo,
         releaseId,

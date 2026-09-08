@@ -23,5 +23,5 @@ export function PublicContent({ path, docs = false }: { path: string; docs?: boo
     }
     return () => { cancelled = true; cleanup(); document.title = previousTitle; };
   }, [path, html]);
-  return <div ref={root} className="nsw" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div ref={root} className={docs ? 'nsw nsw-docs-shell' : 'nsw'} dangerouslySetInnerHTML={{ __html: html }} />;
 }

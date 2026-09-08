@@ -4,6 +4,17 @@ import {it,expect,vi,afterEach} from 'vitest';
 import {WorkspaceScanPolicy} from '../src/components/watch/WorkspaceScanPolicy';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const policy={strict:false,revision:0,canEdit:true,supported:true,events:[]};
+it.each([200,403])('requires reload after an incomplete or forbidden save (%s)',async status=>{
+ vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>new Response(JSON.stringify(url.endsWith('/exceptions')?{exceptions:[],nextCursor:null}:options?.method?{error:'Access changed.'}:{policy}),{status:options?.method?status:200})));
+ render(<WorkspaceScanPolicy workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('checkbox',{name:/Strict policy/}));
+ fireEvent.click(screen.getByRole('button',{name:'Save policy'}));
+ await screen.findByRole('alert');
+ expect(screen.queryByText('Policy saved for subsequent scan starts.')).toBeNull();
+ if(status===403)expect(screen.queryByRole('button',{name:'Save policy'})).toBeNull();
+ else expect(screen.getByRole('button',{name:'Save policy'})).toHaveProperty('disabled',true);
+ expect(screen.getByRole('button',{name:'Reload policy'})).toBeTruthy();
+});
 it('saves strict policy with its revision and shows server confirmation',async()=>{
  const fetcher=vi.fn(async(_url:string,options?:RequestInit)=>new Response(JSON.stringify(_url.endsWith('/exceptions')?{exceptions:[],canDecide:true,nextCursor:null}:{policy:options?.method?{...policy,strict:true,revision:1}:policy})));vi.stubGlobal('fetch',fetcher);
  render(<WorkspaceScanPolicy workspaceId="workspace"/>);fireEvent.click(await screen.findByRole('checkbox',{name:/Strict policy/}));fireEvent.click(screen.getByRole('button',{name:'Save policy'}));

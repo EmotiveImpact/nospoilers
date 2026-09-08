@@ -3,12 +3,15 @@ import {navigate} from '@/nav';
 import type {ProductWorkspace} from '@/watch/workspace-types';
 import {GithubWorkspaceConnect} from './GithubWorkspaceConnection';
 import {WorkspaceWebsites} from './WorkspaceWebsites';
+import {WorkspaceCoverageHealth,hasWorkspaceCoverageHealthFilter} from './WorkspaceCoverageHealth';
 
 export function WorkspaceCoverageEmpty({workspace}:{workspace:ProductWorkspace}){
+ if(hasWorkspaceCoverageHealthFilter(window.location.search))return <WorkspaceCoverageHealth workspaceId={workspace.id} search={window.location.search}/>;
  const disabledReason=workspace.archived_at?'Restore this workspace before connecting a source.':!['owner','admin'].includes(workspace.role)?'Ask a workspace administrator to connect a source.':null;
  return <section className="watch-empty" aria-labelledby="coverage-title">
   <p className="text-xs uppercase tracking-widest text-mute">Ongoing monitoring</p>
   <h1 id="coverage-title" className="watch-page-title">Coverage</h1>
+  <WorkspaceCoverageHealth workspaceId={workspace.id} search={window.location.search}/>
   <p>Manage connected sources in {workspace.name}. Repository monitoring and website checks keep their individual release evidence.</p>
   <div className="mt-6 rounded-lg border border-white/10 p-5">
    <h2 className="mb-3 text-lg font-semibold">Connect GitHub</h2>

@@ -4,6 +4,32 @@ import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceTokens} from '../src/components/watch/WorkspaceTokens';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const token={id:1,name:'CI',token_prefix:'nsp_prefix',revoked_at:null,last_used_at:null};
+it('clears token controls after access rejection and reloads current authority',async()=>{
+ let rejected=false;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>{
+  if(init?.method){rejected=true;return new Response(JSON.stringify({error:'Administrator access required.'}),{status:403});}
+  return new Response(JSON.stringify({tokens:[token],canManage:!rejected,nextCursor:null}));
+ }));
+ render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'New CI'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create token'}));
+ await screen.findByRole('alert');
+ expect(screen.queryByRole('button',{name:'Create token'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Revoke CI'})).toBeNull();
+ expect(screen.queryByText(/Creation was not confirmed/)).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Reload credentials'}));
+ await screen.findByText('Only administrators of an active workspace can create or revoke tokens.');
+});
+it('does not claim successful creation when the response omits the secret',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>new Response(JSON.stringify(init?.method==='POST'?{}:{tokens:[],canManage:true,nextCursor:null}))));
+ render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'CI'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create token'}));
+ await screen.findByText(/Creation was not confirmed/);
+ expect(screen.queryByLabelText('New token')).toBeNull();
+ expect(screen.queryByText('Token created. Store it securely now; it cannot be shown again.')).toBeNull();
+ expect(screen.getByRole('button',{name:'Create token'})).toHaveProperty('disabled',true);
+});
 it('requires history review after an unconfirmed creation rather than silently retrying',async()=>{
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(init?.method==='POST')throw new TypeError('Network disconnected');return new Response(JSON.stringify({tokens:[],canManage:true,nextCursor:null}));});
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceTokens workspaceId="workspace"/>);

@@ -2,17 +2,17 @@ import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
 type Row={id:number;fullName:string;disconnectedAt:string|null};
-export function DisconnectedRepositories({installationId}:{installationId:number}){
+export function DisconnectedRepositories({installationId,refreshKey}:{installationId:number;refreshKey?:string}){
  const [state,setState]=useState<{scope:number;rows:Row[]}|null>(null),[failed,setFailed]=useState<number|null>(null),[retry,setRetry]=useState(0);
  useEffect(()=>{
   const controller=new AbortController();
-  void fetch(`/api/repos/disconnected?install=${installationId}`,{signal:controller.signal}).then(async response=>{
+  void fetch(`/api/repos/disconnected?installationId=${installationId}`,{signal:controller.signal}).then(async response=>{
    if(!response.ok)throw new Error('Unavailable');
    const body=await response.json() as {repos:Row[]};
    if(!controller.signal.aborted){setState({scope:installationId,rows:body.repos});setFailed(null);}
   }).catch(()=>{if(!controller.signal.aborted)setFailed(installationId);});
   return()=>controller.abort();
- },[installationId,retry]);
+ },[installationId,retry,refreshKey]);
  if(failed===installationId)return <section className="mb-6 rounded-lg border border-white/10 p-5"><p role="alert">Retained connections could not be loaded.</p><Button variant="outline" onClick={()=>{setFailed(null);setRetry(value=>value+1);}}>Retry</Button></section>;
  if(state?.scope!==installationId)return <p className="mb-4 text-sm text-mute" role="status">Checking retained connections…</p>;
  if(!state.rows.length)return null;

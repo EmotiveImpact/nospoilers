@@ -1,5 +1,4 @@
 import { LEGAL_NAV, LEGAL_PAGES, type LegalSlug } from '@/legal.ts';
-import { PUBLIC_LINKS } from '@/website/page-paths.ts';
 import '@/website/website.css';
 
 /** Existing public policy material remains a review draft; no legal terms are enacted here. */
@@ -7,7 +6,6 @@ export function LegalPage({ slug }: { slug: LegalSlug }) {
   const page = LEGAL_PAGES[slug];
   return <div className="nsw">
     <a className="nsw-skip" href="#nsw-main">Skip to policy information</a>
-    <nav className="nsw-public-nav" aria-label="Explore NoSpoilers">{PUBLIC_LINKS.map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav>
     <main id="nsw-main" className="nsw-public-main">
       <header className="nsw-public-hero"><p className="nsw-eyebrow">Policy material · Review draft</p><h1 className="nsw-title">{page.title}</h1><p className="nsw-lede">This material has not been confirmed as approved terms for the completed service.</p></header>
       <div className="nsw-prose">

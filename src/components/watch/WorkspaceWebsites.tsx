@@ -6,6 +6,7 @@ type Origin={id:number;host:string;origin_url:string;verification_token:string|n
 export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',healthFilter='all'}:{workspaceId:string;disabledReason?:string|null;initialUrl?:string;healthFilter?:string}){
  const [rows,setRows]=useState<(Origin&WebsiteHealthInput)[]|null>(null),[error,setError]=useState(''),[url,setUrl]=useState(initialUrl),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0);
  const pending=useRef(false),mounted=useRef(true),attempts=useRef<Record<number,string>>({});
+ const loadEpoch=useRef(0);
  const [confirming,setConfirming]=useState<number|null>(null),[confirmation,setConfirmation]=useState('');
  const [loadError,setLoadError]=useState('');
  const [now,setNow]=useState(()=>Date.now());
@@ -14,8 +15,9 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  useEffect(()=>{const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
   async function load(){
-   try{const response=await fetch(base,{signal:controller.signal});const body=await response.json();if(!response.ok||!Array.isArray(body.origins)){if(!controller.signal.aborted&&[401,403,404].includes(response.status))setRows(null);throw new Error(body.error??'Websites unavailable.');}if(!controller.signal.aborted){setRows(body.origins);setLoadError('');}}
-   catch(reason){if(!controller.signal.aborted)setLoadError(reason instanceof Error?reason.message:'Websites unavailable.');}
+   const epoch=loadEpoch.current;
+   try{const response=await fetch(base,{signal:controller.signal});const body=await response.json();if(controller.signal.aborted||epoch!==loadEpoch.current)return;if(!response.ok||!Array.isArray(body.origins)){if([401,403,404].includes(response.status))setRows(null);throw new Error(body.error??'Websites unavailable.');}setRows(body.origins);setLoadError('');}
+   catch(reason){if(!controller.signal.aborted&&epoch===loadEpoch.current)setLoadError(reason instanceof Error?reason.message:'Websites unavailable.');}
    finally{if(!controller.signal.aborted)timer=setTimeout(()=>void load(),30000);}
   }
   void load();
@@ -25,7 +27,8 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
   if(pending.current||disabledReason)return;pending.current=true;setBusy(true);setError('');
   try{
    const response=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-   const result=await response.json();if(!response.ok)throw new Error(result.error??'The action could not be completed.');
+   const result=await response.json();
+   if(!response.ok){if(mounted.current&&[401,403,404].includes(response.status)){loadEpoch.current++;setRows(null);setConfirming(null);setConfirmation('');setRefresh(value=>value+1);}throw new Error(result.error??'The action could not be completed.');}
    if(!mounted.current)return;
    if(sourceId&&typeof result.releaseUrl==='string'){
     const destination=new URL(result.releaseUrl,window.location.origin);

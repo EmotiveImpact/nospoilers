@@ -65,6 +65,8 @@ Acceptance: hostile archives, stalled responses, chunked bodies, redirected/priv
 
 ## Gate B — finish the approved product journey
 
+**Accepted 8 September 2026.** B0–B8 completion is recorded in `GATE-B-COMPLETION-AUDIT.md` and `GATE-B-FINAL-EVIDENCE-MATRIX.md`. Final regression38375:986 tests/198 files pass; build27665 passes. Historical in-progress notes below are superseded. This closes the product-flow gate only; deferred A/C/D/E and provider/operational work remain separate.
+
 **B0. Identity/workspace foundation.** Follow `IDENTITY-WORKSPACES.md`: provider-neutral product identity, independent workspaces and GitHub installation connections, internal-member assignment and subscription-wide limits. This is a schema/auth migration, not a cosmetic switcher. Begin scope-safe UI/state fixes now; Gate B cannot be declared complete while required workspace creation/membership flows remain simulated. Provider choice and proposed commercial caps need confirmation before rollout.
 
 Current implementation evidence: `GATE-B-COMPLETION-AUDIT.md`, with migration history in `GATE-B-IMPLEMENTATION.md` and the source-specific Gate B documents. Independent workspace management/membership, GitHub connection binding, verified website scanning, billing ownership, tokens, notifications and scoped exceptions now exist; the earlier migration077/615-test checkpoint is historical. The owner approved explicit deletion authorization and retained history rather than automatic erasure on disconnection. Remaining flow/state and rendered acceptance requirements are tracked in the completion ledger; none is closed merely by this summary. Provider selection and rollout remain deferred. Gate B remains in progress.

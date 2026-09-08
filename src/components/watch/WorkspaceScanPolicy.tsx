@@ -23,8 +23,9 @@ function ScopedPolicy({workspaceId}:{workspaceId:string}){
   if(!policy?.canEdit||busy||conflict)return;setBusy(true);setError('');setSaved(false);
   try{const response=await fetch(endpoint,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({strict,expectedRevision:policy.revision,requireExceptionApproval:requireApproval})});
    const body=await response.json();if(!alive.current)return;if(response.status===409)setConflict(true);
+   if(response.status===401||response.status===403){setPolicy(null);setConflict(true);}
    if(!response.ok)throw new Error(body.error??'Scan policy could not be saved.');
-   if(!validPolicy(body.policy))throw new Error('Scan policy response was incomplete. Reload to check the saved policy.');
+   if(!validPolicy(body.policy)){setConflict(true);throw new Error('Scan policy response was incomplete. Reload to check the saved policy.');}
    setPolicy(body.policy);setStrict(body.policy.strict);setRequireApproval(body.policy.require_exception_approval??false);setSaved(true);
   }catch(error){if(alive.current)setError(error instanceof Error?error.message:'Scan policy could not be saved.');}finally{if(alive.current)setBusy(false);}
  }

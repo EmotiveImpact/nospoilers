@@ -19,8 +19,12 @@ export function enhanceWebsite(root: HTMLElement): () => void {
 
   function open(dialog: HTMLDialogElement | null | undefined, opener: HTMLElement): void {
     if (!dialog || dialog.open) return;
-    for (const other of [search, menu]) if (other?.open) other.close();
-    openers.set(dialog, opener);
+    let returnFocus = opener;
+    for (const other of [search, menu]) if (other?.open) {
+      returnFocus = openers.get(other) ?? returnFocus;
+      other.close();
+    }
+    openers.set(dialog, returnFocus);
     dialog.showModal();
     if (dialog === search) input?.focus();
     else dialog.querySelector<HTMLElement>('[data-nsw-close]')?.focus();
@@ -38,7 +42,7 @@ export function enhanceWebsite(root: HTMLElement): () => void {
     }, { signal });
     dialog?.addEventListener('close', () => {
       const opener = openers.get(dialog);
-      if (!disposed && opener?.isConnected) opener.focus({ preventScroll: true });
+      if (!disposed && opener?.isConnected && ![search, menu].some(other => other?.open)) opener.focus({ preventScroll: true });
       openers.delete(dialog);
     }, { signal });
     dialog?.addEventListener('click', event => {

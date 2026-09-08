@@ -1,6 +1,24 @@
 # NoSpoilers website and product architecture
 
-## Current evidence — 6 September, 06:06
+## Public surface separation — owner correction, 8 September
+
+`/docs` and its articles are a standalone documentation workspace: compact header, persistent desktop navigation, mobile navigation dialog, searchable guides and card-based start page. App routing bypasses the marketing shell for these routes. Neither the marketing header/footer nor the supporting-page navigation belongs above documentation.
+
+Product, Use cases, Integrations, Security, Enterprise and Support remain public website pages under the marketing shell—not documentation articles. Their presentation uses split heroes, conceptual release-flow diagrams and capability/section layouts, while preserving evidence-backed content and review-only image annotations. Pricing retains its real checkout handlers. The original homepage layout remains intact. The desktop marketing menus expose supporting destinations; supplementary page links sit below content rather than competing with the main header.
+
+The route separation has an explicit rendered regression for docs home and article URLs. The website/docs focused suite passes29 tests across3 files; production build/typecheck passed before that test-only addition. Visual sign-off and fresh approved product captures remain separate from these technical checks.
+
+## Current evidence — 8 September
+
+**Gate B is complete:** the final requirement matrix is accepted; regression38375 passes986/198 and build27665 passes. No verification is pending. This supersedes the earlier in-progress verification paragraph below. Live hosting/provider/worker validation and physical folder extraction remain separately deferred, not claims made by product-flow acceptance.
+
+The authoritative acceptance ledger is `GATE-B-COMPLETION-AUDIT.md`, with the bounded requirement mapping in `GATE-B-FINAL-EVIDENCE-MATRIX.md`. Combined regression 59716 passed 986 tests / 198 files. A later test-only assertion explicitly verifies staged-expiry rejection without new work or usage. Final verification 38375 includes that assertion and is running; older process references below are historical. Gate B remains open pending closure.
+
+Direct uploads, opt-in development fixtures and post-login staged claims now send explicit workspace/connection scope. Claims are idempotent: replay reopens the original immutable attempt and does not move its workspace or charge again. The client distinguishes staging/submission from scan execution, rejects malformed acknowledgements, supports explicit claim retry and ignores submission callbacks after leaving the owning screen. Local fixtures remain unavailable in production. Public intake still does not expose scan results.
+
+Website/package/repository publication now commits related source metadata, saved evidence and alert linkage atomically through dedicated publication helpers. Repository migration121 adds lifecycle generation fencing alongside existing source controls, so stale work cannot update a changed connection. Post-commit delivery cannot rewrite a recorded result. Real database rollback and stale-generation regressions cover these boundaries. Physical folder extraction, auth-provider activation, hosted worker validation and deployment remain separately deferred; no Docker is required for this local Gate B work.
+
+## Historical evidence — 6 September, 06:06
 
 Use `GATE-B-COMPLETION-AUDIT.md` for current acceptance status; the checkpoints below are chronological and their pending statements are not a current task list. Hosted evidence request UI, atomic policy snapshots and legacy direct-creation approval enforcement now exist. Full baseline797 passed before subsequent receipt/input and workspace-state corrections; the new full acceptance run45217 is still running. Website/product folder split, provider activation and deployment remain deferred. No Docker was introduced.
 

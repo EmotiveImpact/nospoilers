@@ -83,9 +83,6 @@ export function PricingPage() {
   return (
     <div className="nsw">
       <a className="nsw-skip" href="#nsw-main">Skip to pricing</a>
-      <nav className="nsw-public-nav" aria-label="Explore NoSpoilers">
-        {PUBLIC_LINKS.map(([href, label]) => <a key={href} href={href} aria-current={href === '/pricing' ? 'page' : undefined}>{label}</a>)}
-      </nav>
       <main id="nsw-main" className="nsw-public-main">
         <header className="nsw-public-hero">
           <p className="nsw-eyebrow">Coverage subscription</p>
@@ -132,6 +129,7 @@ export function PricingPage() {
             <p><a href="/enterprise">Plan an enterprise evaluation</a> or <a href="/docs/getting-started">read the first-scan guide</a>. <a href="/terms">Contract material remains a review draft</a> until approved.</p>
           </section>
         </div>
+        <nav className="nsw-public-nav" aria-label="Explore NoSpoilers">{PUBLIC_LINKS.map(([href,label]) => <a key={href} href={href}>{label}</a>)}</nav>
       </main>
     </div>
   )

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildReleaseBriefModel, releaseFamily } from "../src/watch/release-brief.ts";
 import type { ReleaseRevision } from "../src/watch/types.ts";
+import {readFileSync} from 'node:fs';
+
+it('labels heterogeneous source revisions truthfully in both saved release surfaces',()=>{
+  for(const file of ['../src/components/watch/WatchReleaseBrief.tsx','../src/components/watch/screens/ReleasesScreen.tsx']){
+    const source=readFileSync(new URL(file,import.meta.url),'utf8');
+    expect(source).toMatch(/source revision \$\{(?:release|preview)\.sourceRevision\}/);
+    expect(source).not.toMatch(/commit \$\{(?:release|preview)\.sourceRevision\}/);
+  }
+});
 
 function revision(overrides: Partial<ReleaseRevision> = {}): ReleaseRevision {
   return {

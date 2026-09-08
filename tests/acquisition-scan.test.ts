@@ -7,6 +7,7 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
 import { createStore, signSession } from "../src/server/store.ts";
 import { scan } from "../src/scanner/index.ts";
+import {createWorkspace,ensureUserWorkspaces,listUserWorkspaces,updateWorkspace} from '../src/server/workspaces.ts';
 
 function unusedGithub(): GithubPort {
   const fail = async (): Promise<never> => {
@@ -65,13 +66,26 @@ describe("public acquisition scan", () => {
       expect(anonymousReveal.status).toBe(401);
 
       await store.upsertUser({ id: "u1", login: "octo" });
+      await ensureUserWorkspaces(sql,'u1');
+      const [personal]=await listUserWorkspaces(sql,'u1');
+      const destination=await createWorkspace(sql,'u1',personal.organization_id,'Selected destination');
       const sessionCookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
-      const revealed = await app.request("/api/scan/pending", {
+      await updateWorkspace(sql,'u1',destination.id,{archived:true});
+      const deniedClaim=await app.request(`/api/scan/pending?workspaceId=${destination.id}`,{
+        method:'POST',headers:{cookie:`${sessionCookie}; ${pendingCookie}`},
+      });
+      expect(deniedClaim.status).toBe(403);
+      expect(await store.listUploadedScans('u1')).toEqual([]);
+      expect(scanCalls).toBe(0);
+      await updateWorkspace(sql,'u1',destination.id,{archived:false});
+      const revealed = await app.request(`/api/scan/pending?workspaceId=${destination.id}`, {
         method: 'POST',
         headers: { cookie: `${sessionCookie}; ${pendingCookie}` },
       });
       expect(revealed.status).toBe(202);
       const queued = await revealed.json() as {uploadId:string};
+      expect((await store.listUploadedScans('u1',undefined,destination.id)).map(row=>row.id)).toContain(queued.uploadId);
+      expect(await store.listUploadedScans('u1',undefined,personal.id)).toEqual([]);
       expect(scanCalls).toBe(0);
       await processUploadedScan(queued.uploadId,store,scan,'sess');
       const saved=await store.getUploadedScan('u1',queued.uploadId);
@@ -89,6 +103,17 @@ describe("public acquisition scan", () => {
       });
       expect(cached.status).toBe(200);
       expect(scanCalls).toBe(0);
+      const usageBefore=(await sql.query('SELECT * FROM personal_scan_usage')).rows;
+      const jobsBefore=(await sql.query('SELECT count(*) AS count FROM jobs')).rows;
+      const replay=await app.request(`/api/scan/pending?workspaceId=${personal.id}`,{
+        method:'POST',headers:{cookie:`${sessionCookie}; ${pendingCookie}`},
+      });
+      expect(replay.status).toBe(202);
+      expect(await replay.json()).toMatchObject({uploadId:queued.uploadId});
+      expect((await sql.query('SELECT * FROM personal_scan_usage')).rows).toEqual(usageBefore);
+      expect((await sql.query('SELECT count(*) AS count FROM jobs')).rows).toEqual(jobsBefore);
+      expect(await store.listUploadedScans('u1',undefined,personal.id)).toEqual([]);
+      expect((await store.listUploadedScans('u1',undefined,destination.id)).map(row=>row.id)).toEqual([queued.uploadId]);
 
       await store.upsertUser({ id: "u2", login: "other" });
       const otherSession = `ns_session=${signSession("sess", await store.createSession("u2"))}`;
@@ -101,6 +126,23 @@ describe("public acquisition scan", () => {
         headers: { cookie: `${otherSession}; ${pendingCookie}` },
       });
       expect(stolen.status).toBe(404);
+
+      // Expiry must reject admission, not merely free staging capacity.
+      const expiring = await app.request('/api/scan', {
+        method:'POST',headers:{'x-filename':'clean.tgz'},
+        body:await readFile('fixtures/clean.tgz'),
+      });
+      expect(expiring.status).toBe(202);
+      const expiringCookie=expiring.headers.get('set-cookie')?.split(';')[0];
+      await sql.query("UPDATE pending_scans SET expires_at=now()-interval '1 second'");
+      const expired=await app.request(`/api/scan/pending?workspaceId=${destination.id}`,{
+        method:'POST',headers:{cookie:`${sessionCookie}; ${expiringCookie}`},
+      });
+      expect(expired.status).toBe(404);
+      expect(await expired.json()).toMatchObject({error:expect.stringContaining('expired')});
+      expect((await sql.query('SELECT count(*) AS count FROM jobs')).rows).toEqual(jobsBefore);
+      expect((await sql.query('SELECT * FROM personal_scan_usage')).rows).toEqual(usageBefore);
+      expect((await store.listUploadedScans('u1',undefined,destination.id)).map(row=>row.id)).toEqual([queued.uploadId]);
     } finally {
       await sql.close();
     }

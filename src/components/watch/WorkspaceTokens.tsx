@@ -23,14 +23,20 @@ function TokenScope({workspaceId}:{workspaceId:string}){
  async function save(revoke:boolean){
   if(mutation.current||!page?.canManage||(!revoke&&uncertain))return;
   const request=new AbortController();mutation.current=request;setBusy(true);setError('');setNotice('');
+  let accessRejected=false;
   try{
    const response=await fetch(revoke?`${base}/${selected!.id}`:base,{method:revoke?'DELETE':'POST',signal:request.signal,headers:{'content-type':'application/json'},body:JSON.stringify(revoke?{confirm}:{name})});
-   const body=await response.json();if(!response.ok)throw new Error(body.error??'Could not save credentials.');
+   const body=await response.json();
+   if(!request.signal.aborted&&(response.status===401||response.status===403)){
+    accessRejected=true;setPage(null);setSecret('');setSelected(null);setConfirm('');setName('');
+   }
+   if(!response.ok)throw new Error(body.error??'Could not save credentials.');
    if(request.signal.aborted)return;
+   if(!revoke&&(typeof body.token!=='string'||!body.token.trim()))throw new Error('The token secret was not received. Check credential history before trying again.');
    if(revoke){setSelected(null);setConfirm('');setSecret('');setNotice('Token revoked. Saved scan history is unchanged.');}
    else {setSecret(body.token);setName('');setNotice('Token created. Store it securely now; it cannot be shown again.');}
    setBefore(null);setRevision(n=>n+1);
-  }catch(e){if(!request.signal.aborted){setError(e instanceof Error?e.message:'Request failed.');if(!revoke)setUncertain(true);}}
+  }catch(e){if(!request.signal.aborted){setError(e instanceof Error?e.message:'Request failed.');if(!revoke&&!accessRejected)setUncertain(true);}}
   finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  }
  function changePage(cursor:string|null){setPage(null);setSelected(null);setConfirm('');setSecret('');setBefore(cursor);}
