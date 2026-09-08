@@ -1,0 +1,44 @@
+.release-assurance-slot { margin-block: 1.5rem; min-width: 0; }
+.ns-assurance { --ns-a-fg: #f4f4f5; --ns-a-muted: #a1a1aa; --ns-a-line: #343438; --ns-a-red: #ff8a80; color: var(--ns-a-fg); background: #111113; border: 1px solid var(--ns-a-line); border-radius: 12px; padding: clamp(18px, 3vw, 30px); font: inherit; line-height: 1.6; overflow-wrap: anywhere; }
+.ns-assurance * { box-sizing: border-box; }
+.ns-assurance h2 { font-size: clamp(1.35rem, 2vw, 1.65rem); margin: 0; line-height: 1.25; letter-spacing: -.02em; }
+.ns-assurance h3 { margin: .3rem 0 .75rem; font-size: 1.15rem; line-height: 1.4; }
+.ns-assurance h4 { margin: 1rem 0 .3rem; }
+.ns-assurance p { margin: .6rem 0; }
+.ns-assurance__header { display: flex; justify-content: space-between; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.4rem; }
+.ns-assurance__header > :last-child { max-width: 27rem; }
+.ns-assurance__eyebrow { font-size: .75rem; color: var(--ns-a-muted); letter-spacing: .08em; }
+.ns-assurance__muted { color: var(--ns-a-muted); font-size: .88rem; }
+.ns-assurance__decision-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; }
+.ns-assurance__decision, .ns-assurance__delivery { border: 1px solid var(--ns-a-line); border-radius: 9px; padding: 20px; min-width: 0; background: #17171a; }
+.ns-assurance__decision.is-blocked h3 { color: var(--ns-a-red); }
+.ns-assurance__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1.25rem; }
+.ns-assurance button { appearance: none; border: 1px solid #52525b; color: var(--ns-a-fg); background: transparent; border-radius: 7px; font: inherit; font-size: .88rem; min-height: 44px; padding: .6rem 1rem; cursor: pointer; white-space: normal; }
+.ns-assurance button:hover { background: #27272a; }
+.ns-assurance button.ns-assurance__primary { background: #f4f4f5; color: #18181b; border-color: #f4f4f5; }
+.ns-assurance button:disabled { opacity: .6; cursor: wait; }
+.ns-assurance :is(button, summary, input):focus-visible { outline: 3px solid #f4f4f5; outline-offset: 4px; }
+.ns-assurance details { border-top: 1px solid var(--ns-a-line); margin-top: 1.15rem; padding-top: 1rem; }
+.ns-assurance summary { cursor: pointer; padding-block: .3rem; min-height: 44px; font-weight: 600; }
+.ns-assurance__checks { margin: .5rem 0; padding: 0; list-style: none; }
+.ns-assurance__checks li { padding: .9rem 0; border-bottom: 1px solid var(--ns-a-line); }
+.ns-assurance__checks li > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.ns-assurance__checks p { color: var(--ns-a-muted); font-size: .9rem; }
+.ns-assurance__badge { display: inline-block; border: 1px solid #52525b; color: #e4e4e7; border-radius: 5px; padding: .12rem .55rem; font-size: .78rem; flex-shrink: 0; }
+.ns-assurance__badge.is-failed { color: var(--ns-a-red); border-color: #7a4644; }
+.ns-assurance__badge.is-unknown, .ns-assurance__badge.is-stale { border-style: dashed; }
+.ns-assurance__comparison { margin-top: 1.5rem; padding-top: 1.3rem; border-top: 1px solid var(--ns-a-line); }
+.ns-assurance__counts { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); margin: 1rem 0; gap: 12px; }
+.ns-assurance__counts div { background: #17171a; border-radius: 7px; padding: 12px; min-width: 0; }
+.ns-assurance__counts dt { font-size: .8rem; color: var(--ns-a-muted); }
+.ns-assurance__counts dd { margin: .2rem 0 0; font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+.ns-assurance__notice { border: 1px solid #52525b; border-radius: 7px; padding: .8rem; }
+.ns-assurance code { font-size: .85em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ns-assurance__steps { padding-left: 1.5rem; }
+.ns-assurance__steps li { padding: .65rem 0 .65rem .25rem; }
+.ns-assurance__steps p { color: var(--ns-a-muted); }
+.ns-assurance__toggle { display: flex; gap: .8rem; padding: .6rem 0; align-items: flex-start; }
+.ns-assurance__toggle input { margin-top: .3rem; min-width: 18px; min-height: 18px; accent-color: #e4e4e7; }
+@media (max-width: 680px) { .ns-assurance__header { display: block; } .ns-assurance__decision-grid { grid-template-columns: 1fr; } .ns-assurance__counts { grid-template-columns: repeat(2,minmax(0,1fr)); } .ns-assurance__actions button { flex: 1 1 100%; } }
+@media (prefers-reduced-motion: reduce) { .ns-assurance, .ns-assurance * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+@media print { .ns-assurance { color: #111; background: #fff; border-color: #aaa; } .ns-assurance button, .ns-assurance__toggle { display: none; } }
