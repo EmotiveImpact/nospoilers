@@ -1,5 +1,5 @@
-import type { Finding } from "@/report-types";
-import type { Coverage } from "@/coverage";
+import type { Finding } from "../report-types.ts";
+import type { Coverage } from "../coverage.ts";
 
 export type PermissionTest = {
   ok: boolean;
@@ -26,13 +26,15 @@ export type Me = {
     account_login: string;
     account_type: string;
     suspended?: boolean;
+    disconnectedAt?: string|null;
     trialEndsAt?: string | null;
     plan?: string | null;
-    role?: "admin" | "member";
+    role?: "admin" | "member" | "viewer";
     lastPermissionTestAt?: string | null;
     lastPermissionTest?: PermissionTest | null;
   }[];
   githubApp: boolean;
+  developmentLogin?: boolean;
   stripe?: boolean;
   resend?: boolean;
   installUrl?: string;
@@ -60,6 +62,7 @@ export type Alert = {
   acknowledged_at?: string | null;
   acknowledged_by_login?: string | null;
   assigned_to_login?: string | null;
+  assigned_to_user_id?: string | null;
   resolved_at?: string | null;
   resolved_by_login?: string | null;
   resolution_note?: string | null;
@@ -169,13 +172,13 @@ export type TeamMember = {
   userId: string;
   login: string;
   avatarUrl: string | null;
-  role: "admin" | "member";
+  role: "admin" | "member" | "viewer";
 };
 
 export type TeamInvite = {
   id: number;
   githubLogin: string;
-  role: "admin" | "member";
+  role: "admin" | "member" | "viewer";
   createdAt: string;
 };
 
@@ -297,8 +300,8 @@ export type Confirming =
   | { kind: "identity-allowlist"; packageId: number; id: number; expected: string; reason: string }
   | { kind: "identity-revoke"; packageId: number; id: number; expected: string }
   | { kind: "member"; userId: string; expected: string }
-  | { kind: "role"; userId: string; expected: string; role: "admin" | "member" }
-  | { kind: "invite"; login: string; expected: string; role: "admin" | "member" }
+  | { kind: "role"; userId: string; expected: string; role: "admin" | "member" | "viewer" }
+  | { kind: "invite"; login: string; expected: string; role: "admin" | "member" | "viewer" }
   | { kind: "invite-revoke"; id: number; expected: string }
   | { kind: "retention"; days: RetentionDays; expected: string }
   | { kind: "signing-policy-save"; expected: string }

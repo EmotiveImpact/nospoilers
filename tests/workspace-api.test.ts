@@ -1,0 +1,88 @@
+import {describe,it,expect} from 'vitest';
+import {createApp} from '../src/server/app.ts';
+import {loadConfig} from '../src/server/config.ts';
+import {openSql,migrate} from '../src/server/sql.ts';
+import {createStore,signSession} from '../src/server/store.ts';
+import {skippedGithubWrites,type GithubPort} from '../src/server/github.ts';
+
+describe('authenticated workspace API',()=>{
+  it('requires sign-in, rejects cross-origin writes and enforces organisation access',async()=>{
+    const sql=await openSql('pglite://:memory:');try{
+      await migrate(sql);const store=createStore(sql);
+      const fail=async():Promise<never>=>{throw new Error('Unexpected GitHub call');};
+      const github:GithubPort={exchangeCode:fail,getUser:fail,listUserInstallations:fail,getInstallation:fail,getRepo:fail,listReleaseAssets:fail,getLatestRelease:fail,downloadAsset:fail,...skippedGithubWrites()};
+      const app=createApp({store,github,config:loadConfig({appBaseUrl:'http://127.0.0.1:4347',sessionSecret:'workspace-test'})});
+      expect((await app.request('/api/workspaces')).status).toBe(401);
+      expect((await app.request('/api/workspaces',{method:'POST',body:'{}'})).status).toBe(401);
+      await store.upsertUser({id:'owner',login:'owner'});
+      const cookie=`ns_session=${signSession('workspace-test',await store.createSession('owner'))}`;
+      const headers={cookie,'content-type':'application/json',origin:'http://127.0.0.1:4347'};
+      const listed=await app.request('/api/workspaces',{headers});
+      expect(listed.headers.get('cache-control')).toBe('no-store');
+      const {workspaces}=await listed.json() as {workspaces:{id:string;organization_id:string}[]};
+      expect((await app.request(`/api/uploads?workspaceId=${workspaces[0].id}&status=unknown`,{headers})).status).toBe(400);
+      expect((await app.request(`/api/uploads?workspaceId=${workspaces[0].id}&before=missing`,{headers})).status).toBe(404);
+      const payload=JSON.stringify({organizationId:workspaces[0].organization_id,name:'Product'});
+      expect((await app.request('/api/workspaces',{method:'POST',headers:{...headers,origin:'https://attacker.invalid'},body:payload})).status).toBe(403);
+      const created=await app.request('/api/workspaces',{method:'POST',headers,body:payload});
+      expect(created.status).toBe(201);
+      const {workspace}=await created.json() as {workspace:{id:string}};
+      expect((await app.request(`/api/workspaces/${workspace.id}`,{method:'PATCH',headers,body:JSON.stringify({name:'Production'})})).status).toBe(200);
+      await store.upsertUser({id:'stranger',login:'stranger'});
+      const stranger=`ns_session=${signSession('workspace-test',await store.createSession('stranger'))}`;
+      for(const suffix of ['overview','evidence-settings','scan-policy']){
+        const endpoint=`/api/workspaces/${workspace.id}/${suffix}`;
+        expect((await app.request(endpoint)).status).toBe(401);
+        expect((await app.request(endpoint,{headers:{...headers,cookie:stranger}})).status).toBe(404);
+        const result=await app.request(endpoint,{headers});
+        expect(result.status).toBe(200);
+        expect(result.headers.get('cache-control')).toBe('no-store');
+      }
+      const policyPath=`/api/workspaces/${workspace.id}/scan-policy`;
+      const strictBody=JSON.stringify({strict:true,expectedRevision:0});
+      expect((await app.request(policyPath,{method:'PUT',headers:{...headers,origin:'https://attacker.invalid'},body:strictBody})).status).toBe(403);
+      expect((await app.request(policyPath,{method:'PUT',headers:{...headers,cookie:stranger},body:strictBody})).status).toBe(404);
+      expect((await app.request(policyPath,{method:'PUT',headers,body:strictBody})).status).toBe(200);
+      expect((await app.request(policyPath,{method:'PUT',headers,body:strictBody})).status).toBe(409);
+      const impactPath=`/api/organizations/${workspaces[0].organization_id}/deletion-impact?scope=workspace_history&workspaceId=${workspace.id}`;
+      expect((await app.request(impactPath)).status).toBe(401);
+      expect((await app.request(impactPath,{headers:{...headers,cookie:stranger}})).status).toBe(403);
+      const impact=await app.request(impactPath,{headers});
+      expect(impact.status).toBe(200);
+      expect(await impact.json()).toMatchObject({executionAvailable:false,holdsChecked:false,counts:{workspaces:1}});
+      expect((await app.request(`/api/workspaces/${workspace.id}`,{method:'PATCH',headers:{...headers,cookie:stranger},body:JSON.stringify({name:'Hijacked'})})).status).toBe(404);
+      expect((await app.request('/api/workspaces',{method:'POST',headers:{...headers,cookie:stranger},body:payload})).status).toBe(403);
+      expect((await app.request(`/api/workspaces/${workspace.id}`,{method:'PATCH',headers,body:'{'})).status).toBe(400);
+      const movePath=`/api/workspaces/${workspace.id}/connections/1/move`;
+      expect((await app.request(movePath,{method:'POST',headers,body:'{}'})).status).toBe(400);
+      expect((await app.request(movePath,{method:'POST',headers:{...headers,origin:'https://attacker.invalid'},body:JSON.stringify({destinationWorkspaceId:workspaces[0].id})})).status).toBe(403);
+      expect((await app.request(movePath,{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status).toBe(401);
+      const teamPath=`/api/workspaces/${workspace.id}/team`;
+      const deletionPath=`/api/organizations/${workspaces[0].organization_id}/deletion-requests`;
+      const deletionBody=JSON.stringify({scope:'workspace_history',workspaceId:workspace.id,confirmation:`DELETE HISTORY ${workspace.id}`,acknowledgeHistory:true});
+      expect((await app.request(deletionPath,{headers:{...headers,cookie:stranger}})).status).toBe(403);
+      expect((await app.request(deletionPath,{method:'POST',headers:{...headers,origin:'https://attacker.invalid'},body:deletionBody})).status).toBe(403);
+      expect((await app.request(deletionPath,{method:'POST',headers,body:'{}'})).status).toBe(400);
+      const deletionRequest=await app.request(deletionPath,{method:'POST',headers,body:deletionBody});
+      expect(deletionRequest.status).toBe(200);
+      const savedDeletion=await deletionRequest.json() as {id:string;status:string};
+      expect(savedDeletion).toMatchObject({status:'pending_review'});
+      const withdrawalPath=`${deletionPath}/${savedDeletion.id}/withdraw`;
+      expect((await app.request(withdrawalPath,{method:'POST',headers:{...headers,cookie:stranger}})).status).toBe(403);
+      expect((await app.request(withdrawalPath,{method:'POST',headers})).status).toBe(200);
+      expect((await app.request('/api/workspaces',{headers})).status).toBe(200);
+      expect((await app.request(teamPath,{headers:{...headers,cookie:stranger}})).status).toBe(404);
+      const invitePath=`/api/workspaces/${workspace.id}/invitations`;
+      const inviteBody=JSON.stringify({login:'stranger',role:'viewer'});
+      expect((await app.request(invitePath,{method:'POST',headers:{...headers,origin:'https://attacker.invalid'},body:inviteBody})).status).toBe(403);
+      const invitation=await app.request(invitePath,{method:'POST',headers,body:inviteBody});
+      expect(invitation.status).toBe(200);
+      const {invite}=await invitation.json() as {invite:{id:string}};
+      const acceptPath=`/api/workspace-invitations/${invite.id}/accept`;
+      expect((await app.request(acceptPath,{method:'POST',headers})).status).toBe(404);
+      expect((await app.request(acceptPath,{method:'POST',headers:{...headers,cookie:stranger}})).status).toBe(200);
+      expect((await app.request(teamPath,{headers:{...headers,cookie:stranger}})).status).toBe(200);
+      expect((await app.request(`/api/workspaces/${workspace.id}/members/owner`,{method:'PATCH',headers:{...headers,cookie:stranger},body:JSON.stringify({role:'viewer'})})).status).toBe(403);
+    }finally{await sql.close();}
+  });
+});

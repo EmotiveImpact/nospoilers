@@ -13,6 +13,7 @@ export function WatchCommandPalette({
   search,
   teamOnly,
   adminOnly,
+  artifactOnly = false,
   alerts,
   sources,
   releases,
@@ -22,6 +23,7 @@ export function WatchCommandPalette({
   search: string;
   teamOnly: boolean;
   adminOnly: boolean;
+  artifactOnly?: boolean;
   alerts: { id: number; title: string }[];
   sources: { key: string; name: string }[];
   releases: { id: number; coordinate: string }[];
@@ -32,8 +34,8 @@ export function WatchCommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxId = useId();
   const items = useMemo(
-    () => buildPaletteItems({ query, search, teamOnly, adminOnly, alerts, sources, releases }),
-    [adminOnly, alerts, query, releases, search, sources, teamOnly],
+    () => buildPaletteItems({ query, search, teamOnly, adminOnly, artifactOnly, alerts, sources, releases }),
+    [adminOnly, artifactOnly, alerts, query, releases, search, sources, teamOnly],
   );
   const active = items[activeIndex] ?? items[0] ?? null;
 
@@ -90,7 +92,7 @@ export function WatchCommandPalette({
                 setActiveIndex(0);
               }}
               onKeyDown={onInputKeyDown}
-              placeholder="Search pages, alerts, sources…"
+              placeholder={artifactOnly?'Search workspace pages…':'Search pages, alerts, sources…'}
               className="h-12 w-full border-b border-white/8 bg-transparent pl-11 pr-4 text-sm text-snow outline-none placeholder:text-dim"
             />
           </div>
@@ -98,7 +100,7 @@ export function WatchCommandPalette({
             {items.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className="text-sm text-snow">No results</p>
-                <p className="mt-1 text-xs text-dim">Try a page, alert, source, or release coordinate.</p>
+                <p className="mt-1 text-xs text-dim">{artifactOnly?'Try Releases, Team, Retention or Audit log.':'Try a page, alert, source, or release coordinate.'}</p>
               </div>
             ) : items.map((item, index) => {
               const Icon = item.detail === "Alert"

@@ -268,6 +268,7 @@ export async function enqueueFromWebhook(
       accountType: str(account.type) || "User",
       accountId: num(account.id),
       suspended: action === "unsuspend" ? false : bool(installation.suspended),
+      reconnect:action==='created',
     });
     const repos = Array.isArray(payload.repositories) ? payload.repositories : [];
     for (const raw of repos) {
@@ -314,6 +315,7 @@ export async function enqueueFromWebhook(
       await store.upsertRepo({
         id: num(row.id),
         installationId: id,
+        reconnect: true,
         owner: owner ?? "",
         name: name ?? str(row.name),
         fullName,
@@ -322,7 +324,7 @@ export async function enqueueFromWebhook(
       });
     }
     for (const raw of removed) {
-      await store.removeRepo(num(obj(raw).id));
+      await store.removeRepo(num(obj(raw).id),id);
     }
     const account = obj(obj(payload.installation).account);
     const accountLogin = str(account.login) || "unknown";
@@ -357,7 +359,7 @@ export async function enqueueFromWebhook(
     if (!repo) return { queued: false, kind: event };
 
     if (action === "deleted") {
-      await store.removeRepo(repo.id);
+      await store.removeRepo(repo.id,installationId);
       return { queued: false, kind: "repo_deleted" };
     }
 

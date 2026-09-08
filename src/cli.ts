@@ -28,6 +28,11 @@ async function scanViaHostedApi(
   if (info.isDirectory()) {
     throw new Error("Hosted scan API accepts a packed file, not a directory.");
   }
+  if (!info.isFile() || info.size > 80 * 1024 * 1024) throw new Error("Hosted scans require a file no larger than 80 MiB.");
+  const endpoint = new URL(apiUrl);
+  if (endpoint.username || endpoint.password || (endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(endpoint.hostname)))) {
+    throw new Error('Hosted scan API requires HTTPS (except local development).');
+  }
   const bytes = await readFile(target);
   const origin = apiUrl.replace(/\/$/, "");
   const channel =
@@ -40,6 +45,7 @@ async function scanViaHostedApi(
     Authorization: `Bearer ${token}`,
     "X-Filename": path.basename(target),
     "Content-Type": "application/octet-stream",
+    "Idempotency-Key": crypto.randomUUID(),
   };
   if (channel) headers["X-NoSpoilers-Channel"] = channel;
   if (sourceRevision) headers["X-NoSpoilers-Source-Revision"] = sourceRevision;
@@ -48,12 +54,28 @@ async function scanViaHostedApi(
     method: "POST",
     headers,
     body: bytes,
+    redirect: 'error',
+    signal: AbortSignal.timeout(120_000),
   });
-  const body = (await response.json()) as {
+  let body = (await response.json()) as {
     error?: string;
     report?: ScanReport;
     receiptId?: number;
+    uploadId?:string;
+    status?:string;
   };
+  if(response.status===202 && body.uploadId){
+    const statusUrl=`${origin}/api/v1/scans/${encodeURIComponent(body.uploadId)}`;
+    const deadline=Date.now()+10*60_000;
+    while(Date.now()<deadline){
+      await new Promise(resolve=>setTimeout(resolve,1000));
+      const polled=await fetch(statusUrl,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15_000),redirect:'error'});
+      body=await polled.json() as typeof body;
+      if(!polled.ok || body.status==='failed')throw new Error(body.error??'Hosted scan failed.');
+      if(body.status==='done' && body.report)return {report:body.report,receiptId:body.receiptId};
+    }
+    throw new Error('Scan is still queued or running. Reopen its job in Releases; do not submit a duplicate.');
+  }
   if (!response.ok || !body.report) {
     throw new Error(body.error ?? `Hosted scan failed (${response.status}).`);
   }
@@ -101,6 +123,14 @@ program
         if (Boolean(apiUrl) !== Boolean(apiToken)) {
           process.stderr.write(
             "Hosted scan needs both --api-url and --api-token (or NOSPOILERS_API_URL / NOSPOILERS_API_TOKEN).\n",
+          );
+          process.exitCode = 2;
+          return;
+        }
+        const internalLocalScan = process.env.NOSPOILERS_INTERNAL_LOCAL_SCAN === "1";
+        if (!apiUrl && !internalLocalScan) {
+          process.stderr.write(
+            "Scanning requires an active NoSpoilers workspace. Set NOSPOILERS_API_URL and NOSPOILERS_API_TOKEN from Watch. Receipt verification remains free with `nospoilers verify`.\n",
           );
           process.exitCode = 2;
           return;

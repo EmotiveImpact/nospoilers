@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Mock 3 · Release Readiness Brief · NoSpoilers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Outfit:wght@500;600&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
+  </head>
+  <body>
+    <div class="app" id="app">
+      <aside class="rail" id="rail" aria-label="Primary navigation">
+        <div class="brand-row">
+          <a class="brand" href="#overview" aria-label="NoSpoilers home">NoSpoilers</a>
+          <button class="icon-button rail-close" id="rail-close" aria-label="Close navigation"><iconify-icon icon="solar:close-circle-linear"></iconify-icon></button>
+        </div>
+
+        <button class="workspace-switcher" id="workspace-switcher" type="button" aria-expanded="false">
+          <span class="avatar avatar-square">EI</span>
+          <span class="workspace-copy"><strong>EmotiveImpact</strong><small>4 sources connected</small></span>
+          <iconify-icon icon="solar:alt-arrow-down-linear"></iconify-icon>
+        </button>
+        <div class="workspace-menu" id="workspace-menu" hidden>
+          <button type="button"><span class="avatar avatar-square">EI</span><span>EmotiveImpact<small>Current workspace</small></span></button>
+          <button type="button"><iconify-icon icon="solar:add-circle-linear"></iconify-icon><span>Add workspace</span></button>
+        </div>
+
+        <nav class="nav">
+          <p class="nav-label">Work</p>
+          <a class="nav-link active" href="#overview"><iconify-icon icon="solar:widget-5-linear"></iconify-icon><span>Overview</span></a>
+          <a class="nav-link" href="#proof"><iconify-icon icon="solar:bell-bing-linear"></iconify-icon><span>Alerts</span><span class="count" id="alert-count">1</span></a>
+          <a class="nav-link" href="#proof"><iconify-icon icon="solar:share-circle-linear"></iconify-icon><span>Sources</span></a>
+          <a class="nav-link" href="#releases"><iconify-icon icon="solar:document-text-linear"></iconify-icon><span>Releases</span></a>
+          <a class="nav-link" href="#releases"><iconify-icon icon="solar:history-linear"></iconify-icon><span>Timeline</span></a>
+          <div class="nav-divider"></div>
+          <p class="nav-label">Settings</p>
+          <a class="nav-link" href="#settings"><iconify-icon icon="solar:settings-linear"></iconify-icon><span>Settings</span><iconify-icon class="nav-end" icon="solar:alt-arrow-right-linear"></iconify-icon></a>
+        </nav>
+
+        <div class="rail-foot">
+          <div class="coverage-mini"><strong>4/4</strong></div>
+          <div><strong>All paths covered</strong><small>Team workspace · admin</small></div>
+        </div>
+      </aside>
+
+      <main class="surface">
+        <header class="topbar">
+          <button class="icon-button menu-button" id="menu-button" aria-label="Open navigation"><iconify-icon icon="solar:hamburger-menu-linear"></iconify-icon></button>
+          <button class="search" id="search-button" type="button">
+            <iconify-icon icon="solar:magnifer-linear"></iconify-icon>
+            <span>Search releases, commits, or findings…</span>
+            <kbd>⌘ K</kbd>
+          </button>
+          <span class="top-spacer"></span>
+          <a class="top-link active" href="#overview">Overview</a>
+          <a class="top-link" href="#proof">Guide</a>
+          <button class="profile" type="button" aria-label="Open account menu">AU</button>
+        </header>
+
+        <div class="content" id="overview">
+          <section class="page-heading">
+            <div>
+              <p class="eyebrow">Release readiness brief</p>
+              <div class="title-line">
+                <h1 id="release-title">NoSpoilers 0.1.0</h1>
+                <span class="live-label"><span></span>Production</span>
+              </div>
+              <p class="release-meta"><span id="release-repo">EmotiveImpact/nospoilers</span> · commit <button class="text-button" id="commit-link">14316…</button></p>
+            </div>
+            <button class="secondary-button" id="copy-brief" type="button"><iconify-icon icon="solar:copy-linear"></iconify-icon><span>Copy brief</span></button>
+          </section>
+
+          <section class="brief-grid">
+            <div class="verdict-card" id="verdict-card">
+              <div class="verdict-copy">
+                <div class="verdict-icon" id="verdict-icon"><iconify-icon icon="solar:shield-warning-linear"></iconify-icon></div>
+                <div>
+                  <p class="eyebrow" id="verdict-kicker">Release decision</p>
+                  <h2 id="verdict-title">Hold this release</h2>
+                  <p id="verdict-subtitle"><strong>1 critical exposure</strong> blocks a clean receipt.</p>
+                  <button class="primary-button" id="review-finding" type="button">Review blocking finding <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></button>
+                </div>
+              </div>
+              <div class="ring-wrap" aria-label="3 of 4 checks clean">
+                <canvas id="coverage-ring" width="150" height="150"></canvas>
+                <div class="ring-label"><strong id="ring-score">3 of 4</strong><span id="ring-caption">checks clean</span></div>
+              </div>
+            </div>
+
+            <aside class="evidence-card" id="evidence-card" aria-live="polite">
+              <div class="evidence-head"><p class="eyebrow">Evidence</p><span class="severity critical" id="evidence-severity">Critical</span></div>
+              <dl>
+                <div><dt>Commit</dt><dd id="evidence-commit">14316… <button class="inline-icon" aria-label="Open commit"><iconify-icon icon="solar:square-arrow-right-up-linear"></iconify-icon></button></dd></div>
+                <div><dt>Environment</dt><dd id="evidence-environment">Production</dd></div>
+                <div><dt>Last checked</dt><dd id="evidence-checked">Just now</dd></div>
+                <div><dt>Receipt status</dt><dd class="status-text critical" id="receipt-status"><iconify-icon icon="solar:shield-warning-linear"></iconify-icon>Blocked</dd></div>
+              </dl>
+            </aside>
+          </section>
+
+          <section class="proof-section" id="proof">
+            <div class="section-heading">
+              <div><p class="eyebrow">Release proof</p><h2>Four checks, one decision</h2></div>
+              <p>Select a step to inspect the evidence.</p>
+            </div>
+
+            <div class="proof-table" role="list" aria-label="Release proof steps">
+              <div class="proof-head"><span>Step</span><span>Status</span><span>Details</span></div>
+              <button class="proof-row" type="button" data-step="artifact" role="listitem">
+                <span class="step-number">1</span><span class="step-mark clean"><iconify-icon icon="solar:check-circle-bold"></iconify-icon></span>
+                <span class="step-copy"><strong>Artifact scanned</strong><small>Package tarball and dependencies inspected</small></span>
+                <span class="step-status clean"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>Clean</span>
+                <span class="step-detail">No packaged source or secrets found</span>
+              </button>
+              <button class="proof-row" type="button" data-step="github" role="listitem">
+                <span class="step-number">2</span><span class="step-mark clean"><iconify-icon icon="solar:check-circle-bold"></iconify-icon></span>
+                <span class="step-copy"><strong>GitHub visibility</strong><small>Repository, releases, and secret exposure checked</small></span>
+                <span class="step-status clean"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>Clean</span>
+                <span class="step-detail">Private repository remains private</span>
+              </button>
+              <button class="proof-row selected" type="button" data-step="assets" role="listitem">
+                <span class="step-number">3</span><span class="step-mark critical"><iconify-icon icon="solar:shield-warning-bold"></iconify-icon></span>
+                <span class="step-copy"><strong>Published assets</strong><small>Production bundles and source maps inspected</small></span>
+                <span class="step-status critical"><iconify-icon icon="solar:shield-warning-linear"></iconify-icon>Critical</span>
+                <span class="step-detail">Source map exposes original application code</span>
+              </button>
+              <button class="proof-row" type="button" data-step="custody" role="listitem">
+                <span class="step-number">4</span><span class="step-mark waiting"><iconify-icon icon="solar:clock-circle-linear"></iconify-icon></span>
+                <span class="step-copy"><strong>Map custody</strong><small>Uploaded map ownership and access verified</small></span>
+                <span class="step-status waiting"><iconify-icon icon="solar:clock-circle-linear"></iconify-icon>Waiting</span>
+                <span class="step-detail">Verification follows asset remediation</span>
+              </button>
+            </div>
+
+            <article class="finding-panel" id="finding-panel">
+              <div class="finding-main">
+                <div class="finding-heading">
+                  <span class="finding-symbol"><iconify-icon id="finding-symbol" icon="solar:shield-warning-linear"></iconify-icon></span>
+                  <div><p class="eyebrow" id="finding-eyebrow">Blocking finding</p><h3 id="finding-title">Original source is downloadable from production</h3></div>
+                </div>
+                <p id="finding-description">The deployed source map contains <code>sourcesContent</code>, exposing the original TypeScript behind the production bundle.</p>
+                <div class="path-box" id="finding-path"><span>Exposed asset</span><code>/assets/index-D4yq9.js.map</code><button type="button" aria-label="Copy asset path" id="copy-path"><iconify-icon icon="solar:copy-linear"></iconify-icon></button></div>
+              </div>
+              <div class="finding-actions">
+                <button class="secondary-button" id="acknowledge" type="button">Acknowledge</button>
+                <button class="primary-button danger-button" id="resolve" type="button">Mark resolved</button>
+              </div>
+            </article>
+          </section>
+
+          <section class="recent-section" id="releases">
+            <div class="section-heading">
+              <div><p class="eyebrow">History</p><h2>Recent releases</h2></div>
+              <button class="text-button with-icon" id="view-all" type="button">View all releases <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></button>
+            </div>
+            <div class="release-table">
+              <div class="release-head"><span>Release</span><span>Version</span><span>Commit</span><span>Receipt status</span><span>Checked</span><span>Environment</span></div>
+              <button class="release-row" type="button" data-release="NoSpoilers 0.0.9" data-version="0.0.9" data-commit="9fe8d7c" data-status="sealed">
+                <span><iconify-icon class="release-mark sealed" icon="solar:check-circle-bold"></iconify-icon>NoSpoilers</span><span>0.0.9</span><span>9fe8d7c</span><span class="status-text clean"><iconify-icon icon="solar:verified-check-bold"></iconify-icon>Sealed</span><span>28 Aug 2026, 09:31</span><span>Production</span>
+              </button>
+              <button class="release-row" type="button" data-release="NoSpoilers 0.0.8" data-version="0.0.8" data-commit="d4c3b2a" data-status="sealed">
+                <span><iconify-icon class="release-mark sealed" icon="solar:check-circle-bold"></iconify-icon>NoSpoilers</span><span>0.0.8</span><span>d4c3b2a</span><span class="status-text clean"><iconify-icon icon="solar:verified-check-bold"></iconify-icon>Sealed</span><span>21 Aug 2026, 11:08</span><span>Production</span>
+              </button>
+              <button class="release-row selected" type="button" data-release="NoSpoilers 0.1.0" data-version="0.1.0" data-commit="14316…" data-status="blocked">
+                <span><iconify-icon class="release-mark blocked" icon="solar:shield-warning-bold"></iconify-icon>NoSpoilers</span><span>0.1.0 · current</span><span>14316…</span><span class="status-text critical"><iconify-icon icon="solar:shield-warning-linear"></iconify-icon>Blocked</span><span>4 Sep 2026, 14:42</span><span>Production</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="search-dialog" id="search-dialog" hidden>
+      <button class="dialog-scrim" id="dialog-scrim" aria-label="Close search"></button>
+      <section role="dialog" aria-modal="true" aria-labelledby="search-title" class="dialog-card">
+        <h2 id="search-title">Search NoSpoilers</h2>
+        <label><iconify-icon icon="solar:magnifer-linear"></iconify-icon><input id="search-input" placeholder="Try “14316” or “source map”" /></label>
+        <p>Search releases, commits, findings, and connected sources.</p>
+      </section>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

@@ -164,7 +164,7 @@ package lifecycle script, image, mobile app or installer is executed.
 
 ### Shared
 
-- 14-day full trial with payment method collected through Stripe
+- 5-day full trial with payment method collected through Stripe
 - Yearly: 10 months for 12
 - No free-forever hosted tier
 - No scan-credit UI

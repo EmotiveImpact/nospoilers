@@ -27,7 +27,11 @@ function runScan(name: string): Promise<{ code: number; output: string }> {
     const child = spawn(
       process.execPath,
       [tsx, path.join(root, "src/cli.ts"), "scan", path.join(fixtures, name)],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        cwd: root,
+        env: { ...process.env, NOSPOILERS_INTERNAL_LOCAL_SCAN: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
     const chunks: Buffer[] = [];
     child.stdout?.on("data", (chunk: Buffer) => chunks.push(chunk));

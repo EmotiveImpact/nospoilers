@@ -7,6 +7,7 @@ import {
 } from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
 import { WatchBentoBoard } from "@/components/watch/WatchBentoBoard.tsx";
+import { FirstProofOrUploads } from "@/components/watch/FirstProofOrUploads";
 import { navigate } from "@/nav.ts";
 import { watchHref, watchPath } from "@/watch/routes.ts";
 import { deskVerdict, type DeskAlert } from "@/watch/verdict.ts";
@@ -26,6 +27,7 @@ export function WatchOverview({
   installUrl,
   alerts,
   sources,
+  queueDepth,
   setup,
   state,
   onRetry,
@@ -48,9 +50,14 @@ export function WatchOverview({
     ended,
     githubPaused,
     sourceCount: sources.length,
+    checkedSourceCount: sources.filter(
+      (source) => Boolean(source.lastCheckedAt) || source.alertCount > 0,
+    ).length,
+    criticalSourceCount: sources.filter((source) => source.attention === "critical").length,
+    checksInFlight: queueDepth,
     alerts,
   });
-  const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy" | "timeline") =>
+  const href = (view: "alerts" | "releases" | "health" | "scan" | "sources" | "setup" | "policy" | "timeline") =>
     watchHref(watchPath(view), search);
   const nowLabel = new Date().toLocaleString(undefined, {
     weekday: "long",
@@ -81,6 +88,12 @@ export function WatchOverview({
     );
   }
 
+  if (verdict.tone === "empty") {
+    return (
+      <FirstProofOrUploads search={search} nowLabel={nowLabel} />
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1140px]">
       <div className="watch-between">
@@ -95,24 +108,18 @@ export function WatchOverview({
               See plans
             </Button>
           ) : null}
-          {verdict.tone === "empty" ? (
-            <>
-              {installUrl ? (
-                <Button as="a" href={installUrl}>
-                  Install on GitHub
-                </Button>
-              ) : (
-                <Button type="button" onClick={() => navigate(href("setup"))}>
-                  Finish setup
-                </Button>
-              )}
-              <Button type="button" variant="outline" onClick={() => navigate("/scan")}>
-                Scan a pack by hand
-              </Button>
-            </>
+          {verdict.tone === "paused" ? (
+            <Button type="button" onClick={() => navigate(href("setup"))}>
+              Review GitHub setup
+            </Button>
           ) : null}
-          {verdict.tone === "ok" || verdict.tone === "warn" || verdict.tone === "crit" ? (
-            <Button type="button" variant="outline" onClick={() => navigate("/scan")}>
+          {verdict.tone === "pending" || verdict.tone === "warn" ? (
+            <Button type="button" onClick={() => navigate(href("sources"))}>
+              Review sources
+            </Button>
+          ) : null}
+          {verdict.tone === "ok" || verdict.tone === "warn" || verdict.tone === "crit" || verdict.tone === "pending" ? (
+            <Button type="button" variant="outline" onClick={() => navigate(href("scan"))}>
               Scan a pack
             </Button>
           ) : null}

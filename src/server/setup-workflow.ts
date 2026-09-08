@@ -64,6 +64,8 @@ export function setupActionScanPython(): string {
   return `import json
 import os
 import sys
+import time
+import uuid
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -94,6 +96,8 @@ if path.is_absolute() or ".." in path.parts:
 if path.is_symlink() or not path.is_file():
     fail("path must be an existing packed file, not a symlink.", 2)
 
+if path.stat().st_size > 80 * 1024 * 1024:
+    fail("packed file exceeds the hosted 80 MB limit.", 2)
 data = path.read_bytes()
 if not data:
     fail("packed file is empty.", 2)
@@ -102,6 +106,7 @@ headers = {
     "Authorization": "Bearer " + token,
     "X-Filename": path.name,
     "Content-Type": "application/octet-stream",
+    "Idempotency-Key": str(uuid.uuid4()),
 }
 channel = (os.environ.get("NOSPOILERS_CHANNEL") or "").strip().lower()
 if channel in ("stable", "beta", "canary"):
@@ -120,9 +125,13 @@ if ci_run:
     headers["X-NoSpoilers-CI-Run"] = ci_run
 
 req = urllib.request.Request(url + "/api/v1/scan", data=data, method="POST", headers=headers)
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+opener = urllib.request.build_opener(NoRedirect())
 
 try:
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with opener.open(req, timeout=120) as resp:
         raw = resp.read().decode("utf-8")
 except urllib.error.HTTPError as err:
     raw = err.read().decode("utf-8", "replace")
@@ -139,6 +148,28 @@ try:
     body = json.loads(raw)
 except json.JSONDecodeError:
     fail("Hosted scan returned non-JSON.", 2)
+
+if isinstance(body, dict) and body.get("queued") and body.get("uploadId"):
+    job = str(body["uploadId"])
+    try:
+        uuid.UUID(job)
+    except ValueError:
+        fail("Hosted scan returned an invalid job identifier.", 2)
+    deadline = time.monotonic() + 600
+    while time.monotonic() < deadline:
+        time.sleep(1)
+        poll = urllib.request.Request(url + "/api/v1/scans/" + job, headers={"Authorization": "Bearer " + token})
+        try:
+            with opener.open(poll, timeout=30) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            fail("Could not retrieve the queued scan. Reopen the job in Releases.", 2)
+        if body.get("status") == "failed":
+            fail(body.get("error") or "Hosted scan failed.", 2)
+        if body.get("status") == "done":
+            break
+    else:
+        fail("Scan remains queued or running. Reopen the job in Releases.", 2)
 
 report = body.get("report") if isinstance(body, dict) else None
 receipt = body.get("receipt") if isinstance(body, dict) else None

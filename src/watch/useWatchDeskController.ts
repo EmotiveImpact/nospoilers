@@ -18,10 +18,16 @@ export type AlertActivityEvent = {
   created_at: string;
 };
 
+export function selectDeskAlert<T extends {id:number}>(alerts:T[],id:number|null):T|null{
+  return id===null ? alerts[0]??null : alerts.find(alert=>alert.id===id)??null;
+}
+
 export type WatchDeskControllerInput = {
+  connections?: Parameters<typeof buildSourceViewModels>[0]['connections'];
   path: string;
   search: string;
   login: string;
+  userId?:string;
   previewing: boolean;
   repos: Parameters<typeof buildSourceViewModels>[0]["repos"];
   alerts: DeskAlert[];
@@ -93,13 +99,14 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
   const sources = useMemo(
     () =>
       buildSourceViewModels({
+        connections: input.connections,
         repos: input.repos,
         packages: input.packages,
         origins: input.origins,
         maps: input.maps,
         alerts: input.alerts,
       }),
-    [input.alerts, input.maps, input.origins, input.packages, input.repos],
+    [input.alerts, input.maps, input.origins, input.packages, input.repos, input.connections],
   );
   const setup = useMemo(
     () =>
@@ -114,11 +121,10 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     [input.maps, input.origins, input.packages, input.releases, input.repos, input.setupProbes],
   );
   const listedAlerts = useMemo(
-    () => filterDeskAlerts(input.alerts, route.tab, input.login),
-    [input.alerts, input.login, route.tab],
+    () => filterDeskAlerts(input.alerts, route.tab, input.login,new URLSearchParams(input.search).get('mine')==='1',input.userId),
+    [input.alerts, input.login, input.userId, route.tab, input.search],
   );
-  const selectedAlert =
-    listedAlerts.find((alert) => alert.id === route.alertId) ?? listedAlerts[0] ?? null;
+  const selectedAlert = selectDeskAlert(listedAlerts,route.alertId);
   const alertRows = useMemo(
     () =>
       buildAlertListViewModels(listedAlerts, (alert) => {
@@ -209,7 +215,7 @@ export function useWatchDeskController(input: WatchDeskControllerInput): WatchDe
     counts: {
       open: input.alerts.filter((alert) => !alert.resolved_at).length,
       waiting: filterDeskAlerts(input.alerts, "waiting", input.login).length,
-      mine: filterDeskAlerts(input.alerts, "mine", input.login).length,
+      mine: filterDeskAlerts(input.alerts, "mine", input.login,false,input.userId).length,
       resolved: filterDeskAlerts(input.alerts, "done", input.login).length,
     },
   };

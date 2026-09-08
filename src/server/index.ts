@@ -10,7 +10,7 @@ if (processRunsHttp(runtime.config.processRole)) {
     {
       fetch: runtime.app.fetch,
       port: runtime.config.port,
-      hostname: "0.0.0.0",
+      hostname: process.env.NOSPOILERS_LOCAL_REVIEW==='1' ? '127.0.0.1' : "0.0.0.0",
     },
     (info) => {
       console.log(`NoSpoilers ${runtime.config.processRole} on http://127.0.0.1:${info.port}`);

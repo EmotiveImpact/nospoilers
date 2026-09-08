@@ -50,4 +50,4 @@ function Button<T extends ElementType = "button">({
   )
 }
 
-export { Button, buttonVariants }
+export { Button }

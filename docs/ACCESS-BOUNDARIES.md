@@ -1,5 +1,7 @@
 # Access boundaries
 
+Latest checkpoint (5 September 2026): read [Gate A implementation](GATE-A-IMPLEMENTATION.md) before older status notes below. Queued browser/CI artifact processing, installation-ledger completion, viewer enforcement, staging budgets, pinned HTTPS and restricted parser invocation are now implemented. Migration marker is `070_immutable_upload_results`. Container runtime, production-like concurrency/recovery and private deployment verification remain required; no launch-readiness claim or deployment is implied. Preserve existing user changes and mockups.
+
 This file is the authorization source of truth for NoSpoilers. What exists vs what is live:
 [`docs/STATUS.md`](STATUS.md). This file describes **who may see or change** what exists.
 
@@ -15,8 +17,10 @@ Unauthenticated browser traffic.
 **May**
 
 - View Product, Pricing, documentation (`/docs`), Privacy, Terms, Retention, Disclosure, Support, Refunds, and the public Status page (`/status`).
-- Open Watch and Scan marketing/preview layouts (`?as=trial`, `?as=ended`).
-- Use the local pack drop zone (`POST /api/scan`) within hard size limits.
+- Open the anonymous Scan layout. Watch always requires GitHub authentication; legacy Watch `?as=trial|ended` parameters do not grant access or alter coverage.
+- Stage one packed artifact with the public drop zone (`POST /api/scan`) within hard size limits.
+  The artifact is retained for at most one hour so it can survive authentication. No unpack or
+  finding computation starts until the visitor signs in and active trial or paid coverage is checked.
 - Verify a signed receipt JSON they already have (`POST /api/receipts/verify`) against this instance’s HMAC key. The Scan page hashes an optional pack in the browser and does not upload those bytes. The CLI (`nospoilers verify --receipt`) can re-hash a local file or stream-hash a `--url` with the same hop/SSRF rules as Watch; that does not call Watch and does not need coverage. Coverage ended still allows the Scan check. Authentic failed-policy or inconclusive is not a passing result.
 - Hit `/api/health` and `/api/ready` (no connection strings, no tenant data). Health may
   include `role` (`all` / `web` / `worker`) and `ui` (whether a built SPA is on disk).
@@ -117,8 +121,8 @@ A GitHub user signed into NoSpoilers who belongs to an installation they are all
   404. Another tenant is 404.
 - View their own coverage status.
 - See GitHub App suspend, unsuspend, permission-change, and repository add/remove
-  alerts on installations they belong to. Uninstall drops the tenant; there is no
-  Watch surface left for an uninstall notice.
+  alerts on installations they belong to. Uninstall disconnects monitoring and revokes
+  scan tokens; authorised workspace members retain access to saved history. Billing is separate.
 - List recent jobs for those installations (kind, status, attempts, error, timestamps).
   Payloads, prospect scans, and other tenants are not included. Jobs cannot be patched
   or deleted by customers. Done and failed jobs older than the install list window are
@@ -701,7 +705,7 @@ generation is deterministic and capped, candidate APIs are tenant-scoped (Solo 4
   namespace alert or `npm_scan`; typed DELETE left 0 rows; Cloudflare
   tunnel matched. Do not watch prettier or left-pad on that install.
 `tests/install-health.test.ts` proves GitHub suspend/unsuspend/permission/repo-change
-alerts are tenant-scoped and coverage-gated, uninstall drops the tenant, `/api/jobs`
+alerts are tenant-scoped and coverage-gated, uninstall disconnects rather than deleting retained history, `/api/jobs`
 never returns payloads or prospect scans, other tenants cannot read those jobs, and
 the summary is queued/running/done/failed counts with no scan-credit field, and `fairUse`
 is warning/exhausted/resetsAt only.

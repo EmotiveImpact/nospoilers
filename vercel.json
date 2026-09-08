@@ -12,7 +12,7 @@
   "crons": [
     {
       "path": "/api/cron/jobs",
-      "schedule": "0 0 * * *"
+      "schedule": "0 * * * *"
     }
   ],
   "rewrites": [

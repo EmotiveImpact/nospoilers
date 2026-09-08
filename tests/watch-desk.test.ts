@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
-import { filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
-import { previewAlerts, previewRepos } from "../src/preview.ts";
+import { deskVerdict, filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";
 import {
   buildPackSpark,
@@ -19,18 +18,103 @@ import {
 import { formatAgo, shortDigest } from "../src/watch/format.ts";
 import {
   loadSelectedAlertActivity,
+  selectDeskAlert,
   shouldLoadAlertActivity,
 } from "../src/watch/useWatchDeskController.ts";
+
+describe('alert selection identity',()=>{
+  it('never substitutes another alert for an unavailable deep link',()=>{
+    expect(selectDeskAlert([{id:1}],2)).toBeNull();
+    expect(selectDeskAlert([{id:1}],null)).toEqual({id:1});
+    expect(selectDeskAlert([{id:1},{id:2}],2)).toEqual({id:2});
+  });
+});
 import {
   buildPaletteItems,
   nextPaletteIndex,
 } from "../src/watch/command.ts";
 import { combineWatchSectionStates } from "../src/watch/data-state.ts";
+import { withoutWatchImpersonation } from "../src/watch/controller-utils.ts";
 
-describe("Watch preview", () => {
-  it("shows structure without inventing tenant rows", () => {
-    expect(previewRepos()).toEqual([]);
-    expect(previewAlerts()).toEqual([]);
+describe("Watch authentication boundary", () => {
+  it("removes legacy billing impersonation while preserving real desk state", () => {
+    expect(withoutWatchImpersonation("?as=trial")).toBe("");
+    expect(withoutWatchImpersonation("?as=ended&install=7&configure=github")).toBe(
+      "?install=7&configure=github",
+    );
+    expect(withoutWatchImpersonation("?install=7")).toBe("?install=7");
+  });
+});
+
+describe("Watch overview verdict states", () => {
+  const base = { ended: false, githubPaused: false, alerts: [] };
+
+  it("does not report a clean verdict before a connected source has evidence", () => {
+    expect(
+      deskVerdict({ ...base, sourceCount: 1, checkedSourceCount: 0, checksInFlight: 0 }),
+    ).toMatchObject({ tone: "pending", title: "Connected. Not checked yet." });
+  });
+
+  it("keeps the verdict pending while a check is running", () => {
+    expect(
+      deskVerdict({ ...base, sourceCount: 1, checkedSourceCount: 0, checksInFlight: 1 }),
+    ).toMatchObject({ tone: "pending", title: "A check is running." });
+  });
+
+  it("reports partial evidence instead of a false all-clear", () => {
+    expect(
+      deskVerdict({ ...base, sourceCount: 3, checkedSourceCount: 2, checksInFlight: 0 }),
+    ).toMatchObject({ tone: "warn", title: "Some sources still need proof." });
+  });
+
+  it("reports clear only when every connected source has evidence", () => {
+    expect(
+      deskVerdict({ ...base, sourceCount: 2, checkedSourceCount: 2, checksInFlight: 0 }),
+    ).toMatchObject({ tone: "ok", title: "No exposure is known from the latest checks." });
+  });
+
+  it("never hides a real open alert behind a pending check", () => {
+    expect(
+      deskVerdict({
+        ...base,
+        sourceCount: 1,
+        checkedSourceCount: 0,
+        checksInFlight: 1,
+        alerts: [
+          {
+            id: 9,
+            kind: "repo_publicized",
+            title: "Repository became public",
+            body: "",
+            findings: null,
+            created_at: "2026-09-04T18:00:00Z",
+          },
+        ],
+      }),
+    ).toMatchObject({ tone: "crit", title: "One thing is exposed right now." });
+  });
+
+  it("raises source-level exposure evidence before an inbox alert exists", () => {
+    expect(
+      deskVerdict({
+        ...base,
+        sourceCount: 1,
+        checkedSourceCount: 0,
+        criticalSourceCount: 1,
+        checksInFlight: 0,
+      }),
+    ).toMatchObject({ tone: "crit", title: "One source needs attention." });
+  });
+
+  it("does not confuse a paused GitHub installation with an ended plan", () => {
+    expect(
+      deskVerdict({
+        ...base,
+        githubPaused: true,
+        sourceCount: 1,
+        checkedSourceCount: 1,
+      }),
+    ).toMatchObject({ tone: "paused", title: "GitHub suspended the NoSpoilers App." });
   });
 });
 
@@ -67,9 +151,14 @@ describe("Watch exposure chart", () => {
 describe("2B watch routes", () => {
   it("opens Overview on /watch and keeps settings in the same tree", () => {
     expect(parseWatchRoute("/watch", "").view).toBe("overview");
+    expect(parseWatchRoute("/watch/scan", "").view).toBe("scan");
     expect(parseWatchRoute("/watch/notifications", "").view).toBe("notifications");
     expect(parseWatchRoute("/watch/alerts", "?tab=waiting").tab).toBe("waiting");
     expect(parseWatchRoute("/watch/releases", "?release=12").releaseId).toBe(12);
+    expect(parseWatchRoute("/watch/releases", "?preview=9").releasePreviewId).toBe(9);
+    expect(watchHref("/watch/releases", "?install=7", { previewRelease: 9 })).toBe(
+      "/watch/releases?install=7&preview=9",
+    );
     expect(
       parseWatchRoute(
         "/watch/sources",
@@ -129,10 +218,12 @@ describe("alert views", () => {
   ];
 
   it("treats waiting as acknowledged and still open", () => {
-    expect(filterDeskAlerts(rows, "open", "dana").map((row) => row.id)).toEqual([1, 2, 3]);
+    expect(filterDeskAlerts(rows, "open", "dana").map((row) => row.id)).toEqual([1, 3]);
     expect(filterDeskAlerts(rows, "waiting", "dana").map((row) => row.id)).toEqual([2]);
     expect(filterDeskAlerts(rows, "mine", "dana").map((row) => row.id)).toEqual([3]);
     expect(filterDeskAlerts(rows, "done", "dana").map((row) => row.id)).toEqual([4]);
+    expect(filterDeskAlerts(rows, "open", "dana",true).map((row) => row.id)).toEqual([3]);
+    expect(filterDeskAlerts(rows, "open", "",true)).toEqual([]);
   });
 });
 
@@ -227,6 +318,28 @@ describe("setup ring", () => {
 });
 
 describe("normalized source views", () => {
+  it('names only the authenticated connection matching the source identity',()=>{
+    const input={repos:[{id:1,installation_id:7,full_name:'acme/app',private:true,last_checked_at:null}],packages:[],origins:[],maps:[]};
+    expect(buildSourceViewModels({...input,connections:[{id:8,account_login:'other'}]})[0]?.connectionLabel).toBeNull();
+    expect(buildSourceViewModels({...input,connections:[{id:7,account_login:'acme'}]})[0]?.connectionLabel).toBe('acme');
+  });
+  it('keeps registry metadata freshness separate from actual scan time', () => {
+    const rows=buildSourceViewModels({repos:[],origins:[],maps:[],packages:[{id:1,package_name:'app',last_version:'1',last_sha256:null,last_checked_at:'2026-09-06T12:00:00Z',last_scanned_at:'2026-09-01T12:00:00Z',last_scan_status:'passed'},{id:2,package_name:'unscanned',last_version:null,last_sha256:null,last_checked_at:'2026-09-06T12:00:00Z',last_scan_status:null}]});
+    expect(rows[0]).toMatchObject({lastCheckedAt:'2026-09-06T12:00:00Z',lastScannedAt:'2026-09-01T12:00:00Z'});
+    expect(rows[1]?.lastScannedAt).toBeNull();
+    expect(rows[0]?.scope).toContain('not the repository or deployed website');
+    expect(rows[0]?.connectionId).toBeNull();
+  });
+  it('preserves the actual source connection identity across source kinds',()=>{
+    const rows=buildSourceViewModels({repos:[{id:1,installation_id:7,full_name:'acme/app',private:true,last_checked_at:null}],packages:[{id:2,installation_id:8,package_name:'app',last_version:null,last_sha256:null,last_checked_at:null,last_scan_status:null}],origins:[{id:3,installation_id:9,origin_url:'https://app.example.com',host:'app.example.com',last_sha256:null,last_checked_at:null,last_scan_status:null}],maps:[{id:4,installationId:10,kind:'sentry',host:'sentry.io',orgSlug:null,projectSlug:'app',lastCheckedAt:null,lastStatus:null,lastError:null}]});
+    expect(rows.map(row=>row.connectionId)).toEqual([7,8,9,10]);
+  });
+  it.each(['inconclusive', 'error', 'future-status', null, 'passed'])('does not invent successful coverage for %s', (status) => {
+    const rows=buildSourceViewModels({repos:[],packages:[{id:1,package_name:'app',last_version:'1',last_sha256:null,last_checked_at:'2026-09-06',last_scan_status:status}],origins:[{id:2,origin_url:'https://app.example.com',host:'app.example.com',last_sha256:null,last_checked_at:'2026-09-06',last_scan_status:status}],maps:[{id:3,kind:'sentry',host:'sentry.io',orgSlug:null,projectSlug:'app',lastCheckedAt:'2026-09-06',lastStatus:status,lastError:null}]});
+    const expected=status==='passed'?'ok':status==='inconclusive'||status==='error'?'warning':'unknown';
+    expect(rows.map(row=>row.attention)).toEqual([expected,expected,expected]);
+    if(expected==='warning')expect(filterSourceViewModels(rows,'all',true)).toHaveLength(3);
+  });
   it("unifies real source kinds and filters attention without illustrative rows", () => {
     const sources = buildSourceViewModels({
       repos: [{ id: 1, full_name: "acme/app", private: true, last_checked_at: null }],

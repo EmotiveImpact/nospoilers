@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>NoSpoilers · Product flow concept</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Outfit:wght@500;600&amp;display=swap" rel="stylesheet" />
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./readiness.css" />
+  </head>
+  <body>
+    <div class="reviewbar">
+      <div><span class="review-dot"></span><strong>Product flow prototype</strong><span>Sample data · not production</span></div>
+      <nav aria-label="Prototype screens">
+        <button data-view="first" class="active">01 First proof</button>
+        <button data-view="sources">02 Coverage</button>
+        <button data-view="scan">03 New scan</button>
+        <button data-view="release">04 Release detail</button>
+        <button data-view="alerts">05 Alerts</button>
+      </nav>
+    </div>
+
+    <div class="shell">
+      <aside class="rail">
+        <a class="brand" href="?view=first"><span class="brand-mark"><i></i><i></i></span>NoSpoilers</a>
+        <nav class="app-nav">
+          <p>WORK</p>
+          <a href="?view=first" data-side-view="first"><iconify-icon icon="solar:widget-5-linear"></iconify-icon>Overview</a>
+          <a href="?view=alerts" data-side-view="alerts"><iconify-icon icon="solar:bell-bing-linear"></iconify-icon>Alerts <b data-open-alert-badge>3</b></a>
+          <a href="?view=sources" data-side-view="sources"><iconify-icon icon="solar:radar-2-linear"></iconify-icon>Coverage</a>
+          <a href="?view=release" data-side-view="release"><iconify-icon icon="solar:document-text-linear"></iconify-icon>Releases</a>
+          <p>SETUP</p>
+          <a href="#"><iconify-icon icon="solar:settings-linear"></iconify-icon>Settings</a>
+        </nav>
+        <div class="rail-foot"><span class="coverage">0/4</span><div><strong>First proof</strong><small>Workspace ready</small></div></div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <button class="command"><iconify-icon icon="solar:magnifer-linear"></iconify-icon>Search or run a command… <kbd>⌘K</kbd></button>
+          <span></span><button class="top-scan" data-view-jump="scan"><iconify-icon icon="solar:scanner-2-linear"></iconify-icon>New scan</button><a href="#">Guide</a><button class="avatar">AU</button>
+        </header>
+
+        <section class="view active" data-screen="first" aria-labelledby="first-title">
+          <div class="page-head">
+            <div><p class="eyebrow">FIRST PROOF</p><h1 id="first-title">Prove your first release is clean.</h1><p>NoSpoilers follows a release from source to sealed evidence. Start with the thing you ship.</p></div>
+            <button class="quiet" data-view-jump="scan">Choose another source</button>
+          </div>
+
+          <div class="journey" aria-label="First proof progress">
+            <button data-stage="1"><span>1</span><strong>Connect source</strong><small>Repo, package, or site</small></button>
+            <button data-stage="2"><span>2</span><strong>Detect exposure</strong><small>Inspect what shipped</small></button>
+            <button data-stage="3"><span>3</span><strong>Resolve finding</strong><small>Remove the risk</small></button>
+            <button data-stage="4"><span>4</span><strong>Seal release proof</strong><small>Keep durable evidence</small></button>
+          </div>
+
+          <article class="activation-card" id="activation-card"></article>
+
+          <div class="coverage-list">
+            <div><iconify-icon icon="mdi:github"></iconify-icon><strong>Source visibility</strong><span>Repositories, commits, workflows</span><em>Automatic</em></div>
+            <div><iconify-icon icon="solar:box-linear"></iconify-icon><strong>Packaged artifacts</strong><span>Tarballs, dependencies, build output</span><em>Automatic</em></div>
+            <div><iconify-icon icon="solar:global-linear"></iconify-icon><strong>Deployed assets</strong><span>Bundles, maps, static files</span><em>Automatic</em></div>
+          </div>
+        </section>
+
+        <section class="view" data-screen="sources" aria-labelledby="sources-title">
+          <div class="page-head coverage-head">
+            <div><p class="eyebrow">MONITORED SURFACES</p><h1 id="sources-title">Coverage</h1><p>The repositories, packages, websites, and private map destinations NoSpoilers continuously watches.</p></div>
+            <div class="head-actions"><button class="secondary" data-open-github>Add coverage</button><button class="primary" data-view-jump="scan"><iconify-icon icon="solar:scanner-2-linear"></iconify-icon>New scan</button></div>
+          </div>
+
+          <div class="coverage-summary" aria-label="Coverage summary">
+            <article><span>4</span><div><strong>Monitored surfaces</strong><small>Across the release boundary</small></div></article>
+            <article><span class="is-clean">3</span><div><strong>Healthy</strong><small>Checks arriving normally</small></div></article>
+            <article><span class="is-warning">1</span><div><strong>Needs attention</strong><small>Production site check delayed</small></div></article>
+          </div>
+
+          <div class="coverage-toolbar">
+            <div role="tablist" aria-label="Coverage type">
+              <button type="button" role="tab" class="active" data-source-filter="all">All <b>4</b></button>
+              <button type="button" role="tab" data-source-filter="github">GitHub <b>1</b></button>
+              <button type="button" role="tab" data-source-filter="package">Packages <b>1</b></button>
+              <button type="button" role="tab" data-source-filter="website">Websites <b>1</b></button>
+              <button type="button" role="tab" data-source-filter="maps">Map custody <b>1</b></button>
+            </div>
+            <button type="button" class="attention-filter" data-source-attention aria-pressed="false"><iconify-icon icon="solar:danger-triangle-linear"></iconify-icon>Needs attention</button>
+          </div>
+
+          <div class="coverage-workspace">
+            <div class="coverage-inventory" id="coverage-inventory" aria-label="Monitored coverage"></div>
+            <aside class="coverage-detail" id="coverage-detail" aria-live="polite"></aside>
+          </div>
+        </section>
+
+        <section class="view" data-screen="scan" aria-labelledby="scan-title">
+          <div class="page-head compact">
+            <div><p class="eyebrow">NEW EVIDENCE</p><h1 id="scan-title">What do you want to prove?</h1><p>Choose the release surface. Every scan checks all relevant exposure categories automatically.</p></div>
+          </div>
+
+          <div class="scan-layout">
+            <div>
+              <div class="choice-grid">
+                <button data-mode="github"><iconify-icon icon="mdi:github"></iconify-icon><strong>GitHub repository</strong><span>Connect a repo and keep watching releases</span></button>
+                <button data-mode="package" class="selected"><iconify-icon icon="solar:box-linear"></iconify-icon><strong>Package or build</strong><span>Upload npm, archive, or CI artifact</span></button>
+                <button data-mode="website"><iconify-icon icon="solar:global-linear"></iconify-icon><strong>Production website</strong><span>Inspect what a browser can download</span></button>
+                <button data-mode="receipt"><iconify-icon icon="solar:verified-check-linear"></iconify-icon><strong>Verify release proof</strong><span>Check proof shared by a supplier</span></button>
+              </div>
+              <article class="launcher" id="launcher"></article>
+              <details class="examples"><summary>Try a safe example</summary><div><button data-example="clean">Clean package</button><button data-example="blocked">Package with exposed source</button><button data-example="site">Public website</button></div></details>
+            </div>
+            <aside class="scan-help">
+              <p class="eyebrow">WHAT HAPPENS NEXT</p>
+              <ol><li><span>1</span><div><strong>Connect once</strong><small>No category guessing or setup maze.</small></div></li><li><span>2</span><div><strong>Inspect automatically</strong><small>Source, secrets, maps, and manifests.</small></div></li><li><span>3</span><div><strong>Get one decision</strong><small>Sealed proof or exact remediation.</small></div></li></ol>
+              <p class="secure"><iconify-icon icon="solar:lock-keyhole-linear"></iconify-icon>Sample flow only. Retention and processing limits must match your workspace policy.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" data-screen="release" aria-labelledby="release-title">
+          <div class="release-headline">
+            <div><p class="eyebrow">RELEASE READINESS BRIEF</p><h1 id="release-title">checkout-web <span>v2.8.1</span></h1><p>Production · commit <button>14316…</button> · checked 2 minutes ago</p></div>
+            <button class="quiet"><iconify-icon icon="solar:copy-linear"></iconify-icon>Copy brief</button>
+          </div>
+          <div class="decision">
+            <div class="decision-copy"><span class="shield"><iconify-icon icon="solar:shield-warning-linear"></iconify-icon></span><div><p class="eyebrow">RELEASE DECISION</p><h2>Hold this release</h2><p><strong>1 critical exposure</strong> blocks sealed proof.</p><button class="primary" data-open-finding="map">Review blocking finding <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></button></div></div>
+            <div class="score"><span>3 of 4</span><small>checks clean</small></div>
+          </div>
+
+          <div class="result-tabs" role="tablist">
+            <button data-filter="all" class="active">All findings <b>5</b></button><button data-filter="maps">Maps <b>1</b></button><button data-filter="secrets">Secrets <b>2</b></button><button data-filter="files">Files <b>2</b></button>
+          </div>
+          <div class="result-workspace">
+            <div class="finding-list" id="finding-list"></div>
+            <aside class="evidence-panel" id="evidence-panel"></aside>
+          </div>
+        </section>
+
+        <section class="view alerts-view" data-screen="alerts" aria-labelledby="alerts-title">
+          <div class="alerts-heading">
+            <div>
+              <div class="sample-flag"><iconify-icon icon="solar:info-circle-linear"></iconify-icon>Sample incident data · interactions are simulated</div>
+              <p class="eyebrow">EXPOSURE DESK</p>
+              <h1 id="alerts-title">Alerts</h1>
+              <p>Own the response, preserve the evidence, and close the exposure loop.</p>
+            </div>
+            <button class="quiet" data-toast="Sample alerts exported"><iconify-icon icon="solar:download-minimalistic-linear"></iconify-icon>Export JSON</button>
+          </div>
+
+          <div class="alert-filterbar">
+            <div class="alert-status-filter">
+              <span>Status</span>
+              <div class="alert-queues" role="tablist" aria-label="Alert status">
+                <button type="button" role="tab" data-alert-tab="open"><span>Open</span><b data-alert-count="open">3</b></button>
+                <button type="button" role="tab" data-alert-tab="waiting"><span>In progress</span><b data-alert-count="waiting">1</b></button>
+                <button type="button" role="tab" data-alert-tab="resolved"><span>Resolved</span><b data-alert-count="resolved">1</b></button>
+              </div>
+            </div>
+            <button class="alert-mine-filter" type="button" data-alert-mine aria-pressed="false">
+              <iconify-icon icon="solar:user-check-linear"></iconify-icon>
+              Assigned to me
+              <b data-alert-count="mine">1</b>
+            </button>
+          </div>
+
+          <div class="alerts-workspace">
+            <aside class="alert-inbox" aria-label="Alert queue">
+              <div class="alert-inbox-meta"><span id="alert-queue-label">TRIAGE QUEUE</span><small>J / K to move</small></div>
+              <ol id="alert-list"></ol>
+            </aside>
+            <article class="alert-detail" id="alert-detail" aria-live="polite"></article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js" defer></script>
+    <script src="./readiness.js" defer></script>
+  </body>
+</html>

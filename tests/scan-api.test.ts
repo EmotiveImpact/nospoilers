@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../src/server/app.ts";
+import { createApp } from "./helpers/completed-scan-app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { hashScanToken, isScanToken, mintScanToken, parseScanBearer } from "../src/server/scan-api.ts";

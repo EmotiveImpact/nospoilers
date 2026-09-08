@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
+import {AlertMemberSelect} from './watch/AlertMemberSelect';
 import {
   WatchSectionError,
   WatchSkeleton,
   type WatchSectionState,
 } from "@/components/WatchDataState";
-import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { cn } from "@/lib/utils";
 import type { AlertListViewModel } from "@/watch/view-models.ts";
 import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
@@ -13,6 +13,7 @@ import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type {ReactNode} from 'react';
 
 export type WatchAlertDetail = {
   id: number;
@@ -34,10 +35,16 @@ export type WatchAlertDetail = {
 
 export function WatchAlertsWorkspace({
   alerts,
+  allAlerts = alerts,
+  sourceCount = alerts.length > 0 ? 1 : 0,
+  login = "",
+  userId,
   rows,
   selected,
+  selectedViewModel,
   events,
   previewing,
+  canRespond = false,
   ended,
   busy,
   note,
@@ -46,8 +53,11 @@ export function WatchAlertsWorkspace({
   exportError,
   state,
   activityState,
+  activityPagination,
   detailOpen,
   tab,
+  assignedToMe = false,
+  onAssignedToMe,
   onSelect,
   onBack,
   onRetry,
@@ -57,12 +67,24 @@ export function WatchAlertsWorkspace({
   onAssignee,
   onAction,
   onExport,
+  onConnectSource = () => window.location.assign("/watch/sources"),
+  relatedReleases,
+  workspaceId,
+  counts,
+  pagination,
+  exportLabel='Export JSON',
 }: {
   alerts: WatchAlertDetail[];
+  allAlerts?: WatchAlertDetail[];
+  sourceCount?: number;
+  login?: string;
+  userId?: string;
   rows: AlertListViewModel[];
   selected: WatchAlertDetail | null;
+  selectedViewModel?: AlertListViewModel;
   events: AlertActivityEvent[];
   previewing: boolean;
+  canRespond?: boolean;
   ended: boolean;
   busy: boolean;
   note: string;
@@ -71,8 +93,11 @@ export function WatchAlertsWorkspace({
   exportError: string | null;
   state: WatchSectionState;
   activityState: WatchSectionState;
+  activityPagination?: import('react').ReactNode;
   detailOpen: boolean;
   tab: AlertTab;
+  assignedToMe?: boolean;
+  onAssignedToMe?: () => void;
   teamOnly: boolean;
   onSelect: (alertId: number) => void;
   onBack: () => void;
@@ -83,22 +108,29 @@ export function WatchAlertsWorkspace({
   onAssignee: (value: string) => void;
   onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void;
   onExport: () => void;
+  onConnectSource?: () => void;
+  relatedReleases?: ReactNode;
+  workspaceId?: string;
+  counts?: {open:number;waiting:number;mine:number;done:number};
+  pagination?: ReactNode;
+  exportLabel?: string;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
-  const { deskAlerts, user } = useWatchScreenContext();
-  const login = user?.login ?? "";
-  const queueCounts = {
-    open: filterDeskAlerts(deskAlerts, "open", login).length,
-    waiting: filterDeskAlerts(deskAlerts, "waiting", login).length,
-    mine: filterDeskAlerts(deskAlerts, "mine", login).length,
-    done: filterDeskAlerts(deskAlerts, "done", login).length,
+  const responseDisabled = previewing || !canRespond || busy;
+  const hasSources = sourceCount > 0;
+  const queueCounts = counts ?? {
+    open: filterDeskAlerts(allAlerts, "open", login).length,
+    waiting: filterDeskAlerts(allAlerts, "waiting", login).length,
+    mine: filterDeskAlerts(allAlerts, "mine", login, false, userId).length,
+    done: filterDeskAlerts(allAlerts, "done", login).length,
   };
   const selectedIndex = selected ? alerts.findIndex((alert) => alert.id === selected.id) : -1;
   const previous = selectedIndex > 0 ? alerts[selectedIndex - 1] : null;
   const next = selectedIndex >= 0 && selectedIndex < alerts.length - 1 ? alerts[selectedIndex + 1] : null;
-  const selectedRow = selected ? rows.find((row) => row.id === selected.id) : null;
+  const selectedRow = selected ? (selectedViewModel?.id===selected.id?selectedViewModel:rows.find((row) => row.id === selected.id)) : null;
   const listRef = useRef<HTMLOListElement>(null);
-  const assignmentInputRef = useRef<HTMLInputElement>(null);
+  const assignmentInputRef = useRef<HTMLSelectElement>(null);
+  const assignmentCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const list = listRef.current;
@@ -151,24 +183,33 @@ export function WatchAlertsWorkspace({
         <h1 className="watch-page-title">Alerts</h1>
         {!previewing ? (
           <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
-            Export JSON
+            {exportLabel}
           </Button>
         ) : null}
       </div>
       <div className="watch-queue-track" role="tablist" aria-label="Alert queues">
         {([
-          ["open", "Triage", queueCounts.open],
-          ["waiting", "Waiting", queueCounts.waiting],
-          ["mine", "Mine", queueCounts.mine],
+          ["open", "Open", queueCounts.open],
+          ["waiting", "In progress", queueCounts.waiting],
           ["done", "Resolved", queueCounts.done],
         ] as [AlertTab, string, number][]).map(([value, label, count]) => (
           <button
             key={value}
             type="button"
             role="tab"
-            aria-current={tab === value ? "page" : undefined}
+            aria-selected={(tab==='mine'?'open':tab) === value}
+            tabIndex={(tab==='mine'?'open':tab) === value?0:-1}
             className="watch-queue-item"
             onClick={() => onTab(value)}
+            onKeyDown={(event)=>{
+              const keys=['ArrowRight','ArrowLeft','Home','End'];
+              if(!keys.includes(event.key))return;
+              event.preventDefault();
+              const tabs=Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+              const index=tabs.indexOf(event.currentTarget);
+              const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+              tabs[next].focus();tabs[next].click();
+            }}
           >
             <span className="watch-queue-pair">
               <span className="watch-queue-label">{label}</span>
@@ -185,6 +226,7 @@ export function WatchAlertsWorkspace({
           </button>
         ))}
       </div>
+      {onAssignedToMe ? <div className="px-5 py-3 md:px-8 border-b border-white/8"><Button type="button" size="sm" variant="outline" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button></div> : null}
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
@@ -196,7 +238,26 @@ export function WatchAlertsWorkspace({
           <ol ref={listRef} className="min-h-0 flex-1 divide-y divide-white/5 overflow-auto">
             {rows.length === 0 ? (
               <li>
-                <div className="watch-empty m-4">This view is clear. No real alerts match this filter.</div>
+                <div className="watch-empty m-4">
+                  <strong className="block text-sm font-medium text-snow">
+                    {hasSources ? "No alerts match this view" : "The inbox starts after your first source"}
+                  </strong>
+                  <p className="mt-1.5">
+                    {hasSources
+                      ? "There are no real alerts in this queue."
+                      : "Connect and check a source before treating an empty inbox as a clear release."}
+                  </p>
+                  {!hasSources ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-4"
+                      onClick={onConnectSource}
+                    >
+                      Connect a source
+                    </Button>
+                  ) : null}
+                </div>
               </li>
             ) : (
               rows.map((row) => (
@@ -231,15 +292,23 @@ export function WatchAlertsWorkspace({
               ))
             )}
           </ol>
-          )}
+        )}
+        {pagination}
         </aside>
 
         <main className={cn("min-h-0 lg:block", detailOpen ? "block" : "hidden")}>
           {!selected || !selectedRow ? (
             <div className="grid h-full place-items-center px-5 text-center">
               <div>
-                <p className="text-sm text-snow">Nothing selected.</p>
-                <p className="mt-1 text-xs text-dim">Findings, exposure, and activity open here.</p>
+                <p className="text-sm text-snow">
+                  {detailOpen ? "Alert unavailable in this view." : hasSources ? "Nothing selected." : "No evidence yet."}
+                </p>
+                <p className="mt-1 max-w-sm text-xs leading-relaxed text-dim">
+                  {detailOpen ? "It may have moved to another status, no longer match your filters, or be outside your access." : hasSources
+                    ? "Findings, exposure, and activity open here."
+                    : "Once a connected source produces a finding, its exposure and response activity will open here."}
+                </p>
+                {detailOpen ? <Button className="mt-4" variant="outline" onClick={onBack}>Back to alerts</Button> : null}
               </div>
             </div>
           ) : (
@@ -250,7 +319,7 @@ export function WatchAlertsWorkspace({
                   Back to inbox
                 </Button>
                 {!selected.acknowledged_at && !selected.resolved_at ? (
-                  <Button type="button" size="sm" className="min-h-12 lg:min-h-8" disabled={previewing || busy} onClick={() => onAction("acknowledge")}>
+                  <Button type="button" size="sm" className="min-h-12 lg:min-h-8" disabled={responseDisabled} onClick={() => onAction("acknowledge")}>
                     Acknowledge
                   </Button>
                 ) : selected.acknowledged_at ? (
@@ -261,13 +330,13 @@ export function WatchAlertsWorkspace({
                   size="sm"
                   variant="outline"
                   className="min-h-12 lg:min-h-8"
-                  disabled={previewing || busy || (!selected.resolved_at && note.trim().length < 8)}
+                  disabled={responseDisabled || (!selected.resolved_at && note.trim().length < 8)}
                   onClick={() => onAction(selected.resolved_at ? "reopen" : "resolve")}
                 >
                   {selected.resolved_at ? "Reopen" : "Resolve"}
                 </Button>
                 {!selected.resolved_at ? (
-                  <Button type="button" size="sm" variant="outline" className="min-h-12 lg:min-h-8" disabled={previewing || busy} onClick={() => setAssignOpen(true)}>
+                  <Button type="button" size="sm" variant="outline" className="min-h-12 lg:min-h-8" disabled={responseDisabled} onClick={() => setAssignOpen(true)}>
                     {selected.assigned_to_login ? `@${selected.assigned_to_login}` : "Assign"}
                   </Button>
                 ) : null}
@@ -305,6 +374,7 @@ export function WatchAlertsWorkspace({
                     </div>
                   </section>
 
+                  {relatedReleases}
                   <section className="mt-7">
                     <p className="watch-kicker">Exposure</p>
                     <div className="mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
@@ -352,6 +422,7 @@ export function WatchAlertsWorkspace({
                           <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}</p>
                         </div>
                       ))}
+                      {activityPagination}
                     </div>
                     {!selected.resolved_at ? (
                       <label className="mt-4 block">
@@ -360,7 +431,7 @@ export function WatchAlertsWorkspace({
                           value={note}
                           onChange={(event) => onNote(event.target.value)}
                           placeholder="What changed. Do not paste secret values."
-                          disabled={previewing || busy}
+                          disabled={responseDisabled}
                           rows={3}
                           className="mt-2 w-full rounded-md border border-white/15 bg-panel px-3 py-2 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
                         />
@@ -370,6 +441,7 @@ export function WatchAlertsWorkspace({
                     ) : null}
                     {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
                     {previewing ? <p className="mt-3 text-xs text-dim">Preview does not mutate alerts.</p> : null}
+                    {!canRespond && !previewing ? <p className="mt-3 text-xs text-dim">Read-only access. A workspace member or administrator can respond to this alert.</p> : null}
                   </section>
                 </div>
               </div>
@@ -379,9 +451,9 @@ export function WatchAlertsWorkspace({
       </div>
 
       <Dialog
-        open={assignOpen && Boolean(selected)}
+        open={assignOpen && Boolean(selected) && canRespond && !previewing}
         onClose={setAssignOpen}
-        initialFocus={assignmentInputRef}
+        initialFocus={assignmentCloseRef}
         className="relative z-50"
       >
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
@@ -391,7 +463,7 @@ export function WatchAlertsWorkspace({
             className="w-full max-w-md rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!assignee.trim()) return;
+              if (responseDisabled || !assignee.trim()) return;
               onAction("assign");
               setAssignOpen(false);
             }}
@@ -399,22 +471,12 @@ export function WatchAlertsWorkspace({
             <p className="watch-kicker">Assign alert</p>
             <div className="flex items-start justify-between gap-3">
               <DialogTitle className="mt-1 font-display text-xl text-snow">{selected?.title}</DialogTitle>
-              <Button type="button" size="sm" variant="ghost" aria-label="Close assignment dialog" onClick={() => setAssignOpen(false)}><X className="size-4" aria-hidden /></Button>
+              <button ref={assignmentCloseRef} type="button" className="inline-flex size-8 items-center justify-center rounded-md text-mute hover:bg-white/5 focus-visible:outline focus-visible:outline-white/50" aria-label="Close assignment dialog" onClick={() => setAssignOpen(false)}><X className="size-4" aria-hidden /></button>
             </div>
-            <label className="mt-5 block">
-              <span className="text-xs text-mute">GitHub login on this install</span>
-              <input
-                ref={assignmentInputRef}
-                autoFocus
-                value={assignee}
-                onChange={(event) => onAssignee(event.target.value)}
-                placeholder="teammate"
-                className="mt-2 h-12 w-full rounded-md border border-white/15 bg-panel px-3 text-sm text-snow outline-none focus:border-white/40"
-              />
-            </label>
+            {selected?<AlertMemberSelect key={`${workspaceId??'legacy'}:${selected.id}`} workspaceId={workspaceId} alertId={selected.id} value={assignee} onChange={onAssignee} inputRef={assignmentInputRef}/>:null}
             <div className="mt-4 flex justify-end gap-2">
               <Button type="button" size="sm" variant="ghost" onClick={() => setAssignOpen(false)}>Cancel</Button>
-              <Button type="submit" size="sm" disabled={busy || !assignee.trim()}>Assign</Button>
+              <Button type="submit" size="sm" disabled={responseDisabled || !assignee.trim()}>Assign</Button>
             </div>
           </DialogPanel>
         </div>

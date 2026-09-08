@@ -3,6 +3,7 @@ import type { WatchedOrigin } from "@/watch/types";
 import { useState } from "react";
 
 export function SourcesProductionScreens() {
+  const workspaceId=new URLSearchParams(useWatchScreenContext().search).get('workspace');
   const { Button, activeInstallId, beginConfirm, checkingMapId, checkingOriginId, confirmBusy, confirmForm, confirming, ended, installAdmin, installations, loadJson, locked, mapDestinations, mapError, mapHost, mapKind, mapOrg, mapProject, mapToken, originError, originUrl, origins, previewing, refreshSignedIn, route, savingMap, scopedApi, selectedInstallId, setCheckingMapId, setCheckingOriginId, setMapError, setMapHost, setMapKind, setMapOrg, setMapProject, setMapToken, setOriginError, setOriginUrl, setSavingMap, setWatchingOrigin, sourceSectionState, user, watchingOrigin } = useWatchScreenContext();
   const [verifyingOriginId, setVerifyingOriginId] = useState<number | null>(null);
   const [deployTokenOriginId, setDeployTokenOriginId] = useState<number | null>(null);
@@ -126,7 +127,7 @@ export function SourcesProductionScreens() {
                 {!previewing && origins.status === "error" && (
                   <p className="mt-6 text-sm text-danger">{origins.message}</p>
                 )}
-                {!previewing && user && installations.length > 0 && (
+                {!workspaceId && !previewing && user && installations.length > 0 && (
                   <form
                     className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                     onSubmit={(event) => {

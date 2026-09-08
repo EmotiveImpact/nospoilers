@@ -7,7 +7,7 @@ import {
   signReceipt,
   verifyReceipt,
 } from "../src/receipt.ts";
-import { createApp } from "../src/server/app.ts";
+import { createApp } from "./helpers/completed-scan-app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import {
@@ -436,10 +436,9 @@ describe("release ledger", () => {
       readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") +
       readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") +
       readFileSync("src/watch/receipt-status.tsx", "utf8");
-    expect(page).toMatch(/receiptStatusMark/);
+    expect(page).toMatch(/buildReleaseBriefModel/);
     expect(page).toMatch(/failed policy/);
-    expect(page).toMatch(/Failed-policy and/);
-    expect(page).toMatch(/inconclusive are not clean/);
+    expect(page).toMatch(/Failed-policy, inconclusive, and digest-changed revisions are never clean/);
     expect(page).not.toMatch(/failed-policy is clean/);
     expect(page).not.toMatch(/Authentic · allowed to ship/);
   });

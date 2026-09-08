@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCliVerify } from "../src/cli-verify.ts";
 import {
   buildUnsignedReceipt,
@@ -121,6 +121,10 @@ describe("signed receipts", () => {
     const signed = signReceipt(buildUnsignedReceipt(passedReport(), "npm:demo@1.0.0"), SECRET);
     const tampered = { ...signed, findingCount: 99 };
     expect(verifyReceipt(JSON.stringify(tampered), SECRET).ok).toBe(false);
+    expect(verifyReceipt(JSON.stringify(tampered), SECRET).code).toBe('unrecognized-signature');
+    expect(verifyReceipt(JSON.stringify(signed), SECRET, "00".repeat(32)).code).toBe('artifact-mismatch');
+    expect(verifyReceipt('[]', SECRET).code).toBe('malformed');
+    expect(verifyReceipt(JSON.stringify({...signed,v:2}), SECRET).code).toBe('unsupported-version');
     expect(verifyReceipt(JSON.stringify(signed), SECRET, "00".repeat(32)).reason).toMatch(/SHA-256/);
   });
 });
@@ -707,6 +711,8 @@ describe("hosted receipts", () => {
 });
 
 describe("public receipt verify", () => {
+  beforeEach(()=>vi.stubEnv('NOSPOILERS_INTERNAL_LOCAL_SCAN','1'));
+  afterEach(()=>vi.unstubAllEnvs());
   it("checks a receipt without a session and does not call failed-policy clean", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -822,7 +828,7 @@ describe("public receipt verify", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ path: "fixtures/clean.tgz" }),
       });
-      expect(scan1.status).toBe(200);
+      expect(scan1.status).toBe(202);
       expect(scan2.status).toBe(429);
       const verified = await app.request("/api/receipts/verify", {
         method: "POST",
@@ -876,7 +882,7 @@ describe("public receipt verify", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ path: "fixtures/clean.tgz" }),
       });
-      expect(scan.status).toBe(200);
+      expect(scan.status).toBe(202);
     } finally {
       await sql.close();
     }
@@ -941,7 +947,7 @@ describe("cli verify", () => {
 });
 
 describe("cli verify delivery URL", () => {
-  const publicLookup = async () => [{ address: "203.0.113.10", family: 4 }];
+  const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
 
   it("stream-hashes a URL against a passing receipt and refuses other hosts", async () => {
     const report = await scan(CLEAN);

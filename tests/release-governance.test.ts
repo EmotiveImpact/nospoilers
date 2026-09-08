@@ -3,7 +3,7 @@ import { readFile as readFileAsync } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { coverageFrom } from "../src/coverage.ts";
-import { createApp } from "../src/server/app.ts";
+import { createApp } from "./helpers/completed-scan-app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import {
@@ -45,7 +45,7 @@ function unusedGithub(): GithubPort {
   };
 }
 
-const publicLookup = async () => [{ address: "203.0.113.10", family: 4 }];
+const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
 
 describe("release governance helpers", () => {
   it("gates Solo and unpaid coverage and blocks dirty shipping", () => {
@@ -435,7 +435,7 @@ describe("release approval, legal hold, and ledger export", () => {
   });
 
   it("shows Watch copy for approval, legal hold, and ledger export", () => {
-    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
+    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/components/watch/WatchReleaseBrief.tsx", "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
     expect(page).toMatch(/Approve to ship/);
     expect(page).toMatch(/Legal hold/);
     expect(page).toMatch(/Export ledger/);

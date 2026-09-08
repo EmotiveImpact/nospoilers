@@ -1,11 +1,31 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { timingSafeEqual } from "node:crypto";
+import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
 import { Hono, type Context } from "hono";
+import { readBoundedBody } from './bounded-body.ts';
+import { viewerWriteDenied } from './viewer-guard.ts';
+import { createWorkspace, listUserWorkspaces, updateWorkspace } from './workspaces.ts';
+import {createWorkspaceOrigin,verifyWorkspaceOrigin,listWorkspaceOrigins,changeWorkspaceOrigin} from './workspace-origins.ts';
+import {setWorkspaceOriginSchedule} from './workspace-origin-schedule.ts';
+import {workspaceTeam,inviteWorkspaceMember,pendingWorkspaceInvites,acceptWorkspaceInvite,revokeWorkspaceInvite,changeWorkspaceMember} from './workspace-membership.ts';
+import {listManagedOrganizations,organizationAccess,changeOrganizationAccess,managedBillingAccount,sourceBillingTarget} from './organization-access.ts';
+import {managedPersonalBillingAccount,personalStripeState,applyPersonalStripePatch} from './personal-billing.ts';
+import {moveUnusedWorkspaceConnection} from './workspace-connections.ts';
+import {listDeletionRequests,requestDeletion,withdrawDeletionRequest} from './deletion-requests.ts';
+import {workspaceEvidenceSettings} from './workspace-evidence-settings.ts';
+import {workspaceNotifications,saveWorkspaceNotification,disconnectWorkspaceNotification,requestWorkspaceNotificationTest} from './workspace-notifications.ts';
+import {listWorkspaceTokens,revokeWorkspaceToken,mintWorkspaceToken,authenticateWorkspaceToken} from './workspace-tokens.ts';
+import {workspaceOverview} from './workspace-overview.ts';
+import {requestWorkspaceException,decideWorkspaceException,listWorkspaceExceptions,workspaceExceptionDetail} from './workspace-exceptions.ts';
+import {listWorkspaceAlerts,workspaceAlertDetail,respondToWorkspaceAlert,workspaceAlertAssignees,workspaceAlertCounts} from './workspace-alerts.ts';
+import {alertRecheckTarget} from './alert-recheck.ts';
+import {getWorkspaceArtifactPolicy,saveWorkspaceArtifactPolicy} from './workspace-policy.ts';
+import {deletionImpact} from './deletion-impact.ts';
+import {previewUploadedProof,publishUploadedProof,revokeUploadedProof,readUploadedProof} from './upload-proof-sharing.ts';
+import {listAlertReleaseLinks} from './alert-release-links.ts';
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { bestCoverage, coverageFrom } from "../coverage.ts";
-import { ENGINE_VERSION, scan } from "../scanner/index.ts";
+import type { scan } from "../scanner/index.ts";
 import { validateExceptionInput } from "../policy.ts";
 import { verifyReceipt } from "../receipt.ts";
 import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
@@ -208,10 +228,11 @@ import {
   rotationChecklist,
   summarizePermissionTest,
 } from "./install-test.ts";
-import { readSignedSession, signSession } from "./store.ts";
+import { createStore, readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
-import { applyHostedPolicy } from "./hosted-policy.ts";
-import { persistHostedReceipt } from "./receipts.ts";
+import {stageUnboundGithubEvent} from './github-pending-events.ts';
+import {createGithubConnectionIntent,inspectGithubConnectionIntent} from './github-connection-intents.ts';
+import {connectGithubWorkspace} from './github-workspace-connection.ts';
 import {
   parseReleaseScanMeta,
   ReleaseLedgerError,
@@ -370,6 +391,7 @@ import {
 } from "./signing-policy.ts";
 
 const MAX_UPLOAD = 80 * 1024 * 1024;
+const MAX_PUBLIC_STAGE = 25 * 1024 * 1024;
 
 export type AppDeps = {
   config: AppConfig;
@@ -398,7 +420,7 @@ function sameSecret(left: string, right: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 409 {
+function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 408 | 409 | 413 | 429 {
   if (
     error &&
     typeof error === "object" &&
@@ -406,7 +428,7 @@ function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 409 {
     typeof (error as { status: unknown }).status === "number"
   ) {
     const status = (error as { status: number }).status;
-    if (status === 400 || status === 402 || status === 403 || status === 404 || status === 409) {
+    if (status === 400 || status === 402 || status === 403 || status === 404 || status === 408 || status === 409 || status === 413 || status === 429) {
       return status;
     }
   }
@@ -460,6 +482,7 @@ function publicAlert(row: AlertRow) {
     acknowledged_at: row.acknowledged_at,
     acknowledged_by_login: row.acknowledged_by_login,
     assigned_to_login: row.assigned_to_login,
+    assigned_to_user_id: row.assigned_to_user_id ?? null,
     resolved_at: row.resolved_at,
     resolved_by_login: row.resolved_by_login,
     resolution_note: row.resolution_note,
@@ -635,7 +658,30 @@ function publicDestination(row: {
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
-  const scanFn = deps.scan ?? scan;
+  app.use('/api/*', async (c,next) => {
+    c.header('Cache-Control','no-store');
+    c.header('X-Content-Type-Options','nosniff');
+    c.header('Referrer-Policy','no-referrer');
+    const origin=c.req.header('origin');
+    const browserSite=c.req.header('sec-fetch-site');
+    const mutates=!['GET','HEAD','OPTIONS'].includes(c.req.method);
+    // Machine integrations use signature/bearer verification in their handlers.
+    if(mutates && (origin || browserSite || (process.env.NODE_ENV==='production' && c.req.header('cookie')))) {
+      const allowed=new Set([new URL(deps.config.appBaseUrl).origin]);
+      if(process.env.NODE_ENV!=='production')allowed.add(new URL(authOrigin(c.req.url,deps.config.appBaseUrl)).origin);
+      if((origin && !allowed.has(origin)) || (!origin && browserSite!=='same-origin'))
+        return c.json({error:'This request must originate from the application.'},403);
+    }
+    if(mutates){
+      const user=await currentUser(c);
+      try {
+        const bytes=await readBoundedBody(c.req.raw.body,c.req.path==='/api/scan' && !user?MAX_PUBLIC_STAGE:MAX_UPLOAD,c.req.header('content-length'));
+        c.req.raw=new Request(c.req.raw,{body:new Uint8Array(bytes)});
+      }catch(error){return c.json({error:'Request body exceeded its size or time budget.'},errorStatus(error));}
+      if(user && await viewerWriteDenied(c,deps.store,user.userId))return c.json({error:'Viewer access is read-only. Choose a writable workspace or ask an administrator.'},403);
+    }
+    await next();
+  });
   const hostedOrigin = hostedScanOrigin(deps.config.appBaseUrl);
   const npm = deps.npm ?? createNpmPort();
   const notifier =
@@ -652,8 +698,14 @@ export function createApp(deps: AppDeps): Hono {
     (deps.config.stripeSecretKey ? createStripePort(deps.config.stripeSecretKey) : null);
   const prices = stripePriceMap(deps.config);
   const cookieName = "ns_session";
+  const pendingScanCookieName = "ns_pending_scan";
+  const pendingOriginCookieName = "ns_pending_origin";
   const scanLimiter = createRateLimiter({
     limit: deps.config.scanRateLimit,
+    windowMs: deps.config.scanRateWindowMs,
+  });
+  const stagingLimiter = createRateLimiter({
+    limit: deps.config.scanRateLimit <= 0 ? 0 : Math.min(5, deps.config.scanRateLimit),
     windowMs: deps.config.scanRateWindowMs,
   });
   const authLimiter = createRateLimiter({
@@ -666,17 +718,19 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   function requestIp(c: Context): string {
+    // Only enable behind an ingress that strips and replaces client-supplied forwarding headers.
+    if(process.env.NOSPOILERS_TRUST_PROXY!=='1')return 'untrusted-ingress';
     return clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
   }
 
-  function rateLimited(
+  async function rateLimited(
     c: Context,
-    limiter: { allow: (key: string) => boolean },
+    limiter: { limit: number; allow: (key: string) => boolean },
     key: string,
     windowMs: number,
     message: string,
   ) {
-    if (limiter.allow(key)) return null;
+    if (await deps.store.reserveRequest(key, limiter.limit, windowMs)) return null;
     c.header("Retry-After", retryAfterSeconds(windowMs));
     return c.json({ error: message }, 429);
   }
@@ -686,6 +740,68 @@ export function createApp(deps: AppDeps): Hono {
     const sessionId = readSignedSession(deps.config.sessionSecret, raw);
     if (!sessionId) return null;
     return await deps.store.getSession(sessionId);
+  }
+
+  function developmentLoginEnabled(): boolean {
+    if (process.env.NODE_ENV === "production") return false;
+    if (process.env.NOSPOILERS_LOCAL_REVIEW !== '1') return false;
+    try {
+      const hostname = new URL(deps.config.appBaseUrl).hostname;
+      return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+    } catch {
+      return false;
+    }
+  }
+
+  async function stageScan(
+    c: Context,
+    input: { target: string; artifactBytes?: Uint8Array; sourcePath?: string },
+  ) {
+    const pendingId = crypto.randomUUID();
+    await deps.store.createPendingScan({ id: pendingId, ...input });
+    setCookie(
+      c,
+      pendingScanCookieName,
+      signSession(deps.config.sessionSecret, pendingId),
+      cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 60 * 60),
+    );
+    return c.json({ pending: true, target: input.target, expiresInMinutes: 60 }, 202);
+  }
+
+  async function submitUploadedBytes(c: Context, userId: string, bytes: Uint8Array, target: string, id?: string) {
+    if (!bytes.length) return c.json({ error: "Choose a non-empty artifact." }, 400);
+    const raw = c.req.query("installationId");
+    const installationId = raw ? Number(raw) : null;
+    if (installationId !== null && (!Number.isSafeInteger(installationId) || installationId <= 0 ||
+        !(await deps.store.userOwnsInstallation(userId, installationId)))) return c.json({error:"Unknown workspace."},403);
+    const requestedId = id ?? c.req.header("idempotency-key") ?? crypto.randomUUID();
+    if (!/^[a-f0-9-]{36}$/i.test(requestedId)) return c.json({error:"Invalid submission identifier."},400);
+    try {
+      const uploadId=await deps.store.queueUploadedScan({id:requestedId,userId,installationId,workspaceId:c.req.query('workspaceId'),target:path.basename(target),bytes});
+      deps.wakeWorker?.();
+      return c.json({queued:true,uploadId,target,href:`/watch/releases?upload=${uploadId}`},202);
+    } catch(error) {
+      return c.json({error:error instanceof Error?error.message:"Could not queue the scan."},errorStatus(error));
+    }
+  }
+
+  function authenticatedLanding(c: Context): string {
+    const pendingScan = readSignedSession(
+      deps.config.sessionSecret,
+      getCookie(c, pendingScanCookieName),
+    );
+    if (pendingScan) return "/watch/scan?reveal=1";
+    const encodedOrigin = readSignedSession(
+      deps.config.sessionSecret,
+      getCookie(c, pendingOriginCookieName),
+    );
+    if (!encodedOrigin) return "/watch";
+    try {
+      const origin = Buffer.from(encodedOrigin, "base64url").toString("utf8");
+      return `/watch/sources?configure=website&origin=${encodeURIComponent(origin)}`;
+    } catch {
+      return "/watch";
+    }
   }
 
   function queryInstallationId(c: Context): number | null {
@@ -1263,7 +1379,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/discover", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       discoveryLimiter,
       `discover:${requestIp(c)}`,
@@ -1293,7 +1409,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/repository", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       discoveryLimiter,
       `inspect:${requestIp(c)}`,
@@ -1322,7 +1438,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/feed", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       discoveryLimiter,
       `feed:${requestIp(c)}`,
@@ -1586,7 +1702,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/:id/disclosure/rescan", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       discoveryLimiter,
       `disclosure-rescan:${requestIp(c)}`,
@@ -1611,7 +1727,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/internal/prospects/:id/rescan", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       discoveryLimiter,
       `rescan:${requestIp(c)}`,
@@ -1691,72 +1807,57 @@ export function createApp(deps: AppDeps): Hono {
 
   app.post("/api/scan", async (c) => {
     const user = await currentUser(c);
-    if (user) {
-      const coverage = await hostedCoverageForUser(user);
-      if (coverage.status === "ended") {
-        return c.json({ error: "Coverage ended. Subscribe to unpack on our servers." }, 402);
-      }
-    }
-    const scanLimited = rateLimited(
+    const scanLimited = await rateLimited(
       c,
-      scanLimiter,
-      `scan:${requestIp(c)}`,
+      user ? scanLimiter : stagingLimiter,
+      user ? `scan:user:${user.userId}` : `stage:${requestIp(c)}`,
       deps.config.scanRateWindowMs,
-      "Too many hosted scans from this address. Wait and try again.",
+      user
+        ? "Too many hosted scans from this address. Wait and try again."
+        : "Too many staged artifacts from this address. Sign in or wait and try again.",
     );
     if (scanLimited) return scanLimited;
     try {
       const contentType = c.req.header("content-type") ?? "";
       if (contentType.includes("application/json")) {
+        if (process.env.NODE_ENV === "production") return c.notFound();
+        if(process.env.NOSPOILERS_LOCAL_REVIEW!=='1' && process.env.NOSPOILERS_INTERNAL_LOCAL_SCAN!=='1')return c.notFound();
         const body = jsonObj(await c.req.json());
         const target = typeof body.path === "string" ? body.path : "";
         if (!target) return c.json({ error: "Provide a path to a packed artifact." }, 400);
-        const resolved = path.resolve(target);
-        const cwd = path.resolve(process.cwd());
+        const resolved = await (await import("node:fs/promises")).realpath(path.resolve(target));
+        const cwd = await (await import("node:fs/promises")).realpath(path.join(process.cwd(),'fixtures'));
         if (resolved !== cwd && !resolved.startsWith(`${cwd}${path.sep}`)) {
-          return c.json({ error: "Path must be inside this project directory." }, 400);
+          return c.json({ error: "Local fixture paths must be inside the fixtures directory." }, 400);
         }
-        return c.json(await scanFn(resolved));
+        if((await (await import('node:fs/promises')).stat(resolved)).size>MAX_UPLOAD)return c.json({error:'Fixture exceeds upload size limit.'},413);
+        if (!user) {
+          return await stageScan(c, { target: path.basename(resolved), sourcePath: resolved });
+        }
+        return await submitUploadedBytes(c,user.userId,await (await import("node:fs/promises")).readFile(resolved),path.basename(resolved));
       }
       const filenameHeader = c.req.header("x-filename");
       const filename =
         filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
-      const buf = Buffer.from(await c.req.arrayBuffer());
-      if (buf.length > MAX_UPLOAD) {
-        return c.json({
-          target: filename,
-          kind: "file",
-          fileCount: 0,
-          findings: [],
-          ok: false,
-          status: "inconclusive",
-          inconclusiveReason: "Upload is larger than 80 MB.",
-          manifest: [],
-          engineVersion: ENGINE_VERSION,
-          artifactSha256: createHash("sha256").update(buf).digest("hex"),
-          artifactSha512: createHash("sha512").update(buf).digest("hex"),
-          artifactBytes: buf.length,
-          scannedAt: new Date().toISOString(),
-          suppressed: [],
-          policyHash: null,
-          workspaces: [],
-        });
+      const buf = await readBoundedBody(c.req.raw.body,user?MAX_UPLOAD:MAX_PUBLIC_STAGE,c.req.header("content-length"));
+      if (!user && buf.length > MAX_PUBLIC_STAGE) {
+        return c.json({ error: "Before sign-in, staged artifacts are limited to 25 MB." }, 413);
       }
-      const dir = path.join(os.tmpdir(), "nospoilers-upload");
-      await mkdir(dir, { recursive: true });
-      const dest = path.join(dir, `${Date.now()}-${filename}`);
-      await writeFile(dest, buf);
-      const report = await scanFn(dest);
-      await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
-      return c.json(report);
+      if (buf.length > MAX_UPLOAD) {
+        return c.json({ error: "Upload is larger than 80 MB." }, 413);
+      }
+      if (!user) return await stageScan(c, { target: filename, artifactBytes: buf });
+      return await submitUploadedBytes(c,user.userId,buf,filename);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Scan failed.";
-      return c.json({ error: message }, 400);
+      return c.json({ error: message }, errorStatus(error));
     }
   });
 
   app.post("/api/webhooks/github", async (c) => {
-    const raw = await c.req.text();
+    let raw:string;
+    try{raw=(await readBoundedBody(c.req.raw.body,1024*1024,c.req.header('content-length'))).toString('utf8');}
+    catch{return c.json({error:'GitHub webhook exceeds the supported size.'},413);}
     const signature = c.req.header("x-hub-signature-256");
     if (!verifyGitHubSignature(deps.config.githubWebhookSecret, raw, signature)) {
       return c.json({ error: "Invalid signature." }, 401);
@@ -1770,6 +1871,8 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: "Invalid JSON." }, 400);
     }
     try {
+      if(await stageUnboundGithubEvent(deps.store.sql,deps.config.sessionSecret,event,deliveryId,payload))
+        return c.json({ok:true,queued:false,kind:'connection_pending'});
       const result = await enqueueFromWebhook(deps.store, event, deliveryId, payload);
       if (result.queued) deps.wakeWorker?.();
       return c.json({ ok: true, ...result });
@@ -1795,12 +1898,21 @@ export function createApp(deps: AppDeps): Hono {
     }
     const event = parseStripeEvent(parsed);
     if (!event) return c.json({ error: "Invalid event." }, 400);
-    const claimed = await deps.store.claimStripeEvent(event.id, event.type);
-    if (!claimed) return c.json({ ok: true, duplicate: true });
-    const patch = stripeEventPatch(event, prices);
-    if (!patch) return c.json({ ok: true, skipped: true });
-    const applied = await deps.store.applyStripeBillingPatch(patch);
-    return c.json({ ok: true, applied: applied.applied });
+    // Claim and apply atomically: a failed database write must remain retryable by Stripe.
+    const result=await deps.store.sql.transaction(async tx=>{
+      const transactionalStore=createStore(tx);
+      const claimed=await transactionalStore.claimStripeEvent(event.id,event.type);
+      if(!claimed)return {ok:true,duplicate:true};
+      const patch=stripeEventPatch(event,prices);
+      if(!patch)return {ok:true,skipped:true};
+      const personal=patch.installationId===null && (await tx.query(
+        `SELECT 1 FROM personal_organization_billing WHERE organization_id=$1::uuid OR stripe_customer_id=$2 OR stripe_subscription_id=$3 LIMIT 1`,
+        [patch.organizationId??null,patch.customerId,patch.subscriptionId],
+      )).rows.length>0;
+      const applied=personal?await applyPersonalStripePatch(tx,patch):await transactionalStore.applyStripeBillingPatch(patch);
+      return {ok:true,applied:applied.applied};
+    });
+    return c.json(result);
   });
 
   function publicStripeBilling(state: {
@@ -1821,15 +1933,33 @@ export function createApp(deps: AppDeps): Hono {
     };
   }
 
+  async function billingTarget(userId:string,input:{organizationId?:unknown;installationId?:unknown}):Promise<{organizationId:string;installationId:number|null}>{
+    input=await sourceBillingTarget(deps.store.sql,input);
+    if(typeof input.organizationId==='string' && input.installationId===undefined){
+      const personal=(await deps.store.sql.query('SELECT 1 FROM product_organizations WHERE id::text=$1 AND legacy_personal_user_id IS NOT NULL',[input.organizationId])).rows.length>0;
+      if(personal){const account=await managedPersonalBillingAccount(deps.store.sql,userId,input.organizationId);return {organizationId:account.organizationId,installationId:null};}
+    }
+    return managedBillingAccount(deps.store.sql,userId,input);
+  }
+  async function billingState(account:{organizationId:string;installationId:number|null}){
+    return account.installationId===null?personalStripeState(deps.store.sql,account.organizationId):deps.store.installationStripeState(account.installationId);
+  }
   app.get("/api/billing", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const organizationId=c.req.query('organizationId');
+    if(organizationId){
+      try{
+        const account=await billingTarget(user.userId,{organizationId,installationId:c.req.query('installationId')});
+        const state=await billingState(account);
+        return state?c.json({stripe:stripeConfigured(deps.config),billing:publicStripeBilling(state)}):c.json({error:'Billing unavailable.'},404);
+      }catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
+    }
     const installationId = queryInstallationId(c);
     if (!installationId) return c.json({ error: "Choose a GitHub installation." }, 400);
-    if (!(await deps.store.userOwnsInstallation(user.userId, installationId))) {
-      return c.json({ error: "That GitHub installation is not on your account." }, 403);
-    }
-    const state = await deps.store.installationStripeState(installationId);
+    let state;
+    try{state=await billingState(await billingTarget(user.userId,{installationId}));}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
     if (!state) return c.json({ error: "Unknown installation." }, 404);
     return c.json({
       stripe: stripeConfigured(deps.config),
@@ -1843,7 +1973,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!stripeConfigured(deps.config) || !stripe) {
       return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
     }
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       authLimiter,
       `billing:${requestIp(c)}`,
@@ -1852,23 +1982,22 @@ export function createApp(deps: AppDeps): Hono {
     );
     if (limited) return limited;
     const body = jsonObj(await c.req.json().catch(() => ({})));
-    const installationId = Number(body.installationId);
-    if (!Number.isFinite(installationId) || installationId <= 0) {
-      return c.json({ error: "Choose a GitHub installation." }, 400);
-    }
-    const denied = await requireInstallAdmin(user.userId, installationId);
-    if (denied) return c.json({ error: denied.error }, denied.status);
+    let account;
+    try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
+    const installationId=account.installationId;
     const plan = parseStripePlan(body.plan);
     const interval = parseStripeInterval(body.interval);
     if (!plan || !interval) return c.json({ error: STRIPE_PLAN_ERROR }, 400);
-    const state = await deps.store.installationStripeState(installationId);
+    const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
     if (state.stripeCustomerId && stripeSubscriptionCovers(state.stripeStatus)) {
       try {
         const portal = await stripe.createPortalSession({
           customerId: state.stripeCustomerId,
-          returnUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}`,
+          returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
         });
+        await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
         return c.json({ url: portal.url, kind: "portal" });
       } catch (error) {
         const message = error instanceof StripeApiError ? error.message : STRIPE_UNAVAILABLE_ERROR;
@@ -1881,18 +2010,20 @@ export function createApp(deps: AppDeps): Hono {
       const session = await stripe.createCheckoutSession({
         customerId: state.stripeCustomerId,
         priceId,
-        successUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}&billing=ok`,
+        successUrl: `${deps.config.appBaseUrl}/watch/workspaces?billing=ok`,
         cancelUrl: `${deps.config.appBaseUrl}/pricing?canceled=1`,
-        clientReferenceId: String(installationId),
+        clientReferenceId: installationId===null?account.organizationId:String(installationId),
         trialPeriodDays,
         metadata: {
-          installationId: String(installationId),
+          ...(installationId===null?{}:{installationId:String(installationId)}),
+          organizationId:account.organizationId,
           plan,
           interval,
           priceId,
         },
       });
-      await deps.store.insertAuditEvent({
+      await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'checkout')",[crypto.randomUUID(),account.organizationId,user.userId]);
+      if(installationId!==null && await deps.store.getInstallation(installationId))await deps.store.insertAuditEvent({
         installationId,
         actorLogin: user.login,
         action: "billing.checkout",
@@ -1913,7 +2044,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!stripeConfigured(deps.config) || !stripe) {
       return c.json({ error: STRIPE_NOT_LIVE_ERROR }, 503);
     }
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       authLimiter,
       `billing:${requestIp(c)}`,
@@ -1922,21 +2053,20 @@ export function createApp(deps: AppDeps): Hono {
     );
     if (limited) return limited;
     const body = jsonObj(await c.req.json().catch(() => ({})));
-    const installationId = Number(body.installationId);
-    if (!Number.isFinite(installationId) || installationId <= 0) {
-      return c.json({ error: "Choose a GitHub installation." }, 400);
-    }
-    const denied = await requireInstallAdmin(user.userId, installationId);
-    if (denied) return c.json({ error: denied.error === ADMIN_REQUIRED_ERROR ? STRIPE_ADMIN_ERROR : denied.error }, denied.status);
-    const state = await deps.store.installationStripeState(installationId);
+    let account;
+    try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
+    catch(error){return c.json({error:error instanceof Error?error.message:STRIPE_ADMIN_ERROR},errorStatus(error));}
+    const installationId=account.installationId;
+    const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
     if (!state.stripeCustomerId) return c.json({ error: STRIPE_SUBSCRIBE_FIRST_ERROR }, 409);
     try {
       const portal = await stripe.createPortalSession({
         customerId: state.stripeCustomerId,
-        returnUrl: `${deps.config.appBaseUrl}/watch?install=${installationId}`,
+        returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
       });
-      await deps.store.insertAuditEvent({
+      await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
+      if(installationId!==null && await deps.store.getInstallation(installationId))await deps.store.insertAuditEvent({
         installationId,
         actorLogin: user.login,
         action: "billing.portal",
@@ -1951,14 +2081,14 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
-  app.get("/api/auth/github", (c) => {
+  app.get("/api/auth/github", async (c) => {
     if (!githubAppConfigured(deps.config)) {
       return c.json(
         { error: "GitHub App env vars are missing. See README to create the app." },
         503,
       );
     }
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       authLimiter,
       `auth:${requestIp(c)}`,
@@ -1976,8 +2106,23 @@ export function createApp(deps: AppDeps): Hono {
     return c.redirect(url.toString());
   });
 
+  app.get("/api/auth/development", async (c) => {
+    if (!developmentLoginEnabled()) return c.notFound();
+    const origin = authOrigin(c.req.url, deps.config.appBaseUrl);
+    const userId = "local-product-review-v5";
+    await deps.store.upsertUser({ id: userId, login: "local-review" });
+    const sessionId = await deps.store.createSession(userId);
+    setCookie(
+      c,
+      cookieName,
+      signSession(deps.config.sessionSecret, sessionId),
+      cookieSettings(origin, 24 * 60 * 60),
+    );
+    return c.redirect(authenticatedLanding(c));
+  });
+
   app.get("/api/auth/github/callback", async (c) => {
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       authLimiter,
       `callback:${requestIp(c)}`,
@@ -2018,7 +2163,7 @@ export function createApp(deps: AppDeps): Hono {
       cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 30 * 24 * 60 * 60),
     );
     deleteCookie(c, "ns_oauth_state", { path: "/" });
-    return c.redirect("/watch");
+    return c.redirect(authenticatedLanding(c));
   });
 
   app.post("/api/auth/logout", async (c) => {
@@ -2029,6 +2174,106 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ ok: true });
   });
 
+  app.get("/api/scan/pending", async c => {
+    const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
+    const id=readSignedSession(deps.config.sessionSecret,getCookie(c,pendingScanCookieName));
+    if(!id)return c.json({error:"The pending scan is missing or expired."},404);
+    const upload=await deps.store.getUploadedScan(user.userId,id);
+    return upload?c.json({queued:true,uploadId:id,target:upload.target,href:`/watch/releases?upload=${id}`}):c.json({pending:true,needsClaim:true});
+  });
+  app.post("/api/scan/pending", async c => {
+    const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
+    const id=readSignedSession(deps.config.sessionSecret,getCookie(c,pendingScanCookieName));
+    if(!id)return c.json({error:"The pending scan is missing or expired."},404);
+    const upload=await deps.store.getUploadedScan(user.userId,id);
+    if(upload)return c.json({queued:true,uploadId:id,target:upload.target,href:`/watch/releases?upload=${id}`},202);
+    const pending=await deps.store.claimPendingScan(id,user.userId);
+    if(!pending)return c.json({error:"This pending scan is missing, expired, or already claimed."},404);
+    let bytes=pending.artifactBytes;
+    if(!bytes && pending.sourcePath && process.env.NODE_ENV!=="production") {
+      const {realpath,readFile}=await import("node:fs/promises");
+      const resolved=await realpath(pending.sourcePath);
+      if(!resolved.startsWith(path.resolve(process.cwd())+path.sep))return c.json({error:"Invalid artifact path."},400);
+      bytes=await readFile(resolved);
+    }
+    if(!bytes)return c.json({error:"The artifact is no longer available."},404);
+    const response=await submitUploadedBytes(c,user.userId,bytes,pending.target,id);
+    if(response.status===202)await deps.store.sql.query("DELETE FROM pending_scans WHERE id=$1 AND claimed_by_user_id=$2",[id,user.userId]);
+    return response;
+  });
+  app.get("/api/uploads",async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
+    const raw=c.req.query("installationId");const installationId=raw?Number(raw):undefined;
+    if(raw && (!Number.isSafeInteger(installationId) || (installationId ?? 0)<=0))return c.json({error:"Invalid workspace."},400);
+    const workspaceId=c.req.query('workspaceId');
+    if(workspaceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))return c.json({error:'Invalid workspace.'},400);
+    if(workspaceId && !(await listUserWorkspaces(deps.store.sql,user.userId)).some(workspace=>workspace.id===workspaceId))return c.json({error:'Workspace unavailable.'},404);
+    try{return c.json(await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status')}));}
+    catch(error){return c.json({error:error instanceof Error&&'status' in error?error.message:'Release history could not be loaded.'},errorStatus(error));}
+  });
+  app.get("/api/uploads/:id",async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
+    const upload=await deps.store.getUploadedScan(user.userId,c.req.param("id"));
+    return upload?c.json({upload}):c.json({error:"Unknown upload."},404);
+  });
+
+  app.post("/api/origin-intent", async (c) => {
+    const body = jsonObj(await c.req.json());
+    const value = typeof body.url === "string" ? body.url.trim() : "";
+    let origin: URL;
+    try {
+      origin = new URL(value);
+    } catch {
+      return c.json({ error: "Enter a valid HTTPS production URL." }, 400);
+    }
+    if (origin.protocol !== "https:" || !origin.hostname || value.length > 2048) {
+      return c.json({ error: "Enter a valid HTTPS production URL." }, 400);
+    }
+    const normalized = `${origin.protocol}//${origin.host}${origin.pathname === "/" ? "/" : origin.pathname}`;
+    setCookie(
+      c,
+      pendingOriginCookieName,
+      signSession(deps.config.sessionSecret, Buffer.from(normalized).toString("base64url")),
+      cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 60 * 60),
+    );
+    return c.json({
+      ok: true,
+      authUrl: githubAppConfigured(deps.config)
+        ? "/api/auth/github"
+        : developmentLoginEnabled()
+          ? "/api/auth/development"
+          : "/watch",
+    });
+  });
+
+  app.post('/api/workspaces/:workspaceId/github',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    if(!githubAppConfigured(deps.config))return c.json({error:'GitHub App credentials are not configured on this server.'},503);
+    const limited=await rateLimited(c,authLimiter,`github-connect:${user.userId}`,deps.config.authRateWindowMs,'Too many connection requests. Try again shortly.');if(limited)return limited;
+    const sessionId=readSignedSession(deps.config.sessionSecret,getCookie(c,cookieName));if(!sessionId)return c.json({error:'Sign in again.'},401);
+    if(!await deps.store.getUserAccessToken(user.userId))return c.json({error:'Sign in with GitHub again to authorise this connection.'},401);
+    try{
+      const intent=await createGithubConnectionIntent(deps.store.sql,sessionId,user.userId,c.req.param('workspaceId'));
+      const url=new URL(`https://github.com/apps/${deps.config.githubAppSlug}/installations/new`);url.searchParams.set('state',intent.token);
+      return c.json({url:url.toString(),expiresAt:intent.expiresAt});
+    }catch(error){return c.json({error:error instanceof Error?error.message:'Connection unavailable.'},errorStatus(error));}
+  });
+
+  app.post('/api/github/connection/complete',async c=>{
+    const user=await currentUser(c),sessionId=readSignedSession(deps.config.sessionSecret,getCookie(c,cookieName));
+    if(!user||!sessionId)return c.json({error:'Sign in again and restart the connection from your workspace.'},401);
+    if(!githubAppConfigured(deps.config))return c.json({error:'GitHub App credentials are not configured on this server.'},503);
+    const limited=await rateLimited(c,authLimiter,`github-complete:${user.userId}`,deps.config.authRateWindowMs,'Too many connection checks. Try again shortly.');if(limited)return limited;
+    const signed=readSignedSession(deps.config.sessionSecret,getCookie(c,'ns_github_connection'));
+    if(!signed)return c.json({error:'Connection request expired. Start again from your workspace.'},403);
+    try{
+      const candidate=JSON.parse(signed) as {token:string;installationId:number};
+      const result=await connectGithubWorkspace({store:deps.store,github:deps.github,sessionId,userId:user.userId,...candidate,appId:deps.config.githubAppId,secret:deps.config.sessionSecret});
+      if(result.status==='connected'){deleteCookie(c,'ns_github_connection',{path:'/'});deps.wakeWorker?.();}
+      return c.json(result,result.status==='connected'?200:202);
+    }catch(error){return c.json({error:error instanceof Error?error.message:'GitHub connection failed.'},errorStatus(error));}
+  });
+
   app.get("/api/github/setup", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.redirect("/api/auth/github");
@@ -2036,6 +2281,20 @@ export function createApp(deps: AppDeps): Hono {
     if (!Number.isFinite(installationId) || installationId <= 0) {
       return c.redirect("/");
     }
+    const state=c.req.query('state');
+    if(state){
+      const sessionId=readSignedSession(deps.config.sessionSecret,getCookie(c,cookieName));
+      if(!sessionId)return c.json({error:'Sign in again and restart this connection.'},401);
+      try{
+        const intent=await inspectGithubConnectionIntent(deps.store.sql,sessionId,user.userId,state);
+        setCookie(c,'ns_github_connection',signSession(deps.config.sessionSecret,JSON.stringify({token:state,installationId})),cookieSettings(authOrigin(c.req.url,deps.config.appBaseUrl),600));
+        return c.redirect(`/watch/setup?githubReturn=1&workspace=${encodeURIComponent(intent.workspaceId)}`);
+      }catch(error){return c.json({error:error instanceof Error?error.message:'Connection request unavailable.'},errorStatus(error));}
+    }
+    // A state-less callback can refresh an existing authorised connection only.
+    // New installs must first select a workspace; they cannot mint a default trial.
+    if(!await deps.store.getInstallation(installationId))return c.json({error:'Start a new GitHub connection from the destination workspace first.'},403);
+    if(await deps.store.getInstallationRole(user.userId,installationId)!=='admin')return c.json({error:'Connection administrator access is required.'},403);
     const accessToken = await deps.store.getUserAccessToken(user.userId);
     if (!accessToken) {
       return c.json({ error: "Sign in with GitHub again to link this install." }, 401);
@@ -2057,6 +2316,7 @@ export function createApp(deps: AppDeps): Hono {
         accountType: installation.account.type || "User",
         accountId: installation.account.id,
         suspended: Boolean(installation.suspended_at),
+        reconnect:true,
       });
     } catch {
       return c.json({ error: "That install is not this NoSpoilers GitHub App." }, 403);
@@ -2071,6 +2331,7 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({
         user: null,
         githubApp: githubAppConfigured(deps.config),
+        developmentLogin: developmentLoginEnabled(),
         stripe: stripeConfigured(deps.config),
         resend: resendConfigured(deps.config),
       });
@@ -2079,8 +2340,10 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({
       user: { id: user.userId, login: user.login, avatarUrl: user.avatarUrl },
       coverage: await hostedCoverageForUser(user),
+      personalCoverage: coverageFrom(user.trialEndsAt, user.plan),
       installations,
       githubApp: githubAppConfigured(deps.config),
+      developmentLogin: developmentLoginEnabled(),
       stripe: stripeConfigured(deps.config),
       resend: resendConfigured(deps.config),
       installUrl: `https://github.com/apps/${deps.config.githubAppSlug}/installations/new`,
@@ -2089,11 +2352,143 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
 
+  app.get('/api/workspaces',async c=>{
+    const user=await currentUser(c);
+    if(!user)return c.json({error:'Sign in first.'},401);
+    return c.json({workspaces:await listUserWorkspaces(deps.store.sql,user.userId),organizations:await listManagedOrganizations(deps.store.sql,user.userId)});
+  });
+
+  async function workspaceAction(c:Context,action:(userId:string)=>Promise<unknown>){
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    try{return c.json(await action(user.userId));}
+    catch(error){
+      if(!(error instanceof Error)||!('status' in error))return c.json({error:'Workspace request could not be completed. Please retry.'},500);
+      if(error.status===503)return c.json({error:error.message},503);
+      return c.json({error:error.message},errorStatus(error));
+    }
+  }
+  app.get('/api/workspace-invitations',c=>workspaceAction(c,async userId=>({invites:await pendingWorkspaceInvites(deps.store.sql,userId)})));
+  app.get('/api/workspaces/:id/evidence-settings',c=>workspaceAction(c,userId=>workspaceEvidenceSettings(deps.store.sql,userId,c.req.param('id'),c.req.query('before'))));
+  app.get('/api/workspaces/:id/notifications',c=>workspaceAction(c,async userId=>({...await workspaceNotifications(deps.store.sql,userId,c.req.param('id'),c.req.query('before')),providers:{email:resendConfigured(deps.config),slack:!!deps.config.sessionSecret},independentDeliveryEnabled:true})));
+  app.post('/api/workspaces/:id/notifications',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return {...await saveWorkspaceNotification(deps.store.sql,userId,c.req.param('id'),body.kind,body.value,deps.config.sessionSecret),deliveryStatus:'not_tested'};
+  }));
+  app.delete('/api/workspaces/:id/notifications/:destinationId',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return disconnectWorkspaceNotification(deps.store.sql,userId,c.req.param('id'),c.req.param('destinationId'),body.confirm);
+  }));
+  app.post('/api/workspaces/:id/notifications/:destinationId/test',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    const result=await requestWorkspaceNotificationTest(deps.store.sql,userId,c.req.param('id'),c.req.param('destinationId'),body.requestKey,{email:resendConfigured(deps.config),slack:!!deps.config.sessionSecret});
+    deps.wakeWorker?.();
+    return result;
+  }));
+  app.get('/api/workspaces/:id/tokens',c=>workspaceAction(c,userId=>listWorkspaceTokens(deps.store.sql,userId,c.req.param('id'),c.req.query('before'))));
+  app.post('/api/workspaces/:id/tokens',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return mintWorkspaceToken(deps.store.sql,userId,c.req.param('id'),body.name);
+  }));
+  app.delete('/api/workspaces/:id/tokens/:tokenId',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return revokeWorkspaceToken(deps.store.sql,userId,c.req.param('id'),c.req.param('tokenId'),body.confirm);
+  }));
+  app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1'})));
+  app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
+  app.get('/api/workspaces/:id/alerts/:alertId/assignees',c=>workspaceAction(c,userId=>workspaceAlertAssignees(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'))));
+  app.post('/api/workspaces/:id/alerts/:alertId/respond',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return respondToWorkspaceAlert(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),typeof body.action==='string'?body.action:'',body.note,body.userId);
+  }));
+  app.get('/api/workspaces/:id/scan-policy',c=>workspaceAction(c,async userId=>({policy:await getWorkspaceArtifactPolicy(deps.store.sql,userId,c.req.param('id'))})));
+  app.get('/api/workspaces/:id/exceptions',c=>workspaceAction(c,userId=>listWorkspaceExceptions(deps.store.sql,userId,c.req.param('id'),c.req.query('before'))));
+  app.get('/api/workspaces/:id/exceptions/:exceptionId',c=>workspaceAction(c,userId=>workspaceExceptionDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('exceptionId'))));
+  app.post('/api/workspaces/:id/exceptions',c=>workspaceAction(c,async userId=>requestWorkspaceException(deps.store.sql,userId,c.req.param('id'),jsonObj(await c.req.json().catch(()=>null)))));
+  app.post('/api/workspaces/:id/exceptions/:exceptionId/decision',c=>workspaceAction(c,async userId=>{
+    const body=jsonObj(await c.req.json().catch(()=>null));
+    return decideWorkspaceException(deps.store.sql,userId,c.req.param('id'),c.req.param('exceptionId'),body.action,body.note);
+  }));
+  app.put('/api/workspaces/:id/scan-policy',c=>workspaceAction(c,async userId=>({policy:await saveWorkspaceArtifactPolicy(deps.store.sql,userId,c.req.param('id'),jsonObj(await c.req.json().catch(()=>null)))})));
+  app.get('/api/uploads/:id/sharing',c=>workspaceAction(c,userId=>previewUploadedProof(deps.store.sql,userId,c.req.param('id'))));
+  app.post('/api/uploads/:id/sharing',c=>workspaceAction(c,async userId=>{
+    const body=await c.req.json().catch(()=>null);
+    if(body?.confirm!==true)throw Object.assign(new Error('Confirm publication of the redacted summary.'),{status:400});
+    return publishUploadedProof(deps.store.sql,userId,c.req.param('id'));
+  }));
+  app.delete('/api/uploads/:id/sharing',c=>workspaceAction(c,userId=>revokeUploadedProof(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/public/upload-proofs/:token',async c=>{
+    c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Robots-Tag','noindex');
+    const limited=await rateLimited(c,discoveryLimiter,`public-proof:${requestIp(c)}`,deps.config.discoveryRateWindowMs,'Too many proof requests. Wait and try again.');
+    if(limited)return limited;
+    try{return c.json(await readUploadedProof(deps.store.sql,c.req.param('token')));}
+    catch(error){return c.json({error:'Proof unavailable.'},errorStatus(error));}
+  });
+  app.get('/api/organizations/:id/access',c=>workspaceAction(c,userId=>organizationAccess(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/organizations/:id/deletion-requests',c=>workspaceAction(c,async userId=>({requests:await listDeletionRequests(deps.store.sql,userId,c.req.param('id'))})));
+  app.get('/api/organizations/:id/deletion-impact',c=>workspaceAction(c,userId=>deletionImpact(deps.store.sql,userId,c.req.param('id'),{scope:c.req.query('scope'),workspaceId:c.req.query('workspaceId')})));
+  app.post('/api/organizations/:id/deletion-requests',c=>workspaceAction(c,async userId=>requestDeletion(deps.store.sql,userId,c.req.param('id'),jsonObj(await c.req.json().catch(()=>null)))));
+  app.post('/api/organizations/:id/deletion-requests/:request/withdraw',c=>workspaceAction(c,userId=>withdrawDeletionRequest(deps.store.sql,userId,c.req.param('id'),c.req.param('request'))));
+  app.patch('/api/organizations/:id/access/:member',c=>workspaceAction(c,async userId=>{
+    const body=await c.req.json().catch(()=>null);
+    return changeOrganizationAccess(deps.store.sql,userId,c.req.param('id'),c.req.param('member'),body?.role);
+  }));
+  app.post('/api/workspace-invitations/:id/accept',c=>workspaceAction(c,userId=>acceptWorkspaceInvite(deps.store.sql,userId,c.req.param('id'))));
+  app.get('/api/workspaces/:id/team',c=>workspaceAction(c,userId=>workspaceTeam(deps.store.sql,userId,c.req.param('id'))));
+  app.post('/api/workspaces/:id/connections/:installation/move',c=>workspaceAction(c,async userId=>{
+    const body=await c.req.json().catch(()=>null);
+    if(typeof body?.destinationWorkspaceId!=='string')throw Object.assign(new Error('Choose a destination workspace.'),{status:400});
+    return moveUnusedWorkspaceConnection(deps.store.sql,userId,Number(c.req.param('installation')),c.req.param('id'),body.destinationWorkspaceId);
+  }));
+  app.post('/api/workspaces/:id/invitations',c=>workspaceAction(c,async userId=>{
+    if(!await deps.store.reserveRequest(`workspace-invite:${userId}`,40,60*60*1000))throw Object.assign(new Error('Too many invitations. Please try again later.'),{status:429});
+    const body=await c.req.json().catch(()=>null);
+    return {invite:await inviteWorkspaceMember(deps.store.sql,userId,c.req.param('id'),body?.login,body?.role)};
+  }));
+  app.post('/api/workspaces/:id/invitations/:invite/revoke',c=>workspaceAction(c,userId=>revokeWorkspaceInvite(deps.store.sql,userId,c.req.param('id'),c.req.param('invite'))));
+  app.patch('/api/workspaces/:id/members/:member',c=>workspaceAction(c,async userId=>{
+    const body=await c.req.json().catch(()=>null);
+    return changeWorkspaceMember(deps.store.sql,userId,c.req.param('id'),c.req.param('member'),body?.role);
+  }));
+  app.delete('/api/workspaces/:id/members/:member',c=>workspaceAction(c,userId=>changeWorkspaceMember(deps.store.sql,userId,c.req.param('id'),c.req.param('member'),null)));
+
+  app.post('/api/workspaces',async c=>{
+    const user=await currentUser(c);
+    if(!user)return c.json({error:'Sign in first.'},401);
+    const body=await c.req.json().catch(()=>null);
+    if(!body || typeof body.organizationId!=='string')return c.json({error:'Choose an organisation.'},400);
+    try{return c.json({workspace:await createWorkspace(deps.store.sql,user.userId,body.organizationId,body.name)},201);}
+    catch(error){
+      if(!(error instanceof Error) || !('status' in error))return c.json({error:'Could not create workspace. Please retry.'},500);
+      return c.json({error:error.message},errorStatus(error));
+    }
+  });
+
+  app.patch('/api/workspaces/:id',async c=>{
+    const user=await currentUser(c);
+    if(!user)return c.json({error:'Sign in first.'},401);
+    const body=await c.req.json().catch(()=>null);
+    if(!body || typeof body!=='object' || Array.isArray(body))return c.json({error:'Supply workspace changes.'},400);
+    try{return c.json({workspace:await updateWorkspace(deps.store.sql,user.userId,c.req.param('id'),{name:body.name,archived:body.archived})});}
+    catch(error){
+      if(!(error instanceof Error) || !('status' in error))return c.json({error:'Could not update workspace. Please retry.'},500);
+      return c.json({error:error.message},errorStatus(error));
+    }
+  });
+
   app.get("/api/repos", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const repos = await deps.store.listReposForUser(user.userId, queryInstallationId(c));
-    return c.json({ repos });
+    return c.json({ repos:repos.map(row=>({...row,monitoring:sourceMonitoring(deps.config.pollIntervalMs,row.last_checked_at)})) });
+  });
+
+  app.get('/api/repos/disconnected',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const installationId=queryInstallationId(c);
+    if(!installationId)return c.json({error:'Choose a connection.'},400);
+    return c.json({repos:await deps.store.listDisconnectedReposForUser(user.userId,installationId)});
   });
 
   app.get("/api/alerts", async (c) => {
@@ -2395,6 +2790,31 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(payload);
   });
 
+  app.get('/api/alerts/:id/recheck',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const id=Number(c.req.param('id'));if(!Number.isSafeInteger(id)||id<=0)return c.json({error:'Unknown alert.'},404);
+    const target=await alertRecheckTarget(deps.store,user.userId,id);if(!target)return c.json({error:'Unknown alert.'},404);
+    if(c.req.query('installationId')!==undefined&&Number(c.req.query('installationId'))!==target.installationId)return c.json({error:'Unknown alert.'},404);
+    const workspaceId=c.req.query('workspaceId');
+    if(workspaceId){
+      const workspaces=await listUserWorkspaces(deps.store.sql,user.userId);
+      if(!workspaces.some(w=>w.id===workspaceId&&w.installation_ids.map(Number).includes(target.installationId)))return c.json({error:'Unknown alert.'},404);
+    }
+    return c.json({target});
+  });
+  app.get('/api/alerts/:id/releases',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const id=Number(c.req.param('id'));if(!Number.isSafeInteger(id)||id<=0)return c.json({error:'Unknown alert.'},404);
+    const alert=await deps.store.getAlertForUser(id,user.userId);if(!alert)return c.json({error:'Unknown alert.'},404);
+    const installationId=Number(alert.installation_id);
+    if(c.req.query('installationId')!==undefined&&Number(c.req.query('installationId'))!==installationId)return c.json({error:'Unknown alert.'},404);
+    const workspaceId=c.req.query('workspaceId');
+    if(workspaceId){
+      const workspaces=await listUserWorkspaces(deps.store.sql,user.userId);
+      if(!workspaces.some(w=>w.id===workspaceId&&w.installation_ids.map(Number).includes(installationId)))return c.json({error:'Unknown alert.'},404);
+    }
+    return c.json({releases:await listAlertReleaseLinks(deps.store.sql,user.userId,id,installationId)});
+  });
   app.get("/api/alerts/:id/events", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -2411,9 +2831,13 @@ export function createApp(deps: AppDeps): Hono {
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
-    const row = await deps.store.acknowledgeAlertForUser(id, user.userId, user.login);
-    if (!row) return c.json({ error: "Unknown alert." }, 404);
-    return c.json({ ok: true, alert: publicAlert(row) });
+    try {
+      const row = await deps.store.acknowledgeAlertForUser(id, user.userId, user.login);
+      if (!row) return c.json({ error: "Unknown alert." }, 404);
+      return c.json({ ok: true, alert: publicAlert(row) });
+    } catch(error) {
+      return c.json({error:error instanceof Error?error.message:'Could not acknowledge that alert.'},errorStatus(error));
+    }
   });
 
   app.post("/api/alerts/:id/assign", async (c) => {
@@ -2423,9 +2847,10 @@ export function createApp(deps: AppDeps): Hono {
     if (!Number.isFinite(id) || id <= 0) return c.json({ error: "Unknown alert." }, 404);
     const body = jsonObj(await c.req.json().catch(() => ({})));
     const login = typeof body.login === "string" ? body.login.trim() : "";
-    if (!login) return c.json({ error: "Assign only to someone on this GitHub install." }, 400);
+    const memberId=body.userId===null?null:typeof body.userId==='string'?body.userId.trim():undefined;
+    if (memberId===null&&login || memberId!==null&&!login&&!memberId) return c.json({ error: "Choose a current workspace member or explicitly clear assignment." }, 400);
     try {
-      const row = await deps.store.assignAlertForUser(id, user.userId, user.login, login);
+      const row = await deps.store.assignAlertForUser(id, user.userId, user.login, login,memberId);
       if (!row) return c.json({ error: "Unknown alert." }, 404);
       return c.json({ ok: true, alert: publicAlert(row) });
     } catch (error) {
@@ -2434,6 +2859,13 @@ export function createApp(deps: AppDeps): Hono {
         errorStatus(error),
       );
     }
+  });
+
+  app.get('/api/alerts/:id/assignees',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const id=Number(c.req.param('id'));if(!Number.isSafeInteger(id)||id<=0)return c.json({error:'Unknown alert.'},404);
+    const members=await deps.store.listAlertAssignees(id,user.userId);
+    return members?c.json({members}):c.json({error:'Unknown alert.'},404);
   });
 
   app.post("/api/alerts/:id/resolve", async (c) => {
@@ -2559,7 +2991,7 @@ export function createApp(deps: AppDeps): Hono {
     const login = parseGithubLogin(loginRaw);
     if (!login) return c.json({ error: GITHUB_LOGIN_ERROR }, 400);
     const role = parseInstallationRole(body.role);
-    if (!role) return c.json({ error: "Role must be admin or member." }, 400);
+    if (!role) return c.json({ error: "Role must be admin, member or viewer." }, 400);
     const adminDenied = await requireInstallAdmin(user.userId, installationId);
     if (adminDenied) return c.json({ error: adminDenied.error }, adminDenied.status);
     const billing = await deps.store.installationBilling(installationId);
@@ -2645,7 +3077,7 @@ export function createApp(deps: AppDeps): Hono {
     }
     const body = jsonObj(await c.req.json().catch(() => ({})));
     const role = parseInstallationRole(body.role);
-    if (!role) return c.json({ error: "Role must be admin or member." }, 400);
+    if (!role) return c.json({ error: "Role must be admin, member or viewer." }, 400);
     const targetUserId = typeof body.userId === "string" ? body.userId.trim() : "";
     if (!targetUserId) return c.json({ error: "Choose a member on this install." }, 400);
     const adminDenied = await requireInstallAdmin(user.userId, installationId);
@@ -2749,7 +3181,7 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep scanning releases.",
     );
     if (denied) return c.json({ error: denied.error }, denied.status);
-    const latestLimited = rateLimited(
+    const latestLimited = await rateLimited(
       c,
       scanLimiter,
       `scan:${requestIp(c)}`,
@@ -2790,7 +3222,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!allowed.some((row) => row.id === repo.id)) {
       return c.json({ error: "That repository is not on your install." }, 403);
     }
-    const limited = rateLimited(
+    const limited = await rateLimited(
       c,
       authLimiter,
       `setup-status:${requestIp(c)}`,
@@ -3351,16 +3783,17 @@ export function createApp(deps: AppDeps): Hono {
   app.post("/api/v1/scan", async (c) => {
     const presented = parseScanBearer(c.req.header("authorization"));
     if (!presented) return c.json({ error: "Provide a scan API token as a Bearer credential." }, 401);
-    const auth = await deps.store.authenticateScanToken(presented);
+    const independent=await authenticateWorkspaceToken(deps.store.sql,presented);
+    const auth = independent?{...independent,installationId:null}:await deps.store.authenticateScanToken(presented);
     if (!auth) return c.json({ error: "Invalid or revoked scan API token." }, 401);
-    const scanDenied = await hostedWorkDenied(
+    const scanDenied = auth.installationId===null?null:await hostedWorkDenied(
       deps.store,
       auth.installationId,
       "Coverage ended. Subscribe to unpack on our servers.",
     );
     if (scanDenied) return c.json({ error: scanDenied.error }, scanDenied.status);
     const ip = requestIp(c);
-    const v1Limited = rateLimited(
+    const v1Limited = await rateLimited(
       c,
       scanLimiter,
       `v1:${auth.id}:${ip}`,
@@ -3371,7 +3804,7 @@ export function createApp(deps: AppDeps): Hono {
     const filenameHeader = c.req.header("x-filename");
     const filename =
       filenameHeader && filenameHeader.length > 0 ? path.basename(filenameHeader) : "upload.bin";
-    const coordinate = `api:${auth.installationId}#${filename}`;
+    const coordinate = `api:${independent?.workspaceId??auth.installationId}#${filename}`;
     let releaseMeta: ReturnType<typeof parseReleaseScanMeta>;
     try {
       releaseMeta = parseReleaseScanMeta({
@@ -3389,87 +3822,42 @@ export function createApp(deps: AppDeps): Hono {
             : "Invalid release metadata.";
       return c.json({ error: message }, 400);
     }
-    const buf = Buffer.from(await c.req.arrayBuffer());
-    if (buf.length === 0) return c.json({ error: "Upload a packed artifact." }, 400);
-    if (!(await deps.store.consumeHostedUnpack(auth.installationId))) {
-      await deps.store.noteFairUseExhausted(auth.installationId);
-      return fairUseResponse(c);
-    }
+    let buf: Buffer;
     try {
-      await deps.store.touchScanApiToken(auth.id);
-      if (buf.length > MAX_UPLOAD) {
-        const report = {
-          target: filename,
-          kind: "file" as const,
-          fileCount: 0,
-          findings: [],
-          ok: false,
-          status: "inconclusive" as const,
-          inconclusiveReason: "Upload is larger than 80 MB.",
-          manifest: [],
-          engineVersion: ENGINE_VERSION,
-          artifactSha256: createHash("sha256").update(buf).digest("hex"),
-          artifactSha512: createHash("sha512").update(buf).digest("hex"),
-          artifactBytes: buf.length,
-          scannedAt: new Date().toISOString(),
-          suppressed: [],
-          policyHash: null,
-          workspaces: [],
-        };
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.config.receiptSecret,
-          installationId: auth.installationId,
-          coordinate,
-          report,
-          ...releaseMeta,
-        });
-        return c.json({
-          report: persisted.report,
-          receipt: persisted.receipt,
-          receiptId: persisted.row.id,
-          release: publicRelease(persisted.revision),
-        });
-      }
-      const dir = path.join(os.tmpdir(), "nospoilers-api-scan");
-      await mkdir(dir, { recursive: true });
-      const dest = path.join(dir, `${Date.now()}-${filename.replace(/[^\w.-]+/g, "_")}`);
-      try {
-        await writeFile(dest, buf);
-        const report = await applyHostedPolicy(
-          deps.store,
-          await scanFn(dest),
-          auth.installationId,
-        );
-        const persisted = await persistHostedReceipt({
-          store: deps.store,
-          secret: deps.config.receiptSecret,
-          installationId: auth.installationId,
-          coordinate,
-          report,
-          ...releaseMeta,
-        });
-        return c.json({
-          report: persisted.report,
-          receipt: persisted.receipt,
-          receiptId: persisted.row.id,
-          release: publicRelease(persisted.revision),
-        });
-      } finally {
-        await writeFile(dest, Buffer.alloc(0)).catch(() => undefined);
-        await unlink(dest).catch(() => undefined);
-      }
+      buf = await readBoundedBody(c.req.raw.body,MAX_UPLOAD,c.req.header("content-length"));
     } catch (error) {
-      await deps.store.refundHostedUnpack(auth.installationId);
-      throw error;
+      return c.json({ error: "Upload exceeds the allowed request size." }, errorStatus(error));
     }
+    if (buf.length === 0) return c.json({ error: "Upload a packed artifact." }, 400);
+    try {
+      const uploadId=c.req.header('idempotency-key')??crypto.randomUUID();
+      if(!/^[a-f0-9-]{36}$/i.test(uploadId))return c.json({error:'Use a UUID Idempotency-Key.'},400);
+      await deps.store.queueUploadedScan({id:uploadId,userId:null,installationId:auth.installationId,workspaceId:independent?.workspaceId,tokenId:auth.id,target:filename,bytes:buf,meta:{coordinate,...releaseMeta}});
+      await deps.store.touchScanApiToken(auth.id);
+      deps.wakeWorker?.();
+      c.header('Location',`/api/v1/scans/${uploadId}`);
+      return c.json({queued:true,uploadId,statusUrl:`/api/v1/scans/${uploadId}`},202);
+    } catch(error) {
+      return c.json({error:error instanceof Error?error.message:'Could not queue scan.'},errorStatus(error));
+    }
+  });
+
+  app.get('/api/v1/scans/:id',async c=>{
+    const presented=parseScanBearer(c.req.header('authorization'));
+    const independent=presented?await authenticateWorkspaceToken(deps.store.sql,presented):null;
+    const auth=independent?{...independent,installationId:null}:presented?await deps.store.authenticateScanToken(presented):null;
+    if(!auth)return c.json({error:'Invalid or revoked scan API token.'},401);
+    const upload=independent?await deps.store.getWorkspaceTokenUpload(independent.workspaceId,c.req.param('id')):auth.installationId!==null?await deps.store.getInstallationUpload(auth.installationId,c.req.param('id')):null;
+    if(!upload)return c.json({error:'Scan not found.'},404);
+    const revision=upload.revision_id?await deps.store.getReleaseRevision(Number(upload.revision_id)):null;
+    return c.json({uploadId:upload.id,status:upload.status,report:upload.report_json,receipt:upload.receipt_json,receiptId:upload.receipt_id,release:revision?publicRelease(revision):null,error:upload.error});
   });
 
   app.get("/api/packages", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
     const packages = await deps.store.listWatchedPackagesForUser(user.userId, queryInstallationId(c));
-    return c.json({ packages });
+    return c.json({ packages:packages.map(row=>({...row,monitoring:sourceMonitoring(deps.config.pollIntervalMs,row.last_checked_at)})) });
   });
 
   app.get("/api/protections", async (c) => {
@@ -3735,7 +4123,7 @@ export function createApp(deps: AppDeps): Hono {
       await deps.store.noteFairUseExhausted(pkg.installation_id);
       return fairUseResponse(c);
     }
-    const checkLimited = rateLimited(
+    const checkLimited = await rateLimited(
       c,
       scanLimiter,
       `scan:${requestIp(c)}`,
@@ -3757,6 +4145,7 @@ export function createApp(deps: AppDeps): Hono {
         id: row.id,
         installation_id: row.installation_id,
         origin_url: row.origin_url,
+        monitoring: sourceMonitoring(Math.max(3_600_000,deps.config.pollIntervalMs),row.last_checked_at),
         host: row.host,
         last_sha256: row.last_sha256,
         last_checked_at: row.last_checked_at,
@@ -3813,6 +4202,56 @@ export function createApp(deps: AppDeps): Hono {
         errorStatus(error),
       );
     }
+  });
+
+  app.post('/api/workspaces/:workspaceId/origins',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const limited=await rateLimited(c,scanLimiter,`origin-connect:${user.userId}`,deps.config.scanRateWindowMs,'Too many website connection requests. Try again shortly.');if(limited)return limited;
+    try{
+      const body=jsonObj(await c.req.json().catch(()=>null));
+      const origin=await createWorkspaceOrigin(deps.store.sql,user.userId,c.req.param('workspaceId'),typeof body.url==='string'?body.url:'');
+      return c.json({origin,verification:domainVerificationChallenge(origin.host,origin.verification_token),queued:false},201);
+    }catch(error){return c.json({error:error instanceof Error?error.message:'Website connection failed.'},errorStatus(error));}
+  });
+  app.get('/api/workspaces/:workspaceId/origins',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    try{return c.json({origins:await listWorkspaceOrigins(deps.store.sql,user.userId,c.req.param('workspaceId'))});}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Website sources unavailable.'},errorStatus(error));}
+  });
+  app.post('/api/workspaces/:workspaceId/origins/:id/check',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const limited=await rateLimited(c,scanLimiter,`workspace-website-scan:${user.userId}`,deps.config.scanRateWindowMs,'Too many scan requests. Try again shortly.');if(limited)return limited;
+    try{
+      const body=jsonObj(await c.req.json().catch(()=>null));
+      if(typeof body.attemptId!=='string'||! /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(body.attemptId))return c.json({error:'A valid scan request identifier is required.'},400);
+      const workspaceId=c.req.param('workspaceId');
+      const source=(await listWorkspaceOrigins(deps.store.sql,user.userId,workspaceId)).find(row=>row.id===Number(c.req.param('id')));
+      if(!source)return c.json({error:'Website unavailable.'},404);
+      const id=await deps.store.queueUploadedScan({id:body.attemptId,userId:user.userId,installationId:null,workspaceId,target:source.origin_url,bytes:new Uint8Array(),sourceOriginId:source.id,meta:{coordinate:`web:${source.origin_url}`}});
+      deps.wakeWorker?.();return c.json({id,statusUrl:`/api/uploads/${encodeURIComponent(id)}`,releaseUrl:`/watch/releases?workspace=${encodeURIComponent(workspaceId)}&upload=${encodeURIComponent(id)}&uploadView=detail`},202);
+    }catch(error){return c.json({error:error instanceof Error?error.message:'Website scan could not be queued.'},errorStatus(error));}
+  });
+  app.post('/api/workspaces/:workspaceId/origins/:id/schedule',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const limited=await rateLimited(c,scanLimiter,`origin-schedule:${user.userId}`,deps.config.scanRateWindowMs,'Too many schedule changes. Try again shortly.');if(limited)return limited;
+    try{const body=jsonObj(await c.req.json().catch(()=>null));return c.json(await setWorkspaceOriginSchedule(deps.store.sql,user.userId,c.req.param('workspaceId'),Number(c.req.param('id')),typeof body.hours==='number'?body.hours:-1));}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Website schedule could not be changed.'},errorStatus(error));}
+  });
+  app.post('/api/workspaces/:workspaceId/origins/:id/lifecycle',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    try{const body=jsonObj(await c.req.json().catch(()=>null));return c.json(await changeWorkspaceOrigin(deps.store.sql,user.userId,c.req.param('workspaceId'),Number(c.req.param('id')),String(body.action??''),typeof body.confirmation==='string'?body.confirmation:undefined));}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Website state could not be changed.'},errorStatus(error));}
+  });
+  app.post('/api/workspaces/:workspaceId/origins/:id/verify',async c=>{
+    const user=await currentUser(c);if(!user)return c.json({error:'Sign in first.'},401);
+    const limited=await rateLimited(c,scanLimiter,`origin-verify:${user.userId}`,deps.config.scanRateWindowMs,'Too many ownership checks. Try again shortly.');if(limited)return limited;
+    try{
+      const body=jsonObj(await c.req.json().catch(()=>null));
+      if(body.method!=='dns'&&body.method!=='http')return c.json({error:'Choose DNS or HTTP verification.'},400);
+      const result=await verifyWorkspaceOrigin(deps.store.sql,user.userId,c.req.param('workspaceId'),Number(c.req.param('id')),body.method,
+        (host,token,method)=>(deps.verifyDomain??verifyDomainOwnership)(host,token,method,{lookup:deps.webhookLookup}));
+      return c.json({...result,queued:false});
+    }catch(error){return c.json({error:error instanceof Error?error.message:'Website verification failed.'},errorStatus(error));}
   });
 
   app.post("/api/origins/:id/verification", async (c) => {
@@ -3954,7 +4393,7 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({ error: FAIR_USE_EXHAUSTED }, 429);
     }
     if (result.inserted) deps.wakeWorker?.();
-    return c.json({ ok: true, queued: result.inserted, duplicate: !result.inserted }, 202);
+    return c.json({ ok: true, queued: result.inserted, duplicate: !result.inserted, jobId: result.id }, 202);
   });
 
   app.delete("/api/origins/:id", async (c) => {
@@ -3999,7 +4438,7 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to keep watching production websites.",
     );
     if (checkDenied) return c.json({ error: checkDenied.error }, checkDenied.status);
-    const originLimited = rateLimited(
+    const originLimited = await rateLimited(
       c,
       scanLimiter,
       `scan:${requestIp(c)}`,
@@ -4047,7 +4486,7 @@ export function createApp(deps: AppDeps): Hono {
       user.userId,
       queryInstallationId(c),
     );
-    return c.json({ destinations: destinations.map(publicMapDestination) });
+    return c.json({ destinations: destinations.map(row=>({...publicMapDestination(row),monitoring:sourceMonitoring(Math.max(3_600_000,deps.config.pollIntervalMs),row.last_checked_at)})) });
   });
 
   app.post("/api/map-destinations", async (c) => {
@@ -4758,7 +5197,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/verify/:token", async (c) => {
-    const verifyLimited = rateLimited(
+    const verifyLimited = await rateLimited(
       c,
       scanLimiter,
       `verify:${requestIp(c)}`,
@@ -4790,7 +5229,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/advisory/:token", async (c) => {
-    const advisoryLimited = rateLimited(
+    const advisoryLimited = await rateLimited(
       c,
       scanLimiter,
       `verify:${requestIp(c)}`,
@@ -4969,6 +5408,19 @@ export function createApp(deps: AppDeps): Hono {
         attestations,
       ),
     });
+  });
+
+  app.get('/api/releases/:id/evidence', async c=>{
+    const user=await currentUser(c);
+    if(!user)return c.json({error:'Sign in to inspect release evidence.'},401);
+    const id=Number(c.req.param('id'));
+    if(!Number.isSafeInteger(id)||id<=0)return c.json({error:'Unknown release.'},404);
+    const release=await deps.store.getReleaseRevisionForUser(id,user.userId);
+    if(!release)return c.json({error:'Unknown release.'},404);
+    const evidence=(await deps.store.sql.query<{report:unknown;workspace_id:string|null}>(`SELECT report,workspace_id FROM hosted_scan_evidence WHERE receipt_id=$1 AND installation_id=$2`,[release.receipt_id,release.installation_id])).rows[0];
+    c.header('Cache-Control','no-store');
+    if(!evidence)return c.json({available:false,reason:'Full finding details were not retained for this historical scan. Its signed receipt remains available.'});
+    return c.json({available:true,report:evidence.report,workspaceId:evidence.workspace_id,releaseId:release.id});
   });
 
   app.get("/api/releases/:id/attestations", async (c) => {
@@ -5331,7 +5783,7 @@ export function createApp(deps: AppDeps): Hono {
       "Coverage ended. Subscribe to verify delivery URLs.",
     );
     if (verifyDenied) return c.json({ error: verifyDenied.error }, verifyDenied.status);
-    const verifyLimited = rateLimited(
+    const verifyLimited = await rateLimited(
       c,
       scanLimiter,
       `scan:${requestIp(c)}`,
@@ -5384,7 +5836,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.post("/api/receipts/verify", async (c) => {
-    const verifyLimited = rateLimited(
+    const verifyLimited = await rateLimited(
       c,
       scanLimiter,
       `verify:${requestIp(c)}`,
@@ -5402,7 +5854,7 @@ export function createApp(deps: AppDeps): Hono {
     if (!raw) return c.json({ error: "Provide a receipt object or JSON string." }, 400);
     const expected = typeof body.sha256 === "string" ? body.sha256 : undefined;
     const result = verifyReceipt(raw, deps.config.receiptSecret, expected);
-    if (!result.ok) return c.json({ ok: false, reason: result.reason }, 400);
+    if (!result.ok) return c.json({ ok: false, code: result.code, reason: result.reason }, 400);
     const receipt = result.receipt;
     return c.json({
       ok: true,

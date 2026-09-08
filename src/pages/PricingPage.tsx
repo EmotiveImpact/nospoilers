@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 type Me = {
   user: { login: string } | null
+  githubApp?: boolean
   stripe?: boolean
   installations?: {
     id: number
@@ -43,6 +44,16 @@ export function PricingPage() {
   const selected = adminInstalls.find((row) => row.id === installId) ?? adminInstalls[0] ?? null
   const canCheckout = Boolean(me?.user && stripeLive && selected)
 
+  function openWatch() {
+    if (me?.user) {
+      navigate("/watch")
+    } else if (me?.githubApp) {
+      window.location.assign("/api/auth/github")
+    } else {
+      navigate("/watch")
+    }
+  }
+
   async function startCheckout(plan: "solo" | "team", interval: "month" | "year") {
     if (!selected) {
       navigate("/watch")
@@ -74,7 +85,7 @@ export function PricingPage() {
         Pay to keep the bot thinking.
       </h1>
       <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-        Not scan credits. Credits train people to turn it off. 14-day full trial, then the card
+        Not scan credits. Credits train people to turn it off. 5-day full trial, then the card
         bills. Yearly is 10 months for the price of 12.
       </p>
       {canceled ? (
@@ -122,7 +133,7 @@ export function PricingPage() {
               </Button>
             </div>
           ) : (
-            <Button type="button" className="mt-8" onClick={() => navigate(me?.user ? "/watch" : "/watch?as=trial")}>
+            <Button type="button" className="mt-8" onClick={openWatch}>
               {me?.user ? "Open watch desk" : "Start trial"}
             </Button>
           )}
@@ -151,7 +162,7 @@ export function PricingPage() {
               </Button>
             </div>
           ) : (
-            <Button type="button" className="mt-8" onClick={() => navigate(me?.user ? "/watch" : "/watch?as=trial")}>
+            <Button type="button" className="mt-8" onClick={openWatch}>
               {me?.user ? "Open watch desk" : "Start trial"}
             </Button>
           )}

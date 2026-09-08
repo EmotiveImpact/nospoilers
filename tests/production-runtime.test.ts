@@ -21,6 +21,18 @@ import {
 } from "../src/server/sql.ts";
 import { serveUi } from "../src/server/static.ts";
 import { createStore } from "../src/server/store.ts";
+import { createWorker } from "../src/server/worker.ts";
+
+it('drains due notifications and reaches idle without repeatedly launching empty tasks',async()=>{
+ const sql=await openSql('pglite://:memory:');
+ try {
+  await migrate(sql);let calls=0;
+  const worker=createWorker({store:createStore(sql),github:unusedGithub(),notifier:{send:async()=>{}},heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:1024,intervalMs:1000,
+   processNotification:async()=>++calls<=2});
+  await worker.runUntilIdle();expect(calls).toBe(3);
+  await worker.stop();await worker.tick();expect(calls).toBe(3);
+ }finally{await sql.close();}
+});
 
 function unusedGithub(): GithubPort {
   const fail = async (): Promise<never> => {
@@ -82,16 +94,14 @@ describe("runtime migrations", () => {
   it("adds origin verification columns to an existing database before indexing them", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
-      await migrate(sql);
-      await sql.exec(`
-        DROP INDEX IF EXISTS watched_origins_deploy_token_uidx;
-        ALTER TABLE watched_origins DROP COLUMN deploy_token_hash;
-        ALTER TABLE watched_origins DROP COLUMN deploy_token_prefix;
-        ALTER TABLE watched_origins DROP COLUMN verification_token;
-        ALTER TABLE watched_origins DROP COLUMN verification_method;
-        ALTER TABLE watched_origins DROP COLUMN verified_at;
-        DELETE FROM schema_migrations WHERE id = '063_origin_verification';
-      `);
+      // Start with the pre-verification table, not a modern schema with erased
+      // migration receipts (which would falsely replay non-idempotent migrations).
+      await sql.exec(`CREATE TABLE watched_origins (
+        id BIGSERIAL PRIMARY KEY,installation_id BIGINT NOT NULL,origin_url TEXT NOT NULL,host TEXT NOT NULL,
+        last_sha256 TEXT,last_checked_at TIMESTAMPTZ,last_scanned_at TIMESTAMPTZ,last_scan_status TEXT,
+        last_debug_ids JSONB NOT NULL DEFAULT '[]',last_release TEXT,last_public_map BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(installation_id,origin_url)
+      )`);
       expect(await migrateIfNeeded(sql)).toBe(true);
       const { rows } = await sql.query<{ n: string }>(
         `SELECT count(*)::text AS n
@@ -106,6 +116,7 @@ describe("runtime migrations", () => {
            )`,
       );
       expect(Number(rows[0]?.n)).toBe(5);
+      expect(await migrateIfNeeded(sql)).toBe(false);
     } finally {
       await sql.close();
     }

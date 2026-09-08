@@ -2,12 +2,13 @@ import { signOut } from "@/auth.ts"
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react"
 import { LogInButton } from "@/components/AuthControls.tsx"
 import { Button } from "@/components/ui/button"
-import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts"
+import { coverageFrom, type Coverage } from "@/coverage.ts"
 import { LEGAL_NAV } from "@/legal.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import { isWatchDeskPath } from "@/watch/routes.ts"
 import { Menu as MenuIcon } from "lucide-react"
+import { V20PublicShell } from "@/components/marketing/V20PublicShell.tsx"
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 
 const LINKS = [
@@ -31,14 +32,7 @@ function go(event: MouseEvent<HTMLAnchorElement>, href: string) {
   navigate(href)
 }
 
-function productHref(href: string, search: string, signedIn: boolean): string {
-  if (signedIn) return href
-  const as = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("as")
-  if (href === "/watch") return as === "ended" ? "/watch?as=ended" : "/watch?as=trial"
-  if (href === "/scan") {
-    if (as === "ended") return "/scan?as=ended"
-    if (as === "trial") return "/scan?as=trial"
-  }
+function productHref(href: string): string {
   return href
 }
 
@@ -68,6 +62,10 @@ export function SiteChrome({
         if (cancelled) return
         setGithubApp(Boolean(body.githubApp))
         if (body.user) {
+          if (path === "/scan" && new URLSearchParams(search).get("reveal") !== "1") {
+            navigate(`/watch/scan${search}`)
+            return
+          }
           setLogin(body.user.login)
           const wanted = Number(
             new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("install"),
@@ -92,14 +90,28 @@ export function SiteChrome({
     }
   }, [path, search])
 
-  const preview = coverageFromQuery(search)
-  const coverage = sessionCoverage ?? preview
+  const coverage = sessionCoverage
   const ended = coverage?.status === "ended"
   const signedIn = Boolean(login)
-  const previewing = Boolean(coverage) && !signedIn
 
   if (isWatchDeskPath(path)) {
     return <div className="flex min-h-svh flex-col bg-ink">{children}</div>
+  }
+
+  // The V20 marketing homepage owns its approved navigation and footer.
+  if (path === "/") return <>{children}</>
+
+  // Public website routes share the V20 marketing shell. Authenticated product work lives under /watch.
+  if (
+    path === "/scan" ||
+    path === "/pricing" ||
+    path === "/docs" ||
+    path === "/status" ||
+    path === "/verify" ||
+    path === "/advisory" ||
+    LEGAL_NAV.some((link) => link.href === path)
+  ) {
+    return <V20PublicShell>{children}</V20PublicShell>
   }
 
   return (
@@ -113,8 +125,8 @@ export function SiteChrome({
             {LINKS.map((link) => (
               <a
                 key={link.href}
-                href={productHref(link.href, search, signedIn)}
-                onClick={(event) => go(event, productHref(link.href, search, signedIn))}
+                href={productHref(link.href)}
+                onClick={(event) => go(event, productHref(link.href))}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive(path, link.href) ? "text-snow" : "text-dim hover:text-snow",
@@ -150,8 +162,7 @@ export function SiteChrome({
                 <span className="hidden sm:inline-flex">
                   <LogInButton githubApp={githubApp} />
                 </span>
-                {!previewing &&
-                  (githubApp ? (
+                {githubApp ? (
                     <Button as="a" href="/api/auth/github" size="sm" className="hidden sm:inline-flex">
                       Start trial
                     </Button>
@@ -160,11 +171,11 @@ export function SiteChrome({
                       type="button"
                       size="sm"
                       className="hidden sm:inline-flex"
-                      onClick={() => navigate("/watch?as=trial")}
+                      onClick={() => navigate("/watch")}
                     >
                       Start trial
                     </Button>
-                  ))}
+                  )}
               </>
             )}
             <Menu>
@@ -179,8 +190,8 @@ export function SiteChrome({
                 {LINKS.map((link) => (
                   <MenuItem key={link.href}>
                     <a
-                      href={productHref(link.href, search, signedIn)}
-                      onClick={(event) => go(event, productHref(link.href, search, signedIn))}
+                      href={productHref(link.href)}
+                      onClick={(event) => go(event, productHref(link.href))}
                       className="block rounded px-3 py-2 text-sm text-mute data-focus:bg-white/5 data-focus:text-snow"
                     >
                       {link.label}
@@ -210,8 +221,8 @@ export function SiteChrome({
                     </MenuItem>
                     <MenuItem>
                       <a
-                        href="/watch?as=trial"
-                        onClick={(event) => go(event, "/watch?as=trial")}
+                        href={githubApp ? "/api/auth/github" : "/watch"}
+                        onClick={githubApp ? undefined : (event) => go(event, "/watch")}
                         className="block rounded px-3 py-2 text-sm text-snow data-focus:bg-white/5"
                       >
                         Start trial
@@ -263,13 +274,13 @@ export function SiteChrome({
             <ul className="mt-3 flex flex-col gap-2 text-sm text-mute">
               <li>Solo $29 / month</li>
               <li>Team $99 / month</li>
-              <li>14-day full trial</li>
+              <li>5-day full trial</li>
               <li>Yearly: 10 for the price of 12</li>
             </ul>
           </div>
         </div>
         <div className="mx-auto flex max-w-5xl flex-col gap-2 border-t border-white/5 px-5 py-5 text-xs text-dim sm:flex-row sm:justify-between">
-          <p>NoSpoilers. Hosted unpacks stop when coverage ends. The CLI on your machine does not.</p>
+          <p>Scanning and monitoring require active coverage. Receipt verification remains free.</p>
           <p>
             <code className="text-mute">npx nospoilers scan ./package.tgz</code>
           </p>

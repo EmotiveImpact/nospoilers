@@ -8,6 +8,7 @@ export function stubGithub(): GithubPort {
     exchangeCode: fail,
     getUser: fail,
     listUserInstallations: fail,
+    listInstallationRepositories: fail,
     getInstallation: fail,
     getRepo: fail,
     listReleaseAssets: fail,

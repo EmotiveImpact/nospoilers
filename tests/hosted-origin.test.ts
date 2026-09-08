@@ -43,6 +43,41 @@ describe("hosted scan origin", () => {
 });
 
 describe("hosted origin on session and setup APIs", () => {
+  it("offers an explicitly enabled review session on loopback but never on a public host", async () => {
+    const previous=process.env.NOSPOILERS_LOCAL_REVIEW;
+    process.env.NOSPOILERS_LOCAL_REVIEW='1';
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      const loopback = createApp({
+        config: loadConfig({
+          sessionSecret: "sess",
+          appBaseUrl: "http://127.0.0.1:4347",
+        }),
+        store,
+        github: unusedGithub(),
+      });
+      const localLogin = await loopback.request("/api/auth/development");
+      expect(localLogin.status).toBe(302);
+      expect(localLogin.headers.get("location")).toBe("/watch");
+      expect(localLogin.headers.get("set-cookie")).toContain("ns_session=");
+
+      const publicApp = createApp({
+        config: loadConfig({
+          sessionSecret: "sess",
+          appBaseUrl: "https://app.example.com",
+        }),
+        store,
+        github: unusedGithub(),
+      });
+      expect((await publicApp.request("/api/auth/development")).status).toBe(404);
+    } finally {
+      if(previous===undefined)delete process.env.NOSPOILERS_LOCAL_REVIEW;else process.env.NOSPOILERS_LOCAL_REVIEW=previous;
+      await sql.close();
+    }
+  });
+
   it("omits the origin from anonymous /api/me and includes it when signed in", async () => {
     const sql = await openSql("pglite://:memory:");
     try {

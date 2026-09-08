@@ -1,5 +1,7 @@
 export type CoverageStatus = "trial" | "active" | "ended"
 
+export const TRIAL_DAYS = 5
+
 export type Coverage = {
   status: CoverageStatus
   plan: "trial" | "solo" | "team" | null
@@ -55,14 +57,4 @@ export function preferCoverage(left: Coverage, right: Coverage): Coverage {
 export function bestCoverage(rows: Coverage[]): Coverage {
   if (rows.length === 0) return coverageFrom(null, null)
   return rows.reduce(preferCoverage)
-}
-
-export function coverageFromQuery(search: string): Coverage | null {
-  const as = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("as")
-  if (as === "ended") return coverageFrom("2000-01-01T00:00:00.000Z", null)
-  if (as === "trial") {
-    const inElevenDays = new Date(Date.now() + 11 * 86_400_000).toISOString()
-    return coverageFrom(inElevenDays, "trial")
-  }
-  return null
 }

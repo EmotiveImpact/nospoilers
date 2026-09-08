@@ -74,7 +74,21 @@ function HeroTile({
   href: (view: "alerts" | "setup") => string;
 }) {
   const finding = lead ? leadFinding(lead) : null;
-  if (ended || githubPaused) {
+  if (githubPaused) {
+    return (
+      <Tile span="watch-w4" label="Review GitHub setup" alarm onOpen={() => navigate(href("setup"))}>
+        <span className="watch-kicker text-danger">GitHub monitoring is paused</span>
+        <h2 className="mt-3 font-display text-[19px] tracking-tight text-snow">{verdict.title}</h2>
+        <p className="watch-small mt-[7px] max-w-[56ch] text-mute">{verdict.detail}</p>
+        <div className="mt-auto flex flex-wrap gap-2 pt-3.5">
+          <Button type="button" size="sm" onClick={() => navigate(href("setup"))}>
+            Review GitHub setup
+          </Button>
+        </div>
+      </Tile>
+    );
+  }
+  if (ended) {
     return (
       <Tile span="watch-w4" label="See plans" alarm onOpen={() => navigate("/pricing")}>
         <span className="watch-kicker text-danger">Hosted coverage is off</span>
@@ -117,8 +131,39 @@ function HeroTile({
               Finish setup
             </Button>
           )}
-          <Button type="button" size="sm" variant="outline" onClick={() => navigate("/scan")}>
+          <Button type="button" size="sm" variant="outline" onClick={() => navigate(watchHref(watchPath("scan"), search))}>
             Scan a pack by hand
+          </Button>
+        </div>
+      </Tile>
+    );
+  }
+  if (verdict.tone === "pending" || verdict.tone === "warn") {
+    return (
+      <Tile span="watch-w4" label="Review connected sources" onOpen={() => navigate(watchHref(watchPath("sources"), search))}>
+        <span className="watch-kicker">Verdict pending</span>
+        <h2 className="mt-3 font-display text-[19px] tracking-tight text-snow">{verdict.title}</h2>
+        <p className="watch-small mt-[7px] max-w-[58ch] text-mute">{verdict.detail}</p>
+        <div className="mt-auto flex flex-wrap gap-2 pt-3.5">
+          <Button type="button" size="sm" onClick={() => navigate(watchHref(watchPath("sources"), search))}>
+            Review sources
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => navigate(watchHref(watchPath("scan"), search))}>
+            Run a package scan
+          </Button>
+        </div>
+      </Tile>
+    );
+  }
+  if (verdict.tone === "crit" && !lead) {
+    return (
+      <Tile span="watch-w4" label="Review sources needing attention" alarm onOpen={() => navigate(watchHref(watchPath("sources"), search, { attention: true }))}>
+        <span className="watch-kicker text-danger">Source needs attention</span>
+        <h2 className="mt-3 font-display text-[19px] tracking-tight text-snow">{verdict.title}</h2>
+        <p className="watch-small mt-[7px] max-w-[56ch] text-mute">{verdict.detail}</p>
+        <div className="mt-auto flex flex-wrap gap-2 pt-3.5">
+          <Button type="button" size="sm" onClick={() => navigate(watchHref(watchPath("sources"), search, { attention: true }))}>
+            Review sources
           </Button>
         </div>
       </Tile>
@@ -165,7 +210,7 @@ function HeroTile({
   }
   return (
     <Tile span="watch-w4" label="Open inbox" onOpen={() => navigate(href("alerts"))}>
-      <span className="watch-kicker">Exposure now</span>
+      <span className="watch-kicker">Latest evidence</span>
       <h2 className="mt-3 font-display text-[19px] tracking-tight text-snow">{verdict.title}</h2>
       <p className="watch-small mt-[7px] max-w-[56ch] text-mute">{verdict.detail}</p>
       <div className="mt-auto flex flex-wrap gap-2 pt-3.5">
@@ -211,7 +256,7 @@ export function WatchBentoBoard({
   const href = (view: "alerts" | "releases" | "health" | "sources" | "setup" | "policy" | "team" | "notifications") =>
     watchHref(watchPath(view), search);
   const lead = newestOpenAlert(alerts.filter((alert) => !alert.resolved_at));
-  const open = countOpenAlerts(alerts, user?.login ?? "");
+  const open = countOpenAlerts(alerts, user?.login ?? "",user?.id);
   const kinds = sourceKindCounts(sources);
   const donut = coverageDonut(sources);
   const spark = buildPackSpark(releases);
@@ -331,7 +376,17 @@ export function WatchBentoBoard({
         </span>
       </Tile>
 
-      <Tile span="watch-w3" label="Open latest sealed releases" onOpen={() => navigate(href("releases"))}>
+      <Tile
+        span="watch-w3"
+        label={sealed[0] ? `Open release brief for ${sealed[0].coordinate}` : "Open releases"}
+        onOpen={() =>
+          navigate(
+            sealed[0]
+              ? watchHref(watchPath("releases"), search, { release: sealed[0].id })
+              : href("releases"),
+          )
+        }
+      >
         <span className="watch-kicker">Latest sealed releases</span>
         {sealed.length === 0 ? (
           <p className="watch-small mt-4 text-dim">No sealed releases yet.</p>

@@ -11,6 +11,7 @@ export type DeskAlert = {
   full_name?: string | null;
   acknowledged_at?: string | null;
   assigned_to_login?: string | null;
+  assigned_to_user_id?: string | null;
   resolved_at?: string | null;
   exposure_ms?: number;
 };
@@ -18,29 +19,39 @@ export type DeskAlert = {
 export type DeskVerdict = {
   title: string;
   detail: string;
-  tone: "ok" | "warn" | "crit" | "ended" | "empty";
+  tone: "ok" | "warn" | "crit" | "pending" | "paused" | "ended" | "empty";
 };
 
 export function isOpenAlert(alert: DeskAlert): boolean {
   return !alert.resolved_at;
 }
 
+export function alertAssignedTo(alert:DeskAlert,login:string,userId?:string):boolean{
+  if(userId)return alert.assigned_to_user_id===userId;
+  const who=login.trim().toLowerCase();
+  return !!who&&(alert.assigned_to_login??'').trim().toLowerCase()===who;
+}
+
 export function filterDeskAlerts<T extends DeskAlert>(
   alerts: T[],
   tab: AlertTab,
   login: string,
+  assignedOnly = false,
+  userId?:string,
 ): T[] {
+  if(assignedOnly){
+    alerts=alerts.filter(row=>alertAssignedTo(row,login,userId));
+  }
   if (tab === "done") return alerts.filter((row) => Boolean(row.resolved_at));
   if (tab === "waiting") {
     return alerts.filter((row) => !row.resolved_at && Boolean(row.acknowledged_at));
   }
   if (tab === "mine") {
-    const who = login.trim().toLowerCase();
     return alerts.filter(
-      (row) => !row.resolved_at && (row.assigned_to_login ?? "").trim().toLowerCase() === who,
+      (row) => !row.resolved_at && alertAssignedTo(row,login,userId),
     );
   }
-  return alerts.filter(isOpenAlert);
+  return alerts.filter(row => !row.resolved_at && !row.acknowledged_at);
 }
 
 export function newestOpenAlert(alerts: DeskAlert[]): DeskAlert | null {
@@ -56,6 +67,9 @@ export function deskVerdict(input: {
   ended: boolean;
   githubPaused: boolean;
   sourceCount: number;
+  checkedSourceCount?: number;
+  criticalSourceCount?: number;
+  checksInFlight?: number;
   alerts: DeskAlert[];
 }): DeskVerdict {
   const open = input.alerts.filter(isOpenAlert);
@@ -71,7 +85,7 @@ export function deskVerdict(input: {
     return {
       title: "GitHub suspended the NoSpoilers App.",
       detail: "Repositories stay listed. We do not scan until GitHub unsuspends it.",
-      tone: "ended",
+      tone: "paused",
     };
   }
   if (input.sourceCount === 0) {
@@ -81,21 +95,55 @@ export function deskVerdict(input: {
       tone: "empty",
     };
   }
-  if (open.length === 0) {
+  if (open.length > 0) {
+    const lead = newestOpenAlert(open);
+    const finding = lead ? leadFinding(lead) : null;
+    const clock = lead ? formatExposure(lead.exposure_ms, lead.created_at, lead.resolved_at) : "";
+    const where = finding ? `${finding.rule} · ${finding.path}` : (lead?.full_name ?? lead?.title ?? "");
     return {
-      title: "Nothing is exposed right now.",
-      detail: "Quiet so far. That is the good state — until a repo goes public or a release ships a map.",
-      tone: "ok",
+      title: open.length === 1 ? "One thing is exposed right now." : `${open.length} things are exposed right now.`,
+      detail: lead ? `${lead.title}${clock ? ` · exposed ${clock}` : ""}${where ? ` · ${where}` : ""}` : "",
+      tone: "crit",
     };
   }
-  const lead = newestOpenAlert(open);
-  const finding = lead ? leadFinding(lead) : null;
-  const clock = lead ? formatExposure(lead.exposure_ms, lead.created_at, lead.resolved_at) : "";
-  const where = finding ? `${finding.rule} · ${finding.path}` : (lead?.full_name ?? lead?.title ?? "");
+  if ((input.criticalSourceCount ?? 0) > 0) {
+    const count = input.criticalSourceCount ?? 0;
+    return {
+      title: count === 1 ? "One source needs attention." : `${count} sources need attention.`,
+      detail:
+        "A connected source reports exposure evidence. Review the source now even if its alert has not reached the inbox yet.",
+      tone: "crit",
+    };
+  }
+  const checkedSourceCount = Math.min(input.sourceCount, Math.max(0, input.checkedSourceCount ?? 0));
+  const uncheckedSourceCount = input.sourceCount - checkedSourceCount;
+  if ((input.checksInFlight ?? 0) > 0) {
+    return {
+      title: "A check is running.",
+      detail:
+        "A source is connected, but there is no release verdict yet. This page will update when the current check produces evidence.",
+      tone: "pending",
+    };
+  }
+  if (checkedSourceCount === 0) {
+    return {
+      title: "Connected. Not checked yet.",
+      detail:
+        "NoSpoilers can see the source, but it has not produced evidence yet. Run the first check before treating this release as clear.",
+      tone: "pending",
+    };
+  }
+  if (uncheckedSourceCount > 0) {
+    return {
+      title: "Some sources still need proof.",
+      detail: `${checkedSourceCount} of ${input.sourceCount} ${input.sourceCount === 1 ? "source has" : "sources have"} recorded evidence. Check the remaining ${uncheckedSourceCount} before relying on a clean verdict.`,
+      tone: "warn",
+    };
+  }
   return {
-    title: open.length === 1 ? "One thing is exposed right now." : `${open.length} things are exposed right now.`,
-    detail: lead ? `${lead.title}${clock ? ` · exposed ${clock}` : ""}${where ? ` · ${where}` : ""}` : "",
-    tone: "crit",
+    title: "No exposure is known from the latest checks.",
+    detail: `${checkedSourceCount} ${checkedSourceCount === 1 ? "source has" : "sources have"} recorded evidence and no open exposure alerts. NoSpoilers will keep checking for changes.`,
+    tone: "ok",
   };
 }
 

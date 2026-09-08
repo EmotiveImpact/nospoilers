@@ -1,0 +1,24 @@
+/* Extend the approved mockup's typography, borders and quiet central spotlight. */
+[hidden]{display:none!important}
+.readiness-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.readiness-card{min-width:0;padding:24px;margin:0 0 18px;border:1px solid var(--line);border-radius:10px;background:#101216}
+.readiness-card h2{font:600 23px var(--display);margin:0 0 12px;letter-spacing:-.02em}
+.readiness-card p{color:#b0b5bf;font-size:13px;line-height:1.65;max-width:720px}
+.readiness-card button{margin:8px 10px 0 0}
+.readiness-split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+.readiness-release-list{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.readiness-release-row{display:block;width:100%;border:0;border-bottom:1px solid var(--line);background:#0d0f12;color:var(--text);padding:20px;text-align:left;cursor:pointer}
+.readiness-release-row[aria-pressed="true"]{background:#1a1d23;box-shadow:inset 3px 0 #c4c8cf}
+.readiness-release-row strong,.readiness-release-row small,.readiness-release-row span{display:block;margin-bottom:6px}
+.readiness-release-row small{color:#a7adb7}.readiness-release-row span{font-size:12px;color:#d5d8df}
+.readiness-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.readiness-tabs [aria-pressed="true"]{background:#292d35;border-color:#8d929d;color:#fff}
+.readiness-scenario{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:0 0 24px;color:#b7bdc7;font-size:12px}
+.readiness-scenario select{max-width:100%;padding:10px;border:1px solid #454b57;border-radius:6px;background:#111318;color:#fff;font:inherit}
+.readiness-setting-row{padding:15px 0;border-top:1px solid var(--line)}
+.readiness-event{padding:15px;border:1px solid var(--line);border-radius:7px;background:#090a0c}
+.readiness-card dt{font-size:11px;color:#a4aab5;margin-top:18px}.readiness-card dd{margin:6px 0 0;font-size:13px;overflow-wrap:anywhere}
+.view h1{outline:none}.view h1:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #f0f0ed;outline-offset:4px}
+.reviewbar nav{justify-content:flex-start}.reviewbar nav button{flex:0 0 auto}
+@media(max-width:1100px){.readiness-grid,.readiness-split{grid-template-columns:1fr}.scan-layout{grid-template-columns:minmax(0,1fr)}.scan-help{display:none}}
+@media(max-width:700px){.readiness-card{padding:20px}.readiness-tabs button{min-height:44px}.readiness-scenario{align-items:stretch;flex-direction:column}.top-scan{display:inline-flex}.command{min-width:0;overflow:hidden;font-size:11px}.topbar{gap:8px}.avatar{flex:0 0 auto}}

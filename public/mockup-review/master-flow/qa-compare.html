@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NoSpoilers visual QA</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #050608; color: #fff; font: 12px system-ui; }
+      header { height: 40px; display: flex; align-items: center; justify-content: space-around; border-bottom: 1px solid #333; }
+      main { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #333; height: calc(100vh - 40px); }
+      figure { margin: 0; position: relative; overflow: auto; background: #090a0c; }
+      figcaption { position: sticky; top: 0; z-index: 2; padding: 8px 12px; background: #111d; }
+      img, iframe { width: 100%; display: block; border: 0; }
+      iframe { height: calc(100vh - 72px); }
+    </style>
+  </head>
+  <body>
+    <header><strong>Source: approved First Proof direction</strong><strong>Implementation: master flow prototype</strong></header>
+    <main>
+      <figure><figcaption>Source visual</figcaption><img src="./first-proof-source.png" alt="First Proof source design" /></figure>
+      <figure><figcaption>Browser implementation</figcaption><iframe src="./index.html?view=first&amp;stage=1" title="Rendered prototype"></iframe></figure>
+    </main>
+  </body>
+</html>

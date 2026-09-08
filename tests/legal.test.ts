@@ -13,6 +13,14 @@ function textOf(
 }
 
 describe("legal pages", () => {
+  it('separates disconnect, billing cancellation and account closure from history deletion',()=>{
+    const retention=textOf('retention');
+    expect(retention).toContain('after GitHub is disconnected');
+    expect(retention).toContain('does not delete history or cancel');
+    expect(retention).toContain('including when account closure is requested');
+    expect(retention).toContain('A request is not confirmation that deletion has completed');
+    expect(retention).not.toMatch(/Uninstall still drops|billing attached to that installation goes with it/);
+  });
   it("exposes privacy, terms, retention, disclosure, support, and refunds", () => {
     const slugs = LEGAL_NAV.map((item) => item.slug).sort();
     expect(slugs).toEqual(
@@ -41,7 +49,7 @@ describe("legal pages", () => {
     const terms = textOf("terms");
     expect(terms).toContain("$29");
     expect(terms).toContain("$99");
-    expect(terms).toMatch(/14-day/);
+    expect(terms).toMatch(/5-day/);
     expect(terms).toMatch(/do not execute customer packages/i);
     expect(terms).toMatch(/do not enqueue hosted work/i);
     expect(terms).toMatch(/concurrent unpacks/i);

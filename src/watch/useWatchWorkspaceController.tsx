@@ -23,10 +23,9 @@ import { TimelineScreen } from "@/components/watch/screens/TimelineScreen.tsx";
 import { WatchSectionError, WatchSkeleton } from "@/components/WatchDataState.tsx";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { coverageFrom, coverageFromQuery, type Coverage } from "@/coverage.ts";
+import { coverageFrom } from "@/coverage.ts";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
-import { PREVIEW_LOGIN, previewAlerts, previewRepos } from "@/preview.ts";
 import {
   loadWatchJson as loadJson,
   loadWatchResources,
@@ -108,12 +107,15 @@ import {
   LOADING_DATASETS,
   sectionStateOf,
   installIdFromSearch,
+  withoutWatchImpersonation,
   formatExposure,
   kindLabel,
   defaultExpiryDate,
 } from "@/watch/controller-utils";
 
-export function useWatchWorkspaceController({ path = "/watch", search }: { path?: string; search: string }) {
+export function useWatchWorkspaceController({ path = "/watch", search, connectionIds }: { path?: string; search: string; connectionIds?:number[] }) {
+  const connectionScope=connectionIds?.join(',');
+  const authenticatedSearch = withoutWatchImpersonation(search);
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
@@ -203,7 +205,9 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   const [importingPackages, setImportingPackages] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importResults, setImportResults] = useState<ProtectionImportResult[] | null>(null);
-  const [originUrl, setOriginUrl] = useState("");
+  const [originUrl, setOriginUrl] = useState(
+    () => new URLSearchParams(authenticatedSearch.startsWith("?") ? authenticatedSearch.slice(1) : authenticatedSearch).get("origin") ?? "",
+  );
   const [watchingOrigin, setWatchingOrigin] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
   const [checkingOriginId, setCheckingOriginId] = useState<number | null>(null);
@@ -273,7 +277,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   const [membersError, setMembersError] = useState<string | null>(null);
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [inviteLogin, setInviteLogin] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member" | "viewer">("member");
   const [selectedInstallId, setSelectedInstallId] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [billing, setBilling] = useState<{
@@ -901,7 +905,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
     })();
   }, [confirmText, confirming, refreshSignedIn, selectedInstallId, signingDraft]);
 
-  const requestedInstallId = installIdFromSearch(search);
+  const requestedInstallId = installIdFromSearch(authenticatedSearch);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -921,6 +925,8 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
       try {
         const body = await loadJson<Me>("/api/me");
         if (cancelled) return;
+        if(connectionScope!==undefined)body.installations=(body.installations??[]).filter(row=>connectionScope.split(',').includes(String(row.id)));
+        if(body.user&&requestedInstallId&&!(body.installations??[]).some(row=>row.id===requestedInstallId))throw new Error('The selected source is no longer available. Choose another workspace.');
         setMe({ status: "ready", data: body });
         if (body.user) {
           const wanted = requestedInstallId;
@@ -928,7 +934,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
           const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
           setSelectedInstallId(pick);
           if (pick && wanted !== pick) {
-            navigate(`/watch?install=${pick}`);
+            navigate(watchHref(path, authenticatedSearch, { install: pick }));
           }
           await refreshSignedIn(pick);
         } else {
@@ -984,7 +990,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
     return () => {
       cancelled = true;
     };
-  }, [refreshSignedIn, requestedInstallId]);
+  }, [authenticatedSearch, path, refreshSignedIn, requestedInstallId,connectionScope]);
 
   useEffect(() => {
     if (!selectedInstallId) {
@@ -1013,22 +1019,14 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   }, [selectedInstallId]);
 
   const controller = useWatchDeskController({
+    connections: me.status === 'ready' ? me.data.installations : undefined,
     path,
-    search,
-    login: me.status === "ready" ? me.data.user?.login ?? PREVIEW_LOGIN : PREVIEW_LOGIN,
+    search: authenticatedSearch,
+    login: me.status === "ready" ? me.data.user?.login ?? "" : "",
+    userId: me.status === 'ready' ? me.data.user?.id : undefined,
     previewing: me.status !== "ready" || !me.data.user,
-    repos:
-      me.status === "ready" && !me.data.user
-        ? previewRepos()
-        : repos.status === "ready"
-          ? repos.data.repos
-          : [],
-    alerts:
-      me.status === "ready" && !me.data.user
-        ? (previewAlerts() as Alert[])
-        : alerts.status === "ready"
-          ? alerts.data.alerts
-          : [],
+    repos: repos.status === "ready" ? repos.data.repos : [],
+    alerts: alerts.status === "ready" ? alerts.data.alerts : [],
     packages: packages.status === "ready" ? packages.data.packages : [],
     origins: origins.status === "ready" ? origins.data.origins : [],
     maps: mapDestinations,
@@ -1040,17 +1038,31 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
 
   if (me.status === "loading") {
     return (
-      <main className="flex min-h-[70svh] items-center justify-center px-5">
-        <p className="text-sm text-dim">Checking GitHub session…</p>
+      <main className="grid min-h-svh place-items-center bg-canvas px-5" aria-busy="true">
+        <WatchLoadingSignal/>
       </main>
     );
   }
 
   if (me.status === "error") {
     return (
-      <main className="mx-auto max-w-2xl px-5 py-24">
-        <p className="font-display text-3xl text-snow">Could not load the watch desk</p>
-        <p className="mt-3 text-mute">{me.message}</p>
+      <main className="grid min-h-svh place-items-center bg-canvas px-5">
+        <div className="w-full max-w-lg rounded-lg border border-danger/25 bg-panel p-6">
+          <p className="watch-kicker text-danger">Watch unavailable</p>
+          <h1 className="mt-3 font-display text-3xl text-snow">The desk could not open.</h1>
+          <p className="mt-3 text-sm leading-relaxed text-mute">{me.message}</p>
+          <p className="mt-2 text-xs leading-relaxed text-dim">
+            No release verdict is shown while session data is unavailable.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Button type="button" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate("/")}>
+              Back to product
+            </Button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -1059,54 +1071,70 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
     me.data;
   const stripeLive = Boolean(me.data.stripe);
   const installations = me.data.installations ?? [];
-  const queryCoverage = coverageFromQuery(search);
-  const previewing = !user;
-  const coverage: Coverage | undefined = user
-    ? sessionCoverage
-    : (queryCoverage ?? coverageFromQuery("?as=trial") ?? undefined);
-
-  if (!user && githubApp && !queryCoverage) {
+  if (!user) {
     return (
-      <main className="mx-auto max-w-5xl px-5 py-16 md:py-24">
-        <p className="text-xs uppercase tracking-[0.28em] text-dim">Watch desk</p>
-        <p className="mt-3 text-sm text-dim">
-          <a href="/" className="text-snow underline-offset-4 hover:underline" onClick={(event) => {
-            event.preventDefault();
-            navigate("/");
-          }}>
-            Product
-          </a>
-        </p>
-        <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-          Sign in to keep the bot thinking.
-        </h1>
-        <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-          This is the hosted GitHub App. Install, then we watch publicize / transfer / collaborator /
-          fork and we unpack release packs. Coverage is Solo $29 or Team $99 after a 14-day trial.
-        </p>
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button as="a" href="/api/auth/github" size="lg">
-            Sign in with GitHub
-          </Button>
-          <Button type="button" size="lg" variant="outline" onClick={() => navigate("/watch?as=trial")}>
-            Preview the desk
-          </Button>
+      <main className="grid min-h-svh place-items-center bg-canvas px-5 py-16">
+        <div className="w-full max-w-xl rounded-lg border border-line bg-panel p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.28em] text-dim">Watch desk</p>
+          <p className="mt-3 text-sm text-dim">
+            <a
+              href="/"
+              className="text-snow underline-offset-4 hover:underline"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate("/");
+              }}
+            >
+              Product
+            </a>
+          </p>
+          <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
+            Sign in and get to work.
+          </h1>
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
+            Watch contains real repository, release, website, package, and alert data. Sign in with
+            GitHub to open your workspace and start the real 5-day billing trial. There is no sample
+            workspace or preview tenant.
+          </p>
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {githubApp ? (
+              <Button as="a" href="/api/auth/github" size="lg">
+                Sign in with GitHub
+              </Button>
+            ) : (
+              me.data.developmentLogin ? (
+                <Button as="a" href="/api/auth/development" size="lg">
+                  Open local review workspace
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled
+                  title="GitHub authentication is not configured on this host."
+                >
+                  GitHub sign-in unavailable
+                </Button>
+              )
+            )}
+            <Button type="button" size="lg" variant="outline" onClick={() => navigate("/")}>
+              Back to product
+            </Button>
+          </div>
         </div>
       </main>
     );
   }
 
-  const selectedLiveInstall = previewing
-    ? null
-    : (selectedInstallId
-        ? (installations.find((row) => row.id === selectedInstallId) ?? installations[0])
-        : installations[0]) ?? null;
-  const selectedInstall = previewing ? null : selectedLiveInstall;
-  const deskCoverage = previewing
-    ? coverage
-    : selectedLiveInstall
-      ? coverageFrom(selectedLiveInstall.trialEndsAt, selectedLiveInstall.plan)
-      : coverage;
+  const previewing = false;
+  const selectedLiveInstall =
+    (selectedInstallId
+      ? (installations.find((row) => row.id === selectedInstallId) ?? installations[0])
+      : installations[0]) ?? null;
+  const selectedInstall = selectedLiveInstall;
+  const deskCoverage = selectedLiveInstall
+    ? coverageFrom(selectedLiveInstall.trialEndsAt, selectedLiveInstall.plan)
+    : sessionCoverage;
   const ended = deskCoverage?.status === "ended";
   const githubPaused = Boolean(selectedLiveInstall?.suspended);
   const locked = ended || githubPaused;
@@ -1135,29 +1163,19 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   const canChangeRetention = Boolean(installAdmin) && !ended && !previewing;
   const canManageSigningPolicy = canGovernReleases && !previewing;
   const adminCount = members.filter((row) => row.role === "admin").length;
-  const login = user?.login ?? PREVIEW_LOGIN;
+  const login = user.login;
   const activeInstallId = selectedLiveInstall?.id ?? null;
-  const deskRepos = previewing ? previewRepos() : repos.status === "ready" ? repos.data.repos : [];
-  const deskAlerts: Alert[] = previewing
-    ? (previewAlerts() as Alert[])
-    : alerts.status === "ready"
-      ? alerts.data.alerts
-      : [];
-  const deskPackages = previewing
-    ? []
-    : packages.status === "ready"
-      ? packages.data.packages
-      : [];
-  const alertSectionState = previewing ? { status: "ready" as const } : sectionStateOf(alerts);
-  const sourceSectionState = previewing
-    ? { status: "ready" as const }
-    : combineWatchSectionStates([
-        sectionStateOf(repos),
-        sectionStateOf(alerts),
-        sectionStateOf(packages),
-        sectionStateOf(origins),
-        datasetState.maps,
-      ]);
+  const deskRepos = repos.status === "ready" ? repos.data.repos : [];
+  const deskAlerts: Alert[] = alerts.status === "ready" ? alerts.data.alerts : [];
+  const deskPackages = packages.status === "ready" ? packages.data.packages : [];
+  const alertSectionState = sectionStateOf(alerts);
+  const sourceSectionState = combineWatchSectionStates([
+    sectionStateOf(repos),
+    sectionStateOf(alerts),
+    sectionStateOf(packages),
+    sectionStateOf(origins),
+    datasetState.maps,
+  ]);
   const overviewSectionState = combineWatchSectionStates([
     alertSectionState,
     sourceSectionState,
@@ -1307,8 +1325,10 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   const sourceRows = controller.sources;
   const listedAlerts = controller.listedAlerts as Alert[];
   const selectedAlert = controller.selectedAlert as Alert | null;
-  const selectedRelease =
-    releases.find((release) => release.id === route.releaseId) ?? releases[0] ?? null;
+  const selectedReleaseId = route.releaseId ?? route.releasePreviewId;
+  const selectedRelease = selectedReleaseId
+    ? releases.find((release) => release.id === selectedReleaseId) ?? null
+    : releases[0] ?? null;
   const openAlertCount = controller.counts.open;
   const waitingCount = controller.counts.waiting;
   const mineCount = controller.counts.mine;
@@ -1351,7 +1371,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
   return (
     <WatchMonolithShell
       route={route}
-      search={search}
+      search={authenticatedSearch}
       coverage={deskCoverage}
       ended={ended}
       role={previewing ? "admin" : selectedLiveInstall?.role}
@@ -1365,20 +1385,28 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
       resolvedCount={resolvedCount}
       setupDone={setup.done}
       setupTotal={setup.total}
+      firstRun={
+        overviewSectionState.status === "ready" &&
+        sourceRows.length === 0 &&
+        setup.done === 0 &&
+        !ended &&
+        !githubPaused
+      }
       installations={previewing ? [] : installations}
       activeInstallId={activeInstallId}
       onInstall={(id) => {
         setSelectedInstallId(id);
-        navigate(watchHref(path || "/watch", search, { install: id }));
+        navigate(watchHref(path || "/watch", authenticatedSearch, { install: id }));
         void refreshSignedIn(id);
       }}
       installUrl={installUrl && githubApp && user ? installUrl : undefined}
       onOpenPalette={() => setPaletteOpen(true)}
       billing={billingControl}
     >
+      {selectedLiveInstall?.disconnectedAt?<section className="watch-empty" role="status"><h2>GitHub source disconnected</h2><p>Saved evidence remains available. New work from this source has stopped and its scan tokens have been revoked. Your organisation’s subscription and other workspaces are unchanged.</p>{installUrl&&githubApp?<Button as="a" href={installUrl} variant="outline">Reconnect through GitHub</Button>:null}</section>:null}
       <WatchCommandPalette
         open={paletteOpen}
-        search={search}
+        search={authenticatedSearch}
         teamOnly={Boolean(teamOnly)}
         adminOnly={adminOnly}
         alerts={deskAlerts.map((row) => ({ id: row.id, title: row.title }))}
@@ -1580,7 +1608,7 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
           scanTokens,
           scanningId,
           scopedApi,
-          search,
+          search: authenticatedSearch,
           selectedAlert,
           selectedInstall,
           selectedInstallId,
@@ -1722,3 +1750,4 @@ export function useWatchWorkspaceController({ path = "/watch", search }: { path?
     </WatchMonolithShell>
   );
 }
+import {WatchLoadingSignal} from '@/components/watch/WatchLighthouse';

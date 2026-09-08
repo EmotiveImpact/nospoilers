@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cookieSettings } from "../src/server/cookies.ts";
 import { logJson, sanitizeFields } from "../src/server/log.ts";
 import { clientKey, createRateLimiter } from "../src/server/rate-limit.ts";
@@ -76,6 +76,8 @@ describe("token encryption in the store", () => {
 });
 
 describe("hosted scan rate limit", () => {
+  beforeEach(()=>vi.stubEnv('NOSPOILERS_INTERNAL_LOCAL_SCAN','1'));
+  afterEach(()=>vi.unstubAllEnvs());
   it("returns 429 after the configured cap", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -120,7 +122,7 @@ describe("hosted scan rate limit", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ path: "fixtures/clean.tgz" }),
       });
-      expect(first.status).toBe(200);
+      expect(first.status).toBe(202);
       expect(second.status).toBe(429);
       expect(second.headers.get("retry-after")).toBeTruthy();
     } finally {

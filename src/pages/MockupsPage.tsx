@@ -9,15 +9,15 @@ export function MockupsPage() {
         Those screens are Watch and Scan now.
       </h1>
       <p className="mt-5 max-w-xl text-base leading-relaxed text-mute">
-        The interesting mockups were the two logged-in states. Trial (or paid) is the watch desk.
-        Unpaid is the locked scan. They live on the real routes.
+        Watch now requires a real signed-in workspace. Scan remains available locally without a
+        sample tenant or query-string billing simulation.
       </p>
       <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-        <Button type="button" size="lg" onClick={() => navigate("/watch?as=trial")}>
-          Trial desk
+        <Button type="button" size="lg" onClick={() => navigate("/watch")}>
+          Open Watch
         </Button>
-        <Button type="button" size="lg" variant="outline" onClick={() => navigate("/scan?as=ended")}>
-          Unpaid locked scan
+        <Button type="button" size="lg" variant="outline" onClick={() => navigate("/scan")}>
+          Open Scan
         </Button>
       </div>
       <p className="mt-16 text-[11px] uppercase tracking-[0.28em] text-dim">Review comps</p>

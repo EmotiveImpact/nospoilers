@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import {WatchLoadingBoundary,WatchLoadingSignal} from '@/components/watch/WatchLighthouse';
 
 const WatchWorkspace = lazy(() =>
   import("./WatchWorkspace.tsx").then((module) => ({ default: module.WatchWorkspace })),
@@ -6,14 +7,12 @@ const WatchWorkspace = lazy(() =>
 
 export function WatchPage({ path = "/watch", search }: { path?: string; search: string }) {
   return (
-    <Suspense
+    <WatchLoadingBoundary><Suspense
       fallback={
-        <main className="grid min-h-[70svh] place-items-center bg-ink px-5" aria-busy="true">
-          <p className="text-sm text-mute">Loading Watch…</p>
-        </main>
+        <WatchLoadingSignal/>
       }
     >
       <WatchWorkspace path={path} search={search} />
-    </Suspense>
+    </Suspense></WatchLoadingBoundary>
   );
 }

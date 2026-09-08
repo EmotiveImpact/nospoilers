@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoSpoilers visual QA</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 20px; background: #050506; color: #f4f4f5; font: 13px Inter, system-ui, sans-serif; }
+      h1 { margin: 0 0 14px; font-size: 18px; }
+      .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      figure { margin: 0; min-width: 0; }
+      figcaption { margin-bottom: 8px; color: #a1a1aa; }
+      .frame { position: relative; width: 100%; aspect-ratio: 1440 / 1024; overflow: hidden; border: 1px solid #3f3f46; background: #111113; }
+      img { display: block; width: 100%; height: 100%; object-fit: contain; }
+      iframe { position: absolute; inset: 0 auto auto 0; width: 1440px; height: 1024px; border: 0; transform: scale(.536); transform-origin: top left; }
+    </style>
+  </head>
+  <body>
+    <h1>NoSpoilers First Proof — source and implementation</h1>
+    <div class="compare">
+      <figure><figcaption>Selected source mockup</figcaption><div class="frame"><img src="/reference.png" alt="Selected First Proof design" /></div></figure>
+      <figure><figcaption>Rendered implementation</figcaption><div class="frame"><iframe src="/" title="Rendered First Proof prototype"></iframe></div></figure>
+    </div>
+  </body>
+</html>

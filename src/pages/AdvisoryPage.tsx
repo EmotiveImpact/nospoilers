@@ -24,17 +24,15 @@ function tokenFromPath(path: string): string {
 
 export function AdvisoryPage({ path }: { path: string }) {
   const token = tokenFromPath(path);
-  const [page, setPage] = useState<PublicAdvisory | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    token: string;
+    page: PublicAdvisory | null;
+    error: string | null;
+  }>(() => ({ token, page: null, error: null }));
 
   useEffect(() => {
     let cancelled = false;
-    setPage(null);
-    setError(null);
-    if (!token) {
-      setError("Unknown consumer advisory.");
-      return;
-    }
+    if (!token) return;
     void (async () => {
       try {
         const response = await fetch(`/api/advisory/${encodeURIComponent(token)}`);
@@ -44,16 +42,27 @@ export function AdvisoryPage({ path }: { path: string }) {
         };
         if (!response.ok) throw new Error(body.error ?? "Unknown consumer advisory.");
         if (cancelled) return;
-        setPage(body.advisory ?? null);
+        setResult({ token, page: body.advisory ?? null, error: null });
       } catch (caught) {
         if (cancelled) return;
-        setError(caught instanceof Error ? caught.message : "Unknown consumer advisory.");
+        setResult({
+          token,
+          page: null,
+          error: caught instanceof Error ? caught.message : "Unknown consumer advisory.",
+        });
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [token]);
+
+  const page = result.token === token ? result.page : null;
+  const error = !token
+    ? "Unknown consumer advisory."
+    : result.token === token
+      ? result.error
+      : null;
 
   return (
     <main className="fade-up mx-auto max-w-3xl px-5 py-16 md:py-24">

@@ -80,11 +80,12 @@ export function TeamScreen() {
                           <select
                             value={inviteRole}
                             onChange={(event) =>
-                              setInviteRole(event.target.value === "admin" ? "admin" : "member")
+                              setInviteRole(event.target.value === "admin" ? "admin" : event.target.value === "viewer" ? "viewer" : "member")
                             }
                             className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                           >
                             <option value="member">member</option>
+                            <option value="viewer">viewer (read-only)</option>
                             <option value="admin">admin</option>
                           </select>
                         </label>
@@ -163,7 +164,8 @@ export function TeamScreen() {
                             </div>
                             {canManageRoles ? (
                               <div className="flex flex-wrap gap-2">
-                                {member.role === "member" ? (
+                                {member.role === 'viewer' ? <Button type="button" size="sm" variant="outline" disabled={confirmBusy} onClick={()=>beginConfirm({kind:'role',userId:member.userId,expected:member.login,role:'member'})}>Make member</Button> : <Button type="button" size="sm" variant="outline" disabled={confirmBusy || (member.role==='admin' && adminCount<=1)} onClick={()=>beginConfirm({kind:'role',userId:member.userId,expected:member.login,role:'viewer'})}>Make viewer</Button>}
+                                {member.role !== "admin" ? (
                                   <Button
                                     type="button"
                                     size="sm"
@@ -185,7 +187,7 @@ export function TeamScreen() {
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    disabled={confirmBusy || adminCount <= 1}
+                                    disabled={confirmBusy || (member.role === 'admin' && adminCount <= 1)}
                                     onClick={() =>
                                       beginConfirm({
                                         kind: "role",

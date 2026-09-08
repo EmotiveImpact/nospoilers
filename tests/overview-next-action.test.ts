@@ -1,0 +1,28 @@
+import {expect,it} from 'vitest';
+import {overviewNextAction} from '../src/components/watch/overview-next-action.ts';
+
+it('directs delayed monitoring to scoped coverage without implying a current pass',()=>{
+ const counts={total:1,attention:0,active:0};
+ const next=overviewNextAction({counts,websiteCoverage:{total:1,attention:1,delayed:1}},'w');
+ expect(next.href).toBe('/watch/sources?workspace=w&websiteHealth=delayed');
+ expect(next.text).toContain('Historical scan results');
+});
+
+it('prioritises response without rewriting scan outcomes',()=>{
+ const counts={total:4,attention:2,active:1};
+ expect(overviewNextAction({counts,alertCounts:{open:1,waiting:0}},'w').href).toBe('/watch/alerts?workspace=w&tab=open');
+ expect(counts.attention).toBe(2);
+ expect(overviewNextAction({counts},'w').href).toContain('uploadStatus=attention');
+});
+it('routes connected-only review and history to the exact installation',()=>{
+ const counts={total:0,attention:0,active:0};
+ const hostedSources=[{installationId:9,total:3,attention:1}];
+ expect(overviewNextAction({counts,hostedSources},'w').href).toBe('/watch/releases?workspace=w&install=9');
+ hostedSources[0].attention=0;
+ expect(overviewNextAction({counts,hostedSources},'w').text).not.toContain('No scan evidence');
+ expect(overviewNextAction({counts,hostedSources},'w').href).toContain('install=9');
+});
+it('keeps active scans and ongoing response actionable',()=>{
+ expect(overviewNextAction({counts:{total:1,attention:0,active:1}},'w').href).toContain('uploadStatus=active');
+ expect(overviewNextAction({counts:{total:0,attention:0,active:0},alertCounts:{open:0,waiting:2}},'w').href).toContain('tab=waiting');
+});

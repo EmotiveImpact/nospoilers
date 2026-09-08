@@ -69,12 +69,12 @@ export type WatchScreenContext = {
   SetupPrResult: ({ view }: { view: SetupPrView; }) => import("react").JSX.Element;
   SetupStatusResult: ({ view }: { view: SetupStatusView; }) => import("react").JSX.Element;
   TimelineScreen: ({ previewing, timeline, alerts, alertState, onRetryTimeline, onRetryAlerts, }: { previewing: boolean; timeline: { status: "loading"; } | { status: "solo"; } | { status: "ended"; } | { status: "error"; message: string; } | { status: "ready"; entries: { type: "alert" | "alert_event" | "delivery"; at: string; alertId: number | null; title: string | null; kind: string | null; fullName: string | null; action: string | null; actorLogin: string | null; deliveryStatus: "sent" | "failed" | null; inventedIncident: false | null; }[]; days: number; }; alerts: import("@/watch/verdict").DeskAlert[]; alertState: WatchSectionState; onRetryTimeline: () => void; onRetryAlerts: () => void; }) => import("react").JSX.Element;
-  WatchAlertsWorkspace: ({ alerts, rows, selected, events, previewing, ended, busy, note, assignee, error, exportError, state, activityState, detailOpen, tab, teamOnly, onSelect, onBack, onRetry, onRetryActivity, onTab, onNote, onAssignee, onAction, onExport, }: { alerts: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail[]; rows: import("@/watch/view-models").AlertListViewModel[]; selected: import("@/components/WatchAlertsWorkspace.tsx").WatchAlertDetail | null; events: import("@/watch/useWatchDeskController.ts").AlertActivityEvent[]; previewing: boolean; ended: boolean; busy: boolean; note: string; assignee: string; error: string | null; exportError: string | null; state: WatchSectionState; activityState: WatchSectionState; detailOpen: boolean; tab: import("@/watch/routes.ts").AlertTab; teamOnly: boolean; onSelect: (alertId: number) => void; onBack: () => void; onRetry: () => void; onRetryActivity: () => void; onTab: (tab: import("@/watch/routes.ts").AlertTab) => void; onNote: (value: string) => void; onAssignee: (value: string) => void; onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void; onExport: () => void; }) => import("react").JSX.Element;
+  WatchAlertsWorkspace: typeof import("@/components/WatchAlertsWorkspace.tsx").WatchAlertsWorkspace;
   WatchNotificationSummary: ({ destinations, routes, }: { destinations: { id: number; kind: string; host: string; lastDeliveryStatus: string | null; }[]; routes: { id: number; minSeverity: string; repoFullName: string | null; packageName: string | null; teamLogin: string | null; }[]; }) => import("react").JSX.Element;
   WatchOverview: ({ search, ended, githubPaused, installUrl, alerts, sources, packsRead, failedPolicy, queueDepth, lastRunLabel, setup, state, onRetry, }: { search: string; ended: boolean; githubPaused: boolean; installUrl?: string; alerts: import("@/watch/verdict").DeskAlert[]; sources: import("@/watch/view-models").WatchSourceViewModel[]; packsRead: number; failedPolicy: number; queueDepth: number; lastRunLabel: string; setup: import("@/watch/view-models").WatchSetupViewModel; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
   WatchSectionError: ({ message, onRetry, className, }: { message: string; onRetry: () => void; className?: string; }) => import("react").JSX.Element;
   WatchSkeleton: ({ variant, className, }: { variant?: "cards" | "list" | "detail"; className?: string; }) => import("react").JSX.Element;
-  WatchSourcesSummary: ({ mode, sources, setup, admin, search, filter, attention, selectedSourceKey, state, onRetry, }: { mode: "sources" | "setup"; sources: import("@/watch/view-models").WatchSourceViewModel[]; setup: import("@/watch/view-models").WatchSetupViewModel; admin?: boolean; search?: string; filter?: import("@/watch/routes.ts").SourceFilter; attention?: boolean; selectedSourceKey?: string | null; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
+  WatchSourcesSummary: ({ mode, sources, setup, admin, search, filter, attention, selectedSourceKey, releases, state, onRetry, }: { mode: "sources" | "setup"; sources: import("@/watch/view-models").WatchSourceViewModel[]; setup: import("@/watch/view-models").WatchSetupViewModel; admin?: boolean; search?: string; filter?: import("@/watch/routes.ts").SourceFilter; attention?: boolean; selectedSourceKey?: string | null; releases?: ReleaseRevision[]; state: WatchSectionState; onRetry: () => void; }) => import("react").JSX.Element;
   activeInstallId: number | null;
   adminCount: number;
   adminOnly: boolean;
@@ -151,9 +151,9 @@ export type WatchScreenContext = {
   importingPackages: boolean;
   installAdmin: boolean;
   installUrl: string | undefined;
-  installations: { id: number; account_login: string; account_type: string; suspended?: boolean; trialEndsAt?: string | null; plan?: string | null; role?: "admin" | "member"; lastPermissionTestAt?: string | null; lastPermissionTest?: PermissionTest | null; }[];
+  installations: { id: number; account_login: string; account_type: string; suspended?: boolean; trialEndsAt?: string | null; plan?: string | null; role?: "admin" | "member" | "viewer"; lastPermissionTestAt?: string | null; lastPermissionTest?: PermissionTest | null; }[];
   inviteLogin: string;
-  inviteRole: "admin" | "member";
+  inviteRole: "admin" | "member" | "viewer";
   invites: TeamInvite[];
   jiraEmail: string;
   jiraProjectKey: string;
@@ -241,9 +241,9 @@ export type WatchScreenContext = {
   scopedApi: (path: string, installationId: number | null) => string;
   search: string;
   selectedAlert: Alert | null;
-  selectedInstall: { id: number; account_login: string; account_type: string; suspended?: boolean; trialEndsAt?: string | null; plan?: string | null; role?: "admin" | "member"; lastPermissionTestAt?: string | null; lastPermissionTest?: PermissionTest | null; } | null;
+  selectedInstall: { id: number; account_login: string; account_type: string; suspended?: boolean; trialEndsAt?: string | null; plan?: string | null; role?: "admin" | "member" | "viewer"; lastPermissionTestAt?: string | null; lastPermissionTest?: PermissionTest | null; } | null;
   selectedInstallId: number | null;
-  selectedRelease: ReleaseRevision;
+  selectedRelease: ReleaseRevision | null;
   setAlertAssignees: import("react").Dispatch<import("react").SetStateAction<Record<number, string>>>;
   setAlertBusyId: import("react").Dispatch<import("react").SetStateAction<number | null>>;
   setAlertErrorById: import("react").Dispatch<import("react").SetStateAction<Record<number, string>>>;
@@ -278,7 +278,7 @@ export type WatchScreenContext = {
   setImportResults: import("react").Dispatch<import("react").SetStateAction<ProtectionImportResult[] | null>>;
   setImportingPackages: import("react").Dispatch<import("react").SetStateAction<boolean>>;
   setInviteLogin: import("react").Dispatch<import("react").SetStateAction<string>>;
-  setInviteRole: import("react").Dispatch<import("react").SetStateAction<"admin" | "member">>;
+  setInviteRole: import("react").Dispatch<import("react").SetStateAction<"admin" | "member" | "viewer">>;
   setJiraEmail: import("react").Dispatch<import("react").SetStateAction<string>>;
   setJiraProjectKey: import("react").Dispatch<import("react").SetStateAction<string>>;
   setJiraSite: import("react").Dispatch<import("react").SetStateAction<string>>;
@@ -369,7 +369,7 @@ export type WatchScreenContext = {
   timeline: TimelineView;
   user: { id: string; login: string; avatarUrl: string | null; } | null;
   verifyingLocationId: number | null;
-  watchHref: (path: string, search: string, extra?: { install?: number | null; alert?: number | null; release?: number | null; source?: string | null; sourceType?: import("@/watch/routes.ts").SourceFilter | null; attention?: boolean | null; configure?: import("@/watch/routes.ts").SourceConfigure | null; tab?: import("@/watch/routes.ts").AlertTab | null; }) => string;
+  watchHref: (path: string, search: string, extra?: { install?: number | null; alert?: number | null; release?: number | null; previewRelease?: number | null; source?: string | null; sourceType?: import("@/watch/routes.ts").SourceFilter | null; attention?: boolean | null; configure?: import("@/watch/routes.ts").SourceConfigure | null; tab?: import("@/watch/routes.ts").AlertTab | null; }) => string;
   watchPath: (view: import("@/watch/routes.ts").WatchView) => string;
   watchRegistryOrigin: string;
   watchingOrigin: boolean;

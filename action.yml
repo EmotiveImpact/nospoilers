@@ -13,7 +13,7 @@ inputs:
     required: false
     default: "false"
   policy:
-    description: Path to .nospoilers.yml or JSON policy. Empty uses workspace .nospoilers.yml if present. Ignored when api-token is set.
+    description: Internal repository test option. Hosted customer scans use the Watch allowlist.
     required: false
     default: ""
   sarif:
@@ -21,11 +21,11 @@ inputs:
     required: false
     default: "nospoilers.sarif"
   api-url:
-    description: Hosted NoSpoilers origin for POST /api/v1/scan. Empty keeps the local CLI scan.
+    description: Hosted NoSpoilers origin for POST /api/v1/scan.
     required: false
     default: ""
   api-token:
-    description: Scan API token from Watch. Empty keeps the local CLI scan. Store as a GitHub Actions secret.
+    description: Scan API token from Watch. Store as a GitHub Actions secret.
     required: false
     default: ""
   channel:

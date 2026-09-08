@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS installation_users (
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   role TEXT NOT NULL DEFAULT 'admin',
-  CONSTRAINT installation_users_role_check CHECK (role IN ('member', 'admin')),
+  CONSTRAINT installation_users_role_check CHECK (role IN ('member', 'admin', 'viewer')),
   PRIMARY KEY (installation_id, user_id)
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS installation_invites (
   id BIGSERIAL PRIMARY KEY,
   installation_id BIGINT NOT NULL REFERENCES installations (id) ON DELETE CASCADE,
   github_login TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('member', 'admin')),
+  role TEXT NOT NULL CHECK (role IN ('member', 'admin', 'viewer')),
   created_by_user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (installation_id, github_login)
@@ -1320,3 +1320,22 @@ CREATE TABLE IF NOT EXISTS operator_grants (
 CREATE UNIQUE INDEX IF NOT EXISTS operator_grants_login_idx
   ON operator_grants (lower(github_login));
 
+CREATE TABLE IF NOT EXISTS pending_scans (
+  id TEXT PRIMARY KEY,
+  target TEXT NOT NULL,
+  report_json JSONB,
+  artifact_bytes BYTEA,
+  source_path TEXT,
+  delete_after_scan BOOLEAN NOT NULL DEFAULT FALSE,
+  scan_started_at TIMESTAMPTZ,
+  claimed_by_user_id TEXT REFERENCES users (id) ON DELETE CASCADE,
+  claimed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  CONSTRAINT pending_scans_payload_check CHECK (
+    report_json IS NOT NULL OR artifact_bytes IS NOT NULL OR source_path IS NOT NULL
+  )
+);
+
+CREATE INDEX IF NOT EXISTS pending_scans_expiry_idx
+  ON pending_scans (expires_at);

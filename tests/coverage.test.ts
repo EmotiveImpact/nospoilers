@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { coverageFrom, coverageFromQuery, bestCoverage } from "../src/coverage.ts";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { coverageFrom, bestCoverage } from "../src/coverage.ts";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { migrate, openSql } from "../src/server/sql.ts";
@@ -39,15 +39,9 @@ describe("bestCoverage", () => {
   });
 });
 
-describe("coverageFromQuery", () => {
-  it("maps ?as=trial and ?as=ended", () => {
-    expect(coverageFromQuery("?as=trial")?.status).toBe("trial");
-    expect(coverageFromQuery("?as=ended")?.status).toBe("ended");
-    expect(coverageFromQuery("")).toBeNull();
-  });
-});
-
 describe("hosted coverage", () => {
+  beforeEach(()=>vi.stubEnv('NOSPOILERS_INTERNAL_LOCAL_SCAN','1'));
+  afterEach(()=>vi.unstubAllEnvs());
   it("returns 402 for a signed-in user whose trial has ended", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -168,12 +162,12 @@ describe("hosted coverage", () => {
       const meBody = (await me.json()) as { coverage: { status: string } };
       expect(meBody.coverage.status).toBe("trial");
 
-      const scan = await app.request("/api/scan", {
+      const scan = await app.request("/api/scan?installationId=7", {
         method: "POST",
         headers: { cookie, "content-type": "application/json" },
         body: JSON.stringify({ path: "fixtures/clean.tgz" }),
       });
-      expect(scan.status).toBe(200);
+      expect(scan.status).toBe(202);
 
       await sql.query(
         `UPDATE billing_accounts SET trial_ends_at = '2000-01-01T00:00:00Z', plan = NULL WHERE installation_id = 7`,
@@ -194,7 +188,7 @@ describe("hosted coverage", () => {
     }
   });
 
-  it("still scans for an anonymous request", async () => {
+  it("stages an anonymous request without returning scan evidence", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
       await migrate(sql);
@@ -231,9 +225,10 @@ describe("hosted coverage", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ path: "fixtures/clean.tgz" }),
       });
-      expect(scan.status).toBe(200);
-      const body = (await scan.json()) as { ok: boolean };
-      expect(body.ok).toBe(true);
+      expect(scan.status).toBe(202);
+      const body = (await scan.json()) as Record<string, unknown>;
+      expect(body).toMatchObject({ pending: true });
+      expect(body).not.toHaveProperty("findings");
     } finally {
       await sql.close();
     }

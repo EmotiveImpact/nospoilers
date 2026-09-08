@@ -1,6 +1,7 @@
 export function createRateLimiter(opts: { limit: number; windowMs: number }) {
   const hits = new Map<string, number[]>();
   return {
+    limit: opts.limit,
     allow(key: string, now = Date.now()): boolean {
       if (opts.limit <= 0) return true;
       const recent = (hits.get(key) ?? []).filter((at) => now - at < opts.windowMs);

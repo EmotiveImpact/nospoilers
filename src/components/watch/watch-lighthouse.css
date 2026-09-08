@@ -1,0 +1,12 @@
+.watch-lighthouse{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#080a0d;color:#c8cbd3;pointer-events:none;transition:opacity .25s .4s}
+.watch-lighthouse>span{font-size:11px;letter-spacing:.025em;color:#858b96;margin-top:0}
+.watch-lighthouse-scene{width:96px;height:80px;position:relative;isolation:isolate}
+.watch-lighthouse-tower{position:absolute;width:48px;height:48px;left:24px;top:12px;z-index:2}
+.watch-lighthouse-beam{position:absolute;left:48px;top:29px;width:105px;height:32px;transform-origin:0 50%;background:linear-gradient(90deg,#ff315824,transparent);clip-path:polygon(0 50%,100% 0,100% 100%);transform:translateY(-50%) rotate(-14deg);animation:watch-beam-search 3s ease-in-out infinite alternate;filter:blur(1px)}
+.watch-lighthouse-glow{position:absolute;left:48px;top:29px;width:96px;height:96px;transform:translate(-50%,-50%) scale(.15);background:radial-gradient(circle,#ff31582b,transparent 65%);opacity:0;transition:transform .5s ease-out,opacity .5s ease-out}
+.watch-lighthouse.is-ready{opacity:0}
+.watch-lighthouse.is-ready .watch-lighthouse-beam{animation:watch-beam-arrive .45s ease-out forwards}
+.watch-lighthouse.is-ready .watch-lighthouse-glow{opacity:1;transform:translate(-50%,-50%) scale(1.6)}
+@keyframes watch-beam-search{from{transform:translateY(-50%) rotate(-18deg) scaleX(1)}to{transform:translateY(-50%) rotate(12deg) scaleX(.65)}}
+@keyframes watch-beam-arrive{to{transform:translateY(-50%) rotateY(88deg);opacity:0}}
+@media(prefers-reduced-motion:reduce){.watch-lighthouse,.watch-lighthouse-glow{transition:none}.watch-lighthouse-beam,.watch-lighthouse.is-ready .watch-lighthouse-beam{animation:none}.watch-lighthouse.is-ready{opacity:0}.watch-lighthouse.is-ready .watch-lighthouse-glow{opacity:0}}

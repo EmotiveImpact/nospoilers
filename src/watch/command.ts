@@ -3,7 +3,9 @@ import { VIEW_TITLE, type WatchView, watchHref, watchPath } from "./routes.ts";
 const PAGES: WatchView[] = [
   "overview", "alerts", "sources", "releases", "timeline", "setup", "notifications",
   "policy", "team", "retention", "audit", "health", "tokens", "registries",
+  "workspaces",
 ];
+const ARTIFACT_PAGES:WatchView[]=['overview','alerts','sources','releases','team','policy','retention','audit','tokens','notifications','workspaces'];
 
 export type PaletteItem = {
   id: string;
@@ -30,22 +32,24 @@ export function buildPaletteItems(input: {
   search: string;
   teamOnly: boolean;
   adminOnly: boolean;
+  artifactOnly?: boolean;
   alerts: { id: number; title: string }[];
   sources: { key: string; name: string }[];
   releases: { id: number; coordinate: string }[];
 }): PaletteItem[] {
   const query = input.query.trim().toLowerCase();
   const pageItems: PaletteItem[] = PAGES.filter((view) => {
+    if(input.artifactOnly)return ARTIFACT_PAGES.includes(view);
     if (view === "timeline" || view === "audit") return input.teamOnly;
     if (view === "tokens" || view === "registries") return input.adminOnly;
     return true;
   }).map((view) => ({
     id: `page-${view}`,
     group: query ? "Jump" : "Recent",
-    label: VIEW_TITLE[view],
+    label: input.artifactOnly&&view==='policy'?'Scan policy':VIEW_TITLE[view],
     href: watchHref(watchPath(view), input.search),
   }));
-  const entityItems: PaletteItem[] = [
+  const entityItems: PaletteItem[] = input.artifactOnly?[]:[
     ...input.alerts.map((row) => ({
       id: `alert-${row.id}`, group: "Jump" as const, label: row.title, detail: "Alert",
       href: watchHref(watchPath("alerts"), input.search, { alert: row.id }),
@@ -60,24 +64,28 @@ export function buildPaletteItems(input: {
     })),
   ];
   const actions: PaletteItem[] = [
-    ...(input.adminOnly ? [{
+    {
+      id: "do-new-scan", group: "Do", label: "New scan",
+      href: watchHref(watchPath("scan"), input.search),
+    },
+    ...(input.adminOnly&&!input.artifactOnly ? [{
       id: "do-add-source", group: "Do" as const, label: "Add a source",
       href: watchHref(watchPath("sources"), input.search),
     }] : []),
-    {
+    ...(!input.artifactOnly?[{
       id: "do-health", group: "Do", label: "Test install health",
       href: watchHref(watchPath("health"), input.search),
     },
     {
       id: "do-setup", group: "Do", label: "Finish setup",
       href: watchHref(watchPath("setup"), input.search),
-    },
+    }] as PaletteItem[]:[]),
   ];
   const all = query
     ? [...pageItems, ...entityItems, ...actions]
     : [
         ...pageItems.filter((item) =>
-          ["page-overview", "page-alerts", "page-sources", "page-setup"].includes(item.id),
+          input.artifactOnly || ["page-overview", "page-alerts", "page-sources", "page-setup"].includes(item.id),
         ),
         ...actions,
       ];
@@ -85,5 +93,5 @@ export function buildPaletteItems(input: {
     .filter((item) =>
       !query || `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(query),
     )
-    .slice(0, query ? 24 : 8);
+    .slice(0, query ? 24 : input.artifactOnly ? ARTIFACT_PAGES.length+1 : 8);
 }

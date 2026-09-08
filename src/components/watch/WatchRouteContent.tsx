@@ -12,26 +12,38 @@ import { NotificationsScreen } from "@/components/watch/screens/NotificationsScr
 import { SourcesProductionScreens } from "@/components/watch/screens/SourcesProductionScreens";
 import { RegistriesScreen } from "@/components/watch/screens/RegistriesScreen";
 import { TokensScreen } from "@/components/watch/screens/TokensScreen";
+import {WorkspaceTokens} from './WorkspaceTokens';
+import {WorkspaceNotifications} from './WorkspaceNotifications';
 import { ReleasesScreen } from "@/components/watch/screens/ReleasesScreen";
 import { SetupScreen } from "@/components/watch/screens/SetupScreen";
+import { ScanPage } from "@/pages/ScanPage";
+import {WorkspaceManagement} from './WorkspaceManagement';
+import {WorkspaceTeam} from './WorkspaceTeam';
+import {WorkspaceWebsiteSources} from './WorkspaceWebsiteSources';
+import {WorkspaceAlerts} from './WorkspaceAlerts';
+import {WorkspaceScanPolicy} from './WorkspaceScanPolicy';
 
 export function WatchRouteContent({ context }: { context: WatchScreenContext }) {
+  const workspaceId=new URLSearchParams(context.search).get('workspace');
   return (
     <WatchScreenProvider value={context}>
+      {context.route.view==='workspaces'?<WorkspaceManagement/>:null}
       <OverviewScreen />
-      <AlertsScreen />
+      {context.route.view === "scan" ? <ScanPage search={context.search} embedded /> : null}
+      {context.route.view==='alerts'&&workspaceId?<WorkspaceAlerts workspaceId={workspaceId} search={context.search}/>:<AlertsScreen />}
       <SourcesScreen />
+      <WorkspaceWebsiteSources />
       <SetupScreen />
       <TimelineRouteScreen />
       <RetentionRouteScreen />
-      <PolicyScreen />
+      {context.route.view==='policy'&&workspaceId?<><WorkspaceScanPolicy workspaceId={workspaceId}/><details className="mt-8"><summary>GitHub connection policy settings</summary><PolicyScreen/></details></>:<PolicyScreen />}
       <AuditRouteScreen />
-      <TeamScreen />
+      {context.route.view==='team'&&workspaceId?<WorkspaceTeam workspaceId={workspaceId}/>:<TeamScreen />}
       <HealthScreen />
-      <NotificationsScreen />
+      {context.route.view==='notifications'&&workspaceId?<><WorkspaceNotifications workspaceId={workspaceId}/><details className="mt-8"><summary>GitHub connection notification settings</summary><NotificationsScreen/></details></>:<NotificationsScreen />}
       <SourcesProductionScreens />
       <RegistriesScreen />
-      <TokensScreen />
+      {context.route.view==='tokens'&&workspaceId?<WorkspaceTokens workspaceId={workspaceId}/>:<TokensScreen />}
       <ReleasesScreen />
     </WatchScreenProvider>
   );

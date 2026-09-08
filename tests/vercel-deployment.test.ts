@@ -46,7 +46,7 @@ describe("Vercel web runtime", () => {
       maxDuration: 300,
     });
     expect(await readFile("api/index.mjs", "utf8")).toContain("../.vercel-runtime/index.js");
-    expect(config.crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 0 * * *" }]);
+    expect(config.crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 * * * *" }]);
   });
 
   it("keeps processing queued jobs after the HTTP response via waitUntil", async () => {

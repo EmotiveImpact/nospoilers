@@ -1,17 +1,26 @@
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { Alert, AlertEvent } from "@/watch/types";
+import {AlertRelatedReleases} from '@/components/watch/AlertRelatedReleases';
+import {AlertRecheck} from '@/components/watch/AlertRecheck';
 
 export function AlertsScreen() {
-  const { WatchAlertsWorkspace, activeInstallId, alertAssignees, alertBusyId, alertErrorById, alertEvents, alertNotes, alertSectionState, controller, ended, exportError, listedAlerts, loadJson, navigate, previewing, retryDeskSection, route, scopedApi, search, selectedAlert, setAlertAssignees, setAlertBusyId, setAlertErrorById, setAlertEvents, setAlertNotes, setAlerts, setExportError, teamOnly, watchHref, watchPath } = useWatchScreenContext();
+  const { selectedInstall } = useWatchScreenContext();
+  const canRespond = selectedInstall?.role === "admin" || selectedInstall?.role === "member";
+  const { WatchAlertsWorkspace, activeInstallId, alertAssignees, alertBusyId, alertErrorById, alertEvents, alertNotes, alertSectionState, controller, deskAlerts, ended, exportError, listedAlerts, loadJson, navigate, previewing, retryDeskSection, route, scopedApi, search, selectedAlert, setAlertAssignees, setAlertBusyId, setAlertErrorById, setAlertEvents, setAlertNotes, setAlerts, setExportError, sourceRows, teamOnly, user, watchHref, watchPath } = useWatchScreenContext();
   return (
     <>
       {route.view === "alerts" ? (
                 <WatchAlertsWorkspace
                   alerts={listedAlerts}
+                  allAlerts={deskAlerts}
+                  sourceCount={sourceRows.length}
+                  login={user?.login ?? ""}
                   rows={controller.alertRows}
                   selected={selectedAlert}
+                  relatedReleases={selectedAlert && activeInstallId ? <><AlertRecheck alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')} canRespond={canRespond&&!previewing} ended={ended}/><AlertRelatedReleases alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')}/></> : null}
                   events={selectedAlert ? alertEvents[selectedAlert.id] ?? [] : []}
                   previewing={previewing}
+                  canRespond={canRespond}
                   ended={ended}
                   busy={Boolean(selectedAlert && alertBusyId === selectedAlert.id)}
                   note={selectedAlert ? alertNotes[selectedAlert.id] ?? "" : ""}
@@ -22,6 +31,15 @@ export function AlertsScreen() {
                   activityState={controller.selectedActivityState}
                   detailOpen={route.alertId !== null}
                   tab={route.tab}
+                  assignedToMe={new URLSearchParams(search).get('mine')==='1'}
+                  onAssignedToMe={() => {
+                    const params=new URLSearchParams(search);
+                    if(params.get('mine')==='1' || route.tab==='mine') params.delete('mine');
+                    else params.set('mine','1');
+                    if(route.tab==='mine')params.delete('tab');
+                    params.delete('alert');
+                    navigate(`${watchPath('alerts')}?${params}`);
+                  }}
                   teamOnly={Boolean(teamOnly)}
                   onSelect={(alertId) =>
                     navigate(
@@ -58,7 +76,7 @@ export function AlertsScreen() {
                     setAlertAssignees((current) => ({ ...current, [selectedAlert.id]: value }));
                   }}
                   onAction={(action) => {
-                    if (previewing || !selectedAlert) return;
+                    if (previewing || !canRespond || !selectedAlert) return;
                     const alert = selectedAlert;
                     setAlertErrorById((current) => {
                       const next = { ...current };
@@ -70,7 +88,7 @@ export function AlertsScreen() {
                       try {
                         const payload =
                           action === "assign"
-                            ? { login: (alertAssignees[alert.id] ?? "").trim() }
+                            ? { userId: alertAssignees[alert.id]===CLEAR_ALERT_ASSIGNMENT?null:(alertAssignees[alert.id] ?? "").trim() }
                             : action === "resolve"
                               ? { note: (alertNotes[alert.id] ?? "").trim() }
                               : undefined;
@@ -95,6 +113,13 @@ export function AlertsScreen() {
                             },
                           };
                         });
+                        // Follow this exact alert into its new status, never silently select a different one.
+                        const updated=body.alert;
+                        const params=new URLSearchParams(search);
+                        params.set('alert',String(updated.id));
+                        params.set('tab',updated.resolved_at?'done':updated.acknowledged_at?'waiting':'open');
+                        if(params.get('mine')==='1' && updated.assigned_to_user_id!==user?.id)params.delete('mine');
+                        navigate(`${watchPath('alerts')}?${params}`);
                         const eventBody = await loadJson<{ events: AlertEvent[] }>(
                           `/api/alerts/${alert.id}/events`,
                         );
@@ -128,8 +153,10 @@ export function AlertsScreen() {
                       }
                     })();
                   }}
+                  onConnectSource={() => navigate(watchHref(watchPath("sources"), search))}
                 />
               ) : null}
     </>
   );
 }
+import {CLEAR_ALERT_ASSIGNMENT} from '../AlertMemberSelect';

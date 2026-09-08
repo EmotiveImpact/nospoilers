@@ -57,6 +57,7 @@ export type SignedReceipt = UnsignedReceipt & {
 
 export type ReceiptVerifyResult = {
   ok: boolean;
+  code?: 'malformed' | 'missing-signature' | 'unsupported-version' | 'unrecognized-signature' | 'inconsistent' | 'artifact-mismatch';
   reason?: string;
   receipt?: SignedReceipt;
 };
@@ -207,31 +208,31 @@ export function verifyReceipt(
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    return { ok: false, reason: "receipt is not valid JSON" };
+    return { ok: false, code: 'malformed', reason: "receipt is not valid JSON" };
   }
-  if (!parsed || typeof parsed !== "object") {
-    return { ok: false, reason: "receipt must be an object" };
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ok: false, code: 'malformed', reason: "receipt must be an object" };
   }
   const receipt = parsed as SignedReceipt;
   if (typeof receipt.signature !== "string" || receipt.signature.length < 32) {
-    return { ok: false, reason: "receipt is missing a signature" };
+    return { ok: false, code: 'missing-signature', reason: "receipt is missing a signature" };
   }
   if (receipt.v !== RECEIPT_VERSION) {
-    return { ok: false, reason: "unsupported receipt version" };
+    return { ok: false, code: 'unsupported-version', reason: "unsupported receipt version" };
   }
   if (!verifyReceiptSignature(receipt, secret)) {
-    return { ok: false, reason: "signature does not match" };
+    return { ok: false, code: 'unrecognized-signature', reason: "signature does not match" };
   }
   if (receipt.status === "passed" && receipt.ok !== true) {
-    return { ok: false, reason: "passing receipt is internally inconsistent" };
+    return { ok: false, code: 'inconsistent', reason: "passing receipt is internally inconsistent" };
   }
   if (receipt.status === "inconclusive" && receipt.ok) {
-    return { ok: false, reason: "inconclusive receipt is internally inconsistent" };
+    return { ok: false, code: 'inconsistent', reason: "inconclusive receipt is internally inconsistent" };
   }
   if (expectedSha256) {
     const expected = expectedSha256.toLowerCase();
     if (!receipt.artifactSha256 || receipt.artifactSha256.toLowerCase() !== expected) {
-      return { ok: false, reason: "artifact SHA-256 does not match this receipt" };
+      return { ok: false, code: 'artifact-mismatch', reason: "artifact SHA-256 does not match this receipt" };
     }
   }
   return { ok: true, receipt };

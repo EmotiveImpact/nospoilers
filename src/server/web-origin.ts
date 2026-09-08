@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { pinnedHttps } from './pinned-https.ts';
+import { readBoundedBody } from './bounded-body.ts';
 import { isBlockedRegistryHost } from "./npm-registry.ts";
 import {
   assertPublicWebhookHost,
@@ -314,7 +316,7 @@ async function readCapped(response: Response, maxBytes: number): Promise<Buffer>
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new WebCrawlError(`Asset is larger than the ${maxBytes} byte per-file crawl limit.`);
   }
-  const buf = Buffer.from(await response.arrayBuffer());
+  const buf = await readBoundedBody(response.body, maxBytes, response.headers.get('content-length'));
   if (buf.length > maxBytes) {
     throw new WebCrawlError(`Asset is larger than the ${maxBytes} byte per-file crawl limit.`);
   }
@@ -334,7 +336,7 @@ export async function fetchPublicHttps(
   if (!publicHost) {
     throw new WebCrawlError("Website host resolved to a private or reserved address.");
   }
-  const fetchImpl = opts.fetch ?? fetch;
+  const fetchImpl = opts.fetch ?? ((input: string | URL | Request, init?:RequestInit) => pinnedHttps(String(input),init,maxBytes,lookup));
   let response: Response;
   try {
     response = await fetchImpl(url.href, {

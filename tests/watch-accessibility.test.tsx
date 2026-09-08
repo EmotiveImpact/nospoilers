@@ -86,6 +86,7 @@ describe("Watch keyboard and dialog accessibility", () => {
         }}
         events={[]}
         previewing={false}
+        canRespond
         ended={false}
         busy={false}
         note=""
@@ -111,9 +112,9 @@ describe("Watch keyboard and dialog accessibility", () => {
 
     const assign = screen.getByRole("button", { name: "Assign" });
     await user.click(assign);
-    const input = await screen.findByPlaceholderText("teammate");
-    await waitFor(() => expect(document.activeElement).toBe(input));
+    await screen.findByRole('combobox',{name:'Workspace member'});
     const dialog = screen.getByRole("dialog", { name: "Artifact exposed" });
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
     for (let index = 0; index < 6; index += 1) await user.tab();
     expect(dialog.contains(document.activeElement)).toBe(true);
 

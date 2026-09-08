@@ -96,6 +96,9 @@ describe("installation health alerts", () => {
       await migrate(sql);
       const store = createStore(sql);
       await store.upsertUser({ id: "u1", login: "octo" });
+      // Health notifications exercise an already connected source. Fresh unknown
+      // installations now wait for explicit workspace binding in separate tests.
+      await store.upsertInstallation({id:7,accountId:1,accountLogin:'octo',accountType:'User'});
       const app = appFor(store);
       await postWebhook(app, "installation", "d-create", {
         action: "created",
@@ -170,11 +173,12 @@ describe("installation health alerts", () => {
     }
   });
 
-  it("does not alert when coverage has ended, and drops the tenant on uninstall", async () => {
+  it("does not alert when coverage has ended, and retains inactive history on uninstall", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
       await migrate(sql);
       const store = createStore(sql);
+      await store.upsertInstallation({id:7,accountId:1,accountLogin:'octo',accountType:'User'});
       const app = appFor(store);
       await postWebhook(app, "installation", "d-create", {
         action: "created",
@@ -202,6 +206,8 @@ describe("installation health alerts", () => {
         kind: "fork",
         payload: { installationId: 7, secret: "must-not-leak" },
       });
+      const historyBefore=await sql.query('SELECT id FROM alerts ORDER BY id');
+      const jobsBefore=await sql.query('SELECT id FROM jobs ORDER BY id');
       const removed = await postWebhook(app, "installation", "d-deleted", {
         action: "deleted",
         installation,
@@ -214,9 +220,11 @@ describe("installation health alerts", () => {
       const { rows: leftoverAlerts } = await sql.query<{ n: string }>(
         "SELECT count(*)::text AS n FROM alerts",
       );
-      expect(Number(installs[0]?.n)).toBe(0);
-      expect(Number(jobs[0]?.n)).toBe(0);
-      expect(Number(leftoverAlerts[0]?.n)).toBe(0);
+      expect(Number(installs[0]?.n)).toBe(1);
+      expect(Number(jobs[0]?.n)).toBe(jobsBefore.rows.length);
+      expect(Number(leftoverAlerts[0]?.n)).toBe(historyBefore.rows.length);
+      expect((await sql.query("SELECT id FROM jobs WHERE status IN ('queued','running')")).rows).toHaveLength(0);
+      expect(await store.installationWorkAllowed(7)).toBe(false);
     } finally {
       await sql.close();
     }

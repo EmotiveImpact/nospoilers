@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: "node",
       include: ["tests/**/*.test.{ts,tsx}"],
+      // Each integration file boots and migrates its own WASM database.
+      // Bound parallel databases; keep a finite budget for migration-heavy tests.
+      maxWorkers: 2,
+      testTimeout: 30_000,
     },
   };
 });

@@ -1,6 +1,6 @@
 import { coverageFrom, type Coverage } from "../coverage.ts";
 
-export type InstallationRole = "admin" | "member";
+export type InstallationRole = "admin" | "member" | "viewer";
 
 export type InstallationMember = {
   userId: string;
@@ -25,11 +25,11 @@ export const GITHUB_LOGIN_ERROR =
   "GitHub login must be 1–39 letters, digits, or hyphens, and cannot start or end with a hyphen.";
 
 export function parseInstallationRole(value: unknown): InstallationRole | null {
-  return value === "admin" || value === "member" ? value : null;
+  return value === "admin" || value === "member" || value === "viewer" ? value : null;
 }
 
 export function asInstallationRole(value: unknown): InstallationRole {
-  return value === "member" ? "member" : "admin";
+  return value === "admin" || value === "member" ? value : "viewer";
 }
 
 export function rolesPlanDenied(coverage: Coverage): { error: string; status: 402 | 403 } | null {

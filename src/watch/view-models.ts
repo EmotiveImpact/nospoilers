@@ -1,9 +1,10 @@
 import type { Finding } from "../report-types.ts";
 import { asFindingList } from "./format.ts";
-import { isOpenAlert, type DeskAlert } from "./verdict.ts";
+import { isOpenAlert, alertAssignedTo, type DeskAlert } from "./verdict.ts";
 
 export type SourceKind = "github" | "npm" | "website" | "map";
 export type SourceAttention = "critical" | "warning" | "ok" | "unknown";
+export type SourceMonitoring = {intervalMs:number|null;freshness:string;nextDispatchAt:null;evaluatedAt:string};
 
 export type WatchSourceViewModel = {
   key: string;
@@ -16,12 +17,19 @@ export type WatchSourceViewModel = {
   attention: SourceAttention;
   digest: string | null;
   lastCheckedAt: string | null;
+  lastScannedAt?: string | null;
+  scope?: string;
+  connectionId?: number | null;
+  connectionLabel?: string | null;
+  monitoring?: SourceMonitoring;
   detail: string;
   alertCount: number;
   primaryAction: string;
 };
 
 type RepoInput = {
+  monitoring?: SourceMonitoring;
+  installation_id?: number;
   id: number;
   full_name: string;
   private: boolean;
@@ -29,21 +37,27 @@ type RepoInput = {
 };
 
 type PackageInput = {
+  monitoring?: SourceMonitoring;
+  installation_id?: number;
   id: number;
   package_name: string;
   registry_origin?: string;
   last_version: string | null;
   last_sha256: string | null;
   last_checked_at: string | null;
+  last_scanned_at?: string | null;
   last_scan_status: string | null;
 };
 
 type OriginInput = {
+  monitoring?: SourceMonitoring;
+  installation_id?: number;
   id: number;
   origin_url: string;
   host: string;
   last_sha256: string | null;
   last_checked_at: string | null;
+  last_scanned_at?: string | null;
   last_scan_status: string | null;
   last_public_map?: boolean;
   verification?: { verifiedAt: string | null } | null;
@@ -51,6 +65,8 @@ type OriginInput = {
 };
 
 type MapInput = {
+  monitoring?: SourceMonitoring;
+  installationId?: number;
   id: number;
   kind: "sentry" | "bugsnag";
   host: string;
@@ -66,10 +82,12 @@ function scanAttention(status: string | null): SourceAttention {
   const value = status.toLowerCase();
   if (value.includes("fail") || value.includes("exposed") || value.includes("mismatch")) return "critical";
   if (value.includes("queue") || value.includes("pending") || value.includes("warn")) return "warning";
-  return "ok";
+  if (value === "inconclusive" || value === "error") return "warning";
+  return value === "passed" ? "ok" : "unknown";
 }
 
 export function buildSourceViewModels(input: {
+  connections?: {id:number;account_login:string}[];
   repos: RepoInput[];
   packages: PackageInput[];
   origins: OriginInput[];
@@ -100,6 +118,8 @@ export function buildSourceViewModels(input: {
       key: `repo-${repo.id}`,
       id: repo.id,
       kind: "github",
+      connectionId: repo.installation_id ?? null,
+      monitoring: repo.monitoring,
       kindLabel: "GitHub exposure",
       name: repo.full_name,
       coordinate: repo.full_name,
@@ -107,6 +127,7 @@ export function buildSourceViewModels(input: {
       attention: attentionFor([repo.full_name], repo.private ? (repo.last_checked_at ? "ok" : "unknown") : "critical"),
       digest: null,
       lastCheckedAt: repo.last_checked_at,
+      scope: "Repository visibility and access events; release artifact scans are separate evidence.",
       detail: repo.last_checked_at ? "repository visibility monitor" : "visibility monitor · check needed",
       alertCount: alertCountFor([repo.full_name]),
       primaryAction: repo.last_checked_at ? "Open repository" : "Check visibility",
@@ -115,6 +136,8 @@ export function buildSourceViewModels(input: {
       key: `npm-${pkg.id}`,
       id: pkg.id,
       kind: "npm",
+      connectionId: pkg.installation_id ?? null,
+      monitoring: pkg.monitoring,
       kindLabel: "Published artifact",
       name: pkg.package_name,
       coordinate: pkg.last_version ? `${pkg.package_name}@${pkg.last_version}` : pkg.package_name,
@@ -125,6 +148,8 @@ export function buildSourceViewModels(input: {
       ),
       digest: pkg.last_sha256,
       lastCheckedAt: pkg.last_checked_at,
+      lastScannedAt: pkg.last_scanned_at ?? null,
+      scope: "Published package bytes and watched registry metadata; not the repository or deployed website.",
       detail: pkg.registry_origin ?? "https://registry.npmjs.org",
       alertCount: alertCountFor([
         pkg.package_name,
@@ -136,6 +161,8 @@ export function buildSourceViewModels(input: {
       key: `web-${origin.id}`,
       id: origin.id,
       kind: "website",
+      connectionId: origin.installation_id ?? null,
+      monitoring: origin.monitoring,
       kindLabel: "Production web",
       name: origin.origin_url,
       coordinate: origin.host,
@@ -154,6 +181,8 @@ export function buildSourceViewModels(input: {
       ),
       digest: origin.last_sha256,
       lastCheckedAt: origin.last_checked_at,
+      lastScannedAt: origin.last_scanned_at ?? null,
+      scope: "Supported same-origin assets at the configured URL, within crawl limits; not the entire domain.",
       detail: origin.verification?.verifiedAt
         ? `verified production web${origin.deployTokenPrefix ? " · deploy trigger ready" : ""}`
         : origin.verification
@@ -170,6 +199,8 @@ export function buildSourceViewModels(input: {
       key: `map-${map.id}`,
       id: map.id,
       kind: "map",
+      connectionId: map.installationId ?? null,
+      monitoring: map.monitoring,
       kindLabel: "Private map custody",
       name: `${map.kind} · ${map.orgSlug ? `${map.orgSlug}/` : ""}${map.projectSlug}`,
       coordinate: map.host,
@@ -177,11 +208,12 @@ export function buildSourceViewModels(input: {
       attention: map.lastError ? "critical" : scanAttention(map.lastStatus),
       digest: null,
       lastCheckedAt: map.lastCheckedAt,
+      scope: "Configured private map destination and recorded custody evidence; not all production assets.",
       detail: map.lastError ?? "private map upload proof",
       alertCount: alertCountFor([map.host, map.projectSlug]),
       primaryAction: map.lastCheckedAt ? "Check custody" : "Verify custody",
     })),
-  ];
+  ].map((source):WatchSourceViewModel=>({...source,attention:source.attention!=='critical'&&source.monitoring?.freshness==='delayed'?'warning':source.attention,connectionLabel:input.connections?.find(connection=>connection.id===source.connectionId)?.account_login??null}));
 }
 
 export function filterSourceViewModels(
@@ -266,7 +298,7 @@ export function buildSetupViewModel(input: {
           ? "Repository connected; run a visibility check for proof"
         : "Install on at least one repository",
       proof: visibilityChecked ? "covered" : repoCount ? "check-needed" : "open",
-      action: "Install on GitHub",
+      action: repoCount ? "Check visibility" : "Install on GitHub",
     },
     {
       key: "release-assets",
@@ -277,7 +309,7 @@ export function buildSetupViewModel(input: {
           ? "No sealed release receipt yet"
           : "Connect a repository first",
       proof: input.releases.length ? "covered" : repoCount ? "check-needed" : "open",
-      action: "Scan a release",
+      action: repoCount ? "Scan a release" : "Connect GitHub",
     },
     {
       key: "workflow-check",
@@ -300,7 +332,7 @@ export function buildSetupViewModel(input: {
             : repoCount
               ? "check-needed"
               : "open",
-      action: "Check setup",
+      action: repoCount ? "Check setup" : "Connect GitHub",
     },
     {
       key: "registry",
@@ -444,17 +476,15 @@ export function alertSeverity(alert: DeskAlert): "critical" | "warning" {
 export function countOpenAlerts(
   alerts: DeskAlert[],
   login = "",
+  userId?:string,
 ): { open: number; critical: number; warning: number; assigned: number } {
   const open = alerts.filter(isOpenAlert);
   const critical = open.filter((alert) => alertSeverity(alert) === "critical").length;
-  const who = login.trim().toLowerCase();
   return {
     open: open.length,
     critical,
     warning: open.length - critical,
-    assigned: who
-      ? open.filter((alert) => (alert.assigned_to_login ?? "").trim().toLowerCase() === who).length
-      : 0,
+    assigned: open.filter(alert=>alertAssignedTo(alert,login,userId)).length,
   };
 }
 

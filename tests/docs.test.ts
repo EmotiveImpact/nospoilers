@@ -12,7 +12,7 @@ describe("public documentation", () => {
     expect(text).toMatch(/never retain source/i);
     expect(text).toMatch(/do not quote secrets/i);
     expect(text).toMatch(/GitHub App/i);
-    expect(text).toMatch(/14-day/);
+    expect(text).toMatch(/5-day/);
     expect(text).toContain("$29");
     expect(text).toContain("$99");
     expect(text).toMatch(/not live yet/i);

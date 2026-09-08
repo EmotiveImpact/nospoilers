@@ -1,4 +1,6 @@
 import { lookup as dnsLookup } from "node:dns/promises";
+import { BlockList, isIP } from 'node:net';
+import { pinnedHttps } from './pinned-https.ts';
 import { coverageFrom, type Coverage } from "../coverage.ts";
 import { isBlockedRegistryHost } from "./npm-registry.ts";
 import { SLACK_WEBHOOK_HOST } from "./slack.ts";
@@ -26,7 +28,10 @@ export function isPrivateOrReservedIPv4(address: string): boolean {
   const ip = ipv4Octets(address);
   if (!ip) return true;
   const [a, b] = ip;
-  if (a === 0 || a === 10 || a === 127 || a === 224 || a === 255) return true;
+  if (a === 0 || a === 10 || a === 127 || (a !== undefined && a >= 224)) return true;
+  if (a === 192 && b === 0) return true;
+  if (a === 198 && (b === 18 || b === 19 || (b === 51 && ip[2] === 100))) return true;
+  if (a === 203 && b === 0 && ip[2] === 113) return true;
   if (a === 169 && b === 254) return true;
   if (a === 172 && b !== undefined && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 168) return true;
@@ -35,7 +40,11 @@ export function isPrivateOrReservedIPv4(address: string): boolean {
 }
 
 export function isBlockedResolvedAddress(address: string, family: number): boolean {
+  if (isIP(address)!==family) return true;
   if (family === 4) return isPrivateOrReservedIPv4(address);
+  const global=new BlockList();global.addSubnet('2000::',3,'ipv6');
+  const special=new BlockList();special.addSubnet('2001::',23,'ipv6');special.addSubnet('2001:db8::',32,'ipv6');special.addSubnet('2002::',16,'ipv6');
+  if(!global.check(address,'ipv6') || special.check(address,'ipv6'))return true;
   const v = address.trim().toLowerCase();
   if (!v) return true;
   if (v === "::" || v === "::1") return true;
@@ -146,7 +155,7 @@ export async function postSiemWebhook(
   if (!publicHost) {
     return { ok: false, status: 0, error: "SIEM webhook resolved to a private address." };
   }
-  const fetchImpl = opts.fetch ?? fetch;
+  const fetchImpl = opts.fetch ?? ((input:string|URL|Request,init?:RequestInit)=>pinnedHttps(String(input),init,64*1024,opts.lookup));
   try {
     const response = await fetchImpl(parsed.url, {
       method: "POST",

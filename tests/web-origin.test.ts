@@ -7,7 +7,7 @@ import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { createLogNotifier } from "../src/server/notifier.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
-import { createWorker } from "../src/server/worker.ts";
+import { createWorker, handleJob } from "../src/server/worker.ts";
 import { scan } from "../src/scanner/index.ts";
 import {
   collectHtmlAssetUrls,
@@ -568,7 +568,7 @@ describe("hosted website watch", () => {
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
       );
-      expect(Number(usageAfterPoll.rows[0]?.n ?? 0)).toBe(1);
+      expect(Number(usageAfterPoll.rows[0]?.n ?? 0)).toBe(2); // queued crawl reserves before network work
       const again = createWorker({
         store,
         github: unusedGithub(),
@@ -635,7 +635,7 @@ describe("hosted website watch", () => {
         `SELECT COALESCE(heavy_jobs, 0)::text AS n FROM hosted_usage_days
          WHERE installation_id = 7 AND day = (timezone('utc', now()))::date`,
       );
-      expect(Number(usageAfterCreate.rows[0]?.n ?? 0)).toBe(0);
+      expect(Number(usageAfterCreate.rows[0]?.n ?? 0)).toBe(1); // refunded after the failed crawl
       const worker = createWorker({
         store,
         github: unusedGithub(),
@@ -869,7 +869,11 @@ describe("hosted website watch", () => {
       expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY - 1);
       const queued = await runWebOriginPoll({ store });
       expect(queued.queued).toBe(1);
-      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY - 1);
+      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY);
+      const again=createWorker({store,github:unusedGithub(),notifier:createLogNotifier(store),heavyConcurrency:1,lightConcurrency:1,maxAssetBytes:80*1024*1024,intervalMs:60_000,
+        onJob:async job=>{if(job.kind==='web_origin_scan')await handleJob(job,{store,github:unusedGithub(),notifier:createLogNotifier(store),scan,maxAssetBytes:80*1024*1024,webFetch,webLookup:publicLookup});}});
+      await again.runUntilIdle();await again.stop();
+      expect(await usageOf(sql)).toBe(SOLO_HEAVY_PER_UTC_DAY-1);
       const release = await store.enqueueJob({
         deliveryId: `release:7:${crypto.randomUUID()}`,
         priority: "heavy",
@@ -883,7 +887,7 @@ describe("hosted website watch", () => {
         method: "POST",
         headers: { cookie },
       });
-      expect(check.status).toBe(200);
+      expect(check.status).toBe(200); // same delivery ID is idempotent even at the limit
     } finally {
       await sql.close();
     }

@@ -1,8 +1,10 @@
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
+import {GithubConnectionReturn} from '../GithubWorkspaceConnection';
 
 export function SetupScreen() {
   const { CoverageLock, WatchSourcesSummary, adminOnly, ended, retryDeskSection, route, search, setup, setupSectionState, sourceRows } = useWatchScreenContext();
   if (route.view !== "setup") return null;
+  if(new URLSearchParams(search).get('githubReturn')==='1')return <GithubConnectionReturn/>;
   return (
     <section className="relative min-h-72">
       {ended ? <CoverageLock variant="watch" title="Subscribe to keep watching." /> : null}

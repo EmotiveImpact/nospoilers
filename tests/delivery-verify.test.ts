@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "path";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../src/server/app.ts";
+import { createApp } from "./helpers/completed-scan-app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import {
   attachCanonicalDeliveryUrl,
@@ -46,7 +46,7 @@ function unusedGithub(): GithubPort {
   };
 }
 
-const publicLookup = async () => [{ address: "203.0.113.10", family: 4 }];
+const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
 const privateLookup = async () => [{ address: "127.0.0.1", family: 4 }];
 
 function bytesFetch(body: Buffer, init: { status?: number; type?: string; location?: string } = {}) {
@@ -472,7 +472,7 @@ describe("hosted delivery verify", () => {
         location: { id: number; url: string };
       };
       expect(created.queued).toBe(true);
-      expect(woke).toBe(1);
+      expect(woke).toBe(2); // queued artifact scan, then delivery verification
       expect(created.location.url).toBe("https://cdn.example.com/app.tgz");
       expect(JSON.stringify(created)).not.toContain("token=secret");
 

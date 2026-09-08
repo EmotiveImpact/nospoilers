@@ -1,0 +1,31 @@
+import {it,expect} from 'vitest';
+import {openSql,migrate} from '../src/server/sql.ts';
+import {createStore} from '../src/server/store.ts';
+import {listWorkspaceAlerts,workspaceAlertDetail} from '../src/server/workspace-alerts.ts';
+it('filters before paging and returns whole-workspace counts without leaking foreign rows',async()=>{
+ const sql=await openSql('pglite://:memory:');try{
+  await migrate(sql);const store=createStore(sql);await store.upsertUser({id:'owner',login:'owner'});
+  await store.upsertInstallation({id:7,accountId:7,accountLogin:'owner',accountType:'User'});await store.linkUserInstallation(7,'owner');
+  const workspace=(await sql.query<{workspace_id:string}>('SELECT workspace_id FROM product_workspace_installations WHERE installation_id=7')).rows[0].workspace_id;
+  await sql.query("INSERT INTO alerts(installation_id,kind,title,body,assigned_to_user_id) SELECT 7,'release_scan','Exposure '||n,'Evidence',CASE WHEN n%2=0 THEN 'owner' END FROM generate_series(1,120) n");
+  await store.upsertInstallation({id:8,accountId:8,accountLogin:'foreign',accountType:'User'});
+  await sql.query("INSERT INTO alerts(installation_id,kind,title,body,assigned_to_user_id) VALUES(8,'release_scan','Foreign','Private evidence','owner')");
+  const first=await listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'open',mine:true});
+  expect(first.alerts).toHaveLength(50);expect(first.nextCursor).not.toBeNull();expect(first.counts).toEqual({open:120,waiting:0,done:0,mine:60});
+  const second=await listWorkspaceAlerts(sql,'owner',workspace,first.nextCursor!,{status:'open',mine:true});
+  expect(second.alerts).toHaveLength(10);expect(second.nextCursor).toBeNull();
+  expect(new Set([...first.alerts,...second.alerts].map(row=>row.id)).size).toBe(60);
+  expect((await listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'done'})).alerts).toHaveLength(0);
+  await expect(listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'bogus'})).rejects.toMatchObject({status:400});
+  const selected=String(first.alerts[0].id);
+  await sql.query("INSERT INTO alert_events(alert_id,installation_id,workspace_id,actor_login,action,detail) SELECT $1,7,$2,'owner','assigned','Event '||n FROM generate_series(1,120) n",[selected,workspace]);
+  const latest=await workspaceAlertDetail(sql,'owner',workspace,selected);
+  const older=await workspaceAlertDetail(sql,'owner',workspace,selected,latest.nextEventsCursor!);
+  const oldest=await workspaceAlertDetail(sql,'owner',workspace,selected,older.nextEventsCursor!);
+  expect([latest.events.length,older.events.length,oldest.events.length]).toEqual([50,50,20]);
+  expect(oldest.nextEventsCursor).toBeNull();
+  expect(new Set([...latest.events,...older.events,...oldest.events].map(row=>row.id)).size).toBe(120);
+  expect(latest.events[0].id).toBeLessThan(latest.events[49].id);
+  await expect(workspaceAlertDetail(sql,'owner',workspace,String(first.alerts[1].id),latest.nextEventsCursor!)).rejects.toMatchObject({status:404});
+ }finally{await sql.close();}
+});

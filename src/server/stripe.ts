@@ -39,11 +39,15 @@ export type StripePort = {
 
 export type StripeEvent = {
   id: string;
+  created?: number;
   type: string;
   data: { object: Record<string, unknown> };
 };
 
 export type StripeBillingPatch = {
+  eventCreated?: number;
+  eventType?: string;
+  organizationId?: string | null;
   installationId: number | null;
   customerId: string | null;
   subscriptionId: string | null;
@@ -178,15 +182,24 @@ function installationIdFrom(value: unknown): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+function organizationIdFrom(value: unknown): string | null {
+  const id=asString(metadataOf(value).organizationId);
+  return id&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id)?id:null;
+}
+
 export function parseStripeEvent(raw: unknown): StripeEvent | null {
   const obj = asRecord(raw);
   const id = asString(obj.id);
   const type = asString(obj.type);
   if (!id || !type) return null;
-  return { id, type, data: { object: asRecord(asRecord(obj.data).object) } };
+  return { id, type, ...(Number.isSafeInteger(obj.created)&&Number(obj.created)>0?{created:Number(obj.created)}:{}), data: { object: asRecord(asRecord(obj.data).object) } };
 }
 
 export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): StripeBillingPatch | null {
+  const patch=eventPatch(event,prices);
+  return patch&&event.created?{...patch,eventCreated:event.created,eventType:event.type}:patch;
+}
+function eventPatch(event: StripeEvent, prices: StripePriceMap): StripeBillingPatch | null {
   const object = event.data.object;
   if (event.type === "checkout.session.completed") {
     if (asString(object.mode) && object.mode !== "subscription") return null;
@@ -194,6 +207,7 @@ export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): St
     const priceId = asString(metadataOf(object).priceId) ?? asString(metadataOf(object).price_id);
     return {
       installationId: installationIdFrom(object),
+      ...(organizationIdFrom(object)?{organizationId:organizationIdFrom(object)}:{}),
       customerId: asId(object.customer),
       subscriptionId: asId(object.subscription),
       status: remainingTrialDaysFromSession(object) > 0 ? "trialing" : "active",
@@ -213,6 +227,7 @@ export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): St
     const covers = stripeSubscriptionCovers(status);
     return {
       installationId: installationIdFrom(object),
+      ...(organizationIdFrom(object)?{organizationId:organizationIdFrom(object)}:{}),
       customerId: asId(object.customer),
       subscriptionId: asId(object.id) ?? asId(object.subscription),
       status,
@@ -225,6 +240,7 @@ export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): St
   if (event.type === "customer.subscription.deleted") {
     return {
       installationId: installationIdFrom(object),
+      ...(organizationIdFrom(object)?{organizationId:organizationIdFrom(object)}:{}),
       customerId: asId(object.customer),
       subscriptionId: asId(object.id) ?? asId(object.subscription),
       status: "canceled",
@@ -238,6 +254,7 @@ export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): St
     const priceId = invoicePriceId(object);
     return {
       installationId: installationIdFrom(object),
+      ...(organizationIdFrom(object)?{organizationId:organizationIdFrom(object)}:{}),
       customerId: asId(object.customer),
       subscriptionId: asId(object.subscription),
       status: "active",
@@ -250,6 +267,7 @@ export function stripeEventPatch(event: StripeEvent, prices: StripePriceMap): St
   if (event.type === "invoice.payment_failed") {
     return {
       installationId: installationIdFrom(object),
+      ...(organizationIdFrom(object)?{organizationId:organizationIdFrom(object)}:{}),
       customerId: asId(object.customer),
       subscriptionId: asId(object.subscription),
       status: "past_due",

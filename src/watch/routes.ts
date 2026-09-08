@@ -1,5 +1,6 @@
 export const WATCH_VIEWS = [
   "overview",
+  "scan",
   "alerts",
   "sources",
   "releases",
@@ -13,6 +14,7 @@ export const WATCH_VIEWS = [
   "health",
   "tokens",
   "registries",
+  "workspaces",
 ] as const;
 
 export type WatchView = (typeof WATCH_VIEWS)[number];
@@ -24,6 +26,7 @@ export type WatchRoute = {
   view: WatchView;
   alertId: number | null;
   releaseId: number | null;
+  releasePreviewId: number | null;
   sourceKey: string | null;
   sourceFilter: SourceFilter;
   sourceAttention: boolean;
@@ -36,12 +39,14 @@ const TAB_SET = new Set<string>(["open", "waiting", "mine", "done"]);
 const SOURCE_FILTER_SET = new Set<string>(["all", "github", "npm", "website", "map"]);
 
 export const VIEW_TITLE: Record<WatchView, string> = {
+  workspaces: "Workspaces",
   overview: "Overview",
+  scan: "New scan",
   alerts: "Alerts",
   sources: "Coverage",
   releases: "Releases",
   timeline: "Timeline",
-  setup: "Finish setup",
+  setup: "Setup",
   notifications: "Notifications",
   policy: "Policy & allowlist",
   team: "Team & roles",
@@ -62,6 +67,9 @@ export function parseWatchRoute(path: string, search: string): WatchRoute {
   const alertId = Number.isFinite(rawAlert) && rawAlert > 0 ? rawAlert : null;
   const rawRelease = Number(params.get("release"));
   const releaseId = Number.isFinite(rawRelease) && rawRelease > 0 ? rawRelease : null;
+  const rawReleasePreview = Number(params.get("preview"));
+  const releasePreviewId =
+    Number.isFinite(rawReleasePreview) && rawReleasePreview > 0 ? rawReleasePreview : null;
   const rawSource = params.get("source")?.trim() ?? "";
   const sourceKey = /^(repo|npm|web|map)-\d+$/.test(rawSource) ? rawSource : null;
   const rawSourceFilter = params.get("sourceType") ?? "";
@@ -78,15 +86,15 @@ export function parseWatchRoute(path: string, search: string): WatchRoute {
   const tab: AlertTab = TAB_SET.has(rawTab) ? (rawTab as AlertTab) : "open";
   const trimmed = path.replace(/\/+$/, "") || "/watch";
   if (trimmed === "/watch") {
-    return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
+    return { view: "overview", alertId, releaseId, releasePreviewId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
   }
   if (trimmed.startsWith("/watch/")) {
     const page = trimmed.slice("/watch/".length);
     if (VIEW_SET.has(page)) {
-      return { view: page as WatchView, alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
+      return { view: page as WatchView, alertId, releaseId, releasePreviewId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
     }
   }
-  return { view: "overview", alertId, releaseId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
+  return { view: "overview", alertId, releaseId, releasePreviewId, sourceKey, sourceFilter, sourceAttention, sourceConfigure, tab };
 }
 
 export function watchPath(view: WatchView): string {
@@ -100,6 +108,7 @@ export function watchHref(
     install?: number | null;
     alert?: number | null;
     release?: number | null;
+    previewRelease?: number | null;
     source?: string | null;
     sourceType?: SourceFilter | null;
     attention?: boolean | null;
@@ -108,6 +117,10 @@ export function watchHref(
   } = {},
 ): string {
   const params = paramsOf(search);
+  // Keep tenant scope across navigation, but never carry a detail screen into another page.
+  if(path!=="/watch/releases")for(const key of ['release','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor'])params.delete(key);
+  if(path!=="/watch/alerts")for(const key of ['alert','tab','mine'])params.delete(key);
+  if(extra.release || extra.previewRelease)for(const key of ['upload','uploadView','uploadFinding','uploadTab'])params.delete(key);
   if (extra.install !== undefined) {
     if (extra.install) params.set("install", String(extra.install));
     else params.delete("install");
@@ -119,6 +132,10 @@ export function watchHref(
   if (extra.release !== undefined) {
     if (extra.release) params.set("release", String(extra.release));
     else params.delete("release");
+  }
+  if (extra.previewRelease !== undefined) {
+    if (extra.previewRelease) params.set("preview", String(extra.previewRelease));
+    else params.delete("preview");
   }
   if (extra.source !== undefined) {
     if (extra.source) params.set("source", extra.source);

@@ -52,7 +52,11 @@ async function withStore(
   const sql = await openSql("pglite://:memory:");
   try {
     await migrate(sql);
-    await run({ sql, store: createStore(sql, storeOpts) });
+    const store=createStore(sql,storeOpts);
+    // Hosted processing fixtures represent an already-connected source. Fresh
+    // unbound deliveries are covered by github-pending-events/connection tests.
+    await store.upsertInstallation({id:7,accountId:7,accountLogin:'octo',accountType:'User'});
+    await run({ sql, store });
   } finally {
     await sql.close();
   }
@@ -265,7 +269,7 @@ describe("GitHub webhooks", () => {
       expect(deleted.status).toBe(200);
       expect(((await deleted.json()) as { queued: boolean; kind: string }).kind).toBe("repo_deleted");
       const { rows: afterDelete } = await store.sql.query<{ n: string }>(
-        "SELECT count(*)::text AS n FROM repos",
+        "SELECT count(*)::text AS n FROM repos WHERE disconnected_at IS NULL",
       );
       expect(Number(afterDelete[0]?.n)).toBe(0);
 
@@ -276,7 +280,7 @@ describe("GitHub webhooks", () => {
       });
       expect(again.status).toBe(200);
       const { rows: stillGone } = await store.sql.query<{ n: string }>(
-        "SELECT count(*)::text AS n FROM repos",
+        "SELECT count(*)::text AS n FROM repos WHERE disconnected_at IS NULL",
       );
       expect(Number(stillGone[0]?.n)).toBe(0);
     });
@@ -668,7 +672,7 @@ describe("GitHub webhooks", () => {
         repository: sampleRepo,
       });
       expect(res.status).toBe(200);
-      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM repos");
+      const { rows } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM repos WHERE disconnected_at IS NULL");
       expect(Number(rows[0]?.n)).toBe(0);
       const { rows: jobs } = await store.sql.query<{ n: string }>("SELECT count(*)::text AS n FROM jobs");
       expect(Number(jobs[0]?.n)).toBe(0);
@@ -1660,7 +1664,7 @@ describe("installation ownership", () => {
     });
   });
 
-  it("links only an install GitHub says the user has, for this App", async () => {
+  it("requires existing product administration before refreshing a state-less GitHub connection", async () => {
     await withStore(async ({ store }) => {
       await store.upsertUser({ id: "u-owner", login: "octo", accessToken: "ghu_owner" });
       const sessionId = await store.createSession("u-owner");
@@ -1674,6 +1678,8 @@ describe("installation ownership", () => {
       });
       const { app } = appFor(store, github);
       const cookie = `ns_session=${signSession("sess", sessionId)}`;
+      expect((await app.request('/api/github/setup?installation_id=7',{headers:{cookie}})).status).toBe(403);
+      await store.linkUserInstallation(7,'u-owner');
       const allowed = await app.request("/api/github/setup?installation_id=7", {
         headers: { cookie },
       });
@@ -2089,7 +2095,7 @@ describe("visibility poller", () => {
 });
 
 describe("installation lifecycle", () => {
-  it("deletes an uninstalled GitHub App so no billing or repos remain", async () => {
+  it("disconnects an uninstalled GitHub App without deleting organisation billing or retained evidence", async () => {
     await withStore(async ({ store }) => {
       const { app } = appFor(store);
       await postWebhook(app, "installation", "d-install", {
@@ -2114,8 +2120,11 @@ describe("installation lifecycle", () => {
       const { rows: billing } = await store.sql.query<{ n: string }>(
         "SELECT count(*)::text AS n FROM billing_accounts",
       );
-      expect(Number(installs[0]?.n)).toBe(0);
-      expect(Number(billing[0]?.n)).toBe(0);
+      expect(Number(installs[0]?.n)).toBe(1);
+      expect(Number(billing[0]?.n)).toBe(1);
+      expect(await store.installationWorkAllowed(7)).toBe(false);
+      expect((await store.sql.query('SELECT disconnected_at FROM installations WHERE id=7')).rows[0]).toMatchObject({disconnected_at:expect.anything()});
+      expect((await store.sql.query('SELECT id FROM repos WHERE installation_id=7')).rows).toEqual([{id:99}]);
     });
   });
 

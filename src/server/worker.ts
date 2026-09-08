@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { processUploadedScan } from './upload-worker.ts';
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -15,7 +16,7 @@ import {
   isElectronInstallerName,
   isScannablePackAssetName,
 } from "./paths.ts";
-import { applyHostedPolicy } from "./hosted-policy.ts";
+import {captureHostedPolicy,applyHostedPolicySnapshot} from './hosted-policy-snapshot.ts';
 import { annotationsForFindings, checkConclusionFor, checkTitleFor } from "./github-checks.ts";
 import { persistHostedReceipt, summarizeDiff } from "./receipts.ts";
 import { inferReleaseChannel } from "./release-ledger.ts";
@@ -123,11 +124,16 @@ export async function handleJob(
     maxAssetBytes: number;
     npm?: NpmPort;
     receiptSecret?: string;
+    workerId?:string;
     webFetch?: typeof fetch;
     webLookup?: WebhookHostLookup;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
+  if (job.kind === 'uploaded_scan'||job.kind==='workspace_origin_scan') {
+    await processUploadedScan(String(payload.uploadId), deps.store, deps.scan, deps.receiptSecret ?? '',deps.workerId?{jobId:job.id,workerId:deps.workerId}:undefined,{fetch:deps.webFetch,lookup:deps.webLookup});
+    return;
+  }
   if (job.kind !== "prospect_scan") {
     const installationId = Number(payload.installationId);
     if (Number.isFinite(installationId) && installationId > 0) {
@@ -150,12 +156,12 @@ export async function handleJob(
   const repo = repoOf(payload);
   const installationId = Number(payload.installationId);
   const deliveryId = job.delivery_id;
-  let hostedUnpackConsumed = job.priority === "heavy" && job.kind !== "web_origin_scan";
+  let hostedUnpackConsumed = job.priority === "heavy";
 
   async function refundUnusedHostedUnpack(): Promise<void> {
     if (!hostedUnpackConsumed) return;
     if (!Number.isFinite(installationId) || installationId <= 0) return;
-    await deps.store.refundHostedUnpack(installationId);
+    await deps.store.refundJobUnpack(job.id,deps.workerId);
     hostedUnpackConsumed = false;
   }
 
@@ -165,6 +171,11 @@ export async function handleJob(
     repoFullName: repo?.fullName ?? null,
     githubDeliveryId: deliveryId,
   };
+
+  if(repo&&await deps.store.repoWorkRevoked(repo.id,installationId)){
+    await refundUnusedHostedUnpack();
+    return;
+  }
 
   if (job.kind === "repo_publicized") {
     if (repo) await deps.store.updateRepoCheck(repo.id, false);
@@ -297,6 +308,7 @@ export async function handleJob(
     }
 
     const allFindings: ScanReport["findings"] = [];
+    const releaseRevisionIds: number[] = [];
     const notes: string[] = [];
     const statuses: ScanStatus[] = [];
     let unpacked = false;
@@ -317,13 +329,10 @@ export async function handleJob(
         const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-rel-"));
         const dest = path.join(dir, asset.name.replace(/[^\w.-]+/g, "_"));
         try {
+          const policySnapshot=await captureHostedPolicy(deps.store.sql,installationId);
           const bytes = await deps.github.downloadAsset(installationId, asset.url, deps.maxAssetBytes);
           await writeFile(dest, bytes);
-          report = await applyHostedPolicy(
-            deps.store,
-            await deps.scan(dest),
-            installationId,
-          );
+          report = applyHostedPolicySnapshot(await deps.scan(dest),policySnapshot);
           unpacked = true;
         } finally {
           await rm(dir, { recursive: true, force: true });
@@ -341,6 +350,7 @@ export async function handleJob(
           sourceRevision: tag,
         });
         report = persisted.report;
+        releaseRevisionIds.push(persisted.revision.id);
         statuses.push(report.status);
         allFindings.push(...report.findings);
         notes.push(noteForAsset(asset.name, report));
@@ -405,6 +415,7 @@ export async function handleJob(
       title,
       body: notes.join(" "),
       findings: allFindings,
+      releaseRevisionIds,
     });
   }
 
@@ -466,16 +477,13 @@ export async function handleJob(
     const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-npm-"));
     const dest = path.join(dir, `${packageName.replace(/[^\w.-]+/g, "_") || "package"}-${version}.tgz`);
     try {
+      const policySnapshot=await captureHostedPolicy(deps.store.sql,installationId,Number.isFinite(packageId) && packageId>0 ? packageId:null);
       const bytes = await deps.npm.downloadTarball(tarballUrl, deps.maxAssetBytes, auth);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       await writeFile(dest, bytes);
-      let report = await applyHostedPolicy(
-        deps.store,
-        await deps.scan(dest),
-        installationId,
-        Number.isFinite(packageId) && packageId > 0 ? packageId : null,
-      );
+      let report = applyHostedPolicySnapshot(await deps.scan(dest),policySnapshot);
       let diffNote = "";
+      const releaseRevisionIds: number[] = [];
       if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -488,6 +496,7 @@ export async function handleJob(
           sourceRevision: version,
         });
         report = persisted.report;
+        releaseRevisionIds.push(persisted.revision.id);
         diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
         if (
           isPublicNpmOrigin(registryOrigin) &&
@@ -545,6 +554,7 @@ export async function handleJob(
         body: notes.join(" "),
         findings: report.findings,
         packageName: packageName || null,
+        releaseRevisionIds,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -586,11 +596,10 @@ export async function handleJob(
 
   if (job.kind === "web_origin_scan") {
     const originId = Number(payload.originId);
-    const url = String(payload.url ?? "");
     const origin = Number.isFinite(originId) && originId > 0
       ? await deps.store.getWatchedOrigin(originId)
       : null;
-    if (!origin) {
+    if (!origin || origin.installation_id!==installationId || (origin.verification_token&&!origin.verified_at)) {
       await refundUnusedHostedUnpack();
       return;
     }
@@ -600,31 +609,20 @@ export async function handleJob(
     };
     const dir = await mkdtemp(path.join(os.tmpdir(), "nospoilers-web-"));
     try {
-      const crawled = await crawlOrigin(url || origin.origin_url, crawlOpts);
+      const policySnapshot=await captureHostedPolicy(deps.store.sql,installationId);
+      const crawled = await crawlOrigin(origin.origin_url, crawlOpts);
       if (origin.last_sha256 && origin.last_sha256 === crawled.sha256 && !crawled.truncated) {
         await deps.store.touchWatchedOrigin(origin.id);
         await refundUnusedHostedUnpack();
         return;
       }
-      // Website jobs use the heavy concurrency lane but reserve daily usage
-      // only after the crawl proves there are changed bytes to scan.
-      const consumed = await deps.store.consumeHostedUnpack(installationId);
-      if (!consumed) {
-        await deps.store.noteFairUseExhausted(installationId);
-        return;
-      }
-      hostedUnpackConsumed = true;
+      // Admission reserves usage before queueing; unchanged crawls refund above.
       for (const file of crawled.files) {
         const dest = path.join(dir, file.rel);
         await mkdir(path.dirname(dest), { recursive: true });
         await writeFile(dest, file.bytes);
       }
-      let report = await applyHostedPolicy(
-        deps.store,
-        await deps.scan(dir),
-        installationId,
-        null,
-      );
+      let report = applyHostedPolicySnapshot(await deps.scan(dir),policySnapshot);
       if (crawled.truncated) {
         report = {
           ...report,
@@ -654,6 +652,7 @@ export async function handleJob(
         `origin:${origin.id}:${crawled.sha256.slice(0, 12)}`,
       );
       let diffNote = "";
+      const releaseRevisionIds: number[] = [];
       if (deps.receiptSecret && Number.isFinite(installationId) && installationId > 0) {
         const persisted = await persistHostedReceipt({
           store: deps.store,
@@ -665,6 +664,7 @@ export async function handleJob(
           sourceRevision: crawled.sha256.slice(0, 12),
         });
         report = persisted.report;
+        releaseRevisionIds.push(persisted.revision.id);
         diffNote = summarizeDiff(persisted.diff, persisted.comparedTo);
       }
       const critical = report.findings.filter((finding) => finding.severity === "critical").length;
@@ -689,6 +689,7 @@ export async function handleJob(
         ),
         body: notes.join(" "),
         findings: report.findings,
+        releaseRevisionIds,
       });
     } catch (error) {
       const message =
@@ -822,6 +823,7 @@ export function createWorker(opts: {
   webFetch?: typeof fetch;
   webLookup?: WebhookHostLookup;
   onJob?: (job: JobRow) => Promise<void>;
+  processNotification?: () => Promise<boolean>;
 }) {
   const scanFn = opts.scan ?? scan;
   const workerId = `w-${process.pid}-${Math.random().toString(16).slice(2)}`;
@@ -847,12 +849,14 @@ export function createWorker(opts: {
     const inc = job.priority === "heavy" ? () => (heavyRunning += 1) : () => (lightRunning += 1);
     const dec = job.priority === "heavy" ? () => (heavyRunning -= 1) : () => (lightRunning -= 1);
     inc();
+    const heartbeat=setInterval(()=>{void opts.store.heartbeatJob(job.id,workerId).catch(()=>undefined);},Math.max(1000,Math.floor((opts.staleAfterMs??300_000)/3)));
     if (job.kind === "prospect_scan") prospectRunning += 1;
     try {
       if (opts.onJob) await opts.onJob(job);
       else {
         await handleJob(job, {
           store: opts.store,
+          workerId,
           github: opts.github,
           notifier: opts.notifier,
           scan: scanFn,
@@ -863,7 +867,7 @@ export function createWorker(opts: {
           webLookup: opts.webLookup,
         });
       }
-      await opts.store.finishJob(job.id);
+      await opts.store.finishJob(job.id,undefined,workerId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "job.failed", {
@@ -872,8 +876,9 @@ export function createWorker(opts: {
         attempts: job.attempts,
         message,
       });
-      await opts.store.finishJob(job.id, message);
+      await opts.store.finishJob(job.id, message,workerId);
     } finally {
+      clearInterval(heartbeat);
       if (job.kind === "prospect_scan") prospectRunning -= 1;
       dec();
       void tick();
@@ -892,6 +897,8 @@ export function createWorker(opts: {
     const running = (async () => {
       try {
         await opts.store.recoverStaleJobs(opts.staleAfterMs ?? 5 * 60 * 1000);
+        await opts.store.expireUploadedScans();
+        await opts.store.deleteExpiredPendingScans();
         do {
           tickRequested = false;
           while (lightRunning < opts.lightConcurrency) {
@@ -908,6 +915,10 @@ export function createWorker(opts: {
             );
             if (!job) break;
             launch(job);
+          }
+          if(opts.processNotification) {
+            try { while(!stopped && await opts.processNotification()) { /* Drain currently due notifications. */ } }
+            catch { logJson('error','workspace.notification_worker_failed',{}); }
           }
         } while (tickRequested && !stopped);
       } finally {
@@ -948,6 +959,7 @@ export function createWorker(opts: {
       stopped = true;
       if (timer) clearInterval(timer);
       timer = undefined;
+      if(tickInFlight)await tickInFlight;
       await Promise.allSettled([...activeJobs]);
     },
   };

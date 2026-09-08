@@ -3,7 +3,7 @@ import { readFile as readFileAsync } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { AUDIT_ACTIONS, CONFIRM_MISSING_ERROR } from "../src/server/audit.ts";
-import { createApp } from "../src/server/app.ts";
+import { createApp } from "./helpers/completed-scan-app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import {
@@ -41,7 +41,7 @@ function unusedGithub(): GithubPort {
   };
 }
 
-const publicLookup = async () => [{ address: "203.0.113.10", family: 4 }];
+const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
 
 describe("public verification helpers", () => {
   it("mints unguessable tokens and rejects short or punctuated ones", () => {
@@ -351,7 +351,7 @@ describe("customer-controlled public verification page", () => {
   });
 
   it("shows Watch copy for publish and unpublish", () => {
-    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
+    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/components/watch/WatchReleaseBrief.tsx", "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
     expect(page).toMatch(/Publish verification/);
     expect(page).toMatch(/Unpublish verification/);
     expect(page).toMatch(/Solo may publish/);

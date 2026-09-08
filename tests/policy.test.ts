@@ -483,7 +483,7 @@ describe("cli --policy", () => {
       const tsx = path.join(root, "node_modules/tsx/dist/cli.mjs");
       const child = spawn(process.execPath, [tsx, path.join(root, "src/cli.ts"), ...args], {
         cwd,
-        env: process.env,
+        env: { ...process.env, NOSPOILERS_INTERNAL_LOCAL_SCAN: "1" },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let stdout = "";

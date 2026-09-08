@@ -30,6 +30,7 @@ export type AlertInput = {
   body: string;
   findings?: Finding[];
   githubDeliveryId?: string | null;
+  releaseRevisionIds?: number[];
 };
 
 export type AlertNotifier = {

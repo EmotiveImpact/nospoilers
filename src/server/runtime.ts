@@ -19,6 +19,9 @@ import { migrateIfNeeded, openSql } from "./sql.ts";
 import { stubGithub } from "./stub-github.ts";
 import { createStore } from "./store.ts";
 import { createWorker } from "./worker.ts";
+import { isolatedScan } from './isolated-scanner.ts';
+import { cleanupAbandonedParserFiles } from './parser-cleanup.ts';
+import { runWorkspaceNotification } from './workspace-notification-worker.ts';
 
 export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
@@ -39,6 +42,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       : undefined,
   });
   const worker = createWorker({
+    scan: target=>isolatedScan(target,{requireContainer:!['localhost','127.0.0.1','[::1]'].includes(new URL(config.appBaseUrl).hostname)}),
     store,
     github,
     npm,
@@ -49,10 +53,11 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     intervalMs: config.workerIntervalMs,
     staleAfterMs: config.jobStaleMs,
     receiptSecret: config.receiptSecret,
+    processNotification:()=>runWorkspaceNotification(sql,{encryptionSecret:config.sessionSecret,emailApiKey:config.resendApiKey,emailFrom:config.resendFromEmail}),
   });
   const runJobs = processRunsJobs(config.processRole);
   const wakeWorker = () => {
-    void worker.tick();
+    if(runJobs)void worker.tick();
   };
   const pollerDeps = {
     store,
@@ -73,9 +78,11 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     notifier,
     wakeWorker,
     runScheduledJobs: async () => {
+      const expiredPendingScans = await store.deleteExpiredPendingScans();
+      await store.expireUploadedScans();
       const result = await runPollerTick(pollerDeps);
-      await worker.runUntilIdle();
-      return result;
+      if(runJobs)await worker.runUntilIdle();
+      return { ...result, expiredPendingScans };
     },
   });
   const poller = runJobs ? startPoller(pollerDeps, config.pollIntervalMs) : { stop() {} };
@@ -100,6 +107,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
         visibilityPollIntervalMs: config.pollIntervalMs,
       });
       if (!runJobs) return;
+      void cleanupAbandonedParserFiles().catch(()=>logJson('warn','parser.cleanup.failed',{}));
       worker.start();
       void listenJobQueued(config.databaseUrl, () => {
         void worker.tick();

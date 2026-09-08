@@ -64,7 +64,7 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/components/WatchMonolithShell.tsx", "utf8")).toMatch(/watch-stage/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-empty/);
-    expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/text-ok/);
+    expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/buildReleaseBriefModel/);
     expect(readFileSync("src/components/watch/screens/HealthScreen.tsx", "utf8")).toMatch(/watch-empty/);
     expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
   });
@@ -84,7 +84,8 @@ describe("Watch architecture boundaries", () => {
     expect(css).toMatch(/\.watch-stage::before[\s\S]*?z-index:\s*3/);
     expect(css).toMatch(/\.watch-stage::after[\s\S]*?z-index:\s*4/);
     expect(css).toMatch(/\.watch-stage-head/);
-    expect(css).toMatch(/linear-gradient\(#ffffff03, #ffffff03\),\s*#111113/);
+    expect(css).toMatch(/radial-gradient\(circle at 65% 0, #1a1c20 0, transparent 38%\)/);
+    expect(css).toMatch(/#090a0c/);
     expect(css).toMatch(/\.watch-desk[\s\S]*?background:\s*#09090b/);
     expect(css).toMatch(/\.watch-gutter[\s\S]*?background:\s*#09090b/);
     expect(css).toMatch(/#ffffff0d/);
@@ -110,6 +111,46 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/showToggle: false/);
     expect(shell).toMatch(/w-\[244px\]/);
     expect(shell).toMatch(/PanelLeftClose/);
+  });
+
+  it("uses the guided first-proof screen only for an empty Watch overview", () => {
+    const overview = readFileSync("src/components/WatchOverview.tsx", "utf8");
+    const firstProof = readFileSync(
+      "src/components/watch/WatchFirstProofOverview.tsx",
+      "utf8",
+    );
+    const shell = readFileSync("src/components/WatchMonolithShell.tsx", "utf8");
+    expect(overview).toMatch(/verdict\.tone === "empty"/);
+    expect(overview).toMatch(/<FirstProofOrUploads/);
+    expect(firstProof).toMatch(/Prove your first release is clean/);
+    expect(firstProof).toMatch(/Start with one source\. Keep the evidence/);
+    expect(firstProof).not.toMatch(/checkout-web|Sample — not your data/);
+    expect(firstProof).toMatch(/Connect a GitHub repo/);
+    expect(firstProof).toMatch(/watchPath\("scan"\)/);
+    expect(shell).toMatch(/compactFirstRunNav/);
+    expect(shell).toMatch(/compactFirstRunNav = firstRun/);
+    expect(readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8")).toMatch(
+      /overviewSectionState\.status === "ready"/,
+    );
+  });
+
+  it("routes every supported evidence surface through one honest scan launcher", () => {
+    const scan = readFileSync("src/pages/ScanPage.tsx", "utf8");
+    expect(scan).toMatch(/GitHub repository/);
+    expect(scan).toMatch(/Package or build/);
+    expect(scan).toMatch(/Production website/);
+    expect(scan).toMatch(/Verify release proof/);
+    expect(scan).toMatch(/params\.set\("configure", "website"\)/);
+    expect(scan).toMatch(/watchPath\("sources"\)/);
+    expect(scan).toMatch(/scanModeFromSearch/);
+    expect(scan).toMatch(/Each scan records its supported checks, findings and limitations/);
+    expect(scan).not.toMatch(/automatically checks every relevant exposure category/);
+    expect(scan).toMatch(/Inspect supported same-origin assets within the scan limits/);
+    expect(scan).not.toMatch(/Check every public release asset and map/);
+    expect(scan).toMatch(/embedded/);
+    expect(readFileSync("src/components/watch/WatchRouteContent.tsx", "utf8")).toMatch(
+      /route\.view === "scan"[\s\S]*?<ScanPage/,
+    );
   });
 
   it("keeps the gray-stage mock as a content invert, not live Watch", () => {
@@ -176,7 +217,7 @@ describe("Watch architecture boundaries", () => {
     expect(html).not.toMatch(/Triage <b>60<\/b>/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/--color-canvas: #09090b;/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-gutter/);
-    expect(readFileSync("src/index.css", "utf8")).toMatch(/ellipse 62% 58% at 0 0/);
+    expect(readFileSync("src/index.css", "utf8")).toMatch(/circle at 65% 0/);
   });
 
   it("lists every committed mockup HTML file on the 2B index", () => {

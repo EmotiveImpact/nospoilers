@@ -1,0 +1,57 @@
+import { it, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { openSql, migrate } from '../src/server/sql.ts';
+import { createStore } from '../src/server/store.ts';
+import { listUserWorkspaces, createWorkspace } from '../src/server/workspaces.ts';
+import { saveWorkspaceNotification } from '../src/server/workspace-notifications.ts';
+import { claimWorkspaceNotification } from '../src/server/workspace-notification-outbox.ts';
+import { runWorkspaceNotification } from '../src/server/workspace-notification-worker.ts';
+
+it('enforces outbox ownership, leases, request deduplication and destination versions', async () => {
+ const sql=await openSql('pglite://:memory:');
+ try {
+  await migrate(sql); const store=createStore(sql);
+  await store.upsertUser({id:'owner',login:'owner'}); await store.createSession('owner');
+  const workspace=(await listUserWorkspaces(sql,'owner'))[0];
+  const other=await createWorkspace(sql,'owner',workspace.organization_id,'Other');
+  const saved=await saveWorkspaceNotification(sql,'owner',workspace.id,'email','owner@example.com','test-key');
+  const version=(await sql.query<{configuration_version:string}>('SELECT configuration_version FROM notification_destinations WHERE id=$1',[saved.destination.id])).rows[0].configuration_version;
+  const request=randomUUID();
+  const insert=(scope:string)=>sql.query(`INSERT INTO workspace_notification_jobs(id,workspace_id,destination_id,configuration_version,purpose,request_key) VALUES($1,$2,$3,$4,'test',$5)`,[randomUUID(),scope,saved.destination.id,version,request]);
+  await expect(insert(other.id)).rejects.toThrow('destination mismatch');
+  await insert(workspace.id);
+  await expect(insert(workspace.id)).rejects.toThrow('unique');
+  const claimed=await claimWorkspaceNotification(sql);
+  expect(claimed).toMatchObject({workspace_id:workspace.id,attempts:1,purpose:'test'});
+  expect(await claimWorkspaceNotification(sql)).toBeNull();
+  await sql.query("UPDATE workspace_notification_jobs SET leased_until=now()-interval '1 second'");
+  const reclaimed=await claimWorkspaceNotification(sql);
+  expect(reclaimed?.id).toBe(claimed?.id); expect(reclaimed?.attempts).toBe(2);
+  expect(reclaimed?.lease_id).not.toBe(claimed?.lease_id);
+  await expect(sql.query('UPDATE workspace_notification_jobs SET workspace_id=$1',[other.id])).rejects.toThrow('immutable');
+  await sql.query("UPDATE workspace_notification_jobs SET status='queued',available_at=now(),attempts=0");
+  let sends=0;
+  const options={encryptionSecret:'test-key',emailApiKey:'mock-key',emailFrom:'service@example.com',fetch:async()=>{sends++;return new Response('unavailable',{status:503});}};
+  expect(await runWorkspaceNotification(sql,options)).toBe(true);
+  expect(sends).toBe(1);
+  expect((await sql.query('SELECT status,attempts FROM workspace_notification_jobs')).rows[0]).toEqual({status:'queued',attempts:1});
+  expect(await runWorkspaceNotification(sql,options)).toBe(false);
+  await sql.query('UPDATE workspace_notification_jobs SET available_at=now()');
+  await runWorkspaceNotification(sql,{...options,fetch:async()=>{sends++;return new Response('ok');}});
+  expect((await sql.query<{status:string}>('SELECT status FROM workspace_notification_jobs')).rows[0].status).toBe('sent');
+  expect((await sql.query('SELECT status,error FROM notification_deliveries ORDER BY id')).rows).toEqual([{status:'failed',error:'temporary'},{status:'sent',error:null}]);
+  expect(await runWorkspaceNotification(sql,options)).toBe(false);expect(sends).toBe(2);
+  await saveWorkspaceNotification(sql,'owner',workspace.id,'email','new@example.com','test-key');
+  const replaced=(await sql.query<{configuration_version:string}>('SELECT configuration_version FROM notification_destinations WHERE id=$1',[saved.destination.id])).rows[0];
+  expect(replaced.configuration_version).not.toBe(version);
+  expect(reclaimed?.configuration_version).toBe(version);
+  await sql.query("UPDATE workspace_notification_jobs SET status='queued',available_at=now()");
+  await runWorkspaceNotification(sql,options);
+  expect((await sql.query<{status:string}>('SELECT status FROM workspace_notification_jobs')).rows[0].status).toBe('cancelled');
+  expect(sends).toBe(2);
+  await sql.query('DELETE FROM notification_destinations WHERE id=$1',[saved.destination.id]);
+  expect(await claimWorkspaceNotification(sql)).toBeNull();
+  expect((await sql.query('SELECT id FROM workspace_notification_jobs')).rows).toHaveLength(0);
+  await migrate(sql);
+ } finally { await sql.close(); }
+});

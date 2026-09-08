@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { pinnedHttps } from './pinned-https.ts';
 import type { AppConfig } from "./config.ts";
 import {
   REMEDIATION_BRANCH,
@@ -87,11 +88,13 @@ export type GithubPort = {
   exchangeCode: (code: string) => Promise<string>;
   getUser: (accessToken: string) => Promise<{ id: number; login: string; avatar_url: string }>;
   listUserInstallations: (accessToken: string) => Promise<number[]>;
+  listInstallationRepositories?: (installationId:number) => Promise<GithubRepo[]>;
   getApp?: () => Promise<{ permissions: Record<string, string> }>;
   getInstallation: (installationId: number) => Promise<{
     id: number;
     account: { login: string; type?: string; id: number };
     suspended_at: string | null;
+    created_at?: string;
     permissions?: Record<string, string>;
     repository_selection?: string | null;
     html_url?: string | null;
@@ -256,6 +259,28 @@ async function githubJson<T>(
   return (await response.json()) as T;
 }
 
+/** Fixed GitHub origin, bounded pagination, and no partial inventory on failure. */
+async function githubCollection<T extends {id:number}>(path:'user/installations'|'installation/repositories',key:'installations'|'repositories',token:string):Promise<T[]>{
+  const rows:T[]=[];const seen=new Set<number>();const signal=AbortSignal.timeout(30_000);
+  let expected:number|undefined;
+  for(let page=1;page<=100;page++){
+    const body=await githubJson<Record<string,unknown>>(`https://api.github.com/${path}?per_page=100&page=${page}`,token,{signal,redirect:'error'});
+    const batch=body[key],total=body.total_count;
+    if(!Array.isArray(batch)||batch.length>100||!Number.isSafeInteger(total)||Number(total)<0||Number(total)>10_000)
+      throw new Error('GitHub returned an incomplete or oversized listing.');
+    if(expected!==undefined&&expected!==total)throw new Error('GitHub listing changed during pagination. Retry the connection.');
+    expected=Number(total);
+    for(const value of batch){
+      if(!value||typeof value!=='object'||!Number.isSafeInteger(value.id)||value.id<=0||seen.has(value.id))
+        throw new Error('GitHub returned an inconsistent listing.');
+      seen.add(value.id);rows.push(value as T);
+    }
+    if(rows.length===expected)return rows;
+    if(rows.length>expected||batch.length<100)throw new Error('GitHub returned an incomplete listing.');
+  }
+  throw new Error('GitHub listing exceeds the supported connection size.');
+}
+
 export function createGithubPort(config: AppConfig): GithubPort {
   const tokenCache = new Map<number, { token: string; expires: number }>();
 
@@ -305,11 +330,19 @@ export function createGithubPort(config: AppConfig): GithubPort {
     },
 
     async listUserInstallations(accessToken: string) {
-      const body = await githubJson<{ installations: { id: number }[] }>(
-        "https://api.github.com/user/installations",
-        accessToken,
-      );
-      return body.installations.map((row) => row.id);
+      const rows=await githubCollection<{id:number}>('user/installations','installations',accessToken);
+      return rows.map(row=>row.id);
+    },
+
+    async listInstallationRepositories(installationId:number){
+      if(!Number.isSafeInteger(installationId)||installationId<=0)throw new Error('Invalid GitHub installation.');
+      const token=await installationToken(installationId);
+      const rows=await githubCollection<GithubRepo>('installation/repositories','repositories',token);
+      for(const row of rows){
+        if(typeof row.name!=='string'||!row.name||typeof row.full_name!=='string'||typeof row.owner?.login!=='string'||typeof row.private!=='boolean'||typeof row.html_url!=='string')
+          throw new Error('GitHub returned an invalid repository listing.');
+      }
+      return rows;
     },
 
     async getApp() {
@@ -327,6 +360,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
         id: number;
         account: { login: string; type?: string; id: number };
         suspended_at: string | null;
+        created_at?: string;
         permissions?: Record<string, string>;
         repository_selection?: string | null;
         html_url?: string | null;
@@ -335,6 +369,7 @@ export function createGithubPort(config: AppConfig): GithubPort {
         id: body.id,
         account: body.account,
         suspended_at: body.suspended_at,
+        created_at: body.created_at,
         permissions: body.permissions ?? {},
         repository_selection: body.repository_selection ?? null,
         html_url: body.html_url ?? null,
@@ -416,15 +451,25 @@ export function createGithubPort(config: AppConfig): GithubPort {
     },
 
     async downloadAsset(installationId, assetUrl, maxBytes) {
+      const initial=new URL(assetUrl);
+      if(initial.protocol!=='https:' || initial.hostname!=='api.github.com' || initial.port || initial.username || initial.password)
+        throw new Error('GitHub asset must originate at the GitHub API.');
       const token = await installationToken(installationId);
-      const response = await fetch(assetUrl, {
+      let response = await pinnedHttps(assetUrl, {
         headers: {
           Accept: "application/octet-stream",
           Authorization: `Bearer ${token}`,
           "User-Agent": "nospoilers",
         },
-        redirect: "follow",
-      });
+        redirect: "manual",
+      },maxBytes);
+      if(response.status>=300 && response.status<400){
+        const redirected=new URL(response.headers.get('location')??'',assetUrl);
+        const allowed=new Set(['release-assets.githubusercontent.com','objects.githubusercontent.com','github-releases.githubusercontent.com']);
+        if(redirected.protocol!=='https:' || !allowed.has(redirected.hostname) || redirected.port || redirected.username || redirected.password)throw new Error('GitHub asset redirected to an unapproved host.');
+        // GitHub installation credentials must never reach an asset CDN.
+        response=await pinnedHttps(redirected.href,{redirect:'error'},maxBytes);
+      }
       if (!response.ok) {
         throw new Error(`GitHub asset download failed (${response.status}).`);
       }

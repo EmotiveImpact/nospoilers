@@ -1,0 +1,46 @@
+import {it,expect} from 'vitest';
+import {openSql,migrate} from '../src/server/sql.ts';
+import {createStore} from '../src/server/store.ts';
+import {listUserWorkspaces,createWorkspace} from '../src/server/workspaces.ts';
+import {mintWorkspaceToken,revokeWorkspaceToken,authenticateWorkspaceToken} from '../src/server/workspace-tokens.ts';
+import {readFile} from 'node:fs/promises';
+import {processUploadedScan} from '../src/server/upload-worker.ts';
+import {scan} from '../src/scanner/index.ts';
+import {createApp} from '../src/server/app.ts';
+import {loadConfig} from '../src/server/config.ts';
+import {stubGithub} from '../src/server/stub-github.ts';
+it('admits independent token scans only into the credential workspace and charges its payer once',async()=>{
+ const sql=await openSql('pglite://:memory:');try{
+  await migrate(sql);const store=createStore(sql);await store.upsertUser({id:'owner',login:'owner'});await store.createSession('owner');
+  const workspace=(await listUserWorkspaces(sql,'owner'))[0],other=await createWorkspace(sql,'owner',workspace.organization_id,'Other');
+  const token=await mintWorkspaceToken(sql,'owner',workspace.id,'CI');
+  expect(await authenticateWorkspaceToken(sql,token.token)).toEqual({id:token.scanToken.id,workspaceId:workspace.id});
+  expect(await authenticateWorkspaceToken(sql,'invalid')).toBeNull();
+  const app=createApp({store,github:stubGithub(),config:loadConfig({sessionSecret:'test-session',receiptSecret:'test-receipt-secret'})});
+  const bearer={authorization:`Bearer ${token.token}`};
+  const submitted=await app.request('/api/v1/scan',{method:'POST',headers:{...bearer,'x-filename':'clean.tgz'},body:await readFile('fixtures/clean.tgz')});
+  expect(submitted.status).toBe(202);
+  const queued=await submitted.json() as {uploadId:string;statusUrl:string};
+  expect((await app.request(queued.statusUrl,{headers:bearer})).status).toBe(200);
+  const otherToken=await mintWorkspaceToken(sql,'owner',other.id,'Other CI');
+  expect((await app.request(queued.statusUrl,{headers:{authorization:`Bearer ${otherToken.token}`}})).status).toBe(404);
+  expect((await app.request(queued.statusUrl)).status).toBe(401);
+  const input={id:'independent-attempt',userId:null,installationId:null,workspaceId:workspace.id,tokenId:token.scanToken.id,target:'app.tgz',bytes:await readFile('fixtures/clean.tgz')};
+  await expect(store.queueUploadedScan({...input,workspaceId:other.id})).rejects.toMatchObject({status:403});
+  await store.queueUploadedScan(input);await store.queueUploadedScan(input);
+  expect((await sql.query('SELECT installation_id,user_id,workspace_id,token_id,billing_user_id FROM uploaded_scans WHERE id=$1',[input.id])).rows).toEqual([{installation_id:null,user_id:null,workspace_id:workspace.id,token_id:token.scanToken.id,billing_user_id:'owner'}]);
+  expect(Number((await sql.query<{scans:number}>('SELECT scans FROM personal_scan_usage WHERE user_id=$1',['owner'])).rows[0].scans)).toBe(2);
+  await processUploadedScan(input.id,store,scan,'test-receipt-secret');
+  await processUploadedScan(input.id,store,scan,'test-receipt-secret');
+  const saved=await store.getUploadedScan('owner',input.id);
+  expect(saved?.status).toBe('done');expect(saved?.receipt_json).toBeTruthy();expect(saved?.report_json?.ok).toBe(true);
+  expect((await sql.query('SELECT artifact_bytes FROM uploaded_scans WHERE id=$1',[input.id])).rows).toEqual([{artifact_bytes:null}]);
+  await expect(sql.query("UPDATE uploaded_scans SET report_json='{}' WHERE id=$1",[input.id])).rejects.toThrow('immutable');
+  expect(await store.getUploadedScan('stranger',input.id)).toBeNull();
+  await revokeWorkspaceToken(sql,'owner',workspace.id,String(token.scanToken.id),'CI');
+  expect(await authenticateWorkspaceToken(sql,token.token)).toBeNull();
+  expect((await app.request(queued.statusUrl,{headers:bearer})).status).toBe(401);
+  await expect(store.queueUploadedScan({...input,id:'revoked-attempt'})).rejects.toMatchObject({status:403});
+  expect((await sql.query('SELECT id FROM jobs')).rows).toHaveLength(2);
+ }finally{await sql.close();}
+});

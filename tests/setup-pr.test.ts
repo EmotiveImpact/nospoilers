@@ -666,6 +666,7 @@ describe("setup workflow and PR APIs", () => {
 describe("vendored hosted-scan Action against POST /api/v1/scan", () => {
   it("maps real receipts to CLI exit 0/1/2 without executing the pack", async () => {
     const sql = await openSql("pglite://:memory:");
+    let scanWorker: ReturnType<typeof createWorker> | undefined;
     let closeServer: (() => Promise<void>) | undefined;
     try {
       await migrate(sql);
@@ -678,7 +679,9 @@ describe("vendored hosted-scan Action against POST /api/v1/scan", () => {
         accountId: 1,
       });
       await store.linkUserInstallation(7, "u1");
+      scanWorker=createWorker({store,github:mockGithub(),notifier:createLogNotifier(store),scan,heavyConcurrency:2,lightConcurrency:2,maxAssetBytes:80*1024*1024,intervalMs:100,receiptSecret:loadConfig({sessionSecret:'sess'}).receiptSecret});
       const app = createApp({
+        wakeWorker:()=>{void scanWorker?.tick();},
         config: loadConfig({
           githubWebhookSecret: "wh",
           githubAppId: "1",
@@ -742,9 +745,10 @@ describe("vendored hosted-scan Action against POST /api/v1/scan", () => {
       expect(inconclusive.stderr.toLowerCase()).not.toContain("grant administration");
     } finally {
       await closeServer?.();
+      await scanWorker?.stop();
       await sql.close();
     }
-  });
+  }, 15000);
 });
 
 describe("release_scan GitHub Checks", () => {

@@ -4,6 +4,8 @@ import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
+import {listUserWorkspaces,ensureUserWorkspaces,createWorkspace} from '../src/server/workspaces.ts';
+import {inviteWorkspaceMember,acceptWorkspaceInvite} from '../src/server/workspace-membership.ts';
 import {
   STRIPE_NOT_LIVE_ERROR,
   STRIPE_SUBSCRIBE_FIRST_ERROR,
@@ -127,6 +129,64 @@ function signedEvent(event: Record<string, unknown>, timestamp = Math.floor(Date
 }
 
 describe("Stripe checkout and lifecycle", () => {
+  it('rolls back a webhook claim when entitlement persistence fails so the same event can retry',async()=>{
+    await withStore(async({sql,store})=>{
+      await store.upsertUser({id:'retry-personal',login:'retry-personal'});
+      await ensureUserWorkspaces(sql,'retry-personal');
+      const workspace=(await listUserWorkspaces(sql,'retry-personal'))[0];
+      const cookie=`ns_session=${signSession('sess',await store.createSession('retry-personal'))}`;
+      const app=appFor(store);
+      await app.request(`/api/billing?organizationId=${workspace.organization_id}`,{headers:{cookie}});
+      await sql.exec(`CREATE FUNCTION test_fail_personal_entitlement() RETURNS trigger AS $$ BEGIN
+        IF NEW.id='retry-personal' AND NEW.plan='team' THEN RAISE EXCEPTION 'Test persistence failure'; END IF;
+        RETURN NEW; END; $$ LANGUAGE plpgsql;
+        CREATE TRIGGER test_personal_entitlement BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION test_fail_personal_entitlement();`);
+      const event=signedEvent({id:'evt_personal_retry',type:'customer.subscription.updated',data:{object:{id:'sub_retry',customer:'cus_retry',status:'active',metadata:{organizationId:workspace.organization_id},items:{data:[{price:{id:PRICES.teamMonthly}}]}}}});
+      const send=()=>app.request('/api/webhooks/stripe',{method:'POST',headers:{'stripe-signature':event.signature},body:event.body});
+      expect((await send()).status).toBe(500);
+      expect((await sql.query("SELECT id FROM stripe_events WHERE id='evt_personal_retry'")).rows).toHaveLength(0);
+      expect((await sql.query('SELECT stripe_customer_id FROM personal_organization_billing WHERE organization_id=$1',[workspace.organization_id])).rows[0]).toEqual({stripe_customer_id:null});
+      await sql.exec('DROP TRIGGER test_personal_entitlement ON users; DROP FUNCTION test_fail_personal_entitlement();');
+      const retried=await send();expect(retried.status).toBe(200);
+      expect(await retried.json()).toMatchObject({applied:true});
+      expect((await sql.query("SELECT plan FROM users WHERE id='retry-personal'")).rows[0]).toEqual({plan:'team'});
+      expect((await sql.query("SELECT id FROM stripe_events WHERE id='evt_personal_retry'")).rows).toHaveLength(1);
+    });
+  });
+  it('supports personal organisation checkout, signed shared entitlements and portal without GitHub',async()=>{
+    await withStore(async({sql,store})=>{
+      await store.upsertUser({id:'personal',login:'personal'});await store.upsertUser({id:'stranger',login:'stranger'});
+      await ensureUserWorkspaces(sql,'personal');
+      const workspace=(await listUserWorkspaces(sql,'personal'))[0];
+      await createWorkspace(sql,'personal',workspace.organization_id,'Second');
+      const cookie=`ns_session=${signSession('sess',await store.createSession('personal'))}`;
+      const other=`ns_session=${signSession('sess',await store.createSession('stranger'))}`;
+      let checkout:Parameters<StripePort['createCheckoutSession']>[0]|undefined;
+      let portal:Parameters<StripePort['createPortalSession']>[0]|undefined;
+      const app=appFor(store,mockStripe({createCheckoutSession:async input=>{checkout=input;return {id:'cs_personal',url:'https://checkout.stripe.com/c/pay/personal'};},createPortalSession:async input=>{portal=input;return {url:'https://billing.stripe.com/p/session/personal'};}}));
+      const url=`/api/billing?organizationId=${workspace.organization_id}`;
+      expect((await app.request(url)).status).toBe(401);
+      expect((await app.request(url,{headers:{cookie:other}})).status).toBe(403);
+      const state=await (await app.request(url,{headers:{cookie}})).json() as {billing:{hasCustomer:boolean;trialEndsAt:string|null}};
+      expect(state.billing.hasCustomer).toBe(false);
+      const body=JSON.stringify({organizationId:workspace.organization_id,plan:'team',interval:'month'});
+      expect((await app.request('/api/billing/checkout',{method:'POST',headers:{cookie:other,'content-type':'application/json'},body})).status).toBe(403);
+      expect((await app.request('/api/billing/checkout',{method:'POST',headers:{cookie,'content-type':'application/json'},body})).status).toBe(200);
+      expect(checkout?.clientReferenceId).toBe(workspace.organization_id);
+      expect(checkout?.metadata).toMatchObject({organizationId:workspace.organization_id,plan:'team'});
+      expect(checkout?.metadata).not.toHaveProperty('installationId');
+      const event=signedEvent({id:'evt_personal_active',type:'customer.subscription.updated',data:{object:{id:'sub_personal',customer:'cus_personal',status:'active',metadata:checkout?.metadata,items:{data:[{price:{id:PRICES.teamMonthly}}]}}}});
+      const send=()=>app.request('/api/webhooks/stripe',{method:'POST',headers:{'stripe-signature':event.signature},body:event.body});
+      expect(await (await send()).json()).toMatchObject({applied:true});
+      expect(await (await send()).json()).toMatchObject({duplicate:true});
+      const after=await (await app.request(url,{headers:{cookie}})).json() as {billing:unknown};
+      expect(after.billing).toMatchObject({plan:'team',hasCustomer:true,trialEndsAt:state.billing.trialEndsAt});
+      expect((await listUserWorkspaces(sql,'personal')).every(w=>w.plan==='team')).toBe(true);
+      expect((await app.request('/api/billing/portal',{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({organizationId:workspace.organization_id})})).status).toBe(200);
+      expect(portal?.customerId).toBe('cus_personal');
+      expect((await sql.query('SELECT count(*) AS count FROM installations')).rows[0]).toEqual({count:0});
+    });
+  });
   it("applies migration 059_stripe_billing", async () => {
     await withStore(async ({ sql }) => {
       const { rows } = await sql.query<{ id: string }>(
@@ -254,6 +314,49 @@ describe("Stripe checkout and lifecycle", () => {
       const billingBody = (await billing.json()) as { billing: Record<string, unknown> };
       expect(JSON.stringify(billingBody)).not.toMatch(/cus_|sub_|sk_|whsec_|price_/);
       expect(billingBody.billing.hasCustomer).toBe(false);
+    });
+  });
+
+  it('requires organisation billing authority, not a workspace administrator grant, and survives source removal',async()=>{
+    await withStore(async({store})=>{
+      const {admin}=await seedInstall(store);
+      await store.upsertUser({id:'guest-admin',login:'guest-admin'});
+      const workspace=(await listUserWorkspaces(store.sql,'u1')).find(w=>Number(w.installation_id)===7)!;
+      const invite=await inviteWorkspaceMember(store.sql,'u1',workspace.id,'guest-admin','member');
+      await acceptWorkspaceInvite(store.sql,'guest-admin',invite.id);
+      // Seed the explicit admin role through storage: this legacy workspace has no product owner yet.
+      await store.sql.query("UPDATE product_workspace_members SET role='admin' WHERE workspace_id=$1 AND user_id='guest-admin'",[workspace.id]);
+      await store.sql.query("UPDATE installation_users SET role='admin' WHERE installation_id=7 AND user_id='guest-admin'");
+      const guest=`ns_session=${signSession('sess',await store.createSession('guest-admin'))}`;
+      const app=appFor(store);
+      const denied=await app.request('/api/billing/checkout',{method:'POST',headers:{cookie:guest,'content-type':'application/json'},body:JSON.stringify({installationId:7,plan:'solo',interval:'month'})});
+      expect(denied.status).toBe(403);
+      await store.sql.query("UPDATE installation_users SET role='viewer' WHERE installation_id=7 AND user_id='u1'");
+      await store.sql.query("UPDATE billing_accounts SET stripe_customer_id='cus_retained',stripe_status='active' WHERE installation_id=7");
+      const input={organizationId:workspace.organization_id};
+      const portal=()=>app.request('/api/billing/portal',{method:'POST',headers:{cookie:admin,'content-type':'application/json'},body:JSON.stringify(input)});
+      expect((await portal()).status).toBe(200);
+      await store.deleteInstallation(7);
+      expect((await portal()).status).toBe(200);
+      expect((await app.request(`/api/billing?organizationId=${workspace.organization_id}`,{headers:{cookie:admin}})).status).toBe(200);
+      expect((await store.sql.query('SELECT action FROM product_billing_events WHERE organization_id=$1',[workspace.organization_id])).rows).toEqual([{action:'portal'},{action:'portal'}]);
+    });
+  });
+
+  it('reads source billing through its current organisation without a source billing account',async()=>{
+    await withStore(async({store})=>{
+      const {admin}=await seedInstall(store);
+      const workspace=(await listUserWorkspaces(store.sql,'u1')).find(w=>Number(w.installation_id)===7)!;
+      await store.sql.query("INSERT INTO installations(id,account_id,account_login,account_type) VALUES(98,98,'additional','Organization')");
+      await store.sql.query('INSERT INTO product_workspace_installations(installation_id,workspace_id) VALUES(98,$1)',[workspace.id]);
+      await store.sql.query("UPDATE billing_accounts SET stripe_customer_id='cus_shared',stripe_status='active',plan='team' WHERE installation_id=7");
+      const app=appFor(store);
+      const response=await app.request('/api/billing?installationId=98',{headers:{cookie:admin}});
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({billing:{hasCustomer:true,plan:'team'}});
+      const portal=await app.request('/api/billing/portal',{method:'POST',headers:{cookie:admin,'content-type':'application/json'},body:JSON.stringify({installationId:98})});
+      expect(portal.status).toBe(200);
+      expect((await store.sql.query('SELECT organization_id FROM product_billing_events')).rows).toEqual([{organization_id:workspace.organization_id}]);
     });
   });
 

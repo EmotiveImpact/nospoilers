@@ -1,5 +1,15 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { coverageFrom, coverageIsOn } from "../coverage.ts";
+import {lockAlertResponse} from './alert-response-authority.ts';
+import {refundJobReservation,reserveJobRetry,reserveBillingPayer,refundBillingPayer} from './job-billing.ts';
+import {sourceBillingSql} from './source-billing.ts';
+import { workspaceSourceAccess, workspaceSourceMembershipSql } from './workspace-source-access.ts';
+import { insertAlertWithReleaseLinks } from './alert-release-links.ts';
+import { createUploadStore } from './upload-store.ts';
+import { ensureUserWorkspaces } from './workspaces.ts';
+import {changeWorkspaceMember} from './workspace-membership.ts';
+import { reserveStagingCapacity } from './staging-budget.ts';
+import { coverageFrom, coverageIsOn, TRIAL_DAYS } from "../coverage.ts";
+import type { ScanReport } from "../report-types.ts";
 import type { SignedReceipt } from "../receipt.ts";
 import type { ManifestEntry, ScanStatus } from "../scanner/types.ts";
 import type { ReleaseChannel } from "./release-ledger.ts";
@@ -37,7 +47,7 @@ import type {
 } from "./internal-notify.ts";
 import { decryptSecret, encryptSecret, looksEncrypted } from "./secret-box.ts";
 import { PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
-import { hashScanToken, hashesMatch, mintScanToken } from "./scan-api.ts";
+import { hashScanToken, hashesMatch, mintScanToken, MAX_SCAN_TOKENS } from "./scan-api.ts";
 import { notifyJobQueued } from "./job-wake.ts";
 import { num, type SqlClient } from "./sql.ts";
 import { heavyFairUseCaseSql } from "./fair-use.ts";
@@ -154,6 +164,7 @@ export type AlertRow = {
   acknowledged_at: string | null;
   acknowledged_by_login: string | null;
   assigned_to_login: string | null;
+  assigned_to_user_id?: string | null;
   resolved_at: string | null;
   resolved_by_login: string | null;
   resolution_note: string | null;
@@ -876,6 +887,7 @@ function alertRow(row: {
   acknowledged_at?: string | Date | null;
   acknowledged_by_login?: string | null;
   assigned_to_login?: string | null;
+  assigned_to_user_id?: string | null;
   resolved_at?: string | Date | null;
   resolved_by_login?: string | null;
   resolution_note?: string | null;
@@ -894,6 +906,7 @@ function alertRow(row: {
     acknowledged_at: iso(row.acknowledged_at ?? null),
     acknowledged_by_login: row.acknowledged_by_login ?? null,
     assigned_to_login: row.assigned_to_login ?? null,
+    assigned_to_user_id: row.assigned_to_user_id ?? null,
     resolved_at: iso(row.resolved_at ?? null),
     resolved_by_login: row.resolved_by_login ?? null,
     resolution_note: row.resolution_note ?? null,
@@ -935,6 +948,7 @@ async function applyPendingInvite(
   userId: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    if((await tx.query(`SELECT m.user_id FROM product_workspace_members m JOIN product_workspace_installations c ON c.workspace_id=m.workspace_id WHERE c.installation_id=$1 AND m.user_id=$2 AND m.access_source='explicit'`,[installationId,userId])).rows.length)return;
     const { rows: userRows } = await tx.query<{ login: string }>(
       `SELECT login FROM users WHERE id = $1`,
       [userId],
@@ -958,7 +972,7 @@ async function applyPendingInvite(
     const member = memberRows[0];
     if (!member) return;
     const wanted = asInstallationRole(invite.role);
-    if (wanted === "member" && asInstallationRole(member.role) === "admin") {
+    if (wanted !== "admin" && asInstallationRole(member.role) === "admin") {
       const { rows: adminRows } = await tx.query<{ n: unknown }>(
         `SELECT count(*)::int AS n FROM installation_users
          WHERE installation_id = $1 AND role = 'admin' AND user_id <> $2`,
@@ -1876,6 +1890,7 @@ export function createStore(
   const tokenSecret = opts.tokenSecret?.trim() ?? "";
   return {
     sql,
+    ...createUploadStore(sql),
 
     async ping(): Promise<boolean> {
       const { rows } = await sql.query<{ ok: string | number }>("SELECT 1 AS ok");
@@ -1894,18 +1909,19 @@ export function createStore(
           : (input.accessToken ?? null);
       await sql.query(
         `INSERT INTO users (id, login, avatar_url, access_token, trial_ends_at, plan)
-         VALUES ($1, $2, $3, $4, now() + interval '14 days', 'trial')
+         VALUES ($1, $2, $3, $4, now() + interval '${TRIAL_DAYS} days', 'trial')
          ON CONFLICT (id) DO UPDATE SET
            login = excluded.login,
            avatar_url = excluded.avatar_url,
            access_token = COALESCE(excluded.access_token, users.access_token),
-           trial_ends_at = COALESCE(users.trial_ends_at, now() + interval '14 days'),
+           trial_ends_at = COALESCE(users.trial_ends_at, now() + interval '${TRIAL_DAYS} days'),
            plan = COALESCE(users.plan, 'trial')`,
         [input.id, input.login, input.avatarUrl ?? null, accessToken],
       );
     },
 
     async createSession(userId: string, ttlMs = 30 * 24 * 60 * 60 * 1000): Promise<string> {
+      await ensureUserWorkspaces(sql,userId);
       const id = randomBytes(24).toString("hex");
       const expires = new Date(Date.now() + ttlMs).toISOString();
       await sql.query(
@@ -1913,6 +1929,112 @@ export function createStore(
         [id, userId, expires],
       );
       return id;
+    },
+
+    async createPendingScan(input: {
+      id: string;
+      target: string;
+      artifactBytes?: Uint8Array;
+      sourcePath?: string;
+      deleteAfterScan?: boolean;
+      ttlMs?: number;
+    }): Promise<void> {
+      if (!input.artifactBytes && !input.sourcePath) {
+        throw new Error("A pending scan requires staged artifact bytes or a source path.");
+      }
+      const expiresAt = new Date(Date.now() + (input.ttlMs ?? 60 * 60 * 1000)).toISOString();
+      await sql.transaction(async tx => {
+      await reserveStagingCapacity(tx,input.artifactBytes?.byteLength ?? 0,true);
+      await tx.query(
+        `INSERT INTO pending_scans (id, target, artifact_bytes, source_path, delete_after_scan, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          input.id,
+          input.target,
+          input.artifactBytes ? Buffer.from(input.artifactBytes) : null,
+          input.sourcePath ?? null,
+          input.deleteAfterScan ?? false,
+          expiresAt,
+        ],
+      );
+      });
+    },
+
+    async claimPendingScan(id: string, userId: string): Promise<{
+      target: string;
+      report: ScanReport | null;
+      artifactBytes: Uint8Array | null;
+      sourcePath: string | null;
+      deleteAfterScan: boolean;
+    } | null> {
+      const { rows } = await sql.query<{
+        target: string;
+        report_json: ScanReport | null;
+        artifact_bytes: Uint8Array | null;
+        source_path: string | null;
+        delete_after_scan: boolean;
+      }>(
+        `UPDATE pending_scans
+         SET claimed_by_user_id = COALESCE(claimed_by_user_id, $2),
+             claimed_at = COALESCE(claimed_at, now())
+         WHERE id = $1
+           AND expires_at > now()
+           AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $2)
+         RETURNING target, report_json, artifact_bytes, source_path, delete_after_scan`,
+        [id, userId],
+      );
+      const row = rows[0];
+      return row
+        ? {
+            target: row.target,
+            report: row.report_json,
+            artifactBytes: row.artifact_bytes,
+            sourcePath: row.source_path,
+            deleteAfterScan: row.delete_after_scan,
+          }
+        : null;
+    },
+
+    async completePendingScan(id: string, userId: string, report: ScanReport): Promise<void> {
+      await sql.query(
+        `UPDATE pending_scans
+         SET report_json = $3::jsonb,
+             artifact_bytes = NULL,
+             source_path = NULL,
+             scan_started_at = now()
+         WHERE id = $1 AND claimed_by_user_id = $2`,
+        [id, userId, JSON.stringify(report)],
+      );
+    },
+
+    async beginPendingScan(id: string, userId: string): Promise<boolean> {
+      const { rows } = await sql.query<{ id: string }>(
+        `UPDATE pending_scans
+         SET scan_started_at = now()
+         WHERE id = $1
+           AND claimed_by_user_id = $2
+           AND report_json IS NULL
+           AND (scan_started_at IS NULL OR scan_started_at < now() - interval '5 minutes')
+         RETURNING id`,
+        [id, userId],
+      );
+      return rows.length === 1;
+    },
+
+    async releasePendingScan(id: string, userId: string): Promise<void> {
+      await sql.query(
+        `UPDATE pending_scans
+         SET scan_started_at = NULL
+         WHERE id = $1 AND claimed_by_user_id = $2 AND report_json IS NULL`,
+        [id, userId],
+      );
+    },
+
+    async deleteExpiredPendingScans(): Promise<number> {
+      const { rows } = await sql.query<{ id: string }>(
+        `DELETE FROM pending_scans WHERE expires_at <= now() RETURNING id`,
+      );
+      return rows.length;
     },
 
     async getSession(id: string): Promise<{
@@ -1991,29 +2113,39 @@ export function createStore(
       accountType: string;
       accountId: number;
       suspended?: boolean;
+      reconnect?: boolean;
     }): Promise<void> {
-      await sql.query(
+      await sql.transaction(async tx=>{
+      await tx.query(
         `INSERT INTO installations (id, account_login, account_type, account_id, suspended)
          VALUES ($1, $2, $3, $4, COALESCE($5, false))
          ON CONFLICT (id) DO UPDATE SET
            account_login = excluded.account_login,
            account_type = excluded.account_type,
            account_id = excluded.account_id,
-           suspended = COALESCE($5, installations.suspended)`,
+           suspended = COALESCE($5, installations.suspended),
+           disconnected_at = CASE WHEN $6::boolean THEN NULL ELSE installations.disconnected_at END`,
         [
           input.id,
           input.accountLogin,
           input.accountType,
           input.accountId,
           input.suspended ?? null,
+          input.reconnect??false,
         ],
       );
-      await sql.query(
-        `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan)
-         VALUES ($1, now() + interval '14 days', 'trial')
+      // A mapped source inherits its workspace payer. Webhook refreshes must not
+      // manufacture a second organisation/trial from the source installation ID.
+      if((await tx.query('SELECT 1 FROM product_workspace_installations WHERE installation_id=$1',[input.id])).rows.length)return;
+      await tx.query(`INSERT INTO product_organizations(id,name,legacy_installation_id)
+        SELECT md5('nospoilers:installation:'||id)::uuid,account_login,id FROM installations WHERE id=$1 ON CONFLICT DO NOTHING`,[input.id]);
+      await tx.query(
+        `INSERT INTO billing_accounts (installation_id, organization_id, trial_ends_at, plan)
+         VALUES ($1::bigint, md5('nospoilers:installation:'||($1::bigint)::text)::uuid, now() + interval '${TRIAL_DAYS} days', 'trial')
          ON CONFLICT (installation_id) DO NOTHING`,
         [input.id],
       );
+      });
     },
 
     async installationWorkBlock(
@@ -2024,9 +2156,9 @@ export function createStore(
         trial_ends_at: string | Date | null;
         plan: string | null;
       }>(
-        `SELECT i.suspended, b.trial_ends_at, b.plan
+        `SELECT (i.suspended OR i.disconnected_at IS NOT NULL OR b.archived) AS suspended, b.trial_ends_at, b.plan
          FROM installations i
-         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         LEFT JOIN (${sourceBillingSql}) b ON b.installation_id = i.id
          WHERE i.id = $1`,
         [installationId],
       );
@@ -2048,7 +2180,7 @@ export function createStore(
       }>(
         `SELECT b.trial_ends_at, b.plan
          FROM installations i
-         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         LEFT JOIN (${sourceBillingSql}) b ON b.installation_id = i.id
          WHERE i.id = $1`,
         [installationId],
       );
@@ -2067,7 +2199,7 @@ export function createStore(
       }>(
         `SELECT b.trial_ends_at, b.plan, COALESCE(b.retention_days, 90) AS retention_days
          FROM installations i
-         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         LEFT JOIN (${sourceBillingSql}) b ON b.installation_id = i.id
          WHERE i.id = $1`,
         [installationId],
       );
@@ -2084,12 +2216,10 @@ export function createStore(
     },
 
     async setRetentionDays(installationId: number, days: 0 | 90 | 180 | 365): Promise<void> {
-      await sql.query(
-        `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan, retention_days)
-         VALUES ($1, now() + interval '14 days', 'trial', $2)
-         ON CONFLICT (installation_id) DO UPDATE SET retention_days = excluded.retention_days`,
-        [installationId, days],
-      );
+      const {rows}=await sql.query(`UPDATE billing_accounts SET retention_days=$2 WHERE installation_id=(
+        SELECT billing_installation_id FROM (${sourceBillingSql}) resolved WHERE resolved.installation_id=$1
+      ) RETURNING installation_id`,[installationId,days]);
+      if(!rows.length)throw Object.assign(new Error('This workspace does not support source retention settings.'),{status:409});
     },
 
     async installationStripeState(installationId: number): Promise<{
@@ -2110,9 +2240,7 @@ export function createStore(
       }>(
         `SELECT b.trial_ends_at, b.plan, b.stripe_customer_id, b.stripe_subscription_id,
                 b.stripe_status, b.stripe_current_period_end
-         FROM installations i
-         LEFT JOIN billing_accounts b ON b.installation_id = i.id
-         WHERE i.id = $1`,
+         FROM billing_accounts b WHERE b.installation_id=$1`,
         [installationId],
       );
       const row = rows[0];
@@ -2203,8 +2331,16 @@ export function createStore(
     },
 
     async deleteInstallation(id: number): Promise<void> {
-      await sql.query(`DELETE FROM jobs WHERE installation_id = $1`, [id]);
-      await sql.query(`DELETE FROM installations WHERE id = $1`, [id]);
+      await sql.transaction(async tx=>{
+        // Uninstall ends the connection, not evidence retention or organisation billing.
+        await tx.query('UPDATE installations SET suspended=true,disconnected_at=COALESCE(disconnected_at,now()) WHERE id=$1',[id]);
+        await tx.query('UPDATE scan_api_tokens SET revoked_at=COALESCE(revoked_at,now()) WHERE installation_id=$1',[id]);
+        // Independent artifact jobs share this billing key, not this source's lifetime.
+        await tx.query(`UPDATE jobs j SET status='failed',error='Source disconnected.',locked_at=NULL,locked_by=NULL
+          WHERE j.installation_id=$1 AND j.status IN ('queued','running') AND NOT (j.kind='uploaded_scan' AND EXISTS(
+          SELECT 1 FROM uploaded_scans s WHERE s.id=j.payload->>'uploadId' AND s.installation_id IS NULL))`,[id]);
+        await tx.query("UPDATE uploaded_scans SET status='failed',error='Source disconnected.',artifact_bytes=NULL WHERE installation_id=$1 AND status IN ('queued','running')",[id]);
+      });
     },
 
     async getInstallation(id: number): Promise<{
@@ -2236,6 +2372,16 @@ export function createStore(
     },
 
     async linkUserInstallation(installationId: number, userId: string): Promise<void> {
+      return sql.transaction(async sql=>{
+      // Provider discovery can precede the signed installation webhook. Discovery
+      // alone must neither create a source nor abort linking other known sources.
+      if(!(await sql.query('SELECT id FROM installations WHERE id=$1 FOR SHARE',[installationId])).rows.length)return;
+      await sql.query(`SELECT w.id FROM product_workspaces w JOIN product_workspace_installations c ON c.workspace_id=w.id WHERE c.installation_id=$1 FOR SHARE OF w`,[installationId]);
+      // Once explicitly placed, product invitations alone grant membership. A GitHub
+      // login refresh must not add or promote people in the destination workspace.
+      if((await sql.query('SELECT installation_id FROM product_workspace_installations WHERE installation_id=$1 AND explicitly_assigned',[installationId])).rows.length)return;
+      // GitHub sign-in is not permission to rejoin a workspace after product access was revoked.
+      if((await sql.query(`SELECT r.user_id FROM product_workspace_revocations r JOIN product_workspace_installations c ON c.workspace_id=r.workspace_id WHERE c.installation_id=$1 AND r.user_id=$2`,[installationId,userId])).rows.length)return;
       await sql.query(
         `INSERT INTO installation_users (installation_id, user_id, role)
          VALUES (
@@ -2252,9 +2398,13 @@ export function createStore(
         [installationId, userId],
       );
       await applyPendingInvite(sql, installationId, userId);
+      await ensureUserWorkspaces(sql, userId);
+      });
     },
 
     async linkUserToAccountInstallations(userId: string, githubUserId: number): Promise<void> {
+      return sql.transaction(async sql=>{
+      await sql.query(`SELECT w.id FROM product_workspaces w JOIN product_workspace_installations c ON c.workspace_id=w.id JOIN installations i ON i.id=c.installation_id WHERE i.account_type='User' AND i.account_id=$1 ORDER BY w.id FOR SHARE OF w`,[githubUserId]);
       await sql.query(
         `INSERT INTO installation_users (installation_id, user_id, role)
          SELECT i.id,
@@ -2267,6 +2417,8 @@ export function createStore(
                 END
          FROM installations i
          WHERE account_type = 'User' AND account_id = $2
+           AND NOT EXISTS(SELECT 1 FROM product_workspace_installations c WHERE c.installation_id=i.id AND c.explicitly_assigned)
+           AND NOT EXISTS(SELECT 1 FROM product_workspace_revocations r JOIN product_workspace_installations c ON c.workspace_id=r.workspace_id WHERE c.installation_id=i.id AND r.user_id=$1)
          ON CONFLICT DO NOTHING`,
         [userId, githubUserId],
       );
@@ -2282,6 +2434,8 @@ export function createStore(
       for (const row of rows) {
         await applyPendingInvite(sql, num(row.installation_id), userId);
       }
+      await ensureUserWorkspaces(sql, userId);
+      });
     },
 
     async upsertRepo(input: {
@@ -2292,17 +2446,19 @@ export function createStore(
       fullName: string;
       private: boolean;
       htmlUrl: string;
+      reconnect?: boolean;
     }): Promise<void> {
       await sql.query(
         `INSERT INTO repos (id, installation_id, owner, name, full_name, private, html_url, last_private, last_checked_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $6, now())
          ON CONFLICT (id) DO UPDATE SET
-           installation_id = excluded.installation_id,
            owner = excluded.owner,
            name = excluded.name,
            full_name = excluded.full_name,
            private = excluded.private,
-           html_url = excluded.html_url`,
+           html_url = excluded.html_url,
+           disconnected_at = CASE WHEN $8 THEN NULL ELSE repos.disconnected_at END
+         WHERE repos.installation_id = excluded.installation_id`,
         [
           input.id,
           input.installationId,
@@ -2311,16 +2467,21 @@ export function createStore(
           input.fullName,
           input.private,
           input.htmlUrl,
+          input.reconnect ?? false,
         ],
       );
     },
 
-    async removeRepo(id: number): Promise<void> {
-      await sql.query(`DELETE FROM repos WHERE id = $1`, [id]);
+    async removeRepo(id: number, installationId: number): Promise<void> {
+      await sql.query(`UPDATE repos SET disconnected_at=COALESCE(disconnected_at,now()) WHERE id = $1 AND installation_id=$2`, [id,installationId]);
+    },
+
+    async repoWorkRevoked(id:number,installationId:number):Promise<boolean>{
+      return (await sql.query('SELECT id FROM repos WHERE id=$1 AND (disconnected_at IS NOT NULL OR installation_id<>$2)',[id,installationId])).rows.length>0;
     },
 
     async getRepo(id: number): Promise<RepoRow | null> {
-      const { rows } = await sql.query<RepoRow>(`SELECT * FROM repos WHERE id = $1`, [id]);
+      const { rows } = await sql.query<RepoRow>(`SELECT * FROM repos WHERE id = $1 AND disconnected_at IS NULL`, [id]);
       const row = rows[0];
       if (!row) return null;
       return { ...row, id: num(row.id), installation_id: num(row.installation_id) };
@@ -2328,7 +2489,7 @@ export function createStore(
 
     async listReposForInstallation(installationId: number): Promise<RepoRow[]> {
       const { rows } = await sql.query<RepoRow>(
-        `SELECT * FROM repos WHERE installation_id = $1 ORDER BY full_name`,
+        `SELECT * FROM repos WHERE installation_id = $1 AND disconnected_at IS NULL ORDER BY full_name`,
         [installationId],
       );
       return rows.map((row) => ({
@@ -2343,8 +2504,9 @@ export function createStore(
       const { rows } = await sql.query<RepoRow>(
         `SELECT r.*
          FROM repos r
-         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = r.installation_id
          WHERE iu.user_id = $1
+           AND r.disconnected_at IS NULL
            AND ($2::bigint IS NULL OR r.installation_id = $2)
          ORDER BY r.full_name`,
         [userId, scoped],
@@ -2360,7 +2522,7 @@ export function createStore(
       const { rows } = await sql.query<RepoRow>(
         `SELECT r.* FROM repos r
          JOIN installations i ON i.id = r.installation_id
-         WHERE i.suspended = false
+         WHERE i.suspended = false AND i.disconnected_at IS NULL AND r.disconnected_at IS NULL
          ORDER BY r.id`,
       );
       return rows.map((row) => ({
@@ -2368,6 +2530,13 @@ export function createStore(
         id: num(row.id),
         installation_id: num(row.installation_id),
       }));
+    },
+
+    async listDisconnectedReposForUser(userId:string,installationId:number):Promise<{id:number;fullName:string;disconnectedAt:string|null}[]>{
+      const {rows}=await sql.query<{id:unknown;full_name:string;disconnected_at:string|Date|null}>(`SELECT r.id,r.full_name,r.disconnected_at
+        FROM repos r JOIN (${workspaceSourceMembershipSql}) m ON m.installation_id=r.installation_id
+        WHERE m.user_id=$1 AND r.installation_id=$2 AND r.disconnected_at IS NOT NULL ORDER BY r.full_name`,[userId,installationId]);
+      return rows.map(row=>({id:num(row.id),fullName:row.full_name,disconnectedAt:iso(row.disconnected_at)}));
     },
 
     async updateRepoCheck(id: number, isPrivate: boolean): Promise<void> {
@@ -2389,43 +2558,22 @@ export function createStore(
         const countsTowardUsage =
           input.priority === "heavy" &&
           input.kind !== "prospect_scan" &&
-          input.kind !== "web_origin_scan" &&
           installationId != null;
         let consumed = false;
-        if (countsTowardUsage) {
-          const { rows: billed } = await tx.query<{ ok: number }>(
-            `SELECT 1 AS ok
-             FROM installations i
-             JOIN billing_accounts b ON b.installation_id = i.id
-             WHERE i.id = $1`,
-            [installationId],
-          );
-          if (billed[0]) {
-            const { rows: used } = await tx.query<{ heavy_jobs: unknown }>(
-              `INSERT INTO hosted_usage_days (installation_id, day, heavy_jobs)
-               SELECT $1, (timezone('utc', now()))::date, 1
-               WHERE EXISTS (
-                 SELECT 1 FROM installations i
-                 JOIN billing_accounts b ON b.installation_id = i.id
-                 WHERE i.id = $1
-               )
-               ON CONFLICT (installation_id, day)
-               DO UPDATE SET heavy_jobs = hosted_usage_days.heavy_jobs + 1
-               WHERE hosted_usage_days.heavy_jobs < (
-                 SELECT ${heavyUsageCapSql()}
-                 FROM billing_accounts b
-                 WHERE b.installation_id = hosted_usage_days.installation_id
-               )
-               RETURNING heavy_jobs`,
-              [installationId],
-            );
-            if (!used[0]) return { id: null, inserted: false, skipped: "fair_use" as const };
-            consumed = true;
-          }
+        if(input.deliveryId){
+          const existing=await tx.query<{id:unknown}>('SELECT id FROM jobs WHERE delivery_id=$1',[input.deliveryId]);
+          if(existing.rows[0])return {id:num(existing.rows[0].id),inserted:false};
+        }
+        const payer=installationId==null?undefined:(await tx.query<{billing_installation_id:number|null;billing_user_id:string|null}>(
+          `SELECT billing_installation_id,billing_user_id FROM (${sourceBillingSql}) b WHERE installation_id=$1`,[installationId])).rows[0];
+        if(payer&&payer.billing_installation_id===null&&payer.billing_user_id===null)return {id:null,inserted:false,skipped:'fair_use' as const};
+        if(countsTowardUsage&&payer){
+          if(!await reserveBillingPayer(tx,payer,false))return {id:null,inserted:false,skipped:'fair_use' as const};
+          consumed=true;
         }
 
         const { rows } = await tx.query<{ id: unknown }>(
-          `INSERT INTO jobs (delivery_id, installation_id, priority, kind, payload)
+          `INSERT INTO jobs (delivery_id, installation_id, priority, kind, payload,usage_reserved,usage_day,billing_installation_id,billing_user_id)
            VALUES (
              $1,
              CASE
@@ -2433,7 +2581,7 @@ export function createStore(
                WHEN EXISTS (SELECT 1 FROM installations WHERE id = $5::bigint) THEN $5::bigint
                ELSE NULL
              END,
-             $2, $3, $4::jsonb
+             $2, $3, $4::jsonb,$6,CASE WHEN $6 THEN (timezone('utc',now()))::date ELSE NULL END,$7,$8
            )
            ON CONFLICT (delivery_id) WHERE delivery_id IS NOT NULL DO NOTHING
            RETURNING id`,
@@ -2443,17 +2591,13 @@ export function createStore(
             input.kind,
             JSON.stringify(input.payload),
             installationId,
+            consumed,
+            payer?.billing_installation_id??null,
+            payer?.billing_user_id??null,
           ],
         );
         const id = rows[0] ? num(rows[0].id) : null;
-        if (!id && consumed && installationId != null) {
-          await tx.query(
-            `UPDATE hosted_usage_days
-             SET heavy_jobs = GREATEST(0, heavy_jobs - 1)
-             WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
-            [installationId],
-          );
-        }
+        if (!id && consumed && payer) await refundBillingPayer(tx,payer);
         return { id, inserted: id !== null };
       });
       if (result.inserted) await notifyJobQueued(sql, input.kind);
@@ -2461,47 +2605,29 @@ export function createStore(
     },
 
     async consumeHostedUnpack(installationId: number): Promise<boolean> {
-      return await sql.transaction(async (tx) => {
-        const { rows: billed } = await tx.query<{ ok: number }>(
-          `SELECT 1 AS ok
-           FROM installations i
-           JOIN billing_accounts b ON b.installation_id = i.id
-           WHERE i.id = $1`,
-          [installationId],
-        );
-        if (!billed[0]) return false;
-        const { rows: used } = await tx.query<{ heavy_jobs: unknown }>(
-          `INSERT INTO hosted_usage_days (installation_id, day, heavy_jobs)
-           SELECT $1, (timezone('utc', now()))::date, 1
-           ON CONFLICT (installation_id, day)
-           DO UPDATE SET heavy_jobs = hosted_usage_days.heavy_jobs + 1
-           WHERE hosted_usage_days.heavy_jobs < (
-             SELECT ${heavyUsageCapSql()}
-             FROM billing_accounts b
-             WHERE b.installation_id = hosted_usage_days.installation_id
-           )
-           RETURNING heavy_jobs`,
-          [installationId],
-        );
-        return Boolean(used[0]);
+      return sql.transaction(async tx=>{
+        const payer=(await tx.query<{billing_installation_id:number|null;billing_user_id:string|null}>(`SELECT billing_installation_id,billing_user_id FROM (${sourceBillingSql}) b WHERE installation_id=$1`,[installationId])).rows[0];
+        return payer?reserveBillingPayer(tx,payer,false):false;
       });
     },
 
     async refundHostedUnpack(installationId: number): Promise<void> {
-      await sql.query(
-        `UPDATE hosted_usage_days
-         SET heavy_jobs = GREATEST(0, heavy_jobs - 1)
-         WHERE installation_id = $1 AND day = (timezone('utc', now()))::date`,
-        [installationId],
-      );
+      await sql.transaction(async tx=>{
+        const payer=(await tx.query<{billing_installation_id:number|null;billing_user_id:string|null}>(`SELECT billing_installation_id,billing_user_id FROM (${sourceBillingSql}) b WHERE installation_id=$1`,[installationId])).rows[0];
+        if(payer)await refundBillingPayer(tx,payer);
+      });
+    },
+    async refundJobUnpack(id:number,workerId?:string):Promise<void>{
+      await sql.transaction(tx=>refundJobReservation(tx,id,workerId));
     },
 
     async hostedUsageStatus(installationId: number): Promise<HostedUsageStatus> {
       const { rows } = await sql.query<{ used: unknown; cap: unknown }>(
-        `SELECT COALESCE(u.heavy_jobs, 0)::int AS used, (${heavyUsageCapSql()})::int AS cap
-         FROM billing_accounts b
+        `SELECT COALESCE(u.heavy_jobs,p.scans,0)::int AS used, (${heavyUsageCapSql()})::int AS cap
+         FROM (${sourceBillingSql}) b
          LEFT JOIN hosted_usage_days u
-           ON u.installation_id = b.installation_id AND u.day = (timezone('utc', now()))::date
+           ON u.installation_id = b.billing_installation_id AND u.day = (timezone('utc', now()))::date
+         LEFT JOIN personal_scan_usage p ON p.user_id=b.billing_user_id AND p.day=(timezone('utc',now()))::date
          WHERE b.installation_id = $1`,
         [installationId],
       );
@@ -2535,6 +2661,8 @@ export function createStore(
       includeProspectScans = true,
     ): Promise<JobRow | null> {
       return await sql.transaction(async (tx) => {
+        // Serialize count-and-claim globally, including workers on other hosts.
+        await tx.query('SELECT name FROM resource_locks WHERE name=$1 FOR UPDATE',[`jobs-${priority}`]);
         const { rows: countRows } = await tx.query<{ n: unknown }>(
           `SELECT count(*)::int AS n FROM jobs WHERE status = 'running' AND priority = $1`,
           [priority],
@@ -2544,18 +2672,23 @@ export function createStore(
         const fairUse =
           priority === "heavy"
             ? `AND (
-                 j.installation_id IS NULL
-                 OR (
+                 (j.billing_installation_id IS NULL AND (
+                   j.billing_user_id IS NULL OR NOT EXISTS (
+                     SELECT 1 FROM jobs r WHERE r.status='running' AND r.priority=j.priority
+                     AND r.billing_installation_id IS NULL AND r.billing_user_id=j.billing_user_id
+                   )
+                 ))
+                 OR (j.billing_installation_id IS NOT NULL AND (
                    SELECT count(*)::int FROM jobs r
                    WHERE r.status = 'running' AND r.priority = j.priority
-                     AND r.installation_id = j.installation_id
-                 ) < ${heavyFairUseCaseSql()}
+                     AND r.billing_installation_id = j.billing_installation_id
+                 ) < ${heavyFairUseCaseSql()})
                )`
             : "";
 
         const { rows: picked } = await tx.query<{ id: unknown }>(
           `SELECT j.id FROM jobs j
-           LEFT JOIN billing_accounts b ON b.installation_id = j.installation_id
+           LEFT JOIN billing_accounts b ON b.installation_id = j.billing_installation_id
            WHERE j.status = 'queued' AND j.priority = $1 AND j.run_after <= now()
              AND ($2::boolean OR j.kind <> 'prospect_scan')
              ${fairUse}
@@ -2566,6 +2699,19 @@ export function createStore(
         );
         const pickedId = picked[0]?.id;
         if (pickedId === undefined) return null;
+        const charge=await tx.query<{installation_id:unknown;billing_installation_id:unknown;billing_user_id:string|null;kind:string;usage_reserved:boolean}>('SELECT installation_id,billing_installation_id,billing_user_id,kind,usage_reserved FROM jobs WHERE id=$1',[pickedId]);
+        const selected=charge.rows[0];
+        // Retried infrastructure failures reserve again; no free retry can escape daily limits.
+        if(priority==='heavy' && (selected.billing_installation_id!=null||selected.billing_user_id!==null) && selected.kind!=='prospect_scan' && !selected.usage_reserved){
+          const source=await tx.query(`SELECT 1 FROM jobs j LEFT JOIN installations i ON i.id=j.installation_id
+            WHERE j.id=$1 AND (j.installation_id IS NULL OR (NOT i.suspended AND i.disconnected_at IS NULL)
+              OR EXISTS(SELECT 1 FROM uploaded_scans s WHERE j.kind='uploaded_scan' AND s.id=j.payload->>'uploadId' AND s.installation_id IS NULL))`,[pickedId]);
+          if(!source.rows.length||!await reserveJobRetry(tx,num(pickedId))){
+            await tx.query("UPDATE jobs SET run_after=now()+interval '1 hour' WHERE id=$1",[pickedId]);
+            return null;
+          }
+          await tx.query("UPDATE jobs SET usage_reserved=true,usage_day=(timezone('utc',now()))::date WHERE id=$1",[pickedId]);
+        }
 
         const { rows } = await tx.query<JobRow>(
           `UPDATE jobs
@@ -2584,7 +2730,17 @@ export function createStore(
       });
     },
 
-    async finishJob(id: number, error?: string): Promise<void> {
+    async heartbeatJob(id:number,workerId:string):Promise<void> {
+      await sql.query("UPDATE jobs SET locked_at=now() WHERE id=$1 AND locked_by=$2 AND status='running'",[id,workerId]);
+    },
+    async finishJob(id: number, error?: string, workerId?:string): Promise<void> {
+      if(workerId){
+        await sql.transaction(async tx=>{
+          const owned=await tx.query("SELECT id FROM jobs WHERE id=$1 AND locked_by=$2 AND status='running' FOR UPDATE",[id,workerId]);
+          if(owned.rows.length)await createStore(tx,{jobMaxAttempts,jobRetryBaseMs}).finishJob(id,error);
+        });
+        return;
+      }
       if (!error) {
         await sql.query(
           `UPDATE jobs SET status = 'done', error = NULL, locked_at = NULL, locked_by = NULL WHERE id = $1`,
@@ -2711,50 +2867,20 @@ export function createStore(
       body: string;
       findings?: unknown;
       githubDeliveryId?: string | null;
+      releaseRevisionIds?: number[];
     }): Promise<number> {
-      if (input.githubDeliveryId) {
-        const { rows: existing } = await sql.query<{ id: unknown }>(
-          `SELECT id FROM alerts WHERE github_delivery_id = $1 LIMIT 1`,
-          [input.githubDeliveryId],
-        );
-        if (existing[0]) return num(existing[0].id);
-      }
-      try {
-        const inserted = await sql.query<{ id: unknown }>(
-          `INSERT INTO alerts (installation_id, repo_id, kind, title, body, findings, github_delivery_id)
-           VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
-           RETURNING id`,
-          [
-            input.installationId,
-            input.repoId ?? null,
-            input.kind,
-            input.title,
-            input.body,
-            input.findings ? JSON.stringify(input.findings) : null,
-            input.githubDeliveryId ?? null,
-          ],
-        );
-        return num(inserted.rows[0]?.id);
-      } catch (error) {
-        if (input.githubDeliveryId) {
-          const { rows: again } = await sql.query<{ id: unknown }>(
-            `SELECT id FROM alerts WHERE github_delivery_id = $1 LIMIT 1`,
-            [input.githubDeliveryId],
-          );
-          if (again[0]) return num(again[0].id);
-        }
-        throw error;
-      }
+      return insertAlertWithReleaseLinks(sql, input);
     },
 
     async listAlertsForUser(userId: string, installationId?: number | null): Promise<AlertRow[]> {
       const scoped = optionalInstallId(installationId);
       const { rows } = await sql.query<AlertRow>(
-        `SELECT a.*, r.full_name
+        `SELECT a.*, r.full_name, COALESCE(assignee.login,a.assigned_to_login) AS assigned_to_login
          FROM alerts a
          LEFT JOIN repos r ON r.id = a.repo_id
+         LEFT JOIN users assignee ON assignee.id=a.assigned_to_user_id
          WHERE a.installation_id IN (
-           SELECT installation_id FROM installation_users WHERE user_id = $1
+           SELECT installation_id FROM (${workspaceSourceMembershipSql}) permitted WHERE user_id = $1
          )
            AND ($2::bigint IS NULL OR a.installation_id = $2)
            AND row_within_retention(a.installation_id, a.created_at)
@@ -2770,7 +2896,7 @@ export function createStore(
       installationId?: number | null,
     ): Promise<{ jobs: TenantJobRow[]; summary: JobSummary; fairUse: HostedUsageStatus | null }> {
       const scoped = optionalInstallId(installationId);
-      const tenant = `SELECT installation_id FROM installation_users WHERE user_id = $1`;
+      const tenant = `SELECT installation_id FROM (${workspaceSourceMembershipSql}) permitted WHERE user_id = $1`;
       const { rows } = await sql.query<{
         id: unknown;
         installation_id: unknown;
@@ -2810,10 +2936,10 @@ export function createStore(
       }
       let fairUse: HostedUsageStatus | null = null;
       if (scoped != null) {
-        fairUse = await this.hostedUsageStatus(scoped);
+        if (await this.userOwnsInstallation(userId, scoped)) fairUse = await this.hostedUsageStatus(scoped);
       } else {
         const { rows: installs } = await sql.query<{ installation_id: unknown }>(
-          `SELECT installation_id FROM installation_users WHERE user_id = $1`,
+          `SELECT installation_id FROM (${workspaceSourceMembershipSql}) permitted WHERE user_id = $1`,
           [userId],
         );
         if (installs.length === 1) {
@@ -2872,11 +2998,12 @@ export function createStore(
 
     async getAlertForUser(id: number, userId: string): Promise<AlertRow | null> {
       const { rows } = await sql.query<Parameters<typeof alertRow>[0]>(
-        `SELECT a.*, r.full_name
+        `SELECT a.*, r.full_name, COALESCE(assignee.login,a.assigned_to_login) AS assigned_to_login
          FROM alerts a
          LEFT JOIN repos r ON r.id = a.repo_id
+         LEFT JOIN users assignee ON assignee.id=a.assigned_to_user_id
          WHERE a.id = $1 AND a.installation_id IN (
-           SELECT installation_id FROM installation_users WHERE user_id = $2
+           SELECT installation_id FROM (${workspaceSourceMembershipSql}) permitted WHERE user_id = $2
          )`,
         [id, userId],
       );
@@ -2886,13 +3013,18 @@ export function createStore(
     async listInstallationMemberLogins(installationId: number): Promise<string[]> {
       const { rows } = await sql.query<{ login: string }>(
         `SELECT u.login
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          JOIN users u ON u.id = iu.user_id
          WHERE iu.installation_id = $1
          ORDER BY u.login`,
         [installationId],
       );
       return rows.map((row) => row.login);
+    },
+
+    async listAlertAssignees(id:number,userId:string):Promise<{id:string;login:string}[]|null>{
+      const alert=await this.getAlertForUser(id,userId);if(!alert)return null;
+      return (await sql.query<{id:string;login:string}>(`SELECT u.id,u.login FROM (${workspaceSourceMembershipSql}) m JOIN users u ON u.id=m.user_id WHERE m.installation_id=$1 ORDER BY u.login,u.id`,[alert.installation_id])).rows;
     },
 
     async listAlertEventsForUser(alertId: number, userId: string): Promise<AlertEventRow[]> {
@@ -2931,8 +3063,9 @@ export function createStore(
     ): Promise<AlertRow | null> {
       const current = await this.getAlertForUser(id, userId);
       if (!current) return null;
-      if (current.acknowledged_at) return current;
       await sql.transaction(async (tx) => {
+        const locked=await lockAlertResponse(tx,id,current.installation_id,userId);
+        if(locked.acknowledged_at)return;
         await tx.query(
           `UPDATE alerts
            SET acknowledged_at = now(), acknowledged_by_login = $2
@@ -2953,23 +3086,25 @@ export function createStore(
       userId: string,
       actorLogin: string,
       assigneeLogin: string,
+      assigneeUserId?: string|null,
     ): Promise<AlertRow | null> {
       const current = await this.getAlertForUser(id, userId);
       if (!current) return null;
-      const members = await this.listInstallationMemberLogins(current.installation_id);
-      const match = members.find((row) => row.toLowerCase() === assigneeLogin.toLowerCase());
-      if (!match) {
-        throw Object.assign(new Error("Assign only to someone on this GitHub install."), {
-          status: 400,
-        });
-      }
-      if (current.assigned_to_login === match) return current;
       await sql.transaction(async (tx) => {
-        await tx.query(`UPDATE alerts SET assigned_to_login = $2 WHERE id = $1`, [id, match]);
+        // Membership mutations lock this workspace too; permission is rechecked
+        // inside the transaction, not trusted from the earlier display request.
+        await tx.query(`SELECT w.id FROM product_workspaces w JOIN product_workspace_installations c ON c.workspace_id=w.id WHERE c.installation_id=$1 FOR SHARE OF w`,[current.installation_id]);
+        const actor=(await tx.query<{role:string}>(`SELECT role FROM (${workspaceSourceMembershipSql}) m WHERE m.installation_id=$1 AND m.user_id=$2`,[current.installation_id,userId])).rows[0];
+        if(!actor||actor.role==='viewer')throw Object.assign(new Error('Workspace responder access is required.'),{status:403});
+        const members=(await tx.query<{id:string;login:string}>(`SELECT u.id,u.login FROM (${workspaceSourceMembershipSql}) m JOIN users u ON u.id=m.user_id WHERE m.installation_id=$1 AND ($2::text IS NOT NULL AND u.id=$2 OR $2::text IS NULL AND lower(u.login)=lower($3))`,[current.installation_id,assigneeUserId??null,assigneeLogin])).rows;
+        if(assigneeUserId!==null&&members.length!==1)throw Object.assign(new Error('Choose a current member of this workspace.'),{status:400});
+        const match=assigneeUserId===null?{id:null,login:null}:members[0];
+        await tx.query(`SELECT id FROM alerts WHERE id=$1 FOR UPDATE`,[id]);
+        await tx.query(`UPDATE alerts SET assigned_to_login = $2, assigned_to_user_id=$3 WHERE id = $1`, [id, match.login,match.id]);
         await tx.query(
           `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
            VALUES ($1, $2, $3, 'assigned', $4)`,
-          [id, current.installation_id, actorLogin, match],
+          [id, current.installation_id, actorLogin, match.login??'Assignment cleared'],
         );
       });
       return await this.getAlertForUser(id, userId);
@@ -2993,6 +3128,8 @@ export function createStore(
         throw Object.assign(new Error("That alert is already resolved."), { status: 409 });
       }
       await sql.transaction(async (tx) => {
+        const locked=await lockAlertResponse(tx,id,current.installation_id,userId);
+        if(locked.resolved_at)throw Object.assign(new Error('That alert is already resolved.'),{status:409});
         await tx.query(
           `UPDATE alerts
            SET resolved_at = now(),
@@ -3019,6 +3156,8 @@ export function createStore(
         throw Object.assign(new Error("That alert is not resolved."), { status: 400 });
       }
       await sql.transaction(async (tx) => {
+        const locked=await lockAlertResponse(tx,id,current.installation_id,userId);
+        if(!locked.resolved_at)throw Object.assign(new Error('That alert is not resolved.'),{status:409});
         await tx.query(
           `UPDATE alerts
            SET resolved_at = NULL, resolved_by_login = NULL, resolution_note = NULL
@@ -4445,6 +4584,7 @@ export function createStore(
         account_login: string;
         account_type: string;
         suspended: boolean;
+        disconnectedAt: string|null;
         trialEndsAt: string | null;
         plan: string | null;
         role: InstallationRole;
@@ -4457,18 +4597,19 @@ export function createStore(
         account_login: string;
         account_type: string;
         suspended: boolean;
+        disconnected_at: string|Date|null;
         trial_ends_at: string | Date | null;
         plan: string | null;
         role: string;
         last_permission_test_at: string | Date | null;
         last_permission_test: unknown;
       }>(
-        `SELECT i.id, i.account_login, i.account_type, i.suspended,
+        `SELECT i.id, i.account_login, i.account_type, (i.suspended OR i.disconnected_at IS NOT NULL) AS suspended, i.disconnected_at,
                 i.last_permission_test_at, i.last_permission_test,
                 b.trial_ends_at, b.plan, iu.role
          FROM installations i
-         JOIN installation_users iu ON iu.installation_id = i.id
-         LEFT JOIN billing_accounts b ON b.installation_id = i.id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = i.id
+         LEFT JOIN (${sourceBillingSql}) b ON b.installation_id = i.id
          WHERE iu.user_id = $1
          ORDER BY i.account_login`,
         [userId],
@@ -4478,6 +4619,7 @@ export function createStore(
         account_login: row.account_login,
         account_type: row.account_type,
         suspended: Boolean(row.suspended),
+        disconnectedAt:iso(row.disconnected_at),
         trialEndsAt: iso(row.trial_ends_at),
         plan: row.plan,
         role: asInstallationRole(row.role),
@@ -4487,25 +4629,15 @@ export function createStore(
     },
 
     async userOwnsInstallation(userId: string, installationId: number): Promise<boolean> {
-      const { rows } = await sql.query<{ n: unknown }>(
-        `SELECT count(*)::int AS n FROM installation_users
-         WHERE user_id = $1 AND installation_id = $2`,
-        [userId, installationId],
-      );
-      return num(rows[0]?.n ?? 0) > 0;
+      return (await workspaceSourceAccess(sql,userId,installationId)).role !== null;
     },
 
     async getInstallationRole(
       userId: string,
       installationId: number,
     ): Promise<InstallationRole | null> {
-      const { rows } = await sql.query<{ role: string }>(
-        `SELECT role FROM installation_users
-         WHERE user_id = $1 AND installation_id = $2`,
-        [userId, installationId],
-      );
-      const row = rows[0];
-      return row ? asInstallationRole(row.role) : null;
+      const access=await workspaceSourceAccess(sql,userId,installationId);
+      return access.role && access.archived ? 'viewer' : access.role;
     },
 
     async listInstallationMembersForUser(
@@ -4519,11 +4651,11 @@ export function createStore(
         role: string;
       }>(
         `SELECT u.id AS user_id, u.login, u.avatar_url, iu.role
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          JOIN users u ON u.id = iu.user_id
          WHERE iu.installation_id = $1
            AND EXISTS (
-             SELECT 1 FROM installation_users mine
+             SELECT 1 FROM (${workspaceSourceMembershipSql}) mine
              WHERE mine.installation_id = $1 AND mine.user_id = $2
            )
          ORDER BY u.login`,
@@ -4543,6 +4675,13 @@ export function createStore(
       targetUserId: string;
       role: InstallationRole;
     }): Promise<InstallationMember> {
+      const {rows:explicit}=await sql.query<{workspace_id:string}>(`SELECT m.workspace_id FROM product_workspace_members m JOIN product_workspace_installations c ON c.workspace_id=m.workspace_id WHERE c.installation_id=$1 AND m.user_id=$2 AND m.access_source='explicit'`,[input.installationId,input.targetUserId]);
+      if(explicit[0]){
+        await changeWorkspaceMember(sql,input.actorUserId,explicit[0].workspace_id,input.targetUserId,input.role);
+        const member=(await this.listInstallationMembersForUser(input.actorUserId,input.installationId)).find(row=>row.userId===input.targetUserId);
+        if(!member)throw Object.assign(new Error(UNKNOWN_MEMBER_ERROR),{status:404});
+        return member;
+      }
       return await sql.transaction(async (tx) => {
         const { rows: actorRows } = await tx.query<{ role: string }>(
           `SELECT role FROM installation_users
@@ -4569,7 +4708,7 @@ export function createStore(
         if (!target) {
           throw Object.assign(new Error(UNKNOWN_MEMBER_ERROR), { status: 404 });
         }
-        if (asInstallationRole(target.role) === "admin" && input.role === "member") {
+        if (asInstallationRole(target.role) === "admin" && input.role !== "admin") {
           const { rows: adminRows } = await tx.query<{ n: unknown }>(
             `SELECT count(*)::int AS n FROM installation_users
              WHERE installation_id = $1 AND role = 'admin'`,
@@ -4614,6 +4753,11 @@ export function createStore(
       installationId: number;
       targetUserId: string;
     }): Promise<boolean> {
+      const {rows:explicit}=await sql.query<{workspace_id:string}>(`SELECT m.workspace_id FROM product_workspace_members m JOIN product_workspace_installations c ON c.workspace_id=m.workspace_id WHERE c.installation_id=$1 AND m.user_id=$2 AND m.access_source='explicit'`,[input.installationId,input.targetUserId]);
+      if(explicit[0]){
+        await changeWorkspaceMember(sql,input.actorUserId,explicit[0].workspace_id,input.targetUserId,null);
+        return true;
+      }
       return await sql.transaction(async (tx) => {
         const { rows: actorRows } = await tx.query<{ role: string }>(
           `SELECT role FROM installation_users
@@ -4674,7 +4818,7 @@ export function createStore(
          FROM installation_invites i
          WHERE i.installation_id = $1
            AND EXISTS (
-             SELECT 1 FROM installation_users mine
+             SELECT 1 FROM (${workspaceSourceMembershipSql}) mine
              WHERE mine.installation_id = $1 AND mine.user_id = $2
            )
          ORDER BY i.github_login`,
@@ -4798,7 +4942,7 @@ export function createStore(
       }>(
         `SELECT wp.*
          FROM watched_packages wp
-         JOIN installation_users iu ON iu.installation_id = wp.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = wp.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR wp.installation_id = $2)
          ORDER BY wp.package_name`,
@@ -4919,7 +5063,7 @@ export function createStore(
       }>(
         `SELECT p.*
          FROM package_protections p
-         JOIN installation_users iu ON iu.installation_id = p.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = p.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR p.installation_id = $2)
          ORDER BY p.created_at DESC`,
@@ -5444,7 +5588,7 @@ export function createStore(
       }>(
         `SELECT n.*
          FROM protected_namespaces n
-         JOIN installation_users iu ON iu.installation_id = n.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = n.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR n.installation_id = $2)
          ORDER BY n.scope`,
@@ -5592,7 +5736,7 @@ export function createStore(
 
     async countWatchedOrigins(installationId: number): Promise<number> {
       const { rows } = await sql.query<{ n: unknown }>(
-        `SELECT count(*)::int AS n FROM watched_origins WHERE installation_id = $1`,
+        `SELECT count(*)::int AS n FROM watched_origins WHERE installation_id = $1 AND disconnected_at IS NULL`,
         [installationId],
       );
       return num(rows[0]?.n ?? 0);
@@ -5615,8 +5759,9 @@ export function createStore(
       }>(
         `SELECT wo.*
          FROM watched_origins wo
-         JOIN installation_users iu ON iu.installation_id = wo.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = wo.installation_id
          WHERE iu.user_id = $1
+           AND wo.disconnected_at IS NULL
            AND ($2::bigint IS NULL OR wo.installation_id = $2)
          ORDER BY wo.origin_url`,
         [userId, scoped],
@@ -5634,7 +5779,7 @@ export function createStore(
         last_checked_at: string | Date | null;
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
-      }>(`SELECT * FROM watched_origins ORDER BY id`);
+      }>(`SELECT * FROM watched_origins WHERE disconnected_at IS NULL AND installation_id IS NOT NULL ORDER BY id`);
       return rows.map(watchedOriginRow);
     },
 
@@ -5648,7 +5793,7 @@ export function createStore(
         last_checked_at: string | Date | null;
         last_scanned_at: string | Date | null;
         last_scan_status: string | null;
-      }>(`SELECT * FROM watched_origins WHERE id = $1`, [id]);
+      }>(`SELECT * FROM watched_origins WHERE id = $1 AND disconnected_at IS NULL AND installation_id IS NOT NULL`, [id]);
       return rows[0] ? watchedOriginRow(rows[0]) : null;
     },
 
@@ -5669,7 +5814,9 @@ export function createStore(
       }>(
         `INSERT INTO watched_origins (installation_id, origin_url, host)
          VALUES ($1, $2, $3)
-         ON CONFLICT (installation_id, origin_url) DO NOTHING
+         ON CONFLICT (installation_id, origin_url) DO UPDATE SET disconnected_at=NULL,
+           verified_at=NULL,verification_token=COALESCE(watched_origins.verification_token,gen_random_uuid()::text),verification_method=NULL,deploy_token_hash=NULL,deploy_token_prefix=NULL
+         WHERE watched_origins.disconnected_at IS NOT NULL
          RETURNING *`,
         [installationId, originUrl, host],
       );
@@ -5691,10 +5838,12 @@ export function createStore(
              verified_at = NULL,
              deploy_token_hash = NULL,
              deploy_token_prefix = NULL
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE wo.id = $1
+           AND wo.disconnected_at IS NULL
            AND iu.user_id = $2
            AND iu.installation_id = wo.installation_id
+           AND iu.role IN ('admin','member')
          RETURNING wo.*`,
         [id, userId, token],
       );
@@ -5714,10 +5863,12 @@ export function createStore(
       }>(
         `UPDATE watched_origins wo
          SET verification_method = $3, verified_at = now()
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE wo.id = $1
+           AND wo.disconnected_at IS NULL
            AND iu.user_id = $2
            AND iu.installation_id = wo.installation_id
+           AND iu.role IN ('admin','member')
          RETURNING wo.*`,
         [id, userId, method],
       );
@@ -5738,10 +5889,12 @@ export function createStore(
       }>(
         `UPDATE watched_origins wo
          SET deploy_token_hash = $3, deploy_token_prefix = $4
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE wo.id = $1
+           AND wo.disconnected_at IS NULL
            AND iu.user_id = $2
            AND iu.installation_id = wo.installation_id
+           AND iu.role IN ('admin','member')
            AND wo.verified_at IS NOT NULL
          RETURNING wo.*`,
         [id, userId, tokenHash, tokenPrefix],
@@ -5757,7 +5910,7 @@ export function createStore(
         host: string;
       }>(
         `SELECT * FROM watched_origins
-         WHERE deploy_token_hash = $1 AND verified_at IS NOT NULL`,
+         WHERE deploy_token_hash = $1 AND verified_at IS NOT NULL AND disconnected_at IS NULL`,
         [tokenHash],
       );
       return rows[0]
@@ -5767,11 +5920,12 @@ export function createStore(
 
     async deleteWatchedOriginForUser(id: number, userId: string): Promise<boolean> {
       const { rows } = await sql.query<{ id: unknown }>(
-        `DELETE FROM watched_origins wo
-         USING installation_users iu
+        `UPDATE watched_origins wo SET disconnected_at=COALESCE(disconnected_at,now()),deploy_token_hash=NULL,deploy_token_prefix=NULL
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE wo.id = $1
            AND wo.installation_id = iu.installation_id
            AND iu.user_id = $2
+           AND iu.role IN ('admin','member')
          RETURNING wo.id`,
         [id, userId],
       );
@@ -5894,7 +6048,7 @@ export function createStore(
       }>(
         `SELECT r.id, r.installation_id, r.origin, r.host, r.updated_at
          FROM npm_registries r
-         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = r.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR r.installation_id = $2)
          ORDER BY r.host`,
@@ -6001,7 +6155,7 @@ export function createStore(
                 d.last_checked_at, d.last_status, d.last_error, d.last_fingerprint,
                 d.created_at, d.updated_at
          FROM map_destinations d
-         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR d.installation_id = $2)
          ORDER BY d.kind`,
@@ -6208,7 +6362,7 @@ export function createStore(
         `SELECT d.id, d.installation_id, d.kind, d.host, d.project_key, d.last_delivery_at,
                 d.last_delivery_status, d.last_delivery_error, d.updated_at
          FROM notification_destinations d
-         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR d.installation_id = $2)
          ORDER BY d.kind`,
@@ -6235,7 +6389,7 @@ export function createStore(
         `SELECT d.id, d.installation_id, d.kind, d.host, d.project_key, d.last_delivery_at,
                 d.last_delivery_status, d.last_delivery_error, d.updated_at
          FROM notification_destinations d
-         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE d.id = $1 AND iu.user_id = $2`,
         [id, userId],
       );
@@ -6479,7 +6633,7 @@ export function createStore(
         `SELECT d.id, d.installation_id, d.destination_id, d.alert_id, d.kind, d.status,
                 d.error, d.created_at
          FROM notification_deliveries d
-         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR d.installation_id = $2)
            AND row_within_retention(d.installation_id, d.created_at)
@@ -6507,7 +6661,7 @@ export function createStore(
       const { rows } = await sql.query<{ n: string }>(
         `SELECT count(*)::text AS n
          FROM repos
-         WHERE installation_id = $1 AND lower(full_name) = lower($2)`,
+         WHERE installation_id = $1 AND lower(full_name) = lower($2) AND disconnected_at IS NULL`,
         [installationId, fullName],
       );
       return Number(rows[0]?.n ?? 0) > 0;
@@ -6541,7 +6695,7 @@ export function createStore(
         `SELECT r.id, r.installation_id, r.destination_id, r.min_severity, r.repo_full_name,
                 r.package_name, r.team_login, r.created_at
          FROM notification_routes r
-         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = r.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR r.installation_id = $2)
          ORDER BY r.id`,
@@ -6665,7 +6819,7 @@ export function createStore(
         `SELECT r.id, r.installation_id, r.destination_id, r.min_severity, r.repo_full_name,
                 r.package_name, r.team_login, r.created_at
          FROM notification_routes r
-         JOIN installation_users iu ON iu.installation_id = r.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = r.installation_id
          WHERE r.id = $1 AND iu.user_id = $2`,
         [id, userId],
       );
@@ -6678,20 +6832,21 @@ export function createStore(
       installationId: number,
       assigneeLogin: string,
     ): Promise<void> {
-      const members = await this.listInstallationMemberLogins(installationId);
-      const match = members.find((row) => row.toLowerCase() === assigneeLogin.toLowerCase());
-      if (!match) return;
       await sql.transaction(async (tx) => {
+        await tx.query(`SELECT w.id FROM product_workspaces w JOIN product_workspace_installations c ON c.workspace_id=w.id WHERE c.installation_id=$1 FOR SHARE OF w`,[installationId]);
+        const members=(await tx.query<{id:string;login:string}>(`SELECT u.id,u.login FROM (${workspaceSourceMembershipSql}) m JOIN users u ON u.id=m.user_id WHERE m.installation_id=$1 AND lower(u.login)=lower($2)`,[installationId,assigneeLogin])).rows;
+        if(members.length!==1)return;
+        const match=members[0];
         const { rows } = await tx.query<{ assigned_to_login: string | null }>(
-          `SELECT assigned_to_login FROM alerts WHERE id = $1 AND installation_id = $2`,
+          `SELECT assigned_to_login FROM alerts WHERE id = $1 AND installation_id = $2 FOR UPDATE`,
           [alertId, installationId],
         );
         if (!rows[0] || rows[0].assigned_to_login) return;
-        await tx.query(`UPDATE alerts SET assigned_to_login = $2 WHERE id = $1`, [alertId, match]);
+        await tx.query(`UPDATE alerts SET assigned_to_login = $2,assigned_to_user_id=$3 WHERE id = $1`, [alertId, match.login,match.id]);
         await tx.query(
           `INSERT INTO alert_events (alert_id, installation_id, actor_login, action, detail)
            VALUES ($1, $2, 'nospoilers', 'assigned', $3)`,
-          [alertId, installationId, match],
+          [alertId, installationId, match.login],
         );
       });
     },
@@ -6726,7 +6881,7 @@ export function createStore(
                   NULL::boolean AS invented_incident
            FROM alerts a
            LEFT JOIN repos r ON r.id = a.repo_id
-           JOIN installation_users iu ON iu.installation_id = a.installation_id
+           JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = a.installation_id
            WHERE iu.user_id = $1
              AND a.installation_id = $2
              AND row_within_retention(a.installation_id, a.created_at)
@@ -6744,7 +6899,7 @@ export function createStore(
            FROM alert_events e
            JOIN alerts a ON a.id = e.alert_id
            LEFT JOIN repos r ON r.id = a.repo_id
-           JOIN installation_users iu ON iu.installation_id = e.installation_id
+           JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = e.installation_id
            WHERE iu.user_id = $1
              AND e.installation_id = $2
              AND row_within_retention(e.installation_id, e.created_at)
@@ -6760,7 +6915,7 @@ export function createStore(
                   d.status AS delivery_status,
                   false AS invented_incident
            FROM notification_deliveries d
-           JOIN installation_users iu ON iu.installation_id = d.installation_id
+           JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
            WHERE iu.user_id = $1
              AND d.installation_id = $2
              AND row_within_retention(d.installation_id, d.created_at)
@@ -6809,7 +6964,7 @@ export function createStore(
         `SELECT t.id, t.installation_id, t.name, t.token_prefix, t.created_by_login,
                 t.last_used_at, t.created_at
          FROM scan_api_tokens t
-         JOIN installation_users iu ON iu.installation_id = t.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = t.installation_id
          WHERE iu.user_id = $1 AND t.revoked_at IS NULL
            AND ($2::bigint IS NULL OR t.installation_id = $2)
          ORDER BY t.created_at DESC`,
@@ -6831,8 +6986,13 @@ export function createStore(
       name: string;
       createdByLogin: string;
     }): Promise<ScanApiTokenRow & { token: string }> {
+      return sql.transaction(async tx=>{
+      const owner=(await tx.query<{id:string}>(`SELECT w.id FROM product_workspaces w JOIN product_workspace_installations c ON c.workspace_id=w.id WHERE c.installation_id=$1 FOR UPDATE OF w`,[input.installationId])).rows[0];
+      await tx.query('SELECT id FROM installations WHERE id=$1 FOR UPDATE',[input.installationId]);
+      const count=await tx.query<{total:string}>('SELECT count(*) AS total FROM scan_api_tokens WHERE (installation_id=$1 OR workspace_id=$2::uuid) AND revoked_at IS NULL',[input.installationId,owner?.id??null]);
+      if(Number(count.rows[0]?.total)>=MAX_SCAN_TOKENS)throw Object.assign(new Error(`This install already has ${MAX_SCAN_TOKENS} scan API tokens.`),{status:400});
       const minted = mintScanToken();
-      const { rows } = await sql.query<{
+      const { rows } = await tx.query<{
         id: unknown;
         installation_id: unknown;
         name: string;
@@ -6860,17 +7020,19 @@ export function createStore(
         created_at: iso(row.created_at) ?? new Date().toISOString(),
         token: minted.token,
       };
+      });
     },
 
     async revokeScanApiTokenForUser(id: number, userId: string): Promise<boolean> {
       const { rows } = await sql.query<{ id: unknown }>(
         `UPDATE scan_api_tokens t
          SET revoked_at = now()
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE t.id = $1
            AND t.revoked_at IS NULL
            AND t.installation_id = iu.installation_id
            AND iu.user_id = $2
+           AND iu.role = 'admin'
          RETURNING t.id`,
         [id, userId],
       );
@@ -6886,9 +7048,11 @@ export function createStore(
         installation_id: unknown;
         token_hash: string;
       }>(
-        `SELECT id, installation_id, token_hash
-         FROM scan_api_tokens
-         WHERE token_hash = $1 AND revoked_at IS NULL`,
+        `SELECT t.id, t.installation_id, t.token_hash
+         FROM scan_api_tokens t
+         WHERE t.token_hash = $1 AND t.revoked_at IS NULL
+         AND t.installation_id IS NOT NULL
+         AND (t.workspace_id IS NULL OR EXISTS(SELECT 1 FROM product_workspace_installations c JOIN product_workspaces w ON w.id=c.workspace_id WHERE c.installation_id=t.installation_id AND c.workspace_id=t.workspace_id AND w.archived_at IS NULL))`,
         [hash],
       );
       const row = rows[0];
@@ -7021,7 +7185,7 @@ export function createStore(
       }>(
         `SELECT sr.*
          FROM scan_receipts sr
-         JOIN installation_users iu ON iu.installation_id = sr.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = sr.installation_id
          WHERE sr.id = $1 AND iu.user_id = $2`,
         [id, userId],
       );
@@ -7052,7 +7216,7 @@ export function createStore(
       }>(
         `SELECT sr.*
          FROM scan_receipts sr
-         JOIN installation_users iu ON iu.installation_id = sr.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = sr.installation_id
          WHERE iu.user_id = $1
            AND ($2::bigint IS NULL OR sr.package_id = $2)
            AND ($3::bigint IS NULL OR sr.repo_id = $3)
@@ -7223,7 +7387,7 @@ export function createStore(
       const { rows } = await sql.query<ReleaseRevisionSqlRow>(
         `SELECT rr.*, sr.status AS receipt_status
          FROM release_revisions rr
-         JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = rr.installation_id
          LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE iu.user_id = $1
            AND ($3::bigint IS NULL OR rr.installation_id = $3)
@@ -7253,7 +7417,7 @@ export function createStore(
       const { rows } = await sql.query<ReleaseRevisionSqlRow>(
         `SELECT rr.*, sr.status AS receipt_status
          FROM release_revisions rr
-         JOIN installation_users iu ON iu.installation_id = rr.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = rr.installation_id
          LEFT JOIN scan_receipts sr ON sr.id = rr.receipt_id
          WHERE rr.id = $1 AND iu.user_id = $2`,
         [id, userId],
@@ -7589,7 +7753,7 @@ export function createStore(
       }>(
         `SELECT l.*
          FROM release_delivery_locations l
-         JOIN installation_users iu ON iu.installation_id = l.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = l.installation_id
          WHERE l.id = $1 AND iu.user_id = $2`,
         [id, userId],
       );
@@ -7840,7 +8004,7 @@ export function createStore(
       }>(
         `SELECT pe.*
          FROM policy_exceptions pe
-         JOIN installation_users iu ON iu.installation_id = pe.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = pe.installation_id
          WHERE iu.user_id = $1
            AND pe.revoked_at IS NULL
            AND ($2::bigint IS NULL OR pe.installation_id = $2)
@@ -7865,7 +8029,16 @@ export function createStore(
       actorLogin: string;
       expiresAt: Date | string;
     }): Promise<PolicyExceptionRow> {
-      const { rows } = await sql.query<{
+      return sql.transaction(async tx=>{
+      // Serialize against workspace policy changes. Approval-required workspaces
+      // must use evidence-bound requests, never the directly active legacy path.
+      const ownership=await tx.query<{workspace_id:string}>(`SELECT c.workspace_id FROM product_workspace_installations c
+        JOIN product_workspaces w ON w.id=c.workspace_id WHERE c.installation_id=$1 FOR UPDATE OF w`,[input.installationId]);
+      const workspaceId=ownership.rows[0]?.workspace_id;
+      if(workspaceId&&(await tx.query<{require_exception_approval:boolean}>('SELECT require_exception_approval FROM product_workspace_scan_policies WHERE workspace_id=$1',[workspaceId])).rows[0]?.require_exception_approval){
+        throw Object.assign(new Error('Independent approval is required. Request an exception from a saved release finding, then have another administrator review it.'),{status:409});
+      }
+      const { rows } = await tx.query<{
         id: unknown;
         installation_id: unknown;
         package_id: unknown;
@@ -7898,6 +8071,7 @@ export function createStore(
       );
       if (!rows[0]) throw new Error("policy exception insert returned no row");
       return policyExceptionRow(rows[0]);
+      });
     },
 
     async revokePolicyExceptionForUser(
@@ -7921,11 +8095,12 @@ export function createStore(
       }>(
         `UPDATE policy_exceptions pe
          SET revoked_at = now(), revoked_by = $3
-         FROM installation_users iu
+         FROM (${workspaceSourceMembershipSql}) iu
          WHERE pe.id = $1
            AND pe.revoked_at IS NULL
            AND pe.installation_id = iu.installation_id
            AND iu.user_id = $2
+           AND iu.role = 'admin'
          RETURNING pe.*`,
         [id, userId, revokedBy],
       );
@@ -8064,7 +8239,7 @@ export function createStore(
       }>(
         `SELECT e.*
          FROM audit_events e
-         JOIN installation_users iu ON iu.installation_id = e.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = e.installation_id
          WHERE iu.user_id = $1
            AND e.installation_id = $2
            AND row_within_retention(e.installation_id, e.created_at)
@@ -8103,7 +8278,7 @@ export function createStore(
         `SELECT d.id, d.installation_id, d.destination_id, d.alert_id, d.kind, d.status,
                 d.error, d.created_at
          FROM notification_deliveries d
-         JOIN installation_users iu ON iu.installation_id = d.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = d.installation_id
          WHERE iu.user_id = $1
            AND d.installation_id = $2
            AND row_within_retention(d.installation_id, d.created_at)
@@ -8119,7 +8294,7 @@ export function createStore(
       }>(
         `SELECT a.id, a.kind, a.title, a.created_at
          FROM alerts a
-         JOIN installation_users iu ON iu.installation_id = a.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = a.installation_id
          WHERE iu.user_id = $1
            AND a.installation_id = $2
            AND row_within_retention(a.installation_id, a.created_at)
@@ -8137,7 +8312,7 @@ export function createStore(
         `SELECT e.id, e.alert_id, e.actor_login, e.action, e.created_at
          FROM alert_events e
          JOIN alerts a ON a.id = e.alert_id
-         JOIN installation_users iu ON iu.installation_id = a.installation_id
+         JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id = a.installation_id
          WHERE iu.user_id = $1
            AND a.installation_id = $2
            AND row_within_retention(e.installation_id, e.created_at)

@@ -1,5 +1,7 @@
 # Status
 
+Latest checkpoint (5 September 2026): read [Gate A implementation](GATE-A-IMPLEMENTATION.md) before older status notes below. Queued browser/CI artifact processing, installation-ledger completion, viewer enforcement, staging budgets, pinned HTTPS and restricted parser invocation are now implemented. Migration marker is `070_immutable_upload_results`. Container runtime, production-like concurrency/recovery and private deployment verification remain required; no launch-readiness claim or deployment is implied. Preserve existing user changes and mockups.
+
 Updated 4 September 2026. This is the honest answer to “is everything built?”
 
 **No. The specified NoSpoilers product is in the repository. The commercial launch is not.**
@@ -27,16 +29,16 @@ Older pause notes live in [`docs/PLATFORM-PAUSE.md`](PLATFORM-PAUSE.md) as a poi
 
 ## Customer product — built in this repo
 
-These exist as routes, APIs, workers, and tests. Preview `/watch?as=trial` is the same desk with empty live data. No invented tenant rows.
+These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch`, `/watch?as=trial`, and `/watch?as=ended` all require a GitHub session and billing state comes only from the authenticated installation. Legacy `as` parameters are ignored. No preview tenant is rendered.
 
 | Area | What is in |
 | --- | --- |
 | Scanner / CLI / Action | Directories and packed artifacts (tgz, zip, asar, VSIX/CRX/XPI, wheel/sdist, JAR/WAR, NuGet, gem, Docker/OCI, APK/AAB/IPA, serverless zip). Nested unpack, never execute. JSON/SARIF. Fail-closed CI fixtures. |
-| Watch desk | 2B monolith: Overview, Alerts, Sources, Releases, Timeline, Setup, Notifications, Policy, Team, Retention, Audit, Health, Tokens, Registries. Sidebar collapse. Live APIs. |
+| Watch desk | 2B monolith: workspace-wide Overview plus source selection and an individual Release Readiness Brief for each persisted release. Package/source detail links resolve to the matching latest release when available. Alerts, Sources, Releases, Timeline, Setup, Notifications, Policy, Team, Retention, Audit, Health, Tokens, Registries remain on live APIs. |
 | GitHub coverage | OAuth, App install, HMAC webhooks, queue, worker, hourly visibility poller. Publicize, created-public, cheap `.env`/`.map` push, and fixture release scan are proven on the throwaway. |
 | npm / websites | Public and private registry watch, prerelease channels, unpublish fact. HTTPS origin crawl after ownership proof. Sentry/Bugsnag map custody. Provider-neutral `/api/v1/deploy`. |
 | Policy / receipts | `.nospoilers.yml`, allowlists, baselines, HMAC receipts, Release Diff, SIZE-003, hosted `POST /api/v1/scan`. |
-| Release Ledger | Append-only revisions, on-demand delivery verify, approve/reject/hold, public `/verify/:token`, attestation refresh (no Sigstore verify), signing policy. |
+| Release Ledger | Append-only revisions with Mock 3-derived readiness detail, status-consistent proof steps, on-demand delivery verify, approve/reject/hold, public `/verify/:token`, attestation refresh (no Sigstore verify), signing policy. |
 | Package Identity | Protect owned names, snapshots, lookalikes, namespace watch, evidence/advisory page, risk score. Not a malware verdict. |
 | Team / alerts | Roles, GitHub-login invites, Slack/SIEM/Jira/PagerDuty, routing, audit, 90-day timeline, retention window, incident ack/assign/resolve. |
 | GitHub response | Make-private, delete latest pack assets, disable a non-NoSpoilers workflow — **409 until Administration, which we will not grant.** Setup and remediation PRs are reviewable and never merged. |

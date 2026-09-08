@@ -54,6 +54,7 @@ export type ManifestEntry = {
 };
 
 export type PolicyException = {
+  pathMatch?: 'exact';
   rule: string;
   pathPattern: string | null;
   reason: string;

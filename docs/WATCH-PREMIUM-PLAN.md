@@ -12,7 +12,7 @@ Status: [`docs/STATUS.md`](STATUS.md).
 - `WatchPage.tsx` / `WatchWorkspace.tsx` stay thin.
 - One screen module per Watch route (Overview through Registries).
 - URL remains durable state (`/watch`, `/watch/{view}`, query keys).
-- Preview `/watch?as=trial` uses the same shell. No invented tenant rows.
+- Watch has no anonymous preview tenant. `/watch` and legacy `?as=trial|ended` URLs require GitHub authentication; trial and ended coverage come only from the authenticated installation.
 - Ember stays on the homepage.
 
 ## What this file is not

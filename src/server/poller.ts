@@ -3,6 +3,7 @@ import type { GithubPort } from "./github.ts";
 import type { NpmPort } from "./npm.ts";
 import { runNpmWatchPoll } from "./npm-watch.ts";
 import { runWebOriginPoll } from "./web-watch.ts";
+import { runWorkspaceOriginPoll } from './workspace-origin-schedule.ts';
 import { runMapCustodyPoll } from "./map-watch.ts";
 import { runProspectAcquisitionPoll } from "./prospect-feed.ts";
 import { runNamespaceWatchPoll } from "./namespace-watch.ts";
@@ -64,6 +65,8 @@ export async function runPollerTick(deps: {
   const npm = await runNpmWatchPoll(deps);
   const namespaces = await runNamespaceWatchPoll(deps);
   const web = await runWebOriginPoll(deps);
+  const workspaceWeb = await runWorkspaceOriginPoll(deps);
+  web.queued += workspaceWeb.queued;
   const maps = await runMapCustodyPoll(deps);
   const prospects = await runProspectAcquisitionPoll({
     store: deps.store,

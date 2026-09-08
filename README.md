@@ -60,7 +60,7 @@ Open **http://127.0.0.1:4347** (port **4347**). `GET /api/health` reports whethe
 Neon, generic Postgres, or PGlite and never includes the connection string. `GET /api/ready` pings
 the database and returns 503 if it cannot.
 
-- **Product** (`/`) — what you buy: GitHub coverage, pack scans, 14-day trial.
+- **Product** (`/`) — what you buy: GitHub coverage, pack scans, 5-day trial.
 - **Watch** (`/watch`) — logged-in desk while trial or a paid plan is on. Without GitHub keys this opens the trial layout (`/watch?as=trial`). `/watch?as=ended` is the same desk after coverage stops. Connect a public npm package to scan the `latest` tarball automatically. Connect an HTTPS origin to crawl same-origin JS/CSS/maps and a bounded probe of exposed files, credentials, and internal paths. Admins can connect Sentry or Bugsnag map custody.
 - **Scan** (`/scan`) — drop a tarball, zip, VSIX, wheel, JAR, gem, Docker/OCI image, APK/IPA, Lambda zip, or asar. Signed-out still scans. Logged in with unpaid coverage locks hosted unpack — that look is `/scan?as=ended`.
 - **Pricing** (`/pricing`) — Solo $29 / Team $99.
@@ -108,10 +108,11 @@ docker compose up -d
 # DATABASE_URL=postgres://nospoilers:nospoilers@127.0.0.1:5433/nospoilers
 ```
 
-CLI and Action still work without the GitHub App:
+The customer CLI scans through the authenticated hosted API. Receipt verification stays free and
+can run offline:
 
 ```bash
-npx tsx src/cli.ts scan ./package.tgz
+npx tsx src/cli.ts scan ./package.tgz --api-url https://app.nospoilers.example --api-token nsp_…
 npx tsx src/cli.ts verify ./package.tgz --receipt ./receipt.json
 ```
 
@@ -223,29 +224,19 @@ Create the app. Then:
 
 Where to install: **Install App** on your user or org, only the throwaway repo until you trust it.
 
-## Scan locally (CLI)
+## Scan from CI (CLI)
 
 ```bash
-npx tsx src/cli.ts scan ./package.tgz
-npx tsx src/cli.ts scan ./release/app.asar --policy .nospoilers.yml
-npx tsx src/cli.ts scan ./dist --no-policy
+npx tsx src/cli.ts scan ./package.tgz \
+  --api-url https://app.nospoilers.example \
+  --api-token nsp_…
 ```
 
 Exit codes: `0` clean (warnings only unless `--strict`), `1` critical spoilers, `2` could not read the path.
 
-If `.nospoilers.yml` exists in the current directory, `scan` loads it unless `--no-policy` is set.
-Allow entries must name one rule, a reason (≥8 characters), and a future expiry (≤730 days).
-They never suppress a different rule.
-
-```yaml
-version: 1
-strict: false
-allow:
-  - rule: SRC-001
-    path: "**/*.d.ts"
-    reason: Published TypeScript types
-    expires: 2027-12-01
-```
+Hosted scans use the installation allowlist configured in Watch. The scanner implementation can
+still run locally inside this repository's development and fixture-test harness, but that internal
+path is not the customer product or a supported entitlement bypass.
 
 ## GitHub Action
 

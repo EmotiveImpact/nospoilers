@@ -18,6 +18,7 @@ import {
 } from "./release-ledger.ts";
 import { policyFromExceptionRows } from "./hosted-policy.ts";
 import type { ReleaseRevisionRow, ScanBaselineRow, ScanReceiptRow, Store } from "./store.ts";
+import {createStore} from './store.ts';
 
 export type ReceiptCompareKind = "baseline" | "previous";
 
@@ -108,7 +109,11 @@ function applySizeJumpFinding(
   return { ...report, findings };
 }
 
-export async function persistHostedReceipt(opts: {
+export async function persistHostedReceipt(opts: Parameters<typeof persistHostedReceiptTransaction>[0]) {
+  return opts.store.sql.transaction(tx=>persistHostedReceiptTransaction({...opts,store:createStore(tx)}));
+}
+
+async function persistHostedReceiptTransaction(opts: {
   store: Store;
   secret: string;
   installationId: number;
@@ -162,6 +167,7 @@ export async function persistHostedReceipt(opts: {
     repoId: opts.repoId ?? null,
     receipt,
   });
+  await opts.store.sql.query(`INSERT INTO hosted_scan_evidence(receipt_id,installation_id,report) VALUES($1,$2,$3::jsonb) ON CONFLICT(receipt_id) DO NOTHING`,[row.id,opts.installationId,JSON.stringify(report)]);
   const revision = await appendReleaseRevision(opts.store, {
     installationId: opts.installationId,
     packageId: opts.packageId ?? null,

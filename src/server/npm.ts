@@ -1,3 +1,4 @@
+import { pinnedHttps } from './pinned-https.ts';
 import {
   parseScopeSearchHits,
   registryScopeSearchUrl,
@@ -391,7 +392,7 @@ export function createNpmPort(opts?: {
   fetch?: typeof fetch;
   cache?: PackumentCache;
 }): NpmPort {
-  const fetchImpl = opts?.fetch ?? fetch;
+  const fetchImpl = opts?.fetch ?? ((input:string|URL|Request,init?:RequestInit)=>pinnedHttps(String(input),init,8*1024*1024));
   const cache = opts?.cache ?? createPackumentCache();
   return {
     async getPack(packageName, auth, getOpts) {
@@ -421,25 +422,25 @@ export function createNpmPort(opts?: {
     async downloadTarball(url, maxBytes, auth) {
       const resolved = resolveAuth(auth);
       allowedNpmTarballUrl(url, resolved.host);
-      const response = await fetch(url, {
+      const response = await (opts?.fetch ?? ((input:string|URL|Request,init?:RequestInit)=>pinnedHttps(String(input),init,maxBytes)))(url, {
         headers: npmHeaders(auth),
-        redirect: "follow",
+        redirect: "error",
         signal: AbortSignal.timeout(60_000),
       });
       if (!response.ok) throw new Error(`npm tarball download returned ${response.status}.`);
-      allowedNpmTarballUrl(response.url, resolved.host);
+      if(response.url)allowedNpmTarballUrl(response.url, resolved.host);
       return await readLimitedBody(response, maxBytes);
     },
     async searchScope(scope) {
       const url = registryScopeSearchUrl(scope);
-      const response = await fetch(url, {
-        redirect: "follow",
+      const response = await fetchImpl(url, {
+        redirect: "error",
         signal: AbortSignal.timeout(20_000),
       });
       if (!response.ok) throw new Error(`npm search returned ${response.status}.`);
       let finalHost = "";
       try {
-        finalHost = new URL(response.url).hostname.toLowerCase();
+        finalHost = new URL(response.url || url).hostname.toLowerCase();
       } catch {
         throw new Error("npm search returned an invalid URL.");
       }

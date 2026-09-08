@@ -105,7 +105,7 @@ const TERMS: LegalDoc = {
     {
       heading: "Coverage, trial, and unpaid installs",
       paragraphs: [
-        "New installations start a 14-day full trial. Solo is $29 per month. Team is $99 per month. Yearly is 10 months for the price of 12. Fair use lives in these terms: we cap concurrent unpacks, not a visible scan counter. Abuse may be queued or moved to Team.",
+        "New installations start a 5-day full trial. Solo is $29 per month. Team is $99 per month. Yearly is 10 months for the price of 12. Fair use lives in these terms: we cap concurrent unpacks, not a visible scan counter. Abuse may be queued or moved to Team.",
         "When the trial ends unpaid, or a paid plan lapses, we still acknowledge GitHub webhooks with HTTP 200 so deliveries stay healthy, but we do not enqueue hosted work, scan, poll, or alert for that installation. Watch will tell you to subscribe to keep watching.",
         "Card checkout through Stripe on our site is the billing path. An install admin starts Checkout or the billing portal. Checkout is live only when Stripe keys are configured. GitHub Marketplace is optional later; it is not the only way we will charge.",
       ],
@@ -147,13 +147,13 @@ const RETENTION: LegalDoc = {
     {
       heading: "Findings and alerts",
       paragraphs: [
-        "We keep finding metadata (path, rule, fingerprint, severity counts) and Watch alerts while the installation exists so you can see what fired. Each install can set a list window of 90 days (default), 180 days, 365 days, or keep while this install exists. Lists hide older rows at query time. Append-only evidence (alert events, notification deliveries, audit events, identity snapshots, release revisions, and scan receipts) is not deleted by that window. Uninstall still drops the tenant.",
+        "Saved findings, alerts and release evidence remain available to authorised workspace members after GitHub is disconnected. Each install can set a list window of 90 days (default), 180 days, 365 days, or all retained history. Lists hide older rows at query time; shortening this window does not delete evidence. Append-only evidence cannot be rewritten through ordinary workspace actions. Disconnecting stops monitoring and revokes scan-token access. It does not delete history or cancel the organisation subscription.",
       ],
     },
     {
       heading: "Account, GitHub, and billing rows",
       paragraphs: [
-        "User, session, installation, repository, job, and billing-account rows stay for as long as the install or account is active. Uninstall removes the installation row; billing attached to that installation goes with it. Encrypted GitHub OAuth tokens stay only while we still need them to talk to GitHub for you. Encrypted Sentry and Bugsnag tokens stay only while map custody is connected on that install.",
+        "GitHub connection state, workspace evidence and organisation billing are separate. Uninstall marks the connection inactive while retaining its history and billing records. Closing a personal account must not silently delete a shared organisation’s evidence. Encrypted GitHub OAuth tokens and integration credentials are governed separately from saved scan findings.",
       ],
     },
     {
@@ -165,7 +165,7 @@ const RETENTION: LegalDoc = {
     {
       heading: "Deletion",
       paragraphs: [
-        `Email ${SUPPORT_EMAIL} from the GitHub account you signed in with to request deletion. We will remove account rows we control. GitHub keeps its own copies of webhooks and OAuth grants until you revoke them in GitHub.`,
+        `Permanent history deletion requires a separate, explicit authorisation from the organisation owner, including when account closure is requested. The affected scope must be identified and confirmed in writing; signing out, disconnecting GitHub or cancelling a subscription is not deletion authorisation. Contact ${SUPPORT_EMAIL} to request account closure or deletion review. A request is not confirmation that deletion has completed. We must check shared ownership, applicable retention obligations and legal holds before processing it. GitHub controls its own retained copies.`,
       ],
     },
   ],
@@ -216,7 +216,7 @@ const SUPPORT: LegalDoc = {
     {
       heading: "Coverage vs the CLI",
       paragraphs: [
-        "Hosted unpacks stop when coverage ends. The CLI on your machine does not. If Watch says subscribe, that is enforcement, not an outage.",
+        "Hosted scanning and monitoring stop when coverage ends. Existing receipts remain verifiable. If Watch says subscribe, that is enforcement, not an outage.",
       ],
     },
   ],
@@ -231,7 +231,7 @@ const REFUNDS: LegalDoc = {
     {
       heading: "Trial",
       paragraphs: [
-        "The 14-day trial is full coverage. Card-on-file checkout is not live yet, so there is nothing to refund for a trial that never charged a card.",
+        "The 5-day trial is full coverage. Card-on-file checkout is not live yet, so there is nothing to refund for a trial that never charged a card.",
       ],
     },
     {

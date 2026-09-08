@@ -73,10 +73,12 @@ alias. Marketplace is optional after ~100 installs.
 
 | Thing | Can a free/pirated CLI do it? | Do we get paid? |
 | --- | --- | --- |
-| Scan a file on their laptop / in CI | Yes | Only if we charge for the CLI — and even then a cracked CLI exists |
+| Scan a file in customer CI | Only with a hosted API token in the distributed CLI | Included with active coverage |
 | Watch GitHub (publicize, releases, collaborators) | **No.** The CLI is not logged into GitHub and does not sit waiting | This is the hosted product. This is the bill |
 
-“Put it in their build” = add a CI step like `npx nospoilers scan ./dist/app.asar`. If that command is unlimited and free, a team can never visit the site and never pay. That is a **distribution idea**, not a law.
+“Put it in their build” means the distributed CLI sends a packed artifact to the authenticated hosted
+scan API. The scanner source remains available to this repository's own development and test tooling,
+but the customer-facing command is not an evergreen free scanner.
 
 Any CLI that runs on their machine **can be copied or have a license check ripped out**. Same as pirating Photoshop. Do not spend months on DRM.
 
@@ -116,7 +118,7 @@ They pay a **monthly subscription for coverage**, not scan credits. Credits trai
 | CLI | Included with the plan | Included |
 | Extra | Email + configurable retention | Slack + Jira + routing + 90-day timeline + roles + audit export + identity signals + release approval / legal hold / ledger export + configurable retention |
 
-- **14-day full trial**, then the card bills.
+- **5-day full trial**, then the card bills.
 - Yearly: 10 months for the price of 12 (~$290 / ~$990).
 - No “3 free repos forever.” No GitHub Marketplace as the only checkout (Stripe on our site). Marketplace cut is 5% if we list later; Stripe is ~2.9% + $0.30 (+ billing %).
 - Fair use in the terms; unlimited-**feeling** in the UI. Cap **concurrency** (how many unpacks at once), not a “47 of 500 scans left” meter.
@@ -324,7 +326,7 @@ NoSpoilers Phase B go-live. Read docs/PRODUCT.md. Phase A loop already works.
 - Buy/configure nospoilers.dev DNS (Cloudflare).
 - Deploy API + workers to Fly.io (uncommon port; always-on web process; worker process; spend cap). Neon for Postgres.
 - Plug Resend into AlertNotifier (keep log adapter as fallback). Done in code; live only when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are set. Do not mail Disclosure Desk or invites.
-- Stripe: 14-day trial, Solo $29, Team $99, yearly 10-for-12. After trial/cancel, kill unpaid hosted installs (stop jobs/alerts; dashboard paywall). Do not DRM the CLI.
+- Stripe: 5-day trial, Solo $29, Team $99, yearly 10-for-12. After trial/cancel, kill unpaid hosted installs (stop jobs/alerts; dashboard paywall). Do not DRM the CLI.
 - Production GitHub App webhook URL on the real domain.
 - Do not add Slack, Marketplace, GCP, or make-private unless already specified.
 ```

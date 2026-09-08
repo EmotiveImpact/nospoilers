@@ -3,7 +3,37 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
+import { TRIAL_DAYS } from "../coverage.ts";
 import { logJson } from "./log.ts";
+import { uploadSchema } from './upload-schema.ts';
+import { workspaceSchema } from './workspace-schema.ts';
+import {workspaceOriginSchema} from './workspace-origin-schema.ts';
+import {workspaceAlertSchema} from './workspace-alert-schema.ts';
+import {workspaceTokenSchema} from './workspace-token-schema.ts';
+import {independentTokenSchema} from './independent-token-schema.ts';
+import {workspaceNotificationSchema} from './workspace-notification-schema.ts';
+import {independentNotificationSchema} from './independent-notification-schema.ts';
+import {workspaceNotificationOutboxSchema} from './workspace-notification-outbox.ts';
+import {workspaceExceptionSchema} from './workspace-exceptions.ts';
+import {connectedExceptionSchema} from './connected-exception-schema.ts';
+import {connectedUploadExceptionSchema} from './connected-upload-exception-schema.ts';
+import {hostedEvidenceSchema} from './hosted-evidence-schema.ts';
+import {hostedExceptionSchema} from './hosted-exception-schema.ts';
+import { workspaceManagementSchema } from './workspace-management-schema.ts';
+import { workspaceUploadSchema } from './workspace-upload-schema.ts';
+import { workspaceMembershipSchema } from './workspace-membership-schema.ts';
+import { organizationOwnershipSchema } from './organization-ownership-schema.ts';
+import { billingDurabilitySchema } from './billing-durability-schema.ts';
+import { productEventIntegritySchema } from './product-event-integrity-schema.ts';
+import { personalBillingSchema,personalStripeEventOrderSchema } from './personal-billing.ts';
+import { workspaceConnectionSchema } from './workspace-connection-schema.ts';
+import { deletionRequestSchema } from './deletion-requests.ts';
+import { alertReleaseLinksSchema } from './alert-release-links.ts';
+import { uploadProofSharingSchema } from './upload-proof-sharing.ts';
+import {workspacePolicySchema} from './workspace-policy-schema.ts';
+import {jobBillingSchema} from './job-billing-schema.ts';
+import {githubConnectionIntentSchema} from './github-connection-intents.ts';
+import {githubPendingEventsSchema} from './github-pending-events.ts';
 
 export type QueryResult<T> = { rows: T[] };
 
@@ -14,7 +44,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "063_origin_verification";
+export const CURRENT_SCHEMA_MIGRATION = "115_hosted_exceptions";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -238,7 +268,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
     const trial = fromUser[0]?.trial_ends_at;
     await sql.query(
       `INSERT INTO billing_accounts (installation_id, trial_ends_at, plan)
-       VALUES ($1, COALESCE($2::timestamptz, now() + interval '14 days'), $3)
+       VALUES ($1, COALESCE($2::timestamptz, now() + interval '${TRIAL_DAYS} days'), $3)
        ON CONFLICT (installation_id) DO NOTHING`,
       [
         installationId,
@@ -513,7 +543,7 @@ export async function migrate(sql: SqlClient): Promise<void> {
     ALTER TABLE installation_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin';
     ALTER TABLE installation_users DROP CONSTRAINT IF EXISTS installation_users_role_check;
     ALTER TABLE installation_users ADD CONSTRAINT installation_users_role_check
-      CHECK (role IN ('member', 'admin'));
+      CHECK (role IN ('member', 'admin', 'viewer'));
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "016_installation_roles",
@@ -914,8 +944,291 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
   await migrateReleaseAttestations(sql);
   await migrateSigningPolicies(sql);
   await migrateOriginVerification(sql);
+  await migratePendingScans(sql);
+  await migratePendingScanStaging(sql);
+  await sql.exec(uploadSchema);
+  await sql.query("INSERT INTO schema_migrations(id) VALUES ($1) ON CONFLICT DO NOTHING", ['066_uploaded_scans']);
+  await sql.query("INSERT INTO schema_migrations(id) VALUES ($1) ON CONFLICT DO NOTHING", ['067_scan_resource_budgets']);
+  await sql.query("INSERT INTO schema_migrations(id) VALUES ($1) ON CONFLICT DO NOTHING", ['068_gate_a_pipeline']);
+  const jobReservationMigration=await sql.query("INSERT INTO schema_migrations(id) VALUES ('069_job_usage_reservations') ON CONFLICT DO NOTHING RETURNING id");
+  if(jobReservationMigration.rows.length)await sql.exec(`UPDATE jobs SET usage_reserved=true,usage_day=(timezone('utc',created_at))::date
+    WHERE usage_day IS NULL AND priority='heavy' AND kind NOT IN ('prospect_scan','web_origin_scan') AND status IN ('queued','running') AND error IS NULL`);
   await applyNotificationKindCheck(sql);
   await applyAuditEventsActionCheck(sql);
+  await sql.query("INSERT INTO schema_migrations(id) VALUES ('070_immutable_upload_results') ON CONFLICT DO NOTHING");
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='071_workspace_foundation'");
+    if(existing.rows.length)return;
+    await tx.exec(workspaceSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('071_workspace_foundation')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='072_workspace_management'");
+    if(existing.rows.length)return;
+    await tx.exec(workspaceManagementSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('072_workspace_management')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='073_workspace_upload_ownership'");
+    if(existing.rows.length)return;
+    await tx.exec(workspaceUploadSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('073_workspace_upload_ownership')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='074_workspace_membership'");
+    if(existing.rows.length)return;
+    await tx.exec(workspaceMembershipSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('074_workspace_membership')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='075_organization_ownership'");
+    if(existing.rows.length)return;
+    await tx.exec(organizationOwnershipSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('075_organization_ownership')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='076_billing_durability'");
+    if(existing.rows.length)return;
+    await tx.exec(billingDurabilitySchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('076_billing_durability')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='077_connection_disconnect'");
+    if(existing.rows.length)return;
+    // Complete the local draft-076 upgrade too; all durability DDL is repeatable.
+    await tx.exec(billingDurabilitySchema);
+    await tx.exec('ALTER TABLE installations ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ');
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('077_connection_disconnect')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='078_product_event_integrity'");
+    if(existing.rows.length)return;
+    await tx.exec(productEventIntegritySchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('078_product_event_integrity')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='079_personal_organization_billing'");
+    if(existing.rows.length)return;
+    await tx.exec(personalBillingSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('079_personal_organization_billing')");
+  });
+  await sql.transaction(async tx=>{
+    const existing=await tx.query("SELECT id FROM schema_migrations WHERE id='080_workspace_connections'");
+    if(existing.rows.length)return;
+    await tx.exec(workspaceConnectionSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('080_workspace_connections')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='081_deletion_requests'")).rows.length)return;
+    await tx.exec(deletionRequestSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('081_deletion_requests')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='082_alert_release_links'")).rows.length)return;
+    await tx.exec(alertReleaseLinksSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('082_alert_release_links')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='083_deletion_withdrawals'")).rows.length)return;
+    // Complete additive local drafts without changing any existing authorisations or evidence.
+    await tx.exec(deletionRequestSchema);
+    await tx.exec(alertReleaseLinksSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('083_deletion_withdrawals')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='084_upload_proof_sharing'")).rows.length)return;
+    await tx.exec(uploadProofSharingSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('084_upload_proof_sharing')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='085_personal_stripe_event_order'")).rows.length)return;
+    await tx.exec(personalStripeEventOrderSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('085_personal_stripe_event_order')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='086_workspace_scan_policy'")).rows.length)return;
+    await tx.exec(workspacePolicySchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('086_workspace_scan_policy')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='087_job_billing_owner'")).rows.length)return;
+    await tx.exec(jobBillingSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('087_job_billing_owner')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='088_job_source_identity'")).rows.length)return;
+    // Preserve historical aliases whose installation has already been removed.
+    // New/changed source IDs must exist; immutable payer FKs remain separate.
+    await tx.exec(`ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_billing_fkey;
+      ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_source_fkey;
+      ALTER TABLE jobs ADD CONSTRAINT jobs_source_fkey FOREIGN KEY(installation_id) REFERENCES installations(id) ON DELETE RESTRICT NOT VALID;`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('088_job_source_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='089_github_connection_intents'")).rows.length)return;
+    await tx.exec(githubConnectionIntentSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('089_github_connection_intents')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='090_github_pending_events'")).rows.length)return;
+    await tx.exec(githubPendingEventsSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('090_github_pending_events')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='091_github_binding_audit'")).rows.length)return;
+    await tx.exec(`ALTER TABLE product_workspace_events DROP CONSTRAINT IF EXISTS product_workspace_events_action_check;
+      ALTER TABLE product_workspace_events ADD CONSTRAINT product_workspace_events_action_check CHECK(action IN ('created','renamed','archived','restored','invited','invite_revoked','invite_accepted','role_changed','member_removed','proof-published','proof-revoked','github_connected'));`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('091_github_binding_audit')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='092_repository_disconnection'")).rows.length)return;
+    await tx.exec('ALTER TABLE repos ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ');
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('092_repository_disconnection')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='093_workspace_audit_actions'")).rows.length)return;
+    await tx.exec(`ALTER TABLE product_workspace_events DROP CONSTRAINT IF EXISTS product_workspace_events_action_check;
+      ALTER TABLE product_workspace_events ADD CONSTRAINT product_workspace_events_action_check CHECK(action IN ('created','renamed','archived','restored','invited','invite_revoked','invite_accepted','role_changed','member_removed','proof-published','proof-revoked','github_connected'));`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('093_workspace_audit_actions')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='094_alert_member_identity'")).rows.length)return;
+    await tx.exec(`ALTER TABLE alerts ADD COLUMN IF NOT EXISTS assigned_to_user_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+      UPDATE alerts a SET assigned_to_user_id=u.id FROM users u
+      WHERE a.assigned_to_user_id IS NULL AND lower(a.assigned_to_login)=lower(u.login)
+      AND (SELECT count(*) FROM users candidate WHERE lower(candidate.login)=lower(a.assigned_to_login))=1
+      AND EXISTS(SELECT 1 FROM installation_users m WHERE m.installation_id=a.installation_id AND m.user_id=u.id);`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('094_alert_member_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='095_origin_disconnection'")).rows.length)return;
+    await tx.exec('ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS disconnected_at TIMESTAMPTZ');
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('095_origin_disconnection')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='096_workspace_origins'")).rows.length)return;
+    await tx.exec(workspaceOriginSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('096_workspace_origins')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='097_website_scan_attempts'")).rows.length)return;
+    await tx.exec(`ALTER TABLE uploaded_scans ADD COLUMN IF NOT EXISTS source_origin_id BIGINT REFERENCES watched_origins(id) ON DELETE RESTRICT;
+      ALTER TABLE uploaded_scans ADD CONSTRAINT website_attempt_workspace CHECK(source_origin_id IS NULL OR (workspace_id IS NOT NULL AND installation_id IS NULL));
+      CREATE OR REPLACE FUNCTION preserve_attempt_origin() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF OLD.source_origin_id IS DISTINCT FROM NEW.source_origin_id THEN RAISE EXCEPTION 'Scan source identity is immutable'; END IF; RETURN NEW; END $$;
+      CREATE TRIGGER immutable_attempt_origin BEFORE UPDATE ON uploaded_scans FOR EACH ROW EXECUTE FUNCTION preserve_attempt_origin();`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('097_website_scan_attempts')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='098_website_attempt_identity'")).rows.length)return;
+    await tx.exec(`CREATE OR REPLACE FUNCTION preserve_attempt_origin() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF OLD.source_origin_id IS DISTINCT FROM NEW.source_origin_id THEN RAISE EXCEPTION 'Scan source identity is immutable'; END IF; RETURN NEW; END $$;
+      DROP TRIGGER IF EXISTS immutable_attempt_origin ON uploaded_scans;
+      CREATE TRIGGER immutable_attempt_origin BEFORE UPDATE ON uploaded_scans FOR EACH ROW EXECUTE FUNCTION preserve_attempt_origin();`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('098_website_attempt_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='099_website_lifecycle'")).rows.length)return;
+    await tx.exec(`ALTER TABLE watched_origins ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+      CREATE TABLE workspace_origin_events(id BIGSERIAL PRIMARY KEY,workspace_id UUID NOT NULL REFERENCES product_workspaces(id) ON DELETE RESTRICT,origin_id BIGINT NOT NULL REFERENCES watched_origins(id) ON DELETE RESTRICT,actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,action TEXT NOT NULL CHECK(action IN ('connected','verified','paused','resumed','disconnected','reconnected')),created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+      CREATE TRIGGER workspace_origin_event_immutable BEFORE UPDATE OR DELETE ON workspace_origin_events FOR EACH ROW EXECUTE FUNCTION reject_product_event_mutation();
+      CREATE TRIGGER workspace_origin_event_no_truncate BEFORE TRUNCATE ON workspace_origin_events FOR EACH STATEMENT EXECUTE FUNCTION reject_product_event_mutation();`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('099_website_lifecycle')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='100_website_schedule'")).rows.length)return;
+    await tx.exec(`ALTER TABLE watched_origins ADD COLUMN schedule_hours INTEGER NOT NULL DEFAULT 0 CHECK(schedule_hours IN (0,6,24));
+      ALTER TABLE watched_origins ADD COLUMN schedule_actor_id TEXT REFERENCES users(id) ON DELETE RESTRICT;
+      ALTER TABLE watched_origins ADD COLUMN schedule_version INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE watched_origins ADD COLUMN next_check_at TIMESTAMPTZ;
+      ALTER TABLE watched_origins ADD COLUMN schedule_error TEXT;
+      ALTER TABLE uploaded_scans ADD COLUMN source_schedule_version INTEGER;
+      ALTER TABLE uploaded_scans ADD CONSTRAINT scheduled_attempt_source CHECK(source_schedule_version IS NULL OR source_origin_id IS NOT NULL);
+      CREATE OR REPLACE FUNCTION preserve_attempt_origin() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF OLD.source_origin_id IS DISTINCT FROM NEW.source_origin_id OR OLD.source_schedule_version IS DISTINCT FROM NEW.source_schedule_version THEN RAISE EXCEPTION 'Scan source identity is immutable'; END IF; RETURN NEW; END $$;
+      ALTER TABLE workspace_origin_events DROP CONSTRAINT workspace_origin_events_action_check;
+      ALTER TABLE workspace_origin_events ADD CONSTRAINT workspace_origin_events_action_check CHECK(action IN ('connected','verified','paused','resumed','disconnected','reconnected','schedule_changed'));
+      CREATE INDEX workspace_origin_due ON watched_origins(next_check_at) WHERE installation_id IS NULL AND schedule_hours>0;`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('100_website_schedule')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='101_workspace_alert_ownership'")).rows.length)return;
+    await tx.exec(workspaceAlertSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('101_workspace_alert_ownership')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='102_workspace_token_ownership'")).rows.length)return;
+    await tx.exec(workspaceTokenSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('102_workspace_token_ownership')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='103_workspace_token_audit'")).rows.length)return;
+    await tx.exec(`ALTER TABLE product_workspace_events DROP CONSTRAINT product_workspace_events_action_check;
+      ALTER TABLE product_workspace_events ADD CONSTRAINT product_workspace_events_action_check CHECK(action IN ('created','renamed','archived','restored','invited','invite_revoked','invite_accepted','role_changed','member_removed','proof-published','proof-revoked','github_connected','token_minted','token_revoked'));`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('103_workspace_token_audit')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='104_independent_scan_tokens'")).rows.length)return;
+    await tx.exec(independentTokenSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('104_independent_scan_tokens')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='105_workspace_notification_ownership'")).rows.length)return;
+    await tx.exec(workspaceNotificationSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('105_workspace_notification_ownership')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='106_independent_notifications'")).rows.length)return;
+    await tx.exec(independentNotificationSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('106_independent_notifications')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='107_workspace_notification_audit'")).rows.length)return;
+    await tx.exec(`ALTER TABLE product_workspace_events DROP CONSTRAINT product_workspace_events_action_check;
+      ALTER TABLE product_workspace_events ADD CONSTRAINT product_workspace_events_action_check CHECK(action IN ('created','renamed','archived','restored','invited','invite_revoked','invite_accepted','role_changed','member_removed','proof-published','proof-revoked','github_connected','token_minted','token_revoked','notification_saved','notification_disconnected'));`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('107_workspace_notification_audit')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='108_workspace_notification_outbox'")).rows.length)return;
+    await tx.exec(workspaceNotificationOutboxSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('108_workspace_notification_outbox')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='109_workspace_notification_test_audit'")).rows.length)return;
+    await tx.exec(`ALTER TABLE product_workspace_events DROP CONSTRAINT product_workspace_events_action_check;
+      ALTER TABLE product_workspace_events ADD CONSTRAINT product_workspace_events_action_check CHECK(action IN ('created','renamed','archived','restored','invited','invite_revoked','invite_accepted','role_changed','member_removed','proof-published','proof-revoked','github_connected','token_minted','token_revoked','notification_saved','notification_disconnected','notification_test_requested'));`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('109_workspace_notification_test_audit')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='110_workspace_exceptions'")).rows.length)return;
+    await tx.exec(workspaceExceptionSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('110_workspace_exceptions')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='111_exception_scope_required'")).rows.length)return;
+    await tx.exec(`ALTER TABLE workspace_exceptions ADD CONSTRAINT workspace_exception_scope_required CHECK(source_origin_id IS NOT NULL OR artifact_sha256 IS NOT NULL);`);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('111_exception_scope_required')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='112_connected_exception_scope'")).rows.length)return;
+    await tx.exec(connectedExceptionSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('112_connected_exception_scope')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='113_connected_upload_exceptions'")).rows.length)return;
+    await tx.exec(connectedUploadExceptionSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('113_connected_upload_exceptions')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='114_hosted_scan_evidence'")).rows.length)return;
+    await tx.exec(hostedEvidenceSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('114_hosted_scan_evidence')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='115_hosted_exceptions'")).rows.length)return;
+    await tx.exec(hostedExceptionSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('115_hosted_exceptions')");
+  });
 }
 
 async function migrateDeliveryVerify(sql: SqlClient): Promise<void> {
@@ -1412,6 +1725,7 @@ async function applyAuditEventsActionCheck(sql: SqlClient): Promise<void> {
 }
 
 async function migratePagerDutyDestinations(sql: SqlClient): Promise<void> {
+  if ((await sql.query("SELECT id FROM schema_migrations WHERE id='044_pagerduty_destinations'")).rows.length) return;
   await sql.exec(`
     ALTER TABLE notification_destinations DROP CONSTRAINT IF EXISTS notification_destinations_kind_check;
     ALTER TABLE notification_destinations ADD CONSTRAINT notification_destinations_kind_check
@@ -1932,6 +2246,42 @@ async function migrateOriginVerification(sql: SqlClient): Promise<void> {
   `);
   await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
     "063_origin_verification",
+  ]);
+}
+
+async function migratePendingScans(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    CREATE TABLE IF NOT EXISTS pending_scans (
+      id TEXT PRIMARY KEY,
+      target TEXT NOT NULL,
+      report_json JSONB NOT NULL,
+      claimed_by_user_id TEXT REFERENCES users (id) ON DELETE CASCADE,
+      claimed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      expires_at TIMESTAMPTZ NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS pending_scans_expiry_idx
+      ON pending_scans (expires_at);
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "064_pending_scans",
+  ]);
+}
+
+async function migratePendingScanStaging(sql: SqlClient): Promise<void> {
+  await sql.exec(`
+    ALTER TABLE pending_scans ALTER COLUMN report_json DROP NOT NULL;
+    ALTER TABLE pending_scans ADD COLUMN IF NOT EXISTS artifact_bytes BYTEA;
+    ALTER TABLE pending_scans ADD COLUMN IF NOT EXISTS source_path TEXT;
+    ALTER TABLE pending_scans ADD COLUMN IF NOT EXISTS delete_after_scan BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE pending_scans ADD COLUMN IF NOT EXISTS scan_started_at TIMESTAMPTZ;
+    ALTER TABLE pending_scans DROP CONSTRAINT IF EXISTS pending_scans_payload_check;
+    ALTER TABLE pending_scans ADD CONSTRAINT pending_scans_payload_check CHECK (
+      report_json IS NOT NULL OR artifact_bytes IS NOT NULL OR source_path IS NOT NULL
+    );
+  `);
+  await sql.query("INSERT INTO schema_migrations (id) VALUES ($1) ON CONFLICT DO NOTHING", [
+    "065_pending_scan_staging",
   ]);
 }
 

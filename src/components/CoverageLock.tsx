@@ -19,7 +19,7 @@ export function CoverageLock({
       <h2 className="font-display text-2xl tracking-tight text-snow">{title}</h2>
       <p className="max-w-md text-sm leading-relaxed text-mute">
         {variant === "scan"
-          ? "Solo $29/mo or Team $99/mo. Same GitHub install. Jobs and alerts start again. The CLI on your machine still runs."
+          ? "Solo $29/mo or Team $99/mo. Same GitHub install. Scanning, jobs, and alerts start again. Existing receipts remain verifiable."
           : "Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos stay listed. Existing alerts can still be acknowledged and resolved."}
       </p>
       {children}
@@ -28,12 +28,12 @@ export function CoverageLock({
           See plans
         </Button>
         {variant === "scan" ? (
-          <Button type="button" variant="outline" onClick={() => navigate("/watch?as=ended")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/watch")}>
             Watch desk
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={() => navigate("/scan?as=ended")}>
-            Locked scan
+          <Button type="button" variant="outline" onClick={() => navigate("/watch/scan")}>
+            New scan
           </Button>
         )}
       </div>

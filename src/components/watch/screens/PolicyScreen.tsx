@@ -1,9 +1,11 @@
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 export function PolicyScreen() {
   const exceptionRuleRef = useRef<HTMLInputElement>(null);
+  const [allowError, setAllowError] = useState<{installationId:number|null;message:string}|null>(null);
+  const {search,watchHref} = useWatchScreenContext();
   const { Button, SIGNING_POLICY_CLEAR_CONFIRM, SIGNING_POLICY_CONFIRM, activeInstallId, allowExpires, allowPath, allowReason, allowRule, baselineReason, beginConfirm, canManageSigningPolicy, confirmBusy, confirmForm, confirming, exceptions, installAdmin, locked, previewing, refreshSignedIn, route, savingAllow, selectedInstallId, setAllowExpires, setAllowPath, setAllowReason, setAllowRule, setBaselineReason, setPackageError, setSavingAllow, setSigningDraft, setSigningError, signingDraft, signingError, signingPolicy } = useWatchScreenContext();
   const activeExceptions = exceptions.filter((entry) => entry.active).length;
   const signingLabel =
@@ -191,6 +193,13 @@ export function PolicyScreen() {
                   rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
                   instead of whichever scan happened last.
                 </p>
+                <p className="mt-3 text-sm text-mute">
+                  For a scoped exception, open a saved release finding and request review. If your workspace
+                  requires independent approval, direct allowlist creation below is blocked; another
+                  administrator must approve the request. Historical entries remain available for review and revocation.
+                  {' '}<a className="underline underline-offset-4" href={watchHref('/watch/releases',search,{install:activeInstallId})}>Open saved releases</a>
+                </p>
+                {allowError?.installationId === activeInstallId && <p role="alert" className="mt-3 text-sm text-danger">{allowError.message}</p>}
                 {!previewing && installAdmin && (
                   <label className="mt-6 block max-w-xl">
                     <span className="text-xs uppercase tracking-[0.16em] text-dim">Baseline reason</span>
@@ -209,6 +218,7 @@ export function PolicyScreen() {
                       event.preventDefault();
                       if (locked || savingAllow) return;
                       setPackageError(null);
+                      setAllowError(null);
                       setSavingAllow(true);
                       void (async () => {
                         try {
@@ -231,6 +241,7 @@ export function PolicyScreen() {
                           setAllowReason("");
                           await refreshSignedIn(selectedInstallId);
                         } catch (error) {
+                          setAllowError({installationId:activeInstallId,message:error instanceof Error ? error.message : "Could not save allowlist entry."});
                           setPackageError(
                             error instanceof Error ? error.message : "Could not save allowlist entry.",
                           );

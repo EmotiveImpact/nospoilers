@@ -31,6 +31,7 @@ export function policyHash(policy: ScanPolicy): string {
           pathPattern: entry.pathPattern,
           reason: entry.reason,
           rule: entry.rule,
+          ...(entry.pathMatch ? {pathMatch:entry.pathMatch} : {}),
         })),
       }),
     )
@@ -63,7 +64,7 @@ export function exceptionCovers(
   if (exception.rule !== finding.rule) return false;
   const expires = Date.parse(exception.expiresAt);
   if (!Number.isFinite(expires) || expires <= now.getTime()) return false;
-  return matchPathGlob(exception.pathPattern, finding.path);
+  return exception.pathMatch==='exact' ? exception.pathPattern===finding.path : matchPathGlob(exception.pathPattern, finding.path);
 }
 
 export function validateExceptionInput(input: {

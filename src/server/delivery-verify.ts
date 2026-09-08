@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { pinnedHttps } from './pinned-https.ts';
 import { isBlockedRegistryHost } from "./npm-registry.ts";
 import {
   assertPublicWebhookHost,
@@ -348,8 +349,8 @@ export async function verifyDeliveryUrl(input: {
     return emptyResult("blocked", "Delivery URL host is not allowed.");
   }
   const lookup = input.lookup ?? lookupWebhookHost;
-  const fetchImpl = input.fetch ?? fetch;
   const maxBytes = input.maxBytes ?? MAX_DELIVERY_BYTES;
+  const fetchImpl = input.fetch ?? ((url:string|URL|Request,init?:RequestInit)=>pinnedHttps(String(url),init,maxBytes,lookup));
   const timeoutMs = input.timeoutMs ?? DELIVERY_FETCH_TIMEOUT_MS;
   let current = parsed.url;
   let host = parsed.host;

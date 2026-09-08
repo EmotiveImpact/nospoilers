@@ -1,5 +1,12 @@
-import type { Confirming, DeskDataset, LoadState, ProtectionImportResult, RetentionDays, SigningPolicyDraft } from "@/watch/types";
-import type { WatchSectionState } from "@/watch/data-state";
+import type {
+  Confirming,
+  DeskDataset,
+  LoadState,
+  ProtectionImportResult,
+  RetentionDays,
+  SigningPolicyDraft,
+} from "./types.ts";
+import type { WatchSectionState } from "./data-state.ts";
 
 export function destinationKindLabel(kind: string): string {
   if (kind === "jira") return "Jira";
@@ -74,7 +81,7 @@ export function confirmActionLabel(row: Confirming): string {
     case "member":
       return "remove this member";
     case "role":
-      return row.role === "admin" ? "make this person an admin" : "make this person a member";
+      return `make this person ${row.role === 'admin' ? 'an admin' : row.role === 'viewer' ? 'a read-only viewer' : 'a member'}`;
     case "invite":
       return "invite this GitHub login";
     case "invite-revoke":
@@ -154,7 +161,23 @@ export function installIdFromSearch(search: string): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-export function formatExposure(ms: number | undefined, createdAt: string, resolvedAt: string | null | undefined): string {
+/**
+ * Watch coverage is session-owned. Legacy `as=trial|ended` links must never
+ * impersonate a billing state, but other desk state (installation, filters,
+ * selected records) should keep working.
+ */
+export function withoutWatchImpersonation(search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  params.delete("as");
+  const value = params.toString();
+  return value ? `?${value}` : "";
+}
+
+export function formatExposure(
+  ms: number | undefined,
+  createdAt: string,
+  resolvedAt: string | null | undefined,
+): string {
   const start = Date.parse(createdAt);
   const value =
     typeof ms === "number" && Number.isFinite(ms)

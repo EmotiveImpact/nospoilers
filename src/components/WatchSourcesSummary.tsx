@@ -19,6 +19,8 @@ import {
   type WatchSetupViewModel,
   type WatchSourceViewModel,
 } from "@/watch/view-models.ts";
+import { releaseFamily } from "@/watch/release-brief.ts";
+import type { ReleaseRevision } from "@/watch/types.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X } from "lucide-react";
 import { useState } from "react";
@@ -44,6 +46,7 @@ export function WatchSourcesSummary({
   filter = "all",
   attention = false,
   selectedSourceKey = null,
+  releases = [],
   state,
   onRetry,
 }: {
@@ -55,12 +58,29 @@ export function WatchSourcesSummary({
   filter?: SourceFilter;
   attention?: boolean;
   selectedSourceKey?: string | null;
+  releases?: ReleaseRevision[];
   state: WatchSectionState;
   onRetry: () => void;
 }) {
   const [adding, setAdding] = useState(false);
   const filteredSources = filterSourceViewModels(sources, filter, attention);
   const selectedSource = sources.find((source) => source.key === selectedSourceKey) ?? null;
+  const relatedRelease = selectedSource
+    ? releases.find((release) => {
+        const family = releaseFamily(release.coordinate).toLowerCase();
+        if (!family) return false;
+        const candidates = [
+          selectedSource.name,
+          selectedSource.coordinate,
+          selectedSource.kind === "website" ? selectedSource.coordinate.replace(/^https?:\/\//, "") : "",
+        ]
+          .filter(Boolean)
+          .map((value) => value.toLowerCase());
+        return candidates.some(
+          (candidate) => family === candidate || family.includes(candidate) || candidate.includes(family),
+        );
+      })
+    : null;
 
   if (state.status === "loading") {
     return (
@@ -76,7 +96,7 @@ export function WatchSourcesSummary({
     return (
       <div className="mb-8">
         <h1 className="watch-page-title">
-          {mode === "setup" ? "Setup proof unavailable" : "Sources unavailable"}
+          {mode === "setup" ? "Setup proof unavailable" : "Coverage unavailable"}
         </h1>
         <p className="watch-page-lede">
           Existing connections are not treated as empty while this read is failing.
@@ -90,9 +110,11 @@ export function WatchSourcesSummary({
     const covered = setup.steps.filter((step) => step.proof === "covered");
     const remaining = setup.steps.filter((step) => step.proof !== "covered");
     const headline =
-      setup.done === setup.total
-        ? "All five leak paths are covered."
-        : `${setup.total - setup.done} leak path${setup.total - setup.done === 1 ? "" : "s"} still need proof.`;
+      setup.done === 0
+        ? "Start with one source."
+        : setup.done === setup.total
+        ? "Configured capabilities have recorded evidence."
+        : "Review your optional coverage capabilities.";
     const goToStep = (key: (typeof setup.steps)[number]["key"]) =>
       navigate(
         watchHref(watchPath("sources"), search, {
@@ -104,7 +126,11 @@ export function WatchSourcesSummary({
       <div className="watch-narrow mb-8">
         <WatchPageHeader
           title={headline}
-          lede="Connected is not the same as proven. Unknown steps stay open until a real check supplies evidence."
+          lede={
+            setup.done === 0
+              ? "Choose the release path you already use. You do not need to connect every source before NoSpoilers can produce useful evidence."
+              : "These are optional capabilities, not required onboarding steps. Connected is not the same as checked; each result has its own scope and time."
+          }
         />
         <div className="watch-progress mt-[18px]">
           <div
@@ -112,7 +138,7 @@ export function WatchSourcesSummary({
             style={{
               background: `conic-gradient(#f4f4f5 ${(setup.done / setup.total) * 100}%, rgba(255,255,255,0.09) 0)`,
             }}
-            aria-label={`${setup.done} of ${setup.total} leak paths covered`}
+            aria-label={`${setup.done} of ${setup.total} optional capabilities have evidence`}
           >
             <span>
               {setup.done}/{setup.total}
@@ -121,13 +147,13 @@ export function WatchSourcesSummary({
           <div className="min-w-0 flex-1">
             <strong className="watch-small text-snow">
               {covered.length
-                ? `${covered.map((step) => step.label).join(", ")} ${covered.length === 1 ? "is" : "are"} connected`
-                : "Nothing connected yet"}
+                ? `${covered.map((step) => step.label).join(", ")} ${covered.length === 1 ? "has" : "have"} proof`
+                : "No capability evidence recorded yet"}
             </strong>
             <p className="watch-tiny mt-1 text-dim">
               {remaining.length
-                ? `${remaining.map((step) => step.label).join(", ")} ${remaining.length === 1 ? "is" : "are"} not.`
-                : "Every leak path in this pass has proof."}
+                ? `Not yet evidenced: ${remaining.map((step) => step.label).join(", ")}. Configure only what you use.`
+                : "Inspect the individual records for scope and freshness; this is not a global safety score."}
             </p>
           </div>
         </div>
@@ -187,20 +213,20 @@ export function WatchSourcesSummary({
     <>
     <div className="mb-8">
       <WatchPageHeader
-        title="Sources"
-        lede="GitHub exposure, published artifacts, production web, and map custody."
+        title="Coverage"
+        lede="Repositories, registry packages, production websites, and private map custody under continuous watch."
         action={
-          admin ? (
+          admin && sources.length > 0 ? (
             <Button type="button" size="sm" onClick={() => setAdding(true)}>
-              Add a source
+              Add coverage
             </Button>
           ) : undefined
         }
       />
       <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-        The artifact scanner also runs before release through Scan, CLI, or your existing CI.
+        New Scan checks one release now. Coverage keeps watching the connected surfaces that can change later.
       </p>
-        <div className="mt-5 flex flex-wrap gap-2">
+        {sources.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">
           {SOURCE_FILTERS.map((option) => {
             const count =
               option.value === "all" ? sources.length : sources.filter((source) => source.kind === option.value).length;
@@ -243,14 +269,23 @@ export function WatchSourcesSummary({
               {sources.filter((source) => source.attention === "critical" || source.attention === "warning").length}
             </span>
           </button>
-        </div>
+        </div> : null}
       {sources.length === 0 ? (
-        <div className="watch-empty mt-5">
-          Nothing connected yet. A private throwaway repo is enough.
+        <div className="watch-empty mt-5 max-w-2xl">
+          <strong className="block text-sm font-medium text-snow">Add your first monitored surface</strong>
+          <p className="mt-1.5 max-w-xl">
+            GitHub is the quickest path to ongoing visibility and release checks. A one-off package
+            scan creates a release result without adding permanent coverage.
+          </p>
           {admin ? (
-            <Button type="button" size="sm" className="mt-4" onClick={() => setAdding(true)}>
-              Add the first source
-            </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => setAdding(true)}>
+                Add coverage
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => navigate(watchHref(watchPath("scan"), search ?? ""))}>
+                New scan
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : (
@@ -301,7 +336,7 @@ export function WatchSourcesSummary({
       )}
       {sources.length > 0 && filteredSources.length === 0 ? (
         <p className="mt-5 rounded-lg border border-white/8 bg-panel p-6 text-sm text-mute">
-          No sources match these filters.
+          No coverage matches these filters.
         </p>
       ) : null}
       <Dialog open={adding} onClose={setAdding} className="relative z-50">
@@ -310,10 +345,10 @@ export function WatchSourcesSummary({
           <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-dim">Add source</p>
-                <DialogTitle className="mt-1 font-display text-xl text-snow">Choose one source type</DialogTitle>
+                <p className="text-xs uppercase tracking-[0.18em] text-dim">Add coverage</p>
+                <DialogTitle className="mt-1 font-display text-xl text-snow">Choose a monitored surface</DialogTitle>
               </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)} aria-label="Close add source"><X className="size-4" aria-hidden /></Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)} aria-label="Close add coverage"><X className="size-4" aria-hidden /></Button>
             </div>
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
               {([
@@ -357,14 +392,20 @@ export function WatchSourcesSummary({
                     {selectedSource.name}
                   </DialogTitle>
                 </div>
-                <Button type="button" variant="ghost" size="sm" aria-label="Close source detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
+                <Button type="button" variant="ghost" size="sm" aria-label="Close coverage detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
                   <X className="size-4" aria-hidden />
                 </Button>
               </div>
               <div className="mt-6 divide-y divide-white/8 rounded-lg border border-white/8 bg-panel">
                 {[
                   ["Status", selectedSource.status],
-                  ["Freshness", selectedSource.lastCheckedAt ? new Date(selectedSource.lastCheckedAt).toLocaleString() : "Check needed"],
+                  [selectedSource.kind === "npm" ? "Metadata checked" : "Last check", selectedSource.lastCheckedAt ? new Date(selectedSource.lastCheckedAt).toLocaleString() : "No check recorded"],
+                  ...(["npm", "website"].includes(selectedSource.kind) ? [["Last scan", selectedSource.lastScannedAt ? new Date(selectedSource.lastScannedAt).toLocaleString() : "No scan time recorded"]] : []),
+                  ["Scope", selectedSource.scope ?? "See the saved check for its recorded scope."],
+                  ["Configured cadence", selectedSource.monitoring?.intervalMs ? `Every ${Math.round(selectedSource.monitoring.intervalMs / 60_000)} minutes` : "Not available"],
+                  ["Check freshness", selectedSource.monitoring?.freshness === 'delayed' ? 'Delayed — no recorded check within two configured intervals' : selectedSource.monitoring?.freshness === 'recent' ? 'Recent check recorded; not a safety verdict' : 'Unknown'],
+                  ["Next dispatch", "Exact dispatch time is not recorded. Cadence does not guarantee worker availability."],
+                  ["Connection", selectedSource.connectionId ? `${selectedSource.connectionLabel ?? "GitHub App"} · connection ${selectedSource.connectionId}` : "Connection identity unavailable"],
                   ["Digest / version", selectedSource.digest ? `sha256 ${selectedSource.digest}` : selectedSource.coordinate],
                   ["Open alerts", String(selectedSource.alertCount)],
                 ].map(([label, value]) => (
@@ -375,6 +416,7 @@ export function WatchSourcesSummary({
                 ))}
               </div>
               <section className="mt-6">
+                <a className="text-sm underline underline-offset-4" href={watchHref('/watch/workspaces', search, {})}>Manage workspace connections</a>
                 <h2 className="text-sm font-semibold text-snow">Evidence and related work</h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg bg-white/[0.035] p-4">
@@ -382,7 +424,7 @@ export function WatchSourcesSummary({
                     <p className="mt-2 text-sm text-snow">{selectedSource.status}</p>
                     <p className="mt-1 text-xs leading-relaxed text-mute">
                       {selectedSource.lastCheckedAt
-                        ? `Last evidence ${new Date(selectedSource.lastCheckedAt).toLocaleString()}`
+                        ? `Last ${selectedSource.kind === "npm" ? "metadata check" : "check"} ${new Date(selectedSource.lastCheckedAt).toLocaleString()}. This timestamp alone does not establish a successful scan.`
                         : "No completed check evidence yet."}
                     </p>
                   </div>
@@ -425,13 +467,19 @@ export function WatchSourcesSummary({
                     Open related alerts
                   </Button>
                 ) : null}
-                {(selectedSource.kind === "npm" || selectedSource.kind === "github") ? (
+                {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => navigate(watchHref(watchPath("releases"), search))}
+                    onClick={() =>
+                      navigate(
+                        watchHref(watchPath("releases"), search, {
+                          release: relatedRelease?.id ?? null,
+                        }),
+                      )
+                    }
                   >
-                    Open release evidence
+                    {relatedRelease ? "Open latest release brief" : "View release history"}
                   </Button>
                 ) : null}
               </div>
