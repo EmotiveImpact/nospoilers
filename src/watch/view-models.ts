@@ -102,6 +102,7 @@ export function buildSourceViewModels(input: {
         ...asFindingList(alert.findings).map((finding) => finding.path),
       ].filter((value): value is string => Boolean(value));
       return values.some((value) =>
+        value.length > 0 &&
         coordinates.some(
           (coordinate) =>
             coordinate === value ||
