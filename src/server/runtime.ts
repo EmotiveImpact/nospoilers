@@ -13,6 +13,7 @@ import { logJson } from "./log.ts";
 import { createNpmPort } from "./npm.ts";
 import { createLogNotifier } from "./notifier.ts";
 import { createApp } from "./app.ts";
+import { withReleaseAssurance } from "./assurance-app.ts";
 import { runPollerTick, startPoller } from "./poller.ts";
 import { assertProductionSecrets } from "./secrets.ts";
 import { migrateIfNeeded, openSql } from "./sql.ts";
@@ -70,7 +71,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       : undefined,
     staleAfterMs: config.jobStaleMs,
   };
-  const app = createApp({
+  const coreApp = createApp({
     config,
     store,
     github,
@@ -83,6 +84,13 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       const result = await runPollerTick(pollerDeps);
       if(runJobs)await worker.runUntilIdle();
       return { ...result, expiredPendingScans };
+    },
+  });
+  const app = withReleaseAssurance(coreApp, {
+    receiptSecret: config.receiptSecret,
+    scopeForRelease: async (id) => {
+      const row = await store.getReleaseRevision(id);
+      return row ? { installationId: row.installation_id, receiptId: row.receipt_id } : null;
     },
   });
   const poller = runJobs ? startPoller(pollerDeps, config.pollIntervalMs) : { stop() {} };
