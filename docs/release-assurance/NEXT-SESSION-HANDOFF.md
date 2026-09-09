@@ -2,7 +2,11 @@
 
 ## Gate C continuation
 
-Settings/focus milestone now verified (105 UI tests; desktop/mobile route focus; final settings styles built). Next: ReleasesScreen shows two full browsers repeating connected upload records. Builder investigated, no edits: use one visible Saved attempts/Connected revisions browser, retain distinct history, links, pagination/export; never delete records. Broader viewport/zoom/state acceptance remains. Reuse completed checks.
+Overview and consolidated release-list batch is verified locally: Next action, saved totals and recent attempts precede secondary coverage/Alert response cards. Releases now shows one accessible Saved attempts/Connected revisions browser at a time, retaining distinct records, filters, scope, exports and direct links. Focused checks passed 42 tests/four files, then the final Overview adjustment passed 18 tests/one file; final frontend build passed with the existing chunk warning. Reuse these checks. Publication status belongs to the orchestrator's final commit/PR report; this checkpoint does not assert a push.
+
+Signed-in in-app browser at 1168×909 showed one global New scan, prioritized Overview, four real recent attempts, then secondary monitoring/response. Releases initially showed four saved attempts; selecting Connected revisions set releaseView=connected and displayed only the three-revision ledger with readable filenames, preview and export. No mobile review is claimed for this batch. Continue the remaining Gate C viewport/zoom, representative states and accessibility/visual acceptance; do not rebuild the now-consolidated list or repeat the completed real scan. Gate C is not complete.
+
+Earlier settings/focus milestone remains verified (105 UI tests, actual desktop/mobile route focus and final built styles). Preserve the real server, database, signing material and GitHub connection.
 
 
 Latest batch covers Coverage mobile rows, Timeline alert activity/keyboard chart, Scan keyboard tabs and app-only metadata contrast. Reuse latest BUILD-LOG results; proceed with remaining UI/state and broader accessibility acceptance. No new backend work or repeated artifact scan is needed.

@@ -1,8 +1,14 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C Overview and release-list milestone
+
+The workspace Overview now prioritizes Next action, saved-scan totals and recent attempts; coverage and alert response are secondary solid cards. Releases presents one visible Saved attempts or Connected revisions browser with accessible keyboard tabs, scoped links and readable revision filenames. Persisted attempts/revisions remain distinct; nothing was deleted or silently merged.
+
+Focused verification passed 42 tests across four files; the final Overview adjustment passed 18 tests in its affected file. The final frontend build passed with the existing chunk-size warning. Signed-in desktop review at 1168×909 verified the Overview hierarchy and both release browsers with real records. No mobile browser claim applies to this batch. See BUILD-LOG for exact commands and evidence. Gate C remains partial: outstanding viewport/zoom combinations, representative loading/error/permission states and broader assistive-technology/visual acceptance remain open.
+
 ## Current Gate C settings/focus milestone
 
-Settings reflow and route-change focus are implemented. Combined UI milestone105/17 passes; actual closing mobile drawer and desktop sidebar focus transfers verified. Later style-only polish has final build/render checks. Release-list duplicate presentation and wider viewport/zoom/state review remain open; see latest BUILD-LOG.
+Settings reflow and route-change focus are implemented. Combined UI milestone105/17 passes; actual closing mobile drawer and desktop sidebar focus transfers verified. Later style-only polish has final build/render checks. Release-list duplicate presentation is superseded by the verified milestone above; wider viewport/zoom/state review remains open; see latest BUILD-LOG.
 
 ## Current Gate C Coverage/Timeline/Scan batch
 

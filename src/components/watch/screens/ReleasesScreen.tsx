@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';
 import {HostedDecisionList} from '../HostedDecisionList';
@@ -30,7 +31,13 @@ function StatusIcon({ status }: { status: import('@/assurance/types').Decision }
   return <Clock3 className="size-4" aria-hidden />;
 }
 
+function releaseDisplayName(coordinate:string){
+  const upload=/^upload:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}#(.+)$/i.exec(coordinate);
+  return upload?.[1].split(/[\\/]/).filter(Boolean).at(-1)??coordinate;
+}
+
 export function ReleasesScreen() {
+  const browserId=useId();
   const {
     Button,
     WatchSectionError,
@@ -71,6 +78,15 @@ export function ReleasesScreen() {
   const uploadInstallationId=params.has('workspace') || params.has('upload') && !params.has('install') ? null : activeInstallId;
   const showRepositoryLedger=activeInstallId!==null || releases.length>0;
   if(params.get('uploadView')==='detail')return <UploadedReleases search={search} installationId={uploadInstallationId}/>;
+  const browser=showRepositoryLedger&&(route.releaseId||route.releasePreviewId||(!params.has('upload')&&params.get('releaseView')==='connected'))?'connected':'attempts';
+  const chooseBrowser=(next:'attempts'|'connected')=>{
+    if(next===browser)return;
+    const query=new URLSearchParams(search);query.set('releaseView',next);
+    query.delete('hostedDecision');query.delete('before');
+    if(next==='attempts'){query.delete('release');query.delete('preview');}
+    else for(const key of ['upload','uploadView','uploadFinding','uploadTab'])query.delete(key);
+    navigate(`/watch/releases?${query}`);
+  };
 
   const exportLedger = () => {
     setLedgerExportError(null);
@@ -115,12 +131,12 @@ export function ReleasesScreen() {
   };
 
   return (
-    <section className="watch-release-index" aria-labelledby="release-index-title">
+    <section className="watch-release-index" aria-label="Releases">
       <WatchPageHeader
         title="Releases"
         lede="Choose a revision for a quick decision preview, then open its complete evidence brief."
         action={
-          canExportReleases && showRepositoryLedger ? (
+          canExportReleases && showRepositoryLedger && browser==='connected' ? (
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
               Export ledger
             </Button>
@@ -128,8 +144,18 @@ export function ReleasesScreen() {
         }
       />
 
-      <UploadedReleases search={search} installationId={uploadInstallationId} />
-      {showRepositoryLedger ? <>
+      <div className="mt-5 flex flex-wrap gap-1 border-b border-white/10" role="tablist" aria-label="Release history type" onKeyDown={event=>{
+        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+        const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+        const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;event.preventDefault();
+        const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+        tabs[next].focus();tabs[next].click();
+      }}>
+        {(['attempts','connected'] as const).filter(value=>value==='attempts'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} className="min-h-11 border-b-2 border-transparent px-3 text-sm text-mute aria-selected:border-white/60 aria-selected:text-snow" onClick={()=>chooseBrowser(value)}>{value==='attempts'?'Saved attempts':'Connected revisions'}</button>)}
+      </div>
+      <div role="tabpanel" id={`${browserId}-panel`} aria-labelledby={`${browserId}-${browser}`}>
+      {browser==='attempts'?<UploadedReleases search={search} installationId={uploadInstallationId} />:null}
+      {browser==='connected' ? <>
       <div className="watch-release-index-stats" aria-label="Release ledger summary">
         <div><span>Revisions</span><strong>{releases.length}</strong><small>On this install</small></div>
         <div><span>Ready</span><strong className="is-ready">{readyCount}</strong><small>Clean required evidence</small></div>
@@ -154,13 +180,13 @@ export function ReleasesScreen() {
       ) : releases.length === 0 ? (
         <div className="watch-empty mt-6">
           <strong className="block text-sm font-medium text-snow">No repository-linked revisions yet</strong>
-          <p className="mt-1.5">Personal uploads are listed separately above. This ledger contains evidence saved to the selected GitHub connection.</p>
+          <p className="mt-1.5">Choose Saved attempts for uploads, website checks and queued or failed work. This ledger contains signed revisions saved to the selected GitHub connection.</p>
         </div>
       ) : (
         <div className="watch-release-browser">
           <section className="watch-release-list" aria-labelledby="release-list-heading">
             <div className="watch-release-list-heading">
-              <div><span className="watch-kicker">Ledger</span><h2 id="release-list-heading">All revisions</h2></div>
+              <div><span className="watch-kicker">Ledger</span><h2 id="release-list-heading">Connected revisions</h2></div>
               <span>{releases.length}</span>
             </div>
             <ol>
@@ -184,7 +210,7 @@ export function ReleasesScreen() {
                     >
                       <span className={`watch-release-list-icon is-${state.status}`}><StatusIcon status={state.status} /></span>
                       <span className="watch-release-list-copy">
-                        <strong>{release.coordinate}</strong>
+                        <strong title={release.coordinate}>{releaseDisplayName(release.coordinate)}</strong>
                         <small>{release.channel} · {release.sourceRevision ?? release.artifactSha256.slice(0, 12)} · {new Date(release.createdAt).toLocaleDateString()}</small>
                       </span>
                       <span className={`watch-release-list-status is-${state.status}`}>{state.label}</span>
@@ -202,7 +228,7 @@ export function ReleasesScreen() {
                 <span className="watch-kicker">Selected revision</span>
                 <span className={`watch-release-state is-${previewModel.status}`}><StatusIcon status={previewModel.status} /> {previewModel.label}</span>
               </div>
-              <h2>{preview.coordinate}</h2>
+              <h2 title={preview.coordinate}>{releaseDisplayName(preview.coordinate)}</h2>
               <p className="watch-release-preview-meta">
                 {preview.channel} channel · {preview.sourceRevision ? `source revision ${preview.sourceRevision}` : `sha256 ${preview.artifactSha256.slice(0, 12)}`} · {new Date(preview.createdAt).toLocaleString()}
               </p>
@@ -261,6 +287,7 @@ export function ReleasesScreen() {
         </div>
       )}
       </> : null}
+      </div>
     </section>
   );
 }

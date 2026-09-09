@@ -38,6 +38,7 @@ it('shows connected monitoring separately from passing release totals',async()=>
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&coverageHealth=delayed');
  fireEvent.click(screen.getByRole('button',{name:'Review connected coverage'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&coverageHealth=all');
+ fireEvent.click(screen.getByText('Individual connections'));
  fireEvent.click(screen.getByRole('button',{name:'Review Second org coverage'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace&install=9');
  expect(screen.getByRole('button',{name:/^Policy passed\s*58$/})).toBeTruthy();
@@ -95,7 +96,8 @@ it('links totals to scoped release filters and recent attempts to their brief',a
 it('does not allow an archived workspace to start a scan',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,workspace:{...data.workspace,archived:true}}))));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
- expect(await screen.findByRole('button',{name:'New scan'})).toHaveProperty('disabled',true);
+ expect(await screen.findByText(/Restore the workspace before starting another scan\./)).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'New scan'})).toBeNull();
 });
 it('opens delayed website coverage without mixing it with scan findings',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,websiteCoverage:{total:3,attention:2,delayed:1}}))));
@@ -111,4 +113,15 @@ it('identifies website evidence without labelling it an artifact scan',async()=>
  expect(screen.queryByText(/Saved artifact evidence/)).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:/https:\/\/example.com/}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&upload=scan&uploadView=detail');
+});
+
+it('puts next action and recent evidence before secondary monitoring without repeating the scan action',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,connectedCoverage:{total:1,recent:1,paused:0,unknown:0,delayed:0,unavailable:0}})));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ const next=await screen.findByRole('heading',{name:'Next action'});
+ const recent=screen.getByRole('heading',{name:'Recent attempts'});
+ const monitoring=screen.getByRole('heading',{name:'Connected monitoring'});
+ expect(next.compareDocumentPosition(recent)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(recent.compareDocumentPosition(monitoring)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'New scan'})).toBeNull();
 });
