@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest shared-component checkpoint:6d84d33.40-file milestone272 passed/2 failed; architecture location and outcomes test-timing corrections passed21/21. No runtime change afterward. C1 component boundaries extracted. C2/C3 and token/fidelity review remain open. See BUILD-LOG for exact command; do not repeat this milestone without new changes.
+
 Latest: Team invitation/member roles share RolePicker, preserving allowed roles and explicit Save.14 focused cases, build, live dropdown/focus review passed; no mutations. See latest BUILD-LOG. Continue full Gate C checklist.
 
 Latest: Notifications uses shared beUI Select; eight focused cases, final build and real menu review passed. Shared menu background corrected after visual inspection. No notification mutation. Continue Gate C matrix; not complete.

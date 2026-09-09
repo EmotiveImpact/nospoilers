@@ -139,10 +139,12 @@ describe("Watch architecture boundaries", () => {
 
   it("routes every supported evidence surface through one honest scan launcher", () => {
     const scan = readFileSync("src/pages/ScanPage.tsx", "utf8");
-    expect(scan).toMatch(/GitHub repository/);
-    expect(scan).toMatch(/Package or build/);
-    expect(scan).toMatch(/Production website/);
-    expect(scan).toMatch(/Verify release proof/);
+    const picker = readFileSync("src/components/watch/EvidenceTypePicker.tsx", "utf8");
+    expect(scan).toMatch(/<EvidenceTypePicker id=\{modeId\} mode=\{mode\} onChange=\{chooseMode\}/);
+    expect(picker).toMatch(/GitHub repository/);
+    expect(picker).toMatch(/Package or build/);
+    expect(picker).toMatch(/Production website/);
+    expect(picker).toMatch(/Verify release proof/);
     expect(scan).toMatch(/params\.set\("configure", "website"\)/);
     expect(scan).toMatch(/watchPath\("sources"\)/);
     expect(scan).toMatch(/scanModeFromSearch/);

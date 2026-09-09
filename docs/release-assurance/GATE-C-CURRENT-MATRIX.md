@@ -1,13 +1,13 @@
 # Gate C current evidence map
 
-Current source checkpoint: 2158712 plus the direct Coverage rendering test documented in BUILD-LOG. This is a continuation checklist, not a completed gate. Historical test totals are not a current all-green run.
+Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test corrections are recorded in BUILD-LOG. This is a continuation checklist, not a completed gate. Historical test totals are not a current all-green run.
 
 ## Requirements
 
 | Requirement | Current evidence | Still required |
 | --- | --- | --- |
 | C1 page heading, async state, status/action/panel | WatchPageHeader, WatchDataState, QuietComponents and app-system.css are used by live pages | Audit remaining direct markup against those primitives; do not substitute matching CSS for component reuse |
-| C1 evidence table | EvidenceTable is used by uploaded manifest and workspace audit; 13 focused cases and real compact manifest reviewed | Other evidence tables must be inventoried before claiming universal reuse |
+| C1 evidence table | EvidenceTable is used by uploaded manifest and workspace audit; 13 focused cases and real compact manifest reviewed | Inventory complete: all visible JSX tables use EvidenceTable; separate WatchExposureChart table is its screen-reader text equivalent. Preserve that semantic alternative. |
 | C1 source picker, decision, preview, settings row, dialog | Existing domain components and Headless UI dialogs implement these behaviours | Settings rows now use QuietSettingRow; centred dialogs use QuietModalSurface; connected/uploaded decisions use ReleaseDecisionPanel. Side preview now uses QuietSidePreview in Overview and Coverage. EvidenceTypePicker now owns Scan mode selection; GithubRepositoryScan owns scoped repository selection. C1 extraction boundaries are identified; global token consistency and remaining direct-markup inventory still need final review. Domain authority remains in callers. |
 | C2 responsive | Historical core-route matrix and recent compact Team, Coverage, Setup and manifest observations are in BUILD-LOG | Latest changed routes at remaining prescribed widths; native 200% zoom is not proven by viewport reflow |
 | C2 keyboard/focus | Existing component checks; live search End visibility and Escape return | Finish live representative navigation/form/dialog checks for changed layouts |

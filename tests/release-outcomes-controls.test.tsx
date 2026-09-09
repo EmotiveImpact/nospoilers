@@ -49,7 +49,9 @@ it('keeps the selected month fixed until its export finishes',async()=>{
 it.each([false,true])('recovers a removed outcome action without stealing outside focus=%s',async outside=>{
  let finish!:(r:Response)=>void;vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json({enabled:false,revision:0,canConfigure:true,notice:'Private only.',summary:null}))));
  render(<><button>Outside</button><ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/></>);
- fireEvent.click(screen.getByText('Monthly outcomes · private'));await screen.findByText('Private only.');
+ fireEvent.click(screen.getByText('Monthly outcomes · private'));
+ await waitFor(()=>expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('?month='))).toBe(true));
+ await screen.findByLabelText(/Enable private summaries/);
  fireEvent.click(screen.getByLabelText(/Enable private summaries/));const trigger=screen.getByRole('button',{name:'Enable private outcomes'});trigger.focus();await userEvent.keyboard('{Enter}');
  if(outside)screen.getByRole('button',{name:'Outside'}).focus();finish(Response.json({error:'Rejected'},{status:403}));
  const error=await screen.findByRole('alert');await waitFor(()=>expect(document.activeElement).toBe(outside?screen.getByRole('button',{name:'Outside'}):error));
@@ -57,7 +59,9 @@ it.each([false,true])('recovers a removed outcome action without stealing outsid
 });
 it('focuses successful opt-in status when its invoking form is replaced',async()=>{
  vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?Promise.resolve(Response.json({enabled:true,revision:1})):Promise.resolve(Response.json({enabled:false,revision:0,canConfigure:true,notice:'Private only.',summary:null}))));
- render(<ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/>);fireEvent.click(screen.getByText('Monthly outcomes · private'));await screen.findByText('Private only.');
+ render(<ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/>);fireEvent.click(screen.getByText('Monthly outcomes · private'));
+ await waitFor(()=>expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('?month='))).toBe(true));
+ await screen.findByLabelText(/Enable private summaries/);
  fireEvent.click(screen.getByLabelText(/Enable private summaries/));screen.getByRole('button',{name:'Enable private outcomes'}).focus();await userEvent.keyboard('{Enter}');
  const status=await screen.findByText(/Private outcome summaries enabled/);await waitFor(()=>expect(document.activeElement).toBe(status));
 });

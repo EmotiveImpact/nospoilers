@@ -597,3 +597,17 @@ QuietSidePreview now provides caller-owned Dialog presentation for Overview evid
 ## Evidence type picker boundary
 
 Extracted EvidenceTypePicker from ScanPage, retaining the four existing evidence choices, IDs, arrow/Home/End activation and caller-owned mode/navigation. GithubRepositoryScan remains the scoped repository selection/submission owner.19 scan navigation cases passed (2.21s), final build/diff check passed; actual signed-in picker reviewed and End selected/focused Verify release proof with mode=receipt while preserving workspace/install. No scan submitted.
+
+
+## 10 September — combined shared-component milestone
+
+At6d84d33, the40-file UI milestone completed272 passed/2 failed (274 cases,32.29s). The architecture assertion still expected picker text in ScanPage after extraction; it now verifies the mounted EvidenceTypePicker and its labels. An outcomes focus test saw initial data before the native disclosure toggle cleared/reloaded it; it now waits for the monthly request and actual opt-in control, retaining inside/outside focus assertions. Focused correction:21/21 cases across both files (1.45s). No runtime changes after the milestone. This is a cumulative run plus focused corrections, not a fresh all-green274-case run.
+
+Command:
+```sh
+npm test -- tests/artifact-shell-navigation.test.tsx tests/watch-accessibility.test.tsx tests/watch-architecture.test.ts tests/workspace-entry.test.tsx tests/workspace-management-ui.test.tsx tests/artifact-overview-ui.test.tsx tests/first-proof-transition.test.tsx tests/scan-submission-navigation-ui.test.tsx tests/alert-queue-keyboard.test.tsx tests/alert-filters-keyboard.test.tsx tests/workspace-alerts-rendered.test.tsx tests/alert-response-permissions-ui.test.tsx tests/alert-off-page-detail.test.tsx tests/coverage-detail-ui.test.tsx tests/workspace-coverage-health-ui.test.tsx tests/watch-exposure-chart-ui.test.tsx tests/uploaded-releases-ui.test.tsx tests/uploaded-release-brief-ui.test.tsx tests/hosted-release-evidence-ui.test.tsx tests/release-workspace-scope-ui.test.tsx tests/release-intelligence-panel.test.tsx tests/release-assurance-history-mount.test.tsx tests/release-gate-controls.test.tsx tests/release-gate-access-controls.test.tsx tests/release-remediation-controls.test.tsx tests/production-parity-controls.test.tsx tests/automatic-capture-controls.test.tsx tests/agent-access-controls.test.tsx tests/release-outcomes-controls.test.tsx tests/release-explanation-controls.test.tsx tests/workspace-notifications-ui.test.tsx tests/workspace-scan-policy-ui.test.tsx tests/workspace-team-ui.test.tsx tests/workspace-tokens-ui.test.tsx tests/workspace-evidence-settings-ui.test.tsx tests/workspace-exceptions-ui.test.tsx tests/deletion-request-ui.test.tsx tests/settings-install-interactions-ui.test.tsx tests/beui-select-ui.test.tsx tests/overview-activity-ui.test.tsx
+```
+
+Source inventory: all visible JSX evidence tables use EvidenceTable; the only separate table in src/components/src/pages is the screen-reader-only chart text equivalent. C1 now has extracted heading, evidence picker, status, async state, evidence table, decision panel, side preview, empty state, centred dialog and settings-row components. This establishes component boundaries; it does not establish universal token/style compliance or close C2/C3. Current remaining work is the matrix, particularly latest responsive/state fidelity and actual motion/AT/native-zoom evidence.
+
+Final `npx tsc -b` and `git diff --check` passed after the test corrections.
