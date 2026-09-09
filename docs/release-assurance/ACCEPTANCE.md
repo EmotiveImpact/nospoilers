@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C cumulative UI milestone
+
+The current connected Gate C source passed one cumulative UI run: **260 tests / 38 files, zero failures (17.57s)**, followed by passing typecheck and lint. It covers the shell/workspace decisions; Overview and First Proof; Scan; Alerts; Coverage/Timeline chart; uploaded and hosted Releases; history, gate, CI access, remediation, parity, capture, agent, outcomes and explanations; and Notifications, Policy, Team, Tokens, Retention, Audit, Health and Registries. This is a deliberate UI-only milestone, not a repeated backend regression or production check.
+
+The signed-in 1024×900 matrix was repeated only for the two earlier early-load ambiguities: Overview, Scan, Alerts, Coverage, Releases, the real uploaded detail and Timeline all loaded their correct h1 and measured `scrollWidth === clientWidth === 1024`. Together with the recorded 390/768/1440 and 720×450 effective-reflow checks, required layout widths are covered. Native browser 200% zoom and audible screen-reader behavior remain unavailable through the current in-app browser, so the evidence supports responsive/accessibility implementation without claiming native-zoom or assistive-technology certification.
+
 ## Current Gate C remediation and remaining-settings interaction milestone
 
 Changing remediation cases now continues keyboard focus to the loaded case heading, or to the error when that case cannot be read, only when the old focused selector disappeared and the user did not move focus elsewhere. Scope changes abandon the pending continuation. Install Health and Private Registries now announce action failures with the same conditional focus rule, wrap long identities/errors/origins and stack dense rows at narrow widths. The Registry focus shortcut now truthfully says **Add registry**, and read-only users are told that an installation administrator manages credentials.
