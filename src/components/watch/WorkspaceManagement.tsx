@@ -1,5 +1,5 @@
 import { WatchSkeleton } from "@/components/WatchDataState";
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
 import type {ProductWorkspace} from '@/watch/workspace-types';
@@ -22,7 +22,6 @@ export function WorkspaceManagement(){
   const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[name,setName]=useState(''),[organization,setOrganization]=useState('');
   const [renameId,setRenameId]=useState<string|null>(null),[rename,setRename]=useState('');
   const [notice,setNotice]=useState('');
-  const createName=useRef<HTMLInputElement>(null);
   const [organizations,setOrganizations]=useState<ManagedOrganization[]>([]);
   useEffect(()=>{const controller=new AbortController();void fetch('/api/workspaces',{signal:controller.signal}).then(async response=>{
     if(!response.ok)throw new Error('Could not load workspaces.');const body=await response.json() as {workspaces:WorkspaceListRow[];organizations?:ManagedOrganization[]};if(!controller.signal.aborted){setRows(body.workspaces);setOrganizations(body.organizations??[]);setLoading(false);}
@@ -42,8 +41,8 @@ export function WorkspaceManagement(){
       {['owner','admin'].includes(workspace.role)?<><Button variant="ghost" disabled={busy} onClick={()=>{setRenameId(workspace.id);setRename(workspace.name);}}>Rename</Button><Button variant="ghost" disabled={busy} onClick={()=>void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{archived:!workspace.archived_at})}>{workspace.archived_at?'Restore':'Archive'}</Button></>:null}</div>
       {renameId===workspace.id?<form className="mt-4 flex gap-3" onSubmit={event=>{event.preventDefault();void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{name:rename});}}><input aria-label="Workspace name" maxLength={100} value={rename} onChange={event=>setRename(event.target.value)}/><Button type="submit" disabled={busy||!rename.trim()}>Save name</Button><Button type="button" variant="ghost" onClick={()=>setRenameId(null)}>Cancel</Button></form>:null}
       {organizations.some(o=>o.id===workspace.organization_id&&o.role==='owner')?<details className="mt-4"><summary>History deletion review</summary><WorkspaceDeletionRequest organizationId={workspace.organization_id} workspaceId={workspace.id} workspaceName={workspace.name}/></details>:null}
-    </article>)}{organizations.length?<button type="button" className="flex items-center gap-3 rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-5 text-left text-sm text-snow hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" onClick={()=>createName.current?.focus()}><span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xl">+</span><span>Create new workspace</span></button>:null}</div>}
-    {organizations.length?<form className="workspace-create" onSubmit={event=>{event.preventDefault();void mutate('/api/workspaces','POST',{organizationId:organization||organizations[0].id,name});}}><h2>Create a workspace</h2><p>Creating another workspace does not restart the trial or add scan allowances. Migrated default and connected workspaces cannot yet be archived.</p><label>Organisation<select value={organization||organizations[0].id} onChange={event=>setOrganization(event.target.value)}>{organizations.map(row=><option key={row.id} value={row.id}>{row.name} · existing subscription</option>)}</select></label><label>Workspace name<input ref={createName} required maxLength={100} value={name} onChange={event=>setName(event.target.value)} placeholder="For example, Production"/></label><Button type="submit" disabled={busy||!name.trim()}>{busy?'Saving…':'Create workspace'}</Button></form>:null}
+    </article>)}</div>}
+    {organizations.length?<form className="workspace-create" onSubmit={event=>{event.preventDefault();void mutate('/api/workspaces','POST',{organizationId:organization||organizations[0].id,name});}}><h2>Create a workspace</h2><p>Creating another workspace does not restart the trial or add scan allowances. Migrated default and connected workspaces cannot yet be archived.</p><label>Organisation<select value={organization||organizations[0].id} onChange={event=>setOrganization(event.target.value)}>{organizations.map(row=><option key={row.id} value={row.id}>{row.name} · existing subscription</option>)}</select></label><label>Workspace name<input required maxLength={100} value={name} onChange={event=>setName(event.target.value)} placeholder="For example, Production"/></label><Button type="submit" disabled={busy||!name.trim()}>{busy?'Saving…':'Create workspace'}</Button></form>:null}
     <WorkspaceConnectionPlacement workspaces={rows} organizationIds={organizations.map(o=>o.id)} onChanged={()=>setRevision(v=>v+1)}/>
     {organizations.map(organization=><OrganizationAccess key={organization.id} organization={organization} onChanged={()=>setRevision(v=>v+1)}/>)}
   </section>;

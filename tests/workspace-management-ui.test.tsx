@@ -62,13 +62,12 @@ it('shows available workspace avatars and readable initials when absent or unava
   fireEvent.error(avatar!);
   expect(container.querySelector('img')).toBeNull();expect(screen.getByText('RT')).toBeTruthy();
 });
-it('focuses the existing creation form from the plus tile without creating a workspace',async()=>{
-  const fetcher=vi.fn(async(_url:string,_options?:RequestInit)=>Response.json({workspaces:[workspace],organizations,invites:[]}));
-  vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
-  const tile=await screen.findByRole('button',{name:'Create new workspace'});
-  expect(tile.textContent).toContain('+');fireEvent.click(tile);
-  expect(document.activeElement).toBe(screen.getByLabelText('Workspace name'));
-  expect(fetcher.mock.calls.every(call=>!call[1]?.method)).toBe(true);
+it('keeps the existing creation form without a duplicate plus tile',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace],organizations,invites:[]})));
+  render(<WorkspaceManagement/>);
+  expect(await screen.findByLabelText('Workspace name')).toBeTruthy();
+  expect(screen.getByRole('button',{name:'Create workspace'})).toBeTruthy();
+  expect(screen.queryByRole('button',{name:'Create new workspace'})).toBeNull();
 });
 
 it('offers workspace choices with avatars and a plus creation action in the sidebar menu',async()=>{
