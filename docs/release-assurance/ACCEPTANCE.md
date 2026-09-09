@@ -200,3 +200,8 @@ RA-07: opt-in provider-backed assistance, tenant data boundaries, untrusted-cont
 RA-08: opt-in outcome summaries and research instrumentation after privacy decisions. Use real release events and scoped denominators, not invented financial savings, forced logins or obstructed cancellation.
 
 Keep PR #44 draft and preserve the branch deployment guard until applicable review and operational approvals are complete.
+
+
+## Notifications shared destination selector
+
+Replaced the native destination selector with the existing beUI Select, retaining busy locking and clearing private input on type changes. Added a direct regression for clearing without submission and focus return. Eight cases across notification/select tests passed (1.61s); initial run needed the existing ResizeObserver test stub. Live review caught transparent shared menu background outside Overview; fixed the shared panel to opaque charcoal with a fine border. Final build and diff check passed. Real signed-in desktop menu reviewed and Escape exercised; no destination saved or message sent. Broader Gate C remains open.

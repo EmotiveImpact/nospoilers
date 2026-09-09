@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import {it,expect,vi,afterEach} from 'vitest';
+import {it,expect,vi,afterEach,beforeEach} from 'vitest';
 import {act,render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceNotifications} from '../src/components/watch/WorkspaceNotifications';
+class TestResizeObserver { observe(){} unobserve(){} disconnect(){} }
+beforeEach(()=>vi.stubGlobal('ResizeObserver',TestResizeObserver));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const page={destinations:[{id:1,kind:'email',host:'example.com',independent:true,last_delivery_status:null,test_status:null}],deliveries:[],nextCursor:null,canManage:true,providers:{email:true,slack:true}};
 it('locks destination editing during a save and restores it after a service failure',async()=>{
@@ -66,4 +68,16 @@ it('clears workspace form state and hides mutation controls from viewers',async(
  await screen.findByText('Only administrators of an active workspace can change destinations.');
  await waitFor(()=>expect(screen.queryByRole('button',{name:'Save destination'})).toBeNull());
  expect(screen.queryByDisplayValue('private@example.com')).toBeNull();
+});
+
+it('changing destination type clears private input without submitting',async()=>{
+ const fetcher=vi.fn(async()=>new Response(JSON.stringify(page)));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceNotifications workspaceId="one"/>);
+ fireEvent.change(await screen.findByLabelText('Email address'),{target:{value:'private@example.com'}});
+ fireEvent.click(screen.getByRole('combobox',{name:'Destination type'}));
+ fireEvent.click(screen.getByRole('option',{name:'Slack'}));
+ expect(screen.queryByDisplayValue('private@example.com')).toBeNull();
+ expect(screen.getByRole('combobox',{name:'Destination type'}).textContent).toContain('Slack');
+ expect(document.activeElement).toBe(screen.getByRole('combobox',{name:'Destination type'}));
+ expect(fetcher).toHaveBeenCalledTimes(1);
 });

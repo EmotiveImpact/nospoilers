@@ -554,3 +554,8 @@ At488a9b2, ran the existing38-file cumulative UI command recorded above:259 pass
 ## Remaining loading animation cleanup
 
 Source audit found two inline pulse bars in WatchOverview loading, outside shared WatchSkeleton. Removed them while retaining aria-busy and screen-reader statuses; initial lighthouse unchanged. Scan submission/receipt progress spinners now use motion-reduce:animate-none. Build initially exposed the previous test correction's unused readdirSync import; removed it, final build passed. No OS reduced-motion or live delayed-response simulation claimed. This is source/build verification; previous cumulative result remains distinct.
+
+
+## Notifications shared destination selector
+
+Replaced the native destination selector with the existing beUI Select, retaining busy locking and clearing private input on type changes. Added a direct regression for clearing without submission and focus return. Eight cases across notification/select tests passed (1.61s); initial run needed the existing ResizeObserver test stub. Live review caught transparent shared menu background outside Overview; fixed the shared panel to opaque charcoal with a fine border. Final build and diff check passed. Real signed-in desktop menu reviewed and Escape exercised; no destination saved or message sent. Broader Gate C remains open.

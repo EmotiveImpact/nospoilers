@@ -3,6 +3,7 @@ import { WatchPageHeader } from "./WatchPageHeader.tsx";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/motion/select';
 import {notificationFailureMessage,notificationTestLabel} from '@/watch/notification-status';
 
 type Destination={id:number;kind:string;host:string;independent:boolean;last_delivery_status:string|null;test_status:string|null};
@@ -54,7 +55,7 @@ function NotificationScope({workspaceId}:{workspaceId:string}){
   {loadError?<div role="alert">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<WatchSkeleton variant="list" className="mt-4" />:null}
   {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
   {page?.canManage?<form className="notification-compose watch-card p-4 sm:p-5 flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-end" onSubmit={e=>{e.preventDefault();void act('save');}}>
-   <div className="settings-form-heading"><h2>Add a destination</h2><p>Choose where website alerts should arrive.</p></div><label className="w-full sm:w-auto">Destination type<select disabled={busy} className="block w-full rounded border border-white/15 bg-back p-2" value={kind} onChange={e=>{setKind(e.target.value as 'email'|'slack');setValue('');}}><option value="email">Email</option><option value="slack">Slack</option></select></label>
+   <div className="settings-form-heading"><h2>Add a destination</h2><p>Choose where website alerts should arrive.</p></div><div className="w-full sm:w-auto"><span>Destination type</span><Select disabled={busy} value={kind} onValueChange={next=>{setKind(next as 'email'|'slack');setValue('');}}><SelectTrigger aria-label="Destination type"><SelectValue placeholder={kind==='email'?'Email':'Slack'}/></SelectTrigger><SelectContent><SelectItem value="email">Email</SelectItem><SelectItem value="slack">Slack</SelectItem></SelectContent></Select></div>
    <label className="min-w-0 w-full sm:min-w-48 sm:flex-1">{kind==='email'?'Email address':'Slack webhook URL'}<input disabled={busy} className="block w-full rounded border border-white/15 bg-transparent p-2" type={kind==='email'?'email':'password'} autoComplete="off" value={value} onChange={e=>setValue(e.target.value)} required maxLength={300}/></label>
    <Button type="submit" className="w-full sm:w-auto" disabled={busy||!value.trim()}>Save destination</Button>
    <p className="w-full text-sm text-mute">Saving replaces this workspace’s existing destination of the same type. {page.providers[kind]?'Send a test after saving.':'Provider sending is not configured on this host; saving alone will not enable it.'}</p>
