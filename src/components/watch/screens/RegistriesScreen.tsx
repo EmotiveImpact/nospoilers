@@ -2,18 +2,24 @@ import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { ProtectionImportResult, ReleaseDiffView } from "@/watch/types";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export function RegistriesScreen() {
   const registryOriginRef = useRef<HTMLInputElement>(null);
   const { Button, activeInstallId, allowReasonByCandidate, approvingId, baselineByPackage, baselineReason, beginConfirm, canManageEvidence, canReadEvidence, candidatesByPackage, checkingId, checkingNamespaceId, confirmBusy, confirmForm, confirming, deskCoverage, deskPackages, diffByPackage, diffingId, downloadingEvidenceId, ended, evidenceByPackage, identitySignals, importError, importNames, importResults, importingPackages, installAdmin, installations, loadJson, locked, namespaceError, namespaceScope, namespaces, packageError, packageName, packages, previewing, protectingId, protectionImportStatusLabel, protections, refreshSignedIn, registries, registryError, registryOriginInput, registryToken, riskByPackage, route, savingNamespace, savingRegistry, selectedInstallId, setAllowReasonByCandidate, setApprovingId, setCheckingId, setCheckingNamespaceId, setDiffByPackage, setDiffingId, setDownloadingEvidenceId, setImportError, setImportNames, setImportResults, setImportingPackages, setNamespaceError, setNamespaceScope, setPackageError, setPackageName, setProtectingId, setRegistryError, setRegistryOriginInput, setRegistryToken, setSavingNamespace, setSavingRegistry, setWatchRegistryOrigin, setWatchingPackage, sourceSectionState, user, watchRegistryOrigin, watchingPackage } = useWatchScreenContext();
+  const failureRef = useRef<HTMLParagraphElement>(null);
+  const initiatingFocus = useRef<Element | null>(null);
+  useEffect(() => {
+    if (registryError && initiatingFocus.current === document.activeElement) failureRef.current?.focus();
+    if (registryError) initiatingFocus.current = null;
+  }, [registryError]);
   return (
     <>
       {(route.view === "registries" ||
                 (route.view === "sources" &&
                   route.sourceConfigure === "npm" &&
                   (previewing || sourceSectionState.status === "ready"))) && (
-              <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+              <section className={`mt-4 min-w-0 [overflow-wrap:anywhere] ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 {route.view === "registries" ? (
                   <>
                     <WatchPageHeader
@@ -26,7 +32,7 @@ export function RegistriesScreen() {
                             size="sm"
                             onClick={() => registryOriginRef.current?.focus()}
                           >
-                            Save origin
+                            Add registry
                           </Button>
                         ) : undefined
                       }
@@ -244,12 +250,16 @@ export function RegistriesScreen() {
                 {route.view === "sources" && !previewing && packages.status === "error" && (
                   <p className="mt-6 text-sm text-danger">{packages.message}</p>
                 )}
+                {route.view === "registries" && !previewing && user && !installAdmin ? (
+                  <p className="mt-4 text-sm text-mute">Read-only. An installation administrator can add or remove registry credentials.</p>
+                ) : null}
                 {!previewing && user && installations.length > 0 && installAdmin && (
                   <form
                     className="mt-6 flex max-w-xl flex-col gap-3"
                     onSubmit={(event) => {
                       event.preventDefault();
                       if (locked || savingRegistry) return;
+                      initiatingFocus.current = document.activeElement;
                       setRegistryError(null);
                       setSavingRegistry(true);
                       void (async () => {
@@ -311,7 +321,7 @@ export function RegistriesScreen() {
                     </div>
                   </form>
                 )}
-                {registryError && <p className="mt-4 text-sm text-danger">{registryError}</p>}
+                {registryError && <p ref={failureRef} tabIndex={-1} role="alert" className="mt-4 text-sm text-danger">{registryError}</p>}
                 {route.view === "registries" && !previewing && registries.length === 0 ? (
                   <div className="watch-empty">No private registry saved. Public npm does not need this.</div>
                 ) : null}
@@ -320,7 +330,7 @@ export function RegistriesScreen() {
                     {registries.map((registry) => (
                       <li key={registry.id} className="py-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-mono text-xs text-mute">{registry.origin}</p>
+                        <p className="min-w-0 max-w-full font-mono text-xs text-mute [overflow-wrap:anywhere]">{registry.origin}</p>
                         {installAdmin ? (
                         <Button
                           type="button"

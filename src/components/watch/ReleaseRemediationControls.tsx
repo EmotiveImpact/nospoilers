@@ -15,6 +15,20 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
   const lifetime=useRef<AbortController|null>(null);
   const errorTarget=useRef<HTMLParagraphElement|null>(null),focusFailure=useRef(false);
   useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
+  const caseHeading=useRef<HTMLHeadingElement|null>(null),caseFocus=useRef<{control:HTMLElement;id:string}|null>(null);
+  useEffect(()=>{
+    const moved=(event:FocusEvent)=>{if(caseFocus.current&&event.target!==caseFocus.current.control)caseFocus.current=null;};
+    document.addEventListener('focusin',moved);return()=>document.removeEventListener('focusin',moved);
+  },[]);
+  useEffect(()=>{
+    if(!error&&!view)return;
+    const pending=caseFocus.current;caseFocus.current=null;
+    if(pending&&!pending.control.isConnected&&document.activeElement===document.body){
+      if(error)errorTarget.current?.focus();
+      else if(view?.selected?.id===pending.id)caseHeading.current?.focus();
+    }
+  },[view,error]);
+
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const c=new AbortController(),params=new URLSearchParams({recordKind:record.kind,recordId:record.id});if(selected)params.set('caseId',selected);
@@ -50,8 +64,8 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
         <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
         <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
       </form>:null}
-      {view.cases.length?<label>Remediation case<select disabled={busy} value={current?.id??''} onChange={e=>{setSelected(e.target.value);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</select></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
-      {current?<><p><strong>Original finding</strong> <code>{current.finding}</code></p>
+      {view.cases.length?<label>Remediation case<select disabled={busy} value={current?.id??''} onChange={e=>{caseFocus.current=document.activeElement===e.currentTarget?{control:e.currentTarget,id:e.target.value}:null;setError('');setSelected(e.target.value);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</select></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
+      {current?<><h4 ref={caseHeading} tabIndex={-1}>Remediation case · {current.finding}</h4><p><strong>Original finding</strong> <code>{current.finding}</code></p>
         <p role="status">{current.unavailable?'Linked evidence is unavailable; no current resolution is inferred.':current.observation?current.observation.reason:review?'Reviewed change recorded. Rebuild and check fresh signed evidence next.':'Investigation open. Record a reviewed change before checking a rebuild.'}</p>
         {current.observation?<><p>{current.observation.scope}</p><p>Other recorded findings in this rebuild: {current.observation.otherFindings}. This observation does not approve the release.</p></>:null}
         {view.canWrite?<><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('investigate')}>Add investigation note</button><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('reopen')}>Reopen investigation</button>

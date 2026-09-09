@@ -2,6 +2,8 @@
 
 ## Gate C continuation
 
+Latest Gate C interaction batch adds conditional focus continuation for remediation case selection and failed Health/Registry actions, narrow Health rows, long-text wrapping, truthful **Add registry** copy and a read-only Registry explanation. Independent verification passed 33 tests/five files and typecheck; final build passed with the existing chunk warning. Signed-in Health and Registries fit 390px without document overflow, Health rows stacked and the real Registry form kept its Save token submission. No external request or mutation was triggered. Do not repeat this focused run.
+
 Latest Gate C batch replaces retention/audit/deletion empty-state framing with the approved shared settings hierarchy and responsive cards, and hardens connected-source CI-access refresh/failure/scope recovery. Independent combined verification passed 54 tests/seven files and typecheck; after removing one redundant effect update, the gate-access file passed 10/10 and lint cleanly. Final build passed with the existing chunk warning. Real signed-in connected CI access fit at 390px without document overflow. No grant, policy, deletion or exception mutation occurred.
 
 Record the current browser matrix accurately: normal core routes fit 390/768/1024/1440 CSS widths; 720×450 verifies effective 200%-equivalent reflow, not native zoom. Expanded real release-assurance controls and the retained 64-file manifest fit at 720 and 390, with local table wrapping and no document overflow. Native 200% zoom and actual screen-reader announcements remain unavailable/unverified. Do not rerun the normal-state matrix or call the equivalent viewport native zoom.

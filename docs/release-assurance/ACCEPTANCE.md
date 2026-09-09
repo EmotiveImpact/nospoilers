@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C remediation and remaining-settings interaction milestone
+
+Changing remediation cases now continues keyboard focus to the loaded case heading, or to the error when that case cannot be read, only when the old focused selector disappeared and the user did not move focus elsewhere. Scope changes abandon the pending continuation. Install Health and Private Registries now announce action failures with the same conditional focus rule, wrap long identities/errors/origins and stack dense rows at narrow widths. The Registry focus shortcut now truthfully says **Add registry**, and read-only users are told that an installation administrator manages credentials.
+
+Independent verification passed 33 tests / five files plus typecheck; affected lint had zero errors, one existing remediation warning and one test-harness warning. Final build passed with the existing chunk warning. Signed-in Health and Registries rendered at 390px with no document overflow; Health rows stacked and Registries exposed the truthful Add registry action and real Save token form. No test request, credential save or remediation mutation occurred. Gate C remains partial only where the completion ledger still names evidence limits.
+
 ## Current Gate C settings, CI-access recovery and viewport milestone
 
 Retention and audit now use the shared settings heading and solid content cards; empty styling is reserved for an actual empty audit result. Long audit identities wrap in a fixed-layout table. The deletion-review form is a responsive labelled card with full-width controls and wrapping confirmation text, while all owner authority, inventory checks and typed confirmation rules remain unchanged. Exception detail now has consistent card padding, wrapping actions and 44px selection targets.

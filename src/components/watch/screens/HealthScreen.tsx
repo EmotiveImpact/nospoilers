@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,12 @@ export function HealthScreen() {
     testError,
     testingInstallId,
   } = useWatchScreenContext();
+  const failureRef = useRef<HTMLParagraphElement>(null);
+  const initiatingFocus = useRef<Element | null>(null);
+  useEffect(() => {
+    if (testError && initiatingFocus.current === document.activeElement) failureRef.current?.focus();
+    if (testError) initiatingFocus.current = null;
+  }, [testError]);
   if (route.view !== "health") return null;
 
   const visibleInstalls = installations.filter((row) => !activeInstallId || row.id === activeInstallId);
@@ -69,6 +76,7 @@ export function HealthScreen() {
   const usage = fairUseStat(fairUse);
 
   async function testInstall(installId: number) {
+    initiatingFocus.current = document.activeElement;
     setTestError(null);
     setTestingInstallId(installId);
     try {
@@ -111,7 +119,7 @@ export function HealthScreen() {
   }
 
   return (
-    <section className="watch-narrow">
+    <section className="watch-narrow min-w-0 [overflow-wrap:anywhere]">
       <WatchPageHeader
         title="Install health"
         lede="Permissions, deliveries, and recent work for this GitHub install."
@@ -193,7 +201,7 @@ export function HealthScreen() {
           {visibleInstalls.map((install) => {
             const test = install.lastPermissionTest;
             return (
-              <div key={install.id} className="watch-kv items-start">
+              <div key={install.id} className="watch-kv flex-col items-start sm:flex-row">
                 <div className="min-w-0">
                   <p className="font-mono text-[13px] text-snow">{install.account_login}</p>
                   {test ? (
@@ -229,14 +237,14 @@ export function HealthScreen() {
           })}
         </div>
       )}
-      {testError ? <p className="mt-4 text-[13px] text-danger">{testError}</p> : null}
+      {testError ? <p ref={failureRef} tabIndex={-1} role="alert" className="mt-4 text-[13px] text-danger">{testError}</p> : null}
 
       {previewing || jobs.length === 0 ? (
         <div className="watch-empty">No jobs on this install yet. The list fills after a real scan or webhook.</div>
       ) : (
         <div className="watch-card mt-6">
           {jobs.map((job) => (
-            <div key={job.id} className="watch-kv items-start">
+            <div key={job.id} className="watch-kv flex-col items-start sm:flex-row">
               <div className="min-w-0">
                 <p className="font-mono text-[13px] text-snow">{kindLabel(job.kind)}</p>
                 <p className="watch-tiny mt-1 text-dim">

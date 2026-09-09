@@ -1,5 +1,15 @@
 # Build and verification log
 
+## 9 September 2026 — Gate C remediation focus and remaining settings interactions
+
+Selecting another remediation case removes the old selector during its scoped read. The UI now records that keyboard origin and, after the requested case loads, focuses a new case heading; a failed read focuses its alert. Deliberate focus movement and record/stream scope changes cancel this continuation. Existing request scope, confirmation reset, signed evidence and mutation behavior remain unchanged.
+
+Install Health and Private Registries now expose mutation failures as alerts and conditionally focus them only while the initiating control still owns focus. Health rows stack at narrow widths and long installation, permission and job details wrap. Registry origins wrap; non-administrators receive an explicit read-only explanation. The header shortcut is **Add registry**, accurately describing that it focuses the credential form, while the actual submission remains **Save token**. Permissions and APIs are unchanged.
+
+Independent verification: `npm test -- tests/release-remediation-controls.test.tsx tests/settings-install-interactions-ui.test.tsx tests/artifact-shell-navigation.test.tsx tests/watch-accessibility.test.tsx tests/watch-architecture.test.ts` passed 33 tests / five files in 2.47s; `npm run typecheck` passed. Affected-file lint had zero errors, retaining one existing remediation effect warning and one test-double immutability warning. Final `npm run build` passed with the existing >500 kB chunk warning; `git diff --check` passed.
+
+Signed-in real-app review at 390×844: Install Health loaded its actual recent work with rows computed as column layout and document width 390px. Private Registries loaded the real administrator form with **Add registry** and **Save token** separately; it also had no document overflow. The browser returned to Overview at its normal viewport. No permission test, registry credential, remediation, policy, scan or customer-data mutation occurred. Error-focus behavior remains rendered-test evidence because deliberately provoking a live external request would change or invoke connected state.
+
 ## 9 September 2026 — Gate C settings hierarchy, CI-access recovery and dense-layout evidence
 
 Retention and audit no longer present all loaded settings inside a dashed empty-state container. They use the shared page heading and a solid padded settings card; only a truly empty audit page uses `watch-empty`. The audit table has fixed columns and long-identity wrapping. Data-deletion review uses a responsive labelled card with full-width select/confirmation fields, wrapping phrases, accessible checkbox spacing and a current-inventory section. Existing owner authority, review-only semantics, impact validation and typed confirmation remain. Policy-exception selection/detail gains padding, wrapping and minimum target sizing without changing approval rules.
