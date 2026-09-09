@@ -12,6 +12,7 @@ import {workspaceSourceAccess} from './workspace-source-access.ts';
 import {workspaceArtifactPolicySnapshot,applyWorkspaceArtifactPolicy} from './workspace-policy.ts';
 import {crawlOrigin,type WebCrawlOpts} from './web-origin.ts';
 import {enqueueWorkspaceAlertNotifications} from './workspace-notification-outbox.ts';
+import {enqueueAutomaticCapture} from './automatic-capture.ts';
 
 async function assertScanAccess(sql:SqlClient,upload:UploadedScan){
   if(upload.installation_id!==null&&!(await sql.query('SELECT id FROM installations WHERE id=$1 AND NOT suspended AND disconnected_at IS NULL FOR SHARE',[upload.installation_id])).rows.length)throw new Error('Source connection unavailable.');
@@ -86,6 +87,7 @@ export async function processUploadedScan(id:string,store:Store,scanFn:typeof sc
       }else{
         const receipt=signReceipt(buildUnsignedReceipt(report,coordinate),secret);
         await scoped.finishUploadedScan(id,report,receipt);
+        if(upload.source_origin_id)await enqueueAutomaticCapture(tx,{kind:'upload',id});
         // One response record per immutable attempt. Later checks never silently
         // resolve earlier findings, and a worker retry cannot duplicate an alert.
         if(upload.source_origin_id && report.findings.length>0){

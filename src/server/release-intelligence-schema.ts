@@ -1,4 +1,5 @@
 import type { SqlClient } from './sql.ts';
+import {migrateAutomaticCapture} from './automatic-capture-schema.ts';
 export const INTELLIGENCE_MIGRATION = 'ra_002_release_intelligence';
 export const intelligenceSchema = `
 CREATE TABLE IF NOT EXISTS release_intelligence_streams (
@@ -71,11 +72,11 @@ CREATE TRIGGER release_intelligence_event_immutable BEFORE UPDATE OR DELETE ON r
 `;
 /** Adds its own marker without replacing the existing linear migration chain. */
 export async function migrateReleaseIntelligence(sql: SqlClient): Promise<void> {
-  if ((await sql.query('SELECT id FROM schema_migrations WHERE id=$1', [INTELLIGENCE_MIGRATION])).rows.length) return;
-  await sql.transaction(async tx => {
+  if (!(await sql.query('SELECT id FROM schema_migrations WHERE id=$1', [INTELLIGENCE_MIGRATION])).rows.length) await sql.transaction(async tx => {
     await tx.query('SELECT pg_advisory_xact_lock($1)', [1857679437]);
     if ((await tx.query('SELECT id FROM schema_migrations WHERE id=$1', [INTELLIGENCE_MIGRATION])).rows.length) return;
     await tx.exec(intelligenceSchema);
     await tx.query('INSERT INTO schema_migrations(id) VALUES($1)', [INTELLIGENCE_MIGRATION]);
   });
+  await migrateAutomaticCapture(sql);
 }

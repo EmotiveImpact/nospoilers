@@ -2,6 +2,16 @@
 
 Date: 8 September 2026. Branch: `codex/release-assurance-spine-v1`. Review container: draft PR #44.
 
+## 9 September automatic capture increment
+
+Migration `ra_003_automatic_capture` adds disabled-by-default stream capture rules and FK-linked attempts. `automatic-capture.ts`, `automatic-capture-identity.ts` and `automatic-capture-worker.ts` connect signed hosted publication and independent website completion to the existing capture service. Stable source, channel, format, artifact selector and source connection generation must match the explicitly selected stream. Manual uploads keep explicit UI/API/CI capture. No rule, reference or policy is silently adopted.
+
+GET/POST `/api/release-intelligence/streams/:id/automatic-capture` expose settings and the ten most recent attempts. Enabling requires an active authorised administrator, expected revision, exact record confirmation and reason; disabling requires administrator authority but not active billing. The internal worker grant rechecks the enabling user's current authority and its own running lease, then reuses original receipt verification and snapshot transactions. Retry failures are sanitized and separate from the saved scan. Pausing/reconnecting a source invalidates old queued grants. The React control is mounted in both existing intelligence-panel contexts; a successful history refresh now preserves its disclosures while stale actions are disabled.
+
+Verification: 207 files / 1,234 tests passed before the final test-harness-only change to use real `claimJob`; typecheck, frontend/API builds and lint (warnings, no errors) passed. The updated automatic-capture integration file passed two tests with the hosted test on disposable native PostgreSQL and the independent website test on PGlite. Built app at isolated port 4363 verified stream creation, enable/disable, preserved disclosure, 390px no overflow and zero console errors. Screenshots are local synthetic artifacts, not customer results. See BUILD-LOG for exact sequence and limitations.
+
+Next: finish lifecycle acceptance (parallel configuration/deletion, missing-evidence recovery, broader keyboard/role browser cases) and continue bounded production parity. No production migration or deployment was run. This increment does not complete enforcement, remediation linkage, agent tools or retention outcomes.
+
 ## Scope and precedence
 
 This continuation implements the next agreed milestone: explicit release streams, persistent compact snapshots, versioned human-adopted references, historical anomaly analysis, customer controls and a CI scan-and-record command.

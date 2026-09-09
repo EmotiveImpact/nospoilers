@@ -1,4 +1,5 @@
 import path from "node:path";
+import {enqueueAutomaticCapture} from './automatic-capture.ts';
 import { buildUnsignedReceipt, signReceipt, type SignedReceipt } from "../receipt.ts";
 import { exceptionCovers } from "../policy.ts";
 import {
@@ -199,6 +200,7 @@ async function persistHostedReceiptTransaction(opts: {
     sourceRevision: sourceRevision ?? receipt.sourceRevision ?? null,
     ciRunUrl: opts.ciRunUrl ?? receipt.ciRunUrl ?? null,
   });
+  await enqueueAutomaticCapture(opts.store.sql,{kind:'release',id:String(revision.id)});
   const diff = previous
     ? mergeReleaseDiff(
         manifestDiff ?? diffManifests(previous.manifest, receipt.manifest),

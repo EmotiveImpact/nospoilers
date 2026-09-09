@@ -3,6 +3,7 @@ import { fail, IntelligenceError, reference, uuid } from '../release-intelligenc
 import type { Ref } from '../release-intelligence/model.ts';
 import { releaseIntelligence } from './release-intelligence-service.ts';
 import type { IntelligencePorts } from './release-intelligence-service.ts';
+import {automaticCapture} from './automatic-capture.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
@@ -51,9 +52,15 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='automatic-capture'){
+        const capture=automaticCapture(options.sql,options.ports(request));
+        if(request.method==='POST')return json(await capture.configure(id,await body(request) as Parameters<typeof capture.configure>[1]));
+        const kind=url.searchParams.get('recordKind'),recordId=url.searchParams.get('recordId');
+        return json(await capture.view(id,kind||recordId?{kind,id:recordId}:undefined));
+      }
       if (request.method === 'GET' && !action) return json(await service.view(id, url.searchParams.get('snapshotId') ?? undefined, url.searchParams.get('before') ?? undefined));
       if (request.method === 'GET' && action === 'export') {
         const response = json(await service.export(id)); response.headers.set('Content-Disposition', `attachment; filename="nospoilers-history-${id}.json"`); return response;

@@ -29,6 +29,8 @@ describe('persistent release intelligence', () => {
       close: async () => { await db.close(); },
     };
     await sql.exec(`CREATE TABLE schema_migrations(id TEXT PRIMARY KEY);
+      CREATE TABLE users(id TEXT PRIMARY KEY);
+      CREATE TABLE jobs(id BIGINT PRIMARY KEY);
       CREATE TABLE product_workspaces(id UUID PRIMARY KEY);
       CREATE TABLE uploaded_scans(id TEXT PRIMARY KEY);
       CREATE TABLE release_revisions(id BIGINT PRIMARY KEY);`);

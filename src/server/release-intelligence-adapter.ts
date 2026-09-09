@@ -16,12 +16,17 @@ function sessionCookie(request: Request): string | undefined {
   try { return decodeURIComponent(values[0].slice('ns_session='.length)); } catch { return undefined; }
 }
 const active = (row: Billing): boolean => ['solo', 'team'].includes(row.plan ?? '') || row.trial_ends_at !== null && new Date(row.trial_ends_at).getTime() > Date.now();
-export function intelligencePorts(request: Request, secrets: { sessionSecret: string; receiptSecret: string }): IntelligencePorts & {
+function createIntelligencePorts(request: Request, secrets: { sessionSecret: string; receiptSecret: string },captureUserId?:string): IntelligencePorts & {
   reserve: (sql: SqlClient) => Promise<boolean>;
   context: (sql: SqlClient, ref: Ref) => Promise<{ workspaceId: string }>;
 } {
   const store = (sql: SqlClient) => createStore(sql, { tokenSecret: secrets.sessionSecret });
   async function identity(sql: SqlClient): Promise<Actor> {
+    if(captureUserId){
+      const user=(await sql.query<{id:string;login:string}>('SELECT id,login FROM users WHERE id=$1',[captureUserId])).rows[0];
+      if(!user)return fail('Capture authorisation is unavailable.',403);
+      return {kind:'user',userId:user.id,login:user.login};
+    }
     const header = request.headers.get('authorization');
     if (header !== null) {
       const match = /^Bearer ([^\s]+)$/.exec(header);
@@ -64,7 +69,8 @@ export function intelligencePorts(request: Request, secrets: { sessionSecret: st
     if (mode !== 'read' && billing.archived_at) return fail('This workspace is archived.', 403);
     if (mode !== 'read' && role === 'viewer' || mode === 'manage' && !['owner', 'admin'].includes(role)) return fail('Administrator or writable workspace access is required.', 403);
     if (mode !== 'read' && !active(billing)) return fail('Workspace coverage has ended. Saved history remains readable.', 402);
-    return { actorLogin: actor.kind === 'user' ? actor.login : `workspace-token:${actor.tokenId}`, canManage, canWrite };
+    return { actorLogin: actor.kind === 'user' ? actor.login : `workspace-token:${actor.tokenId}`, canManage, canWrite,
+      actorUserId:actor.kind==='user'?actor.userId:undefined,canAdminister:actor.kind==='user'&&['owner','admin'].includes(role) };
   }
   async function held(sql: SqlClient, actor: Actor, releaseId: number): Promise<boolean> {
     if (actor.kind !== 'user') return true;
@@ -137,4 +143,14 @@ export function intelligencePorts(request: Request, secrets: { sessionSecret: st
       await access(sql, workspaceId, 'read', source); return { workspaceId };
     },
   };
+}
+
+export function intelligencePorts(request:Request,secrets:{sessionSecret:string;receiptSecret:string}){
+  return createIntelligencePorts(request,secrets);
+}
+
+/** Internal worker capability, tied to the stored opt-in grant. Never accepts a request user ID. */
+export function intelligenceCapturePorts(userId:string,receiptSecret:string):IntelligencePorts{
+  const ports=createIntelligencePorts(new Request('http://internal.invalid/capture'),{sessionSecret:'',receiptSecret},userId);
+  return {...ports,access:(sql,workspace,mode,source)=>ports.access(sql,workspace,mode==='read'?'read':'manage',source)};
 }

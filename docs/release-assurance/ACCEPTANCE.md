@@ -2,6 +2,8 @@
 
 Latest continuation: 8 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact new contracts and verification boundaries. This table is a status ledger, not a feature-completeness or launch claim.
 
+9 September update: canonical readiness is implemented at `085ac46`. The following automatic-capture increment has connected opt-in controls and completion jobs, with 1,234 full-suite tests passing (before a final test-only job-claim correction), two updated integration tests passing, and desktop/mobile built-app enable/disable checks. The hosted integration ran on disposable native PostgreSQL; the independent website case used PGlite. Remaining lifecycle/operational evidence is explicit below; older unbuilt statements describe earlier checkpoints. None of this accepts the whole platform or authorises rollout.
+
 | Discussed capability | Current branch implementation | Remaining work or evidence |
 | --- | --- | --- |
 | Release as central object and canonical detail | Existing ledger/detail retained; assurance and historical intelligence mounted in both hosted and uploaded details | Integrated visual/route acceptance and one-authority headline cutover |
@@ -10,7 +12,7 @@ Latest continuation: 8 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact 
 | Release comparison and unexpected files | Existing comparison plus new bounded exact-path/finding history and approved-reference comparisons | Full actual historical dataset and browser acceptance; content-hashed paths can be legitimately novel |
 | Human-approved baselines | Implemented adopt/revoke events, revision checks, reasons, audit and current/as-of reference distinction | Production concurrency, real auth and retention/tombstone validation |
 | Customer-specific normal behaviour | Implemented median/MAD advisory analysis, minimum eligible samples, deduplication, exclusions/restoration and explicit comparison windows | Not an ML model; heuristics need customer calibration and load testing; no calibrated probability or security score |
-| Automatic history capture | Explicit UI/API capture and CI scan-and-record command implemented | An opt-in capture hook for every original GitHub/npm/website worker completion is NOT implemented |
+| Automatic history capture | Explicit UI/API/CI capture preserved; opt-in exact-source GitHub release asset, npm and website completion hooks use durable jobs and revisioned grants | Local synthetic integration verified; operational rollout, broader concurrency/deletion acceptance and historical missing-evidence recovery remain open. No live rule enabled |
 | Deterministic readiness | Original receipt-bound assurance interpretation retained | Advisory only; whole-app verdict cutover remains open |
 | Policy engine and exceptions | Existing policy/exception engine preserved; historical reference changes never rewrite them | No newly adopted enforcement policy in this continuation |
 | Policy preview | Existing reversible stricter-findings preview retained | Not a full policy editor or automatic adoption flow |
