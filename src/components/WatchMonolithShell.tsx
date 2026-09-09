@@ -266,7 +266,7 @@ export function WatchMonolithShell({
           {opts.showToggle && !opts.collapsed ? (
             <button
               type="button"
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-snow focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
               aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!opts.collapsed}
               onClick={toggleCollapsed}
@@ -497,7 +497,7 @@ export function WatchMonolithShell({
     <div className="watch-desk">
       <aside
         className={cn(
-          "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
+          "group/rail watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
           collapsed ? "w-14" : "w-[244px]",
         )}
       >
