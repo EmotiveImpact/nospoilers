@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest cumulative UI milestone at488a9b2:259 passed/2 architecture failures across38 files (261 cases,18.07s). Narrow test corrections plus missing committed gallery link fixed; architecture13/13 passed. No runtime change after milestone. Reuse evidence; see BUILD-LOG and GATE-C-CURRENT-MATRIX for unresolved requirements.
+
 Next work is explicitly tracked in GATE-C-CURRENT-MATRIX.md. Direct Coverage test correction passed2 cases; source-monitoring mutation tests are not coverage-summary rendering tests. Continue remaining rows without repeating completed checks.
 
 Latest Setup composition uses optional capability cards without numbered progression or repeated descriptions. Five focused cases/build pass, desktop and compact355px verified. No backend action. Continue the explicit Gate C requirement map in ACCEPTANCE.md.

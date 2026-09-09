@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -40,7 +41,11 @@ describe("Watch architecture boundaries", () => {
     const source = screens
       .map((screen) => readFileSync(path.join("src/components/watch/screens", `${screen}.tsx`), "utf8"))
       .join("\n");
-    expect(source).not.toMatch(/<details|<summary/);
+    // The optional Timeline chart is a disclosure; recorded activity stays outside it.
+    const withoutOptionalChart = source
+      .replace('<details className="timeline-chart-disclosure">', '')
+      .replace('<summary><span>Activity by source</span><span>Explore the retained alert chart</span></summary>', '');
+    expect(withoutOptionalChart).not.toMatch(/<details|<summary/);
     expect(source).not.toMatch(/text-\[(?:10|11)px\]/);
     expect(source).not.toMatch(/[✓→⌥▣⬡⎔]/);
     const dialogs =
@@ -221,9 +226,8 @@ describe("Watch architecture boundaries", () => {
   it("lists every committed mockup HTML file on the 2B index", () => {
     const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
     const root = readFileSync("public/mockup-review/index.html", "utf8");
-    const files = readdirSync("public/mockup-review/2b").filter(
-      (name) => name.endsWith(".html") && name !== "index.html",
-    );
+    const files = execFileSync('git', ['ls-files', '--', 'public/mockup-review/2b/*.html'], {encoding:'utf8'})
+      .trim().split('\n').filter(Boolean).map(file=>path.basename(file)).filter(name=>name !== 'index.html');
     expect(files.length).toBeGreaterThanOrEqual(20);
     for (const file of files) {
       expect(index).toContain(file);

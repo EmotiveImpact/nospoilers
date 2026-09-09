@@ -544,3 +544,8 @@ Actual768px review showed the five-column direct exception form squeezed its rea
 ## Remediation action prerequisites
 
 Made the existing eight-character shared-note requirement explicit beside the note and disabled review/rebuild actions; added review-field guidance. No validation or declaration authority changed. Nine remediation-control tests passed (1.36s), build and diff check passed. Actual saved case review disclosure visibly explains disabled recording; no note/review/verification was submitted. This addresses the owner's earlier unexplained disabled-button friction without inventing human review.
+
+
+## Quiet redesign cumulative UI milestone
+
+At488a9b2, ran the existing38-file cumulative UI command recorded above:259 passed/2 failed,261 cases,18.07s. Failures were the blanket core-disclosure source ban (now narrowly permits only the optional Timeline chart) and a gallery test that included untracked files despite its committed-file contract. Corrected inventory to git-tracked HTML; this exposed a genuine missing31-design-system link, now added. Final architecture file13/13 passed (152ms). No runtime code changed after this run. These results are a cumulative run plus focused correction, not a fresh single all-green261-case run. Unrelated gallery edits preserved unstaged. Native zoom/AT and other matrix gaps remain open; do not rerun this milestone without new changes.
