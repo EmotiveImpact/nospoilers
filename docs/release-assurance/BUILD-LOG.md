@@ -524,3 +524,8 @@ Added EvidenceTable for workspace audit and uploaded file manifest: consistent f
 ## Direct Coverage evidence correction and current matrix
 
 Auditing test ownership showed source-monitoring-ui tests target mutation controls, not WatchSourcesSummary. Those earlier five-case results must not be read as direct Coverage/Setup rendering coverage. Added direct inventory-vs-filter totals verification in coverage-detail-ui; both cases pass (1.24s), including existing distinction between metadata and scan timestamps. No runtime source changed, so no redundant build. GATE-C-CURRENT-MATRIX.md records direct checks, existing visual evidence and remaining C1–C3 gaps by route. Gate C remains partial.
+
+
+## Connected audit empty state
+
+Real connected audit is empty; no populated audit evidence is claimed. Added reusable QuietEmptyState and replaced the empty count/secret-stat panel with explanatory content. Row statistics appear only for a ready nonempty result, avoiding false zero while loading/error. Build passed and real empty screenshot reviewed. Removed an existing trailing unused undefined expression; no export or backend behaviour changed. This closes empty-state presentation, not populated audit review.

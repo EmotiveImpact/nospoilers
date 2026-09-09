@@ -1,9 +1,12 @@
-import type { ComponentPropsWithoutRef } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import './quiet.css';
 
 export function QuietPanel({className,...props}:ComponentPropsWithoutRef<'section'>){
  return <section className={cn('quiet-panel',className)} {...props}/>;
+}
+export function QuietEmptyState({title,children}: {title:string;children?:ReactNode}){
+ return <div className="quiet-empty-state"><h3>{title}</h3>{children?<div>{children}</div>:null}</div>;
 }
 export function QuietToolGroup({title,description,children,className,...props}:Omit<ComponentPropsWithoutRef<'section'>,'title'>&{title:string;description?:string}){
  return <section className={cn('ns-intelligence__toolgroup',className)} {...props}>

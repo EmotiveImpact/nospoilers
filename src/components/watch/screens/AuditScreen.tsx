@@ -1,3 +1,4 @@
+import { QuietEmptyState } from '../design/QuietComponents';
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
@@ -72,7 +73,7 @@ export function AuditScreen({
         and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
         emails, tokens, and other secret values are never stored here.
       </p>
-      <div className="watch-card mt-[18px]">
+      {audit.status === "ready" && audit.rows.length > 0 ? <div className="watch-card mt-[18px]">
         <div className="watch-kv">
           <span>Rows</span>
           <span className={audit.status === "ready" && audit.rows.length ? "text-snow" : "text-dim"}>
@@ -83,7 +84,7 @@ export function AuditScreen({
           <span>Secrets stored</span>
           <span className="text-ok">never</span>
         </div>
-      </div>
+      </div> : null}
       {exportError ? (
         <p role="alert" className="mt-3 text-[13px] text-danger">
           {exportError}
@@ -94,7 +95,7 @@ export function AuditScreen({
           <p className="mt-6 text-[13px] leading-relaxed text-mute">
             Preview cannot export a live audit log. No invented incident.
           </p>
-          <div className="watch-empty">No admin writes recorded on this install yet.</div>
+          <QuietEmptyState title="No admin writes recorded on this install yet."><p>Administrative changes will appear here when they are recorded. Scan findings remain in Releases.</p></QuietEmptyState>
         </>
       ) : audit.status === "solo" ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">The audit log is on Team.</p>
@@ -107,7 +108,7 @@ export function AuditScreen({
       ) : audit.status === "loading" ? (
         <WatchSkeleton variant="list" className="mt-4" />
       ) : audit.rows.length === 0 ? (
-        <div className="watch-empty">No admin writes recorded on this install yet.</div>
+        <QuietEmptyState title="No admin writes recorded on this install yet."><p>Administrative changes will appear here when they are recorded. Scan findings remain in Releases.</p></QuietEmptyState>
       ) : (
         <div className="watch-card mt-4">
           {audit.rows.map((row) => (
@@ -128,5 +129,3 @@ export function AuditScreen({
     </section>
   );
 }
-
-undefined
