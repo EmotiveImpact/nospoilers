@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowRight, Bell, Box, FileCheck2, Search } from "lucide-react";
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
@@ -29,6 +30,10 @@ export function WatchCommandPalette({
   releases: { id: number; coordinate: string }[];
   onClose: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
+  const trigger = open && typeof document !== 'undefined' ? document.querySelector('[data-watch-search-trigger]')?.getBoundingClientRect() : null;
+  const panelWidth = typeof window !== 'undefined' ? Math.min(520,window.innerWidth-32) : 520;
+  const origin = trigger ? {x:trigger.left-(window.innerWidth-panelWidth)/2,y:trigger.top-window.innerHeight*.12,scaleX:Math.min(1,trigger.width/panelWidth)} : {x:0,y:0,scaleX:1};
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,16 +77,19 @@ export function WatchCommandPalette({
   };
 
   return (
-    <Dialog open={open} onClose={close} initialFocus={inputRef} className="relative z-50">
+    <Dialog open={open} onClose={close} initialFocus={inputRef} className="watch-design-surface relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto px-4 pt-[12vh]">
-        <DialogPanel className="w-full max-w-lg overflow-hidden rounded-lg border border-white/10 bg-panel shadow-2xl transition duration-150 data-closed:-translate-y-2 data-closed:opacity-0 motion-reduce:transition-none">
+        <DialogPanel className="w-full max-w-[520px]">
+        <motion.div className="watch-search-panel" initial={reduceMotion?false:{opacity:0,x:origin.x,y:origin.y,scaleX:origin.scaleX,scaleY:.12}} animate={{opacity:1,x:0,y:0,scaleX:1,scaleY:1}} transition={reduceMotion?{duration:0}:{type:'spring',duration:.38,bounce:.08}}>
+          {/* Adapted beUI MIT spring-shell pattern; Headless UI retains modal focus ownership. */}
           <DialogTitle className="sr-only">Search or run a command</DialogTitle>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-dim" aria-hidden />
             <input
               ref={inputRef}
               role="combobox"
+              aria-label="Search pages and commands"
               aria-expanded="true"
               aria-controls={listboxId}
               aria-autocomplete="list"
@@ -135,6 +143,8 @@ export function WatchCommandPalette({
               );
             })}
           </div>
+          <div className="watch-search-help">↑ ↓ Navigate · Enter Open · Esc Close</div>
+        </motion.div>
         </DialogPanel>
       </div>
     </Dialog>

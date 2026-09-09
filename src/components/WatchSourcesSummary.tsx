@@ -325,7 +325,7 @@ export function WatchSourcesSummary({
           No coverage matches these filters.
         </p>
       ) : null}
-      <Dialog open={adding} onClose={setAdding} className="relative z-50">
+      <Dialog open={adding} onClose={setAdding} className="watch-design-surface relative z-50">
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
           <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
@@ -364,7 +364,7 @@ export function WatchSourcesSummary({
     <Dialog
       open={Boolean(selectedSource)}
       onClose={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}
-      className="relative z-40"
+      className="watch-design-surface relative z-40"
     >
       <DialogBackdrop className="fixed inset-0 bg-black/55 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
       <div className="fixed inset-0 flex justify-end">

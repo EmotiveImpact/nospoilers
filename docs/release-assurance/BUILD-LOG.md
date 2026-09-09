@@ -466,3 +466,12 @@ Moved the route icon/title before search and removed the duplicate desktop title
 ## Header trial placement
 
 Owner requested plain trial text beside the page title. Moved the coverage label before the flexible spacer; removed its pill/animation and retained hidden-on-mobile behavior. Search now aligns with right-hand actions and has a compact visible placeholder. Final frontend build and3/3 navigation tests pass; signed-in screenshot confirms title/trial left and search/actions right.
+
+
+## App-wide quiet styling and search presentation
+
+Shared Watch-scoped design stylesheet now applies approved charcoal surfaces, fine borders,10px cards,8px controls, system typography, heading hierarchy and form styles across existing app screens. Shared Card/Button get style hooks; Watch portal dialogs inherit the same tokens. Marketing homepage is outside this app-scoped pass. No scan, role, billing, policy or search-result semantics changed.
+
+Search retains buildPaletteItems, permission filters, scoped navigation and Headless UI focus management. Added Motion spring-shell opening from the header trigger, adapted from the public MIT beUI morphing-search pattern (https://beui.dev/r/morphing-search/raw); existing beUI license retained. It is an adaptation, not the full upstream standalone component. Reduced motion disables the transition. Explicit input label and keyboard hint added.
+
+Focused milestone: watch-accessibility, artifact-shell-navigation, artifact-command, workspace-team-ui, workspace-tokens-ui, workspace-notifications-ui, workspace-scan-policy-ui, uploaded-release-brief-ui:42 tests/8 files passed (4.01s). Final npm run build passed including TypeScript with existing chunk warning. Affected-file lint: no errors; two existing route-icon static-component warnings. Signed-in browser inspected Releases, Team, Coverage, Alerts and search; compact document width355 matched viewport355, search fit and Escape closed it. Final CSS also aligns release-heading weight and removes redundant input focus outline inside the focus-marked search shell. This is shared styling plus representative review, not exhaustive every-state accessibility acceptance or migration of every native select.

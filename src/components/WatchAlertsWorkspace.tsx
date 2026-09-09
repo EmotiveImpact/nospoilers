@@ -454,7 +454,7 @@ export function WatchAlertsWorkspace({
         open={assignOpen && Boolean(selected) && canRespond && !previewing}
         onClose={setAssignOpen}
         initialFocus={assignmentCloseRef}
-        className="relative z-50"
+        className="watch-design-surface relative z-50"
       >
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">

@@ -1,3 +1,4 @@
+import './watch/design/app-system.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
@@ -536,6 +537,7 @@ export function WatchMonolithShell({
             type="button"
             onClick={onOpenPalette}
             aria-label="Search or run a command"
+            data-watch-search-trigger="true"
             className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-40 lg:w-56 sm:justify-start sm:gap-2 sm:px-3"
           >
             <Search className="size-4 shrink-0" aria-hidden />
@@ -602,7 +604,7 @@ export function WatchMonolithShell({
         </div>
         </div>
       </div>
-      <Dialog open={plansOpen} onClose={setPlansOpen} className="relative z-50">
+      <Dialog open={plansOpen} onClose={setPlansOpen} className="watch-design-surface relative z-50">
         <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
           <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">

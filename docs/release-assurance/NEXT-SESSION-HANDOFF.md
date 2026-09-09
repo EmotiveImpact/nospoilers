@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest: approved quiet styles now shared across Watch screens and portal dialogs via design/app-system.css. Search has a beUI-pattern Motion shell while retaining original command items/permissions and Headless UI focus handling.42 tests/8 files, final build and representative signed-in desktop/compact review passed; see BUILD-LOG. No full native-select migration or exhaustive visual-state acceptance claimed.
+
 Latest approved Overview is mockup30 quiet structure: fine lines, labels above counts, semantic summary colors and unstacked release cards.22 Overview tests, frontend build and desktop/390px browser review passed; see BUILD-LOG. This supersedes earlier borderless panel styling. Existing real-data semantics and beUI Select remain.
 
 Latest owner-directed styling: Overview panels now use borderless 10px corners; Activity range uses actual MIT beUI Select with pinned Motion 13.2.0 and keyboard/focus adaptations. Other dropdowns remain unchanged. Reuse 11/11 focused tests, clean affected lint, passing build and signed-in desktop selection/computed-style verification recorded in BUILD-LOG. Preserved server on4347 runs in session29809.
