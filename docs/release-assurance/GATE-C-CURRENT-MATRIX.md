@@ -75,3 +75,8 @@ At b4b45a2 runtime, signed-in Team member menu reviewed at actual355 CSS pixels 
 ## Dropdown widths and contrast
 
 At c8a95bd, live open Team invitation and Notifications destination menus had exact document/viewport equality at768,1024,1440 CSS pixels. Team screenshot reviewed at768/1440; Notifications screenshot at768; other widths are geometry evidence. Closed menus and restored viewport. No writes. Defined dropdown contrasts (sRGB WCAG calculation): f4f4f5/111214=17.05:1; b1b1ba/191a1d=8.18:1; a1a1aa/191a1d=6.79:1; f4f4f5/303134=11.83:1; focus a1a1aa/303134=5.07:1 (selected background approximates 10% white over191a1d). These cover the new dropdown palette, not whole-app contrast. Native zoom, spoken AT and actual reduced-motion execution remain distinct gaps.
+
+
+## Typography and reduced-motion component execution
+
+Live app and approved mockup30 both report `Inter, -apple-system, system-ui, Segoe UI, sans-serif`, with document.fonts empty in each current browser document. Preserved this approved fallback rendering; no claim Inter is bundled/loaded. Added two rendered checks with Motion useReducedMotion explicitly returning true: search initially fully visible without transform and focused combobox/End selection, plus select keyboard selection/focus return. Both passed (1.30s), typecheck passed. These exercise the reduced-motion component branches; they do not emulate OS media preference or establish whole-app animation compliance. No runtime change or repeated build/scan.
