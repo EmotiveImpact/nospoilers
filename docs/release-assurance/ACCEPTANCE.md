@@ -1,5 +1,7 @@
 ## Gate C current requirement map
 
+Hosted finding/exception detail now has actual-component fixture visual evidence and an accessible disclosure association. Full hosted provider/decision acceptance is not inferred; see BUILD-LOG.
+
 Overview and release-assurance visual fetch placeholders removed, with delayed-response regressions; pending/error states preserved.29 affected tests/build/live Overview review pass; see BUILD-LOG.
 
 Populated settings UI now has isolated actual-component visual evidence (tests/ui-fixtures), including read-only/error and confirmation states. Typecheck/build and production marker exclusion passed. Customer API lifecycle is not claimed; see BUILD-LOG.

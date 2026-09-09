@@ -9,6 +9,8 @@ it('requests an exception for the selected hosted receipt, not an upload or the 
  vi.stubGlobal('fetch',fetcher);render(<HostedReleaseEvidence releaseId={8} receiptId={17} search="?release=8&releaseFinding=0"/>);
  await screen.findByText('Saved source map finding');await waitFor(()=>expect(screen.getByRole('button',{name:'Request a policy exception'})).toHaveProperty('disabled',false));
  fireEvent.click(screen.getByRole('button',{name:'Request a policy exception'}));
+ expect(screen.getByRole('button',{name:'Request a policy exception'}).getAttribute('aria-expanded')).toBe('true');
+ expect(screen.getByRole('form',{name:'Request a policy exception'}).id).toBe(screen.getByRole('button',{name:'Request a policy exception'}).getAttribute('aria-controls'));
  fireEvent.change(screen.getByLabelText('Exception justification'),{target:{value:'Reviewed exact hosted artifact'}});
  fireEvent.change(screen.getByLabelText('Exception expiry'),{target:{value:'2026-12-01'}});
  fireEvent.click(screen.getByRole('button',{name:'Submit exception request'}));

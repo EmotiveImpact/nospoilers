@@ -48,7 +48,7 @@ Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test
 | Setup | Actual signed-in optional cards and compact reflow | Direct setup-card semantic test coverage not established |
 | Scan | scan-submission-navigation-ui | Connected picker now precedes extra connection setup; complete current compact/keyboard review |
 | Alerts | watch-accessibility, workspace-alerts-rendered, alert-response-permissions-ui | Queue/tab styling and role semantics checked; remaining changed-state visual review |
-| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted detail and deeper form presentation require final review |
+| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted finding/exception detail now fixture-reviewed at390/1440 with all-width geometry; complete hosted decision header and enabled deeper form states remain |
 | History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Default gate/agent forms and unavailable explanation/capture/production states now reviewed at390 and geometry-checked at all four widths; enabled-provider/mapping states remain unverified |
 | Team | workspace-team-ui | Members/invite composition reviewed desktop and compact; denied-write/read-only tests exist |
 | Notifications | workspace-notifications-ui | Setup/history composition reviewed; test/rejection/duplicate protection covered without sending |
@@ -113,3 +113,8 @@ At6821f27 (runtime88406f5), real saved upload expanded gate policy, agent access
 ## Loading layout cleanup
 
 Removed remaining visual fetch placeholders in ArtifactOverview (temporary heading/reading paragraph) and ReleaseAssurancePanel (temporary full card). Screen-reader-only loading statuses remain; real pending scan and errors retain visible content.29 cases/2 files passed (1.84s), then strengthened Overview pending assertion1/1 (21 skipped,1.13s). Final build passed; rebuilt live Overview screenshot reviewed. Delayed-response assertions prove hidden pending layout, not a captured live slow response.
+
+
+## Hosted finding fixture
+
+HostedReleaseEvidence is now available in the isolated fixture with two findings and an exception form. Supporting assurance/history deliberately return unavailable; no mutation succeeds.390 and1440 screenshots reviewed, geometry fits390/768/1024/1440, selected finding updates URL and detail. WorkspaceExceptionRequest now exposes aria-expanded/aria-controls and names its form.3 hosted tests passed (1.31s), fixture typecheck and frontend build passed. This verifies the real component with fixture responses, not live hosted receipt/provider behaviour or the full hosted decision header.

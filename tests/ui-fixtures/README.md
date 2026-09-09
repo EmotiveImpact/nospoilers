@@ -11,3 +11,5 @@ Open http://127.0.0.1:4351 in the existing Codex browser. This is a labelled QA 
 States: populated token history, read-only token history, populated audit and access rejection. Review token confirmation/cancellation without submitting it. The fixture includes application styles and explicit Tailwind source discovery. It isolates page content; it does not prove signed-in shell or real API behaviour.
 
 The entry lives under tests and is not imported by production. Use `npx tsc -p tests/ui-fixtures/tsconfig.json` for its type check. Do not add these fixtures to customer routes or production entrypoints.
+
+Hosted findings renders two recorded findings with long paths and an exception form. Supporting assurance/history are deliberately unavailable. Finding selection follows the actual URL-change event; mutations remain disabled. This does not model an entire successful hosted-release workflow.

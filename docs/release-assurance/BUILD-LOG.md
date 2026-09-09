@@ -699,3 +699,8 @@ Commands: `npx tsc -p tests/ui-fixtures/tsconfig.json`, `npm run build`, `rg -l 
 
 Removed remaining visual fetch placeholders in ArtifactOverview (temporary heading/reading paragraph) and ReleaseAssurancePanel (temporary full card). Screen-reader-only loading statuses remain; real pending scan and errors retain visible content.29 cases/2 files passed (1.84s), then strengthened Overview pending assertion1/1 (21 skipped,1.13s). Final build passed; rebuilt live Overview screenshot reviewed. Delayed-response assertions prove hidden pending layout, not a captured live slow response.
 Commands: `npx vitest run tests/artifact-overview-ui.test.tsx tests/release-assurance-history-mount.test.tsx`; targeted `-t "waits for the first workspace response"`; `npm run build`; diff check. Existing chunk warning. Hosted fixture extension investigation found these placeholders; that extension remains pending.
+
+## 2026-09-10 — Hosted finding visual fixture and disclosure
+
+HostedReleaseEvidence is now available in the isolated fixture with two findings and an exception form. Supporting assurance/history deliberately return unavailable; no mutation succeeds.390 and1440 screenshots reviewed, geometry fits390/768/1024/1440, selected finding updates URL and detail. WorkspaceExceptionRequest now exposes aria-expanded/aria-controls and names its form.3 hosted tests passed (1.31s), fixture typecheck and frontend build passed. This verifies the real component with fixture responses, not live hosted receipt/provider behaviour or the full hosted decision header.
+Commands: `npx vitest run tests/hosted-release-evidence-ui.test.tsx`, `npx tsc -p tests/ui-fixtures/tsconfig.json`, `npm run build`, diff check. Existing bundle warning. No real app data changed; viewport restored.
