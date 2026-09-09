@@ -539,3 +539,8 @@ Read-only signed-in policy review: independent strict/approval labels and comple
 ## Exception form tablet design
 
 Actual768px review showed the five-column direct exception form squeezed its reason field. Changed to two columns above the small breakpoint, preserving native fields, validation and submit handler; added a form name. Final build, lint and diff check passed. Signed-in768px screenshot shows readable fields, document width768, and Write exception still focuses policy-exception-rule. No field values changed or submission occurred. Desktop restored.
+
+
+## Remediation action prerequisites
+
+Made the existing eight-character shared-note requirement explicit beside the note and disabled review/rebuild actions; added review-field guidance. No validation or declaration authority changed. Nine remediation-control tests passed (1.36s), build and diff check passed. Actual saved case review disclosure visibly explains disabled recording; no note/review/verification was submitted. This addresses the owner's earlier unexplained disabled-button friction without inventing human review.

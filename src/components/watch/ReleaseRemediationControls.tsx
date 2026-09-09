@@ -59,7 +59,7 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
     {view?<><p>{view.notice}</p>
       <a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a>
       {!view.current?<p>Record this release in the selected stream to investigate its signed findings. Existing cases below belong to this stream, not necessarily this release.</p>:!view.current.findings.length?<p>This recorded release has no signed findings to investigate. Existing stream cases remain available; a clean scan does not automatically resolve them.</p>:null}
-      {view.canWrite?<label>Remediation note (no secrets)<textarea minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label>:<p>Saved remediation is read-only for your current access.</p>}
+      {view.canWrite?<><label>Remediation note (no secrets)<textarea minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label><p className="ns-intelligence__muted">Each action below requires a note of at least 8 characters. Explain what you reviewed or changed; do not include secrets.</p></>:<p>Saved remediation is read-only for your current access.</p>}
       {view.canWrite&&!!view.current?.findings.length?<form onSubmit={e=>{e.preventDefault();void save('start');}}>
         <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
         <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
@@ -69,17 +69,19 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
         <p role="status">{current.unavailable?'Linked evidence is unavailable; no current resolution is inferred.':current.observation?current.observation.reason:review?'Reviewed change recorded. Rebuild and check fresh signed evidence next.':'Investigation open. Record a reviewed change before checking a rebuild.'}</p>
         {current.observation?<><p>{current.observation.scope}</p><p>Other recorded findings in this rebuild: {current.observation.otherFindings}. This observation does not approve the release.</p></>:null}
         {view.canWrite?<><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('investigate')}>Add investigation note</button><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('reopen')}>Reopen investigation</button>
-          <details><summary>Record a human-reviewed change</summary><form onSubmit={e=>{e.preventDefault();void save('review');}}>
+          <details><summary>Record a human-reviewed change</summary><p>Add the change URL, full commit hash and review time, then confirm your review. The remediation note above is saved with this action.</p><form onSubmit={e=>{e.preventDefault();void save('review');}}>
             <label>Change or PR URL<input required type="url" maxLength={500} value={changeUrl} onChange={e=>{setChangeUrl(e.target.value);setReviewConfirm(false);}} placeholder="https://github.com/your-org/repo/pull/123"/></label>
             <label>Full reviewed commit hash<input required minLength={40} maxLength={64} value={commit} onChange={e=>{setCommit(e.target.value);resetConfirmation();}}/></label>
             <label>Review time (ISO timestamp with timezone)<input required value={reviewedAt} onChange={e=>{setReviewedAt(e.target.value);setReviewConfirm(false);}} placeholder="2026-09-09T12:00:00Z"/></label>
             <label><input type="checkbox" checked={reviewConfirm} onChange={e=>setReviewConfirm(e.target.checked)}/> I reviewed this change. NoSpoilers has not independently verified its review or merge status.</label>
+            {reason.trim().length<8?<p role="status">Add a remediation note of at least 8 characters above to enable recording.</p>:!reviewConfirm?<p>Confirm that you reviewed this change to enable recording.</p>:null}
             <button type="submit" disabled={busy||!reviewConfirm||reason.trim().length<8}>Record reviewed change</button>
           </form></details>
           {review?<details><summary>Check a rebuilt artifact</summary><p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
             <form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<select required value={candidate} onChange={e=>{setCandidate(e.target.value);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</select></label>
               <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
               <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
+              {reason.trim().length<8?<p role="status">Add a remediation note of at least 8 characters above before verifying.</p>:null}
               <button type="submit" disabled={busy||!buildConfirm||!candidate||reason.trim().length<8}>Verify selected rebuild</button>
             </form></details>:null}
         </>:null}
