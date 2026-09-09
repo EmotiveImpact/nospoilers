@@ -684,3 +684,7 @@ Commands: `npx vitest run tests/coverage-expired-state-ui.test.tsx`, `npm run bu
 ## 2026-09-10 — Consolidated continuation authority
 
 Replaced conflicting historical NEXT-SESSION-HANDOFF paragraphs with one current summary at88406f5. Original text retained in HANDOFF-HISTORY-2026-09-10.md, explicitly historical. Current handoff records completed real scan, exact cumulative versus focused evidence, preserved runtime and concrete remaining Gate C gaps. Documentation-only; diff check passed, no tests/build repeated.
+
+## 2026-09-10 — Remaining expanded tool states
+
+At6821f27 (runtime88406f5), real saved upload expanded gate policy, agent access, optional explanation, automatic capture and production comparison were reviewed. Controls stayed within actual390/768/1024/1440 CSS widths. Screenshots reviewed at390 for gate/agent/explanation/production, and1440 for agent access. Explanation provider disabled, no capture selector and missing adopted reference rendered truthful unavailable states. No fields changed or actions submitted; viewport restored. This does not verify enabled-provider/mapping forms or native zoom. No build/test repeated for this read-only browser review.

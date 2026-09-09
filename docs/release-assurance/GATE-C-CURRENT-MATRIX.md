@@ -49,7 +49,7 @@ Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test
 | Scan | scan-submission-navigation-ui | Connected picker now precedes extra connection setup; complete current compact/keyboard review |
 | Alerts | watch-accessibility, workspace-alerts-rendered, alert-response-permissions-ui | Queue/tab styling and role semantics checked; remaining changed-state visual review |
 | Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted detail and deeper form presentation require final review |
-| History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Expanded tool forms need final design review |
+| History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Default gate/agent forms and unavailable explanation/capture/production states now reviewed at390 and geometry-checked at all four widths; enabled-provider/mapping states remain unverified |
 | Team | workspace-team-ui | Members/invite composition reviewed desktop and compact; denied-write/read-only tests exist |
 | Notifications | workspace-notifications-ui | Setup/history composition reviewed; test/rejection/duplicate protection covered without sending |
 | Tokens | workspace-tokens-ui | Reveal/revoke/read-only/uncertain creation tests exist; populated current visual state not live exercised |
@@ -103,3 +103,8 @@ At c8a95bd, live open Team invitation and Notifications destination menus had ex
 ## Typography and reduced-motion component execution
 
 Live app and approved mockup30 both report `Inter, -apple-system, system-ui, Segoe UI, sans-serif`, with document.fonts empty in each current browser document. Preserved this approved fallback rendering; no claim Inter is bundled/loaded. Added two rendered checks with Motion useReducedMotion explicitly returning true: search initially fully visible without transform and focused combobox/End selection, plus select keyboard selection/focus return. Both passed (1.30s), typecheck passed. These exercise the reduced-motion component branches; they do not emulate OS media preference or establish whole-app animation compliance. No runtime change or repeated build/scan.
+
+
+## Expanded default and unavailable tool states
+
+At6821f27 (runtime88406f5), real saved upload expanded gate policy, agent access, optional explanation, automatic capture and production comparison were reviewed. Controls stayed within actual390/768/1024/1440 CSS widths. Screenshots reviewed at390 for gate/agent/explanation/production, and1440 for agent access. Explanation provider disabled, no capture selector and missing adopted reference rendered truthful unavailable states. No fields changed or actions submitted; viewport restored. This does not verify enabled-provider/mapping forms or native zoom.
