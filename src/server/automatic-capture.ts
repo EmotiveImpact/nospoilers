@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {SqlClient} from './sql.ts';
 import {createStore} from './store.ts';
-import {fail,reference,revision,text,uuid} from '../release-intelligence/model.ts';
+import {fail,IntelligenceError,reference,revision,text,uuid} from '../release-intelligence/model.ts';
 import type {Ref,Stream} from '../release-intelligence/model.ts';
 import type {IntelligencePorts} from './release-intelligence-service.ts';
 import {captureIdentity} from './automatic-capture-identity.ts';
@@ -23,13 +23,24 @@ export function automaticCapture(sql:SqlClient,ports:IntelligencePorts){
   }
   return {
     async view(id:string,raw?:unknown){return sql.transaction(async tx=>{
-      const {s,permission}=await stream(tx,id);
+      const {s}=await stream(tx,id);
       const config=(await tx.query<CaptureRule>('SELECT * FROM release_intelligence_capture_rules WHERE stream_id=$1',[s.id])).rows[0];
       let candidate:Awaited<ReturnType<typeof captureIdentity>>=null;
-      if(raw){const ref=reference(raw);const e=await ports.evidence(tx,s.workspace_id,ref);candidate=await captureIdentity(tx,ref);
-        if(!candidate||candidate.source!==s.source_binding||e.channel!==s.channel||e.format!==s.format||candidate.format!==s.format||candidate.channel!==s.channel)candidate=null;}
+      if(raw){
+        const ref=reference(raw);
+        try{
+          const e=await ports.evidence(tx,s.workspace_id,ref);candidate=await captureIdentity(tx,ref);
+          if(!candidate||candidate.source!==s.source_binding||e.channel!==s.channel||e.format!==s.format||candidate.format!==s.format||candidate.channel!==s.channel)candidate=null;
+        }catch(error){
+          // The stream was authorised above. Missing/invalid seed evidence must not
+          // hide an existing rule's stop control. Never swallow database failures
+          // or changed authorisation, and enabling still verifies the record anew.
+          if(!(error instanceof IntelligenceError)||![404,409,422].includes(error.status))throw error;
+        }
+      }
       const attempts=(await tx.query(`SELECT a.id,a.record_kind,a.record_id,a.status,a.outcome,a.updated_at,j.status AS job_status
         FROM release_intelligence_capture_attempts a LEFT JOIN jobs j ON j.id=a.job_id WHERE a.stream_id=$1 ORDER BY a.created_at DESC,a.id DESC LIMIT 10`,[s.id])).rows;
+      const permission=await ports.access(tx,s.workspace_id,'read',s.source_binding);
       return {config:config?{enabled:config.enabled,revision:Number(config.revision),selector:config.selector}:null,
         candidate:candidate?{selector:candidate.selector,channel:candidate.channel,format:candidate.format}:null,
         canManage:permission.canManage,canDisable:permission.canAdminister??false,attempts,

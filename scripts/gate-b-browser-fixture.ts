@@ -22,6 +22,8 @@ import {migrateReleaseIntelligence} from '../src/server/release-intelligence-sch
 import {intelligencePorts} from '../src/server/release-intelligence-adapter.ts';
 import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts';
 import {withReleaseAssurance} from '../src/server/assurance-app.ts';
+import {handleJob} from '../src/server/worker.ts';
+import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
 
 const port=process.argv[2]===undefined?4359:Number(process.argv[2]);
 if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use a valid unprivileged QA port.');
@@ -78,6 +80,16 @@ const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.
 const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
  const url=new URL(request.url);
  if(url.hostname!==host)return new Response('QA loopback host only',{status:403});
+ if(url.pathname===`/__qa/${entry}/production-step`&&request.method==='POST'){
+  if(request.headers.get('origin')!==base||!request.headers.get('cookie')?.split(';').some(c=>c.trim()===`ns_session=${sessions.get('owner')}`))return new Response('QA owner only',{status:403});
+  const job=await store.claimJob('heavy',1,'qa-parity-worker');
+  if(!job)return Response.json({qaOnly:true,processed:false});
+  if(job.kind!==PRODUCTION_PARITY_JOB){await store.finishJob(job.id,'Unexpected job in disposable fixture','qa-parity-worker');return new Response('Unexpected QA job',{status:409});}
+  await handleJob(job,{store,workerId:'qa-parity-worker',receiptSecret:secret,github:stubGithub(),scan,maxAssetBytes:100000,
+    webLookup:async()=>[{address:'1.1.1.1',family:4}],webFetch:async()=>new Response('Synthetic QA delivered bytes',{headers:{'content-type':'text/javascript','cache-control':'no-cache'}}),
+    notifier:{send:async()=>{throw new Error('QA fixture does not send notifications.');}}});
+  await store.finishJob(job.id,undefined,'qa-parity-worker');return Response.json({qaOnly:true,processed:true,transport:'synthetic — no outbound network'});
+ }
  if(url.pathname===`/__qa/${entry}`){const actor=url.searchParams.get('actor')??'owner',session=sessions.get(actor);if(!session)return new Response('Unknown QA actor',{status:400});return new Response(null,{status:302,headers:{'Set-Cookie':`ns_session=${session}; Path=/; HttpOnly; SameSite=Strict`,'Location':`/watch?workspace=${workspace.id}`}});}
  if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return integrated.fetch(request);
  const candidate=path.resolve(dist,`.${decodeURIComponent(url.pathname)}`);

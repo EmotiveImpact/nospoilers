@@ -18,6 +18,7 @@ import {ensureUserWorkspaces} from '../src/server/workspaces.ts';
 import {createWorkspaceOrigin,verifyWorkspaceOrigin} from '../src/server/workspace-origins.ts';
 import {processUploadedScan} from '../src/server/upload-worker.ts';
 import {processAutomaticCapture} from '../src/server/automatic-capture-worker.ts';
+import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
 
 it('connects explicit capture grants to GitHub, npm and website publication with durable owned jobs',async()=>{
   const database=process.env.NOSPOILERS_PR44_TEST_DATABASE_URL;
@@ -50,8 +51,8 @@ it('connects explicit capture grants to GitHub, npm and website publication with
       const path=`/api/release-intelligence/streams/${stream}/automatic-capture`;
       const input={enabled:true,expectedRevision:0,record,confirm:true,reason:'Explicitly enable this connected QA artifact.'};
       expect((await request(path,input,'viewer')).status).toBe(403);
-      expect((await request(path,input)).status).toBe(200);
-      expect((await request(path,input)).status).toBe(409);
+      const competing=await Promise.all([request(path,input),request(path,input)]);
+      expect(competing.map(response=>response.status).sort()).toEqual([200,409]);
       return {stream,path,record};
     }
     const repo=await enable(first,'capture-repo');
@@ -94,6 +95,10 @@ it('connects explicit capture grants to GitHub, npm and website publication with
     expect((await sql.query('SELECT id FROM release_intelligence_baselines')).rows).toHaveLength(0);
     // A queued rule revision cannot survive disabling; the scan itself stays saved.
     const third=(await publishRepo(3))!.alert.releaseRevisionIds![0];
+    const unavailableSeed=await request(`${repo.path}?recordKind=release&recordId=999999999`);
+    expect(unavailableSeed.status).toBe(200);
+    expect(await unavailableSeed.json()).toMatchObject({config:{enabled:true,revision:1},candidate:null,canDisable:true});
+    expect((await request(repo.path,{enabled:true,expectedRevision:1,record:{kind:'release',id:'999999999'},confirm:true,reason:'Missing evidence must not enable capture.'})).status).toBe(404);
     expect((await request(repo.path,{enabled:false,expectedRevision:1,reason:'Stop future automatic capture explicitly.'})).status).toBe(200);
     await run();
     expect((await store.getReleaseRevision(third))?.receipt_status).toBe('passed');
@@ -118,16 +123,26 @@ it('connects explicit capture grants to GitHub, npm and website publication with
     await run();
     expect((await sql.query('SELECT id FROM release_intelligence_snapshots WHERE stream_id=$1',[website.stream])).rows).toHaveLength(2);
     expect((await sql.query("SELECT outcome FROM release_intelligence_capture_attempts WHERE stream_id=$1 AND status='stopped'",[website.stream])).rows).toEqual([{outcome:'configuration_or_source_changed'}]);
+    const billing=(await sql.query<{plan:string|null;trial_ends_at:string|Date|null}>('SELECT plan,trial_ends_at FROM billing_accounts WHERE installation_id=881')).rows[0];
+    await sql.query("UPDATE billing_accounts SET plan=NULL,trial_ends_at=now()-interval '1 day' WHERE installation_id=881");
+    expect(await (await request(website.path)).json()).toMatchObject({canManage:false,canDisable:true});
+    expect((await request(website.path,{enabled:false,expectedRevision:1,reason:'Stop capture even though coverage has ended.'})).status).toBe(200);
+    expect((await request(website.path,{enabled:true,expectedRevision:2,record:website.record,confirm:true,reason:'Expired coverage cannot restart capture.'})).status).toBe(402);
+    await sql.query('UPDATE billing_accounts SET plan=$1,trial_ends_at=$2 WHERE installation_id=881',[billing.plan,billing.trial_ends_at]);
     // Revoking the enabling administrator prevents queued work from writing.
     await publishNpm('1.0.2');
     await sql.query("INSERT INTO product_workspace_revocations(workspace_id,user_id) VALUES($1,'capture-owner')",[workspace.id]);
     await run();
     expect((await sql.query('SELECT id FROM release_intelligence_snapshots WHERE stream_id=$1',[npm.stream])).rows).toHaveLength(2);
+    // Existing hosted append-only policy remains intact; capture cannot bypass it.
+    await expect(sql.query('DELETE FROM release_revisions WHERE id=$1',[second])).rejects.toThrow('append-only');
   }finally{await sql.close();}
 },60_000);
 
 it('captures verified independent-workspace website completions without a GitHub installation',async()=>{
-  const sql=await openSql('pglite://:memory:');
+  const database=process.env.NOSPOILERS_PARITY_TEST_DATABASE_URL;
+  if(database){const url=new URL(database);if(url.hostname!=='127.0.0.1'||url.pathname!=='/nospoilers_pr44_review')throw new Error('Use the disposable parity integration database.');}
+  const sql=await openSql(database??'pglite://:memory:');
   try{
     await migrate(sql);await migrateReleaseIntelligence(sql);
     const store=createStore(sql),secrets={sessionSecret:'independent-session',receiptSecret:'independent-receipt'};
@@ -148,7 +163,8 @@ it('captures verified independent-workspace website completions without a GitHub
     await complete(seed);
     const created=await request('/api/release-intelligence/streams',{workspaceId:workspace.id,name:'Independent web',key:'independent-web',role:'Production website',record:{kind:'upload',id:seed}});
     expect(created.status).toBe(201);
-    const stream=(await created.json() as {stream:{id:string}}).stream.id;
+    const createdBody=await created.json() as {stream:{id:string};snapshot:{id:string}};
+    const stream=createdBody.stream.id;
     const enabled=await request(`/api/release-intelligence/streams/${stream}/automatic-capture`,{enabled:true,expectedRevision:0,record:{kind:'upload',id:seed},confirm:true,reason:'Capture this verified website only.'});
     expect(enabled.status).toBe(200);
     await complete(next);
@@ -161,5 +177,44 @@ it('captures verified independent-workspace website completions without a GitHub
     expect((await sql.query('SELECT id FROM release_intelligence_snapshots WHERE stream_id=$1',[stream])).rows).toHaveLength(2);
     expect((await sql.query('SELECT id FROM installations')).rows).toHaveLength(0);
     expect((await sql.query('SELECT id FROM release_intelligence_baselines')).rows).toHaveLength(0);
+    // The same authenticated stream can bind an approved manifest to production.
+    expect((await request(`/api/release-intelligence/streams/${stream}/baseline`,{action:'adopt',snapshotId:createdBody.snapshot.id,expectedRevision:0,reason:'Reviewed the exact synthetic website manifest.'})).status).toBe(200);
+    const parityPath=`/api/release-intelligence/streams/${stream}/production-parity`;
+    const parityInput={requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6199',expectedBaselineRevision:1,originId:origin.id,deploymentId:'synthetic-deploy-1',deployedAt:new Date(Date.now()-1000).toISOString(),mappings:[{path:'index.html',servedPath:'/',representation:'identity'}],confirm:true};
+    const queued=await request(parityPath,parityInput);
+    expect(queued.status).toBe(202);
+    const queuedBody=await queued.json() as {id:string};
+    const repeated=await request(parityPath,parityInput);expect(repeated.status).toBe(202);expect(await repeated.json()).toMatchObject({id:queuedBody.id});
+    // Earlier website attempts were processed directly above, outside the loop.
+    await sql.query("UPDATE jobs SET status='done' WHERE kind='workspace_origin_scan'");
+    const parityJob=await store.claimJob('heavy',1,'parity-worker');expect(parityJob?.kind).toBe(PRODUCTION_PARITY_JOB);
+    if(!parityJob)throw new Error('Expected the queued production observation.');
+    await handleJob(parityJob,{store,workerId:'parity-worker',receiptSecret:secrets.receiptSecret,github:stubGithub(),scan,maxAssetBytes:100000,
+      webLookup:async()=>[{address:'1.1.1.1',family:4}],webFetch:async()=>new Response('<html>Owned synthetic website</html>',{headers:{'content-type':'text/html'}}),notifier:{send:async()=>{throw new Error('No external delivery permitted.');}}});
+    const observation=(await sql.query<{status:string;result:{assets:Array<{state:string}>}}>('SELECT status,result FROM release_production_observations WHERE id=$1',[queuedBody.id])).rows[0];
+    expect(observation.status).toBe('completed');expect(observation.result.assets[0].state).toBe('matched');
+    await store.finishJob(parityJob.id,undefined,'parity-worker');
+    const readParity=async()=>{
+      const response=await app.fetch(new Request(base+parityPath,{headers:{cookie}}));expect(response.status).toBe(200);
+      return response.json() as Promise<{runs:Array<{id:string;authorityCurrent:boolean;result:unknown}>}>;
+    };
+    expect((await readParity()).runs[0].authorityCurrent).toBe(true);
+    const cancelQueued=await request(parityPath,{...parityInput,requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6198'});
+    expect(cancelQueued.status).toBe(202);const cancelId=(await cancelQueued.json() as {id:string}).id;
+    expect((await request(parityPath,{action:'cancel',runId:cancelId})).status).toBe(200);
+    expect(await store.claimJob('heavy',1,'cancelled-parity-worker')).toBeNull();
+    expect((await sql.query('SELECT j.status,j.usage_reserved FROM jobs j JOIN release_production_observations r ON r.job_id=j.id WHERE r.id=$1',[cancelId])).rows).toEqual([{status:'done',usage_reserved:false}]);
+    await sql.query("UPDATE watched_origins SET verified_at=now()-interval '31 days' WHERE id=$1",[origin.id]);
+    expect((await request(parityPath,{...parityInput,requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6197'})).status).toBe(409);
+    const historical=(await readParity()).runs.find(r=>r.id===queuedBody.id)!;
+    expect(historical.authorityCurrent).toBe(false);expect(historical.result).toEqual(observation.result);
+    await expect(sql.query("UPDATE release_production_observations SET result='{}'::jsonb WHERE id=$1",[queuedBody.id])).rejects.toThrow('immutable');
+    // Where original upload deletion is permitted, dependent capture data cascades.
+    await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[next]);
+    expect((await sql.query('SELECT id FROM release_intelligence_capture_attempts WHERE upload_id=$1',[next])).rows).toHaveLength(0);
+    expect((await sql.query('SELECT id FROM release_intelligence_snapshots WHERE upload_id=$1',[next])).rows).toHaveLength(0);
+    expect((await sql.query('SELECT stream_id FROM release_intelligence_capture_rules WHERE stream_id=$1',[stream])).rows).toHaveLength(1);
+    await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[seed]);
+    expect((await sql.query('SELECT id FROM release_production_observations WHERE stream_id=$1',[stream])).rows).toHaveLength(0);
   }finally{await sql.close();}
 },60_000);

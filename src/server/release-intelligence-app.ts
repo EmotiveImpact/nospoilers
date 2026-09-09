@@ -4,6 +4,7 @@ import type { Ref } from '../release-intelligence/model.ts';
 import { releaseIntelligence } from './release-intelligence-service.ts';
 import type { IntelligencePorts } from './release-intelligence-service.ts';
 import {automaticCapture} from './automatic-capture.ts';
+import {productionParity} from './production-parity-service.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
@@ -52,9 +53,16 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='production-parity'){
+        const parity=productionParity(options.sql,options.ports(request));
+        if(request.method==='GET')return json(await parity.view(id));
+        const input=await body(request);
+        if(input.action==='cancel')return json(await parity.cancel(id,uuid(input.runId)));
+        return json(await parity.queue(id,input as Parameters<typeof parity.queue>[1]),202);
+      }
       if(action==='automatic-capture'){
         const capture=automaticCapture(options.sql,options.ports(request));
         if(request.method==='POST')return json(await capture.configure(id,await body(request) as Parameters<typeof capture.configure>[1]));

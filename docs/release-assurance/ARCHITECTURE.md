@@ -1,5 +1,11 @@
 # Architecture and decision contract
 
+## Current production-observation addition (9 September 2026)
+
+The companion-only descriptions below are historical. The branch now has `ra_002` history, `ra_003` opt-in capture and `ra_004` production-observation migrations. Production runs reuse an explicitly adopted signed reference and store binding metadata, hashes and bounded outcomes, not fetched source bodies. Original evidence deletion controls dependent run retention.
+
+An authorised request reserves the existing workspace scan allowance and creates a heavy job with immutable payer ownership. The worker holds no DB lock across HTTPS calls, rechecks authority between requests and before saving, and discards results if the binding changes. Scope is one owned origin, explicit mappings, identity representations, bounded HTML discovery and cache metadata. Deployment identity is declared, not provider-attested. No observation supplies a before-deploy enforcement pass. See the latest handoff and acceptance ledger for limits and remaining work.
+
 ## Reuse, do not replace
 
 The existing scanner, receipt, ledger, policy, exception, notification, watch, deployment-verification and reviewable remediation workflows remain the source systems. This increment reads their evidence. It does not add a second scanner, a source-code store or an authority that can override them.

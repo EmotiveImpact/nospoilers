@@ -2,6 +2,22 @@
 
 Date: 8 September 2026. Branch: `codex/release-assurance-spine-v1`. Review container: draft PR #44.
 
+## 9 September bounded production-observation increment
+
+Final local tree: 209 files / 1,252 tests passed on Node 24.19.0; typecheck, frontend/API builds, lint (warnings) and diff validation passed. Native PostgreSQL and integrated synthetic browser scope are recorded in BUILD-LOG. DNS cancellation is covered; broader mid-flight authority/lease races and keyboard/role/error acceptance remain next, followed by versioned opt-in release enforcement. No production acceptance is implied.
+
+`production-parity-schema.ts` adds `ra_004_production_parity`. Each run binds the stream, adopted reference revision/snapshot, signed receipt fingerprint, verified origin generation, declared deployment ID/time and explicit manifest-to-public-path mappings. Binding fields and terminal results are immutable; original evidence deletion cascades. No new baseline, receipt, scan verdict or enforcement policy is issued.
+
+GET/POST `/api/release-intelligence/streams/:id/production-parity` lists scope/results, queues a confirmed observation or cancels one. Queueing requires an active administrator and current verified source. The existing scan payer/allowance is reserved immutably at job creation; retries reuse request identity, and cancelling an unstarted job refunds its reservation. The worker uses existing job claiming and checks access, reference revision, origin generation and lease before/after work and between requests. Cancellation/lost-lease polling aborts transport. No provider or cron is automatically enabled.
+
+The observer reuses pinned HTTPS, public-address checks, bounded body reads, HTML discovery and cache normalization. Limits: 40 requests/assets, 2 MB/file, 20 MB charged byte budget (failed reads retain their reservation), 30-second deadline, three redirects, one origin with ownership verified within 30 days. Only identity bytes are compared; compressed/transformed responses and off-origin redirects are unsupported. Unmapped manifest files remain unobserved. Extra means a fetched same-origin HTML asset reference outside the selected mapping, not malicious content or proven absence from every other artifact.
+
+`ProductionParityControls.tsx` mounts in the existing history panel on both detail contexts. It requires explicit paths/deployment confirmation, shows historical authority loss and server-calculated stale state, and shares one manifest suggestion list. Deployment ID/time are customer declarations, not provider-attested provenance. Observations are separate from before-deploy readiness.
+
+BUILD-LOG records API/store/worker tests, the synthetic browser queue→worker→mismatch result, mobile/console checks, full suite and native PostgreSQL. Outstanding: broader mid-flight revocation/lease/concurrency tests, full keyboard/role browser acceptance and operational rollout. Versioned enforcement, durable remediation, agent/MCP and retention outcomes remain unbuilt.
+
+Automatic capture now preserves stop controls when seed evidence is missing/invalid, with a final access recheck. Competing grant saves, expired-plan disable and original-upload deletion relationships are tested; hosted append-only restrictions remain unchanged.
+
 ## 9 September automatic capture increment
 
 Migration `ra_003_automatic_capture` adds disabled-by-default stream capture rules and FK-linked attempts. `automatic-capture.ts`, `automatic-capture-identity.ts` and `automatic-capture-worker.ts` connect signed hosted publication and independent website completion to the existing capture service. Stable source, channel, format, artifact selector and source connection generation must match the explicitly selected stream. Manual uploads keep explicit UI/API/CI capture. No rule, reference or policy is silently adopted.
