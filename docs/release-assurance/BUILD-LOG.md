@@ -559,3 +559,6 @@ Source audit found two inline pulse bars in WatchOverview loading, outside share
 ## Notifications shared destination selector
 
 Replaced the native destination selector with the existing beUI Select, retaining busy locking and clearing private input on type changes. Added a direct regression for clearing without submission and focus return. Eight cases across notification/select tests passed (1.61s); initial run needed the existing ResizeObserver test stub. Live review caught transparent shared menu background outside Overview; fixed the shared panel to opaque charcoal with a fine border. Final build and diff check passed. Real signed-in desktop menu reviewed and Escape exercised; no destination saved or message sent. Broader Gate C remains open.
+
+
+Shared Select follow-up: removed undefined beUI foreground/background/border/muted token references and supplied real app colours, including explicit keyboard focus rings on selected and unselected options. Final build passed; signed-in ArrowDown visibly focused Email with an inset ring, Escape closed without selection. CSS-only correction reuses preceding eight behavioural cases; no new suite claimed. Other native form selects remain pending.

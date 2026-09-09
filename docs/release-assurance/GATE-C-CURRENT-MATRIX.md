@@ -37,3 +37,6 @@ Current source checkpoint: 2158712 plus the direct Coverage rendering test docum
 ## Completion rule
 
 Close only rows with matching authoritative evidence. Run a cumulative UI milestone after the remaining implementation batch, not after every row. External native zoom/speech limitations remain explicit; they do not justify inventing completion or rebuilding unrelated backend features.
+
+
+Shared Select follow-up: removed undefined beUI foreground/background/border/muted token references and supplied real app colours, including explicit keyboard focus rings on selected and unselected options. Final build passed; signed-in ArrowDown visibly focused Email with an inset ring, Escape closed without selection. CSS-only correction reuses preceding eight behavioural cases; no new suite claimed. Other native form selects remain pending.

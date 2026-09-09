@@ -256,8 +256,8 @@ export function SelectTrigger({ className, children, "aria-label": ariaLabel }: 
         borderBottomRightRadius: isTop ? INSTANT_TRANSITION : kfT,
       }}
       className={cn(
-        "relative z-10 flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors",
-        "hover:border-(--color-border-strong) focus-visible:ring-2 focus-visible:ring-foreground/20",
+        "relative z-10 flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#111214] px-3 py-2 text-sm text-[#f4f4f5] outline-none transition-colors",
+        "hover:border-white/20 focus-visible:ring-2 focus-visible:ring-[#a1a1aa]",
         "disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
@@ -267,7 +267,7 @@ export function SelectTrigger({ className, children, "aria-label": ariaLabel }: 
         aria-hidden
         animate={{ rotate: ctx.open ? 180 : 0 }}
         transition={ctx.reduce ? { duration: 0 } : CHEVRON_TRANSITION}
-        className="text-muted-foreground"
+        className="text-[#a1a1aa]"
       >
         <ChevronDown className="h-4 w-4" />
       </motion.span>
@@ -285,7 +285,7 @@ export function SelectValue({ placeholder, className }: SelectValueProps) {
   const label = ctx.labelFor(ctx.value);
   return (
     <span
-      className={cn(label ? "text-foreground" : "text-muted-foreground", className)}
+      className={cn(label ? "text-[#f4f4f5]" : "text-[#b1b1ba]", className)}
     >
       {label ?? placeholder ?? "Select"}
     </span>
@@ -447,8 +447,8 @@ export function SelectItem({
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none transition-colors",
           selected
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted",
+            ? "bg-white/10 text-[#f4f4f5] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#a1a1aa]"
+            : "text-[#b1b1ba] hover:bg-white/10 hover:text-[#f4f4f5] focus-visible:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#a1a1aa]",
           "disabled:pointer-events-none disabled:opacity-50",
           className,
         )}
