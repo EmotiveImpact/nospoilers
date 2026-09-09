@@ -626,3 +626,9 @@ At c8a95bd, live open Team invitation and Notifications destination menus had ex
 ## Typography and reduced-motion component execution
 
 Live app and approved mockup30 both report `Inter, -apple-system, system-ui, Segoe UI, sans-serif`, with document.fonts empty in each current browser document. Preserved this approved fallback rendering; no claim Inter is bundled/loaded. Added two rendered checks with Motion useReducedMotion explicitly returning true: search initially fully visible without transform and focused combobox/End selection, plus select keyboard selection/focus return. Both passed (1.30s), typecheck passed. These exercise the reduced-motion component branches; they do not emulate OS media preference or establish whole-app animation compliance. No runtime change or repeated build/scan.
+
+## 2026-09-10 — Page-transition scroll flash
+
+Moved route-view scroll reset into a layout effect before paint, with instant top/left positioning. Delayed accessible focus restoration no longer changes scroll; query-only navigation and modal focus ownership remain unchanged. No loading interstitial added.
+
+Verification: `npx vitest run tests/artifact-shell-navigation.test.tsx` — 4/4 passed (1.48s); `npm run build` passed (existing bundle-size warning). Signed-in Codex browser reloaded the built frontend; overview scrollTop 802 followed by Timeline navigation yielded timeline scrollTop 0. This verifies the scroll-offset flash fix, not every possible asynchronous layout shift. Server/database/connection preserved.

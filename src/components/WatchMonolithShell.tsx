@@ -37,7 +37,7 @@ import {
   watchHref,
   watchPath,
 } from "@/watch/routes.ts";
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {WorkspaceSwitcher} from '@/components/watch/WorkspaceSwitcher';
 
 function watchViewIcon(path: string) {
@@ -192,6 +192,13 @@ export function WatchMonolithShell({
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const routeContent = useRef<HTMLDivElement|null>(null);
   const previousView = useRef(route.view);
+  const previousScrollView = useRef(route.view);
+  useLayoutEffect(() => {
+    if (previousScrollView.current === route.view) return;
+    previousScrollView.current = route.view;
+    // Reset before paint: otherwise the next page briefly inherits the old offset.
+    routeContent.current?.scrollTo({top:0, left:0, behavior:'instant'});
+  }, [route.view]);
   useEffect(() => {
     if (previousView.current === route.view || navOpen) return;
     previousView.current = route.view;
@@ -200,7 +207,6 @@ export function WatchMonolithShell({
     let observer:MutationObserver|undefined;
     const focusPage = () => {
       routeContent.current?.focus({preventScroll:true});
-      routeContent.current?.scrollTo({top:0});
     };
     let frame = requestAnimationFrame(() => {
       const dialogs = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));

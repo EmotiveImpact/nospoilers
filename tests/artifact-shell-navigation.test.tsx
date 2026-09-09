@@ -33,7 +33,7 @@ it('focuses a changed page while preserving initial and same-page query focus',a
  expect(document.activeElement).toBe(control);expect(scroll).not.toHaveBeenCalled();
  view.rerender(<Route path="/watch/scan" search="?workspace=other"/>);
  await waitFor(()=>expect(document.activeElement).toBe(screen.getByRole('region',{name:'New scan page'})));
- expect(scroll).toHaveBeenCalledWith({top:0});
+ expect(scroll).toHaveBeenCalledWith({top:0,left:0,behavior:'instant'});
  control.focus();view.rerender(<Route path="/watch/scan" search="?workspace=other&mode=package"/>);
  expect(document.activeElement).toBe(control);
 });
@@ -44,4 +44,15 @@ it('does not take page-change focus from an open modal',async()=>{
  view.rerender(<><div role="dialog" aria-modal="true"><button>Modal control</button></div><Route path="/watch/scan"/></>);
  await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
  expect(document.activeElement).toBe(modal);
+});
+
+it('resets the new page before animation frames and does not reset again after focus',async()=>{
+ const scroll=vi.fn();Element.prototype.scrollTo=scroll;
+ const view=render(<Route path="/watch"/>);
+ view.rerender(<Route path="/watch/sources"/>);
+ expect(scroll).toHaveBeenCalledExactlyOnceWith({top:0,left:0,behavior:'instant'});
+ await waitFor(()=>expect(document.activeElement).toBe(screen.getByRole('region',{name:'Coverage page'})));
+ expect(scroll).toHaveBeenCalledTimes(1);
+ view.rerender(<Route path="/watch/sources" search="?workspace=example&sourceType=github"/>);
+ expect(scroll).toHaveBeenCalledTimes(1);
 });
