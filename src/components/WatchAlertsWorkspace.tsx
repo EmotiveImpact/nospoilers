@@ -213,7 +213,7 @@ export function WatchAlertsWorkspace({
               <span
                 className={cn(
                   "min-w-5 rounded-full bg-white/5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
-                  value === "open" && count > 0 && "bg-danger/15 text-[#ff8a80]",
+                  value === "open" && count > 0 && "bg-danger/15 text-danger-text",
                 )}
               >
                 {count}
@@ -278,7 +278,7 @@ export function WatchAlertsWorkspace({
                             ? "bg-white/25"
                             : row.severity === "critical"
                               ? "bg-danger"
-                              : "bg-[#b18134]",
+                              : "bg-warn",
                         )}
                       />
                       <strong className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{row.title}</strong>

@@ -66,9 +66,9 @@ export function WatchExposureChart({
                     role="img"
                     aria-label={`${span.severity} alert · ${span.rule}: ${span.label}; started ${new Date(span.startedAt).toLocaleString()}; ${span.open ? "still open" : `resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
                     className={
-                      `absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm px-2 py-1 text-xs text-snow ${span.severity === "critical"
-                        ? span.open ? "bg-danger/80" : "bg-danger/25"
-                        : span.open ? "bg-[#a8782f]/80" : "bg-[#a8782f]/30"}`
+                      `absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm px-2 py-1 text-xs ${span.severity === "critical"
+                        ? span.open ? "bg-danger/80 text-snow" : "bg-danger/25 text-snow"
+                        : span.open ? "bg-warn/80 text-ink" : "bg-warn/30 text-snow"}`
                     }
                     style={{ left: `${span.left}%`, width: `${span.width}%` }}
                     title={`${span.severity} alert · ${span.rule} · ${span.label} · ${new Date(span.startedAt).toLocaleString()}${span.open ? " · open" : ` · resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
@@ -89,8 +89,8 @@ export function WatchExposureChart({
           <div className="flex flex-wrap items-center gap-4 border-t border-white/8 px-4 py-3 text-xs text-mute" aria-label="Alert activity legend">
             <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/80" aria-hidden />Open critical alert</span>
             <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/25" aria-hidden />Resolved critical alert</span>
-            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]/80" aria-hidden />Open warning</span>
-            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]/30" aria-hidden />Resolved warning</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-warn/80" aria-hidden />Open warning</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-warn/30" aria-hidden />Resolved warning</span>
           </div>
           <p className="px-4 pb-3 text-xs text-mute">Alert status records response activity. Closing an alert does not prove an artifact is clean.</p>
           <table className="sr-only">

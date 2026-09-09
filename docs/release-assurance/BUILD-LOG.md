@@ -1,5 +1,13 @@
 # Build and verification log
 
+## 9 September 2026 — Gate C mockup packaging and shared visual tokens
+
+The approved source mockups remain available for local visual comparison, but Vite production builds now remove both complete generated galleries (`mockup-review` and legacy `mockups`). The production Mockups page omits its review-gallery link; Watch and Scan navigation remains. The live homepage continues to use its separate assets. This is a build boundary only and does not change authentication, customer evidence, scanning or provider behavior.
+
+Overview and release-intelligence CSS now use the shared panel, line, text, action, danger and warning tokens. Alerts and Timeline share the warning token. Independent testing caught a low-contrast open-warning label introduced during consolidation; dark foreground text corrected it to a calculated 5.60:1 on the panel and 5.69:1 on the chart lane.
+
+Focused implementation checks: `npm test -- tests/prototype-packaging.test.tsx tests/watch-architecture.test.ts` passed 15 tests / two files; `npm test -- tests/watch-exposure-chart-ui.test.tsx` passed 3/3 before and after the contrast correction. Independent cumulative UI review passed 98 tests / 12 files in 5.87s and `npm run typecheck` passed. Final `npm run build`, affected-file `oxlint`, direct output inspection and `git diff --check` pass. The existing >500 kB chunk warning remains. Output inspection confirms both gallery directories and the compiled `/mockup-review/` link are absent, while source galleries remain. The signed-in Timeline rendered 24 real warning rows with the shared token, dark foreground and no 1440px document overflow; this was a presentation read only. No full suite, real scan, server restart or customer-data mutation was performed.
+
 ## 9 September 2026 — Scan/Coverage/Alerts and advanced-tool interaction states
 
 Working-tree batch after `0fe371e`: Scan exposes permission-read failure/retry across non-receipt modes and shows a labelled GitHub loading state instead of premature sign-in. Coverage detail bounds long identities/digests and keeps its close target usable. Alerts confines queue shortcuts to the alert workspace, protects editable/modal interactions, announces selection and displays a J/K hint; long titles and bodies wrap. Existing routes, response actions and evidence semantics are preserved.

@@ -12,6 +12,10 @@ it('presents an operational warning as alert activity with a keyboard-accessible
  expect(screen.queryByText(/exposure/i)).toBeNull();
  const warning=screen.getByRole('img',{name:/warning alert · scan_latest_release: No release on owner\/repo/});
  expect(warning.getAttribute('aria-label')).toContain('still open');
+ expect(warning.className).toContain('bg-warn/80');
+ expect(warning.className).not.toContain('bg-danger');
+ expect(warning.className).toContain('text-ink');
+ expect(warning.className).not.toContain('text-snow');
  const region=screen.getByRole('region',{name:'Alert activity by source and retained time'});
  await userEvent.tab();expect(document.activeElement).toBe(region);
  const instruction=document.getElementById(region.getAttribute('aria-describedby')!);

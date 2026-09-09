@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C mockup/package and token milestone
+
+The approved mockups remain the visual reference in `public/mockup-review/`, while production builds now remove the complete `mockup-review` and legacy `mockups` galleries and omit the review-gallery link. The live homepage assets and local source galleries remain intact. A real isolated Vite packaging test plus final project build verifies this boundary; BUILD-LOG records the exact checks.
+
+Overview and release-intelligence surfaces now use the shared app tokens instead of independent hard-coded copies. Alert rows and the exposure chart share one warning token; open warning labels use dark text with measured 5.60:1 contrast on the panel. Independent review caught and corrected the earlier low-contrast combination. This closes the C3 production-package gap and this bounded C1 token gap. Gate C remains partial pending the broader current browser/assistive-technology evidence matrix and any justified shared-component consolidation.
+
 ## Current Gate C Scan/Coverage/Alerts and advanced-tool states
 
 Scan permission-read recovery, Coverage detail wrapping, scoped Alerts keyboard handling/selection announcements and parity/outcome/explanation focus recovery are implemented. Focused rendered checks passed **30 tests / six files (3.26s)** and **27 tests / three files (2.24s)**; final frontend build passed with the existing chunk warning. BUILD-LOG contains both exact commands and source scope.

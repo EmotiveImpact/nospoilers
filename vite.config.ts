@@ -1,31 +1,23 @@
 import path from "node:path";
-import { readdir, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { loadEnv, type Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nospoilersApi } from "./src/plugin.ts";
 
-// Review notes remain available to local designers, but are not release assets.
-// Keep the linked HTML/CSS/image prototypes and the approved homepage intact.
-function excludePrototypeNotes(): Plugin {
-  let reviewOutput = "";
+// Static design galleries remain available in local development, never release assets.
+export function excludePrototypeGalleries(): Plugin {
+  let outputRoot = "";
   return {
-    name: "exclude-prototype-notes",
+    name: "exclude-prototype-galleries",
     apply: "build",
     configResolved(config) {
-      reviewOutput = path.resolve(config.root, config.build.outDir, "mockup-review");
+      outputRoot = path.resolve(config.root, config.build.outDir);
     },
     async closeBundle() {
-      let entries: string[];
-      try {
-        entries = await readdir(reviewOutput, { recursive: true });
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-        throw error;
-      }
-      await Promise.all(entries.filter(entry => /\.md$/i.test(entry)).map(entry =>
-        rm(path.join(reviewOutput, entry)),
+      await Promise.all(["mockup-review", "mockups"].map(directory =>
+        rm(path.join(outputRoot, directory), { recursive: true, force: true }),
       ));
     },
   };
@@ -37,7 +29,7 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
   return {
-    plugins: [react(), tailwindcss(), nospoilersApi(), excludePrototypeNotes()],
+    plugins: [react(), tailwindcss(), nospoilersApi(), excludePrototypeGalleries()],
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "src"),

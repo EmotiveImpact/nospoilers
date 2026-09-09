@@ -78,6 +78,8 @@
   --color-rail: #050506;
   --color-canvas: #09090b;
   --color-panel: #111113;
+  --color-panel-raised: #19191e;
+  --color-action-hover: #292930;
   --color-inset: #0b0b0d;
   --color-line: #2a2a2e;
   --color-line-strong: #3f3f46;
@@ -85,6 +87,7 @@
   --color-mute: #a1a1aa;
   --color-dim: #71717a;
   --color-danger: #e2453a;
+  --color-danger-text: #ff9b99;
   --color-warn: #d99a2b;
   --color-ok: #3fb950;
   --color-info: #5b8def;

@@ -6,7 +6,7 @@ History UI is keyed to workspace and record identity. List responses must contai
 
 Gate UI state is keyed by stream/record/refresh identity. It discards stale actionable data on failed mutations and during refresh; decision expiry has a bounded next-deadline timer. Recorded readiness remains historical, not present permission. Only the server can authorize consumption under current policy/evidence/credentials; disabled UI is not a security boundary.
 
-Workspace upload processing honors the immutable payer selected at admission. A connected GitHub installation does not replace a personal workspace payer. Build packaging omits internal Markdown notes under mockup-review while retaining local sources and prototype assets.
+Workspace upload processing honors the immutable payer selected at admission. A connected GitHub installation does not replace a personal workspace payer. Build packaging omits the complete `mockup-review` and legacy `mockups` galleries while retaining their local sources and the separate approved homepage assets.
 
 ## Private outcomes (9 September 2026)
 
