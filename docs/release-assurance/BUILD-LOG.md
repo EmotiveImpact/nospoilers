@@ -1,5 +1,11 @@
 # Build and verification log
 
+## 9 September 2026 — remaining temporal and workspace checks
+
+Added two temporal assertions to existing automatic-capture-integration.test.ts: real parity API returns stale after completed_at+24h+1ms without changing stored result; a run queued under valid ownership stops after ownership expires before worker execution, with zero DNS/HTTP attempts and null result. Existing completed evidence remains unchanged. Affected PGlite integration file **2 tests passed**,4.76seconds; no runtime changes. This follows the1,365-test frozen runtime regression, not a new full run or native PostgreSQL claim.
+
+Actual isolated browser workspace switch held an old real history response, changed workspace through the selector, then released the old response. After the lighthouse disappeared and the destination first-proof page settled, URL/selected workspace remained correct with zero old stream/history/export controls and zero page errors. `output/playwright/history-workspace-late-response-safe.png` was visually inspected after settling. Browser and fixture stopped; port4380 closed. No customer data, credentials or provider used.
+
 ## 9 September 2026 — history comparison and conflict browser evidence
 
 Actual built React application on internal fixture4380: older/newer saved records showed exact record identities, different-history/current-release notices and prior-history counts0/1. A browser-injected503 (explicit fault injection, not provider failure) hid export/actions and focused the alert; retry fetched the real API successfully. A real concurrent baseline update advanced revision0→1; stale UI exclusion received409, and retry showed revision1 with record not excluded and reference still available. Original clean receipt was unchanged. No page errors. Local `output/playwright/history-conflict-desktop.png` shows conflict/retry; scripts/screenshots remain untracked QA artifacts. Browser contexts and fixture stopped; port4380 confirmed closed.

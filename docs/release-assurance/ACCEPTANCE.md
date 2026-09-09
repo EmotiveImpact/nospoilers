@@ -2,7 +2,7 @@
 
 ## Current optional explanation contract increment
 
-History selection recovery: refreshing a selected history now unmounts its child tools behind a skeleton, removing prior snapshot actions and cancelling their pending reads. Focused panel10/10 passes and actual delayed-selection browser verification confirms the stale agent action is gone. Browser checks also establish older/newer scope, real revision-conflict recovery, uploaded/hosted hard reload and a narrow390px reduced-motion keyboard journey. Final regression is pending in BUILD-LOG; pending-workspace response behavior remains the next browser check.
+History selection recovery: refreshing a selected history now unmounts its child tools behind a skeleton, removing prior snapshot actions and cancelling their pending reads. Focused panel10/10 passes and actual delayed-selection browser verification confirms the stale agent action is gone. Browser checks establish older/newer scope, real revision-conflict recovery, uploaded/hosted hard reload, a narrow390px reduced-motion keyboard journey and settled workspace isolation after a late old response. Final runtime regression passes1,365tests/234files; subsequent test-only temporal assertions pass the affected integration file. See BUILD-LOG for exact scope.
 
 Automatic capture recovery is implemented locally: identity-scoped cancellation, cleared stale actions/consent, truthful Checking/Unavailable summaries, skeleton reads and conditional failure-focus recovery. Ten focused rendered tests pass; final batch and browser evidence are tracked in BUILD-LOG. This does not change capture authorization or enable a rule.
 
@@ -37,10 +37,10 @@ Latest gate update (after 34747bc): connected-source CI grants are implemented t
 | Discussed capability | Current branch implementation | Remaining work or evidence |
 | --- | --- | --- |
 | Release as central object and canonical detail | Existing ledger/detail retained; historical intelligence mounted in both detail paths; canonical server-grounded headline cutover implemented | Complete integrated keyboard/role/error matrix remains open |
-| Persistent release history | Existing signed records plus new compact FK-linked historical snapshots | Real adapter/retention/deletion integration and production PostgreSQL validation; no perpetual archive promise |
+| Persistent release history | Existing signed records plus compact FK-linked snapshots; real Hono/session/HMAC and disposable database retention/deletion checks recorded in BUILD-LOG | Production database rollout remains unverified; no perpetual archive promise |
 | Stable release-stream identity | Implemented explicit workspace/name/key/artefact-role streams; source/channel/format bound from authorised evidence | Operator must select the correct product; no automatic filename grouping; no automatic bulk migration |
 | Release comparison and unexpected files | Existing comparison plus new bounded exact-path/finding history and approved-reference comparisons | Full actual historical dataset and browser acceptance; content-hashed paths can be legitimately novel |
-| Human-approved baselines | Implemented adopt/revoke events, revision checks, reasons, audit and current/as-of reference distinction | Production concurrency, real auth and retention/tombstone validation |
+| Human-approved baselines | Implemented adopt/revoke events, revision checks, reasons, audit and current/as-of reference distinction; real session integration, competing-adoption checks and browser conflict/revoke recovery verified | Production concurrency/load and live provider rollout remain unverified |
 | Customer-specific normal behaviour | Implemented median/MAD advisory analysis, minimum eligible samples, deduplication, exclusions/restoration and explicit comparison windows | Not an ML model; heuristics need customer calibration and load testing; no calibrated probability or security score |
 | Automatic history capture | Explicit UI/API/CI capture preserved; opt-in exact-source completion hooks use durable jobs and revisioned grants; missing-seed stop controls and competing revisions verified locally | Operational rollout and broader lifecycle acceptance remain open. No live rule enabled |
 | Deterministic readiness | Canonical HMAC-verified server assessment drives hosted/upload detail/list and additive token scan readiness; separate versioned opt-in gate is implemented | Broader cross-flow lifecycle/accessibility acceptance; never equate scan outcome with deployment permission |
@@ -59,7 +59,7 @@ Latest gate update (after 34747bc): connected-source CI grants are implemented t
 | Artifact Leads / Disclosure Desk separation | Untouched and internal | No new commercial CRM lifecycle in this continuation |
 | Commercial versus disclosure states | Separation documented in outreach and handoff | Commercial-state expansion remains separate implementation |
 | Navigation and homepage | Approved baseline preserved; history appears within current release details | No wholesale redesign |
-| Accessible behavioural UI | Existing companion plus actual history selection, explicit reasons, reversible exclusions, private export, keyboard/reduced-motion styles | New real React/browser/accessibility review remains; not an empirically proven retention improvement |
+| Accessible behavioural UI | Actual history selection, explicit reasons, reversible exclusions, private export and scoped browser keyboard/focus/reduced-motion checks recorded in BUILD-LOG | Broader assistive-technology validation remains; not an accessibility certification or empirically proven retention improvement |
 | Long-term retention | Useful compounding history and reference workflows implemented as product hypotheses | Measure real repeat-release use, investigation effort and retained subscribers |
 | Agency portfolio | Not implemented here | Delegation, multi-client visibility, privacy and commercial controls |
 | Enterprise SSO, SBOM, Sigstore | Remain on ice | Separate demand/approval and implementation |

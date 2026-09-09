@@ -1,4 +1,4 @@
-import {it,expect} from 'vitest';
+import {it,expect,vi} from 'vitest';
 import {migrate,openSql,type SqlClient} from '../src/server/sql.ts';
 import {migrateReleaseIntelligence} from '../src/server/release-intelligence-schema.ts';
 import {createStore,signSession,type JobRow} from '../src/server/store.ts';
@@ -197,9 +197,16 @@ it('captures verified independent-workspace website completions without a GitHub
     await store.finishJob(parityJob.id,undefined,'parity-worker');
     const readParity=async()=>{
       const response=await app.fetch(new Request(base+parityPath,{headers:{cookie}}));expect(response.status).toBe(200);
-      return response.json() as Promise<{runs:Array<{id:string;authorityCurrent:boolean;result:unknown}>}>;
+      return response.json() as Promise<{runs:Array<{id:string;authorityCurrent:boolean;stale:boolean;result:unknown}>}>;
     };
     expect((await readParity()).runs[0].authorityCurrent).toBe(true);
+    expect((await readParity()).runs[0].stale).toBe(false);
+    const completed=(await sql.query<{completed_at:string|Date}>('SELECT completed_at FROM release_production_observations WHERE id=$1',[queuedBody.id])).rows[0].completed_at;
+    const parityClock=vi.spyOn(Date,'now').mockReturnValue(new Date(completed).getTime()+24*60*60*1000+1);
+    try{
+      const aged=(await readParity()).runs.find(run=>run.id===queuedBody.id)!;
+      expect(aged.stale).toBe(true);expect(aged.result).toEqual(observation.result);
+    }finally{parityClock.mockRestore();}
     const cancelQueued=await request(parityPath,{...parityInput,requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6198'});
     expect(cancelQueued.status).toBe(202);const cancelId=(await cancelQueued.json() as {id:string}).id;
     expect((await request(parityPath,{action:'cancel',runId:cancelId})).status).toBe(200);
@@ -231,7 +238,17 @@ it('captures verified independent-workspace website completions without a GitHub
       }
       await store.finishJob(claimed.id,undefined,change==='lease'?'replacement-worker':'race-worker');
     }
+    const delayed=await request(parityPath,{...parityInput,requestKey:randomUUID()});expect(delayed.status).toBe(202);
+    const delayedId=(await delayed.json() as {id:string}).id;
     await sql.query("UPDATE watched_origins SET verified_at=now()-interval '31 days' WHERE id=$1",[origin.id]);
+    const delayedJob=await store.claimJob('heavy',1,'delayed-parity-worker');expect(delayedJob?.kind).toBe(PRODUCTION_PARITY_JOB);
+    if(!delayedJob)throw new Error('Expected queued observation before ownership expiry.');
+    let delayedRequests=0,delayedLookups=0;
+    await handleJob(delayedJob,{store,workerId:'delayed-parity-worker',receiptSecret:secrets.receiptSecret,github:stubGithub(),scan,maxAssetBytes:100000,
+      webLookup:async()=>{delayedLookups++;return [{address:'1.1.1.1',family:4}];},webFetch:async()=>{delayedRequests++;return new Response('Should not fetch expired origin.');},notifier:{send:async()=>{throw new Error('No external delivery permitted.');}}});
+    expect(delayedLookups).toBe(0);expect(delayedRequests).toBe(0);
+    expect((await sql.query('SELECT status,result FROM release_production_observations WHERE id=$1',[delayedId])).rows).toEqual([{status:'stopped',result:null}]);
+    await store.finishJob(delayedJob.id,undefined,'delayed-parity-worker');
     expect((await request(parityPath,{...parityInput,requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6197'})).status).toBe(409);
     const historical=(await readParity()).runs.find(r=>r.id===queuedBody.id)!;
     expect(historical.authorityCurrent).toBe(false);expect(historical.result).toEqual(observation.result);
