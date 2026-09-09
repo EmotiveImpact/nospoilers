@@ -1,5 +1,7 @@
 # Gate C current evidence map
 
+Current continuation authority: NEXT-SESSION-HANDOFF.md (consolidated10 September). Earlier checkpoint entries below are chronological; they do not override the current handoff or later BUILD-LOG evidence. Gate C remains partial.
+
 Expired Coverage/Setup overlay contents now use inert, matching the existing pointer lock for keyboard/AT access while preserving outside recovery actions. Two rendered expired/active cases pass (1.12s), build passes; real active Setup reviewed with zero inert descendants. Expired-state evidence is component-level, not a changed real trial. External checklist: GATE-C-MANUAL-VERIFICATION.md; checks remain unperformed.
 
 

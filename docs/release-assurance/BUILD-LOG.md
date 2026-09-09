@@ -680,3 +680,7 @@ Overview and release-assurance semantic foreground/status colours now reference 
 Expired Coverage/Setup overlay contents now use inert, matching the existing pointer lock for keyboard/AT access while preserving outside recovery actions. Two rendered expired/active cases pass (1.12s), build passes; real active Setup reviewed with zero inert descendants. Expired-state evidence is component-level, not a changed real trial. External checklist: GATE-C-MANUAL-VERIFICATION.md; checks remain unperformed.
 
 Commands: `npx vitest run tests/coverage-expired-state-ui.test.tsx`, `npm run build`, diff check. Existing build chunk warning. Mock context tests assert inert boundary/recovery outside it and active restoration; jsdom is not native keyboard/AT execution. No account or API mutation.
+
+## 2026-09-10 — Consolidated continuation authority
+
+Replaced conflicting historical NEXT-SESSION-HANDOFF paragraphs with one current summary at88406f5. Original text retained in HANDOFF-HISTORY-2026-09-10.md, explicitly historical. Current handoff records completed real scan, exact cumulative versus focused evidence, preserved runtime and concrete remaining Gate C gaps. Documentation-only; diff check passed, no tests/build repeated.
