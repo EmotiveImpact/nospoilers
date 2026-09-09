@@ -519,3 +519,8 @@ For signed-in selected installations, Scan now leads with checking a connected r
 ## Shared named evidence tables
 
 Added EvidenceTable for workspace audit and uploaded file manifest: consistent fixed-layout wrapping, screen-reader caption and explicit column-header scopes.13 focused evidence-settings/uploaded-brief tests passed (1.91s), build passed with existing chunk warning. Actual signed-in64-file manifest caption/headers inspected; compact355px document matched viewport and visible cells wrapped. Desktop restored. This is semantic/browser evidence, not audible screen-reader execution.
+
+
+## Direct Coverage evidence correction and current matrix
+
+Auditing test ownership showed source-monitoring-ui tests target mutation controls, not WatchSourcesSummary. Those earlier five-case results must not be read as direct Coverage/Setup rendering coverage. Added direct inventory-vs-filter totals verification in coverage-detail-ui; both cases pass (1.24s), including existing distinction between metadata and scan timestamps. No runtime source changed, so no redundant build. GATE-C-CURRENT-MATRIX.md records direct checks, existing visual evidence and remaining C1–C3 gaps by route. Gate C remains partial.

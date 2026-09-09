@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Next work is explicitly tracked in GATE-C-CURRENT-MATRIX.md. Direct Coverage test correction passed2 cases; source-monitoring mutation tests are not coverage-summary rendering tests. Continue remaining rows without repeating completed checks.
+
 Latest Setup composition uses optional capability cards without numbered progression or repeated descriptions. Five focused cases/build pass, desktop and compact355px verified. No backend action. Continue the explicit Gate C requirement map in ACCEPTANCE.md.
 
 Latest: release tools grouped by scope (3916aeb); search active keyboard option scrolls into view and options leave Tab order. Four focused accessibility/command tests and build passed; real End selection and Escape focus return verified. Continue full design and C1–C3 audit; do not infer native zoom or screen-reader speech from DOM checks.
