@@ -76,6 +76,7 @@ it('offers workspace choices with avatars and a plus creation action in the side
  render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
  await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
  fireEvent.click(screen.getByRole('button',{name:'Workspace'}));
+ expect(screen.queryByRole('button',{name:'Manage workspaces'})).toBeNull();
  const target=await screen.findByRole('menuitem',{name:'Client Studio'});
  expect(target.querySelector('img')?.getAttribute('src')).toBe('/client.png');
  fireEvent.error(target.querySelector('img')!);expect(target.textContent).toContain('CS');
