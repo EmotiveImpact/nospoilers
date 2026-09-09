@@ -37,6 +37,36 @@ import {
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {WorkspaceSwitcher} from '@/components/watch/WorkspaceSwitcher';
 
+function watchViewIcon(path: string) {
+  return path === "/watch"
+      ? CircleGauge
+      : path.endsWith("/alerts")
+        ? Bell
+        : path.endsWith("/sources")
+          ? Boxes
+          : path.endsWith("/releases")
+            ? FileCheck2
+            : path.endsWith("/timeline")
+              ? Activity
+              : path.endsWith("/setup")
+                ? ShieldCheck
+                : path.endsWith("/notifications")
+                  ? Bell
+                  : path.endsWith("/policy")
+                    ? Scale
+                    : path.endsWith("/team")
+                      ? Users
+                      : path.endsWith("/retention")
+                        ? Clock3
+                        : path.endsWith("/audit")
+                          ? BookOpenCheck
+                          : path.endsWith("/health")
+                            ? HeartPulse
+                            : path.endsWith("/tokens")
+                              ? KeyRound
+                              : PackageSearch;
+}
+
 const SIDEBAR_COLLAPSED_KEY = "nospoilers.watch.sidebar-collapsed";
 
 function readSidebarCollapsed(): boolean {
@@ -83,34 +113,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const path = href.split("?")[0] ?? href;
-  const Icon =
-    path === "/watch"
-      ? CircleGauge
-      : path.endsWith("/alerts")
-        ? Bell
-        : path.endsWith("/sources")
-          ? Boxes
-          : path.endsWith("/releases")
-            ? FileCheck2
-            : path.endsWith("/timeline")
-              ? Activity
-              : path.endsWith("/setup")
-                ? ShieldCheck
-                : path.endsWith("/notifications")
-                  ? Bell
-                  : path.endsWith("/policy")
-                    ? Scale
-                    : path.endsWith("/team")
-                      ? Users
-                      : path.endsWith("/retention")
-                        ? Clock3
-                        : path.endsWith("/audit")
-                          ? BookOpenCheck
-                          : path.endsWith("/health")
-                            ? HeartPulse
-                            : path.endsWith("/tokens")
-                              ? KeyRound
-                              : PackageSearch;
+  const Icon = watchViewIcon(path);
   return (
     <a
       href={href}
@@ -493,6 +496,7 @@ export function WatchMonolithShell({
     </>
   );
 
+  const PageIcon = watchViewIcon(watchPath(route.view));
   return (
     <div className="watch-desk">
       <aside
@@ -525,7 +529,7 @@ export function WatchMonolithShell({
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <strong className="min-w-0 flex-1 truncate text-sm text-snow sm:flex-none lg:hidden">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-mute sm:flex-none sm:max-w-[200px]"><PageIcon className="hidden size-[19px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
           <button
             type="button"
             onClick={onOpenPalette}
@@ -539,7 +543,6 @@ export function WatchMonolithShell({
             </span>
           </button>
           <span className="hidden flex-1 lg:block" />
-          <strong className="hidden shrink-0 text-sm text-snow xl:inline">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
           {coverage ? (
             <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
               <span className={coverage.status === "trial" ? "watch-trial-text" : undefined}>{coverage.label}</span>

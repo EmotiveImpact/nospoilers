@@ -456,3 +456,8 @@ Verification: `npx vitest run tests/artifact-overview-ui.test.tsx` passed22/22 (
 ## 9 September — component foundation
 
 HTML brief/showcase31-design-system.html created with illustrative foundation, actions, statuses, metrics, fields, lists and empty/unavailable states. Added reusable QuietPanel, QuietAction and QuietStatus with scoped CSS; Overview status summary now consumes QuietStatus. Other compositions remain proposals, not completed app-wide migration. Existing beUI Select remains the production dropdown. Frontend build and22 Overview tests pass; diff check clean. Showcase opened in Codex browser. No server restart or provider/data mutation.
+
+
+## Header identity before search
+
+Moved the route icon/title before search and removed the duplicate desktop title. Shared route icon selection with sidebar; mobile retains navigation trigger and truncated page label. Final navigation tests3/3 and frontend build pass after correcting an initial helper return-line error; diff check clean. Signed-in desktop screenshot verified placement, compact browser document matched viewport width; restored viewport. No server restart or data mutation.
