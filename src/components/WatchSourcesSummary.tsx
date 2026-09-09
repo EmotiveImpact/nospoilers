@@ -1,3 +1,4 @@
+import "./watch/design/coverage-page.css";
 import { Button } from "@/components/ui/button";
 import {
   WatchSectionError,
@@ -194,7 +195,7 @@ export function WatchSourcesSummary({
 
   return (
     <>
-    <div className="mb-8">
+    <div className="coverage-page mb-8">
       <WatchPageHeader
         title="Coverage"
         lede="Repositories, registry packages, production websites, and private map custody under continuous watch."
@@ -209,7 +210,13 @@ export function WatchSourcesSummary({
       <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
         New Scan checks one release now. Coverage keeps watching the connected surfaces that can change later.
       </p>
-        {sources.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">
+        {sources.length > 0 ? <>
+        <div className="coverage-summary" aria-label="Coverage summary">
+          <div><span>Monitored surfaces</span><strong>{sources.length}</strong><p>Across your connected sources</p></div>
+          <div><span>Needs attention</span><strong className="text-warn">{sources.filter(source => source.attention === "critical" || source.attention === "warning").length}</strong><p>Sources with a warning or critical signal</p></div>
+          <div><span>Checked at least once</span><strong>{sources.filter(source => source.lastCheckedAt).length}</strong><p>Check time and scope vary by source</p></div>
+        </div>
+        <div className="coverage-filterbar mt-5 flex flex-wrap gap-2">
           {SOURCE_FILTERS.map((option) => {
             const count =
               option.value === "all" ? sources.length : sources.filter((source) => source.kind === option.value).length;
@@ -252,7 +259,7 @@ export function WatchSourcesSummary({
               {sources.filter((source) => source.attention === "critical" || source.attention === "warning").length}
             </span>
           </button>
-        </div> : null}
+        </div></> : null}
       {sources.length === 0 ? (
         <div className="watch-empty mt-5 max-w-2xl">
           <strong className="block text-sm font-medium text-snow">Add your first monitored surface</strong>
@@ -272,7 +279,7 @@ export function WatchSourcesSummary({
           ) : null}
         </div>
       ) : (
-        <ul className="mt-5 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
+        <ul className="coverage-source-list mt-5 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
           {filteredSources.map((source) => (
             <li
               key={source.key}
@@ -287,7 +294,7 @@ export function WatchSourcesSummary({
               </span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="min-w-0 font-mono text-sm text-snow [overflow-wrap:anywhere]">{source.name}</p>
+                  <p className="coverage-source-name min-w-0 text-sm text-snow [overflow-wrap:anywhere]">{source.name}</p>
                   <span
                     className={
                       source.attention === "critical"
@@ -301,8 +308,10 @@ export function WatchSourcesSummary({
                 <p className="mt-1 text-xs leading-relaxed text-dim [overflow-wrap:anywhere]">
                   {source.kindLabel} · {source.detail}
                   {source.digest ? ` · sha256 ${source.digest.slice(0, 12)}` : ""}
-                  {source.lastCheckedAt ? ` · checked ${new Date(source.lastCheckedAt).toLocaleString()}` : ""}
-                  {` · ${source.alertCount} open ${source.alertCount === 1 ? "alert" : "alerts"}`}
+                  </p>
+                <p className="coverage-source-facts">
+                  <span>{source.lastCheckedAt ? `Checked ${new Date(source.lastCheckedAt).toLocaleString()}` : "Not checked yet"}</span>
+                  <span className={source.alertCount > 0 ? "text-warn" : "text-dim"}>{source.alertCount} open {source.alertCount === 1 ? "alert" : "alerts"}</span>
                 </p>
               </div>
               <Button

@@ -89,7 +89,10 @@ export function TimelineScreen({
         </div>
       </div>
       {!previewing && ready && alertState.status === "ready" ? (
-        <WatchExposureChart alerts={alerts} days={Math.max(7, timeline.days || 90)} />
+        <details className="timeline-chart-disclosure">
+          <summary><span>Activity by source</span><span>Explore the retained alert chart</span></summary>
+          <WatchExposureChart alerts={alerts} days={Math.max(7, timeline.days || 90)} />
+        </details>
       ) : timeline.status === "loading" || alertState.status === "loading" ? (
         <WatchSkeleton variant="detail" className="mt-6" />
       ) : alertState.status === "error" ? (
@@ -119,7 +122,7 @@ export function TimelineScreen({
             : `Nothing in the last ${timeline.days} days on this install.`}
         </div>
       ) : (
-        <ul className="timeline-events mt-6 w-full min-w-0 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
+        <section className="timeline-feed"><header><h2>Recorded activity</h2><p>Alerts, responses and notification deliveries</p></header><ul className="timeline-events mt-6 w-full min-w-0 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
           {timeline.entries.map((entry, index) => (
             <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="min-w-0 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -137,7 +140,7 @@ export function TimelineScreen({
               {entry.fullName ? <p className="mt-1 max-w-full font-mono text-xs text-dim [overflow-wrap:anywhere]">{entry.fullName}</p> : null}
             </li>
           ))}
-        </ul>
+        </ul></section>
       )}
     </section>
   );
