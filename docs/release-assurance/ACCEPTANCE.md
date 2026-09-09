@@ -1,3 +1,7 @@
+## Current design continuation — release tool scope
+
+The approved design target is now mockup30 / the live Quiet Structure Overview, superseding the older mockup28 description below. Subsequent Coverage and Timeline compositions are recorded in BUILD-LOG. Release intelligence now groups current-release gate/remediation first, selected-history tools separately, and stream settings last. Its original role and record conditions remain intact.13 release-intelligence-panel tests and the frontend build pass; signed-in desktop grouping was inspected. Gate C remains partial: native zoom, audible assistive-technology evidence, and remaining detailed page design acceptance are not proven by this increment.
+
 # Complete vision: implementation and acceptance map
 
 ## Latest owner-approved Overview 28

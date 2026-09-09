@@ -489,3 +489,8 @@ Verification: focused seven-file milestone passed45/45 (workspace-team-ui, works
 Coverage now has real total/attention/checked-at-least-once summaries, a quieter filter bar and source rows with separated identity, check timestamps and alert counts. Checked-at-least-once is explicitly not freshness or safety. Timeline presents recorded activity directly; the full source chart remains available in a native disclosure. Existing routes and actions preserved.
 
 Focused source-monitoring tests5/5 passed (1.23s); final build including TypeScript and affected lint passed, existing chunk warning only. Signed-in screenshots verified88/34/88 Coverage summaries, responsive390px document without overflow and actual26-event timeline. No new synthetic history, mutation or server restart. Other deeper page compositions remain subject to further design review.
+
+
+## Release tool scope design
+
+Moved current-release gate/remediation ahead of stream settings and grouped current-record, selected-history and stream-wide tools in distinct quiet panels. Preserved component keys, record arguments and administrator conditions.13 release-intelligence-panel tests passed (1.92s); frontend build passed with existing chunk warning. Signed-in real upload detail confirmed the grouped layout. No mutation or source/provider changes. Acceptance now names mockup30 as the current reference; prior mockup28 text is historical.
