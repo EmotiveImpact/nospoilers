@@ -255,13 +255,6 @@ export function WatchMonolithShell({
             </select>
           </label>
         ) : null}
-        {opts.collapsed ? null : (
-          <p className="mt-1 text-[11px] text-dim">
-            {sourceCount > 0
-              ? `${sourceCount} monitored ${sourceCount === 1 ? "surface" : "surfaces"}`
-              : "nothing connected"}
-          </p>
-        )}
       </div>
 
       <nav
