@@ -1,5 +1,11 @@
 # Release intelligence continuation
 
+## Private monthly outcomes checkpoint (after 55c7982)
+
+`ra_009_release_outcomes` and `release-outcomes-service.ts` add revisioned per-stream consent and on-demand retained-evidence summaries. `ReleaseOutcomeControls.tsx` is mounted in the shared release-detail panel, with month selection, clear next record action, fresh-authority unsigned download and one-click disable. Existing tokens cannot access the human-session summary API. Saved-history access/opt-out does not require renewed scan billing. No summary is sent or persisted as a new analytics archive.
+
+Read `OUTCOMES.md` for UTC windows, limits, evidence validation and minimal derived event fields. Full suite 1,300 tests / 223 files; actual PostgreSQL and browser verification are recorded in BUILD-LOG. Next: close remaining integrated keyboard/role/error and lifecycle/concurrency acceptance across the release loop, then optional provider-backed explanation contracts without activation. Do not call on-ice enterprise features or later agency work implemented. Prior checkpoint “next” lists below are historical.
+
 ## Agent/MCP checkpoint (9 September 2026, after f1bab87)
 
 The real release-detail panel now offers explicit administrator-managed agent access, revocation, recent calls and human-reviewed draft notes. `ra_008_agent_access`, `agent-access.ts`, fixed `agent-tools.ts`, `cli-mcp.ts` and `AgentAccessControls.tsx` connect seven bounded tools to existing verified evidence and remediation APIs. Credentials cover one stream for 24 hours/100 calls, read-only unless draft proposals are explicitly enabled. Existing scan tokens gain no access. Scope, current administrator/billing and connection lifecycle are checked; disconnected/reconnected grants cannot resume. Proposal acceptance is a human session action with revision checks and retains both original and edited text. Original scan evidence and security decisions are unchanged.

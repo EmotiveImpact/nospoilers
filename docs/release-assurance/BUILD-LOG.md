@@ -1,5 +1,15 @@
 # Build and verification log
 
+## 9 September 2026 — private monthly outcomes (after 55c7982)
+
+Implemented outcome types/window validation, migration/service, Hono routing/rate budget and shared release-detail controls. Explicit opt-in, revisioned preferences, immediate opt-out, source-scoped signed record counts, unique-byte/repeat separation, current remediation/reference revalidation, minimal derived events and refreshed private unsigned download. No dependency changes, provider activation, emails, telemetry archive, production migration or deployment.
+
+Node 24.19.0 with existing locked dependencies: final `npm test` **1,300 tests / 223 files passed**, 263.21 seconds. Focused outcome/window/UI/real-composition checks **11 tests / 3 files passed**, 6.26 seconds. Typecheck, frontend build (including typecheck), API build, lint and diff checks passed; existing lint and >500KB bundle warnings remain. No fresh `npm ci` run in this increment.
+
+Disposable native PostgreSQL actual migration replay/session/token/HMAC/Hono lifecycle **1 test passed**, 6.22 seconds (4.32 test). Includes foreign/revoked access, CSRF, token denial, consent conflicts, signed evidence failure/deletion, stale remediation, expired-billing opt-out, 103-record partial window, 10/minute read budget and cancellation. Only the synthetic review database was reset; server stopped and stopped state confirmed. No Docker.
+
+Integrated built-app synthetic QA on port 4370: real routes prepared original/rebuilt records, adopted reference and reviewed remediation. UI opt-in displayed two distinct artifacts, one passed/one failed record and one freshly absent finding. Nested event disclosure remained stable; export downloaded current private JSON; one-click opt-out removed the summary and reset consent. No horizontal overflow at 390/1365px; zero console errors. Screenshots `output/playwright/outcomes-mobile.png` (visually inspected) and `outcomes-desktop.png` are local synthetic review artifacts, not production/customer proof. This is not full keyboard/role/error or operational acceptance, and no customer retention uplift has been measured.
+
 ## 9 September 2026 — scoped agent tools and human-reviewed notes (after f1bab87)
 
 Implemented fixed `agent-tools.ts`, `cli-mcp.ts`, `agent-access{,-schema}.ts` and `AgentAccessControls.tsx` through the actual CLI, Hono wrapper, signed-evidence adapter and release-detail panel. Migration `ra_008_agent_access` adds dedicated hashed credentials, scoped call budgets/audit, immutable draft identity and completed human review. Seven tools cover release discovery, status, evidence, comparison, anomalies, remediation context and optional pending draft notes. Current administrator/source/billing access and connection generations are rechecked; a revoked grant cannot be revived. Existing scan tokens and policy/receipt/alert permissions are unchanged. Human review stores the edited text separately from the original proposal and uses the existing remediation revision transaction.

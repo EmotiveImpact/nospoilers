@@ -1,5 +1,7 @@
 # NoSpoilers agent entry point
 
+Latest increment: opt-in private monthly outcomes (`ra_009_release_outcomes`) is implemented in release detail. Read `docs/release-assurance/OUTCOMES.md` and the latest build log. Summaries derive from retained verified stream evidence, not all customer activity; no email, telemetry provider or new analytics archive. Full regression: 1,300 tests / 223 files passed. Broader acceptance and optional provider-backed assistance remain open; earlier “outcomes unbuilt” statements are historical.
+
 Latest increment: `ra_008_agent_access` adds explicit short-lived stream credentials, seven deterministic stdio MCP tools, call audit and optional pending notes requiring human review. Read `docs/release-assurance/AGENT-TOOLS.md` alongside the latest handoff/acceptance. Existing scan tokens gain no access; no model provider, remote MCP OAuth, autonomous merge or passing receipt is introduced. Retention outcomes and broader operational/provider acceptance remain open. Older checkpoint descriptions below are historical.
 
 ## Mandatory reading order

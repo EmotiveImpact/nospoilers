@@ -6,6 +6,7 @@ import {ProductionParityControls} from './ProductionParityControls';
 import {ReleaseGateControls} from './ReleaseGateControls';
 import {ReleaseRemediationControls} from './ReleaseRemediationControls';
 import {AgentAccessControls} from './AgentAccessControls';
+import {ReleaseOutcomeControls} from './ReleaseOutcomeControls';
 type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
 type View = {
   stream: Stream; snapshots: Snapshot[]; selected: Snapshot | null; nextCursor: string | null;
@@ -113,6 +114,7 @@ export function ReleaseIntelligencePanel({ workspaceId, record }: { workspaceId:
     {streamId && !view && !error ? <p role="status">Loading the selected history…</p> : null}
     {view ? <>
       <header><h3>{view.stream.name}</h3><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing} onClick={() => setReload(n => n + 1)}>Refresh history</button><button type="button" disabled={busy || refreshing} onClick={() => void exportHistory()}>Export private history</button></div></header>
+      <ReleaseOutcomeControls key={`outcomes:${view.stream.id}`} streamId={view.stream.id} workspaceId={workspaceId}/>
       <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>

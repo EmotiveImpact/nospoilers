@@ -9,6 +9,7 @@ import {releaseGate} from './release-gate-service.ts';
 import {releaseGateAccess} from './release-gate-access.ts';
 import {releaseRemediation} from './release-remediation-service.ts';
 import {agentAccess,callAgentTool} from './agent-access.ts';
+import {releaseOutcomes} from './release-outcomes-service.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
@@ -63,9 +64,13 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation|agent-access))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation|agent-access|outcomes))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='outcomes'){
+        const outcomes=releaseOutcomes(options.sql,options.ports(request));
+        return json(request.method==='POST'?await outcomes.configure(id,await body(request)):await outcomes.view(id,url.searchParams.get('month')??undefined,AbortSignal.any([request.signal,AbortSignal.timeout(20000)])));
+      }
       if(action==='agent-access'){
         const access=agentAccess(options.sql,options.ports(request));return json(request.method==='POST'?await access.change(id,await body(request)):await access.view(id));
       }

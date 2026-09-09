@@ -1,5 +1,9 @@
 # Architecture and decision contract
 
+## Private outcomes (9 September 2026)
+
+`ra_009_release_outcomes` stores only stream preference/revision and uses the existing operational audit for changes. GET/POST `streams/:id/outcomes` require current human-session source access; configuration additionally requires administrator authority. Monthly reads are bounded and revalidate signed evidence, current remediation and reference availability. Exports re-fetch current authority rather than downloading a stale cached summary. No external event sink or persisted summary archive exists. The monthly GET has a separate 10/minute budget and a cooperative 20-second deadline; database queries are not preempted. See `OUTCOMES.md` for the event contract and partial-window semantics.
+
 ## Scoped agent tools (9 September 2026)
 
 `ra_008_agent_access` adds hashed, fixed-scope short-lived grants, bounded call audit and immutable submitted drafts/human review records. Administrator session management is distinct from the `nsa_` bearer-only gateway. The gateway delegates only after checking the grant; ordinary token endpoints do not accept these credentials. Current source/installation generation and administrator access are rechecked, including after reads. Connected comparisons require the same asset selector. Pending proposals are the only agent mutation; human acceptance appends an existing remediation investigation event in the same transaction and checks the captured case revision. No policy/receipt/alert mutation is exposed.

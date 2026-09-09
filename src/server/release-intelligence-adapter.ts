@@ -137,6 +137,8 @@ function createIntelligencePorts(request: Request, secrets: { sessionSecret: str
     },userId=>createIntelligencePorts(new Request('http://internal.invalid/gate'),secrets,userId),streamId):{access,evidence},
     async reserve(sql) {
       const actor = await identity(sql), id = actor.kind === 'user' ? actor.userId : `token:${actor.tokenId}`;
+      const url=new URL(request.url);
+      if(request.method==='GET'&&url.pathname.endsWith('/outcomes')&&url.searchParams.has('month'))return store(sql).reserveRequest(`release-outcomes:${id}`,10,60_000);
       return store(sql).reserveRequest(`release-intelligence:${request.method}:${id}`, request.method === 'GET' ? 120 : 30, 60_000);
     },
     async context(sql, ref) {

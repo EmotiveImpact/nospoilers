@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Latest outcome-summary increment (after 55c7982)
+
+Opt-in monthly outcomes are implemented through real session-authorized routes and the existing release-detail panel. Defaults off; explicit administrator consent, revision conflict protection, immediate opt-out and current-authority private export. Counts distinguish verified records, distinct bytes, repeated checks, unavailable evidence and bounded partial windows. Current remediation/reference status is separate from monthly historical scan outcomes. No email, analytics provider, employee tracking, savings claim or new history archive. See `OUTCOMES.md`.
+
+Verification: full 1,300 tests / 223 files passed; focused 11 tests / 3 files passed; disposable native PostgreSQL integration passed; typecheck, frontend/API builds, lint and diff check passed with existing warnings. Built-app synthetic browser opt-in, two-artifact summary, nested disclosure, refreshed JSON export and opt-out verified; no horizontal overflow at 390/1365px or console errors. Wider keyboard/role/error matrices, operational concurrency/load acceptance, optional model-provider contracts and customer validation remain open. Agency remains after core acceptance. Older “retention outcomes unbuilt” entries are superseded, not evidence that the whole platform is complete.
+
 Latest continuation: 9 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact new contracts and verification boundaries. This table is a status ledger, not a feature-completeness or launch claim.
 
 Latest agent update (after f1bab87): seven bounded stdio MCP tools, dedicated stream credentials, current authority checks, audit and administrator-reviewed draft notes are implemented in the actual release-detail flow. Final full regression passed 1,289 tests / 220 files. See `AGENT-TOOLS.md` and the latest build log for native/browser scope. No provider-backed model explanation, remote MCP OAuth service, autonomous PR action or paid provider is implemented/activated here. Retention outcomes remain unbuilt; broader operational/accessibility/client acceptance remains open. This supersedes older statements below that all MCP work is unbuilt.
