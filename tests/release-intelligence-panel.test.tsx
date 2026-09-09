@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {ReleaseIntelligencePanel} from '../src/components/watch/ReleaseIntelligencePanel';
 vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptureControls:()=>null}));
 vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=>null}));
@@ -61,4 +62,40 @@ it('does not download a history export with an unconfirmed workspace',async()=>{
   fireEvent.click(screen.getByRole('button',{name:'Export private history'}));
   await screen.findByText('Export scope was not confirmed. Refresh history before exporting.');
   expect(create).not.toHaveBeenCalled();expect(screen.queryByText('Scoped history.')).toBeNull();
+});
+it('moves keyboard focus to the error when a failed refresh removes the focused control',async()=>{
+  let failed=false;
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>isList(url)?Response.json(failed?{error:'Workspace unavailable.'}:list,{status:failed?404:200}):Response.json(detail)));
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByText('Scoped history.');
+  const refresh=screen.getByRole('button',{name:'Refresh history'});
+  await waitFor(()=>expect((refresh as HTMLButtonElement).disabled).toBe(false));
+  refresh.focus();failed=true;await userEvent.keyboard('{Enter}');
+  const alert=await screen.findByRole('alert');
+  await waitFor(()=>expect(document.activeElement).toBe(alert));
+  await userEvent.tab();expect(document.activeElement).toBe(screen.getByRole('button',{name:'Retry saved history'}));
+});
+it('does not steal focus after the customer has left the history panel during a failed request',async()=>{
+  let fail:((response:Response)=>void)|undefined,failed=false;
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>isList(url)?failed?new Promise<Response>(resolve=>{fail=resolve;}):Response.json(list):Response.json(detail)));
+  render(<><button>Outside history</button><ReleaseIntelligencePanel workspaceId="workspace" record={record}/></>);
+  await screen.findByText('Scoped history.');
+  const refresh=screen.getByRole('button',{name:'Refresh history'});
+  await waitFor(()=>expect((refresh as HTMLButtonElement).disabled).toBe(false));
+  refresh.focus();failed=true;fireEvent.click(refresh);
+  const outside=screen.getByRole('button',{name:'Outside history'});outside.focus();
+  await waitFor(()=>expect(fail).toBeTruthy());fail!(Response.json({error:'Unavailable.'},{status:404}));
+  await screen.findByRole('alert');expect(document.activeElement).toBe(outside);
+});
+it('identifies same-digest records distinctly and announces a keyboard-selected historical record',async()=>{
+  const snapshot={id:'snapshot',record_kind:'upload',record_id:'record',scanned_at:'2026-09-09T00:00:00.000Z',digest:'a'.repeat(64),metrics:{files:1},excluded:false};
+  const next={...snapshot,id:'next',record_id:'another-record'};
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(isList(url)?list:{...detail,snapshots:[snapshot,next],selected:String(url).includes('snapshotId=next')?next:snapshot})));
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  const button=await screen.findByRole('button',{name:/Inspect upload another-record/});
+  await waitFor(()=>expect((button as HTMLButtonElement).disabled).toBe(false));
+  button.focus();await userEvent.keyboard('{Enter}');
+  await waitFor(()=>expect(button.getAttribute('aria-pressed')).toBe('true'));
+  expect(screen.getByRole('status').textContent).toContain('Selected upload another-record');
+  expect(screen.getByRole('status').textContent).toContain('different historical record');
 });

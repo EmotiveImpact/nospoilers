@@ -47,6 +47,20 @@ export async function parityOrigin(sql:SqlClient,s:Stream,id:number,lock=true){
   return {...row,id:Number(row.id),connection_generation:String(row.connection_generation)};
 }
 
+export async function parityOrigins(sql:SqlClient,workspaceId:string){
+  const rows=(await sql.query<{id:number;origin_url:string;eligibility:string}>(`SELECT o.id,o.origin_url,
+    CASE WHEN o.disconnected_at IS NOT NULL THEN 'disconnected'
+      WHEN o.paused_at IS NOT NULL THEN 'paused'
+      WHEN NOT (COALESCE(o.workspace_id=$1,false) OR EXISTS(SELECT 1 FROM product_workspace_installations c JOIN installations i ON i.id=c.installation_id
+        WHERE c.workspace_id=$1 AND c.installation_id=o.installation_id AND NOT i.suspended AND i.disconnected_at IS NULL)) THEN 'connection_unavailable'
+      WHEN o.verification_token IS NULL OR o.verified_at IS NULL THEN 'unverified'
+      WHEN o.verified_at>now() OR o.verified_at<=now()-interval '30 days' THEN 'verification_expired'
+      ELSE 'eligible' END AS eligibility
+    FROM watched_origins o WHERE o.workspace_id=$1 OR EXISTS(SELECT 1 FROM product_workspace_installations c WHERE c.workspace_id=$1 AND c.installation_id=o.installation_id)
+    ORDER BY o.id LIMIT 20`,[workspaceId])).rows;
+  return rows.map(row=>({...row,id:Number(row.id),eligible:row.eligibility==='eligible'}));
+}
+
 export function productionParity(sql:SqlClient,ports:IntelligencePorts){return {
   async cancel(id:string,runId:string){return sql.transaction(async tx=>{
     const {s,permission}=await parityStream(tx,ports,id);
@@ -72,8 +86,7 @@ export function productionParity(sql:SqlClient,ports:IntelligencePorts){return {
         manifest=approved.e.manifest.map(f=>({path:f.path,size:f.size}));
       }catch(error){if(!(error instanceof IntelligenceError)||![404,409,422].includes(error.status))throw error;}
     }
-    const origins=(await tx.query(`SELECT o.id,o.origin_url,o.verified_at,o.paused_at,o.disconnected_at FROM watched_origins o
-      WHERE o.workspace_id=$1 OR EXISTS(SELECT 1 FROM product_workspace_installations c WHERE c.workspace_id=$1 AND c.installation_id=o.installation_id) ORDER BY o.id LIMIT 20`,[s.workspace_id])).rows;
+    const origins=await parityOrigins(tx,s.workspace_id);
     const savedRuns=(await tx.query<ParityRun>('SELECT * FROM release_production_observations WHERE stream_id=$1 ORDER BY created_at DESC,id DESC LIMIT 10',[s.id])).rows;
     const runs=[];
     for(const run of savedRuns){

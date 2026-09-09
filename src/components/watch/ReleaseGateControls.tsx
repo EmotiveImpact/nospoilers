@@ -14,6 +14,8 @@ function GateControls({streamId,record,refreshVersion}:Props){
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false);
   const [mode,setMode]=useState<GatePolicy['mode']>('advisory'),[hours,setHours]=useState(24),[reason,setReason]=useState(''),[confirm,setConfirm]=useState(false),[rollback,setRollback]=useState(''),[deployment,setDeployment]=useState('');
   const lifetime=useRef<AbortController|null>(null);
+  const errorTarget=useRef<HTMLParagraphElement|null>(null),focusFailure=useRef(false);
+  useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
   const [clock,setClock]=useState(()=>Date.now());
   useEffect(()=>{
     const now=Date.now(),next=view?.decisions.map(d=>Date.parse(d.expires_at)).filter(t=>t>now).sort((a,b)=>a-b)[0];
@@ -32,18 +34,18 @@ function GateControls({streamId,record,refreshVersion}:Props){
     return()=>c.abort();
   },[streamId,record.kind,record.id,refreshVersion,reload]);
   async function save(input:object,message:string){
-    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy)return;setBusy(true);setError('');setNotice('');
+    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy)return;const initiatingControl=document.activeElement;setBusy(true);setError('');setNotice('');
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/gate`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Gate action was not saved.');
       if(!signal.aborted){setView(null);setNotice(message);setReason('');setConfirm(false);setRollback('');setReload(n=>n+1);}
-    }catch(e){if(!signal.aborted){setView(null);setConfirm(false);setError(e instanceof Error?e.message:'Gate action was not saved.');}}
+    }catch(e){if(!signal.aborted){focusFailure.current=document.activeElement===initiatingControl;setView(null);setConfirm(false);setError(e instanceof Error?e.message:'Gate action was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   return <details><summary>Release Gate · opt-in</summary>
     <p>Adopt a policy for this release stream. CI must call the gate before deploying; enabling a mode does not automatically reconfigure your pipeline.</p>
     <button type="button" disabled={busy} onClick={()=>{setView(null);setConfirm(false);setError('');setReload(n=>n+1);}}>Refresh gate</button>
-    {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
+    {error?<p role="alert" tabIndex={-1} ref={errorTarget}>{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
     {!view&&!error?<WatchSkeleton variant="list" label="Reading gate policy"/>:null}
     {view?<><p><strong>{view.policy.mode}</strong> · revision {view.policy.revision} · evidence within {view.policy.maxAgeHours} hours.</p><p>{view.notice}</p>
       {view.canAdminister&&record.kind==='release'?<ReleaseGateAccessControls key={`${streamId}:${record.id}`} streamId={streamId} record={record}/>:null}

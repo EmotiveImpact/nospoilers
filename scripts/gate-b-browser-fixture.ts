@@ -24,12 +24,8 @@ import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts
 import {withReleaseAssurance} from '../src/server/assurance-app.ts';
 import {handleJob} from '../src/server/worker.ts';
 import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
-import {REVIEW_COOKIE,disabledReviewProviders,reviewRequest,reviewResponse,isReviewProviderPath} from './dev-review-isolation.ts';
 
-const devReview=process.argv.includes('--dev-review');
-if(devReview&&process.env.NODE_ENV==='production')throw new Error('Dev review cannot run in production.');
-const portArgument=process.argv.slice(2).find(value=>value!=='--dev-review');
-const port=portArgument===undefined?(devReview?4372:4359):Number(portArgument);
+const port=process.argv[2]===undefined?4359:Number(process.argv[2]);
 if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use a valid unprivileged QA port.');
 const host='localhost',base=`http://${host}:${port}`;
 const secret=randomBytes(32).toString('hex'),entry=randomBytes(18).toString('hex');
@@ -73,7 +69,13 @@ const alert=(await sql.query<{id:number}>(`INSERT INTO alerts(workspace_id,sourc
 await saveWorkspaceArtifactPolicy(sql,'qa-owner',workspace.id,{strict:false,expectedRevision:0,requireExceptionApproval:true});
 const exception=await requestWorkspaceException(sql,'qa-owner',workspace.id,{attemptId:upload,findingIndex:0,requestKey:randomUUID(),reason:'QA bounded exception awaiting independent reviewer',expiresAt:new Date(Date.now()+86400000).toISOString()});
 const sessions=new Map<string,string>();for(const actor of ['owner','reviewer','viewer'])sessions.set(actor,signSession(secret,await store.createSession(`qa-${actor}`)));
-const app=createApp({store,github:stubGithub(),config:loadConfig({...disabledReviewProviders,sessionSecret:secret,receiptSecret:secret,appBaseUrl:base}),wakeWorker:()=>{}});
+const app=createApp({store,github:stubGithub(),config:loadConfig({
+ sessionSecret:secret,receiptSecret:secret,appBaseUrl:base,databaseUrl:'pglite://:memory:',
+ githubAppId:'',githubPrivateKey:'',githubWebhookSecret:'',githubClientId:'',githubClientSecret:'',githubAppSlug:'',githubDiscoveryToken:'',
+ adminToken:'',adminGithubLogin:'',stripeSecretKey:'',stripeWebhookSecret:'',
+ stripePriceSoloMonthly:'',stripePriceSoloYearly:'',stripePriceTeamMonthly:'',stripePriceTeamYearly:'',
+ resendApiKey:'',resendFromEmail:'',cronSecret:'',processRole:'web',
+}),wakeWorker:()=>{}});
 const assurance=withReleaseAssurance(app,{receiptSecret:secret,scopeForRelease:async id=>{
  const row=await store.getReleaseRevision(id);return row?{installationId:row.installation_id,receiptId:row.receipt_id}:null;
 }});
@@ -83,27 +85,11 @@ const integrated=withReleaseIntelligence(assurance,{sql,appBaseUrl:base,
  reserve:request=>intelligencePorts(request,secrets).reserve(sql),
  context:(request,ref)=>intelligencePorts(request,secrets).context(sql,ref),
 });
-const hosted=(await sql.query<{id:number}>('SELECT id FROM release_revisions WHERE repo_id=9911 ORDER BY id DESC LIMIT 1')).rows[0];
-if(devReview){
- // The same authenticated routes customers use; only these disposable records are seeded.
- for(const [key,name,record] of [
-  ['dev-upload','Dev review · uploaded builds',{kind:'upload',id:upload}],
-  ['dev-github','Dev review · GitHub release',{kind:'release',id:String(hosted.id)}],
- ] as const){
-  const response=await integrated.fetch(new Request(`${base}/api/release-intelligence/streams`,{method:'POST',headers:{origin:base,cookie:`ns_session=${sessions.get('owner')}`,'content-type':'application/json'},body:JSON.stringify({workspaceId:workspace.id,key,name,role:'Package',record})}));
-  if(!response.ok)throw new Error(`Dev review stream preparation failed (${response.status}): ${await response.text()}`);
- }
-}
-const dist=path.resolve('dist');const index=await readFile(path.join(dist,'index.html'),'utf8');
-const reviewBanner=`<aside aria-label="Development review notice" style="position:fixed;bottom:0;left:0;right:0;z-index:2147483647;padding:10px 16px;background:#170a0e;color:#fff;border-top:1px solid #fc2854;font:12px/1.5 system-ui">DEV REVIEW · Synthetic data · No real GitHub access · Reset on restart. <a style="color:#fff" href="/watch/releases?workspace=${workspace.id}&release=${hosted.id}">GitHub release</a> · <a style="color:#fff" href="/watch/releases?workspace=${workspace.id}&upload=${upload}&uploadView=detail">Uploaded build</a> · <a style="color:#fff" href="/__dev-review">Review sign-in</a></aside>`;
-const html=devReview?index.replace('</body>',`${reviewBanner}</body>`):index;
-const page=()=>new Response(html,{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});
+const dist=path.resolve('dist');await readFile(path.join(dist,'index.html'));
 const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};
 const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
  const url=new URL(request.url);
  if(url.hostname!==host)return new Response('QA loopback host only',{status:403});
- if(devReview&&isReviewProviderPath(url.pathname))return Response.json({error:'Development review uses synthetic GitHub data only. Use /__dev-review to sign in locally; live providers are disabled.'},{status:409});
- if(devReview)request=reviewRequest(request);
  if(url.pathname===`/__qa/${entry}/production-step`&&request.method==='POST'){
   if(request.headers.get('origin')!==base||!request.headers.get('cookie')?.split(';').some(c=>c.trim()===`ns_session=${sessions.get('owner')}`))return new Response('QA owner only',{status:403});
   const job=await store.claimJob('heavy',1,'qa-parity-worker');
@@ -114,10 +100,10 @@ const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
     notifier:{send:async()=>{throw new Error('QA fixture does not send notifications.');}}});
   await store.finishJob(job.id,undefined,'qa-parity-worker');return Response.json({qaOnly:true,processed:true,transport:'synthetic — no outbound network'});
  }
- if(url.pathname===`/__qa/${entry}`||(devReview&&url.pathname==='/__dev-review')){const actor=url.searchParams.get('actor')??'owner',session=sessions.get(actor);if(!session)return new Response('Unknown QA actor',{status:400});return new Response(null,{status:302,headers:{'Set-Cookie':`${devReview?REVIEW_COOKIE:'ns_session'}=${session}; Path=/; HttpOnly; SameSite=Strict`,'Location':devReview?`/watch/releases?workspace=${workspace.id}&release=${hosted.id}`:`/watch?workspace=${workspace.id}`}});}
- if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/')){const response=await integrated.fetch(request);return devReview?reviewResponse(response,base):response;}
+ if(url.pathname===`/__qa/${entry}`){const actor=url.searchParams.get('actor')??'owner',session=sessions.get(actor);if(!session)return new Response('Unknown QA actor',{status:400});return new Response(null,{status:302,headers:{'Set-Cookie':`ns_session=${session}; Path=/; HttpOnly; SameSite=Strict`,'Location':`/watch?workspace=${workspace.id}`}});}
+ if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return integrated.fetch(request);
  const candidate=path.resolve(dist,`.${decodeURIComponent(url.pathname)}`);
- if(!candidate.startsWith(dist+path.sep))return page();
- try{const content=await readFile(candidate);return new Response(devReview&&path.extname(candidate)==='.html'?content.toString('utf8').replace('</body>',`${reviewBanner}</body>`):content,{headers:{'Content-Type':mime[path.extname(candidate)]??'application/octet-stream','Cache-Control':'no-store'}});}catch{return page();}
-}},()=>console.log(JSON.stringify({qaOnly:true,devReview,entry:devReview?`${base}/__dev-review`:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,rebuiltUpload,hostedRelease:hosted.id,reviewedAt:dirty.scannedAt,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
+ if(!candidate.startsWith(dist+path.sep))return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});
+ try{return new Response(await readFile(candidate),{headers:{'Content-Type':mime[path.extname(candidate)]??'application/octet-stream','Cache-Control':'no-store'}});}catch{return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});}
+}},()=>console.log(JSON.stringify({qaOnly:true,entry:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,rebuiltUpload,reviewedAt:dirty.scannedAt,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
 async function stop(){server.close();await sql.close();process.exit(0);}process.once('SIGINT',stop);process.once('SIGTERM',stop);

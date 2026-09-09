@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {WatchSkeleton} from '../WatchDataState';
 import type {Ref,Snapshot} from '../../release-intelligence/model';
 import type {RemediationResult} from '../../release-intelligence/remediation';
 type Case={id:string;finding:string;revision:number;original_snapshot:string};
@@ -12,6 +13,8 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
   const [finding,setFinding]=useState(''),[reason,setReason]=useState(''),[changeUrl,setChangeUrl]=useState(''),[commit,setCommit]=useState(''),[reviewedAt,setReviewedAt]=useState(''),[candidate,setCandidate]=useState(''),[reviewConfirm,setReviewConfirm]=useState(false),[buildConfirm,setBuildConfirm]=useState(false);
   const resetConfirmation=()=>{setReviewConfirm(false);setBuildConfirm(false);};
   const lifetime=useRef<AbortController|null>(null);
+  const errorTarget=useRef<HTMLParagraphElement|null>(null),focusFailure=useRef(false);
+  useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const c=new AbortController(),params=new URLSearchParams({recordKind:record.kind,recordId:record.id});if(selected)params.set('caseId',selected);
@@ -25,19 +28,20 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
   },[streamId,record.kind,record.id,selected,reload]);
   async function save(action:string){
     const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy||!view)return;
+    const initiatingControl=document.activeElement;
     setBusy(true);setError('');setNotice('');
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/remediation`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action,reason,snapshotId:view.current?.snapshotId,finding,caseId:view.selected?.id,expectedRevision:view.selected?.revision,changeUrl,commit,reviewedAt,confirm:action==='review'?reviewConfirm:buildConfirm,candidateSnapshot:candidate})});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Remediation was not saved.');
       if(!signal.aborted){setView(null);setSelected(body.caseId);setReload(n=>n+1);setReason('');resetConfirmation();setNotice('Remediation activity saved. Original receipts and alert states are unchanged.');}
-    }catch(e){if(!signal.aborted){setView(null);resetConfirmation();setError(e instanceof Error?e.message:'Remediation was not saved.');}}
+    }catch(e){if(!signal.aborted){focusFailure.current=document.activeElement===initiatingControl;setView(null);resetConfirmation();setError(e instanceof Error?e.message:'Remediation was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   const current=view?.selected,review=current?.history.find(e=>e.action==='review');
   return <details><summary>Remediation · finding to rebuilt evidence</summary>
     <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh remediation</button>
-    {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
-    {!view&&!error?<p role="status">Reading remediation evidence…</p>:null}
+    {error?<p role="alert" tabIndex={-1} ref={errorTarget}>{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
+    {!view&&!error?<WatchSkeleton variant="list" label="Reading remediation evidence"/>:null}
     {view?<><p>{view.notice}</p>
       <a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a>
       {!view.current?<p>Record this release in the selected stream to investigate its signed findings. Existing cases below belong to this stream, not necessarily this release.</p>:!view.current.findings.length?<p>This recorded release has no signed findings to investigate. Existing stream cases remain available; a clean scan does not automatically resolve them.</p>:null}

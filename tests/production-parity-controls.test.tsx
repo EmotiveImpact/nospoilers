@@ -4,7 +4,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {ProductionParityControls} from '../src/components/watch/ProductionParityControls';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const response=(body:unknown)=>new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}});
-const base={canManage:true,canCancel:true,baselineRevision:2,manifest:[{path:'dist/app.js',size:20}],origins:[{id:12,origin_url:'https://owned.example/'}],runs:[],notice:'Uses the existing scan allowance.'};
+const base={canManage:true,canCancel:true,baselineRevision:2,manifest:[{path:'dist/app.js',size:20}],origins:[{id:12,origin_url:'https://owned.example/',eligible:true,eligibility:'eligible'}],runs:[],notice:'Uses the existing scan allowance.'};
 
 it('requires an adopted reference before presenting the request form',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response({...base,baselineRevision:null,manifest:[]})));
@@ -20,7 +20,7 @@ it('sends explicit reference, deployment and file mapping only after confirmatio
   const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
   fireEvent.click(view.getByText('Approved build → production'));
   await view.findByRole('button',{name:'Add file mapping'});
-  fireEvent.change(view.getByLabelText('Verified website'),{target:{value:'12'}});
+  fireEvent.change(view.getByLabelText('Production website'),{target:{value:'12'}});
   fireEvent.change(view.getByLabelText('Declared deployment ID'),{target:{value:'deploy-42'}});
   fireEvent.change(view.getByLabelText('Declared deployment time (your local time)'),{target:{value:'2026-09-09T01:00'}});
   fireEvent.click(view.getByRole('button',{name:'Add file mapping'}));
@@ -46,6 +46,15 @@ it('explains missing website setup instead of offering an empty observation form
   const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
   await view.findByText(/Connect a production website in Coverage/);
   expect(view.queryByRole('button',{name:'Observe production',hidden:true})).toBeNull();
+});
+
+it('labels ineligible websites with recovery steps and prevents observation',async()=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response({...base,origins:[{id:12,origin_url:'https://owned.example/',eligible:false,eligibility:'verification_expired'}]})));
+  const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
+  await view.findByText(/No website is currently eligible/);
+  const option=view.getByRole('option',{name:/Renew ownership verification/,hidden:true}) as HTMLOptionElement;
+  expect(option.disabled).toBe(true);
+  expect((view.getByRole('button',{name:'Observe production',hidden:true}) as HTMLButtonElement).disabled).toBe(true);
 });
 
 it('hides stale observation controls after failed cancellation and can refresh safely',async()=>{

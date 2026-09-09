@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "vite --port 4347 --host",
-    "dev:review": "npm run build && tsx scripts/gate-b-browser-fixture.ts --dev-review",
     "host": "tsx src/server/index.ts",
     "worker": "NOSPOILERS_ROLE=worker tsx src/server/index.ts",
     "start": "tsx src/server/index.ts",

@@ -1,5 +1,19 @@
 # Build and verification log
 
+## 9 September 2026 — release-tool keyboard recovery and website eligibility
+
+Four-agent batch: builder improved history record accessible names, selection announcements and failed-action focus recovery; fixer added server-derived production website eligibility with disabled choices/recovery text; independent tester reproduced focus loss in Gate/Remediation/Agent controls before root corrected mutation error recovery. Focus remains with another control if the user moved away, and initial read failures do not steal focus. Agent/remediation loading uses existing WatchSkeleton. No enforcement, receipt, source activation or pricing semantics changed.
+
+Focused combined component/database run: 22 tests / 4 files passed, 2.14 seconds. Earlier adjacent cleanup/gate/remediation/agent run: 16 tests / 4 files passed. Independent final focus checks: 7 passed (including focus moved outside during a pending mutation). The build initially identified missing explicit extensions in the new parity test imports; corrected without runtime changes and the parity database test passed again. Frontend build/typecheck, API build and lint then passed; existing chunk-size and lint warnings remain. Final test-only addition also passed typecheck.
+
+Cumulative run30980 finished: 1,332 passed / 7 failed across229 files,283.81seconds, with two unhandled local-listener EPERM errors. Failures were confined to receipt/policy/scanner CLI startup and setup Action loopback tests. Direct reproduction showed tsx IPC socket creation denied before application execution. With local socket permission enabled and no application/test assertion changes: receipt CLI subset4 passed (15 unrelated skipped), setup+policy19 passed, scanner fixtures30 passed. These rechecks cover all7 failures and both listener errors. This is a completed full-suite attempt plus successful affected rechecks, NOT a single green full-suite run. Future cumulative checks should use the permitted local socket context initially. No new browser/production-provider verification is claimed and no dev-review server was relaunched.
+
+## 9 September 2026 — retire customer-facing synthetic review
+
+Owner rejected fake review as a substitute for using the application. Removed the dev:review npm command, friendly synthetic sign-in/banner/automatic stream seeding and dedicated review helper. Retained the earlier internal QA fixture and regression infrastructure; no customer database or evidence deleted. All identified local servers were stopped before this change. Real GitHub configuration and provider verification are deferred by owner request, not completed. Historical launcher entries below are superseded.
+
+Scope clarification: original Gate B B0–B8 is accepted in GATE-B-FINAL-EVIDENCE-MATRIX.md. The newer release-assurance branch extends that implementation; it does not reopen Gate B. Gate C design/accessibility/separation remains partial, Gate D operational evidence remains open, and Gate E enterprise identity/offer is a separate later scope. Latest release-assurance acceptance controls the additional capabilities, not old chronological 'unbuilt' notes.
+
 ## 9 September 2026 — isolated GitHub-free dev review
 
 Added `npm run dev:review`, explicit `--dev-review` fixture mode and `scripts/dev-review-isolation.ts`. Builds the app, starts loopback localhost4372, signs into a disposable seeded owner workspace and creates hosted/upload streams through real authenticated routes. Visible banner and release links identify synthetic data. No gates, baselines, source rules or agent grants automatically activated. In-memory state resets on restart; no customer4347 data changed.

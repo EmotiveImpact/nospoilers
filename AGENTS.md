@@ -1,6 +1,6 @@
 # NoSpoilers agent entry point
 
-For coordinated continuation use `docs/release-assurance/CONTINUE-FOUR-AGENT-IMPLEMENTATION.md`: orchestrator plus builder, fixer and tester; avoid repeated bootstrap/remote polling. GitHub-free local UI review is `npm run dev:review`, opening `http://localhost:4372/__dev-review`. This is isolated synthetic memory data with dedicated cookies, blank provider credentials and blocked external redirects—not production authentication or real repository access. Latest BUILD-LOG records verification.
+For coordinated continuation use `docs/release-assurance/CONTINUE-FOUR-AGENT-IMPLEMENTATION.md`: orchestrator plus builder, fixer and tester; avoid repeated bootstrap/remote polling. Customer-facing synthetic dev review has been removed at the owner's request. Internal QA fixtures are tests, not a usable customer workspace. Real GitHub configuration and live-provider verification are deferred to production; do not restart fake review mode. Latest BUILD-LOG records verification.
 
 Latest history UI increment explains stream capabilities before setup and exposes a focused setup CTA. Failed list/mutation/export responses hide stale history controls; workspace/record identity resets the panel. History JSON now includes explicit scope, verified by the downloader. See latest BUILD-LOG for exact verification; no source or gate is activated by stream creation.
 

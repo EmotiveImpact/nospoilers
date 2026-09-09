@@ -6,6 +6,8 @@ Repository: `/Users/augustusedem/Nospoilers` — `EmotiveImpact/nospoilers`
 Branch: `codex/release-assurance-spine-v1`
 Existing draft PR: #44
 
+Owner correction: synthetic customer dev review has been removed. Do not restore it or start it as the owner's workspace. Internal isolated fixtures may still support tests. Real GitHub configuration and live-provider verification are deferred to production by request; preserve this as unverified rather than blocking unrelated implementation or simulating completion.
+
 ## Start once, then maintain continuity
 
 At the start of a genuinely new work session, inspect the local working tree, current branch and existing running work. Fetch the remote once and inspect PR #44 once to establish the starting point. Preserve existing/concurrent edits and local commits. Never reset to an old SHA, force-push, create a replacement repository or duplicate the PR.
