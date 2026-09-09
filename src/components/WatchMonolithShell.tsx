@@ -234,16 +234,20 @@ export function WatchMonolithShell({
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
-          <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
+          <div className={cn("flex items-center gap-2", opts.collapsed ? "flex-col justify-center" : "justify-between")}>
           <a
             href="/"
             onClick={(event) => go(event, "/")}
             className={cn(
-              "font-display text-[15px] text-snow hover:text-snow",
-              opts.collapsed && "sr-only",
+              "flex min-w-0 items-center text-snow hover:text-snow",
+              opts.collapsed ? "justify-center" : "flex-1",
             )}
           >
-            NoSpoilers
+            <img
+              src={opts.collapsed ? "/assets/brand/nospoilers-mark.png" : "/assets/brand/nospoilers-wordmark.png"}
+              alt="NoSpoilers"
+              className={cn("block object-contain", opts.collapsed ? "size-7" : "h-[25px] w-auto max-w-[152px]")}
+            />
           </a>
           {opts.showToggle ? (
             <button
