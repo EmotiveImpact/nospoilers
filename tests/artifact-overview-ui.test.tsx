@@ -90,6 +90,8 @@ it('links totals to scoped release filters and recent attempts to their brief',a
  fireEvent.click(await screen.findByRole('button',{name:/Need review/}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&uploadStatus=attention');
  fireEvent.click(screen.getByRole('button',{name:/package.tgz/}));
+ expect(await screen.findByRole('dialog',{name:'package.tgz'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Open full evidence'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&upload=scan&uploadView=detail');
  expect(screen.getByText(/Older failed attempts remain/)).toBeTruthy();
 });
@@ -109,17 +111,19 @@ it('opens delayed website coverage without mixing it with scan findings',async()
 it('identifies website evidence without labelling it an artifact scan',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,recent:[{...data.recent[0],target:'https://example.com/',source_kind:'website'}]}))));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
- expect(await screen.findByText(/Website check ·/)).toBeTruthy();
+ expect(await screen.findByRole('heading',{name:'Website check'})).toBeTruthy();
  expect(screen.queryByText(/Saved artifact evidence/)).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:/https:\/\/example.com/}));
+ await screen.findByRole('dialog');
+ fireEvent.click(screen.getByRole('button',{name:'Open full evidence'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&upload=scan&uploadView=detail');
 });
 
-it('puts next action and recent evidence before secondary monitoring without repeating the scan action',async()=>{
+it('puts next action and recent evidence before secondary monitoring without duplicating the shell scan action',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,connectedCoverage:{total:1,recent:1,paused:0,unknown:0,delayed:0,unavailable:0}})));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
- const next=await screen.findByRole('heading',{name:'Next action'});
- const recent=screen.getByRole('heading',{name:'Recent attempts'});
+ const next=await screen.findByRole('heading',{name:'View attempts needing review'});
+ const recent=screen.getByRole('heading',{name:'Recent release scans'});
  const monitoring=screen.getByRole('heading',{name:'Connected monitoring'});
  expect(next.compareDocumentPosition(recent)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(recent.compareDocumentPosition(monitoring)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Latest owner-approved Overview 28
+
+The connected Overview now implements mockup 28: consistent graphite panels, capsule controls, real next action/coverage totals, a scoped alert queue, retained timeline activity, release cards and a summary drawer linking full evidence. Activity retains Team/trial access and the 200-event endpoint bound; the coverage ring means recently checked sources, not release safety. Uploaded and connected evidence remain distinct. BUILD-LOG records 39 covered focused cases, final build/typecheck, clean affected-file lint, and signed-in desktop/390px checks including keyboard tabs and drawer focus recovery. Broader Gate C and production/provider acceptance remain separate.
+
 ## Current quiet-loading and Alerts-navigation increment
 
 The owner-requested route/section loading presentation now renders no visible skeleton geometry; a polite nonvisual loading status remains for assistive technology, while the separate initial Watch-opening lighthouse is unchanged. Alerts gives its three lifecycle tabs the full row by removing the redundant visible **Status** label without changing the tablist name, counts, filters or keyboard behavior. Overview's connected-release actions now select Connected revisions with exact workspace/installation scope, and the archived-workspace recovery action remains available without restoring the removed sidebar Manage link.
