@@ -1,5 +1,9 @@
 # Build and verification log
 
+## 9 September 2026 — sidebar workspace menu chrome
+
+Removed the redundant **Manage workspaces** sidebar control, removed the heavy menu-container outline, and changed the create row to a plain menu item while retaining a restrained keyboard focus outline on the trigger. Focused workspace UI coverage remains 8/8; selection, creation navigation and permissions are unchanged.
+
 ## 9 September 2026 — duplicate workspace creation affordance removed
 
 The workspace management page now keeps its existing **Create a workspace** form without the redundant plus tile. The sidebar workspace menu remains the single compact entry point for opening that form. Focused workspace UI coverage passes 8/8; no workspace, billing or authorization behavior changed.

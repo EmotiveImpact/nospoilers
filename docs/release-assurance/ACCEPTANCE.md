@@ -2,6 +2,8 @@
 
 ## Latest real-app remediation evidence
 
+The sidebar workspace menu now has a single workspace control, no redundant **Manage workspaces** button, no heavy menu outline, and a plain **Create new workspace** row with its plus icon. Keyboard focus remains visible on the trigger. Focused UI coverage passes 8/8.
+
 The workspace management page no longer renders a duplicate **Create new workspace** tile beneath the workspace list. Its existing creation form remains available, while the sidebar plus item is the single compact entry point. Focused UI coverage passes 8/8.
 
 The signed-in sidebar workspace control now owns the workspace list: avatar/initials rows, a plus tile for the existing create-workspace route, and no duplicate single-install identity card. Focused UI coverage passes 8/8; the current API has no avatar metadata, so initials are the verified live fallback. No workspace mutation or billing behavior is implied by the plus item.
