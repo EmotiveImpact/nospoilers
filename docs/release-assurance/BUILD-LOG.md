@@ -451,3 +451,8 @@ Matched mockup23's font stack in the Watch shell and portalled sidebar, increase
 Mockup30 now informs live Overview: uniform dark10px cards with fine outlines, coverage/header/metadata dividers, labels above counts, aligned card spacing,8px actions and tighter response segments. Removed stacked release-card decoration. Summary status spans preserve actual counts: policy passed green, needs review coral; failed attempt labels red. Existing data, navigation, chart, beUI Select, sidebar and coverage meaning are preserved; prototype setup progress and illustrative records were not copied.
 
 Verification: `npx vitest run tests/artifact-overview-ui.test.tsx` passed22/22 (2.28s). `npm run build` passed including TypeScript (existing chunk warning); diff check clean. Signed-in desktop screenshot/computed colors verified the actual3 passed/1 review summary and22 open alerts.390px rendered without document overflow; desktop restored. No server restart or data mutation.
+
+
+## 9 September — component foundation
+
+HTML brief/showcase31-design-system.html created with illustrative foundation, actions, statuses, metrics, fields, lists and empty/unavailable states. Added reusable QuietPanel, QuietAction and QuietStatus with scoped CSS; Overview status summary now consumes QuietStatus. Other compositions remain proposals, not completed app-wide migration. Existing beUI Select remains the production dropdown. Frontend build and22 Overview tests pass; diff check clean. Showcase opened in Codex browser. No server restart or provider/data mutation.
