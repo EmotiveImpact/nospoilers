@@ -1,5 +1,8 @@
 ## Gate C current requirement map
 
+Expired Coverage/Setup overlay contents now use inert, matching the existing pointer lock for keyboard/AT access while preserving outside recovery actions. Two rendered expired/active cases pass (1.12s), build passes; real active Setup reviewed with zero inert descendants. Expired-state evidence is component-level, not a changed real trial. External checklist: GATE-C-MANUAL-VERIFICATION.md; checks remain unperformed.
+
+
 Overview and release-assurance semantic foreground/status colours now reference shared tokens; approved decorative shades remain. Build passed and rebuilt Overview screenshot/status colours reviewed. Behavioural evidence remains279/41 at8d4e658; no new behavioural suite claimed for CSS-only changes.
 
 

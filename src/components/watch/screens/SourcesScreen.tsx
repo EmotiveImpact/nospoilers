@@ -21,7 +21,7 @@ export function SourcesScreen() {
                   {ended ? (
                     <CoverageLock variant="watch" title="Subscribe to keep watching." />
                   ) : null}
-                  <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
+                  <div inert={ended} className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
                   <WatchSourcesSummary
                     mode="sources"
                     sources={sourceRows}

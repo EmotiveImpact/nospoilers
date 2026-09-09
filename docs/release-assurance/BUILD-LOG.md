@@ -674,3 +674,9 @@ npm test -- tests/artifact-shell-navigation.test.tsx tests/watch-accessibility.t
 Overview and release-assurance semantic foreground/status colours now reference shared tokens; approved decorative shades remain. Build passed and rebuilt Overview screenshot/status colours reviewed. Behavioural evidence remains279/41 at8d4e658; no new behavioural suite claimed for CSS-only changes.
 
 `npm run build` passed with existing chunk warning; diff check passed. Live Overview policy passed rgb(63,185,80), need review rgb(255,138,128). Screenshot shows retained panel gradients, hierarchy and counts. No functional/backend changes.
+
+## 2026-09-10 — Expired coverage keyboard boundary
+
+Expired Coverage/Setup overlay contents now use inert, matching the existing pointer lock for keyboard/AT access while preserving outside recovery actions. Two rendered expired/active cases pass (1.12s), build passes; real active Setup reviewed with zero inert descendants. Expired-state evidence is component-level, not a changed real trial. External checklist: GATE-C-MANUAL-VERIFICATION.md; checks remain unperformed.
+
+Commands: `npx vitest run tests/coverage-expired-state-ui.test.tsx`, `npm run build`, diff check. Existing build chunk warning. Mock context tests assert inert boundary/recovery outside it and active restoration; jsdom is not native keyboard/AT execution. No account or API mutation.
