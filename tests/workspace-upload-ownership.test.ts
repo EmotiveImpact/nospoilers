@@ -61,3 +61,43 @@ it('charges an installation organisation without pretending its connection belon
     expect(await store.getInstallationRole('colleague',7)).toBeNull();
   }finally{await sql.close();}
 });
+
+it('uses recorded personal coverage for a connected upload and denies an expired payer without changing earlier evidence',async()=>{
+  const sql=await openSql('pglite://:memory:');try{
+    await migrate(sql);const store=createStore(sql);
+    await store.upsertUser({id:'payer',login:'payer'});
+    await ensureUserWorkspaces(sql,'payer');
+    const [workspace]=await listUserWorkspaces(sql,'payer');
+    await store.upsertInstallation({id:91,accountId:91,accountLogin:'connected',accountType:'User'});
+    await store.linkUserInstallation(91,'payer');
+    // A GitHub connection attached to an existing personal workspace keeps its personal payer.
+    await sql.query('UPDATE product_workspace_installations SET workspace_id=$1,explicitly_assigned=true WHERE installation_id=91',[workspace.id]);
+    const {readFile}=await import('node:fs/promises');
+    const {scan}=await import('../src/scanner/index.ts');
+    const {verifyReceipt}=await import('../src/receipt.ts');
+    const bytes=await readFile('fixtures/clean.tgz');
+    const input={userId:'payer',installationId:91,workspaceId:workspace.id,target:'clean.tgz',bytes};
+    await sql.query("UPDATE billing_accounts SET plan=NULL,trial_ends_at=now()-interval '1 day' WHERE installation_id=91");
+    const id=crypto.randomUUID();
+    await store.queueUploadedScan({...input,id});
+    expect(await store.getUploadedScan('payer',id)).toMatchObject({billing_installation_id:null,billing_user_id:'payer',installation_id:91});
+    await processUploadedScan(id,store,scan,'payer-receipt-secret');
+    const saved=await store.getUploadedScan('payer',id);
+    expect(saved?.status).toBe('done');
+    expect(saved?.revision_id).not.toBeNull();
+    expect(saved?.receipt_id).not.toBeNull();
+    expect(verifyReceipt(JSON.stringify(saved?.receipt_json),'payer-receipt-secret').ok).toBe(true);
+    expect((await sql.query('SELECT scans FROM personal_scan_usage WHERE user_id=$1',['payer'])).rows).toEqual([{scans:1}]);
+    expect((await sql.query('SELECT heavy_jobs FROM hosted_usage_days WHERE installation_id=91')).rows).toHaveLength(0);
+    const deniedId=crypto.randomUUID();
+    await store.queueUploadedScan({...input,id:deniedId});
+    await sql.query("UPDATE users SET plan=NULL,trial_ends_at=now()-interval '1 day' WHERE id='payer'");
+    await sql.query("UPDATE billing_accounts SET plan='team' WHERE installation_id=91");
+    let parses=0;
+    await processUploadedScan(deniedId,store,async()=>{parses++;throw new Error('Expired payer must not reach parser');},'payer-receipt-secret');
+    expect(parses).toBe(0);
+    expect(await store.getUploadedScan('payer',deniedId)).toMatchObject({status:'failed',receipt_json:null,report_json:null});
+    expect((await sql.query('SELECT scans FROM personal_scan_usage WHERE user_id=$1',['payer'])).rows).toEqual([{scans:1}]);
+    expect((await store.getUploadedScan('payer',id))?.receipt_json).toEqual(saved?.receipt_json);
+  }finally{await sql.close();}
+});

@@ -4,6 +4,18 @@ import {cleanup,fireEvent,render,screen,waitFor,act} from '@testing-library/reac
 import {GithubRepositoryScan} from '../src/components/watch/GithubRepositoryScan';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const repos=[{id:12,full_name:'client/release'}];
+it.each([409,429,503,'network'] as const)('distinguishes rejected submission from uncertain acceptance (%s)',async(outcome)=>{
+ vi.stubGlobal('fetch',vi.fn(async(_url:string,init?:RequestInit)=>{
+  if(!init?.method)return Response.json({repos});
+  if(outcome==='network')throw new TypeError('Network disconnected');
+  return Response.json({error:outcome===429?'Rate limited before dispatch.':'Upstream unavailable.'},{status:outcome});
+ }));
+ render(<GithubRepositoryScan installationId="7" search="?workspace=w" disabledReason={null}/>);
+ fireEvent.change(await screen.findByLabelText('Repository'),{target:{value:'12'}});fireEvent.click(screen.getByRole('button',{name:'Scan latest release'}));
+ await screen.findByRole('alert');
+ expect((screen.getByRole('button',{name:'Scan latest release'}) as HTMLButtonElement).disabled).toBe(outcome!==429&&outcome!==409);
+ expect(screen.getByRole('link',{name:'View releases and scan progress'}).getAttribute('href')).toContain('workspace=w');
+});
 it('clears queued claims when the actual tracked job has failed',async()=>{
  vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>Response.json(init?.method?{ok:true,queued:true,jobId:9}:url.startsWith('/api/jobs')?{jobs:[{id:9,installationId:7,kind:'scan_latest_release',status:'failed'}]}:{repos})));
  render(<GithubRepositoryScan installationId="7" search="?workspace=w" disabledReason={null}/>);

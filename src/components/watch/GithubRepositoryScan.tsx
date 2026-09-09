@@ -59,6 +59,12 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
     try{
       const response=await fetch(`/api/repos/${repo.id}/scan-latest-release`,{method:'POST',credentials:'include'});
       const body=await response.json();if(!active.current)return;
+      // These endpoint guards reject before enqueueing. A lost response, 5xx,
+      // or malformed body may follow acceptance, so must not unlock a duplicate.
+      if([400,401,402,403,404,409,429].includes(response.status)&&typeof body?.error==='string'&&body.error.trim()&&body.ok!==true){
+        setPendingRepositories(previous=>{const next=new Set(previous);next.delete(selected);return next;});
+        throw new Error(body.error);
+      }
       if(!response.ok||body.ok!==true||typeof body.queued!=='boolean')throw new Error(body.error??'The server did not confirm the scan. Check Releases before retrying.');
       setNotice(body.queued?'Release check queued. This is not a completed scan or a passing result.':'No new scan was queued. Check existing work in Releases before retrying.');
       if(Number.isSafeInteger(body.jobId)&&body.jobId>0){setProgressError('');setJobId(body.jobId);}

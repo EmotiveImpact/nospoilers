@@ -47,8 +47,11 @@ export async function processUploadedScan(id:string,store:Store,scanFn:typeof sc
     await assertScanAccess(store.sql,upload);
     const artifactPolicy=upload.installation_id===null ? await workspaceArtifactPolicySnapshot(store.sql,upload.workspace_id,{artifactSha256:upload.artifact_sha256,sourceOriginId:upload.source_origin_id??null}):null;
     const hostedPolicy=upload.installation_id!==null?await captureHostedPolicy(store.sql,upload.installation_id):null;
-    const billingInstallationId=upload.billing_installation_id??upload.installation_id;
-    const billingUserId=upload.billing_user_id??upload.user_id;
+    // Workspace uploads retain the payer chosen at admission. A null installation
+    // payer can mean personal billing even when the artifact has a GitHub source.
+    // Only pre-workspace uploads may fall back to their legacy source/actor.
+    const billingInstallationId=upload.workspace_id!==null?upload.billing_installation_id:upload.billing_installation_id??upload.installation_id;
+    const billingUserId=upload.workspace_id!==null?upload.billing_user_id:upload.billing_user_id??upload.user_id;
     const eligible=billingInstallationId!==null
       ? (await store.sql.query("SELECT installation_id FROM billing_accounts WHERE installation_id=$1 AND (plan IN ('solo','team') OR trial_ends_at>now())",[billingInstallationId])).rows.length>0
       : (await store.sql.query('SELECT id FROM users WHERE id=$1 AND (plan IN (\'solo\',\'team\') OR trial_ends_at>now())',[billingUserId])).rows.length>0;

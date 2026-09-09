@@ -16,6 +16,24 @@ const stream={id:'stream',workspace_id:'workspace',name:'Release product',artifa
 const list={streams:[stream],links:[{stream_id:'stream',snapshot_id:'snapshot'}],canManage:true,canWrite:true};
 const detail={stream,snapshots:[],selected:null,nextCursor:null,canManage:true,canWrite:true,unavailable:false,baselineEligible:false,analysis:null,baselines:[],events:[],currentBaselineState:'not_adopted',notice:'Scoped history.'};
 const isList=(url:unknown)=>String(url).includes('/streams?');
+it.each(['Adopt selected reference','Revoke current reference','Export private history'])('recovers keyboard focus and retry after %s fails',async(name)=>{
+ const snapshot={id:'snapshot',record_kind:'upload',record_id:'record',scanned_at:'2026-09-09T00:00:00Z',digest:'a'.repeat(64),metrics:{files:1},excluded:false};
+ const current={...detail,selected:snapshot,snapshots:[snapshot],baselineEligible:true,baselines:[{id:'baseline',revision:1,action:'adopt',reason:'Approved reference',actor_login:'owner',created_at:'2026-09-09T00:00:00Z'}]};
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown,init?:RequestInit)=>String(url).endsWith('/export')||init?.method==='POST'?Response.json({error:'Authority changed.'},{status:403}):Response.json(isList(url)?list:current)));
+ render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+ await screen.findByText('Scoped history.');
+ if(name!=='Export private history'){
+  await userEvent.click(screen.getByText('Approved reference and history exclusions'));
+  fireEvent.change(screen.getByLabelText('Reason for change'),{target:{value:'Review this reference change.'}});
+ }
+ const button=screen.getByRole('button',{name});
+ await waitFor(()=>expect((button as HTMLButtonElement).disabled).toBe(false));
+ button.focus();await userEvent.keyboard('{Enter}');
+ const alert=await screen.findByRole('alert');await waitFor(()=>expect(document.activeElement).toBe(alert));
+ expect(screen.queryByRole('button',{name})).toBeNull();
+ await userEvent.tab();expect(document.activeElement).toBe(screen.getByRole('button',{name:'Retry saved history'}));
+ await userEvent.keyboard('{Enter}');await screen.findByText('Scoped history.');
+});
 it('explains the hidden capabilities and opens setup with focus without creating data',async()=>{
   const fetch=vi.fn(async()=>Response.json({...list,streams:[],links:[]}));vi.stubGlobal('fetch',fetch);
   Element.prototype.scrollIntoView=vi.fn();

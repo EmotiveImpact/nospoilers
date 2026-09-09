@@ -19,6 +19,12 @@ function rules(target: string, report: Awaited<ReturnType<typeof scan>>): string
 }
 
 describe("packed fixtures", () => {
+  it("keeps internal fixture paths out of the customer scan page", () => {
+    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
+    expect(page).not.toContain("fixtures/");
+    expect(page).not.toContain("Local review examples");
+  });
+
   it("lets a clean npm tarball ship", async () => {
     const report = await scan(path.join(fixtures, "clean.tgz"));
     expect(report.kind).toBe("tarball");
@@ -101,13 +107,6 @@ describe("packed fixtures", () => {
     );
   });
 
-  it("lists the IPA fixture on Scan next to APK", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/sourcemap.ipa"/);
-    expect(page).toMatch(/Mach-O is not executed/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
-  });
-
   it("fails an AAB that contains a source map", async () => {
     const report = await scan(path.join(fixtures, "sourcemap.aab"));
     expect(report.kind).toBe("aab");
@@ -115,27 +114,6 @@ describe("packed fixtures", () => {
     expect(rules("sourcemap.aab", report)).toEqual(
       expect.arrayContaining(["MAP-001", "MAP-002", "MAP-003"]),
     );
-  });
-
-  it("lists the XAPK fixture on Scan next to APK", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/sourcemap.xapk"/);
-    expect(page).toMatch(/Nested APK/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
-  });
-
-  it("lists the AAB fixture on Scan next to APK", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/sourcemap.aab"/);
-    expect(page).toMatch(/BundleConfig layout/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.apk"/);
-  });
-
-  it("lists the OCI fixture on Scan next to docker save", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/sourcemap.oci.tar"/);
-    expect(page).toMatch(/Layers are not executed/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.docker.tar"/);
   });
 
   it("lets extra packed-format fixtures without source maps ship", async () => {
@@ -193,27 +171,6 @@ describe("packed fixtures", () => {
     }
   });
 
-  it("lists CRX, XPI, wheel, JAR, nupkg, and gem fixtures on Scan", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/sourcemap.crx"/);
-    expect(page).toMatch(/CRX header stripped/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.xpi"/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.chrome.zip"/);
-    expect(page).toMatch(/WebExtension layout, not a CRX header/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.whl"/);
-    expect(page).toMatch(/Python is not executed/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.sdist.tgz"/);
-    expect(page).toMatch(/PKG-INFO layout/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.jar"/);
-    expect(page).toMatch(/Bytecode is not executed/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.war"/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.nupkg"/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.snupkg"/);
-    expect(page).toMatch(/Symbols are not loaded/);
-    expect(page).toMatch(/path: "fixtures\/sourcemap.gem"/);
-    expect(page).toMatch(/Ruby is not executed/);
-  });
-
   it("lets a clean APK ship", async () => {
     const report = await scan(path.join(fixtures, "clean.apk"));
     expect(report.kind).toBe("apk");
@@ -264,16 +221,6 @@ describe("packed fixtures", () => {
     expect(oci.status).toBe("inconclusive");
     expect(oci.inconclusiveReason).toBe(IMAGE_ENCRYPTION_INCONCLUSIVE);
     expect(oci.findings).toEqual([]);
-  });
-
-  it("lists inconclusive encryption fixtures on Scan", () => {
-    const page = readFileSync(path.join(root, "src/pages/ScanPage.tsx"), "utf8");
-    expect(page).toMatch(/path: "fixtures\/inconclusive.encrypted.zip"/);
-    expect(page).toMatch(/Not decrypted/);
-    expect(page).toMatch(/path: "fixtures\/inconclusive.crx"/);
-    expect(page).toMatch(/Signing wrapper is not executed/);
-    expect(page).toMatch(/path: "fixtures\/inconclusive.encrypted.oci.tar"/);
-    expect(page).toMatch(/Layers are not decrypted or executed/);
   });
 
   it("marks a tarball that exceeds the unpacked budget as inconclusive", async () => {

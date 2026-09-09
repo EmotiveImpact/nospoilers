@@ -1,5 +1,23 @@
 # Resume checkpoint — 9 September 2026
 
+## Current continuation checkpoint
+
+Branch codex/release-assurance-spine-v1, draft PR44. This batch fixes recorded-payer upload processing, removes customer fixture controls, permits retry after definitive409 rejection, preserves keyboard/billing regressions and excludes internal prototype Markdown from build output. Commit/push result belongs in the task final response and PR head; do not reset to21a4a87. Preserve unrelated untracked QA artifacts.
+
+Owner approved a same-state restart. Real app is running in session42604 on4347 with the same separate database/signing/GitHub configuration. Do not restart it unnecessarily. The preserved launch helper is private temporary state, never commit or print it.
+
+Real compiled archive scan408e7b98-0035-45b5-be7c-865d13e787d7 has valid receipt binding,68files/3warnings. Packaging correction removed four internal prototype Markdown files while retaining source notes/homepage/prototypes. Rebuilt scan0912f710-7150-4b67-8579-8e92590c1905 has64files/zero findings, SHA256df8c0e6e07a57371bfd1e33f416b8825516f8b984d4aa0668949c494d66da902. Both are explicitly recorded in NoSpoilers web build history; no baseline/capture/gate/provider/public sharing enabled. Failed attemptf0c6acb1-04e6-40b7-b5d5-3c1e95f9fc50 remains. No human-reviewed remediation declaration was invented.
+
+Single cumulative run finished1377pass/6fail,237files,255.97s; only obsolete fixture-button source assertions failed. Corrected test-only fixture file25/25 passes; scanner/CLI assertions preserved. Final inventory1378cases. Frontend/typecheck/API/lint passed; packaging-only change has subsequent build/output inspection and real clean scan evidence. Do not rerun the full suite or completed browser matrices merely on continuation.
+
+Remaining boundaries: actual GitHub latest-release download has no confirmed supported attachment and can invoke configured notifications; production isolation/deployment/provider/charge verification is not authorized or proven. Human-reviewed remediation and production observation prerequisites must remain explicit. Core local stream/history/gate/remediation/agent/outcomes/contracts are already implemented; do not manufacture another generic audit or rebuild them. Prior comparison/conflict/retry/deep-link/workspace and narrow keyboard/reduced-motion checks are in BUILD-LOG. Broader load/assistive-technology and actual customer-validation claims remain unproven, not new blanket test matrices.
+
+## Historical prior-session stop — superseded by current continuation
+
+Owner requested immediate transition to a new conversation to reduce usage. All three agents have been interrupted/stopped; do not resume this old task automatically. Preserve the running real app. Main batch is pushed as 21a4a87; later working-tree changes are intentionally uncommitted. Repository retry correction has ten focused passing tests and a passing frontend build. Three additional keyboard recovery cases bring the history panel file to 13 passing tests. The tester was interrupted while preparing an expired-billing gate-consumption case: inspect any partial/new test file before relying on it; no passing result for that case was received. Do not repeat completed full-suite or orientation work merely because this is a new chat. Continue with bounded work and concise outputs; no new paid services or model overrides.
+
+Publication update: the main batch below is committed and pushed as `21a4a87`; PR #44 was updated and remains draft. Subsequent local correction permits retry after definitive pre-enqueue rejection while preserving duplicate protection for ambiguous responses. Ten focused component cases pass; no new real scan has been submitted. Inspect the current diff before publishing this additive correction. Earlier “uncommitted” wording below describes the checkpoint before publication.
+
 Continue the full scope in `CONTINUE-FOUR-AGENT-IMPLEMENTATION.md` and `CODEX-CONTINUATION-PROMPT.md`; follow AGENTS.md. This checkpoint is not a completion declaration. Stay on `codex/release-assurance-spine-v1`, draft PR #44. No merge, deployment, paid activation, Docker or synthetic customer review.
 
 ## Current batch

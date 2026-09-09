@@ -53,162 +53,6 @@ function scanModeFromSearch(search: string): ScanMode {
   return mode === "package" || mode === "website" || mode === "receipt" ? mode : "github"
 }
 
-const EXAMPLES = [
-  {
-    path: "fixtures/clean.tgz",
-    label: "Clean npm pack",
-    hint: "Should pass",
-  },
-  {
-    path: "fixtures/sourcemap.tgz",
-    label: "Pack with a source map",
-    hint: "The Grok / Claude class of leak",
-  },
-  {
-    path: "fixtures/sourcemap.asar",
-    label: "Electron asar with a map",
-    hint: "What installers actually ship",
-  },
-  {
-    path: "fixtures/sourcemap.zip",
-    label: "Zip with a source map",
-    hint: "Same leak, zip wrapper",
-  },
-  {
-    path: "fixtures/sourcemap.vsix",
-    label: "VS Code VSIX with a map",
-    hint: "ZIP magic, not the extension",
-  },
-  {
-    path: "fixtures/sourcemap.crx",
-    label: "Chrome CRX with a source map",
-    hint: "CRX header stripped. Payload is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.xpi",
-    label: "Firefox XPI with a source map",
-    hint: "ZIP magic. Extension code is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.chrome.zip",
-    label: "Chrome ZIP with a source map",
-    hint: "WebExtension layout, not a CRX header. Extension code is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.whl",
-    label: "Python wheel with a source map",
-    hint: "ZIP magic. Python is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.sdist.tgz",
-    label: "Python sdist with a source map",
-    hint: "PKG-INFO layout. Python is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.jar",
-    label: "JAR with a source map",
-    hint: "ZIP magic. Bytecode is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.war",
-    label: "WAR with a source map",
-    hint: "WEB-INF layout. Bytecode is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.nupkg",
-    label: "NuGet pack with a source map",
-    hint: "ZIP magic. Install scripts are not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.snupkg",
-    label: "NuGet symbols pack with a source map",
-    hint: "ZIP magic. Symbols are not loaded.",
-  },
-  {
-    path: "fixtures/sourcemap.gem",
-    label: "Ruby gem with a source map",
-    hint: "Nested data.tar.gz. Ruby is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.docker.tar",
-    label: "Docker save with a source map",
-    hint: "Image layers, never executed",
-  },
-  {
-    path: "fixtures/sourcemap.oci.tar",
-    label: "OCI image with a source map",
-    hint: "Layout sniff. Layers are not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.apk",
-    label: "Android APK with a source map",
-    hint: "ZIP magic. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.xapk",
-    label: "Android XAPK with a source map",
-    hint: "Nested APK. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.aab",
-    label: "Android AAB with a source map",
-    hint: "BundleConfig layout. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.ipa",
-    label: "iOS IPA with a source map",
-    hint: "ZIP magic. Mach-O is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.lambda.zip",
-    label: "Lambda zip with a source map",
-    hint: "Handlers are not executed.",
-  },
-  {
-    path: "fixtures/dotenv.tgz",
-    label: "Pack with a .env",
-    hint: "Should fail",
-  },
-  {
-    path: "fixtures/workspace.tgz",
-    label: "npm workspace pack",
-    hint: "Lists members. Does not execute them.",
-  },
-  {
-    path: "fixtures/inconclusive.encrypted.zip",
-    label: "Encrypted zip",
-    hint: "Not decrypted. Inconclusive, not a passing receipt.",
-  },
-  {
-    path: "fixtures/inconclusive.crx",
-    label: "CRX without a ZIP payload",
-    hint: "Signing wrapper is not executed. Inconclusive, not a passing receipt.",
-  },
-  {
-    path: "fixtures/inconclusive.encrypted.oci.tar",
-    label: "OCI image with encrypted layers",
-    hint: "Layers are not decrypted or executed. Inconclusive, not a passing receipt.",
-  },
-] as const
-
-async function scanPath(path: string, search: string): Promise<ScanSubmission> {
-  const scope = new URLSearchParams(search)
-  const response = await fetch(scanSubmissionUrl(scope.get('install'),scope.get('workspace')), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path }),
-  })
-  const body = (await response.json()) as ScanSubmission | { error?: string }
-  if (!response.ok) {
-    throw new Error(
-      "error" in body && body.error
-          ? body.error
-          : "Scan failed.",
-    )
-  }
-  return body as ScanSubmission
-}
-
 async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal): Promise<ScanSubmission> {
   const params = new URLSearchParams(window.location.search)
   const install = params.get('install')
@@ -297,7 +141,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const [state, setState] = useState<ViewState>({ status: "idle" })
   const [mode, setMode] = useState<ScanMode>(() => scanModeFromSearch(search))
   const [session, setSession] = useState<{ login: string; coverage: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; installUrl?: string } | null>(null)
-  const [auth, setAuth] = useState<{ githubApp: boolean; developmentLogin?: boolean }>({ githubApp: false })
+  const [auth, setAuth] = useState<{ githubApp: boolean }>({ githubApp: false })
   const [sessionReady,setSessionReady]=useState(false)
   const [sessionError,setSessionError]=useState<string|null>(null)
   const [sessionRetry,setSessionRetry]=useState(0)
@@ -315,9 +159,9 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     void fetch("/api/me", { credentials: "include" })
       .then(async (response) => {
         if(!response.ok)throw new Error('Could not check your sign-in and workspace permissions.')
-        const body = (await response.json()) as { user?: { login: string } | null; coverage?: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; githubApp?: boolean; developmentLogin?: boolean; installUrl?: string }
+        const body = (await response.json()) as { user?: { login: string } | null; coverage?: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; githubApp?: boolean; installUrl?: string }
         if (cancelled) return
-        setAuth({ githubApp: Boolean(body.githubApp), developmentLogin: body.developmentLogin })
+        setAuth({ githubApp: Boolean(body.githubApp) })
         if (body.user && body.coverage) setSession({ login: body.user.login, coverage: body.coverage, personalCoverage: body.personalCoverage, installations: body.installations, installUrl: body.installUrl })
         else setSession(null)
         setSessionReady(true)
@@ -561,20 +405,6 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
           </div>
 
           {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}
-          {auth.developmentLogin ? <details className={cn("scan-examples", locked && "pointer-events-none opacity-40")}>
-            <summary>Local review examples</summary>
-            <p className="text-sm text-mute">Development only. These fixtures use the same workspace scan queue and limits as uploads, and create saved attempts. This library is not available on the production website.</p>
-            <ul>
-              {EXAMPLES.map((example) => (
-                <li key={example.path}>
-                  <HeadlessButton type="button" disabled={locked || state.status==='loading'} onClick={() => !locked && state.status!=='loading' && void run(example.label, () => scanPath(example.path, search))}>
-                    <span><strong>{example.label}</strong><small>{example.hint}</small></span>
-                    <span>Run <ChevronRight className="h-3.5 w-3.5" aria-hidden /></span>
-                  </HeadlessButton>
-                </li>
-              ))}
-            </ul>
-          </details> : null}
         </>
       ) : null}
 
@@ -874,7 +704,7 @@ export function ReceiptVerifyPanel() {
   )
 }
 
-function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; locked: boolean; lockReason: string|null; auth: { githubApp: boolean; developmentLogin?: boolean } }) {
+function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; locked: boolean; lockReason: string|null; auth: { githubApp: boolean } }) {
   if (locked && state.status === "idle") {
     return (
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
@@ -892,7 +722,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-sm text-dim">No scan yet.</p>
         <p className="mt-2 text-sm text-mute">
-          {auth.developmentLogin ? "Drop the packed artifact you intend to release, or choose a local review fixture below." : "Drop the packed artifact you intend to release."}
+          Drop the packed artifact you intend to release.
         </p>
       </div>
     )
@@ -910,9 +740,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
   if (state.status === "pending") {
     const href = auth.githubApp
       ? "/api/auth/github"
-      : auth.developmentLogin
-        ? "/api/auth/development"
-        : "/watch"
+      : "/watch"
     return (
       <div className="scan-private-result rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Artifact secured · scan not started</p>
@@ -921,7 +749,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
           Sign in to start scanning <span className="text-snow">{state.label}</span>. That begins your five-day trial; no scanning work has run yet.
         </p>
         <HeadlessButton as="a" href={href} className="scan-primary-action">
-          {auth.developmentLogin && !auth.githubApp ? "Start in local review" : "Sign in and start scan"}
+          Sign in and start scan
           <ChevronRight className="size-4" aria-hidden />
         </HeadlessButton>
         <p className="mt-4 text-xs text-dim">The staged artifact expires and is deleted after one hour.</p>

@@ -1,6 +1,8 @@
 # Complete vision: implementation and acceptance map
 
-Latest connected GitHub batch: repository selection and queued-job tracking now live in New Scan; Coverage alert filtering is applied before pagination/counts; missing-release alerts are labelled incomplete, not exposed. Real signed-in local browser confirms picker/search/scoped links and alert copy. Full restricted run: 1,367 pass / seven sandbox failures; all 68 cases in the four affected files pass with socket permission. Builds/lint pass. See BUILD-LOG and NEXT-SESSION-HANDOFF for exact boundaries. A real artifact-to-saved-release result in this workspace remains unverified; this is not launch acceptance.
+Real local artifact proof is complete for this batch: recorded-payer correction enabled actual compiled-build uploads through the signed-in app. Original attempt408e7b98-0035-45b5-be7c-865d13e787d7 retained68files/3warnings; removing internal prototype Markdown from build output produced attempt0912f710-7150-4b67-8579-8e92590c1905 with64files/zero findings. Both signed records are explicitly saved in NoSpoilers web build history, with no automatic baseline, policy or provider activation. Cumulative1377pass/6obsolete UI assertions failed; corrected fixture file25/25 passes. Build/typecheck/API/lint pass with existing warnings; packaging has subsequent build/output and real scan proof. This is local upload/worker/evidence acceptance, not GitHub latest-release download or production validation. BUILD-LOG records exact source boundaries.
+
+Latest connected GitHub batch: repository selection and queued-job tracking now live in New Scan; Coverage alert filtering is applied before pagination/counts; missing-release alerts are labelled incomplete, not exposed. Real signed-in local browser confirms picker/search/scoped links and alert copy. Full restricted run: 1,367 pass / seven sandbox failures; all 68 cases in the four affected files pass with socket permission. Builds/lint pass. See BUILD-LOG and NEXT-SESSION-HANDOFF for exact boundaries. That earlier empty-workspace boundary is superseded by the real local artifact proof above; this is not launch acceptance.
 
 ## Current optional explanation contract increment
 
@@ -10,7 +12,7 @@ Automatic capture recovery is implemented locally: identity-scoped cancellation,
 
 The connected explanation UI/API, explicit provider adapter contract, configuration-bound consent, workspace-wide call/reserved-spend limits, idempotent requests, cancellation and human-reviewed drafts are implemented. Migration ra_010 links private drafts to retained snapshots; it enables no provider. Exact data and activation boundaries: EXPLANATIONS.md. Production composition remains unavailable by default. A concrete paid-provider adapter, provider-specific evaluations/charge verification, finding-level root-cause assistance and deployment/review attestation remain unbuilt/unverified respectively; do not describe generic aggregate explanations as those capabilities. BUILD-LOG records local checks and remaining acceptance.
 
-Owner update, 9 September: customer-facing synthetic dev review has been removed. Keep QA fixtures internal. The owner subsequently completed real local GitHub setup: signed-in Codex browser checks establish live repository coverage, alert selection, source-filtered alerts and refresh recovery. This workspace currently has no saved release results, so a complete real artifact scan/result journey remains outstanding. Production deployment remains unverified. Original Gate B remains accepted; newer release-assurance scope is additive, while Gates C/D/E retain their separate requirements.
+Owner update, 9 September: customer-facing synthetic dev review has been removed. Keep QA fixtures internal. The owner subsequently completed real local GitHub setup: signed-in Codex browser checks establish live repository coverage, alert selection, source-filtered alerts and refresh recovery. The later real local artifact result above supersedes this earlier empty-workspace checkpoint. Production deployment remains unverified. Original Gate B remains accepted; newer release-assurance scope is additive, while Gates C/D/E retain their separate requirements.
 
 Current Gate C increment: parity choices expose verified eligibility and recovery labels rather than calling every website verified. History selection names/announcements and failed mutation focus recovery are covered by focused rendered checks; initial read failures do not steal focus. Existing skeletons cover agent/remediation reads. This closes those specific interaction gaps, not full WCAG or production acceptance. See BUILD-LOG for cumulative results.
 
@@ -67,13 +69,15 @@ Latest gate update (after 34747bc): connected-source CI grants are implemented t
 | Enterprise SSO, SBOM, Sigstore | Remain on ice | Separate demand/approval and implementation |
 | Tests | Full local suites, real Hono/session/token/HMAC tests, disposable PostgreSQL and synthetic browser checks executed in the increments above | Exact source/results and narrower coverage in BUILD-LOG; remaining full operational/accessibility matrix is not proven by test totals |
 
-## 9 September integration checkpoint
+## Historical 9 September integration checkpoint
+
+The checkpoint and original continuation sequence below preserve earlier evidence. They are not the current backlog: the capability table above and latest BUILD-LOG supersede their “unbuilt” and “remain open” statements where later work supplies evidence.
 
 Follow-on readiness cutover: hosted/upload list and detail surfaces now receive the shared server-verified assessment, with token scan readiness additive to its original outcome. Hosted and upload heroes use canonical semantics and refresh failure becomes UNKNOWN; delivery remains separate and attestation metadata does not become verified identity. Final full regression passed 205 files / 1,229 tests; the updated native PostgreSQL integration test passed, including the bounded batch. Integrated synthetic hosted/upload browser checks and hosted reference adoption/revocation passed; see BUILD-LOG for scope. The complete browser/accessibility matrix and remaining implementation sequence are not yet accepted.
 
 The integration-repair tree based on `a4a3e10` passes the full supported-runtime regression: 205 files, 1,222 tests. Real Hono/store/session/token/HMAC integration and migration/concurrent-reference checks passed on PGlite and disposable native PostgreSQL. Scan-mode navigation and workspace-preserving claim navigation are repaired. See BUILD-LOG.md for exact scope and limitations; these results supersede historical unverified full-suite statements only for this increment.
 
-Current boundary: canonical readiness, opt-in automatic capture, bounded production observation and versioned gate are implemented in the scopes recorded here and in BUILD-LOG. The full integrated browser matrix, connected-source CI capability and broader race/operational acceptance remain incomplete. Durable remediation, agent tools and retention outcomes remain unbuilt. Remote CI was externally blocked before execution by the GitHub billing/spending-limit annotation. PR #44 stays draft.
+Boundary at that historical checkpoint: canonical readiness, opt-in automatic capture, bounded production observation and versioned gate were implemented. Connected-source CI, remediation, agent tools and retention outcomes were not yet implemented then; they have since been added as described above. The remote CI billing/spending-limit failure was evidence at that checkpoint, not a fresh check. PR #44 remains draft.
 
 ## Verification precedence
 
@@ -81,7 +85,7 @@ The original companion's 101 native and 55 browser checks describe its historica
 
 The new migration is `ra_002_release_intelligence`, applied after the existing schema chain. Do not run it against production merely to review the branch. Baseline and history operations now include writes; preserve CSRF, token capability and workspace authority checks.
 
-## Continuation sequence
+## Original continuation sequence (historical)
 
 RA-01: run integrated verification and remove conflicting legacy readiness labels without silently changing policy semantics. In particular, attestation presence is not cryptographic identity verification.
 

@@ -1,9 +1,35 @@
 import path from "node:path";
-import { loadEnv } from "vite";
+import { readdir, rm } from "node:fs/promises";
+import { loadEnv, type Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nospoilersApi } from "./src/plugin.ts";
+
+// Review notes remain available to local designers, but are not release assets.
+// Keep the linked HTML/CSS/image prototypes and the approved homepage intact.
+function excludePrototypeNotes(): Plugin {
+  let reviewOutput = "";
+  return {
+    name: "exclude-prototype-notes",
+    apply: "build",
+    configResolved(config) {
+      reviewOutput = path.resolve(config.root, config.build.outDir, "mockup-review");
+    },
+    async closeBundle() {
+      let entries: string[];
+      try {
+        entries = await readdir(reviewOutput, { recursive: true });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        throw error;
+      }
+      await Promise.all(entries.filter(entry => /\.md$/i.test(entry)).map(entry =>
+        rm(path.join(reviewOutput, entry)),
+      ));
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -11,7 +37,7 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
   return {
-    plugins: [react(), tailwindcss(), nospoilersApi()],
+    plugins: [react(), tailwindcss(), nospoilersApi(), excludePrototypeNotes()],
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "src"),
