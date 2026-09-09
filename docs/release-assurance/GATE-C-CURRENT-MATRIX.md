@@ -108,3 +108,8 @@ Live app and approved mockup30 both report `Inter, -apple-system, system-ui, Seg
 ## Expanded default and unavailable tool states
 
 At6821f27 (runtime88406f5), real saved upload expanded gate policy, agent access, optional explanation, automatic capture and production comparison were reviewed. Controls stayed within actual390/768/1024/1440 CSS widths. Screenshots reviewed at390 for gate/agent/explanation/production, and1440 for agent access. Explanation provider disabled, no capture selector and missing adopted reference rendered truthful unavailable states. No fields changed or actions submitted; viewport restored. This does not verify enabled-provider/mapping forms or native zoom.
+
+
+## Loading layout cleanup
+
+Removed remaining visual fetch placeholders in ArtifactOverview (temporary heading/reading paragraph) and ReleaseAssurancePanel (temporary full card). Screen-reader-only loading statuses remain; real pending scan and errors retain visible content.29 cases/2 files passed (1.84s), then strengthened Overview pending assertion1/1 (21 skipped,1.13s). Final build passed; rebuilt live Overview screenshot reviewed. Delayed-response assertions prove hidden pending layout, not a captured live slow response.

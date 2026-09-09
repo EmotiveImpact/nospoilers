@@ -1,3 +1,4 @@
+import {WatchSkeleton} from '../WatchDataState';
 import {useEffect,useRef,useState} from 'react';
 import {renderAssurancePanel} from '../../assurance/render';
 import {downloadPassport,readAssuranceView} from '../../assurance/client';
@@ -41,7 +42,8 @@ function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
     },{supporting:true});
   },[view,kind,recordId,evidenceId]);
   return <div className="release-assurance-slot">
-    {!view?<section className="ns-assurance" aria-label="Release assurance companion" aria-busy={!error&&!pending}><h2>Release assurance</h2><p role={error?'alert':'status'}>{error||pending||'Reading this release’s saved evidence…'}</p>{error||pending?<button type="button" onClick={()=>setRetry(value=>value+1)}>Retry saved evidence</button>:null}<p className="ns-assurance__muted">The original findings and controls below remain available. No passing decision is inferred from missing data.</p></section>:null}
+    {!view&&!error&&!pending?<WatchSkeleton label="Reading this release’s saved evidence…"/>:null}
+    {!view&&(error||pending)?<section className="ns-assurance" aria-label="Release assurance companion"><h2>Release assurance</h2><p role={error?'alert':'status'}>{error||pending}</p>{error||pending?<button type="button" onClick={()=>setRetry(value=>value+1)}>Retry saved evidence</button>:null}<p className="ns-assurance__muted">The original findings and controls below remain available. No passing decision is inferred from missing data.</p></section>:null}
     <div ref={root}/>
     {/* History checks its own record access; an unavailable advisory view must not hide it.
         Explicitly pending scans still wait for completed evidence before setup is offered. */}

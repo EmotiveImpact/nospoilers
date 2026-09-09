@@ -134,6 +134,8 @@ it('waits for the first workspace response before showing honest first proof',as
  let finish!:(response:Response)=>void;vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
  expect(screen.getByRole('region',{name:'Workspace overview'}).getAttribute('aria-busy')).toBe('true');
+ expect(screen.queryByRole('heading')).toBeNull();
+ expect(screen.getByRole('status').className).toBe('sr-only');
  expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
  await act(async()=>finish(Response.json({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[]})));
  expect(await screen.findByRole('heading',{name:'Prove your first release is clean.'})).toBeTruthy();

@@ -25,7 +25,7 @@ function OverviewScope({workspaceId,search,nowLabel}:{workspaceId:string;search:
  },[workspaceId,retry]);
  function go(view:string,status?:string,id?:string){const params=new URLSearchParams();params.set('workspace',workspaceId);if(status)params.set('uploadStatus',status);if(id){params.set('upload',id);params.set('uploadView','detail');}navigate(`/watch/${view}?${params}`);}
  if(error)return <section className="overview-panel space-y-4" role="alert"><h1 className="watch-page-title">Overview unavailable</h1><p>{error} No other workspace’s evidence is shown.</p><div className="flex flex-wrap gap-3"><Button onClick={()=>{setError('');setData(null);setRetry(value=>value+1);}}>Retry</Button><Button variant="outline" onClick={()=>navigate('/watch/workspaces')}>Choose a workspace</Button></div></section>;
- if(!data)return <section aria-label="Workspace overview" aria-busy="true"><h1 className="watch-page-title">Overview</h1><p className="watch-page-lede">Reading this workspace’s saved evidence.</p><WatchSkeleton variant="list" className="mt-4" label="Loading workspace overview…" /></section>;
+ if(!data)return <section aria-label="Workspace overview" aria-busy="true"><WatchSkeleton variant="list" className="mt-4" label="Loading workspace overview…" /></section>;
  const nextAction=overviewNextAction(data,workspaceId);
  const connections=data.connectedCoverage?.connections??[];
  const requestedInstall=Number(new URLSearchParams(search).get('install'));

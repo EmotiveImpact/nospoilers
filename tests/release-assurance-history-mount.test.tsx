@@ -41,7 +41,8 @@ it('removes the previous record history immediately when the selected record cha
   const result=render(<ReleaseAssurancePanel {...props}/>);await screen.findByRole('region',{name:'Independent history'});
   result.rerender(<ReleaseAssurancePanel {...props} recordId="record-two"/>);
   expect(screen.queryByRole('region',{name:'Independent history'})).toBeNull();
-  await waitFor(()=>expect(screen.getByText('Reading this release’s saved evidence…')).toBeTruthy());
+  await waitFor(()=>expect(screen.getByText('Reading this release’s saved evidence…').className).toBe('sr-only'));
+  expect(screen.queryByRole('region',{name:'Release assurance companion'})).toBeNull();
 });
 it('treats an empty HTTP 202 response as pending rather than a parse error that reveals setup',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:202})));
