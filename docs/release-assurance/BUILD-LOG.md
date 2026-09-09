@@ -1,5 +1,15 @@
 # Build and verification log
 
+## 9 September 2026 — Overview states and release responsive accessibility
+
+Working-tree batch after `f577fe8`: `ArtifactOverview.tsx` now labels initial loading, presents unavailable reads with readable recovery controls and gives archived workspaces a settings link. `WatchFirstProofOverview.tsx` keeps one primary existing-source action and wraps narrow controls. Existing fetches, status decisions and workspace isolation are unchanged.
+
+`release-responsive.css`, imported by `ReleasesScreen.tsx` and `UploadedReleaseBrief.tsx`, adds scoped long-name wrapping, narrow list/preview/finding reflow and reduced-motion styles. Upload finding tabs now identify their active labelled panel. This is source implementation of responsive behavior; no actual mobile or 200% zoom acceptance is inferred from CSS.
+
+Final focused command: `npm test -- tests/artifact-overview-ui.test.tsx tests/first-proof-transition.test.tsx tests/uploaded-releases-ui.test.tsx tests/release-workspace-scope-ui.test.tsx tests/uploaded-release-brief-ui.test.tsx` passed **55 tests / five files**, **3.36s**. Tests include delayed initial loading, honest empty transition, HTTP403/503 recovery, late prior-workspace responses and finding-tab panel association, alongside existing scope/navigation cases. Final `npm run build` passed with the existing large-chunk warning. No full-suite rerun is claimed.
+
+Signed-in Codex in-app desktop review of the actual saved upload showed finding tabs, the labelled active panel and the real release tools/evidence. Actual mobile and 200% zoom were **not verified** for this batch. Outstanding viewport/zoom, broader representative states and assistive-technology/visual acceptance remain open; Gate C is partial. No backend/data change, scan, deployment or provider activation was required. Publication is reported separately by the orchestrator.
+
 ## 9 September 2026 — Overview priorities and consolidated release browsing
 
 The actual workspace Overview now puts Next action, saved-scan totals and recent attempts before connected coverage and response activity. Live data uses compact solid cards, with a responsive secondary grid and connection-specific links inside Individual connections. First Proof activation precedes supplemental health. The redundant page-level New scan was removed, leaving the global action. Alert response no longer labels operational missing-release alerts as confirmed exposure. Counts, controller behavior and evidence routes remain server-grounded.

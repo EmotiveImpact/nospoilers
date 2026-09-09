@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C Overview-state and release-accessibility milestone
+
+Overview loading, unavailable-read recovery and archived presentation are improved; First Proof retains a single primary existing-source action. Release list/detail styles implement narrow-layout and long-name reflow, while upload finding tabs now have an associated labelled panel. Controllers, evidence and permissions are unchanged.
+
+The combined focused five-file command in BUILD-LOG passed **55 tests**, **3.36s**; final frontend build passed with the existing chunk warning. Signed-in desktop saved-upload review confirmed finding tabs, the active panel and real tools/evidence. Actual mobile and **200% zoom were not verified** in this batch. Those checks and broader representative-state, assistive-technology and visual acceptance remain open. Source/test evidence does not close Gate C.
+
 ## Current Gate C Overview and release-list milestone
 
 The workspace Overview now prioritizes Next action, saved-scan totals and recent attempts; coverage and alert response are secondary solid cards. Releases presents one visible Saved attempts or Connected revisions browser with accessible keyboard tabs, scoped links and readable revision filenames. Persisted attempts/revisions remain distinct; nothing was deleted or silently merged.

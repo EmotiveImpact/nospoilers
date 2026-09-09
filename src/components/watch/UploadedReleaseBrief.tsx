@@ -1,5 +1,6 @@
 import {ArrowLeft,ArrowRight,AlertTriangle,Clock3,Download,FileCheck2,ShieldCheck} from 'lucide-react';
-import {useCallback,useRef,useState} from 'react';
+import {useCallback,useId,useRef,useState} from 'react';
+import './release-responsive.css';
 import type {Assessment} from '@/assurance/types';
 import {ProofSharing} from './ProofSharing';
 import {ReleaseAssurancePanel} from './ReleaseAssurancePanel';
@@ -9,6 +10,7 @@ import {navigate} from '@/nav';
 import {downloadUploadedRecord,findingCategory,uploadedReleaseDecision,type EvidenceCategory,type UploadedRelease} from '@/watch/uploaded-release';
 
 export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:UploadedRelease;search:string;onBack:()=>void;onNewScan:()=>void}){
+  const categoryId=useId();
   const [observed,setObserved]=useState<{record:UploadedRelease;assessment:Assessment|null}|null>(null);
   const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:upload,assessment}),[upload]);
   const decision=uploadedReleaseDecision({...upload,readiness:observed?.record===upload?observed.assessment??undefined:upload.readiness}),report=upload.report_json;
@@ -78,14 +80,14 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
     <section className="upload-evidence" aria-labelledby="upload-evidence-title">
       <div className="watch-release-section-heading"><div><span className="watch-kicker">Evidence workspace</span><h2 ref={evidenceHeading} tabIndex={-1} id="upload-evidence-title">Findings and next steps</h2></div><span>{report?`${report.fileCount} files inspected`:'Waiting for completed evidence'}</span></div>
       <div className="upload-evidence-tabs" role="tablist" aria-label="Finding category">
-        {categories.map(([id,label])=><button type="button" key={id} role="tab" aria-selected={category===id} tabIndex={category===id?0:-1} onClick={()=>choose('uploadTab',id)} onKeyDown={event=>{
+        {categories.map(([id,label])=><button type="button" key={id} id={`${categoryId}-${id}`} role="tab" aria-controls={`${categoryId}-panel`} aria-selected={category===id} tabIndex={category===id?0:-1} onClick={()=>choose('uploadTab',id)} onKeyDown={event=>{
           if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
           const tabs=Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
           const index=tabs.indexOf(event.currentTarget),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
           tabs[next].focus();tabs[next].click();
         }}>{label}<span>{id==='all'?findings.length:findings.filter(({finding})=>findingCategory(finding)===id).length}</span></button>)}
       </div>
-      <div className="upload-evidence-grid"><div className="upload-finding-list" aria-label="Recorded findings">
+      <div className="upload-evidence-grid" role="tabpanel" id={`${categoryId}-panel`} aria-labelledby={`${categoryId}-${category}`}><div className="upload-finding-list" aria-label="Recorded findings">
         {!visible.length?<div className="upload-evidence-empty">{!report?'Findings are unavailable until this check completes.':findings.length?'No findings in this category.':decision.tone==='ready'?'No unsuppressed findings in the completed artifact check.':'No findings were recorded. This does not establish a passing decision.'}</div>:visible.map(({finding,index})=><button key={index} type="button" aria-pressed={selected?.index===index} onClick={()=>choose('uploadFinding',String(index))}><span className={`upload-severity is-${finding.severity}`}>{finding.severity==='critical'?'Critical':'Warning'}</span><span><strong>{finding.title}</strong><code>{finding.path}</code></span><ArrowRight className="size-4" aria-hidden/></button>)}
       </div><aside className="upload-evidence-panel" aria-live="polite">
         {selected?<><span className="watch-kicker">{selected.finding.rule} · Recorded evidence</span><h3>{selected.finding.title}</h3><code>{selected.finding.path}</code><p>{selected.finding.detail}</p>

@@ -82,10 +82,10 @@ export function WatchFirstProofOverview({
           NoSpoilers follows a release from source to sealed evidence. Start with the thing you
           actually ship. Each result records the checks performed and their limitations.
         </p>
-        <div className="mt-5 flex flex-wrap gap-2.5">
+        <div className="mt-5 flex flex-wrap gap-2.5 [&_button]:h-auto [&_button]:min-h-11 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:text-left">
           {websiteStage && <Button type="button" onClick={()=>navigate(sourcesHref)}>{websiteStage==='verify'?'Verify website ownership':websiteStage==='scan'?'Run your first website check':'Review website setup'}</Button>}
           {!websiteStage && connectedSources && <Button type="button" onClick={()=>navigate(sourcesHref)}>Choose a connected source to check</Button>}
-            <Button type="button" onClick={() => { const params=new URLSearchParams(search);params.set('mode','github');navigate(watchHref(watchPath('scan'),`?${params}`)); }}>
+            <Button type="button" variant={websiteStage||connectedSources?"outline":"default"} onClick={() => { const params=new URLSearchParams(search);params.set('mode','github');navigate(watchHref(watchPath('scan'),`?${params}`)); }}>
               <GitBranch className="size-4" aria-hidden />
               Connect a GitHub repo
             </Button>

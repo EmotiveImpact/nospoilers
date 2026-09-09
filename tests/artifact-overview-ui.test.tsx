@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,render,screen,fireEvent} from '@testing-library/react';
+import {cleanup,render,screen,fireEvent,act} from '@testing-library/react';
 import {it,expect,vi,afterEach} from 'vitest';
 import {ArtifactOverview} from '../src/components/watch/ArtifactOverview';
 import {navigate} from '../src/nav';
@@ -124,4 +124,31 @@ it('puts next action and recent evidence before secondary monitoring without rep
  expect(next.compareDocumentPosition(recent)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(recent.compareDocumentPosition(monitoring)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(screen.queryByRole('button',{name:'New scan'})).toBeNull();
+});
+
+it('waits for the first workspace response before showing honest first proof',async()=>{
+ let finish!:(response:Response)=>void;vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ expect(screen.getByRole('region',{name:'Workspace overview'}).getAttribute('aria-busy')).toBe('true');
+ expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
+ await act(async()=>finish(Response.json({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[]})));
+ expect(await screen.findByRole('heading',{name:'Prove your first release is clean.'})).toBeTruthy();
+});
+it.each([403,503])('recovers from HTTP%s without presenting denied or unavailable evidence as empty',async status=>{
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({error:'Unavailable'},{status})).mockResolvedValueOnce(Response.json(data));vi.stubGlobal('fetch',fetcher);
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ await screen.findByRole('alert');expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Choose a workspace'}));expect(navigate).toHaveBeenLastCalledWith('/watch/workspaces');
+ fireEvent.click(screen.getByRole('button',{name:'Retry'}));await screen.findByRole('heading',{name:'Product'});
+ expect(screen.queryByRole('alert')).toBeNull();expect(fetcher).toHaveBeenCalledTimes(2);
+});
+it('clears prior overview on workspace change and ignores its late response',async()=>{
+ let finish!:(response:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn((url:string)=>url.includes('/old/')?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json({...data,workspace:{name:'Current workspace',archived:false}}))));
+ const view=render(<ArtifactOverview workspaceId="old" search="?workspace=old" nowLabel="Today"/>);
+ view.rerender(<ArtifactOverview workspaceId="new" search="?workspace=new" nowLabel="Today"/>);
+ await screen.findByRole('heading',{name:'Current workspace'});
+ await act(async()=>finish(Response.json(data)));
+ expect(screen.queryByRole('heading',{name:'Product'})).toBeNull();
+ expect(screen.getByRole('heading',{name:'Current workspace'})).toBeTruthy();
 });

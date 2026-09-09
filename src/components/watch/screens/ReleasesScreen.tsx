@@ -1,3 +1,4 @@
+import '../release-responsive.css';
 import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';

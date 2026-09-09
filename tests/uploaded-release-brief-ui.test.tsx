@@ -50,11 +50,16 @@ describe('uploaded readiness evidence',()=>{
     expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();
   });
   it('keeps workspace and record scope when filtering by keyboard',()=>{
-    render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1&uploadView=detail&uploadFinding=1"/>);
+    const view=render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1&uploadView=detail&uploadFinding=1"/>);
     fireEvent.keyDown(screen.getByRole('tab',{name:/All findings/}),{key:'ArrowRight'});
     const params=new URLSearchParams(window.location.search);
     expect(params.get('workspace')).toBe('workspace-1');expect(params.get('upload')).toBe('scan-1');
     expect(params.get('uploadTab')).toBe('maps');expect(params.has('uploadFinding')).toBe(false);
+    view.rerender(<UploadedReleaseBrief {...props} upload={record} search={window.location.search}/>);
+    const maps=screen.getByRole('tab',{name:/Maps/});
+    expect(maps.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tabpanel').id).toBe(maps.getAttribute('aria-controls'));
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(maps.id);
   });
   it('does not substitute another finding for a stale deep link',()=>{
     render(<UploadedReleaseBrief {...props} upload={record} search="?uploadTab=maps&uploadFinding=1"/>);
