@@ -534,3 +534,8 @@ Real connected audit is empty; no populated audit evidence is claimed. Added reu
 ## Policy live reflow verification
 
 Read-only signed-in policy review: independent strict/approval labels and complete conditions fit390px; expanded GitHub connection policy settings and signing inputs also fit390px, document width390. No checkbox, save, exception or policy mutation. Desktop viewport restored. Initial heading lookup found nothing because the connection settings disclosure was closed; opened the visible disclosure before inspecting. This closes those precise presentation rows, not the remaining exception confirmations or audible AT requirements. No source edit or repeated tests/build needed.
+
+
+## Exception form tablet design
+
+Actual768px review showed the five-column direct exception form squeezed its reason field. Changed to two columns above the small breakpoint, preserving native fields, validation and submit handler; added a form name. Final build, lint and diff check passed. Signed-in768px screenshot shows readable fields, document width768, and Write exception still focuses policy-exception-rule. No field values changed or submission occurred. Desktop restored.

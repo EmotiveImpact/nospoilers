@@ -214,7 +214,8 @@ export function PolicyScreen() {
                 )}
                 {!previewing && installAdmin && (
                   <form
-                    className="mt-6 grid gap-4 md:grid-cols-[7rem_1fr_1fr_8rem_auto] md:items-end"
+                    aria-label="Create a scoped exception"
+                    className="mt-6 grid gap-4 sm:grid-cols-2 sm:items-end"
                     onSubmit={(event) => {
                       event.preventDefault();
                       if (locked || savingAllow) return;
@@ -294,7 +295,7 @@ export function PolicyScreen() {
                         className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none focus:border-white/40"
                       />
                     </label>
-                    <Button type="submit" disabled={locked || savingAllow || !allowRule.trim() || !allowReason.trim()}>
+                    <Button className="justify-self-start" type="submit" disabled={locked || savingAllow || !allowRule.trim() || !allowReason.trim()}>
                       {savingAllow ? "Saving…" : "Allow"}
                     </Button>
                   </form>
