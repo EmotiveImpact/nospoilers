@@ -1,5 +1,7 @@
 # Architecture and decision contract
 
+Gate UI state is keyed by stream/record/refresh identity. It discards stale actionable data on failed mutations and during refresh; decision expiry has a bounded next-deadline timer. Recorded readiness remains historical, not present permission. Only the server can authorize consumption under current policy/evidence/credentials; disabled UI is not a security boundary.
+
 ## Private outcomes (9 September 2026)
 
 `ra_009_release_outcomes` stores only stream preference/revision and uses the existing operational audit for changes. GET/POST `streams/:id/outcomes` require current human-session source access; configuration additionally requires administrator authority. Monthly reads are bounded and revalidate signed evidence, current remediation and reference availability. Exports re-fetch current authority rather than downloading a stale cached summary. No external event sink or persisted summary archive exists. The monthly GET has a separate 10/minute budget and a cooperative 20-second deadline; database queries are not preempted. See `OUTCOMES.md` for the event contract and partial-window semantics.

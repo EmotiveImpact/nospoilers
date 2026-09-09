@@ -2,13 +2,25 @@ import {useEffect,useRef,useState} from 'react';
 import type {Ref} from '../../release-intelligence/model';
 import type {GatePolicy,GateResult} from '../../release-intelligence/gate';
 import {ReleaseGateAccessControls} from './ReleaseGateAccessControls';
+import {WatchSkeleton} from '../WatchDataState';
 type Decision={id:string;policy_revision:number;deployment_id:string;result:GateResult;expires_at:string;overridden:boolean;consumed:boolean};
 type View={policy:GatePolicy;canManage:boolean;canWrite:boolean;canAdminister?:boolean;binding:{record:Ref;digest:string}|null;notice:string;
   policies:Array<{revision:number;mode:string;max_age_hours:number;reason:string}>;decisions:Decision[]};
-export function ReleaseGateControls({streamId,record,refreshVersion}:{streamId:string;record:Ref;refreshVersion:number}){
+type Props={streamId:string;record:Ref;refreshVersion:number};
+export function ReleaseGateControls(props:Props){
+  return <GateControls key={`${props.streamId}:${props.record.kind}:${props.record.id}:${props.refreshVersion}`} {...props}/>;
+}
+function GateControls({streamId,record,refreshVersion}:Props){
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false);
   const [mode,setMode]=useState<GatePolicy['mode']>('advisory'),[hours,setHours]=useState(24),[reason,setReason]=useState(''),[confirm,setConfirm]=useState(false),[rollback,setRollback]=useState(''),[deployment,setDeployment]=useState('');
   const lifetime=useRef<AbortController|null>(null);
+  const [clock,setClock]=useState(()=>Date.now());
+  useEffect(()=>{
+    const now=Date.now(),next=view?.decisions.map(d=>Date.parse(d.expires_at)).filter(t=>t>now).sort((a,b)=>a-b)[0];
+    if(next===undefined)return;
+    const timer=setTimeout(()=>setClock(Date.now()),Math.min(next-now+1,2147483647));
+    return()=>clearTimeout(timer);
+  },[view,clock]);
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const c=new AbortController(),query=new URLSearchParams({recordKind:record.kind,recordId:record.id});
@@ -24,15 +36,15 @@ export function ReleaseGateControls({streamId,record,refreshVersion}:{streamId:s
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/gate`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Gate action was not saved.');
-      if(!signal.aborted){setNotice(message);setReason('');setConfirm(false);setRollback('');setReload(n=>n+1);}
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Gate action was not saved.');}
+      if(!signal.aborted){setView(null);setNotice(message);setReason('');setConfirm(false);setRollback('');setReload(n=>n+1);}
+    }catch(e){if(!signal.aborted){setView(null);setConfirm(false);setError(e instanceof Error?e.message:'Gate action was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   return <details><summary>Release Gate · opt-in</summary>
     <p>Adopt a policy for this release stream. CI must call the gate before deploying; enabling a mode does not automatically reconfigure your pipeline.</p>
-    <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh gate</button>
+    <button type="button" disabled={busy} onClick={()=>{setView(null);setConfirm(false);setError('');setReload(n=>n+1);}}>Refresh gate</button>
     {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
-    {!view&&!error?<p role="status">Reading gate policy…</p>:null}
+    {!view&&!error?<WatchSkeleton variant="list" label="Reading gate policy"/>:null}
     {view?<><p><strong>{view.policy.mode}</strong> · revision {view.policy.revision} · evidence within {view.policy.maxAgeHours} hours.</p><p>{view.notice}</p>
       {view.canAdminister&&record.kind==='release'?<ReleaseGateAccessControls key={`${streamId}:${record.id}`} streamId={streamId} record={record}/>:null}
       {view.canManage?<form onSubmit={e=>{e.preventDefault();void save({action:'configure',mode,maxAgeHours:hours,expectedRevision:view.policy.revision,reason,confirm,...(rollback?{rollbackFromRevision:Number(rollback)}:{})},'New gate policy revision saved. Existing decisions must be evaluated again.');}}>
@@ -47,10 +59,15 @@ export function ReleaseGateControls({streamId,record,refreshVersion}:{streamId:s
         <label>Deployment attempt ID<input required maxLength={120} value={deployment} onChange={e=>setDeployment(e.target.value)}/></label>
         <p>Exact build: <code>{view.binding.digest}</code>. Evaluating here does not deploy or consume the decision.</p><button type="submit" disabled={busy}>Evaluate this recorded build</button>
       </form>:<p>Record this completed build in the selected stream to evaluate it. Website observations cannot grant pre-deploy permission.</p>}
-      {view.decisions.map(d=><details key={d.id}><summary>{d.deployment_id} · {d.result.readiness}{d.overridden?' · explicit override':''}{d.consumed?' · consumed':''}</summary>
-        <p>{d.result.reason}</p><p>Policy revision {d.policy_revision}. Valid until {new Date(d.expires_at).toLocaleString()}, subject to current access, policy and evidence.</p><code>{d.id}</code>
-        {view.canManage&&d.result.overridable&&!d.overridden&&!d.consumed?<Override key={d.id} disabled={busy} onSave={value=>void save({action:'override',decisionId:d.id,...value},'Explicit override recorded. The original finding and readiness are unchanged.')}/>:null}
-      </details>)}
+      {view.decisions.map(d=>{
+        const expired=!Number.isFinite(Date.parse(d.expires_at))||Date.parse(d.expires_at)<=Date.now(),superseded=d.policy_revision!==view.policy.revision;
+        const inactive=d.consumed?'consumed':superseded?'policy changed':expired?'expired':null;
+        return <details key={d.id}><summary>{d.deployment_id} · recorded {d.result.readiness}{d.overridden?' · explicit override':''}{inactive?` · ${inactive}`:''}</summary>
+          <p>{d.result.reason}</p><p>Policy revision {d.policy_revision}. Expires {new Date(d.expires_at).toLocaleString()}, subject to current access, policy and evidence.</p><code>{d.id}</code>
+          {inactive?<p role="status">This decision no longer applies ({inactive}). Evaluate a new decision for the intended deployment attempt.</p>:null}
+          {view.canManage&&d.result.overridable&&!d.overridden&&!inactive?<Override key={d.id} disabled={busy} onSave={value=>void save({action:'override',decisionId:d.id,...value},'Explicit override recorded. The original finding and readiness are unchanged.')}/>:null}
+        </details>;
+      })}
     </>:null}
   </details>;
 }

@@ -1,5 +1,17 @@
 # Build and verification log
 
+## 9 September 2026 — gate stale-state and authorization acceptance (after 37a89f6)
+
+Fixed real UI gaps in ReleaseGateControls: expired/superseded decisions previously retained override forms that the server would reject; failed writes left old actions visible. Decisions now say recorded readiness and explicit inactive reason; a deadline timer removes expired overrides while the page stays open. Failed writes clear stale view/confirmation, refresh uses WatchSkeleton, and a keyed child invalidates old bindings/requests immediately on identity changes. Existing black/off-white/red styling, original receipts and enforcement rules remain unchanged. React checklist informed request cleanup and identity-local state.
+
+Added six component cases (8 total) covering inactive decisions, live expiry, conflicting-write refresh and pending record switch. Expanded actual Hono/session/token/HMAC test proves wrong digest, wrong deployment, viewer/foreign access and revoked token cannot consume an outstanding decision, with no consumption row created. Existing policy/consume concurrency tests remain.
+
+Focused PGlite/component: **9 tests / 2 files passed**, 2.80 seconds. Disposable native PostgreSQL/component: **9 tests / 2 files passed**, 2.98 seconds; migration replay and gate lifecycle included. Verified loopback synthetic database identity before reset; no customer data or Docker. Native server stopped and confirmed stopped.
+
+Full `npm test`: **1,306 tests / 223 files passed**, 272.69 seconds. Typecheck (frontend build), frontend/API builds, lint and diff checks passed with existing warnings. Full run began before a final inactive-state wording correction; the final wording is covered by the later 9-test native/component run, rebuilt frontend and browser. No fresh npm ci or dependency change. API implementation unchanged.
+
+Actual built-app synthetic fixture 4370: adopted policy, evaluated failing record, then superseded policy through real routes. New UI labels policy changed and has no override form. Gate and decision disclosures opened with keyboard Enter after focusing; 390px layout has no horizontal overflow, zero console errors. Screenshot `output/playwright/gate-inactive-mobile.png` visually inspected; this is a narrow keyboard/mobile check, not full tab-order/screen-reader or both-mount acceptance. Broader cross-flow role/error/race/load acceptance and optional provider contracts remain next. No merge/deploy/production migration or customer activation.
+
 ## 9 September 2026 — private monthly outcomes (after 55c7982)
 
 Implemented outcome types/window validation, migration/service, Hono routing/rate budget and shared release-detail controls. Explicit opt-in, revisioned preferences, immediate opt-out, source-scoped signed record counts, unique-byte/repeat separation, current remediation/reference revalidation, minimal derived events and refreshed private unsigned download. No dependency changes, provider activation, emails, telemetry archive, production migration or deployment.

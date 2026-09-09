@@ -73,7 +73,17 @@ it('connects versioned policy, signed evidence, single-use CI and audited overri
       expect((await sql.query('SELECT receipt_json FROM uploaded_scans WHERE id=$1',[ref.id])).rows[0]).toEqual({receipt_json:signed});
       await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[ref.id]);
     }
+    const beforeRevocation=await request(path,{...evaluate,requestKey:randomUUID(),expectedPolicyRevision:3},'',bearer);
+    expect(beforeRevocation.status).toBe(201);
+    const outstanding=await beforeRevocation.json() as {id:string};
+    const outstandingConsume={...consume,decisionId:outstanding.id,expectedPolicyRevision:3};
+    expect((await request(path,{...outstandingConsume,digest:'b'.repeat(64)},'',bearer)).status).toBe(409);
+    expect((await request(path,{...outstandingConsume,deploymentId:'different-attempt'},'',bearer)).status).toBe(409);
+    expect((await request(path,outstandingConsume,'gate-viewer')).status).toBe(403);
+    expect((await request(path,outstandingConsume,'gate-foreign')).status).toBe(404);
     await revokeWorkspaceToken(sql,'gate-owner',workspace.id,String(token.scanToken.id),'Gate CI');
+    expect((await request(path,outstandingConsume,'',bearer)).status).toBe(401);
+    expect((await sql.query('SELECT id FROM release_gate_consumptions WHERE decision_id=$1',[outstanding.id])).rows).toHaveLength(0);
     expect((await request(path,{...evaluate,requestKey:randomUUID(),expectedPolicyRevision:3},'',bearer)).status).toBe(401);
     expect((await sql.query('SELECT receipt_json FROM uploaded_scans WHERE id=$1',[record.id])).rows[0]).toEqual({receipt_json:receipt});
     await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[record.id]);

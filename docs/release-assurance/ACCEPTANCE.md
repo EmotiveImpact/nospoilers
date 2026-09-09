@@ -1,5 +1,7 @@
 # Complete vision: implementation and acceptance map
 
+Latest gate-state acceptance increment (after 37a89f6): expired, consumed and superseded decisions no longer offer an override; expiry updates while open. Failed writes clear stale controls and reset consent; switching record/stream invalidates the old binding immediately. Refresh uses the existing skeleton. Actual API tests prove wrong digest/deployment, viewer/foreign access and token revocation cannot consume an outstanding decision. Full 1,306 tests / 223 files passed; native PostgreSQL + UI 9 tests passed. Built-app synthetic superseded decision and keyboard/mobile disclosure verified. This closes these specific stale-state cases, not the full role/error/operational matrix.
+
 ## Latest outcome-summary increment (after 55c7982)
 
 Opt-in monthly outcomes are implemented through real session-authorized routes and the existing release-detail panel. Defaults off; explicit administrator consent, revision conflict protection, immediate opt-out and current-authority private export. Counts distinguish verified records, distinct bytes, repeated checks, unavailable evidence and bounded partial windows. Current remediation/reference status is separate from monthly historical scan outcomes. No email, analytics provider, employee tracking, savings claim or new history archive. See `OUTCOMES.md`.

@@ -1,5 +1,9 @@
 # Release intelligence continuation
 
+## Gate stale-state correction (after 37a89f6)
+
+`ReleaseGateControls` is now identity-keyed to stream/record/refresh version; pending requests abort on replacement. Failed writes remove the stale view and consent; refresh uses WatchSkeleton. Historical decisions are labelled recorded, with expired/consumed/policy-changed states and no inactive override form. A deadline timer updates expiry without repeated polling. Server remains authoritative; no gate policy/permission semantics changed. Expanded real API tests cover unconsumed decisions after revoked token, wrong deployment/digest, viewer and foreign access. See latest BUILD-LOG for full/native/browser results. Continue the broader cross-flow acceptance matrix and optional model-provider contracts; do not rebuild completed core subsystems.
+
 ## Private monthly outcomes checkpoint (after 55c7982)
 
 `ra_009_release_outcomes` and `release-outcomes-service.ts` add revisioned per-stream consent and on-demand retained-evidence summaries. `ReleaseOutcomeControls.tsx` is mounted in the shared release-detail panel, with month selection, clear next record action, fresh-authority unsigned download and one-click disable. Existing tokens cannot access the human-session summary API. Saved-history access/opt-out does not require renewed scan billing. No summary is sent or persisted as a new analytics archive.
