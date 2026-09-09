@@ -65,16 +65,30 @@ it('requires exact confirmation and retains history after revocation',async()=>{
  fireEvent.click(await screen.findByRole('button',{name:'Revoke CI'}));
  expect(screen.getByRole('button',{name:'Confirm revocation'})).toHaveProperty('disabled',true);
  fireEvent.change(screen.getByLabelText('Type CI to confirm'),{target:{value:'CI'}});
+ screen.getByRole('button',{name:'Confirm revocation'}).focus();
  fireEvent.click(screen.getByRole('button',{name:'Confirm revocation'}));
  await screen.findByText('Token revoked. Saved scan history is unchanged.');
  await waitFor(()=>expect(screen.queryByRole('button',{name:'Revoke CI'})).toBeNull());
  const call=fetcher.mock.calls.find(([,init])=>init?.method==='DELETE');
  expect(call?.[0]).toBe('/api/workspaces/workspace/tokens/1');expect(JSON.parse(String(call?.[1]?.body))).toEqual({confirm:'CI'});
  expect(screen.getByText('CI')).toBeTruthy();
+ expect(document.activeElement).toBe(screen.getByRole('heading',{name:'Token history'}));
 });
 it('does not offer mutations to a read-only member',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({tokens:[token],canManage:false,nextCursor:null}))));
  render(<WorkspaceTokens workspaceId="workspace"/>);
  await screen.findByText('Only administrators of an active workspace can create or revoke tokens.');
  expect(screen.queryByRole('button',{name:'Create token'})).toBeNull();expect(screen.queryByRole('button',{name:'Revoke CI'})).toBeNull();
+});
+
+it('focuses confirmation and returns to the initiating token on cancellation',async()=>{
+ const fetcher=vi.fn(async()=>new Response(JSON.stringify({tokens:[token],canManage:true,nextCursor:null})));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceTokens workspaceId="workspace"/>);
+ const trigger=await screen.findByRole('button',{name:'Revoke CI'});
+ trigger.focus();fireEvent.click(trigger);
+ expect(document.activeElement).toBe(screen.getByLabelText('Type CI to confirm'));
+ fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+ expect(document.activeElement).toBe(trigger);
+ expect(screen.queryByRole('form',{name:'Revoke scan token'})).toBeNull();
+ expect(fetcher).toHaveBeenCalledTimes(1);
 });

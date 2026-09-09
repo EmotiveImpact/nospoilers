@@ -1,5 +1,8 @@
 ## Gate C current requirement map
 
+Latest runtime follow-up: page scroll resets before paint (abaaac9; four navigation cases and live scrolled Overview→Timeline check). Token revocation now focuses confirmation, returns focus on cancel and conditionally focuses history after success. Seven token cases pass (1.28s), final build passes; live empty token page reviewed, populated revocation remains component-test evidence. Prior cumulative milestone remains historical; Gate C C2/C3 and final consistency review are still open.
+
+
 Latest shared-component checkpoint:6d84d33.40-file milestone272 passed/2 failed; architecture location and outcomes test-timing corrections passed21/21. No runtime change afterward. C1 component boundaries extracted. C2/C3 and token/fidelity review remain open. See BUILD-LOG for exact command; do not repeat this milestone without new changes.
 
 Authoritative requirements: ENTERPRISE-READINESS-PLAN.md C1–C3. C1 is partial: common page header, status/action/panel foundation and tokens exist; complete extraction/parity for source picker, evidence table, decision/side preview, dialog and settings row still needs a source-level audit. C2 is partial: prior viewport and focused interaction evidence is in BUILD-LOG; latest search End scrolling and Escape return are live verified, four focused accessibility/command tests pass. Native200% zoom and audible screen-reader execution remain unverified. C3 is partial: mockups are excluded from production and the approved current target is Quiet Structure; remaining detailed route/state fidelity requires review. This map supersedes implied whole-gate completion from individual increments.

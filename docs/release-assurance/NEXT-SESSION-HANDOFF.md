@@ -1,5 +1,8 @@
 # Resume checkpoint — 9 September 2026
 
+Latest runtime follow-up: page scroll resets before paint (abaaac9; four navigation cases and live scrolled Overview→Timeline check). Token revocation now focuses confirmation, returns focus on cancel and conditionally focuses history after success. Seven token cases pass (1.28s), final build passes; live empty token page reviewed, populated revocation remains component-test evidence. Prior cumulative milestone remains historical; Gate C C2/C3 and final consistency review are still open.
+
+
 Latest shared-component checkpoint:6d84d33.40-file milestone272 passed/2 failed; architecture location and outcomes test-timing corrections passed21/21. No runtime change afterward. C1 component boundaries extracted. C2/C3 and token/fidelity review remain open. See BUILD-LOG for exact command; do not repeat this milestone without new changes.
 
 Latest: Team invitation/member roles share RolePicker, preserving allowed roles and explicit Save.14 focused cases, build, live dropdown/focus review passed; no mutations. See latest BUILD-LOG. Continue full Gate C checklist.

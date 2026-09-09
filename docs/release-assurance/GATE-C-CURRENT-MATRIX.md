@@ -1,5 +1,8 @@
 # Gate C current evidence map
 
+Latest runtime follow-up: page scroll resets before paint (abaaac9; four navigation cases and live scrolled Overview→Timeline check). Token revocation now focuses confirmation, returns focus on cancel and conditionally focuses history after success. Seven token cases pass (1.28s), final build passes; live empty token page reviewed, populated revocation remains component-test evidence. Prior cumulative milestone remains historical; Gate C C2/C3 and final consistency review are still open.
+
+
 Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test corrections are recorded in BUILD-LOG. This is a continuation checklist, not a completed gate. Historical test totals are not a current all-green run.
 
 ## Requirements
