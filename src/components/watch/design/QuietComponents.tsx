@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { useId, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import './quiet.css';
 
@@ -18,4 +18,9 @@ export function QuietStatus({tone='neutral',className,...props}:ComponentPropsWi
 }
 export function QuietAction({tone='secondary',className,type='button',...props}:ComponentPropsWithoutRef<'button'>&{tone?:'primary'|'secondary'}){
  return <button type={type} className={cn('quiet-action',className)} data-tone={tone} {...props}/>;
+}
+
+export function QuietSettingRow({label,description,checked,disabled,onChange}:{label:string;description:ReactNode;checked:boolean;disabled?:boolean;onChange:(checked:boolean)=>void}){
+ const descriptionId=useId();
+ return <div className="policy-choice"><label className="flex min-h-11 items-start gap-3 py-2 font-medium text-snow"><input className="mt-0.5 size-4 shrink-0" type="checkbox" checked={checked} disabled={disabled} aria-describedby={descriptionId} onChange={event=>onChange(event.target.checked)}/>{label}</label><p id={descriptionId} className="text-sm leading-relaxed text-mute">{description}</p></div>;
 }

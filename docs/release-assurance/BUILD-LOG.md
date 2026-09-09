@@ -572,3 +572,8 @@ Invitation and member role controls now share a beUI-backed RolePicker. Allowed 
 ## Connected decision view hierarchy
 
 HostedDecisionList now uses shared WatchPageHeader and QuietEmptyState, wrapping named outcome filters, selected-state emphasis and a scoped uploaded-history action. Four workspace-coverage-health cases passed (1.63s); build caught an unsupported variant, corrected to existing default/outline, then final build passed. Signed-in empty view reviewed and View uploaded scans confirmed workspace/install-preserving navigation to Saved attempts. Populated connected evidence is not present locally and is not claimed visually verified. Gate C remains open.
+
+
+## Shared policy settings row
+
+Extracted QuietSettingRow for the two independent policy choices, preserving presentation and save/permission boundaries. Each checkbox now references its explanatory text with aria-describedby. Four scan-policy cases passed (1.64s); final build/diff check passed. Actual signed-in page reviewed and both description references resolve to the correct existing explanations; no policy changed. This closes the concrete duplicate settings-row extraction, not universal C1 completion or screen-reader speech acceptance.
