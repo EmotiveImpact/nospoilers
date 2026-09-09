@@ -3,10 +3,10 @@ import { PGlite } from '@electric-sql/pglite';
 import { releaseIntelligence } from '../src/server/release-intelligence-service.ts';
 import { migrateReleaseIntelligence, INTELLIGENCE_MIGRATION } from '../src/server/release-intelligence-schema.ts';
 import { IntelligenceError, keyOf } from '../src/release-intelligence/model.ts';
-import type { Evidence, Ref } from '../src/release-intelligence/model.ts';
+import type { Evidence } from '../src/release-intelligence/model.ts';
 import type { SqlClient } from '../src/server/sql.ts';
 import type { IntelligencePorts } from '../src/server/release-intelligence-service.ts';
-import { fixture, WORKSPACE, id, hash } from './release-intelligence-fixtures.ts';
+import { fixture, WORKSPACE, hash } from './release-intelligence-fixtures.ts';
 
 /** Real SQL/schema/service tests. The auth and signed-evidence ports are deliberately injected.
  * These are not proof of the real Hono/session/HMAC adapter or production PostgreSQL concurrency. */

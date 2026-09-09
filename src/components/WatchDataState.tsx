@@ -7,9 +7,11 @@ export type { WatchSectionState } from "@/watch/data-state";
 export function WatchSkeleton({
   variant = "cards",
   className,
+  label = "Loading this section…",
 }: {
   variant?: "cards" | "list" | "detail";
   className?: string;
+  label?: string;
 }) {
   const rows = variant === "detail" ? 3 : variant === "list" ? 6 : 4;
   return (
@@ -20,7 +22,7 @@ export function WatchSkeleton({
         className,
       )}
       role="status"
-      aria-label="Loading"
+      aria-label={label}
     >
       {Array.from({ length: rows }, (_, index) => (
         <div
@@ -38,7 +40,7 @@ export function WatchSkeleton({
           <div className="mt-3 h-4 w-2/3 rounded bg-white/5" />
         </div>
       ))}
-      <span className="sr-only">Loading this section…</span>
+      <span className="sr-only">{label}</span>
     </div>
   );
 }

@@ -18,12 +18,18 @@ import {saveWorkspaceArtifactPolicy} from '../src/server/workspace-policy.ts';
 import {requestWorkspaceException} from '../src/server/workspace-exceptions.ts';
 import {moveUnusedWorkspaceConnection} from '../src/server/workspace-connections.ts';
 import {inviteWorkspaceMember,acceptWorkspaceInvite} from '../src/server/workspace-membership.ts';
+import {migrateReleaseIntelligence} from '../src/server/release-intelligence-schema.ts';
+import {intelligencePorts} from '../src/server/release-intelligence-adapter.ts';
+import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts';
+import {withReleaseAssurance} from '../src/server/assurance-app.ts';
 
-const host='localhost',port=4359,base=`http://${host}:${port}`;
+const port=process.argv[2]===undefined?4359:Number(process.argv[2]);
+if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use a valid unprivileged QA port.');
+const host='localhost',base=`http://${host}:${port}`;
 const secret=randomBytes(32).toString('hex'),entry=randomBytes(18).toString('hex');
 // Any accidental provider call fails locally; the fixture never starts a worker.
 globalThis.fetch=async()=>{throw new Error('QA fixture: outbound network is disabled.');};
-const sql=await openSql('pglite://:memory:');await migrate(sql);const store=createStore(sql);
+const sql=await openSql('pglite://:memory:');await migrate(sql);await migrateReleaseIntelligence(sql);const store=createStore(sql);
 for(const actor of ['owner','reviewer','viewer'])await store.upsertUser({id:`qa-${actor}`,login:`QA-${actor}`});
 await store.upsertInstallation({id:9901,accountId:9901,accountLogin:'QA primary connection',accountType:'User'});
 await store.linkUserInstallation(9901,'qa-owner');
@@ -58,13 +64,22 @@ await saveWorkspaceArtifactPolicy(sql,'qa-owner',workspace.id,{strict:false,expe
 const exception=await requestWorkspaceException(sql,'qa-owner',workspace.id,{attemptId:upload,findingIndex:0,requestKey:randomUUID(),reason:'QA bounded exception awaiting independent reviewer',expiresAt:new Date(Date.now()+86400000).toISOString()});
 const sessions=new Map<string,string>();for(const actor of ['owner','reviewer','viewer'])sessions.set(actor,signSession(secret,await store.createSession(`qa-${actor}`)));
 const app=createApp({store,github:stubGithub(),config:loadConfig({sessionSecret:secret,receiptSecret:secret,appBaseUrl:base}),wakeWorker:()=>{}});
+const assurance=withReleaseAssurance(app,{receiptSecret:secret,scopeForRelease:async id=>{
+ const row=await store.getReleaseRevision(id);return row?{installationId:row.installation_id,receiptId:row.receipt_id}:null;
+}});
+const secrets={sessionSecret:secret,receiptSecret:secret};
+const integrated=withReleaseIntelligence(assurance,{sql,appBaseUrl:base,
+ ports:request=>intelligencePorts(request,secrets),
+ reserve:request=>intelligencePorts(request,secrets).reserve(sql),
+ context:(request,ref)=>intelligencePorts(request,secrets).context(sql,ref),
+});
 const dist=path.resolve('dist');await readFile(path.join(dist,'index.html'));
 const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};
 const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
  const url=new URL(request.url);
  if(url.hostname!==host)return new Response('QA loopback host only',{status:403});
  if(url.pathname===`/__qa/${entry}`){const actor=url.searchParams.get('actor')??'owner',session=sessions.get(actor);if(!session)return new Response('Unknown QA actor',{status:400});return new Response(null,{status:302,headers:{'Set-Cookie':`ns_session=${session}; Path=/; HttpOnly; SameSite=Strict`,'Location':`/watch?workspace=${workspace.id}`}});}
- if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return app.fetch(request);
+ if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return integrated.fetch(request);
  const candidate=path.resolve(dist,`.${decodeURIComponent(url.pathname)}`);
  if(!candidate.startsWith(dist+path.sep))return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});
  try{return new Response(await readFile(candidate),{headers:{'Content-Type':mime[path.extname(candidate)]??'application/octet-stream','Cache-Control':'no-store'}});}catch{return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});}

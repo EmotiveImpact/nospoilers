@@ -33,6 +33,12 @@ Latest continuation: 8 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact 
 | Enterprise SSO, SBOM, Sigstore | Remain on ice | Separate demand/approval and implementation |
 | Tests | New native/Vitest domain, request and CI cases; actual PGlite schema/service suite written | Final committed source needs full locked test/type/build/lint, real auth/HMAC/Hono, PostgreSQL and browser checks |
 
+## 9 September integration checkpoint
+
+The integration-repair tree based on `a4a3e10` passes the full supported-runtime regression: 205 files, 1,222 tests. Real Hono/store/session/token/HMAC integration and migration/concurrent-reference checks passed on PGlite and disposable native PostgreSQL. Scan-mode navigation and workspace-preserving claim navigation are repaired. See BUILD-LOG.md for exact scope and limitations; these results supersede historical unverified full-suite statements only for this increment.
+
+Not yet accepted: canonical readiness cutover, the full integrated browser matrix, automatic capture, production parity, versioned enforcement, durable remediation, agent tools and retention outcomes. Remote CI remains externally blocked before execution by the GitHub billing/spending-limit annotation. PR #44 stays draft.
+
 ## Verification precedence
 
 The original companion's 101 native and 55 browser checks describe its historical checkpoint. They are NOT test counts for this continuation. The database suite uses actual new SQL and service logic but injected access/evidence ports. No green full-branch CI or complete runtime integration is asserted here.

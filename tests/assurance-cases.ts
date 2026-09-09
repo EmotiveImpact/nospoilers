@@ -4,7 +4,7 @@ import {readReceipt,sourceKey,recordedTime,eligiblePredecessors} from '../src/as
 import {compareReleases,sizeHistory,unavailableComparison} from '../src/assurance/history.ts';
 import {investigate} from '../src/assurance/assistant.ts';
 import {buildAssuranceView} from '../src/assurance/index.ts';
-import {readAssuranceView} from '../src/assurance/client.ts';
+import {readAssuranceView} from '../src/assurance/view.ts';
 import {sample,warning,delivery,NOW,DIGEST,OTHER} from './assurance-fixtures.ts';
 export const assuranceCases:Array<[string,()=>void|Promise<void>]>=[];
 const add=(name:string,run:()=>void)=>assuranceCases.push([name,run]);

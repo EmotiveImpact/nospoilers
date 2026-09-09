@@ -44,9 +44,11 @@ function requireSubmission(value: unknown): asserts value is PendingScan | Queue
 type ScanMode = "github" | "package" | "website" | "receipt"
 
 function scanModeFromSearch(search: string): ScanMode {
-  const mode = new URLSearchParams(search).get("mode")
+  const params = new URLSearchParams(search)
+  const mode = params.get("mode")
   // GitHub is the primary scan entry: packages, websites and receipts remain
   // explicit choices in the mode switcher.
+  if (!mode && params.get('reveal') === '1') return 'package'
   return mode === "package" || mode === "website" || mode === "receipt" ? mode : "github"
 }
 
@@ -337,7 +339,12 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         if (cancelled) return
         if (!response.ok) throw new Error("error" in body && body.error ? body.error : "Could not reveal this scan.")
         requireQueuedScan(body)
-        navigate(`/watch/releases?upload=${encodeURIComponent(body.uploadId)}`)
+        const destination = new URLSearchParams({ upload: body.uploadId })
+        for (const key of ['workspace', 'install']) {
+          const value = params.get(key)
+          if (value) destination.set(key, value)
+        }
+        navigate(`/watch/releases?${destination}`)
       })
       .catch((error) => {
         if (!cancelled) setState({ status: "error", message: error instanceof Error ? error.message : "Could not reveal this scan." })
@@ -385,8 +392,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
   const chooseMode = (next: ScanMode) => {
     setMode(next)
-    const params = new URLSearchParams(window.location.search)
-    if (next === "package") params.delete("mode")
+    const params = new URLSearchParams(search)
+    if (next === "github" && params.get('reveal') !== '1') params.delete("mode")
     else params.set("mode", next)
     window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`)
   }

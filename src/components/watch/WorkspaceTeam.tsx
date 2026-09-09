@@ -61,7 +61,7 @@ export function WorkspaceInvitationInbox(){
     finally{submitting.current=false;if(active.current)setBusy(null);}
   }
   return <section aria-label="Workspace invitations">
-    {!error&&invites===null?<WatchSkeleton variant="list" className="mt-4" />:null}
+    {!error&&invites===null?<WatchSkeleton variant="list" className="mt-4" label="Loading workspace invitations…" />:null}
     {!error&&invites?.length===0?<p className="watch-empty">No pending workspace invitations.</p>:null}
     {error?<div className="watch-empty" role="alert">{error}<Button variant="outline" disabled={!!busy} onClick={()=>{setError('');setInvites(null);setRevision(v=>v+1);}}>Retry invitations</Button></div>:null}
     {invites?.map(invite=><article key={invite.id} className="watch-empty"><h2>Invitation to {invite.workspace_name}</h2><p>{invite.invited_by} invited you as {invite.role}. Expires {new Date(invite.expires_at).toLocaleDateString()}. Accepting does not connect your GitHub account or start a new trial.</p><Button disabled={!!busy} onClick={()=>void accept(invite.id)}>Accept invitation to {invite.workspace_name}</Button></article>)}

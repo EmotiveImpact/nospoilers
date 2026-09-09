@@ -11,7 +11,7 @@ const require=createRequire(import.meta.url);
 const ts=require(process.env.NOSPOILERS_REVIEW_TYPESCRIPT_PATH||'typescript');
 mkdirSync(out,{recursive:true});
 const modules={};
-for(const name of ['evidence','client','render']){
+for(const name of ['evidence','view','client','render']){
   modules[name]=ts.transpileModule(readFileSync(path.join(root,`src/assurance/${name}.ts`),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.CommonJS}}).outputText;
 }
 const bundle=`(()=>{const source=${JSON.stringify(modules)},cache={};function load(name){name=name.split('/').pop().replace('.ts','');if(cache[name])return cache[name].exports;const module={exports:{}};cache[name]=module;new Function('require','module','exports',source[name])(load,module,module.exports);return module.exports;}globalThis.assuranceRenderer=load('render');globalThis.assuranceClient=load('client');})();`;

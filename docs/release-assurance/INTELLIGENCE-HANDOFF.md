@@ -128,6 +128,8 @@ Before merging:
 
 ## Next engineering work
 
+9 September checkpoint: integration repairs now pass 1,222 full-suite tests across 205 files on Node 24.19.0. The new real-composition integration test also passed against disposable native PostgreSQL, including concurrent adoption. See BUILD-LOG.md for the changed surfaces and partial browser evidence. Preserve these repairs; do not restart the completed integration investigation. Finish the outstanding integrated browser cases and make legacy and assurance readiness share one server-grounded interpretation next. Remote Actions still cannot start because of the account billing/spending-limit condition; this does not prevent local implementation.
+
 First obtain integrated evidence for this milestone and resolve any failures. Then reconcile the old readiness headline and the advisory companion into one tested policy-aware interpretation. Do not turn attestation presence into cryptographic verification, or make after-deployment evidence a prerequisite for permission to deploy.
 
 Subsequent distinct work includes opt-in completion-time stream capture, new enforcement adoption, bounded production asset parity, durable remediation linkage and provider-backed assistance. Keep the existing acceptance matrix truthful about each.

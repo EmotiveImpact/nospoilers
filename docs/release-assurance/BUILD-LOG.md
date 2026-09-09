@@ -1,5 +1,19 @@
 # Build and verification log
 
+## 9 September 2026 — integrated branch repair
+
+Increment based on `a4a3e10`, preserving the existing release-intelligence implementation. Extracted the universal assurance-view validator from browser download code; corrected strict API test decoding and unused test bindings. Fixed package-mode navigation and staged-claim workspace/install preservation, contextual skeleton accessibility, and the stream-key HTML validation pattern. The disposable browser fixture now composes both real assurance/intelligence wrappers and accepts an isolated port.
+
+Added `tests/release-intelligence-integration.test.ts`: real Hono composition, stores, signed scanner receipts and migrations, with session/token/source isolation, revoked access, expired billing, signature rejection, concurrent reference adoption and private export assertions. Ran it with PGlite and a disposable native PostgreSQL database; both passed. The PostgreSQL instance was stopped and its temporary database files removed. No Docker or production database was used.
+
+Supported bundled Node 24.19.0: locked `npm ci` passed. Full `npm test` passed **205 files / 1,222 tests** (267.83 seconds). The final HTML pattern-only correction followed that run; no broader completion claim follows from this count. Earlier focused native cases passed 210; the focused scan/team suite passed 28. Typecheck, lint (warnings, no errors), frontend and API builds passed during this increment; final post-pattern build checks are recorded in the commit handoff when complete.
+
+Integrated disposable-browser evidence: stream creation saved the initial signed record, a failing release could not be adopted as an approved reference, and exclusion preserved original findings. Remaining browser coverage includes complete hosted/upload reference lifecycle, retry/conflict, keyboard and reduced-motion checks. This is partial integrated UI evidence, not a completed browser matrix.
+
+GitHub Actions is externally blocked before steps start: the check annotation reports failed account payments or an increased spending limit is required. No billing changes or check bypass were made. Canonical readiness reconciliation and RA-02 through RA-08 remain open; no merge, deployment or provider activation.
+
+Final post-pattern checks also passed: `npm run typecheck`, `npm run build`, `npm run build:api`, `npm run lint`, and `git diff --check`. Lint reports warnings, and the frontend retains its bundle-size warning; neither is represented as warning-free. The full regression count above precedes only that HTML pattern correction and documentation updates.
+
 8 September 2026. Started at main `675916b4b9b843bff2cb0651ec13034f2f62775d` and created isolated branch `codex/release-assurance-spine-v1`.
 
 Bootstrap: consolidated duplicate Vercel `git` configuration keys, preserved both existing branch guards, disabled deployment for this branch before publishing product changes. Added a contents-read-only review workflow. No production migration, provider activation, customer notification, merge or push to main.
