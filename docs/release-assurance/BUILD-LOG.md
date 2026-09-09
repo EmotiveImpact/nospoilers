@@ -644,3 +644,9 @@ WorkspaceTokens now moves focus to the exact-name confirmation input on Revoke, 
 Remediation follow-up: review/rebuild prerequisites now include Add required note, which focuses the shared note field; note guidance is programmatically associated. Ten remediation controls cases passed (1.60s), frontend build passed, and real saved-release click focused/scrolled the note into view. No mutation. Remaining Gate C scope is unchanged.
 
 Commands: `npx vitest run tests/release-remediation-controls.test.tsx`, `npm run build`, `git diff --check`. Build retains the existing bundle warning. Live uploaded release6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6: expanded remediation/review; Add required note focused TEXTAREA labelled Remediation note (no secrets), top444 CSS pixels in the viewport. Screenshot reviewed. No text entered or action submitted.
+
+## 2026-09-10 — Shared palette inventory
+
+Shared component inventory is now in GATE-C-COMPONENT-INVENTORY.md. Shared design styles use Watch palette tokens for matching values. Build and real settings/Overview computed-colour checks pass; domain-specific styles outside design/ still require consistency review. No whole-gate completion claim.
+
+`npm run build` passed with existing bundle warning; diff check passed. Rebuilt live token history computed background rgb(17,18,20), border rgba(255,255,255,0.055), text rgb(244,244,245); screenshot reviewed. Overview QuietStatus computed passed rgb(63,185,80), review rgb(255,138,128). No behavioural suite repeated for exact-value CSS refactor.

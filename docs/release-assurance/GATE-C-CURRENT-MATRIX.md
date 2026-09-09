@@ -1,5 +1,8 @@
 # Gate C current evidence map
 
+Shared component inventory is now in GATE-C-COMPONENT-INVENTORY.md. Shared design styles use Watch palette tokens for matching values. Build and real settings/Overview computed-colour checks pass; domain-specific styles outside design/ still require consistency review. No whole-gate completion claim.
+
+
 Remediation follow-up: review/rebuild prerequisites now include Add required note, which focuses the shared note field; note guidance is programmatically associated. Ten remediation controls cases passed (1.60s), frontend build passed, and real saved-release click focused/scrolled the note into view. No mutation. Remaining Gate C scope is unchanged.
 
 
