@@ -530,24 +530,20 @@ export function WatchMonolithShell({
             <Menu className="size-5" aria-hidden />
           </button>
           <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-mute sm:flex-none sm:max-w-[200px]"><PageIcon className="hidden size-[19px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
+          {coverage ? <span className={cn("hidden shrink-0 whitespace-nowrap text-xs sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
+          <span className="hidden flex-1 sm:block" />
           <button
             type="button"
             onClick={onOpenPalette}
             aria-label="Search or run a command"
-            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
+            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-40 lg:w-56 sm:justify-start sm:gap-2 sm:px-3"
           >
             <Search className="size-4 shrink-0" aria-hidden />
-            <span className="hidden truncate xl:inline">Search or run a command…</span>
+            <span className="hidden truncate sm:inline">Search…</span>
             <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-xs text-dim xl:inline">
               {shortcutLabel}
             </span>
           </button>
-          <span className="hidden flex-1 lg:block" />
-          {coverage ? (
-            <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
-              <span className={coverage.status === "trial" ? "watch-trial-text" : undefined}>{coverage.label}</span>
-            </span>
-          ) : null}
           <Button
             type="button"
             size="sm"

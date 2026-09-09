@@ -461,3 +461,8 @@ HTML brief/showcase31-design-system.html created with illustrative foundation, a
 ## Header identity before search
 
 Moved the route icon/title before search and removed the duplicate desktop title. Shared route icon selection with sidebar; mobile retains navigation trigger and truncated page label. Final navigation tests3/3 and frontend build pass after correcting an initial helper return-line error; diff check clean. Signed-in desktop screenshot verified placement, compact browser document matched viewport width; restored viewport. No server restart or data mutation.
+
+
+## Header trial placement
+
+Owner requested plain trial text beside the page title. Moved the coverage label before the flexible spacer; removed its pill/animation and retained hidden-on-mobile behavior. Search now aligns with right-hand actions and has a compact visible placeholder. Final frontend build and3/3 navigation tests pass; signed-in screenshot confirms title/trial left and search/actions right.
