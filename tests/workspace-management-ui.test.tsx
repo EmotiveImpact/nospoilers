@@ -33,24 +33,24 @@ it('refreshes the sidebar after workspace changes without a page reload',async()
   let name='Original';
   vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({workspaces:[{...workspace,name}]})))));
   render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
-  await screen.findByRole('option',{name:'Original'});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
   name='Renamed';
   fireEvent(window,new Event('nospoilers:workspaces-changed'));
-  await screen.findByRole('option',{name:'Renamed'});
-  expect(screen.queryByRole('option',{name:'Original'})).toBeNull();
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Renamed'));
+  expect(screen.queryByText('Original')).toBeNull();
 });
 it('clears stale workspace choices on failed refresh and recovers explicitly',async()=>{
  let unavailable=false;
  vi.stubGlobal('fetch',vi.fn(async()=>unavailable?new Response('{}',{status:403}):new Response(JSON.stringify({workspaces:[workspace]}))));
  render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
- await screen.findByRole('option',{name:'Original'});
- expect(screen.queryByRole('option',{name:'Loading workspaces…'})).toBeNull();
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
+ expect(screen.queryByText('Loading workspaces…')).toBeNull();
  unavailable=true;fireEvent(window,new Event('nospoilers:workspaces-changed'));
  await screen.findByRole('alert');
- expect(screen.queryByRole('option',{name:'Original'})).toBeNull();
- expect((screen.getByRole('combobox',{name:'Workspace'}) as HTMLSelectElement).disabled).toBe(true);
+ expect(screen.queryByText('Original')).toBeNull();
+ expect((screen.getByRole('button',{name:'Workspace'}) as HTMLButtonElement).disabled).toBe(true);
  unavailable=false;fireEvent.click(screen.getByRole('button',{name:'Retry workspaces'}));
- await screen.findByRole('option',{name:'Original'});
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
  expect(screen.queryByRole('alert')).toBeNull();
 });
 it('shows available workspace avatars and readable initials when absent or unavailable',async()=>{
@@ -69,4 +69,20 @@ it('focuses the existing creation form from the plus tile without creating a wor
   expect(tile.textContent).toContain('+');fireEvent.click(tile);
   expect(document.activeElement).toBe(screen.getByLabelText('Workspace name'));
   expect(fetcher.mock.calls.every(call=>!call[1]?.method)).toBe(true);
+});
+
+it('offers workspace choices with avatars and a plus creation action in the sidebar menu',async()=>{
+ vi.stubGlobal('ResizeObserver',class {observe(){}unobserve(){}disconnect(){}});
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace,{...workspace,id:'w2',name:'Client Studio',installation_id:7,avatar_url:'/client.png'}]})));
+ render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
+ fireEvent.click(screen.getByRole('button',{name:'Workspace'}));
+ const target=await screen.findByRole('menuitem',{name:'Client Studio'});
+ expect(target.querySelector('img')?.getAttribute('src')).toBe('/client.png');
+ fireEvent.error(target.querySelector('img')!);expect(target.textContent).toContain('CS');
+ fireEvent.click(target);expect(window.location.search).toBe('?workspace=w2&install=7');
+ fireEvent.click(screen.getByRole('button',{name:'Workspace'}));
+ const create=await screen.findByRole('menuitem',{name:'Create new workspace'});
+ expect(create.querySelector('svg')).not.toBeNull();fireEvent.click(create);
+ expect(window.location.pathname).toBe('/watch/workspaces');
 });

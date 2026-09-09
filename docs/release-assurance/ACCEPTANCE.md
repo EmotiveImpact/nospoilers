@@ -2,6 +2,8 @@
 
 ## Latest real-app remediation evidence
 
+The signed-in sidebar workspace control now owns the workspace list: avatar/initials rows, a plus tile for the existing create-workspace route, and no duplicate single-install identity card. Focused UI coverage passes 8/8; the current API has no avatar metadata, so initials are the verified live fallback. No workspace mutation or billing behavior is implied by the plus item.
+
 The private outcome export flow now keeps its selected UTC month stable until the export response completes. The focused rendered control regression passes 4/4; this closes a stale-response UI race without changing summary authority or export privacy.
 
 The owner-reviewed remediation loop is now exercised against the signed-in local app: case `d44de9f3…`, fresh upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6`, 64 files, zero findings, and saved `verified_absent` observation in the `NoSpoilers web build` stream. Original receipts/alerts remain immutable and production remains unverified. Review/build provenance is a human declaration, not provider attestation.

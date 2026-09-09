@@ -198,10 +198,6 @@ export function WatchMonolithShell({
       return next;
     });
   };
-  const installIdentity =
-    installations.find((installation) => installation.id === activeInstallId)?.account_login ??
-    installations[0]?.account_login ??
-    login;
   const shortcutLabel =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
       ? "⌘K"
@@ -258,14 +254,7 @@ export function WatchMonolithShell({
               ))}
             </select>
           </label>
-        ) : (
-          <div className="mt-3 flex items-center gap-2 rounded-md border border-line bg-inset px-2.5 py-2">
-            <span className="grid size-[22px] place-items-center rounded-[5px] bg-gradient-to-br from-zinc-600 to-zinc-900 text-[10px] font-semibold text-snow">
-              {installIdentity.slice(0, 2).toUpperCase()}
-            </span>
-            <p className="min-w-0 flex-1 truncate text-[13px] text-snow">{installIdentity}</p>
-          </div>
-        )}
+        ) : null}
         {opts.collapsed ? null : (
           <p className="mt-1 text-[11px] text-dim">
             {sourceCount > 0
