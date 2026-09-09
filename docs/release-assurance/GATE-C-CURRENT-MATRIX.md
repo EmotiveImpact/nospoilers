@@ -1,5 +1,8 @@
 # Gate C current evidence map
 
+Current-source UI milestone at8d4e658:279/279 tests across41 files passed (19.94s). This supersedes the earlier partial40-file result. Repository lint exited0 with29 warnings; final runtime build already passed for8d4e658. No runtime change in this evidence update. Reuse this milestone until further substantive changes. Gate C remains partial for final domain-style/state parity and external native zoom/audible AT.
+
+
 Release-tool responsive fix: native selects with long options could exceed their grid labels despite document width matching the viewport. Labels now use minmax(0,1fr); text controls have min-width:0 and width:100%. Build passed. Expanded remediation review/rebuild controls measured zero clipped controls at actual390/768/1024/1440; compact and desktop screenshots reviewed. No mutation; native zoom remains separate.
 
 
