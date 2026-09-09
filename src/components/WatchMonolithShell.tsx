@@ -119,13 +119,13 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center rounded-[6px] border-0 text-[13px] leading-[1.2]",
+        "flex items-center rounded-[7px] border-0 text-[14px] leading-[1.5]",
         collapsed ? "justify-center px-1 py-[7px]" : "gap-2.5 px-[9px] py-[7px]",
         active ? "text-snow" : "text-mute hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className={cn("size-[15px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
+      <Icon className={cn("size-[19px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
       <span className={cn(collapsed ? "sr-only" : "flex min-w-0 flex-1 items-center")}>{children}</span>
     </a>
   );
