@@ -1,3 +1,4 @@
+import { WatchPageHeader } from "./WatchPageHeader.tsx";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
@@ -47,7 +48,7 @@ function NotificationScope({workspaceId}:{workspaceId:string}){
   finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  }
  return <section className="space-y-6" aria-label="Workspace notifications">
-  <header><p className="watch-kicker">Workspace settings</p><h1 className="watch-page-title">Notifications</h1><p className="watch-page-lede">Know when monitored websites need attention. Private findings stay inside the app.</p></header>
+  <header><WatchPageHeader kicker="Workspace settings" title="Notifications" lede="Know when monitored websites need attention. Private findings stay inside the app." /></header>
   <p className="text-sm text-mute">These destinations receive independent website alerts. Uploaded packages produce scan evidence, not ongoing alerts. Slack requires Team or an active trial.</p>
   {loadError?<div role="alert">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<WatchSkeleton variant="list" className="mt-4" />:null}
   {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}

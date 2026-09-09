@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C shared-heading and connected-evidence milestone
+
+Workspace notification, token and independent-policy pages now reuse the shared page heading while retaining their existing settings copy, landmarks and controls. Connected release findings reuse the responsive evidence panel used by uploaded artifacts: the selected finding is a named polite live region, long content wraps, the two-column row geometry is correct and the narrow layout collapses cleanly. Focus, URL scope, receipt binding and exception permissions are unchanged.
+
+Independent focused verification passed 38 tests / seven files plus typecheck and affected-file lint; final build passed with the existing chunk warning. The signed-in warning release showed the selected panel at 1167px and 390px with no document overflow; at 390px the finding row collapsed to one column. This is browser presentation/live-region markup evidence, not a claim that a screen reader announcement was heard. Gate C remains partial.
+
 ## Current Gate C mockup/package and token milestone
 
 The approved mockups remain the visual reference in `public/mockup-review/`, while production builds now remove the complete `mockup-review` and legacy `mockups` galleries and omit the review-gallery link. The live homepage assets and local source galleries remain intact. A real isolated Vite packaging test plus final project build verifies this boundary; BUILD-LOG records the exact checks.

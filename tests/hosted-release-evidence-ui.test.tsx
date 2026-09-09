@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {it,expect,vi,afterEach} from 'vitest';
-import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent,cleanup,waitFor,within} from '@testing-library/react';
 import {HostedReleaseEvidence} from '../src/components/watch/HostedReleaseEvidence';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const finding={rule:'MAP-001',severity:'critical',path:'app.map',title:'Exposed map',detail:'Saved source map finding'};
@@ -23,4 +23,23 @@ it('clears old findings immediately on a different release and explicitly report
  view.rerender(<HostedReleaseEvidence releaseId={9} receiptId={18} search="?release=9"/>);
  expect(screen.queryByText('Saved source map finding')).toBeNull();
  await screen.findByText('Full details were not retained.');expect(screen.queryByRole('button',{name:'Request a policy exception'})).toBeNull();
+});
+it('announces the selected connected finding while preserving URL scope and queue focus',async()=>{
+ const second={...finding,rule:'SEC-001',path:'a/very/long/build/path/config.json',title:'Saved credential warning',detail:'Second saved finding details'};
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/exceptions')?{canRequest:false}:{available:true,workspaceId:'workspace',report:{findings:[finding,second],suppressed:[]}})));
+ const search='?workspace=workspace&install=7&release=8';
+ window.history.replaceState({},'',`/watch/releases${search}`);
+ const view=render(<HostedReleaseEvidence releaseId={8} receiptId={17} search={search}/>);
+ const panel=await screen.findByRole('complementary',{name:'Selected recorded finding'});
+ expect(panel.getAttribute('aria-live')).toBe('polite');
+ expect(within(panel).getByText('Saved source map finding')).toBeTruthy();
+ const row=screen.getByRole('button',{name:/Saved credential warning/});row.focus();fireEvent.click(row);
+ expect(new URLSearchParams(window.location.search).get('workspace')).toBe('workspace');
+ expect(new URLSearchParams(window.location.search).get('install')).toBe('7');
+ expect(new URLSearchParams(window.location.search).get('releaseFinding')).toBe('1');
+ view.rerender(<HostedReleaseEvidence releaseId={8} receiptId={17} search={window.location.search}/>);
+ expect(within(panel).getByText('Second saved finding details')).toBeTruthy();
+ expect(within(panel).queryByText('Saved source map finding')).toBeNull();
+ expect(row.getAttribute('aria-pressed')).toBe('true');
+ expect(document.activeElement).toBe(row);
 });

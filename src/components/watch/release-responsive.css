@@ -1,16 +1,20 @@
 /* Release evidence stays readable when the viewport narrows or text is zoomed. */
-:is(.watch-release-index,.upload-history,.upload-readiness){min-width:0}
-:is(.watch-release-index,.upload-history,.upload-readiness) :is(h1,h2,h3,strong,code){overflow-wrap:anywhere}
+:is(.watch-release-index,.upload-history,.upload-readiness,.hosted-release-evidence){min-width:0}
+:is(.watch-release-index,.upload-history,.upload-readiness,.hosted-release-evidence) :is(h1,h2,h3,strong,code){overflow-wrap:anywhere}
 .upload-history .uploaded-heading,.upload-readiness .watch-release-heading,.upload-readiness .watch-release-section-heading{flex-wrap:wrap}
 .upload-history .uploaded-heading>div,.upload-readiness .watch-release-heading>div{min-width:0}
 .upload-history .upload-row-title svg{flex-shrink:0}
 .upload-history :is(.uploaded-heading,.upload-preview) button,.upload-readiness .watch-release-heading button{max-width:100%;height:auto;min-height:2.5rem;white-space:normal}
 .upload-readiness [role=tabpanel]:focus-visible{outline:2px solid var(--color-snow);outline-offset:3px}
+.hosted-release-evidence .upload-finding-list>button{grid-template-columns:62px minmax(0,1fr)}
+.hosted-release-evidence :is(button,summary):focus-visible{outline:2px solid var(--color-snow);outline-offset:3px}
 @media(max-width:980px){
   .watch-release-index .watch-release-list ol{display:block;overflow-x:visible}
   .watch-release-index .watch-release-list li+li{border-left:0;border-top:1px solid var(--color-line)}
 }
 @media(max-width:600px){
+  .hosted-release-evidence .upload-finding-list>button{grid-template-columns:minmax(0,1fr);gap:.65rem;padding:1rem}
+  .hosted-release-evidence .upload-finding-list>button>.upload-severity{justify-self:start;min-width:4rem}
   .upload-history .upload-preview dl{grid-template-columns:minmax(0,1fr)}
   .upload-readiness .upload-finding-list>button{grid-template-columns:minmax(0,1fr) auto;gap:.65rem;padding:1rem}
   .upload-readiness .upload-finding-list>button>.upload-severity{grid-column:1/-1;justify-self:start;min-width:4rem}
@@ -18,5 +22,5 @@
   .upload-history .uploaded-list{max-height:none}
 }
 @media(prefers-reduced-motion:reduce){
-  :is(.watch-release-index,.upload-history,.upload-readiness) *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+  :is(.watch-release-index,.upload-history,.upload-readiness,.hosted-release-evidence) *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }

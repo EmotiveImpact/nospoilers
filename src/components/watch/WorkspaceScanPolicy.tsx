@@ -1,3 +1,4 @@
+import { WatchPageHeader } from "./WatchPageHeader.tsx";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
@@ -30,7 +31,7 @@ function ScopedPolicy({workspaceId}:{workspaceId:string}){
    setPolicy(body.policy);setStrict(body.policy.strict);setRequireApproval(body.policy.require_exception_approval??false);setSaved(true);
   }catch(error){if(alive.current)setError(error instanceof Error?error.message:'Scan policy could not be saved.');}finally{if(alive.current)setBusy(false);}
  }
- return <section className="min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label="Workspace scan policy"><header><p className="watch-kicker">Workspace settings</p><h1 className="watch-page-title">Independent scan policy</h1><p className="watch-page-lede">Applies to independent artifact and website scans in this workspace. GitHub-connected scans keep their connection policy. Each scan keeps the policy captured when it starts; saved evidence is never rewritten.</p></header>
+ return <section className="min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label="Workspace scan policy"><header><WatchPageHeader kicker="Workspace settings" title="Independent scan policy" lede="Applies to independent artifact and website scans in this workspace. GitHub-connected scans keep their connection policy. Each scan keeps the policy captured when it starts; saved evidence is never rewritten." /></header>
   {!policy&&!error&&<WatchSkeleton variant="list" className="mt-4" />}
   {error&&<div role="alert" className="space-y-3 text-sm text-mute"><p>{error}</p><Button variant="outline" disabled={busy} onClick={()=>{setSaved(false);setRetry(value=>value+1);}}>Reload policy</Button></div>}
   {policy&&<>{!policy.supported?<p>Independent scan policy is unavailable for this workspace.</p>:<form className="watch-card space-y-4 p-4 text-sm sm:p-5" onSubmit={event=>{event.preventDefault();void save();}}>

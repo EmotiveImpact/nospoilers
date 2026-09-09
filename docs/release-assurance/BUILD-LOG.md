@@ -1,5 +1,13 @@
 # Build and verification log
 
+## 9 September 2026 — Gate C shared headings and connected evidence detail
+
+The workspace notification, scan-token and independent-policy pages now use the shared `WatchPageHeader` contract for their identical settings kicker/title/lede structure. Their existing header landmarks, copy and controls remain. Connected release findings now share the uploaded-evidence detail panel's padding, long-text wrapping, focus treatment and reduced-motion scope. Its two-content finding rows use two columns on wide screens and one on narrow screens. The selected finding is a named polite live region; this supplies assistive markup but does not prove a particular screen reader announced it.
+
+Independent review found no concrete regression. `npm test -- tests/workspace-notifications-ui.test.tsx tests/workspace-tokens-ui.test.tsx tests/workspace-scan-policy-ui.test.tsx tests/hosted-release-evidence-ui.test.tsx tests/uploaded-release-brief-ui.test.tsx tests/release-workspace-scope-ui.test.tsx tests/watch-accessibility.test.tsx` passed 38 tests / seven files in 4.08s. `npm run typecheck` and affected-file `oxlint` passed; lint retained one pre-existing effect-state warning in `HostedReleaseEvidence.tsx`. Final `npm run build` passed with the existing >500 kB chunk warning.
+
+The signed-in real warning release rendered the named polite selected-finding panel at 1167px with two-column rows and no document overflow. At 390×844 the panel retained its real long path, the row collapsed to one column and document width remained 390px. The browser returned to Overview at its normal viewport. No settings, finding, exception, scan, server or customer-data mutation occurred.
+
 ## 9 September 2026 — Gate C mockup packaging and shared visual tokens
 
 The approved source mockups remain available for local visual comparison, but Vite production builds now remove both complete generated galleries (`mockup-review` and legacy `mockups`). The production Mockups page omits its review-gallery link; Watch and Scan navigation remains. The live homepage continues to use its separate assets. This is a build boundary only and does not change authentication, customer evidence, scanning or provider behavior.

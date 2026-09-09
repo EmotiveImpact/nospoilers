@@ -1,3 +1,4 @@
+import { WatchPageHeader } from "./WatchPageHeader.tsx";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
@@ -42,7 +43,7 @@ function TokenScope({workspaceId}:{workspaceId:string}){
  }
  function changePage(cursor:string|null){setPage(null);setSelected(null);setConfirm('');setSecret('');setBefore(cursor);}
  return <section className="min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label="Workspace scan tokens">
-  <header><p className="watch-kicker">Workspace settings</p><h1 className="watch-page-title">Scan API tokens</h1><p className="watch-page-lede">Connect CI to this workspace. Tokens can submit scans and read saved scan results across this workspace. Keep them secret.</p></header>
+  <header><WatchPageHeader kicker="Workspace settings" title="Scan API tokens" lede="Connect CI to this workspace. Tokens can submit scans and read saved scan results across this workspace. Keep them secret." /></header>
   <p className="text-sm text-mute">Up to five active tokens, shared with existing connection tokens. API scans use your workspace’s plan and scan allowance.</p>
   {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload credentials</Button></div>:null}
   {notice?<p role="status">{notice}</p>:null}
