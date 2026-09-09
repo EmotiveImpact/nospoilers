@@ -25,6 +25,7 @@ it('does not expose workspace mutations to a viewer',async()=>{
   vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({workspaces:[{...workspace,role:'viewer'}]})))));
   render(<WorkspaceManagement/>);await screen.findByRole('heading',{name:'Original'});
   expect(screen.queryByRole('button',{name:'Create workspace'})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Create new workspace'})).toBeNull();
   expect(screen.queryByRole('button',{name:'Rename'})).toBeNull();
   expect(screen.queryByRole('button',{name:'Archive'})).toBeNull();
 });
@@ -51,4 +52,21 @@ it('clears stale workspace choices on failed refresh and recovers explicitly',as
  unavailable=false;fireEvent.click(screen.getByRole('button',{name:'Retry workspaces'}));
  await screen.findByRole('option',{name:'Original'});
  expect(screen.queryByRole('alert')).toBeNull();
+});
+it('shows available workspace avatars and readable initials when absent or unavailable',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[{...workspace,name:'Release Team',avatar_url:'/workspace-avatar.png'},{...workspace,id:'w2',name:'Client Studio'}],invites:[]})));
+  const {container}=render(<WorkspaceManagement/>);
+  await screen.findByRole('heading',{name:'Release Team'});
+  const avatar=container.querySelector('img[src="/workspace-avatar.png"]');
+  expect(avatar).not.toBeNull();expect(screen.getByText('CS')).toBeTruthy();
+  fireEvent.error(avatar!);
+  expect(container.querySelector('img')).toBeNull();expect(screen.getByText('RT')).toBeTruthy();
+});
+it('focuses the existing creation form from the plus tile without creating a workspace',async()=>{
+  const fetcher=vi.fn(async(_url:string,_options?:RequestInit)=>Response.json({workspaces:[workspace],organizations,invites:[]}));
+  vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+  const tile=await screen.findByRole('button',{name:'Create new workspace'});
+  expect(tile.textContent).toContain('+');fireEvent.click(tile);
+  expect(document.activeElement).toBe(screen.getByLabelText('Workspace name'));
+  expect(fetcher.mock.calls.every(call=>!call[1]?.method)).toBe(true);
 });

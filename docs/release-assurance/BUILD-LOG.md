@@ -1,5 +1,9 @@
 # Build and verification log
 
+## 9 September 2026 — outcome export month consistency
+
+The private outcome summary month selector is now disabled while an export request is in flight. This prevents a deferred response for the previous month from replacing the summary beneath a newly selected month. The selector re-enables after the current export completes. The focused regression `npm test -- tests/release-outcomes-controls.test.tsx` passed 4/4; no server, provider, notification or production behavior changed.
+
 ## 9 September 2026 — owner-reviewed remediation and fresh real rebuild
 
 In the signed-in local app, the owner review was recorded for remediation case `d44de9f3…`. Fresh corrected upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6` completed at 11:20:15 UTC with SHA-256 `df8c0e6e07a57371bfd1e33f416b8825516f8b984d4aa0668949c494d66da902`, 64 files and zero findings. It was recorded in the `NoSpoilers web build` stream and selected under **Check a rebuilt artifact**. The saved remediation observation is `verified_absent`: the original finding was not observed in the rebuilt artifact under the same scanner and policy. This does not rewrite the original receipt/alert or verify production; review/build provenance is human-declared, not provider-attested.

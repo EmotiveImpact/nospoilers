@@ -2,6 +2,8 @@
 
 ## Latest real-app remediation evidence
 
+The private outcome export flow now keeps its selected UTC month stable until the export response completes. The focused rendered control regression passes 4/4; this closes a stale-response UI race without changing summary authority or export privacy.
+
 The owner-reviewed remediation loop is now exercised against the signed-in local app: case `d44de9f3…`, fresh upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6`, 64 files, zero findings, and saved `verified_absent` observation in the `NoSpoilers web build` stream. Original receipts/alerts remain immutable and production remains unverified. Review/build provenance is a human declaration, not provider attestation.
 
 Real local artifact proof is complete for this batch: recorded-payer correction enabled actual compiled-build uploads through the signed-in app. Original attempt408e7b98-0035-45b5-be7c-865d13e787d7 retained68files/3warnings; removing internal prototype Markdown from build output produced attempt0912f710-7150-4b67-8579-8e92590c1905 with64files/zero findings. Both signed records are explicitly saved in NoSpoilers web build history, with no automatic baseline, policy or provider activation. Cumulative1377pass/6obsolete UI assertions failed; corrected fixture file25/25 passes. Build/typecheck/API/lint pass with existing warnings; packaging has subsequent build/output and real scan proof. This is local upload/worker/evidence acceptance, not GitHub latest-release download or production validation. BUILD-LOG records exact source boundaries.

@@ -41,7 +41,7 @@ export function ReleaseOutcomeControls({streamId,workspaceId}:{streamId:string;w
       {!view.enabled?<><p>Off. An administrator can enable on-demand summaries of this stream’s retained checks and remediation. This does not enable email or engagement tracking.</p>
         {view.canConfigure?<><label><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/> Enable private summaries and a minimal event projection for this stream. No new analytics archive or external provider.</label><button type="button" disabled={busy||!confirm} onClick={()=>void preference(true)}>Enable private outcomes</button></>:null}
       </>:<>
-        <div className="ns-intelligence__actions"><label>Summary month (UTC)<input type="month" value={month} onChange={e=>{setMonth(e.target.value);setView(null);setError('');}}/></label>
+        <div className="ns-intelligence__actions"><label>Summary month (UTC)<input type="month" value={month} disabled={busy} onChange={e=>{setMonth(e.target.value);setView(null);setError('');}}/></label>
           <button type="button" disabled={busy} onClick={()=>{setView(null);setReload(n=>n+1);}}>Refresh summary</button>
           {view.canConfigure?<button type="button" disabled={busy} onClick={()=>void preference(false)}>Turn off outcome summaries</button>:null}
         </div>

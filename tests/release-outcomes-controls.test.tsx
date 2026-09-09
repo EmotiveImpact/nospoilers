@@ -27,3 +27,21 @@ it('rejects a response belonging to another workspace',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json({enabled:true,revision:1,summary:{...summary,scope:{workspaceId:'foreign',streamId:'stream'}}})));
   render(<ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/>);await screen.findByText('Outcome summary scope was not confirmed.');expect(screen.queryByText(/recorded release outcomes/)).toBeNull();
 });
+it('keeps the selected month fixed until its export finishes',async()=>{
+  let finishExport!:(response:Response)=>void;
+  const body={enabled:true,revision:1,canConfigure:false,notice:'Private only.',summary};
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(body)).mockImplementationOnce(()=>new Promise<Response>(resolve=>{finishExport=resolve;})));
+  const create=vi.fn(()=> 'blob:private-outcomes');
+  vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:create,revokeObjectURL:vi.fn()}));
+  vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>undefined);
+  render(<ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/>);
+  await screen.findByText('Private only.');
+  fireEvent.click(screen.getByRole('button',{name:'Export private outcome summary',hidden:true}));
+  const picker=screen.getByLabelText('Summary month (UTC)') as HTMLInputElement;
+  expect(picker.disabled).toBe(true);
+  expect(picker.value).toBe(month);
+  finishExport(Response.json(body));
+  await screen.findByText('Private unsigned summary downloaded. Nothing was published or sent.');
+  expect(picker.disabled).toBe(false);
+  expect(create).toHaveBeenCalledTimes(1);
+});
