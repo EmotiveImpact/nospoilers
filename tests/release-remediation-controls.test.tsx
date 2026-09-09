@@ -22,3 +22,34 @@ it('shows unavailable evidence without a resolved claim or write controls',async
   await screen.findByText('Linked evidence is unavailable; no current resolution is inferred.');
   expect(screen.queryByRole('button',{name:'Verify selected rebuild',hidden:true})).toBeNull();
 });
+
+it('hides stale remediation actions and evidence after a rejected mutation',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>init?.method==='POST'?Response.json({error:'Access revoked'},{status:403}):Response.json(view)));
+  render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
+  await screen.findByText(view.notice);
+  fireEvent.change(screen.getByLabelText('Remediation note (no secrets)'),{target:{value:'Investigate this recorded finding.'}});
+  fireEvent.click(screen.getByRole('button',{name:'Add investigation note',hidden:true}));
+  await screen.findByText('Access revoked');
+  expect(screen.queryByRole('button',{name:'Add investigation note',hidden:true})).toBeNull();
+  expect(screen.queryByText('Original finding')).toBeNull();
+});
+
+it('resets private drafts and consent when the record changes',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(view)));
+  const component=render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'first'}} snapshots={[]}/>);
+  await screen.findByText(view.notice);
+  fireEvent.change(screen.getByLabelText('Remediation note (no secrets)'),{target:{value:'Private first record note.'}});
+  fireEvent.click(screen.getByLabelText(/I reviewed this change/));
+  component.rerender(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'second'}} snapshots={[]}/>);
+  await screen.findByText(view.notice);
+  expect((screen.getByLabelText('Remediation note (no secrets)') as HTMLTextAreaElement).value).toBe('');
+  expect((screen.getByLabelText(/I reviewed this change/) as HTMLInputElement).checked).toBe(false);
+});
+
+it('explains why the selected release has no new investigation action',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...view,current:null})));
+  render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
+  await screen.findByText(/Record this release in the selected stream/);
+  expect(screen.queryByRole('button',{name:'Start investigation',hidden:true})).toBeNull();
+  expect(screen.getByText('Original finding')).toBeTruthy();
+});

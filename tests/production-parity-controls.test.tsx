@@ -40,3 +40,35 @@ it('labels prior results historical when authority changes and preserves the rec
   fireEvent.click(await view.findByText('deploy · completed'));
   expect(view.getByText(/Historical only/)).toBeTruthy();expect(view.getByText('mismatched')).toBeTruthy();expect(view.getByText('3 manifest files were not mapped.')).toBeTruthy();
 });
+
+it('explains missing website setup instead of offering an empty observation form',async()=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response({...base,origins:[]})));
+  const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
+  await view.findByText(/Connect a production website in Coverage/);
+  expect(view.queryByRole('button',{name:'Observe production',hidden:true})).toBeNull();
+});
+
+it('hides stale observation controls after failed cancellation and can refresh safely',async()=>{
+  const fetch=vi.fn().mockResolvedValueOnce(response({...base,runs:[{id:'run',status:'queued',deployment_id:'old-deploy',authorityCurrent:true,result:null}]})).mockResolvedValueOnce(new Response(JSON.stringify({error:'Access revoked'}),{status:403})).mockResolvedValueOnce(response({...base,canManage:false,runs:[]}));
+  vi.stubGlobal('fetch',fetch);
+  const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
+  await view.findByText('old-deploy · queued');
+  fireEvent.click(view.getByRole('button',{name:'Cancel observation',hidden:true}));
+  await view.findByText('Access revoked');
+  expect(view.queryByRole('button',{name:'Observe production',hidden:true})).toBeNull();
+  expect(view.queryByText('old-deploy · queued')).toBeNull();
+  fireEvent.click(view.getByRole('button',{name:'Refresh production observations',hidden:true}));
+  await view.findByText('An administrator with active coverage can request an observation.');
+});
+
+it('does not carry deployment drafts or confirmation into another stream',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>response(base)));
+  const view=render(<ProductionParityControls streamId="first" refreshVersion={0}/>);
+  await view.findByText(base.notice);
+  fireEvent.change(view.getByLabelText('Declared deployment ID'),{target:{value:'first-deployment'}});
+  fireEvent.click(view.getByRole('checkbox',{hidden:true}));
+  view.rerender(<ProductionParityControls streamId="second" refreshVersion={0}/>);
+  await view.findByText(base.notice);
+  expect((view.getByLabelText('Declared deployment ID') as HTMLInputElement).value).toBe('');
+  expect((view.getByRole('checkbox',{hidden:true}) as HTMLInputElement).checked).toBe(false);
+});

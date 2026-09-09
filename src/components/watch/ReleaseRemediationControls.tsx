@@ -5,6 +5,9 @@ type Case={id:string;finding:string;revision:number;original_snapshot:string};
 type Event={id:string;action:string;actor_login:string;created_at:string;detail:{reason:string;changeUrl?:string;commit?:string;reviewedAt?:string;record?:Ref;digest?:string;result?:RemediationResult}};
 type View={cases:Case[];selected:(Case&{history:Event[];observation:RemediationResult|null;unavailable:boolean})|null;current:{snapshotId:string;findings:string[]}|null;canWrite:boolean;notice:string};
 export function ReleaseRemediationControls({streamId,workspaceId,record,snapshots}:{streamId:string;workspaceId:string;record:Ref;snapshots:Snapshot[]}){
+  return <ReleaseRemediationScope key={`${workspaceId}:${streamId}:${record.kind}:${record.id}`} streamId={streamId} workspaceId={workspaceId} record={record} snapshots={snapshots}/>;
+}
+function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{streamId:string;workspaceId:string;record:Ref;snapshots:Snapshot[]}){
   const [view,setView]=useState<View|null>(null),[selected,setSelected]=useState(''),[reload,setReload]=useState(0),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   const [finding,setFinding]=useState(''),[reason,setReason]=useState(''),[changeUrl,setChangeUrl]=useState(''),[commit,setCommit]=useState(''),[reviewedAt,setReviewedAt]=useState(''),[candidate,setCandidate]=useState(''),[reviewConfirm,setReviewConfirm]=useState(false),[buildConfirm,setBuildConfirm]=useState(false);
   const resetConfirmation=()=>{setReviewConfirm(false);setBuildConfirm(false);};
@@ -12,6 +15,7 @@ export function ReleaseRemediationControls({streamId,workspaceId,record,snapshot
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const c=new AbortController(),params=new URLSearchParams({recordKind:record.kind,recordId:record.id});if(selected)params.set('caseId',selected);
+    setView(null);setReviewConfirm(false);setBuildConfirm(false);
     void fetch(`/api/release-intelligence/streams/${streamId}/remediation?${params}`,{signal:c.signal,credentials:'same-origin',cache:'no-store'}).then(async response=>{
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Remediation unavailable.');
       if(!Array.isArray(body.cases))throw new Error('Remediation response incomplete.');
@@ -25,8 +29,8 @@ export function ReleaseRemediationControls({streamId,workspaceId,record,snapshot
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/remediation`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action,reason,snapshotId:view.current?.snapshotId,finding,caseId:view.selected?.id,expectedRevision:view.selected?.revision,changeUrl,commit,reviewedAt,confirm:action==='review'?reviewConfirm:buildConfirm,candidateSnapshot:candidate})});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Remediation was not saved.');
-      if(!signal.aborted){setSelected(body.caseId);setReload(n=>n+1);setReason('');resetConfirmation();setNotice('Remediation activity saved. Original receipts and alert states are unchanged.');}
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Remediation was not saved.');}
+      if(!signal.aborted){setView(null);setSelected(body.caseId);setReload(n=>n+1);setReason('');resetConfirmation();setNotice('Remediation activity saved. Original receipts and alert states are unchanged.');}
+    }catch(e){if(!signal.aborted){setView(null);resetConfirmation();setError(e instanceof Error?e.message:'Remediation was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   const current=view?.selected,review=current?.history.find(e=>e.action==='review');
@@ -36,6 +40,7 @@ export function ReleaseRemediationControls({streamId,workspaceId,record,snapshot
     {!view&&!error?<p role="status">Reading remediation evidence…</p>:null}
     {view?<><p>{view.notice}</p>
       <a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a>
+      {!view.current?<p>Record this release in the selected stream to investigate its signed findings. Existing cases below belong to this stream, not necessarily this release.</p>:!view.current.findings.length?<p>This recorded release has no signed findings to investigate. Existing stream cases remain available; a clean scan does not automatically resolve them.</p>:null}
       {view.canWrite?<label>Remediation note (no secrets)<textarea minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label>:<p>Saved remediation is read-only for your current access.</p>}
       {view.canWrite&&!!view.current?.findings.length?<form onSubmit={e=>{e.preventDefault();void save('start');}}>
         <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>

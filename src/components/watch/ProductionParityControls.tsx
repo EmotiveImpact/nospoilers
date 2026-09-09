@@ -4,6 +4,9 @@ type Asset={servedPath:string;state:string;reason:string;cache:string|null};
 type Run={id:string;status:string;deployment_id:string;reason:string|null;authorityCurrent:boolean;stale:boolean;result:{assets:Asset[];scope:string;unmappedManifestFiles:number;observedAt:string}|null};
 type View={canManage:boolean;canCancel:boolean;baselineRevision:number|null;manifest:Array<{path:string;size:number}>;origins:Array<{id:number;origin_url:string}>;runs:Run[];notice:string};
 export function ProductionParityControls({streamId,refreshVersion}:{streamId:string;refreshVersion:number}){
+  return <ProductionParityScope key={streamId} streamId={streamId} refreshVersion={refreshVersion}/>;
+}
+function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refreshVersion:number}){
   const manifestListId=useId();
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false);
   const [originId,setOriginId]=useState(''),[deployment,setDeployment]=useState(''),[deployedAt,setDeployedAt]=useState('');
@@ -12,6 +15,7 @@ export function ProductionParityControls({streamId,refreshVersion}:{streamId:str
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,count=0;
+    setView(null);setConfirmed(false);
     async function load(){try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/production-parity`,{signal:controller.signal,credentials:'same-origin',cache:'no-store'});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Production comparison unavailable.');
@@ -26,8 +30,8 @@ export function ProductionParityControls({streamId,refreshVersion}:{streamId:str
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/production-parity`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Observation was not saved.');
-      if(!signal.aborted){setConfirmed(false);setReload(n=>n+1);}
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Observation was not saved.');}
+      if(!signal.aborted){setView(null);setConfirmed(false);setReload(n=>n+1);}
+    }catch(e){if(!signal.aborted){setView(null);setConfirmed(false);setError(e instanceof Error?e.message:'Observation was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   function change(index:number,patch:Partial<Mapping>){setMappings(rows=>rows.map((r,i)=>i===index?{...r,...patch}:r));setConfirmed(false);}
@@ -37,7 +41,7 @@ export function ProductionParityControls({streamId,refreshVersion}:{streamId:str
     {error?<p role="alert">{error}</p>:null}
     {!view&&!error?<p role="status">Reading production scope…</p>:null}
     {view?<><p>{view.notice}</p>
-      {view.baselineRevision===null||!view.manifest.length?<p>Adopt an eligible signed release as a reference before mapping production files. Missing, excluded or revoked references cannot establish parity.</p>:view.canManage?<form onSubmit={event=>{
+      {view.baselineRevision===null||!view.manifest.length?<p>Adopt an eligible signed release as a reference before mapping production files. Missing, excluded or revoked references cannot establish parity.</p>:!view.origins.length?<p>Connect a production website in Coverage and verify ownership before requesting an observation. Recording a release stream does not connect a website or start monitoring.</p>:view.canManage?<form onSubmit={event=>{
         event.preventDefault();const date=new Date(deployedAt);if(!Number.isFinite(date.getTime())){setError('Choose the declared deployment time.');return;}
         void mutate({requestKey:crypto.randomUUID(),expectedBaselineRevision:view.baselineRevision,originId:Number(originId),deploymentId:deployment,deployedAt:date.toISOString(),mappings,confirm:confirmed});
       }}>

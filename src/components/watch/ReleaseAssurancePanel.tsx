@@ -13,9 +13,10 @@ function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
     const controller=new AbortController();setView(null);setError('');setPending('');
     void fetch(`/api/assurance/${kind==='release'?'releases':'uploads'}/${encodeURIComponent(recordId)}`,{credentials:'same-origin',signal:controller.signal,cache:'no-store'})
       .then(async response=>{
-        const body=await response.json();
         if(controller.signal.aborted)return;
         if(response.status===202){onAssessment?.(null);setPending('The scan is still running. No completed review is available.');return;}
+        const body=await response.json();
+        if(controller.signal.aborted)return;
         if(!response.ok)throw new Error(typeof body.error==='string'?body.error:'Release assurance is unavailable.');
         const checked=readAssuranceView(body.view,recordId);
         if(!checked)throw new Error('The assurance response was incomplete or belonged to another release.');
@@ -42,6 +43,8 @@ function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
   return <div className="release-assurance-slot">
     {!view?<section className="ns-assurance" aria-label="Release assurance companion" aria-busy={!error&&!pending}><h2>Release assurance</h2><p role={error?'alert':'status'}>{error||pending||'Reading this release’s saved evidence…'}</p>{error||pending?<button type="button" onClick={()=>setRetry(value=>value+1)}>Retry saved evidence</button>:null}<p className="ns-assurance__muted">The original findings and controls below remain available. No passing decision is inferred from missing data.</p></section>:null}
     <div ref={root}/>
-    {view?<ReleaseIntelligenceFromRecord record={{kind,id:String(recordId)}}/>:null}
+    {/* History checks its own record access; an unavailable advisory view must not hide it.
+        Explicitly pending scans still wait for completed evidence before setup is offered. */}
+    {view||error?<ReleaseIntelligenceFromRecord record={{kind,id:String(recordId)}}/>:null}
   </div>;
 }

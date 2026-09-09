@@ -1,5 +1,25 @@
 # Build and verification log
 
+## 9 September 2026 — isolated GitHub-free dev review
+
+Added `npm run dev:review`, explicit `--dev-review` fixture mode and `scripts/dev-review-isolation.ts`. Builds the app, starts loopback localhost4372, signs into a disposable seeded owner workspace and creates hosted/upload streams through real authenticated routes. Visible banner and release links identify synthetic data. No gates, baselines, source rules or agent grants automatically activated. In-memory state resets on restart; no customer4347 data changed.
+
+Independent tester identified localhost cookie collision, inherited provider credentials and browser-followed OAuth redirects before launch. Fixed with dedicated `ns_dev_review_session` translation (normal session cookie ignored), blank GitHub/Stripe/Resend/admin/cron settings, explicit provider-entry denial and off-origin Location rejection. Production mode rejects before database/server startup. No worker or outbound provider calls. Production start/build commands do not import this launcher.
+
+Final launcher focused tests **6 passed**; build/typecheck passed after correcting one test import extension which initially stopped startup. Actual browser entry opened seeded GitHub release and all stream tools, clear banner, no overlay or console errors. Screenshot `output/playwright/dev-review-github.png`. Live HTTP checks confirmed dedicated cookie name and real GitHub auth returned409 with no external redirect. Prior cumulative core suite1326/226 is separate from this later launcher test scope. No production migration or paid activation.
+
+Review workspace this run: `78ff2fce-e366-4c5a-a63c-351de2c0779c`, name `QA mixed workspace — disposable`. Stable entry is `/__dev-review`; IDs change on restart. Source/rebuild/production eligibility rules still apply; this does not fetch arbitrary real GitHub repositories. Saved four-agent continuation prompt accompanies this increment. No whole-platform completion claim.
+
+## 9 September 2026 — coordinated visibility and stale-state fixes (after 92dd29f)
+
+Three explicit subagents handled builder, investigator/fixer and independent tester roles; root integrated. Assurance errors no longer hide independently authorized history; HTTP202 remains honestly pending, including an empty body. Parity/remediation failed mutations clear old evidence/actions, scope changes reset drafts and requests, and missing prerequisites are explained. Agent access clears privileged controls and one-time credentials after denied reads/writes and manual refresh. No authorization bypass or backend enforcement change.
+
+Builder mount-contract tests: **7 passed**. Fixer parity/remediation focused tests: **11 passed**. Tester credential/stale-state tests: **2 passed** after fix; no pre-fix failing run is claimed. Cumulative full regression: **1,326 tests / 226 files passed**, 276.87 seconds. Frontend/typecheck/API builds and lint passed; lint includes state-in-effect warnings in the newly hardened controls, alongside prior warnings, and the existing bundle-size warning. These warnings are not a clean-lint claim. No dependencies/schema or fresh native database run for this UI-only batch.
+
+Root browser reloaded the built synthetic4371 release: stream controls remain available, parity explains the missing approved reference instead of silently disappearing. Independent tester browser was blocked by shared-profile ownership and was not represented as browser success; root retains browser verification ownership. Earlier middle-table assertions that gate/connected CI were unbuilt have been reconciled. Wider operational/accessibility acceptance and provider-backed/attested work remain open.
+
+The later dev-review launcher is a separate increment; this full run does not cover its subsequently added tests or launcher changes.
+
 ## 9 September 2026 — history discovery, recovery and export scope (after 506a235)
 
 Final full regression for this increment: **1,311 tests / 224 files passed**, 279.59 seconds. This run precedes the separately delegated assurance/parity/remediation/agent-state fixes; their verification must be recorded separately. No blocked or restarted test process was substituted for this result.
