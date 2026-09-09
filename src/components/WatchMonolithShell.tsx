@@ -244,7 +244,7 @@ export function WatchMonolithShell({
             )}
           >
             <img
-              src={opts.collapsed ? "/assets/brand/nospoilers-mark.png" : "/assets/brand/nospoilers-wordmark.png"}
+              src={opts.collapsed ? "/assets/brand/nospoilers-mark-white.png" : "/assets/brand/nospoilers-wordmark.png"}
               alt="NoSpoilers"
               className={cn("block object-contain", opts.collapsed ? "size-7" : "h-[25px] w-auto max-w-[152px]")}
             />
