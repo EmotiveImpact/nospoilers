@@ -1,5 +1,11 @@
 # Build and verification log
 
+## 9 September 2026 — quiet loading and compact Alerts navigation
+
+Shared Watch data loading now keeps only a screen-reader-only polite status and renders no visible skeleton cards, rows, borders or reserved placeholder height. The separate initial Watch-opening lighthouse is unchanged. Alerts removes the redundant visible **Status** label so Open, In progress and Resolved retain the full queue row; its named tablist, roving keyboard behavior, counts and ownership filter remain. Connected-release actions from Overview now open Connected revisions with their workspace and installation scope, and alert priority copy no longer calls operational response state verified exposure. The archived-workspace boundary uses a contextual **Open workspace settings** action without restoring the removed sidebar Manage link.
+
+Independent verification: `npm test -- tests/watch-data-state.test.tsx tests/alert-filters-keyboard.test.tsx tests/alert-queue-keyboard.test.tsx tests/artifact-overview-ui.test.tsx tests/overview-next-action.test.ts tests/workspace-management-ui.test.tsx tests/workspace-entry.test.tsx` passed **49 tests / seven files** in 3.71s; `npm run typecheck` and `git diff --check` passed. Final `npm run build` passed with the existing >500 kB chunk warning. After reloading the preserved signed-in app, Alerts visibly showed the three queue tabs without the Status label; navigating to Notifications showed ready content with no skeleton placeholder. No data, response, scan, notification or provider mutation occurred. Actual screen-reader speech remains unverified.
+
 ## 9 September 2026 — Gate C cumulative UI milestone and final 1024px read
 
 One cumulative current-source UI milestone passed **260 tests / 38 files, zero failures in 17.57s**. It includes shell/navigation/workspace UI; Overview/First Proof; Scan; Alerts; Coverage and the rendered Timeline chart; uploaded/hosted Releases; release intelligence/history/gate/gate access/remediation/parity/capture/agent/outcomes/explanations; and Notifications/Policy/Team/Tokens/Retention/Audit/Health/Registries. `npm run typecheck` and `npm run lint` passed; lint retains recorded warnings. The final frontend build for this source passed immediately before this cumulative run with the existing >500 kB chunk warning. No backend integration/full suite was repeated.

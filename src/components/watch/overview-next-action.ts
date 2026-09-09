@@ -12,7 +12,7 @@ export function overviewNextAction(data:Evidence,workspaceId:string){
  const result=(text:string,label:string,path='releases')=>({text,label,href:`/watch/${path}?${params}`});
  if(data.alertCounts?.open){
   params.set('tab','open');
-  return result('Open exposure alerts need a response. Reviewing or resolving an alert does not change its original scan evidence.','Review open alerts','alerts');
+  return result('Open alerts need a response. Reviewing or resolving an alert does not change its original scan evidence.','Review open alerts','alerts');
  }
  if(data.counts.attention){
   params.set('uploadStatus','attention');
@@ -21,6 +21,7 @@ export function overviewNextAction(data:Evidence,workspaceId:string){
  const hosted=data.hostedSources?.find(source=>source.attention>0);
  if(hosted){
   params.set('install',String(hosted.installationId));
+  params.set('releaseView','connected');
   return result('Connected release evidence needs review. Check the recorded findings and policy outcome.','Review connected releases');
  }
  if(data.counts.active){
@@ -32,7 +33,7 @@ export function overviewNextAction(data:Evidence,workspaceId:string){
  }
  if(data.alertCounts?.waiting){
   params.set('tab','waiting');
-  return result('Exposure response is in progress. Follow up on the remaining work and record the outcome.','View work in progress','alerts');
+  return result('Alert response is in progress. Follow up on the remaining work and record the outcome.','View work in progress','alerts');
  }
  if(data.websiteCoverage?.attention){
   params.set('websiteHealth',data.websiteCoverage.delayed?'delayed':'attention');
@@ -42,6 +43,9 @@ export function overviewNextAction(data:Evidence,workspaceId:string){
   return result('Connected monitoring needs attention. Unknown, delayed or suspended coverage does not establish current safety, even when an older release passed.','Review connected coverage','sources');
  }
  const source=data.hostedSources?.find(item=>item.total>0);
- if(source)params.set('install',String(source.installationId));
+ if(source){
+  params.set('install',String(source.installationId));
+  params.set('releaseView','connected');
+ }
  return result(data.counts.total||source?'Review your saved evidence and start a new check when needed. A recorded policy pass is not a guarantee of current production safety.':'No scan evidence has been recorded in this workspace.','View release history');
 }

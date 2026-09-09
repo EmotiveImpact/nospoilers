@@ -64,7 +64,7 @@ it('routes connected evidence to its own installation instead of the selected on
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[],hostedSources:[{installationId:9,name:'Second org',total:2,passed:1,attention:1}]}))));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace&install=7" nowLabel="Today"/>);
  fireEvent.click(await screen.findByRole('button',{name:'View Second org releases'}));
- expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=9');
+ expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=9&releaseView=connected');
  expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
 });
 it('shows the daily workspace rather than first proof when alerts exist without uploads',async()=>{

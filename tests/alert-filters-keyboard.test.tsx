@@ -21,6 +21,7 @@ it('moves focus and selection through lifecycle tabs while keeping ownership ind
  const tabs=within(screen.getByRole('tablist',{name:'Alert queues'})).getAllByRole('tab');
  const ownership=screen.getByRole('button',{name:'Assigned to me'});
  expect(tabs).toHaveLength(3);
+ expect(screen.queryByText('Status',{exact:true})).toBeNull();
  expect(ownership.closest('[role="tablist"]')).toBeNull();
  const selected=(index:number)=>tabs.forEach((tab,i)=>{
   expect(tab.getAttribute('aria-selected')).toBe(String(i===index));

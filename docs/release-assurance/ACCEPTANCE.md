@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current quiet-loading and Alerts-navigation increment
+
+The owner-requested route/section loading presentation now renders no visible skeleton geometry; a polite nonvisual loading status remains for assistive technology, while the separate initial Watch-opening lighthouse is unchanged. Alerts gives its three lifecycle tabs the full row by removing the redundant visible **Status** label without changing the tablist name, counts, filters or keyboard behavior. Overview's connected-release actions now select Connected revisions with exact workspace/installation scope, and the archived-workspace recovery action remains available without restoring the removed sidebar Manage link.
+
+Independent verification passed 49 tests / seven files, typecheck and diff check; the final frontend build passed with the existing chunk warning. The reloaded signed-in app visibly showed the compact Alerts tabs and a skeleton-free route transition. This verifies rendered behavior and loading semantics, not audible screen-reader output. The Overview's final visual composition remains under owner mockup review and is not claimed complete by this increment.
+
 ## Current Gate C cumulative UI milestone
 
 The current connected Gate C source passed one cumulative UI run: **260 tests / 38 files, zero failures (17.57s)**, followed by passing typecheck and lint. It covers the shell/workspace decisions; Overview and First Proof; Scan; Alerts; Coverage/Timeline chart; uploaded and hosted Releases; history, gate, CI access, remediation, parity, capture, agent, outcomes and explanations; and Notifications, Policy, Team, Tokens, Retention, Audit, Health and Registries. This is a deliberate UI-only milestone, not a repeated backend regression or production check.

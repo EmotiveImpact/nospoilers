@@ -184,7 +184,7 @@ export function WatchAlertsWorkspace({
         ) : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-white/[0.015] px-4 py-3 md:px-8">
-      <div className="flex min-w-0 flex-wrap items-center gap-3"><span className="hidden text-[10px] font-medium uppercase tracking-widest text-dim sm:block">Status</span><div className="inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
+      <div className="flex min-w-0 flex-wrap items-center gap-3"><div className="inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
         {([
           ["open", "Open", queueCounts.open],
           ["waiting", "In progress", queueCounts.waiting],

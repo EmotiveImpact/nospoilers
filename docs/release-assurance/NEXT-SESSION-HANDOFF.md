@@ -1,5 +1,11 @@
 # Resume checkpoint — 9 September 2026
 
+## Owner-directed loading and Alerts cleanup
+
+Visible Watch skeleton placeholders are removed globally through the shared `WatchSkeleton`; a polite screen-reader-only loading status remains, and the initial Watch-opening lighthouse is unchanged. Alerts no longer shows a redundant **Status** label before Open, In progress and Resolved. Overview connected-release links now select Connected revisions with exact scope, operational alert copy is neutral, and archived workspaces have a contextual settings action without restoring the removed sidebar Manage link. Independent verification passed 49 tests / seven files plus typecheck and diff check; final build passed with the existing chunk warning. The preserved signed-in app was reloaded and visibly verified. No mutation occurred.
+
+The owner is reviewing the actual static mockup gallery on temporary local port 4350. Do not treat the earlier unapproved Overview composition experiment as current source; it was removed before the build. Await or infer only from an explicit mockup choice before materially changing Overview composition. The gallery server is separate from and does not alter the real app at 4347.
+
 ## Gate C continuation
 
 Final current-source cumulative UI milestone: 260 tests/38 files passed in 17.57s, followed by passing typecheck and lint. This covers all touched Gate C screen/control families without rerunning backend integrations or the completed real scan. The exact command is in BUILD-LOG. A targeted signed-in 1024×900 rerun closed the prior early-load ambiguity: all seven core routes loaded their correct headings and had exact 1024px document width. Do not repeat this cumulative run or viewport matrix without new source changes.
