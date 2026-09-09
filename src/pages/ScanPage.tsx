@@ -1,3 +1,4 @@
+import {EvidenceTypePicker,type EvidenceType} from '@/components/watch/EvidenceTypePicker';
 import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
 import { CoverageLock } from "@/components/CoverageLock.tsx"
 import { Badge } from "@/components/ui/badge"
@@ -7,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { watchPath } from "@/watch/routes.ts"
-import { Box, ChevronRight, FileJson, GitBranch, Globe2, Loader2, LockKeyhole, ShieldCheck, Upload } from "lucide-react"
+import { ChevronRight, FileJson, Loader2, LockKeyhole, Upload } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
@@ -43,7 +44,7 @@ function requireSubmission(value: unknown): asserts value is PendingScan | Queue
   requireQueuedScan(value)
 }
 
-type ScanMode = "github" | "package" | "website" | "receipt"
+type ScanMode = EvidenceType
 
 function scanModeFromSearch(search: string): ScanMode {
   const params = new URLSearchParams(search)
@@ -297,36 +298,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         Verify an existing proof separately without starting a new scan.
       </p>
 
-      <div className="scan-mode-grid" role="tablist" aria-label="Evidence type" onKeyDown={event=>{
-        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
-        const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
-        const index=tabs.indexOf(event.target as HTMLButtonElement)
-        if(index<0)return
-        event.preventDefault()
-        const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length
-        tabs[next].focus();tabs[next].click()
-      }}>
-        <button type="button" role="tab" id={`${modeId}-github`} aria-controls={`${modeId}-panel`} tabIndex={mode === "github"?0:-1} aria-selected={mode === "github"} className={cn(mode === "github" && "is-selected")} onClick={() => chooseMode("github")}>
-          <GitBranch aria-hidden />
-          <strong>GitHub repository</strong>
-          <span>Connect a repo and keep watching releases.</span>
-        </button>
-        <button type="button" role="tab" id={`${modeId}-package`} aria-controls={`${modeId}-panel`} tabIndex={mode === "package"?0:-1} aria-selected={mode === "package"} className={cn(mode === "package" && "is-selected")} onClick={() => chooseMode("package")}>
-          <Box aria-hidden />
-          <strong>Package or build</strong>
-          <span>Upload npm, archive, installer, or CI output.</span>
-        </button>
-        <button type="button" role="tab" id={`${modeId}-website`} aria-controls={`${modeId}-panel`} tabIndex={mode === "website"?0:-1} aria-selected={mode === "website"} className={cn(mode === "website" && "is-selected")} onClick={() => chooseMode("website")}>
-          <Globe2 aria-hidden />
-          <strong>Production website</strong>
-          <span>Inspect the assets a browser can download.</span>
-        </button>
-        <button type="button" role="tab" id={`${modeId}-receipt`} aria-controls={`${modeId}-panel`} tabIndex={mode === "receipt"?0:-1} aria-selected={mode === "receipt"} className={cn(mode === "receipt" && "is-selected")} onClick={() => chooseMode("receipt")}>
-          <ShieldCheck aria-hidden />
-          <strong>Verify release proof</strong>
-          <span>Check proof shared by a supplier or teammate.</span>
-        </button>
-      </div>
+      <EvidenceTypePicker id={modeId} mode={mode} onChange={chooseMode}/>
 
       <div role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
       {mode!=='receipt'&&sessionError?<div role="alert" className="mt-5 space-y-3 rounded-lg border border-white/15 bg-panel p-4 text-sm text-mute"><p>{sessionError}</p><HeadlessButton type="button" className="min-h-11 underline underline-offset-4" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div>:null}
