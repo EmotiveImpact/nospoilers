@@ -70,3 +70,8 @@ Extracted EvidenceTypePicker from ScanPage, retaining the four existing evidence
 ## Compact shared-control verification
 
 At b4b45a2 runtime, signed-in Team member menu reviewed at actual355 CSS pixels with document width355. Requested390 viewport initially yielded355; adjusted tool viewport to429 and confirmed innerWidth390, innerHeight844. At actual390, Notifications open destination menu, connected decision filters/empty state, and Add coverage open modal were visually reviewed with document width390. All four modal source choices were visible; Escape dismissed, then normal viewport restored. No source/account mutation. This is CSS viewport evidence, not native200% zoom, and does not cover every state/width. No tests/build repeated for this read-only check.
+
+
+## Dropdown widths and contrast
+
+At c8a95bd, live open Team invitation and Notifications destination menus had exact document/viewport equality at768,1024,1440 CSS pixels. Team screenshot reviewed at768/1440; Notifications screenshot at768; other widths are geometry evidence. Closed menus and restored viewport. No writes. Defined dropdown contrasts (sRGB WCAG calculation): f4f4f5/111214=17.05:1; b1b1ba/191a1d=8.18:1; a1a1aa/191a1d=6.79:1; f4f4f5/303134=11.83:1; focus a1a1aa/303134=5.07:1 (selected background approximates 10% white over191a1d). These cover the new dropdown palette, not whole-app contrast. Native zoom, spoken AT and actual reduced-motion execution remain distinct gaps.
