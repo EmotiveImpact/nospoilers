@@ -1,5 +1,11 @@
 # Architecture and decision contract
 
+## Connected-source gate capability (9 September 2026)
+
+Migration `ra_006_gate_ci_access` adds opt-in grants keyed by stream/token and a capability key on gate decisions. The gate-route-only adapter delegates signed-evidence reads to the granting administrator's current authority, but audits the token actor and denies all management operations. Asset selector, channel/format, source generation, installation generation, expiry and token/workspace boundaries are checked. The installation counter advances on suspension/disconnection changes, including reconnection, so an old grant cannot silently resume. Grant renewal changes the capability key and invalidates decisions made under the old grant. Current policy is readable; general decision/policy history is not returned to this capability. Other API routes retain their ordinary token permissions.
+
+Administrative grants require explicit confirmation, reason, current revision and a bounded expiry; disabling is separate from entitlement-gated enabling. No token secret is returned by these controls. This extends the independent-upload gate below rather than changing scanner outcomes or granting general GitHub access.
+
 ## Versioned gate addition (9 September 2026)
 
 `ra_005_release_gate` stores append-only policy revisions, evidence-bound decisions, overrides and consumptions. Gate evaluation reuses `assessRelease` through the verified intelligence adapter, adding an explicitly adopted age bound and excluding website observations from pre-deploy build permission. Policy mutation and consumption serialize on the workspace row; consumption rechecks current permissions, policy revision, original evidence fingerprint, current governance, digest, deployment identity and expiry. Each decision can be consumed once. Rollback appends a new policy revision; it never rewrites history or revalidates an older decision.

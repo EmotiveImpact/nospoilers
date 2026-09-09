@@ -31,6 +31,8 @@ describe('persistent release intelligence', () => {
     await sql.exec(`CREATE TABLE schema_migrations(id TEXT PRIMARY KEY);
       CREATE TABLE users(id TEXT PRIMARY KEY);
       CREATE TABLE jobs(id BIGINT PRIMARY KEY);
+      CREATE TABLE scan_api_tokens(id BIGINT PRIMARY KEY);
+      CREATE TABLE installations(id BIGINT PRIMARY KEY,suspended BOOLEAN,disconnected_at TIMESTAMPTZ);
       CREATE TABLE watched_origins(id BIGINT PRIMARY KEY);
       CREATE TABLE product_workspaces(id UUID PRIMARY KEY);
       CREATE TABLE uploaded_scans(id TEXT PRIMARY KEY);

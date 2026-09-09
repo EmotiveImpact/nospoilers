@@ -3,8 +3,9 @@ import type { SqlClient } from './sql.ts';
 import { analyse } from '../release-intelligence/analyse.ts';
 import { clean, fail, IntelligenceError, metrics, reference, revision, text, uuid, validate, VERSION } from '../release-intelligence/model.ts';
 import type { Baseline, Evidence, Ref, Snapshot, Stream } from '../release-intelligence/model.ts';
-export type Permission = { actorLogin: string; canManage: boolean; canWrite: boolean; actorUserId?:string; canAdminister?:boolean };
+export type Permission = { actorLogin: string; canManage: boolean; canWrite: boolean; actorUserId?:string; canAdminister?:boolean;capabilityKey?:string };
 export type IntelligencePorts = {
+  gate?: (streamId:string)=>IntelligencePorts;
   access: (sql: SqlClient, workspace: string, mode: 'read' | 'write' | 'manage', source?: string) => Promise<Permission>;
   evidence: (sql: SqlClient, workspace: string, ref: Ref) => Promise<Evidence>;
 };

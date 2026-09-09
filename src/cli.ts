@@ -211,10 +211,11 @@ program
     }
   });
 
-program.command('gate').description('Consume a fresh, single-use pre-deployment gate decision for a recorded uploaded build')
+program.command('gate').description('Consume a fresh, single-use pre-deployment gate decision for a recorded build')
   .requiredOption('--api <origin>','NoSpoilers API origin')
   .requiredOption('--stream <id>','Explicit release stream ID')
-  .requiredOption('--upload <id>','Completed scan already recorded in this stream')
+  .option('--upload <id>','Completed upload already recorded in this stream')
+  .option('--release <id>','Connected release ID with an explicit gate-only CI grant')
   .requiredOption('--digest <sha256>','Exact artifact SHA-256 to deploy')
   .requiredOption('--deployment <id>','Deployment attempt identity')
   .option('--decision <id>','Consume an existing unexpired decision, including an explicitly reviewed override')

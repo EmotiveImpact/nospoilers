@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalJson, verifyReceipt } from '../receipt.ts';
 import { readReceipt } from '../assurance/evidence.ts';
 import {assessRelease} from '../assurance/decision.ts';
+import {connectedGatePorts} from './release-gate-access.ts';
 import { createStore, readSignedSession } from './store.ts';
 import { listUserWorkspaces } from './workspaces.ts';
 import { authenticateWorkspaceToken } from './workspace-tokens.ts';
@@ -127,6 +128,10 @@ function createIntelligencePorts(request: Request, secrets: { sessionSecret: str
   }
   return {
     access, evidence,
+    gate:streamId=>request.headers.has('authorization')?connectedGatePorts({access,evidence},async gateSql=>{
+      // Resolve again on each use; token revocation is never cached in a capability.
+      const actor=await identity(gateSql);return actor.kind==='token'?{tokenId:actor.tokenId,workspaceId:actor.workspaceId}:fail('A workspace token is required.',401);
+    },userId=>createIntelligencePorts(new Request('http://internal.invalid/gate'),secrets,userId),streamId):{access,evidence},
     async reserve(sql) {
       const actor = await identity(sql), id = actor.kind === 'user' ? actor.userId : `token:${actor.tokenId}`;
       return store(sql).reserveRequest(`release-intelligence:${request.method}:${id}`, request.method === 'GET' ? 120 : 30, 60_000);

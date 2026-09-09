@@ -1,5 +1,13 @@
 # Release intelligence continuation
 
+## Connected-source CI grant checkpoint (9 September 2026, after 34747bc)
+
+`ra_006_gate_ci_access` and `release-gate-access.ts` add administrator-confirmed, 1–90-day grants for existing workspace tokens, bound to one stream and exact connected asset selector. GET/POST `streams/:id/gate-access` remain session-admin only. Only `streams/:id/gate` delegates the narrowly scoped capability; general history, receipt, repository, policy and override access are not broadened. Current administrator/source authority, token status, expiry and repository/package plus installation lifecycle generations are rechecked. Grant revisions bind decisions: renewal does not revive an old grant's decision. Grant revocation remains available without active billing where source/admin read authority remains. The migration enables nothing.
+
+The connected CLI path uses `gate --release RELEASE_ID` in place of `--upload UPLOAD_UUID`; exactly one is required. Customers must first record the release and explicitly grant the existing workspace token access from Release Gate → Connected-source CI access. CI still must supply the exact digest, stream and deployment attempt, and explicitly call the gate. No pipeline or provider is configured automatically.
+
+Verification: final runtime full suite 1,260 tests / 214 files passed; focused migration/access 23 tests passed; native PostgreSQL real session/token/CLI test passed. Typecheck, frontend/API builds and lint passed with existing warnings. Built-app synthetic QA port 4366 exercised token creation, release-stream creation, grant and mobile revocation; no horizontal overflow at 390/1365px or console errors. A final confirmation-copy correction has separate component/build checks (see build log). Remaining: wider concurrency/accessibility/operational acceptance, then durable remediation linkage, agent/MCP and retention outcomes. This supersedes older statements below that connected-source CI grants are unbuilt. Do not merge/deploy or activate customer policy.
+
 Date: 8 September 2026. Branch: `codex/release-assurance-spine-v1`. Review container: draft PR #44.
 
 ## 9 September versioned gate increment

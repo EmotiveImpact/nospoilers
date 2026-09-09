@@ -4,7 +4,7 @@ import type {IntelligencePorts} from './release-intelligence-service.ts';
 import {fail,IntelligenceError,reference,revision,text,uuid,type Evidence,type Ref,type Stream,type Snapshot} from '../release-intelligence/model.ts';
 import {DEFAULT_GATE,evaluateGate,gatePolicy,type GatePolicy,type GateResult} from '../release-intelligence/gate.ts';
 type PolicyRow={revision:number;mode:GatePolicy['mode'];max_age_hours:number};
-type DecisionRow={id:string;stream_id:string;record_kind:Ref['kind'];record_id:string;digest:string;receipt_fingerprint:string|null;policy_revision:number;mode:GatePolicy['mode'];deployment_id:string;result:GateResult;expires_at:string|Date};
+type DecisionRow={id:string;stream_id:string;record_kind:Ref['kind'];record_id:string;digest:string;receipt_fingerprint:string|null;policy_revision:number;mode:GatePolicy['mode'];deployment_id:string;result:GateResult;expires_at:string|Date;capability_key:string|null};
 const digestValue=(v:unknown)=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v)?v:fail('Supply the exact lowercase SHA-256 artifact digest.');
 export function releaseGate(sql:SqlClient,ports:IntelligencePorts){
   async function scope(tx:SqlClient,id:string,mode:'read'|'write'|'manage'){
@@ -52,11 +52,11 @@ export function releaseGate(sql:SqlClient,ports:IntelligencePorts){
       let binding:{digest:string;record:Ref}|null=null;
       if(ref){try{const {snap}=await evidence(tx,s,ref);binding={digest:snap.digest,record:ref};}
         catch(error){if(!(error instanceof IntelligenceError)||error.status!==409)throw error;}}
-      const policies=(await tx.query('SELECT revision,mode,max_age_hours,rollback_from,reason,actor_login,created_at FROM release_gate_policies WHERE stream_id=$1 ORDER BY revision DESC LIMIT 20',[id])).rows;
-      const decisions=(await tx.query(`SELECT d.*,EXISTS(SELECT 1 FROM release_gate_overrides o WHERE o.decision_id=d.id) AS overridden,
+      const policies=permission.capabilityKey?[]:(await tx.query('SELECT revision,mode,max_age_hours,rollback_from,reason,actor_login,created_at FROM release_gate_policies WHERE stream_id=$1 ORDER BY revision DESC LIMIT 20',[id])).rows;
+      const decisions=permission.capabilityKey?[]:(await tx.query(`SELECT d.*,EXISTS(SELECT 1 FROM release_gate_overrides o WHERE o.decision_id=d.id) AS overridden,
         EXISTS(SELECT 1 FROM release_gate_consumptions c WHERE c.decision_id=d.id) AS consumed FROM release_gate_decisions d WHERE d.stream_id=$1 ORDER BY d.created_at DESC LIMIT 10`,[id])).rows;
       await ports.access(tx,s.workspace_id,'read',s.source_binding);
-      return {policy:p,policies,decisions,binding,canManage:permission.canManage,canWrite:permission.canWrite,
+      return {policy:p,policies,decisions,binding,canManage:permission.canManage,canWrite:permission.canWrite,canAdminister:permission.canAdminister??false,
         notice:'Opt-in pre-deployment gate. CI must explicitly consume a fresh decision. Production observations are separate; original scan results never change.'};
     });},
     async configure(id:string,input:Record<string,unknown>){return sql.transaction(async tx=>{
@@ -85,12 +85,12 @@ export function releaseGate(sql:SqlClient,ports:IntelligencePorts){
       if(snap.digest!==digest)return fail('Requested digest does not match this saved record.',409);
       const existing=(await tx.query<DecisionRow>('SELECT * FROM release_gate_decisions WHERE request_key=$1',[key])).rows[0];
       if(existing){
-        if(existing.stream_id!==id||existing.record_kind!==ref.kind||existing.record_id!==ref.id||existing.digest!==digest||Number(existing.policy_revision)!==p.revision||existing.deployment_id!==deployment)return fail('Request identity already belongs to another gate evaluation.',409);
+        if(existing.stream_id!==id||existing.record_kind!==ref.kind||existing.record_id!==ref.id||existing.digest!==digest||Number(existing.policy_revision)!==p.revision||existing.deployment_id!==deployment||existing.capability_key!==(permission.capabilityKey??null))return fail('Request identity already belongs to another gate evaluation.',409);
         return existing;
       }
       const result=evaluateGate(e,digest,p),decisionId=randomUUID(),expires=new Date(Date.now()+5*60000).toISOString();
-      const row=(await tx.query<DecisionRow>(`INSERT INTO release_gate_decisions(id,request_key,stream_id,record_kind,record_id,upload_id,release_id,digest,receipt_fingerprint,policy_revision,mode,deployment_id,result,expires_at)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14) RETURNING *`,[decisionId,key,id,ref.kind,ref.id,ref.kind==='upload'?ref.id:null,ref.kind==='release'?ref.id:null,digest,e?.fingerprint??null,p.revision,p.mode,deployment,JSON.stringify(result),expires])).rows[0];
+      const row=(await tx.query<DecisionRow>(`INSERT INTO release_gate_decisions(id,request_key,stream_id,record_kind,record_id,upload_id,release_id,digest,receipt_fingerprint,policy_revision,mode,deployment_id,result,expires_at,capability_key)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15) RETURNING *`,[decisionId,key,id,ref.kind,ref.id,ref.kind==='upload'?ref.id:null,ref.kind==='release'?ref.id:null,digest,e?.fingerprint??null,p.revision,p.mode,deployment,JSON.stringify(result),expires,permission.capabilityKey??null])).rows[0];
       await audit(tx,s,permission.actorLogin,'release_gate_evaluated',{decisionId,readiness:result.readiness,policyRevision:p.revision});
       await ports.access(tx,s.workspace_id,'write',s.source_binding);
       return row;
@@ -108,6 +108,7 @@ export function releaseGate(sql:SqlClient,ports:IntelligencePorts){
     });},
     async consume(id:string,input:Record<string,unknown>){return sql.transaction(async tx=>{
       const {s,permission}=await scope(tx,id,'write'),{row,p,fresh}=await currentDecision(tx,s,uuid(input.decisionId));
+      if(row.capability_key!==null&&row.capability_key!==permission.capabilityKey)return fail('CI grant changed. Evaluate a new decision under the current grant.',409);
       if(digestValue(input.digest)!==row.digest||text(input.deploymentId,'Deployment identity',1,120)!==row.deployment_id||revision(input.expectedPolicyRevision)!==p.revision)return fail('Gate decision binding changed.',409);
       if(input.record!==undefined){const ref=reference(input.record);if(ref.kind!==row.record_kind||ref.id!==row.record_id)return fail('Gate decision record changed.',409);}
       const overridden=(await tx.query('SELECT id FROM release_gate_overrides WHERE decision_id=$1',[row.id])).rows.length>0;

@@ -1,8 +1,9 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Ref} from '../../release-intelligence/model';
 import type {GatePolicy,GateResult} from '../../release-intelligence/gate';
+import {ReleaseGateAccessControls} from './ReleaseGateAccessControls';
 type Decision={id:string;policy_revision:number;deployment_id:string;result:GateResult;expires_at:string;overridden:boolean;consumed:boolean};
-type View={policy:GatePolicy;canManage:boolean;canWrite:boolean;binding:{record:Ref;digest:string}|null;notice:string;
+type View={policy:GatePolicy;canManage:boolean;canWrite:boolean;canAdminister?:boolean;binding:{record:Ref;digest:string}|null;notice:string;
   policies:Array<{revision:number;mode:string;max_age_hours:number;reason:string}>;decisions:Decision[]};
 export function ReleaseGateControls({streamId,record,refreshVersion}:{streamId:string;record:Ref;refreshVersion:number}){
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false);
@@ -33,6 +34,7 @@ export function ReleaseGateControls({streamId,record,refreshVersion}:{streamId:s
     {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
     {!view&&!error?<p role="status">Reading gate policy…</p>:null}
     {view?<><p><strong>{view.policy.mode}</strong> · revision {view.policy.revision} · evidence within {view.policy.maxAgeHours} hours.</p><p>{view.notice}</p>
+      {view.canAdminister&&record.kind==='release'?<ReleaseGateAccessControls key={`${streamId}:${record.id}`} streamId={streamId} record={record}/>:null}
       {view.canManage?<form onSubmit={e=>{e.preventDefault();void save({action:'configure',mode,maxAgeHours:hours,expectedRevision:view.policy.revision,reason,confirm,...(rollback?{rollbackFromRevision:Number(rollback)}:{})},'New gate policy revision saved. Existing decisions must be evaluated again.');}}>
         <label>Gate mode<select value={mode} disabled={busy||Boolean(rollback)} onChange={e=>{setMode(e.target.value as GatePolicy['mode']);setConfirm(false);}}><option value="advisory">Advisory — record only</option><option value="warn">Warn — report issues without blocking</option><option value="enforce">Enforce — require ready evidence or explicit override</option></select></label>
         <label>Maximum scan age (hours)<input required type="number" min={1} max={168} value={hours} disabled={busy||Boolean(rollback)} onChange={e=>{setHours(Number(e.target.value));setConfirm(false);}}/></label>

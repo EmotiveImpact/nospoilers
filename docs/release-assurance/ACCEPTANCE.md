@@ -2,6 +2,8 @@
 
 Latest continuation: 9 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact new contracts and verification boundaries. This table is a status ledger, not a feature-completeness or launch claim.
 
+Latest gate update (after 34747bc): connected-source CI grants are implemented through the real gate API, CLI and release-detail controls, with explicit exact-asset scope, expiry/revocation, current administrator authority and installation/repository lifecycle checks. Final runtime regression: 1,260 tests / 214 files passed; native PostgreSQL integration passed; built-app grant/revoke verified with synthetic data at desktop/mobile sizes. Confirmation-only copy has a separate component/build check. See BUILD-LOG for boundaries. Wider races, full accessibility and operational rollout remain open; durable remediation, agent/MCP and outcome retention remain unbuilt. Older checkpoint descriptions below are historical, not a claim these new capabilities are absent.
+
 9 September update: canonical readiness is implemented at `085ac46`. The following automatic-capture increment has connected opt-in controls and completion jobs, with 1,234 full-suite tests passing (before a final test-only job-claim correction), two updated integration tests passing, and desktop/mobile built-app enable/disable checks. The hosted integration ran on disposable native PostgreSQL; the independent website case used PGlite. Remaining lifecycle/operational evidence is explicit below; older unbuilt statements describe earlier checkpoints. None of this accepts the whole platform or authorises rollout.
 
 | Discussed capability | Current branch implementation | Remaining work or evidence |
