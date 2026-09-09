@@ -210,3 +210,8 @@ Replaced the native destination selector with the existing beUI Select, retainin
 ## Team shared role picker
 
 Invitation and member role controls now share a beUI-backed RolePicker. Allowed role sets are unchanged; invitation role explanations sit below the field. Busy state locks selection and selecting still requires explicit Save. Member list overflow permits the menu to remain visible. Fourteen focused cases across workspace-team-ui and beui-select-ui passed (2.04s), including admin role limits and no write on selection; final build and diff check passed. Real signed-in invitation and member menus reviewed, ArrowDown focus and Escape exercised; no invitation or membership mutation. Native zoom/AT and wider Gate C checklist remain open.
+
+
+## Connected decision view hierarchy
+
+HostedDecisionList now uses shared WatchPageHeader and QuietEmptyState, wrapping named outcome filters, selected-state emphasis and a scoped uploaded-history action. Four workspace-coverage-health cases passed (1.63s); build caught an unsupported variant, corrected to existing default/outline, then final build passed. Signed-in empty view reviewed and View uploaded scans confirmed workspace/install-preserving navigation to Saved attempts. Populated connected evidence is not present locally and is not claimed visually verified. Gate C remains open.
