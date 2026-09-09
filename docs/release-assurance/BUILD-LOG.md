@@ -582,3 +582,8 @@ Extracted QuietSettingRow for the two independent policy choices, preserving pre
 ## Shared modal surface
 
 QuietModalSurface now owns the identical backdrop, centred scroll container and panel used by Add coverage and plans dialogs. Existing Dialog owners/titles/actions remain intact. Build and diff check passed; real Add coverage rendering reviewed and Escape removed the dialog with focus returned to Add coverage. No source added or billing action. This is structural reuse with live dismissal evidence, not a fresh full interaction suite or full Gate C sign-off.
+
+
+## Shared release decision panel
+
+ReleaseDecisionPanel now renders the common connected/uploaded decision layout, with each caller retaining its own tone, icon, copy, actions and scope/count summary. Twelve focused uploaded/hosted evidence cases passed (1.91s); final build/diff check passed. Signed-in saved upload decision/provenance reviewed with policy-passed wording and separate production scope intact. Hosted populated visual state remains unavailable locally; no scan repeated.

@@ -1,3 +1,4 @@
+import {ReleaseDecisionPanel} from "./design/ReleaseDecisionPanel";
 import { Button } from "@/components/ui/button";
 import {HostedReleaseEvidence} from './HostedReleaseEvidence';
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
@@ -143,14 +144,11 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
       {deliveryError ? <p className="watch-release-error">{deliveryError}</p> : null}
 
       <div className="watch-release-decision-grid">
-        <article className={cn("watch-release-decision", `is-${brief.status}`)}>
-          <div className="watch-release-verdict-icon" aria-hidden>
-            {brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />}
-          </div>
-          <div className="min-w-0">
-            <span className="watch-kicker">Release decision</span>
-            <h2>{brief.title}</h2>
-            <p>{brief.detail}</p>
+        <ReleaseDecisionPanel tone={brief.status} icon={brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />} kicker="Release decision" title={brief.title} description={brief.detail} summary={<div className="watch-release-score" aria-label={`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`}>
+            <FileCheck2 className="size-7" aria-hidden />
+            <strong>{brief.cleanChecks} of {brief.applicableChecks}</strong>
+            <span>recorded checks passed</span>
+          </div>}>
             <Button
               type="button"
               onClick={() =>
@@ -159,13 +157,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             >
               {brief.blocked ? "Review blocking evidence" : "Review release proof"}
             </Button>
-          </div>
-          <div className="watch-release-score" aria-label={`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`}>
-            <FileCheck2 className="size-7" aria-hidden />
-            <strong>{brief.cleanChecks} of {brief.applicableChecks}</strong>
-            <span>recorded checks passed</span>
-          </div>
-        </article>
+        </ReleaseDecisionPanel>
 
         <aside className="watch-release-evidence-summary">
           <div className="watch-release-card-title">

@@ -1,3 +1,4 @@
+import {ReleaseDecisionPanel} from './design/ReleaseDecisionPanel';
 import { EvidenceTable } from './design/EvidenceTable';
 import {ArrowLeft,ArrowRight,AlertTriangle,Clock3,Download,FileCheck2,ShieldCheck} from 'lucide-react';
 import {useCallback,useId,useRef,useState} from 'react';
@@ -63,13 +64,9 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
       {upload.receipt_json!=null?<button type="button" className="min-h-11 hover:text-snow" onClick={()=>jumpTo(proofSection.current)}>Proof sharing</button>:null}
     </nav>
     <div className="watch-release-decision-grid">
-      <article className={`watch-release-decision is-${decision.tone}`}>
-        <div className="watch-release-verdict-icon">{decision.tone==='blocked'?<AlertTriangle aria-hidden/>:decision.tone==='ready'?<ShieldCheck aria-hidden/>:<Clock3 aria-hidden/>}</div>
-        <div><span className="watch-kicker">{website?'Website decision':'Artifact decision'}</span><h2>{decision.title}</h2><p>{decision.detail}</p>
+      <ReleaseDecisionPanel tone={decision.tone} icon={decision.tone==='blocked'?<AlertTriangle/>:decision.tone==='ready'?<ShieldCheck/>:<Clock3/>} kicker={website?'Website decision':'Artifact decision'} title={decision.title} description={decision.detail} summary={<div className="upload-scope-mark"><FileCheck2 aria-hidden/><strong>{website?'Website':'Artifact'}</strong><span>Scoped check</span></div>}>
           {report?<Button onClick={review}>Review evidence <ArrowRight className="size-4" aria-hidden/></Button>:upload.status==='failed'?<Button disabled={website&&!upload.workspace_id} onClick={nextAttempt}>{retryLabel}</Button>:null}
-        </div>
-        <div className="upload-scope-mark"><FileCheck2 aria-hidden/><strong>{website?'Website':'Artifact'}</strong><span>Scoped check</span></div>
-      </article>
+      </ReleaseDecisionPanel>
       <aside className="watch-release-evidence-summary"><div className="watch-release-card-title"><span className="watch-kicker">Provenance</span></div><dl>
         <div><dt>Scan state</dt><dd>{decision.verdict}</dd></div>
         <div><dt>Checked</dt><dd>{report?.scannedAt?new Date(report.scannedAt).toLocaleString():'Not completed'}</dd></div>
