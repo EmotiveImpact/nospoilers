@@ -1,5 +1,5 @@
 .release-assurance-slot { margin-block: 1.5rem; min-width: 0; }
-.ns-assurance { --ns-a-fg: #f4f4f5; --ns-a-muted: #a1a1aa; --ns-a-line: #343438; --ns-a-red: #ff8a80; color: var(--ns-a-fg); background: #111113; border: 1px solid var(--ns-a-line); border-radius: 12px; padding: clamp(18px, 3vw, 30px); font: inherit; line-height: 1.6; overflow-wrap: anywhere; }
+.ns-assurance { --ns-a-fg: var(--color-snow); --ns-a-muted: var(--color-mute); --ns-a-line: #343438; --ns-a-red: var(--color-review, #ff8a80); color: var(--ns-a-fg); background: #111113; border: 1px solid var(--ns-a-line); border-radius: 12px; padding: clamp(18px, 3vw, 30px); font: inherit; line-height: 1.6; overflow-wrap: anywhere; }
 .ns-assurance * { box-sizing: border-box; }
 .ns-assurance h2 { font-size: clamp(1.35rem, 2vw, 1.65rem); margin: 0; line-height: 1.25; letter-spacing: -.02em; }
 .ns-assurance h3 { margin: .3rem 0 .75rem; font-size: 1.15rem; line-height: 1.4; }

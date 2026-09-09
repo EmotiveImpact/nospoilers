@@ -1,5 +1,8 @@
 ## Gate C current requirement map
 
+Overview and release-assurance semantic foreground/status colours now reference shared tokens; approved decorative shades remain. Build passed and rebuilt Overview screenshot/status colours reviewed. Behavioural evidence remains279/41 at8d4e658; no new behavioural suite claimed for CSS-only changes.
+
+
 Current-source UI milestone at8d4e658:279/279 tests across41 files passed (19.94s). This supersedes the earlier partial40-file result. Repository lint exited0 with29 warnings; final runtime build already passed for8d4e658. No runtime change in this evidence update. Reuse this milestone until further substantive changes. Gate C remains partial for final domain-style/state parity and external native zoom/audible AT.
 
 
