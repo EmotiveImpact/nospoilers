@@ -7,7 +7,7 @@ vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptur
 vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=>null}));
 vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:()=>null}));
 vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:()=>null}));
-vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:()=>null}));
+vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:({snapshotId}:{snapshotId:string})=><button type="button">Grant agent for {snapshotId}</button>}));
 vi.mock('../src/components/watch/ReleaseExplanationControls',()=>({ReleaseExplanationControls:()=>null}));
 vi.mock('../src/components/watch/ReleaseOutcomeControls',()=>({ReleaseOutcomeControls:()=>null}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
@@ -99,4 +99,26 @@ it('identifies same-digest records distinctly and announces a keyboard-selected 
   await waitFor(()=>expect(button.getAttribute('aria-pressed')).toBe('true'));
   expect(screen.getByRole('status').textContent).toContain('Selected upload another-record');
   expect(screen.getByRole('status').textContent).toContain('different historical record');
+});
+
+it.each(['selection','refresh'] as const)('removes prior scoped child actions during pending history %s',async(action)=>{
+ const first={id:'snapshot',record_kind:'upload',record_id:'record',scanned_at:'2026-09-09T00:00:00.000Z',digest:'a'.repeat(64),metrics:{files:1},excluded:false};
+ const next={...first,id:'next',record_id:'next-record'};
+ let pending=false,finish:((response:Response)=>void)|undefined;
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>{
+  if(isList(url))return Response.json(list);
+  if(pending)return new Promise<Response>(resolve=>{finish=resolve;});
+  return Response.json({...detail,canAdminister:true,snapshots:[first,next],selected:first});
+ }));
+ render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+ await screen.findByRole('button',{name:'Grant agent for snapshot'});
+ const trigger=screen.getByRole('button',{name:action==='selection'?/Inspect upload next-record/:'Refresh history'});
+ await waitFor(()=>expect((trigger as HTMLButtonElement).disabled).toBe(false));pending=true;fireEvent.click(trigger);
+ await waitFor(()=>expect(finish).toBeTruthy());
+ expect(screen.queryByRole('button',{name:/Grant agent for/})).toBeNull();
+ expect(screen.getByLabelText('Refreshing release tools')).toBeTruthy();
+ const selected=action==='selection'?next:first;
+ finish!(Response.json({...detail,canAdminister:true,snapshots:[first,next],selected}));
+ await screen.findByRole('button',{name:`Grant agent for ${selected.id}`});
+ if(action==='selection')expect(screen.queryByRole('button',{name:'Grant agent for snapshot'})).toBeNull();
 });

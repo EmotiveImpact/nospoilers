@@ -2,6 +2,8 @@
 
 ## Current optional explanation contract increment
 
+History selection recovery: refreshing a selected history now unmounts its child tools behind a skeleton, removing prior snapshot actions and cancelling their pending reads. Focused panel10/10 passes and actual delayed-selection browser verification confirms the stale agent action is gone. Browser checks also establish older/newer scope, real revision-conflict recovery, uploaded/hosted hard reload and a narrow390px reduced-motion keyboard journey. Final regression is pending in BUILD-LOG; pending-workspace response behavior remains the next browser check.
+
 Automatic capture recovery is implemented locally: identity-scoped cancellation, cleared stale actions/consent, truthful Checking/Unavailable summaries, skeleton reads and conditional failure-focus recovery. Ten focused rendered tests pass; final batch and browser evidence are tracked in BUILD-LOG. This does not change capture authorization or enable a rule.
 
 The connected explanation UI/API, explicit provider adapter contract, configuration-bound consent, workspace-wide call/reserved-spend limits, idempotent requests, cancellation and human-reviewed drafts are implemented. Migration ra_010 links private drafts to retained snapshots; it enables no provider. Exact data and activation boundaries: EXPLANATIONS.md. Production composition remains unavailable by default. A concrete paid-provider adapter, provider-specific evaluations/charge verification, finding-level root-cause assistance and deployment/review attestation remain unbuilt/unverified respectively; do not describe generic aggregate explanations as those capabilities. BUILD-LOG records local checks and remaining acceptance.
