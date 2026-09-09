@@ -6,8 +6,8 @@ import {navigate} from '@/nav';
 import {WorkspaceExceptionRequest} from './WorkspaceExceptionRequest';
 import {ReleaseAssurancePanel} from './ReleaseAssurancePanel';
 type Evidence={available:true;workspaceId:string|null;report:ScanReport}|{available:false;reason:string};
-export function HostedReleaseEvidence(props:{releaseId:number;receiptId:number;search:string}){
- return <><ReleaseAssurancePanel kind="release" recordId={props.releaseId} evidenceId={`assurance-findings-${props.releaseId}`}/><ScopedEvidence key={props.releaseId} {...props}/></>;
+export function HostedReleaseEvidence(props:{releaseId:number;receiptId:number;search:string;onAssessment?:(assessment:import('@/assurance/types').Assessment|null)=>void}){
+ return <><ReleaseAssurancePanel kind="release" recordId={props.releaseId} evidenceId={`assurance-findings-${props.releaseId}`} onAssessment={props.onAssessment}/><ScopedEvidence key={props.releaseId} {...props}/></>;
 }
 function ScopedEvidence({releaseId,receiptId,search}:{releaseId:number;receiptId:number;search:string}){
  const [data,setData]=useState<Evidence|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);

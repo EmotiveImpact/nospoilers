@@ -5,7 +5,7 @@ function element<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string,class
 }
 function details(title:string):HTMLDetailsElement{const node=element('details');node.append(element('summary',title));return node;}
 function badge(state:CheckState){return element('span',LABELS[state],`ns-assurance__badge is-${state}`);}
-export function renderAssurancePanel(root:HTMLElement,view:AssuranceView,actions:{review:()=>void;refresh:()=>void;exportPassport:()=>void}):()=>void{
+export function renderAssurancePanel(root:HTMLElement,view:AssuranceView,actions:{review:()=>void;refresh:()=>void;exportPassport:()=>void},options:{supporting?:boolean}={}):()=>void{
   const events=new AbortController();
   const {assessment,comparison,investigation}=view;
   const panel=element('section',undefined,'ns-assurance');
@@ -21,7 +21,9 @@ export function renderAssurancePanel(root:HTMLElement,view:AssuranceView,actions
   decision.append(label,title,summary);
   const delivery=element('article',undefined,'ns-assurance__delivery');
   delivery.append(element('p','Separate stage','ns-assurance__eyebrow'),element('h3','Published delivery'),badge(assessment.afterDeploy),element('p',assessment.checks.find(check=>check.id==='delivery')?.detail??'No delivery evidence is available.'));
-  grid.append(decision,delivery);panel.append(grid);
+  if(!options.supporting)grid.append(decision);
+  grid.append(delivery);panel.append(grid);
+  if(options.supporting)grid.style.gridTemplateColumns='1fr';
   const controls=element('div',undefined,'ns-assurance__actions');
   function button(text:string,callback:()=>void,primary=false){const node=element('button',text,primary?'ns-assurance__primary':'');node.type='button';node.addEventListener('click',callback,{signal:events.signal});return node;}
   const nextLabels:Record<string,string>={'inspect-evidence':'Inspect existing evidence','review-findings':'Review recorded findings','review-exceptions':'Review recorded exceptions','review-approval':'Review evidence and approval','configure-delivery':'Review release scope','verify-delivery':'Review delivery evidence','keep-watching':'Review release evidence'};
@@ -56,6 +58,7 @@ export function renderAssurancePanel(root:HTMLElement,view:AssuranceView,actions
   toggleLabel.append(toggle,document.createTextNode('Treat recorded non-blocking findings as blocking in this preview'));
   const announcement=element('p','Preview only. The saved policy and receipt will not change.','ns-assurance__muted');announcement.setAttribute('role','status');
   toggle.addEventListener('change',()=>{const selected=toggle.checked?view.strictPreview:assessment;title.textContent=selected.title;summary.textContent=selected.summary;label.textContent=toggle.checked?'What-if preview, not the saved decision':view.source==='website-scan'?'Recorded website observation':'Before-deployment evidence';decision.className=`ns-assurance__decision is-${selected.beforeDeploy}`;announcement.textContent=toggle.checked?'Stricter preview shown. No policy was saved and no deployment gate changed.':'Recorded evidence review restored. No changes were saved.';},{signal:events.signal});
+  if(options.supporting){decision.hidden=true;toggle.addEventListener('change',()=>{decision.hidden=!toggle.checked;},{signal:events.signal});simulator.append(decision);}
   simulator.append(toggleLabel,announcement);panel.append(simulator);
   const boundaries=details('What this review does not prove');
   const limits=element('ul');for(const limitation of assessment.limitations)limits.append(element('li',limitation));boundaries.append(limits);

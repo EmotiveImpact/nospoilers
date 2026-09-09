@@ -18,7 +18,8 @@ import {
   Link2,
   ShieldCheck,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type {Assessment} from '@/assurance/types';
 
 function StepIcon({ tone }: { tone: ReleaseProofStep["tone"] }) {
   if (tone === "clean") return <CheckCircle2 className="size-4" aria-hidden />;
@@ -31,7 +32,7 @@ function releaseStatusLabel(release: ReleaseRevision) {
   if (release.mismatch) return "Digest changed";
   if (release.legalHold?.active) return "Legal hold";
   if (release.approval?.decision === "rejected") return "Rejected";
-  if (release.receiptStatus === "passed") return "Sealed";
+  if (release.receiptStatus === "passed") return "Scan passed";
   if (release.receiptStatus === "failed-policy") return "Blocked";
   if (release.receiptStatus === "inconclusive") return "Inconclusive";
   return "Pending";
@@ -72,7 +73,9 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
     watchHref,
     watchPath,
   } = useWatchScreenContext();
-  const brief = useMemo(() => buildReleaseBriefModel(release), [release]);
+  const [observed,setObserved]=useState<{record:ReleaseRevision;assessment:Assessment|null}|null>(null);
+  const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:release,assessment}),[release]);
+  const brief = useMemo(() => buildReleaseBriefModel({...release,readiness:observed?.record===release?observed.assessment??undefined:release.readiness}), [release,observed]);
   const [selectedStepKey, setSelectedStepKey] = useState<ReleaseProofStep["key"]>(
     brief.steps.find((step) => step.tone === "blocked")?.key ?? brief.steps[0].key,
   );
@@ -157,10 +160,10 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
               {brief.blocked ? "Review blocking evidence" : "Review release proof"}
             </Button>
           </div>
-          <div className="watch-release-score" aria-label={`${brief.cleanChecks} of ${brief.applicableChecks} required checks clean`}>
+          <div className="watch-release-score" aria-label={`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`}>
             <FileCheck2 className="size-7" aria-hidden />
             <strong>{brief.cleanChecks} of {brief.applicableChecks}</strong>
-            <span>required checks clean</span>
+            <span>recorded checks passed</span>
           </div>
         </article>
 
@@ -180,7 +183,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
 
       <section className="watch-release-proof" aria-labelledby="release-proof-heading">
         <div className="watch-release-section-heading">
-          <div><span className="watch-kicker">Release proof</span><h2 id="release-proof-heading">Four checks, one decision</h2></div>
+          <div><span className="watch-kicker">Release proof</span><h2 id="release-proof-heading">Evidence and observations</h2></div>
           <p>Select a check to inspect its real evidence.</p>
         </div>
         <div className="watch-release-proof-layout">
@@ -366,7 +369,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
           ))}
         </div>
       </section>
-      <HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search}/>
+      <HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search} onAssessment={onAssessment}/>
     </section>
   );
 }

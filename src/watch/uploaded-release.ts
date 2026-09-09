@@ -2,6 +2,7 @@ import type {Finding,ScanReport} from '../report-types.ts';
 import {uploadVerdict} from './upload-verdict.ts';
 
 export type UploadedRelease={id:string;target:string;status:string;artifact_sha256:string;created_at:string;workspace_id?:string|null;
+  readiness?:import('../assurance/types.ts').Assessment;
   source_origin_id?:number|null;
   installation_id:number|null;report_json:ScanReport|null;receipt_json:unknown;error:string|null};
 export type EvidenceCategory='all'|'maps'|'secrets'|'files'|'ai';
@@ -17,6 +18,11 @@ export function findingCategory(finding:Finding):Exclude<EvidenceCategory,'all'>
   return 'files';
 }
 export function uploadedReleaseDecision(upload:UploadedRelease){
+  if(upload.status==='done'){
+    const candidate=upload.readiness;
+    const assessment=candidate?.version===1&&candidate.releaseId===upload.id&&!candidate.preview?candidate:undefined;
+    return {verdict:uploadVerdict(upload.status,upload.report_json),tone:assessment?.beforeDeploy??'unknown',title:assessment?.title??'Evidence is incomplete',detail:assessment?.summary??'A verified server assessment is unavailable. A completed job or passing report does not establish readiness.'};
+  }
   const website=upload.source_origin_id!=null;
   const verdict=website&&upload.status==='running'?'Inspecting website':uploadVerdict(upload.status,upload.report_json);
   const tone=verdict==='Review findings'?'blocked':verdict.startsWith('Policy passed')?'ready':'pending';

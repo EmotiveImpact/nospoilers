@@ -35,6 +35,8 @@ Latest continuation: 8 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact 
 
 ## 9 September integration checkpoint
 
+Follow-on readiness cutover: hosted/upload list and detail surfaces now receive the shared server-verified assessment, with token scan readiness additive to its original outcome. Hosted and upload heroes use canonical semantics and refresh failure becomes UNKNOWN; delivery remains separate and attestation metadata does not become verified identity. Final full regression passed 205 files / 1,229 tests; the updated native PostgreSQL integration test passed, including the bounded batch. Integrated synthetic hosted/upload browser checks and hosted reference adoption/revocation passed; see BUILD-LOG for scope. The complete browser/accessibility matrix and remaining implementation sequence are not yet accepted.
+
 The integration-repair tree based on `a4a3e10` passes the full supported-runtime regression: 205 files, 1,222 tests. Real Hono/store/session/token/HMAC integration and migration/concurrent-reference checks passed on PGlite and disposable native PostgreSQL. Scan-mode navigation and workspace-preserving claim navigation are repaired. See BUILD-LOG.md for exact scope and limitations; these results supersede historical unverified full-suite statements only for this increment.
 
 Not yet accepted: canonical readiness cutover, the full integrated browser matrix, automatic capture, production parity, versioned enforcement, durable remediation, agent tools and retention outcomes. Remote CI remains externally blocked before execution by the GitHub billing/spending-limit annotation. PR #44 stays draft.

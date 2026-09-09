@@ -1,5 +1,19 @@
 # Build and verification log
 
+## 9 September 2026 — canonical readiness cutover (after f2e7ba1)
+
+Final tree checks: `npm test` passed **205 files / 1,229 tests** in 266.59 seconds on Node 24.19.0. Typecheck, frontend build, API build, lint (warnings, zero errors), and diff validation passed. The updated real-composition integration test also passed on disposable native PostgreSQL (one test, 644 ms), covering the new bounded authorised batch query and tampered-receipt regression. The database was stopped and its temporary data removed. No production evidence is inferred from these results.
+
+`src/server/release-assessment.ts` now projects the existing `assessRelease` contract from HMAC-verified saved evidence. Hosted detail and list APIs, upload detail/list APIs and the token scan response expose scoped readiness without changing the original scan outcome or activating enforcement. Hosted list receipt reads use an authorised batch capped at 100 IDs, 8 MiB per receipt and 16 MiB total; unavailable evidence yields UNKNOWN, not a fabricated pass.
+
+Legacy hosted/upload heroes consume that assessment. Attestation presence no longer becomes verified identity; post-deployment observations do not block the before-deploy verdict. The React supporting panel no longer duplicates the main decision; a what-if decision appears only inside its explicit preview. Refresh success updates the main decision, and refresh failure clears the inferred readiness. Existing receipt outcome filters remain historical scan filters, with connected-list wording clarified.
+
+New regression coverage compares real hosted detail/list assessments to the assurance endpoint, rejects tampered signatures despite stored passing status, verifies upload signature handling, covers all four presentation decisions, and checks the separate delivery/attestation semantics. The refresh UI case verifies a single visible heading and loss-of-access transition to unknown. The first full cutover run passed 205 files / 1,228 tests; a final run follows the supporting-panel and refresh-case changes and must be recorded separately.
+
+Integrated production-build UI on disposable in-memory QA port 4362: uploaded failing evidence showed one blocked decision; hosted clean evidence showed one scoped pass; both had zero console errors. Hosted mobile at 390px had no document overflow. Real hosted stream creation, explicit reference adoption and revocation succeeded; revocation did not reinstate an older reference or rewrite the original scan. Local screenshots (not customer evidence): `output/playwright/readiness-upload-desktop.png`, `readiness-hosted-mobile.png`, `readiness-reference-adopted.png`. The reference controls collapse after a successful history refresh; preserving that disclosure/focus state is still a polish item. Full keyboard/reduced-motion and other lifecycle cases remain open.
+
+This increment does not implement automatic capture, parity, enforcement, remediation linkage or agent tools. CI billing restriction and operational gates are unchanged. No production mutation, provider activation or deployment.
+
 ## 9 September 2026 — integrated branch repair
 
 Increment based on `a4a3e10`, preserving the existing release-intelligence implementation. Extracted the universal assurance-view validator from browser download code; corrected strict API test decoding and unused test bindings. Fixed package-mode navigation and staged-claim workspace/install preservation, contextual skeleton accessibility, and the stream-key HTML validation pattern. The disposable browser fixture now composes both real assurance/intelligence wrappers and accepts an isolated port.

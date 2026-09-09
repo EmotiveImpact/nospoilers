@@ -2075,8 +2075,23 @@ code {
   border-color: color-mix(in srgb, var(--color-ok) 20%, var(--color-line));
 }
 
-.watch-release-decision.is-pending {
+.watch-release-decision.is-pending,
+.watch-release-decision.is-review {
   border-color: color-mix(in srgb, var(--color-warn) 22%, var(--color-line));
+}
+
+.watch-release-decision.is-unknown {
+  border-color: var(--color-line);
+}
+
+.watch-release-list-status.is-review,
+.watch-release-state.is-review {
+  color: var(--color-warn);
+}
+
+.watch-release-list-status.is-unknown,
+.watch-release-state.is-unknown {
+  color: var(--color-mute);
 }
 
 .watch-release-verdict-icon {

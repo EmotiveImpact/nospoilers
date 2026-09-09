@@ -14,6 +14,9 @@ import { withReleaseAssurance } from '../src/server/assurance-app.ts';
 import { scan } from '../src/scanner/index.ts';
 import { buildUnsignedReceipt, signReceipt } from '../src/receipt.ts';
 import { persistHostedReceipt } from '../src/server/receipts.ts';
+import {buildReleaseBriefModel} from '../src/watch/release-brief.ts';
+import type {ReleaseRevision} from '../src/watch/types.ts';
+import type {AssuranceView} from '../src/assurance/types.ts';
 
 // Disposable database only. Real migration chain, scanner, HMAC, sessions, tokens,
 // application routes and adapter; no provider calls or customer data mutations.
@@ -82,7 +85,11 @@ it('enforces real evidence, session, token, billing and workspace boundaries', a
     const created = await result.json() as { stream: { id: string }; snapshot: { id: string } };
     const stream = `${path}/${created.stream.id}`;
     expect((await request(`/api/assurance/uploads/${record.id}`)).status).toBe(200);
-    expect((await request(`/api/uploads/${record.id}`)).status).toBe(200);
+    const uploaded = await request(`/api/uploads/${record.id}`);
+    expect(uploaded.status).toBe(200);
+    expect((await uploaded.json() as {upload:{readiness:{beforeDeploy:string}}}).upload.readiness.beforeDeploy).toBe('ready');
+    const forgedRead = await request(`/api/uploads/${forged.id}`);
+    expect((await forgedRead.json() as {upload:{readiness:{beforeDeploy:string}}}).upload.readiness.beforeDeploy).toBe('unknown');
     expect((await request(stream, 'foreign')).status).toBe(404);
     expect((await request(stream, 'viewer')).status).toBe(200);
     const adopt = { action: 'adopt', snapshotId: created.snapshot.id, expectedRevision: 0, reason: 'Reviewed the signed integration build.' };
@@ -120,6 +127,22 @@ it('enforces real evidence, session, token, billing and workspace boundaries', a
     const hostedRecord = { kind: 'release', id: String(hosted.revision.id) };
     const hostedView = await request(`/api/assurance/releases/${hosted.revision.id}`);
     expect(hostedView.status).toBe(200);
+    const canonical = (await hostedView.json() as {view: AssuranceView}).view.assessment;
+    const detail = (await (await request(`/api/releases/${hosted.revision.id}`)).json() as {release:ReleaseRevision}).release;
+    const list = (await (await request('/api/releases?installationId=700')).json() as {releases:ReleaseRevision[]}).releases;
+    expect(detail.readiness?.beforeDeploy).toBe('ready');
+    expect(detail.readiness?.checks).toEqual(canonical.checks);
+    expect(list.find(row => row.id === detail.id)?.readiness?.checks).toEqual(canonical.checks);
+    expect(buildReleaseBriefModel(detail).title).toBe(canonical.title);
+    expect(buildReleaseBriefModel(detail).cleanChecks).toBe(3);
+    // A stored passing status must never conceal a tampered signature.
+    const saved = await store.getScanReceiptForUser(hosted.revision.receipt_id, 'owner');
+    await sql.query("UPDATE scan_receipts SET receipt=jsonb_set(receipt,'{signature}',to_jsonb($2::text)) WHERE id=$1", [hosted.revision.receipt_id, '0'.repeat(64)]);
+    const tampered = (await (await request(`/api/releases/${hosted.revision.id}`)).json() as {release:ReleaseRevision}).release;
+    expect(tampered.receiptStatus).toBe('passed');
+    expect(tampered.readiness?.beforeDeploy).toBe('unknown');
+    expect(buildReleaseBriefModel(tampered).ready).toBe(false);
+    await sql.query('UPDATE scan_receipts SET receipt=$2::jsonb WHERE id=$1', [hosted.revision.receipt_id, JSON.stringify(saved!.receipt)]);
     const hostedInput = { ...input, workspaceId: connected.id, key: 'connected-build', record: hostedRecord };
     const hostedCreated = await request(path, 'owner', hostedInput);
     expect(hostedCreated.status).toBe(201);

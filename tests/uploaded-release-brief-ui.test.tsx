@@ -1,16 +1,33 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {UploadedReleaseBrief} from '../src/components/watch/UploadedReleaseBrief';
 import type {UploadedRelease} from '../src/watch/uploaded-release';
+import {sample,NOW} from './assurance-fixtures';
+import {buildAssuranceView} from '../src/assurance/index';
 
 const record:UploadedRelease={id:'scan-1',target:'release.tgz',status:'done',installation_id:null,workspace_id:'workspace-1',artifact_sha256:'abc',created_at:'2026-09-05T10:00:00Z',receipt_json:null,error:null,report_json:{target:'release.tgz',kind:'tgz',fileCount:2,ok:false,status:'failed-policy',scannedAt:'2026-09-05T10:00:00Z',findings:[{rule:'MAP-001',severity:'critical',path:'app.js.map',title:'Public source map',detail:'Original source included'},{rule:'SEC-001',severity:'warn',path:'config.json',title:'Embedded credential',detail:'Check and rotate this credential'}]}};
-afterEach(()=>{cleanup();window.history.replaceState({},'','/');});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 const props={onBack:vi.fn(),onNewScan:vi.fn()};
 describe('uploaded readiness evidence',()=>{
+  it('shows one canonical decision and clears it when refreshed evidence is unavailable',async()=>{
+    const snapshot=sample();snapshot.release.id=record.id;
+    const view=buildAssuranceView(snapshot,null,NOW,'uploaded-scan');
+    let unavailable=false;
+    vi.stubGlobal('fetch',vi.fn(async(input:string)=>{
+      if(String(input).startsWith('/api/assurance/'))return new Response(JSON.stringify(unavailable?{error:'Access no longer available.'}:{view}),{status:unavailable?403:200});
+      return new Response(JSON.stringify({streams:[]}));
+    }));
+    render(<UploadedReleaseBrief {...props} upload={{...record,readiness:view.assessment}} search=""/>);
+    await screen.findByRole('button',{name:'Refresh saved snapshot'});
+    expect(screen.getAllByRole('heading',{name:'Passes recorded checks'})).toHaveLength(1);
+    unavailable=true;fireEvent.click(screen.getByRole('button',{name:'Refresh saved snapshot'}));
+    await waitFor(()=>expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy());
+    expect(screen.queryByRole('heading',{name:'Passes recorded checks'})).toBeNull();
+  });
   it('uses website scope and returns to the owning source controls without uploading or scanning',()=>{
     render(<UploadedReleaseBrief {...props} upload={{...record,source_origin_id:5,target:'https://example.com/'}} search="?workspace=workspace-1&install=2"/>);
-    expect(screen.getByRole('heading',{name:'Review website exposure'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy();
     expect(screen.getByText(/bounded website check/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:/Upload a new attempt/})).toBeNull();
     fireEvent.click(screen.getByRole('button',{name:'Open website controls'}));
@@ -26,7 +43,7 @@ describe('uploaded readiness evidence',()=>{
   });
   it('shows the recorded artifact decision without asserting unperformed checks',()=>{
     render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1&uploadView=detail"/>);
-    expect(screen.getByRole('heading',{name:'Hold this artifact'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy();
     expect(screen.getByText(/this upload does not establish them/)).toBeTruthy();
     expect(screen.queryByText('Personal workspace')).toBeNull();
     expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();

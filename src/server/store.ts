@@ -7357,6 +7357,23 @@ export function createStore(
       return rows[0] ? scanReceiptRow(rows[0]) : null;
     },
 
+    /** Bounded batch for release-list interpretation; no unscoped receipt read. */
+    async assessmentReceiptsForUser(ids: number[], userId: string): Promise<Map<number, unknown>> {
+      const selected = [...new Set(ids)].slice(0, 100);
+      if (!selected.length) return new Map();
+      const {rows} = await sql.query<{id: string | number; receipt: unknown}>(`
+        WITH authorised AS (
+          SELECT DISTINCT sr.id, sr.receipt, octet_length(sr.receipt::text) AS bytes
+          FROM scan_receipts sr
+          JOIN (${workspaceSourceMembershipSql}) iu ON iu.installation_id=sr.installation_id
+          WHERE iu.user_id=$1 AND sr.id=ANY($2::bigint[])
+        ), bounded AS (
+          SELECT *, sum(bytes) OVER (ORDER BY id DESC) AS total_bytes FROM authorised
+          WHERE bytes<=8388608
+        ) SELECT id, receipt FROM bounded WHERE total_bytes<=16777216`, [userId, selected]);
+      return new Map(rows.map(row => [Number(row.id), row.receipt]));
+    },
+
     async listScanReceiptsForUser(
       userId: string,
       opts: { packageId?: number; repoId?: number; limit?: number } = {},

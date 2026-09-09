@@ -128,6 +128,8 @@ Before merging:
 
 ## Next engineering work
 
+Readiness follow-on after f2e7ba1: do not restore the legacy client-side passing-status inference. `release-assessment.ts` projects `assessRelease` through authorised original endpoints; list/detail heroes consume it, and the supporting panel updates their assessment after refresh. Preserve scan outcome versus readiness versus production observation. The final full suite passed 1,229 tests and native PostgreSQL integration passed, including the new bounded batch. Next finish the lifecycle/accessibility matrix, including preserving disclosure/focus on history refresh, then implement opt-in automatic capture using the existing stream service. Remaining sequence is unchanged.
+
 9 September checkpoint: integration repairs now pass 1,222 full-suite tests across 205 files on Node 24.19.0. The new real-composition integration test also passed against disposable native PostgreSQL, including concurrent adoption. See BUILD-LOG.md for the changed surfaces and partial browser evidence. Preserve these repairs; do not restart the completed integration investigation. Finish the outstanding integrated browser cases and make legacy and assurance readiness share one server-grounded interpretation next. Remote Actions still cannot start because of the account billing/spending-limit condition; this does not prevent local implementation.
 
 First obtain integrated evidence for this milestone and resolve any failures. Then reconcile the old readiness headline and the advisory companion into one tested policy-aware interpretation. Do not turn attestation presence into cryptographic verification, or make after-deployment evidence a prerequisite for permission to deploy.

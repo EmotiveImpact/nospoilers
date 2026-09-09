@@ -1,5 +1,6 @@
 import {ArrowLeft,ArrowRight,AlertTriangle,Clock3,Download,FileCheck2,ShieldCheck} from 'lucide-react';
-import {useRef} from 'react';
+import {useCallback,useRef,useState} from 'react';
+import type {Assessment} from '@/assurance/types';
 import {ProofSharing} from './ProofSharing';
 import {ReleaseAssurancePanel} from './ReleaseAssurancePanel';
 import {WorkspaceExceptionRequest} from './WorkspaceExceptionRequest';
@@ -8,7 +9,9 @@ import {navigate} from '@/nav';
 import {downloadUploadedRecord,findingCategory,uploadedReleaseDecision,type EvidenceCategory,type UploadedRelease} from '@/watch/uploaded-release';
 
 export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:UploadedRelease;search:string;onBack:()=>void;onNewScan:()=>void}){
-  const decision=uploadedReleaseDecision(upload),report=upload.report_json;
+  const [observed,setObserved]=useState<{record:UploadedRelease;assessment:Assessment|null}|null>(null);
+  const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:upload,assessment}),[upload]);
+  const decision=uploadedReleaseDecision({...upload,readiness:observed?.record===upload?observed.assessment??undefined:upload.readiness}),report=upload.report_json;
   const website=upload.source_origin_id!=null;
   const retryLabel=website?'Open website controls':'Upload a new attempt';
   function nextAttempt(){
@@ -60,7 +63,7 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
       </dl></aside>
     </div>
     <div className="upload-scope-note"><strong>Recorded scope</strong><p>{website?'Evidence covers only the public assets retrieved during this bounded website check. It does not establish complete site coverage, repository visibility, private map custody or release approval.':<>{report?'Evidence is limited to the recorded artifact inspection.':'No completed artifact evidence is available yet.'} Repository visibility, production assets, private map custody and release approval are separate checks; this upload does not establish them.</>}</p></div>
-    {report?<ReleaseAssurancePanel kind="upload" recordId={upload.id} evidenceId="upload-evidence-title"/>:null}
+    {report?<ReleaseAssurancePanel kind="upload" recordId={upload.id} evidenceId="upload-evidence-title" onAssessment={onAssessment}/>:null}
     <section className="upload-evidence" aria-labelledby="upload-evidence-title">
       <div className="watch-release-section-heading"><div><span className="watch-kicker">Evidence workspace</span><h2 ref={evidenceHeading} tabIndex={-1} id="upload-evidence-title">Findings and next steps</h2></div><span>{report?`${report.fileCount} files inspected`:'Waiting for completed evidence'}</span></div>
       <div className="upload-evidence-tabs" role="tablist" aria-label="Finding category">

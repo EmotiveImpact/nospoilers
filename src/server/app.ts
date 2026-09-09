@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { assessSavedRelease, assessSavedUpload } from './release-assessment.ts';
 import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
 import { Hono, type Context } from "hono";
@@ -2208,13 +2209,18 @@ export function createApp(deps: AppDeps): Hono {
     const workspaceId=c.req.query('workspaceId');
     if(workspaceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))return c.json({error:'Invalid workspace.'},400);
     if(workspaceId && !(await listUserWorkspaces(deps.store.sql,user.userId)).some(workspace=>workspace.id===workspaceId))return c.json({error:'Workspace unavailable.'},404);
-    try{return c.json(await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status')}));}
+    try{
+      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status')});
+      const now=Date.now();c.header('Cache-Control','no-store');
+      return c.json({...page,uploads:page.uploads.map(upload=>({...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret,now)}))});
+    }
     catch(error){return c.json({error:error instanceof Error&&'status' in error?error.message:'Release history could not be loaded.'},errorStatus(error));}
   });
   app.get("/api/uploads/:id",async c=>{
     const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
     const upload=await deps.store.getUploadedScan(user.userId,c.req.param("id"));
-    return upload?c.json({upload}):c.json({error:"Unknown upload."},404);
+    c.header('Cache-Control','no-store');
+    return upload?c.json({upload:{...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret)}}):c.json({error:"Unknown upload."},404);
   });
 
   app.post("/api/origin-intent", async (c) => {
@@ -3875,7 +3881,8 @@ export function createApp(deps: AppDeps): Hono {
     const upload=independent?await deps.store.getWorkspaceTokenUpload(independent.workspaceId,c.req.param('id')):auth.installationId!==null?await deps.store.getInstallationUpload(auth.installationId,c.req.param('id')):null;
     if(!upload)return c.json({error:'Scan not found.'},404);
     const revision=upload.revision_id?await deps.store.getReleaseRevision(Number(upload.revision_id)):null;
-    return c.json({uploadId:upload.id,status:upload.status,report:upload.report_json,receipt:upload.receipt_json,receiptId:upload.receipt_id,release:revision?publicRelease(revision):null,error:upload.error});
+    c.header('Cache-Control','no-store');
+    return c.json({uploadId:upload.id,status:upload.status,report:upload.report_json,receipt:upload.receipt_json,receiptId:upload.receipt_id,release:revision?publicRelease(revision):null,error:upload.error,readiness:assessSavedUpload(upload,deps.config.receiptSecret)});
   });
 
   app.get("/api/packages", async (c) => {
@@ -5326,10 +5333,13 @@ export function createApp(deps: AppDeps): Hono {
       list.push(publicDeliveryLocation(location));
       byRevision.set(location.revision_id, list);
     }
+    const assessmentReceipts = await deps.store.assessmentReceiptsForUser(releases.map(row => row.receipt_id), user.userId);
+    const evaluatedAt = Date.now();
+    c.header('Cache-Control', 'no-store');
     return c.json({
       ...(hostedContext?{context:hostedContext}:{}),
-      releases: releases.map((row) =>
-        publicRelease(
+      releases: releases.map((row) => {
+        const release = publicRelease(
           row,
           byRevision.get(row.id) ?? [],
           approvals.get(row.id) ?? null,
@@ -5338,8 +5348,9 @@ export function createApp(deps: AppDeps): Hono {
           hideAttestations.has(row.installation_id)
             ? []
             : latestPublicAttestations(attestationsByRevision.get(row.id) ?? []),
-        ),
-      ),
+        );
+        return {...release, readiness: assessSavedRelease(release, assessmentReceipts.get(row.receipt_id), deps.config.receiptSecret, evaluatedAt)};
+      }),
     });
   });
 
@@ -5442,15 +5453,18 @@ export function createApp(deps: AppDeps): Hono {
     const attestations = hideAttestations
       ? []
       : latestPublicAttestations(await deps.store.listReleaseAttestationsForRevisions([row.id]));
-    return c.json({
-      release: publicRelease(
+    const release = publicRelease(
         row,
         locations.map(publicDeliveryLocation),
         latestByRevision(approvals).get(row.id) ?? null,
         latestByRevision(holds).get(row.id) ?? null,
         page,
         attestations,
-      ),
+      );
+    const signed = await deps.store.getScanReceiptForUser(row.receipt_id, user.userId);
+    c.header('Cache-Control', 'no-store');
+    return c.json({
+      release: {...release, readiness: assessSavedRelease(release, signed?.receipt, deps.config.receiptSecret)},
     });
   });
 

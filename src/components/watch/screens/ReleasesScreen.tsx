@@ -20,11 +20,11 @@ function releaseStatus(release: ReleaseRevision) {
   const model = buildReleaseBriefModel(release);
   return {
     ...model,
-    label: model.blocked ? "Blocked" : model.ready ? "Ready" : "Pending",
+    label: model.blocked ? "Blocked" : model.ready ? "Passes recorded checks" : model.status === 'review' ? 'Review' : 'Unknown',
   };
 }
 
-function StatusIcon({ status }: { status: "blocked" | "ready" | "pending" }) {
+function StatusIcon({ status }: { status: import('@/assurance/types').Decision }) {
   if (status === "blocked") return <AlertTriangle className="size-4" aria-hidden />;
   if (status === "ready") return <CheckCircle2 className="size-4" aria-hidden />;
   return <Clock3 className="size-4" aria-hidden />;
