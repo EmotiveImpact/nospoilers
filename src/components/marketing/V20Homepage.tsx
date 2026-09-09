@@ -5,7 +5,7 @@ import "./v20-homepage.css"
 import { HomepageD } from "./HomepageD"
 
 export type MarketingSession = { user: { login: string } | null; githubApp: boolean; developmentLogin?: boolean }
-export function Brand() { return <span className="v20-brand"><span className="v20-brand-mark" aria-hidden="true" />NoSpoilers</span> }
+export function Brand() { return <span className="v20-brand"><img className="v20-brand-logo" src="/assets/brand/nospoilers-wordmark.png" alt="NoSpoilers" /></span> }
 
 export function MarketingNav({ me, openApp, home = true }: { me: MarketingSession | null; openApp: () => void; home?: boolean }) {
   const [menu, setMenu] = useState<"product" | "resources" | null>(null)

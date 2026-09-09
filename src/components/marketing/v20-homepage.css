@@ -26,7 +26,7 @@
 .v20-section { padding: 88px 0; }
 .v20-eyebrow { color: #8993a0; font-size: 11px; font-weight: 600; letter-spacing: .25em; text-transform: uppercase; }
 .v20-brand { display: inline-flex; align-items: center; gap: 9px; color: #f6f7f9; font-size: 17px; font-weight: 700; letter-spacing: -.04em; white-space: nowrap; }
-.v20-brand-mark { width: 17px; height: 17px; border: 1px solid #606a75; border-radius: 3px; background: linear-gradient(135deg, transparent 42%, #f4f6f8 43% 51%, transparent 52%), #11161c; box-shadow: inset 0 0 0 3px #0b0e12; }
+.v20-brand-logo { display: block; width: auto; height: 25px; object-fit: contain; }
 
 .v20-nav { position: sticky; top: 0; z-index: 70; height: 72px; border-bottom: 1px solid transparent; transition: .22s ease; font-family: Inter, Arial, sans-serif; }
 .v20-nav.scrolled { border-bottom-color: rgba(255,255,255,.055); background: rgba(7,9,12,.82); box-shadow: 0 10px 35px rgba(0,0,0,.18); backdrop-filter: blur(18px) saturate(1.25); }
@@ -110,7 +110,7 @@
 .v20-product { display: grid; grid-template-columns: 145px 1fr; height: 432px; overflow: hidden; border: 1px solid #1e2832; border-radius: 12px; background: #090d12; }
 .v20-product-side { padding: 14px 12px; border-right: 1px solid #1c252e; background: #0a0d12; }
 .v20-product-side .v20-brand { margin: 0 0 18px 7px; font-size: 11px; }
-.v20-product-side .v20-brand-mark { width: 13px; height: 13px; }
+.v20-product-side .v20-brand-logo { height: 18px; }
 .v20-product-side > span:not(.v20-brand) { display: block; margin-bottom: 2px; padding: 8px 10px; border-radius: 6px; color: #89939e; font-size: 11px; }
 .v20-product-side > span.active { color: #f2f5f8; background: #17202a; }
 .v20-product-side > span.alert::after { content: "3"; float: right; padding: 1px 6px; border-radius: 999px; color: #ff7384; background: #4b151d; }
