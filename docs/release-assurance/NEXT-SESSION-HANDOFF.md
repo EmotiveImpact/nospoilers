@@ -1,5 +1,9 @@
 # Resume checkpoint — 9 September 2026
 
+## Gate C continuation
+
+Active scope is connected UI/mockup parity, usability and accessibility; Gate B remains accepted. Latest BUILD-LOG records Alerts filters, tablet shell and notification form work plus focused/browser evidence. Continue remaining screens and states; do not restart completed scan/evidence verification or full suites merely on continuation. The real server was preserved; build assets are served directly without restart.
+
 ## Current continuation checkpoint
 
 ### Verified real-app continuation (9 September 2026)

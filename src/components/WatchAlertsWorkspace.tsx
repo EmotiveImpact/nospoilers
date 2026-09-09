@@ -180,14 +180,15 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="flex shrink-0 items-center gap-4 border-b border-white/8 px-5 py-4 md:px-8">
-        <h1 className="watch-page-title">Alerts</h1>
+        <div className="min-w-0"><h1 className="watch-page-title">Alerts</h1><p className="mt-2 text-sm text-mute">Review evidence, assign a response, and follow each alert to resolution.</p></div>
         {!previewing ? (
           <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
             {exportLabel}
           </Button>
         ) : null}
       </div>
-      <div className="watch-queue-track" role="tablist" aria-label="Alert queues">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-white/[0.015] px-4 py-3 md:px-8">
+      <div className="flex min-w-0 flex-wrap items-center gap-3"><span className="hidden text-[10px] font-medium uppercase tracking-widest text-dim sm:block">Status</span><div className="inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
         {([
           ["open", "Open", queueCounts.open],
           ["waiting", "In progress", queueCounts.waiting],
@@ -199,7 +200,7 @@ export function WatchAlertsWorkspace({
             role="tab"
             aria-selected={(tab==='mine'?'open':tab) === value}
             tabIndex={(tab==='mine'?'open':tab) === value?0:-1}
-            className="watch-queue-item"
+            className="flex min-h-11 items-center justify-center rounded-md px-2 text-xs text-mute hover:bg-white/5 aria-selected:bg-white/10 aria-selected:text-snow sm:px-3"
             onClick={() => onTab(value)}
             onKeyDown={(event)=>{
               const keys=['ArrowRight','ArrowLeft','Home','End'];
@@ -211,13 +212,12 @@ export function WatchAlertsWorkspace({
               tabs[next].focus();tabs[next].click();
             }}
           >
-            <span className="watch-queue-pair">
+            <span className="inline-flex items-center gap-1.5">
               <span className="watch-queue-label">{label}</span>
               <span
                 className={cn(
-                  "watch-seg-n",
-                  value === "open" && count > 0 && "watch-seg-n-open",
-                  count === 0 && "watch-seg-n-zero",
+                  "min-w-5 rounded-full bg-white/5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
+                  value === "open" && count > 0 && "bg-danger/15 text-[#ff8a80]",
                 )}
               >
                 {count}
@@ -225,8 +225,9 @@ export function WatchAlertsWorkspace({
             </span>
           </button>
         ))}
+      </div></div>
+      {onAssignedToMe ? <Button type="button" size="sm" variant="outline" className="min-h-11 aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button> : null}
       </div>
-      {onAssignedToMe ? <div className="px-5 py-3 md:px-8 border-b border-white/8"><Button type="button" size="sm" variant="outline" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button></div> : null}
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}

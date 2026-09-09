@@ -456,14 +456,14 @@ export function WatchMonolithShell({
     <div className="watch-desk">
       <aside
         className={cn(
-          "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
+          "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
           collapsed ? "w-14" : "w-[244px]",
         )}
       >
         {rail({ collapsed, showToggle: true })}
       </aside>
 
-      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
+      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
           <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
@@ -478,13 +478,13 @@ export function WatchMonolithShell({
         <header className="watch-stage-head flex h-14 shrink-0 items-center gap-2 border-b px-2 sm:gap-3 sm:px-4 md:px-5">
           <button
             type="button"
-            className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
+            className="inline-flex size-12 shrink-0 items-center justify-center rounded-md text-snow hover:bg-white/5 lg:hidden"
             onClick={() => setNavOpen(true)}
           >
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <strong className="min-w-0 flex-1 truncate text-sm text-snow sm:flex-none md:hidden">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
+          <strong className="min-w-0 flex-1 truncate text-sm text-snow sm:flex-none lg:hidden">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
           <button
             type="button"
             onClick={onOpenPalette}
@@ -492,15 +492,15 @@ export function WatchMonolithShell({
             className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
           >
             <Search className="size-4 shrink-0" aria-hidden />
-            <span className="hidden truncate sm:inline">Search or run a command…</span>
-            <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-xs text-dim sm:inline">
+            <span className="hidden truncate xl:inline">Search or run a command…</span>
+            <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-xs text-dim xl:inline">
               {shortcutLabel}
             </span>
           </button>
-          <span className="hidden flex-1 md:block" />
-          <strong className="hidden shrink-0 text-sm text-snow lg:inline">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
+          <span className="hidden flex-1 lg:block" />
+          <strong className="hidden shrink-0 text-sm text-snow xl:inline">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
           {coverage ? (
-            <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
+            <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
               <span className={coverage.status === "trial" ? "watch-trial-text" : undefined}>{coverage.label}</span>
             </span>
           ) : null}
@@ -519,7 +519,7 @@ export function WatchMonolithShell({
             type="button"
             size="sm"
             variant="ghost"
-            className="hidden sm:inline-flex"
+            className="hidden lg:inline-flex"
             onClick={() => setGuidanceOpen((open) => !open)}
           >
             {guidanceOpen ? "Hide guide" : "Guide"}
@@ -530,7 +530,7 @@ export function WatchMonolithShell({
             </Button>
           ) : null}
           {installUrl ? (
-            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden md:inline-flex">
+            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden xl:inline-flex">
               Install on GitHub
             </Button>
           ) : null}
@@ -539,7 +539,7 @@ export function WatchMonolithShell({
             type="button"
             size="sm"
             variant="ghost"
-            className="size-12 rounded-full border border-white/10 px-0 text-xs text-snow sm:size-8 sm:text-xs"
+            className="size-12 shrink-0 rounded-full border border-white/10 px-0 text-xs text-snow sm:size-8 sm:text-xs"
             onClick={() => void signOut()}
             title="Sign out"
             aria-label={`Sign out ${login}`}

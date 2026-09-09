@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C presentation batch
+
+Alerts filters, tablet shell navigation and mobile notification forms are improved and narrowly verified. See the latest BUILD-LOG for 31 focused passing tests, rendered widths, drawer focus recovery and limitations. This is partial Gate C acceptance, not a full accessibility or production declaration.
+
 ## Latest real-app remediation evidence
 
 The sidebar workspace menu now has a single workspace control, no redundant **Manage workspaces** button, no heavy menu outline, and a plain **Create new workspace** row with its plus icon. Keyboard focus remains visible on the trigger. Focused UI coverage passes 8/8.

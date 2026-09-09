@@ -283,3 +283,11 @@ Local verification after final logic edits:
 The browser harness exercised keyboard disclosure, reversible preview/focus, actual JSON download, malicious filename escaping, unknown/stale scope, reduced motion, lifecycle cleanup and document overflow. See `BROWSER-CHECKS.json` and the reproducible scripts. Synthetic fixtures do not imply customer adoption or production results.
 
 Known limitations and next steps are in HANDOFF.md and ACCEPTANCE.md. Do not turn these results into “all features complete”, “all tests pass”, “full security audit” or “ready for production”.
+
+## Gate C — Alerts filters and responsive settings, 9 September 2026
+
+Aligned the Alerts status/assignment bar with master-flow: visibly selected lifecycle tabs, independent ownership toggle and wrapping controls. Tablet shell uses its existing accessible drawer below 1024px; trial text stays on one line. Notifications fields stack on mobile; destination/confirmation text and actions wrap, retaining destination-specific accessible names. Owner sidebar decisions and all mutation semantics remain unchanged.
+
+Independent verification: Alerts focused set (alert-filters-keyboard, watch-accessibility, workspace-alerts-rendered, alert-response-permissions-ui, alert-off-page-detail, watch-architecture) passed 25 tests/6 files; workspace-notifications-ui passed 5; artifact-shell-navigation passed 1. Added stateful lifecycle arrow/Home/End focus and independent ownership coverage; removed two obsolete class-name assertions. Frontend TypeScript/Vite build passed (existing large-chunk warning). No full suite or API rerun for this presentation batch.
+
+Signed-in Codex browser on 4347: inspected Alerts at 390/768/1024/1440 CSS widths; mobile selection opens detail with Back action, no observed horizontal document overflow. The initial tablet header squeeze led to the shell correction. Final 768px drawer opens; Escape closes and returns focus to its trigger. Notifications at 390px now has full-width fields and honest unconfigured-provider/empty states. No destination was created and no delivery sent: populated long-destination and disconnect wrapping are source-level changes, not live-provider verification. Server/database/session preserved without restart. Full Gate C, contrast/200% zoom and wider screen/state acceptance remain open.
