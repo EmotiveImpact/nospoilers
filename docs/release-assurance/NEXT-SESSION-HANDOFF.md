@@ -2,6 +2,9 @@
 
 ## Gate C continuation
 
+Latest batch covers Coverage mobile rows, Timeline alert activity/keyboard chart, Scan keyboard tabs and app-only metadata contrast. Reuse latest BUILD-LOG results; proceed with remaining UI/state and broader accessibility acceptance. No new backend work or repeated artifact scan is needed.
+
+
 Latest release-detail batch: evidence-first uploaded brief, section navigation with focus, truthful empty findings, and scope-first history tools. Build/lint plus focused checks and real signed-in browser verification are recorded in BUILD-LOG. Reuse those results; remaining work is other Gate C screen/state and accessibility gaps, not rescanning completed artifacts.
 
 

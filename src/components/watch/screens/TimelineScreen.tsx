@@ -65,7 +65,7 @@ export function TimelineScreen({
 }) {
   const ready = timeline.status === "ready";
   return (
-    <section className="mt-4">
+    <section className="mt-4 min-w-0">
       <WatchPageHeader
         title={ready ? heading(timeline.days) : "Timeline"}
         lede="Alert and response activity within the retained window."
@@ -119,22 +119,22 @@ export function TimelineScreen({
             : `Nothing in the last ${timeline.days} days on this install.`}
         </div>
       ) : (
-        <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
+        <ul className="mt-6 w-full min-w-0 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
           {timeline.entries.map((entry, index) => (
-            <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="py-3">
+            <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="min-w-0 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm text-snow">
+                <p className="min-w-0 max-w-full text-sm text-snow [overflow-wrap:anywhere]">
                   {entry.type === "delivery"
                     ? `${destinationLabel(entry.kind ?? "")} ${entry.deliveryStatus ?? "delivery"}`
                     : entry.type === "alert_event"
                       ? `${entry.action ?? "activity"}${entry.actorLogin ? ` · ${entry.actorLogin}` : ""}`
                       : entry.title ?? entry.kind ?? "Alert"}
                 </p>
-                <time dateTime={entry.at} className="text-xs text-dim">
+                <time dateTime={entry.at} className="max-w-full text-xs text-dim [overflow-wrap:anywhere]">
                   {new Date(entry.at).toLocaleString()}
                 </time>
               </div>
-              {entry.fullName ? <p className="mt-1 font-mono text-xs text-dim">{entry.fullName}</p> : null}
+              {entry.fullName ? <p className="mt-1 max-w-full font-mono text-xs text-dim [overflow-wrap:anywhere]">{entry.fullName}</p> : null}
             </li>
           ))}
         </ul>

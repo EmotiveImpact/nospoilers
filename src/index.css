@@ -203,6 +203,8 @@ code {
    floor is the tile color. A wider stage-only glow keeps the command row
    and title visibly on that surface without lifting the surrounding chrome. */
 .watch-desk {
+  /* Keep small metadata readable on the app's dark panels and selected rows. */
+  --color-dim: #92929c;
   display: flex;
   height: 100svh;
   overflow: hidden;

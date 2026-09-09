@@ -1,6 +1,6 @@
 import type { DeskAlert } from "@/watch/verdict.ts";
 import { buildTimelineLanes } from "@/watch/view-models.ts";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export function WatchExposureChart({
   alerts,
@@ -11,6 +11,7 @@ export function WatchExposureChart({
   days?: number;
   compact?: boolean;
 }) {
+  const scrollHintId = useId();
   const [now] = useState(() => Date.now());
   const lanes = buildTimelineLanes(alerts, { days, now });
   const ticks = Array.from({ length: 8 }, (_, index) => {
@@ -18,24 +19,26 @@ export function WatchExposureChart({
     return index === 7
       ? "Today"
       : date.toLocaleDateString(undefined, {
-          weekday: "short",
+          ...(days > 7 ? { day: "numeric" as const, month: "short" as const } : { weekday: "short" as const }),
           timeZone: "UTC",
         });
   });
 
   return (
     <section className="watch-gantt mt-6 overflow-hidden rounded-lg border border-white/8 bg-panel">
-      <div className="flex items-baseline justify-between gap-3 border-b border-white/8 px-4 py-3">
-        <h2 className="text-sm text-snow">Exposure, last {days} days</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-white/8 px-4 py-3">
+        <h2 className="text-sm text-snow">Alert activity, last {days} days</h2>
         <span className="text-xs text-dim">
-          {lanes.some((lane) => lane.spans.some((span) => span.open)) ? "open exposure" : "all closed"}
+          {lanes.length === 0 ? "no activity" : lanes.some((lane) => lane.spans.some((span) => span.open)) ? "open alerts" : "all alerts closed"}
         </span>
       </div>
       {lanes.length === 0 ? (
-        <p className="px-4 py-8 text-sm text-mute">No exposure to plot from real alert history.</p>
+        <p className="px-4 py-8 text-sm text-mute">No alert activity in this window.</p>
       ) : (
-        <div className="overflow-x-auto">
-        <div className="min-w-[620px]" aria-label="Exposure by source and retained time">
+        <>
+        <p id={scrollHintId} className="px-4 pt-3 text-xs text-mute">Scroll horizontally to see the full timeline. With keyboard focus on the chart, use the left and right arrow keys.</p>
+        <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow" tabIndex={0} role="region" aria-label="Alert activity by source and retained time" aria-describedby={scrollHintId}>
+        <div className="min-w-[620px]">
           <div className="grid grid-cols-[minmax(150px,220px)_1fr] border-b border-white/8">
             <span className="px-4 py-2 text-xs uppercase tracking-[0.16em] text-dim">Source</span>
             <div className="grid grid-cols-8 px-3 py-2">
@@ -61,16 +64,14 @@ export function WatchExposureChart({
                     key={span.alertId}
                     tabIndex={0}
                     role="img"
-                    aria-label={`${span.rule}: ${span.label}; started ${new Date(span.startedAt).toLocaleString()}; ${span.open ? "still open" : `resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
+                    aria-label={`${span.severity} alert · ${span.rule}: ${span.label}; started ${new Date(span.startedAt).toLocaleString()}; ${span.open ? "still open" : `resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
                     className={
-                      span.open
-                        ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/80 px-2 py-1 text-xs text-white"
-                        : span.severity === "critical"
-                          ? "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-danger/25 px-2 py-1 text-xs text-snow"
-                          : "absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm bg-[#a8782f]/55 px-2 py-1 text-xs text-snow"
+                      `absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm px-2 py-1 text-xs text-snow ${span.severity === "critical"
+                        ? span.open ? "bg-danger/80" : "bg-danger/25"
+                        : span.open ? "bg-[#a8782f]/80" : "bg-[#a8782f]/30"}`
                     }
                     style={{ left: `${span.left}%`, width: `${span.width}%` }}
-                    title={`${span.rule} · ${span.label} · ${new Date(span.startedAt).toLocaleString()}${span.open ? " · open" : ` · resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
+                    title={`${span.severity} alert · ${span.rule} · ${span.label} · ${new Date(span.startedAt).toLocaleString()}${span.open ? " · open" : ` · resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
                   >
                     {span.rule}
                     {span.open ? " · open" : ""}
@@ -81,21 +82,24 @@ export function WatchExposureChart({
           ))}
         </div>
         </div>
+        </>
       )}
       {lanes.length > 0 ? (
         <>
-          <div className="flex flex-wrap items-center gap-4 border-t border-white/8 px-4 py-3 text-xs text-mute" aria-label="Exposure legend">
-            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger" aria-hidden />Open critical exposure</span>
-            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/30" aria-hidden />Resolved critical</span>
-            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]" aria-hidden />Warning</span>
+          <div className="flex flex-wrap items-center gap-4 border-t border-white/8 px-4 py-3 text-xs text-mute" aria-label="Alert activity legend">
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/80" aria-hidden />Open critical alert</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-danger/25" aria-hidden />Resolved critical alert</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]/80" aria-hidden />Open warning</span>
+            <span className="flex items-center gap-2"><span className="size-2 rounded-sm bg-[#a8782f]/30" aria-hidden />Resolved warning</span>
           </div>
+          <p className="px-4 pb-3 text-xs text-mute">Alert status records response activity. Closing an alert does not prove an artifact is clean.</p>
           <table className="sr-only">
-            <caption>Exposure timeline text equivalent</caption>
-            <thead><tr><th>Source</th><th>Rule</th><th>Finding</th><th>Started</th><th>Ended</th></tr></thead>
+            <caption>Alert activity timeline text equivalent</caption>
+            <thead><tr><th>Source</th><th>Rule</th><th>Severity</th><th>Finding</th><th>Started</th><th>Ended</th></tr></thead>
             <tbody>
               {lanes.flatMap((lane) => lane.spans.map((span) => (
                 <tr key={`text-${lane.key}-${span.alertId}`}>
-                  <td>{lane.label}</td><td>{span.rule}</td><td>{span.label}</td>
+                  <td>{lane.label}</td><td>{span.rule}</td><td>{span.severity}</td><td>{span.label}</td>
                   <td>{new Date(span.startedAt).toLocaleString()}</td>
                   <td>{span.endedAt ? new Date(span.endedAt).toLocaleString() : "Still open"}</td>
                 </tr>

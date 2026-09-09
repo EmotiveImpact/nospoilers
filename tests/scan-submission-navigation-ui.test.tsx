@@ -86,3 +86,29 @@ it.each(['switch','stay','leave'])('scopes upload submission when the user choos
   if(choice==='stay')expect(navigate).toHaveBeenCalledWith('/watch/releases?upload=old-result&workspace=first');
   else expect(navigate).not.toHaveBeenCalled();
 });
+it('switches evidence tabs by keyboard without submitting or losing source scope and website input',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({user:{login:'owner'},coverage:{status:'active',plan:'solo'}}));
+ vi.stubGlobal('fetch',fetcher);
+ render(<ScanPage embedded search="?workspace=chosen&install=7"/>);
+ const tabs=screen.getAllByRole('tab');
+ const select=(index:number)=>{
+  tabs.forEach((tab,i)=>{expect(tab.tabIndex).toBe(i===index?0:-1);expect(tab.getAttribute('aria-selected')).toBe(String(i===index));});
+  expect(document.activeElement).toBe(tabs[index]);
+  expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(tabs[index].id);
+  expect(tabs[index].getAttribute('aria-controls')).toBe(screen.getByRole('tabpanel').id);
+  const params=new URLSearchParams(window.location.search);
+  expect(params.get('workspace')).toBe('chosen');expect(params.get('install')).toBe('7');
+ };
+ tabs[0].focus();
+ fireEvent.keyDown(tabs[0],{key:'ArrowRight'});select(1);
+ fireEvent.keyDown(tabs[1],{key:'ArrowRight'});select(2);
+ fireEvent.change(screen.getByRole('textbox',{name:'HTTPS production URL'}),{target:{value:'https://owned.example/'}});
+ fireEvent.keyDown(tabs[2],{key:'End'});select(3);
+ fireEvent.keyDown(tabs[3],{key:'ArrowRight'});select(0);
+ fireEvent.keyDown(tabs[0],{key:'ArrowLeft'});select(3);
+ fireEvent.keyDown(tabs[3],{key:'Home'});select(0);
+ fireEvent.keyDown(tabs[0],{key:'ArrowRight'});fireEvent.keyDown(tabs[1],{key:'ArrowRight'});select(2);
+ expect((screen.getByRole('textbox',{name:'HTTPS production URL'}) as HTMLInputElement).value).toBe('https://owned.example/');
+ expect(uploadArtifact).not.toHaveBeenCalled();expect(navigate).not.toHaveBeenCalled();
+ expect(fetcher.mock.calls.every(call=>call.length<2||((call as unknown[])[1] as RequestInit)?.method!=='POST')).toBe(true);
+});

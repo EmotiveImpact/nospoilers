@@ -226,7 +226,7 @@ export function WatchSourcesSummary({
                     }),
                   )
                 }
-                className={filter === option.value ? "watch-chip watch-chip-ok min-h-9" : "watch-chip min-h-9"}
+                className="min-h-11 rounded-lg border border-white/10 px-3 py-2 text-xs text-mute hover:bg-white/5 aria-pressed:bg-white/10 aria-pressed:text-snow"
                 aria-pressed={filter === option.value}
               >
                 {option.label} <span className="ml-1 text-dim">{count}</span>
@@ -280,8 +280,8 @@ export function WatchSourcesSummary({
               key={source.key}
               className={
                 selectedSourceKey === source.key
-                  ? "grid gap-3 bg-white/[0.035] px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
-                  : "grid gap-3 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
+                  ? "grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-2 bg-white/[0.035] px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
+                  : "grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
               }
             >
               <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-mute">
@@ -289,7 +289,7 @@ export function WatchSourcesSummary({
               </span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-mono text-sm text-snow">{source.name}</p>
+                  <p className="min-w-0 font-mono text-sm text-snow [overflow-wrap:anywhere]">{source.name}</p>
                   <span
                     className={
                       source.attention === "critical"
@@ -300,7 +300,7 @@ export function WatchSourcesSummary({
                     {source.status}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-dim">
+                <p className="mt-1 text-xs leading-relaxed text-dim [overflow-wrap:anywhere]">
                   {source.kindLabel} · {source.detail}
                   {source.digest ? ` · sha256 ${source.digest.slice(0, 12)}` : ""}
                   {source.lastCheckedAt ? ` · checked ${new Date(source.lastCheckedAt).toLocaleString()}` : ""}
@@ -311,6 +311,7 @@ export function WatchSourcesSummary({
                 type="button"
                 size="sm"
                 variant="outline"
+                className="col-start-2 min-h-11 justify-self-start sm:col-start-3 sm:row-start-1"
                 onClick={() => navigate(watchHref(watchPath("sources"), search, { source: source.key }))}
               >
                 {source.primaryAction}

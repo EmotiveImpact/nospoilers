@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C Coverage/Timeline/Scan batch
+
+Coverage and Timeline responsive text, truthful alert-chart semantics, keyboard chart scrolling, Scan tab navigation and app metadata contrast are narrowly verified. Latest BUILD-LOG records focused test and signed-in browser evidence. Gate C remains partial; no full WCAG claim.
+
 ## Current Gate C release-detail batch
 
 Uploaded evidence now precedes supporting tools, with keyboard section navigation and truthful zero-findings states. Selected-history scope precedes grouped actions. The latest BUILD-LOG records 29 cases covered by focused runs and real signed-in desktop/mobile evidence. Gate C remains partial.
