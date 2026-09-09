@@ -562,3 +562,8 @@ Replaced the native destination selector with the existing beUI Select, retainin
 
 
 Shared Select follow-up: removed undefined beUI foreground/background/border/muted token references and supplied real app colours, including explicit keyboard focus rings on selected and unselected options. Final build passed; signed-in ArrowDown visibly focused Email with an inset ring, Escape closed without selection. CSS-only correction reuses preceding eight behavioural cases; no new suite claimed. Other native form selects remain pending.
+
+
+## Team shared role picker
+
+Invitation and member role controls now share a beUI-backed RolePicker. Allowed role sets are unchanged; invitation role explanations sit below the field. Busy state locks selection and selecting still requires explicit Save. Member list overflow permits the menu to remain visible. Fourteen focused cases across workspace-team-ui and beui-select-ui passed (2.04s), including admin role limits and no write on selection; final build and diff check passed. Real signed-in invitation and member menus reviewed, ArrowDown focus and Escape exercised; no invitation or membership mutation. Native zoom/AT and wider Gate C checklist remain open.

@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest: Team invitation/member roles share RolePicker, preserving allowed roles and explicit Save.14 focused cases, build, live dropdown/focus review passed; no mutations. See latest BUILD-LOG. Continue full Gate C checklist.
+
 Latest: Notifications uses shared beUI Select; eight focused cases, final build and real menu review passed. Shared menu background corrected after visual inspection. No notification mutation. Continue Gate C matrix; not complete.
 
 Latest cumulative UI milestone at488a9b2:259 passed/2 architecture failures across38 files (261 cases,18.07s). Narrow test corrections plus missing committed gallery link fixed; architecture13/13 passed. No runtime change after milestone. Reuse evidence; see BUILD-LOG and GATE-C-CURRENT-MATRIX for unresolved requirements.

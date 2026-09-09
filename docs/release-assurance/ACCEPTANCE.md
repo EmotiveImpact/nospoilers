@@ -205,3 +205,8 @@ Keep PR #44 draft and preserve the branch deployment guard until applicable revi
 ## Notifications shared destination selector
 
 Replaced the native destination selector with the existing beUI Select, retaining busy locking and clearing private input on type changes. Added a direct regression for clearing without submission and focus return. Eight cases across notification/select tests passed (1.61s); initial run needed the existing ResizeObserver test stub. Live review caught transparent shared menu background outside Overview; fixed the shared panel to opaque charcoal with a fine border. Final build and diff check passed. Real signed-in desktop menu reviewed and Escape exercised; no destination saved or message sent. Broader Gate C remains open.
+
+
+## Team shared role picker
+
+Invitation and member role controls now share a beUI-backed RolePicker. Allowed role sets are unchanged; invitation role explanations sit below the field. Busy state locks selection and selecting still requires explicit Save. Member list overflow permits the menu to remain visible. Fourteen focused cases across workspace-team-ui and beui-select-ui passed (2.04s), including admin role limits and no write on selection; final build and diff check passed. Real signed-in invitation and member menus reviewed, ArrowDown focus and Escape exercised; no invitation or membership mutation. Native zoom/AT and wider Gate C checklist remain open.
