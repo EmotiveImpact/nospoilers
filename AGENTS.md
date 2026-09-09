@@ -1,5 +1,7 @@
 # NoSpoilers agent entry point
 
+Latest increment: `ra_008_agent_access` adds explicit short-lived stream credentials, seven deterministic stdio MCP tools, call audit and optional pending notes requiring human review. Read `docs/release-assurance/AGENT-TOOLS.md` alongside the latest handoff/acceptance. Existing scan tokens gain no access; no model provider, remote MCP OAuth, autonomous merge or passing receipt is introduced. Retention outcomes and broader operational/provider acceptance remain open. Older checkpoint descriptions below are historical.
+
 ## Mandatory reading order
 
 Before continuing this branch, read:

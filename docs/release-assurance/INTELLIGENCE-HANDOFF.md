@@ -1,5 +1,11 @@
 # Release intelligence continuation
 
+## Agent/MCP checkpoint (9 September 2026, after f1bab87)
+
+The real release-detail panel now offers explicit administrator-managed agent access, revocation, recent calls and human-reviewed draft notes. `ra_008_agent_access`, `agent-access.ts`, fixed `agent-tools.ts`, `cli-mcp.ts` and `AgentAccessControls.tsx` connect seven bounded tools to existing verified evidence and remediation APIs. Credentials cover one stream for 24 hours/100 calls, read-only unless draft proposals are explicitly enabled. Existing scan tokens gain no access. Scope, current administrator/billing and connection lifecycle are checked; disconnected/reconnected grants cannot resume. Proposal acceptance is a human session action with revision checks and retains both original and edited text. Original scan evidence and security decisions are unchanged.
+
+Read `AGENT-TOOLS.md` before changing this boundary. It records primary MCP references, the stdio-versus-private-HTTP distinction, metadata limits, audit/retention and cooperative cancellation limits. No model provider, sampling, external message, merge or deployment is activated. Optional provider-backed explanations/cost contracts and wider client/race/accessibility acceptance remain open. Retention outcomes are the next implementation increment; agency remains later. Check the newest BUILD-LOG entry for executed verification rather than importing historical counts below.
+
 ## Durable remediation checkpoint (9 September 2026, after 39ce185)
 
 `streams/:id/remediation` GET/POST is integrated with the existing authorization, rate/CSRF/metadata guards and signed evidence adapter. `ra_007_remediation` stores original-snapshot/finding cases and append-only events. Actions: start (idempotent original finding), investigate, review, verify and reopen; revisions serialize on workspace identity. Only session users with current write authority may mutate; viewers can read, existing scan tokens cannot access human notes. Review requires HTTPS change URL, full commit, timezone-qualified review time and confirmation. Verification separately confirms that the recorded rebuild contains the reviewed change. Neither assertion is independently provider-attested; do not describe it as verified PR merge/causal provenance.

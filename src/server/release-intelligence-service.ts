@@ -5,6 +5,7 @@ import { clean, fail, IntelligenceError, metrics, reference, revision, text, uui
 import type { Baseline, Evidence, Ref, Snapshot, Stream } from '../release-intelligence/model.ts';
 export type Permission = { actorLogin: string; canManage: boolean; canWrite: boolean; actorUserId?:string; canAdminister?:boolean;capabilityKey?:string };
 export type IntelligencePorts = {
+  delegateUser?: (userId:string)=>IntelligencePorts;
   gate?: (streamId:string)=>IntelligencePorts;
   access: (sql: SqlClient, workspace: string, mode: 'read' | 'write' | 'manage', source?: string) => Promise<Permission>;
   evidence: (sql: SqlClient, workspace: string, ref: Ref) => Promise<Evidence>;
@@ -153,7 +154,7 @@ export function releaseIntelligence(sql: SqlClient, ports: IntelligencePorts) {
         }
         const events = (await tx.query<{ id: string; action: string; actor_login: string; created_at: string }>('SELECT id,action,actor_login,created_at FROM release_intelligence_events WHERE stream_id=$1 ORDER BY created_at DESC,id DESC LIMIT 30', [s.id])).rows;
         await ports.access(tx, s.workspace_id, 'read', s.source_binding);
-        return { stream: s, canManage: permission.canManage, canWrite: permission.canWrite, snapshots,
+        return { stream: s, canManage: permission.canManage, canAdminister: permission.canAdminister===true, canWrite: permission.canWrite, snapshots,
           nextCursor: page.length > 30 ? snapshots.at(-1)!.id : null, selected, analysis, unavailable, baselineEligible,
           baselines, currentBaselineState, events, notice: 'Reference adoption affects later scans, not earlier decisions. Data follows original evidence retention; this is not an indefinite archive.' };
       });

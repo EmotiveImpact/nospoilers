@@ -130,6 +130,7 @@ function createIntelligencePorts(request: Request, secrets: { sessionSecret: str
   }
   return {
     access, evidence,
+    delegateUser:userId=>createIntelligencePorts(new Request('http://internal.invalid/agent'),secrets,userId),
     gate:streamId=>request.headers.has('authorization')?connectedGatePorts({access,evidence},async gateSql=>{
       // Resolve again on each use; token revocation is never cached in a capability.
       const actor=await identity(gateSql);return actor.kind==='token'?{tokenId:actor.tokenId,workspaceId:actor.workspaceId}:fail('A workspace token is required.',401);

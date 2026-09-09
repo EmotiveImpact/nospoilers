@@ -5,6 +5,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { runCliVerify } from "./cli-verify.ts";
 import {runGate} from './cli-gate.ts';
+import {runMcp} from './cli-mcp.ts';
 import { loadPolicyFile } from "./policy.ts";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
 import { receiptSecretFromEnv } from "./receipt.ts";
@@ -84,6 +85,10 @@ async function scanViaHostedApi(
 }
 
 const program = new Command();
+
+program.command('mcp').description('Local MCP evidence tools using an explicit short-lived agent grant')
+  .option('--api <origin>','NoSpoilers application origin')
+  .action(async(options:{api?:string})=>{try{await runMcp({api:options.api??process.env.NOSPOILERS_BASE_URL??'',token:process.env.NOSPOILERS_AGENT_TOKEN??''});}catch{process.stderr.write('NoSpoilers MCP stopped. Check application origin and explicit agent access.\n');process.exitCode=2;}});
 
 program
   .name("nospoilers")

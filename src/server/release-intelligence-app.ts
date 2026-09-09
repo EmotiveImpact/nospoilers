@@ -8,6 +8,7 @@ import {productionParity} from './production-parity-service.ts';
 import {releaseGate} from './release-gate-service.ts';
 import {releaseGateAccess} from './release-gate-access.ts';
 import {releaseRemediation} from './release-remediation-service.ts';
+import {agentAccess,callAgentTool} from './agent-access.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
@@ -46,6 +47,12 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const allowed = new URL(options.appBaseUrl).origin;
         if (origin && origin !== allowed || site && !['same-origin', 'none'].includes(site) || request.headers.has('cookie') && origin !== allowed) fail('This request must originate from the application.', 403);
       }
+      if(url.pathname===`${PREFIX}agent-tools`){
+        if(request.method!=='POST'||request.headers.has('cookie'))return json({error:'Use a credential-scoped tool POST without session cookies.'},403);
+        const delegate=options.ports(request).delegateUser;if(!delegate)return json({error:'Agent tools unavailable.'},503);
+        const token=request.headers.get('authorization')?.replace(/^Bearer /,'')??'';
+        return json(await callAgentTool(options.sql,delegate,token,await body(request),AbortSignal.any([request.signal,AbortSignal.timeout(20000)])));
+      }
       if (!(await options.reserve(request))) { const response = json({ error: 'Too many history requests. Try again shortly.' }, 429); response.headers.set('Retry-After', '60'); return response; }
       const service = releaseIntelligence(options.sql, options.ports(request)), path = url.pathname.slice(PREFIX.length);
       const refRoute = /^record-context\/(upload|release)\/([^/]+)$/.exec(path);
@@ -56,9 +63,12 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation|agent-access))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='agent-access'){
+        const access=agentAccess(options.sql,options.ports(request));return json(request.method==='POST'?await access.change(id,await body(request)):await access.view(id));
+      }
       if(action==='remediation'){
         const remediation=releaseRemediation(options.sql,options.ports(request));
         if(request.method==='POST')return json(await remediation.change(id,await body(request)));

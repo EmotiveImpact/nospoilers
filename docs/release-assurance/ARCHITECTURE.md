@@ -1,5 +1,11 @@
 # Architecture and decision contract
 
+## Scoped agent tools (9 September 2026)
+
+`ra_008_agent_access` adds hashed, fixed-scope short-lived grants, bounded call audit and immutable submitted drafts/human review records. Administrator session management is distinct from the `nsa_` bearer-only gateway. The gateway delegates only after checking the grant; ordinary token endpoints do not accept these credentials. Current source/installation generation and administrator access are rechecked, including after reads. Connected comparisons require the same asset selector. Pending proposals are the only agent mutation; human acceptance appends an existing remediation investigation event in the same transaction and checks the captured case revision. No policy/receipt/alert mutation is exposed.
+
+`cli-mcp.ts` provides a local stdio lifecycle/tools/cancellation adapter, not a remote MCP/OAuth server. Fixed tool schemas and untrusted-data notices separate deterministic results from model explanations. No model provider or sampling is implemented or activated. See `AGENT-TOOLS.md` for customer setup, exact data boundaries, budgets, cancellation limits, retention and primary protocol references. Provider-backed assistance and wider client/operational acceptance remain separate work.
+
 ## Durable remediation (9 September 2026)
 
 `ra_007_remediation` binds a case to an immutable original snapshot and signed finding fingerprint. Append-only events record human investigation, reviewed change declarations, scoped signed rebuild observations and reopening. Workspace locks and expected revisions serialize mutations. Reads inspect only one selected case and re-derive its current observation from authorized original/new receipts; a historical successful check cannot remain current after expiry or evidence deletion. Reopening or a new reviewed change invalidates the previous current observation. Original-snapshot deletion cascades cases/events; candidate references are checked for availability rather than perpetually retaining deleted evidence.

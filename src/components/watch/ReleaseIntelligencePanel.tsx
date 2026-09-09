@@ -5,10 +5,11 @@ import {AutomaticCaptureControls} from './AutomaticCaptureControls';
 import {ProductionParityControls} from './ProductionParityControls';
 import {ReleaseGateControls} from './ReleaseGateControls';
 import {ReleaseRemediationControls} from './ReleaseRemediationControls';
+import {AgentAccessControls} from './AgentAccessControls';
 type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
 type View = {
   stream: Stream; snapshots: Snapshot[]; selected: Snapshot | null; nextCursor: string | null;
-  canManage: boolean; canWrite: boolean; unavailable: boolean; baselineEligible: boolean;
+  canManage: boolean; canAdminister?:boolean; canWrite: boolean; unavailable: boolean; baselineEligible: boolean;
   analysis: (Analysis & { unavailable: number; inspectedHistoryRows: number; budgetLimited: boolean }) | null;
   baselines: Baseline[]; currentBaselineState: string;
   events: Array<{ id: string; action: string; actor_login: string; created_at: string }>; notice: string;
@@ -116,6 +117,7 @@ export function ReleaseIntelligencePanel({ workspaceId, record }: { workspaceId:
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/>
+      {view.selected&&view.canAdminister?<AgentAccessControls key={`agent:${view.stream.id}:${view.selected.id}`} streamId={view.stream.id} snapshotId={view.selected.id}/>:null}
       {viewingAnother ? <p className="ns-intelligence__notice">You are inspecting a different saved historical record, not the release displayed above this section.</p> : null}
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>
