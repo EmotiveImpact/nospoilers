@@ -2,6 +2,12 @@
 
 ## Current continuation checkpoint
 
+### Verified real-app continuation (9 September 2026)
+
+The owner review is now recorded for remediation case `d44de9f3…`. Fresh upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6` was scanned at 11:20:15 UTC, saved with 64 files and zero findings, recorded in the `NoSpoilers web build` stream, and linked through the remediation check as `verified_absent`. Original receipts and alerts remain unchanged; production is explicitly unverified. Review/build provenance remains human-declared rather than provider-attested.
+
+Published head is now `ccf4b8614e944db334bf7a6508b9e5e74d10c1e3`, verified against remote and draft PR44. Subsequent real-app investigation case `d44de9f3…` was created for DOC-001 on the original three-warning upload, with explicitly agent-authored factual notes. Original receipts/alerts remain unchanged. The review form has the commit URL/hash prepared, but no review time or human confirmation. Owner review was requested and remains pending; automatic goal continuation is not approval. Once the owner confirms actual review, record its true time and perform one fresh scan of the corrected artifact: remediation requires a scan after review, so the existing09:27:19 result must not be backdated into that role. No repeated full suite is needed.
+
 Branch codex/release-assurance-spine-v1, draft PR44. This batch fixes recorded-payer upload processing, removes customer fixture controls, permits retry after definitive409 rejection, preserves keyboard/billing regressions and excludes internal prototype Markdown from build output. Commit/push result belongs in the task final response and PR head; do not reset to21a4a87. Preserve unrelated untracked QA artifacts.
 
 Owner approved a same-state restart. Real app is running in session42604 on4347 with the same separate database/signing/GitHub configuration. Do not restart it unnecessarily. The preserved launch helper is private temporary state, never commit or print it.
