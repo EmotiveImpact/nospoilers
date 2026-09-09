@@ -529,3 +529,8 @@ Auditing test ownership showed source-monitoring-ui tests target mutation contro
 ## Connected audit empty state
 
 Real connected audit is empty; no populated audit evidence is claimed. Added reusable QuietEmptyState and replaced the empty count/secret-stat panel with explanatory content. Row statistics appear only for a ready nonempty result, avoiding false zero while loading/error. Build passed and real empty screenshot reviewed. Removed an existing trailing unused undefined expression; no export or backend behaviour changed. This closes empty-state presentation, not populated audit review.
+
+
+## Policy live reflow verification
+
+Read-only signed-in policy review: independent strict/approval labels and complete conditions fit390px; expanded GitHub connection policy settings and signing inputs also fit390px, document width390. No checkbox, save, exception or policy mutation. Desktop viewport restored. Initial heading lookup found nothing because the connection settings disclosure was closed; opened the visible disclosure before inspecting. This closes those precise presentation rows, not the remaining exception confirmations or audible AT requirements. No source edit or repeated tests/build needed.
