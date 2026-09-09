@@ -13,6 +13,17 @@ function ExplanationScope({workspaceId,streamId,snapshotId}:{workspaceId:string;
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[reload,setReload]=useState(0),[consent,setConsent]=useState(false);
   const [edits,setEdits]=useState<Record<string,string>>({}),[reviews,setReviews]=useState<Record<string,boolean>>({}),[cancelling,setCancelling]=useState(false);
   const request=useRef<AbortController|null>(null),requestKey=useRef<string|null>(null),cancellation=useRef<AbortController|null>(null);
+  const initiatingControl=useRef<HTMLElement|null>(null),errorFocus=useRef<HTMLDivElement|null>(null),statusFocus=useRef<HTMLParagraphElement|null>(null);
+  useEffect(()=>{
+    const moved=(event:FocusEvent)=>{if(initiatingControl.current&&event.target!==initiatingControl.current)initiatingControl.current=null;};
+    document.addEventListener('focusin',moved);return()=>document.removeEventListener('focusin',moved);
+  },[]);
+  useEffect(()=>{
+    if(!error&&!notice)return;
+    const control=initiatingControl.current;initiatingControl.current=null;
+    if(control&&!control.isConnected&&document.activeElement===document.body)(error?errorFocus.current:statusFocus.current)?.focus();
+  },[error,notice]);
+  function rememberFocus(){initiatingControl.current=document.activeElement instanceof HTMLElement&&document.activeElement!==document.body?document.activeElement:null;}
   const path=`/api/release-intelligence/streams/${streamId}/explanations`;
   useEffect(()=>()=>{request.current?.abort();cancellation.current?.abort();},[]);
   useEffect(()=>{
@@ -25,6 +36,7 @@ function ExplanationScope({workspaceId,streamId,snapshotId}:{workspaceId:string;
   },[path,workspaceId,streamId,snapshotId,reload]);
   async function save(input:{action:string;[key:string]:unknown}){
     if(busy||request.current)return;
+    rememberFocus();
     const controller=new AbortController();request.current=controller;requestKey.current=input.action==='request'?crypto.randomUUID():null;setBusy(true);setError('');setNotice('');
     try{
       const response=await fetch(path,{method:'POST',signal:controller.signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({...input,snapshotId,confirm:true,...(requestKey.current?{requestKey:requestKey.current,consentKey:view?.consentKey}:{})})});
@@ -34,6 +46,7 @@ function ExplanationScope({workspaceId,streamId,snapshotId}:{workspaceId:string;
     finally{if(request.current===controller){request.current=null;requestKey.current=null;if(!controller.signal.aborted)setBusy(false);}}
   }
   async function cancel(){
+    rememberFocus();setError('');setNotice('');
     const key=requestKey.current;request.current?.abort();request.current=null;requestKey.current=null;setView(null);setConsent(false);setReviews({});
     if(!key){setBusy(false);setNotice('Stopped waiting. Refresh to check whether the review was already saved.');return;}
     const controller=new AbortController();cancellation.current=controller;setCancelling(true);
@@ -47,7 +60,7 @@ function ExplanationScope({workspaceId,streamId,snapshotId}:{workspaceId:string;
   return <details><summary>Optional explanation · human reviewed</summary>
     <p>Read the signed findings first. An explanation is untrusted assistance, not a new scan, verified fix, passing receipt or permission to ship.</p>
     <button type="button" disabled={busy} onClick={()=>{setView(null);setConsent(false);setReviews({});setError('');setNotice('');setReload(n=>n+1);}}>Refresh explanations</button>
-    {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
+    {error?<div ref={errorFocus} tabIndex={-1} role="alert">{error}</div>:null}{notice?<p ref={statusFocus} tabIndex={-1} role="status">{notice}</p>:null}
     {!view&&!error&&!notice?<WatchSkeleton variant="list" label="Reading optional explanation availability"/>:null}
     {busy?<><p role="status">Waiting for explanation activity…</p><button type="button" disabled={cancelling} onClick={()=>void cancel()}>Cancel explanation request</button></>:null}
     {view?<>

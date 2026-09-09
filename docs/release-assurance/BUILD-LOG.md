@@ -1,5 +1,20 @@
 # Build and verification log
 
+## 9 September 2026 — Scan/Coverage/Alerts and advanced-tool interaction states
+
+Working-tree batch after `0fe371e`: Scan exposes permission-read failure/retry across non-receipt modes and shows a labelled GitHub loading state instead of premature sign-in. Coverage detail bounds long identities/digests and keeps its close target usable. Alerts confines queue shortcuts to the alert workspace, protects editable/modal interactions, announces selection and displays a J/K hint; long titles and bodies wrap. Existing routes, response actions and evidence semantics are preserved.
+
+Production parity uses a shared labelled skeleton and conditional mutation-error focus recovery. Outcome and explanation controls recover focus after initiating controls disappear, including relevant failure/completion messages, without overriding deliberate focus moves. Existing stale-view clearing, prerequisites, consent, cancellation and provider boundaries remain intact.
+
+Focused commands on the final runtime batch:
+
+- `npm test -- tests/scan-submission-navigation-ui.test.tsx tests/coverage-detail-ui.test.tsx tests/alert-queue-keyboard.test.tsx tests/alert-filters-keyboard.test.tsx tests/watch-accessibility.test.tsx tests/workspace-alerts-rendered.test.tsx` — **30 tests / six files passed**, **3.26s**.
+- `npm test -- tests/production-parity-controls.test.tsx tests/release-outcomes-controls.test.tsx tests/release-explanation-controls.test.tsx` — **27 tests / three files passed**, **2.24s**.
+
+Final `npm run build` passed with the existing large-chunk warning. These are focused rendered checks and a build, not a full-suite rerun or live-provider verification.
+
+Real signed-in Codex in-app **desktop** review: GitHub Scan rendered the connected repository picker with the actual 88 repositories and no premature/false sign-in state. Alerts rendered 24 actual alerts, the J/K hint, selected announcement and existing response/detail. Normal saved-release detail rendering was also checked earlier in this session. These observations do **not** establish CUA keyboard execution, error injection, mobile or 200% zoom verification. Those checks and broader assistive-technology/visual acceptance remain open; Gate C is partial. No new scan, backend mutation, production deployment or provider activation is claimed. Publication remains the orchestrator's separate report.
+
 ## 9 September 2026 — Overview states and release responsive accessibility
 
 Working-tree batch after `f577fe8`: `ArtifactOverview.tsx` now labels initial loading, presents unavailable reads with readable recovery controls and gives archived workspaces a settings link. `WatchFirstProofOverview.tsx` keeps one primary existing-source action and wraps narrow controls. Existing fetches, status decisions and workspace isolation are unchanged.

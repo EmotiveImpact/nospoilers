@@ -1,5 +1,11 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C Scan/Coverage/Alerts and advanced-tool states
+
+Scan permission-read recovery, Coverage detail wrapping, scoped Alerts keyboard handling/selection announcements and parity/outcome/explanation focus recovery are implemented. Focused rendered checks passed **30 tests / six files (3.26s)** and **27 tests / three files (2.24s)**; final frontend build passed with the existing chunk warning. BUILD-LOG contains both exact commands and source scope.
+
+Signed-in desktop review confirmed the real GitHub picker (88 repositories), Alerts (24 alerts), hint/selection announcement and existing response/detail; normal release detail was checked earlier this session. CUA keyboard execution, injected-error behavior, mobile and 200% zoom were **not verified** by these browser observations. They and broader assistive-technology/visual acceptance remain open. Gate C is partial; component-test evidence is not live interaction or provider proof.
+
 ## Current Gate C Overview-state and release-accessibility milestone
 
 Overview loading, unavailable-read recovery and archived presentation are improved; First Proof retains a single primary existing-source action. Release list/detail styles implement narrow-layout and long-name reflow, while upload finding tabs now have an associated labelled panel. Controllers, evidence and permissions are unchanged.

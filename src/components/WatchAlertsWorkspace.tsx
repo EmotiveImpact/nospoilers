@@ -13,7 +13,7 @@ import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type {ReactNode} from 'react';
+import type {KeyboardEvent,ReactNode} from 'react';
 
 export type WatchAlertDetail = {
   id: number;
@@ -140,38 +140,34 @@ export function WatchAlertsWorkspace({
     return () => sessionStorage.setItem("watch-alert-scroll", String(list.scrollTop));
   }, []);
 
-  useEffect(() => {
-    if (!selected) return;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      const target = event.target;
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-      if (event.key === "j" || event.key === "J" || event.key === "ArrowDown") {
-        if (!next) return;
-        event.preventDefault();
-        onSelect(next.id);
-      }
-      if (event.key === "k" || event.key === "K" || event.key === "ArrowUp") {
-        if (!previous) return;
-        event.preventDefault();
-        onSelect(previous.id);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [next, onSelect, previous, selected]);
+  function navigateQueue(event:KeyboardEvent<HTMLElement>) {
+    if (!selected || state.status !== 'ready' || busy || assignOpen || event.defaultPrevented || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target=event.target;
+    if (!(target instanceof HTMLElement) || target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="dialog"]') || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    const fromQueue=!!listRef.current?.contains(target);
+    if ((event.key==='ArrowDown'||event.key==='ArrowUp')&&!fromQueue) return;
+    const destination=['j','J','ArrowDown'].includes(event.key)?next:['k','K','ArrowUp'].includes(event.key)?previous:null;
+    if(!destination)return;
+    event.preventDefault();onSelect(destination.id);
+    // On desktop both panes remain visible. Mobile navigation opens detail instead.
+    if(fromQueue && window.matchMedia('(min-width: 1024px)').matches){
+      const button=listRef.current?.querySelector<HTMLButtonElement>(`[data-alert-id="${destination.id}"]`);
+      button?.focus({preventScroll:true});button?.scrollIntoView({block:'nearest',behavior:'auto'});
+    }
+  }
 
   return (
-    <section className="flex h-full min-h-0 flex-col">
+    <section className="flex h-full min-h-0 flex-col" onKeyDown={navigateQueue}>
       <p className="sr-only" role="status" aria-live="polite">
-        {error ??
-          exportError ??
+        {error ||
+          exportError ||
           (busy
             ? "Updating alert…"
             : selected?.resolved_at
-              ? "Alert resolved."
+              ? `Alert resolved. Selected alert: ${selected.title}`
               : selected?.acknowledged_at
-                ? "Alert acknowledged."
-                : "")}
+                ? `Alert acknowledged. Selected alert: ${selected.title}`
+                : selected ? `Selected alert: ${selected.title}` : "")}
       </p>
       {ended ? (
         <div className="flex items-center gap-3 border-b border-danger/25 bg-danger/8 px-5 py-2.5 text-xs text-snow">
@@ -230,6 +226,7 @@ export function WatchAlertsWorkspace({
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className={cn("min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
+          <p className="border-b border-white/8 px-4 py-2 text-xs text-mute">Use J / K for next or previous alert. Arrow keys work within the queue.</p>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
           {state.status === "loading" ? (
             <WatchSkeleton variant="list" className="min-h-0 flex-1 overflow-hidden" />
@@ -265,6 +262,8 @@ export function WatchAlertsWorkspace({
                 <li key={row.id}>
                   <button
                     type="button"
+                    data-alert-id={row.id}
+                    aria-pressed={selected?.id===row.id}
                     className={cn(
                       "w-full border-l-2 border-transparent px-4 py-3 text-left hover:bg-white/[0.035]",
                       selected?.id === row.id && "border-l-snow bg-white/[0.055]",
@@ -282,7 +281,7 @@ export function WatchAlertsWorkspace({
                               : "bg-[#b18134]",
                         )}
                       />
-                      <strong className="line-clamp-2 min-w-0 flex-1 text-[13px] leading-snug text-snow">{row.title}</strong>
+                      <strong className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{row.title}</strong>
                       <span className="shrink-0 text-xs text-dim">{row.exposure}</span>
                     </span>
                     <span className="mt-1.5 block truncate pl-3.5 font-mono text-xs text-dim">
@@ -355,8 +354,8 @@ export function WatchAlertsWorkspace({
                     <span className="watch-pill">{selectedRow.rule}</span>
                     <span className="watch-pill">{selectedRow.operational?`${selectedRow.status} · Check incomplete`:`${selectedRow.status} · ${selectedRow.exposure} exposed`}</span>
                   </div>
-                  <h1 className="mt-4 font-display text-2xl leading-tight text-snow md:text-3xl">{selected.title}</h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">{selected.body}</p>
+                  <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
                   <section className="mt-8">
                     <p className="watch-kicker">Where</p>

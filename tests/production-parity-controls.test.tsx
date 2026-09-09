@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,waitFor} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {cleanup,fireEvent,render,waitFor,screen} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {ProductionParityControls} from '../src/components/watch/ProductionParityControls';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
@@ -80,4 +81,23 @@ it('does not carry deployment drafts or confirmation into another stream',async(
   await view.findByText(base.notice);
   expect((view.getByLabelText('Declared deployment ID') as HTMLInputElement).value).toBe('');
   expect((view.getByRole('checkbox',{hidden:true}) as HTMLInputElement).checked).toBe(false);
+});
+it.each([false,true])('recovers failed cancellation keyboard focus without stealing outside focus=%s',async outside=>{
+ let finish!:(r:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(response({...base,runs:[{id:'run',status:'queued',deployment_id:'deploy',authorityCurrent:true,result:null}]}))));
+ render(<><button>Outside</button><ProductionParityControls streamId="stream" refreshVersion={0}/></>);
+ fireEvent.click(screen.getByText('Approved build → production'));
+ const trigger=await screen.findByRole('button',{name:'Cancel observation'});trigger.focus();await userEvent.keyboard('{Enter}');
+ if(outside)screen.getByRole('button',{name:'Outside'}).focus();
+ finish(Response.json({error:'Rejected'},{status:403}));
+ const error=await screen.findByRole('alert');
+ await waitFor(()=>expect(document.activeElement).toBe(outside?screen.getByRole('button',{name:'Outside'}):error));
+ expect(screen.queryByRole('button',{name:'Cancel observation'})).toBeNull();
+});
+it('uses a skeleton while reading without focusing an initial read error',async()=>{
+ let finish!:(r:Response)=>void;vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
+ render(<><button>Outside</button><ProductionParityControls streamId="stream" refreshVersion={0}/></>);
+ fireEvent.click(screen.getByText('Approved build → production'));expect(screen.getByLabelText('Reading production scope…')).toBeTruthy();
+ const outside=screen.getByRole('button',{name:'Outside'});outside.focus();finish(Response.json({error:'Unavailable'},{status:503}));
+ await screen.findByRole('alert');expect(document.activeElement).toBe(outside);
 });

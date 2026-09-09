@@ -6,6 +6,17 @@ export function ReleaseOutcomeControls({streamId,workspaceId}:{streamId:string;w
   const [open,setOpen]=useState(false),[month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false);
   const lifetime=useRef<AbortController|null>(null);
+  const initiatingControl=useRef<HTMLElement|null>(null),errorFocus=useRef<HTMLDivElement|null>(null),statusFocus=useRef<HTMLParagraphElement|null>(null);
+  useEffect(()=>{
+    const moved=(event:FocusEvent)=>{if(initiatingControl.current&&event.target!==initiatingControl.current)initiatingControl.current=null;};
+    document.addEventListener('focusin',moved);return()=>document.removeEventListener('focusin',moved);
+  },[]);
+  useEffect(()=>{
+    if(!error&&!message)return;
+    const control=initiatingControl.current;initiatingControl.current=null;
+    if(control&&!control.isConnected&&document.activeElement===document.body)(error?errorFocus.current:statusFocus.current)?.focus();
+  },[error,message]);
+  function rememberFocus(){initiatingControl.current=document.activeElement instanceof HTMLElement&&document.activeElement!==document.body?document.activeElement:null;}
   const url=`/api/release-intelligence/streams/${streamId}/outcomes`;
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
@@ -17,12 +28,12 @@ export function ReleaseOutcomeControls({streamId,workspaceId}:{streamId:string;w
     }).catch(e=>{if(!c.signal.aborted){setView(null);setError(e instanceof Error?e.message:'Outcomes unavailable.');}});
     return()=>c.abort();
   },[url,streamId,workspaceId,month,open,reload]);
-  async function preference(enabled:boolean){const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy||!view)return;setBusy(true);setError('');
+  async function preference(enabled:boolean){const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy||!view)return;rememberFocus();setBusy(true);setError('');setMessage('');
     try{const r=await fetch(url,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({enabled,confirm:enabled?confirm:true,expectedRevision:view.revision})});const body=await r.json();if(!r.ok)throw new Error(body.error??'Preference not saved.');
       if(!signal.aborted){setConfirm(false);setView(null);setMessage(enabled?'Private outcome summaries enabled. No messages or telemetry are sent.':'Outcome summaries disabled. Existing release evidence is unchanged.');setReload(n=>n+1);}
     }catch(e){if(!signal.aborted){setView(null);setError(e instanceof Error?e.message:'Preference not saved.');}}finally{if(!signal.aborted)setBusy(false);}
   }
-  async function exportSummary(){const signal=lifetime.current?.signal;if(!view?.summary||busy||!signal||signal.aborted)return;setBusy(true);setError('');
+  async function exportSummary(){const signal=lifetime.current?.signal;if(!view?.summary||busy||!signal||signal.aborted)return;rememberFocus();setBusy(true);setError('');setMessage('');
     try{const response=await fetch(`${url}?month=${encodeURIComponent(month)}`,{signal,credentials:'same-origin',cache:'no-store'});const body=await response.json(),summary=body.summary;
       if(!response.ok||!body.enabled||summary?.type!=='nospoilers-private-outcomes'||summary.signed!==false||summary.scope?.streamId!==streamId||summary.scope?.workspaceId!==workspaceId||summary.window?.month!==month)throw new Error('A current authorized outcome summary is unavailable. Refresh before exporting.');
       if(signal.aborted)return;
@@ -33,8 +44,8 @@ export function ReleaseOutcomeControls({streamId,workspaceId}:{streamId:string;w
   const recordHref=record?`/watch/releases?${new URLSearchParams({workspace:workspaceId,...(record.kind==='upload'?{upload:record.id,uploadView:'detail'}:{release:record.id})})}`:null;
   return <details onToggle={e=>{if(e.target!==e.currentTarget||e.currentTarget.open===open)return;setOpen(e.currentTarget.open);setView(null);setError('');}}>
     <summary>Monthly outcomes · private</summary>
-    {message?<p role="status">{message}</p>:null}
-    {error?<div role="alert"><p>{error}</p><button type="button" onClick={()=>{setError('');setView(null);setReload(n=>n+1);}}>Retry outcomes</button></div>:null}
+    {message?<p ref={statusFocus} tabIndex={-1} role="status">{message}</p>:null}
+    {error?<div ref={errorFocus} tabIndex={-1} role="alert"><p>{error}</p><button type="button" onClick={()=>{setError('');setView(null);setReload(n=>n+1);}}>Retry outcomes</button></div>:null}
     {!view&&!error?<WatchSkeleton variant="list" label="Reading private outcome summary"/>:null}
     {view?<>
       <p>{view.notice}</p>

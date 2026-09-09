@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {ReleaseOutcomeControls} from '../src/components/watch/ReleaseOutcomeControls';
@@ -44,4 +45,24 @@ it('keeps the selected month fixed until its export finishes',async()=>{
   await screen.findByText('Private unsigned summary downloaded. Nothing was published or sent.');
   expect(picker.disabled).toBe(false);
   expect(create).toHaveBeenCalledTimes(1);
+});
+it.each([false,true])('recovers a removed outcome action without stealing outside focus=%s',async outside=>{
+ let finish!:(r:Response)=>void;vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json({enabled:false,revision:0,canConfigure:true,notice:'Private only.',summary:null}))));
+ render(<><button>Outside</button><ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/></>);
+ fireEvent.click(screen.getByText('Monthly outcomes · private'));await screen.findByText('Private only.');
+ fireEvent.click(screen.getByLabelText(/Enable private summaries/));const trigger=screen.getByRole('button',{name:'Enable private outcomes'});trigger.focus();await userEvent.keyboard('{Enter}');
+ if(outside)screen.getByRole('button',{name:'Outside'}).focus();finish(Response.json({error:'Rejected'},{status:403}));
+ const error=await screen.findByRole('alert');await waitFor(()=>expect(document.activeElement).toBe(outside?screen.getByRole('button',{name:'Outside'}):error));
+ expect(screen.queryByRole('button',{name:'Enable private outcomes'})).toBeNull();
+});
+it('focuses successful opt-in status when its invoking form is replaced',async()=>{
+ vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?Promise.resolve(Response.json({enabled:true,revision:1})):Promise.resolve(Response.json({enabled:false,revision:0,canConfigure:true,notice:'Private only.',summary:null}))));
+ render(<ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/>);fireEvent.click(screen.getByText('Monthly outcomes · private'));await screen.findByText('Private only.');
+ fireEvent.click(screen.getByLabelText(/Enable private summaries/));screen.getByRole('button',{name:'Enable private outcomes'}).focus();await userEvent.keyboard('{Enter}');
+ const status=await screen.findByText(/Private outcome summaries enabled/);await waitFor(()=>expect(document.activeElement).toBe(status));
+});
+it('does not autofocus an initial outcomes read failure',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error:'Unavailable'},{status:503})));
+ render(<><button>Outside</button><ReleaseOutcomeControls streamId="stream" workspaceId="workspace"/></>);fireEvent.click(screen.getByText('Monthly outcomes · private'));
+ const outside=screen.getByRole('button',{name:'Outside'});outside.focus();await screen.findByRole('alert');expect(document.activeElement).toBe(outside);
 });

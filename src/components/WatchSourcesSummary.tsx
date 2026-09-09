@@ -372,13 +372,13 @@ export function WatchSourcesSummary({
           {selectedSource ? (
             <>
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="watch-kicker">{selectedSource.kindLabel}</p>
-                  <DialogTitle className="mt-2 break-words font-display text-2xl text-snow">
+                  <DialogTitle className="mt-2 font-display text-2xl text-snow [overflow-wrap:anywhere]">
                     {selectedSource.name}
                   </DialogTitle>
                 </div>
-                <Button type="button" variant="ghost" size="sm" aria-label="Close coverage detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
+                <Button type="button" variant="ghost" size="sm" className="size-11 shrink-0 p-0" aria-label="Close coverage detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
                   <X className="size-4" aria-hidden />
                 </Button>
               </div>
@@ -395,9 +395,9 @@ export function WatchSourcesSummary({
                   ["Digest / version", selectedSource.digest ? `sha256 ${selectedSource.digest}` : selectedSource.coordinate],
                   ["Open alerts", String(selectedSource.alertCount)],
                 ].map(([label, value]) => (
-                  <div key={label} className="grid gap-2 px-4 py-3 sm:grid-cols-[8rem_1fr]">
+                  <div key={label} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                     <span className="text-xs text-dim">{label}</span>
-                    <span className="break-words text-sm text-snow">{value}</span>
+                    <span className="min-w-0 text-sm text-snow [overflow-wrap:anywhere]">{value}</span>
                   </div>
                 ))}
               </div>

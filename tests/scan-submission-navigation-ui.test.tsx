@@ -112,3 +112,16 @@ it('switches evidence tabs by keyboard without submitting or losing source scope
  expect(uploadArtifact).not.toHaveBeenCalled();expect(navigate).not.toHaveBeenCalled();
  expect(fetcher.mock.calls.every(call=>call.length<2||((call as unknown[])[1] as RequestInit)?.method!=='POST')).toBe(true);
 });
+it('offers permissions retry on the default GitHub tab without a premature sign-in prompt',async()=>{
+ let finish!:(r:Response)=>void;
+ const fetcher=vi.fn().mockImplementationOnce(()=>new Promise<Response>(resolve=>{finish=resolve;})).mockResolvedValue(Response.json({user:{login:'owner'},coverage:{status:'active',plan:'solo'},installations:[]}));vi.stubGlobal('fetch',fetcher);
+ render(<ScanPage embedded search="?workspace=chosen"/>);
+ expect(screen.getByLabelText('Checking sign-in and workspace permissions…')).toBeTruthy();
+ expect(screen.queryByRole('link',{name:/Sign in/})).toBeNull();
+ await act(async()=>finish(Response.json({error:'Unavailable'},{status:503})));
+ expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('retry before starting a scan'));
+ fireEvent.click(screen.getByRole('button',{name:'Retry permissions check'}));
+ await waitFor(()=>expect(screen.queryByRole('alert')).toBeNull());
+ expect(screen.getByRole('tab',{name:/GitHub repository/}).getAttribute('aria-selected')).toBe('true');
+ expect(uploadArtifact).not.toHaveBeenCalled();
+});

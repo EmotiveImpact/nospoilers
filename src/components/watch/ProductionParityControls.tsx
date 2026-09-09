@@ -1,3 +1,4 @@
+import {WatchSkeleton} from '@/components/WatchDataState';
 import {useEffect,useId,useRef,useState} from 'react';
 type Mapping={path:string;servedPath:string;representation:'identity'|'transformed'};
 type Asset={servedPath:string;state:string;reason:string;cache:string|null};
@@ -13,6 +14,8 @@ function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refres
   const [originId,setOriginId]=useState(''),[deployment,setDeployment]=useState(''),[deployedAt,setDeployedAt]=useState('');
   const [mappings,setMappings]=useState<Mapping[]>([]),[confirmed,setConfirmed]=useState(false);
   const lifetime=useRef<AbortController|null>(null);
+  const errorTarget=useRef<HTMLParagraphElement>(null),focusFailure=useRef(false);
+  useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,count=0;
@@ -27,20 +30,20 @@ function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refres
     void load();return()=>{controller.abort();clearTimeout(timer);};
   },[streamId,reload,refreshVersion]);
   async function mutate(input:object){
-    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy)return;setBusy(true);setError('');
+    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy)return;const initiatingControl=document.activeElement;focusFailure.current=false;setBusy(true);setError('');
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/production-parity`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Observation was not saved.');
       if(!signal.aborted){setView(null);setConfirmed(false);setReload(n=>n+1);}
-    }catch(e){if(!signal.aborted){setView(null);setConfirmed(false);setError(e instanceof Error?e.message:'Observation was not saved.');}}
+    }catch(e){if(!signal.aborted){focusFailure.current=document.activeElement===initiatingControl;setView(null);setConfirmed(false);setError(e instanceof Error?e.message:'Observation was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   function change(index:number,patch:Partial<Mapping>){setMappings(rows=>rows.map((r,i)=>i===index?{...r,...patch}:r));setConfirmed(false);}
   return <details><summary>Approved build → production</summary>
     <p>Compare selected files from your adopted reference with a declared deployment. This is a separate, bounded observation—not permission to ship and not a scan of everything on the site.</p>
     <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh production observations</button>
-    {error?<p role="alert">{error}</p>:null}
-    {!view&&!error?<p role="status">Reading production scope…</p>:null}
+    {error?<p ref={errorTarget} tabIndex={-1} role="alert">{error}</p>:null}
+    {!view&&!error?<WatchSkeleton variant="detail" label="Reading production scope…" className="mt-3"/>:null}
     {view?<><p>{view.notice}</p>
       {view.baselineRevision===null||!view.manifest.length?<p>Adopt an eligible signed release as a reference before mapping production files. Missing, excluded or revoked references cannot establish parity.</p>:!view.origins.length?<p>Connect a production website in Coverage and verify ownership before requesting an observation. Recording a release stream does not connect a website or start monitoring.</p>:view.canManage?<form onSubmit={event=>{
         event.preventDefault();const date=new Date(deployedAt);if(!Number.isFinite(date.getTime())){setError('Choose the declared deployment time.');return;}

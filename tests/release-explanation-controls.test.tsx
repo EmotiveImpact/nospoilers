@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {ReleaseExplanationControls} from '../src/components/watch/ReleaseExplanationControls';
@@ -65,4 +66,17 @@ it('preserves human review of retained plain-text output with the provider disab
   fireEvent.click(screen.getByRole('button',{name:'Save reviewed explanation',hidden:true}));
   await waitFor(()=>expect(fetch).toHaveBeenCalledTimes(2));
   expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toMatchObject({action:'review',accept:true,reviewedText:'Human checked aggregate explanation.',confirm:true});
+});
+it.each([false,true])('recovers failed explanation focus without stealing outside focus=%s',async outside=>{
+ let finish!:(r:Response)=>void;vi.stubGlobal('fetch',vi.fn((_url:unknown,init?:RequestInit)=>init?.method==='POST'?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json({...base,available:true,providerId:'test-provider',canRequest:true}))));
+ render(<><button>Outside</button><ReleaseExplanationControls workspaceId="workspace" streamId="stream" snapshotId="snapshot"/></>);fireEvent.click(screen.getByText('Optional explanation · human reviewed'));await screen.findByText(base.notice);
+ fireEvent.click(screen.getByLabelText(/I authorize sending/));screen.getByRole('button',{name:'Request optional explanation'}).focus();await userEvent.keyboard('{Enter}');
+ if(outside)screen.getByRole('button',{name:'Outside'}).focus();finish(Response.json({error:'Rejected'},{status:403}));
+ const error=await screen.findByRole('alert');await waitFor(()=>expect(document.activeElement).toBe(outside?screen.getByRole('button',{name:'Outside'}):error));
+ expect(screen.queryByRole('button',{name:'Request optional explanation'})).toBeNull();
+});
+it('does not autofocus an initial explanation read failure',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error:'Unavailable'},{status:503})));
+ render(<><button>Outside</button><ReleaseExplanationControls workspaceId="workspace" streamId="stream" snapshotId="snapshot"/></>);fireEvent.click(screen.getByText('Optional explanation · human reviewed'));
+ const outside=screen.getByRole('button',{name:'Outside'});outside.focus();await screen.findByRole('alert');expect(document.activeElement).toBe(outside);
 });

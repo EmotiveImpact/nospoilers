@@ -1,6 +1,7 @@
 import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
 import { CoverageLock } from "@/components/CoverageLock.tsx"
 import { Badge } from "@/components/ui/badge"
+import { WatchSkeleton } from "@/components/WatchDataState"
 import { coverageFrom, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
@@ -168,7 +169,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         setSessionReady(true)
         setSessionError(null)
       })
-      .catch(() => {if(!cancelled)setSessionError('Could not check your sign-in and workspace permissions. Please retry before uploading.')})
+      .catch(() => {if(!cancelled)setSessionError('Could not check your sign-in and workspace permissions. Please retry before starting a scan.')})
     return () => {
       cancelled = true
     }
@@ -328,6 +329,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       </div>
 
       <div role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
+      {mode!=='receipt'&&sessionError?<div role="alert" className="mt-5 space-y-3 rounded-lg border border-white/15 bg-panel p-4 text-sm text-mute"><p>{sessionError}</p><HeadlessButton type="button" className="min-h-11 underline underline-offset-4" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div>:null}
       {mode === "github" ? (
         <section className="scan-website-panel" aria-labelledby="github-connect-title">
           <div>
@@ -337,8 +339,9 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               GitHub creates ongoing Coverage and queues the first release check. NoSpoilers watches
               visibility, release assets, and packed CI output without treating the source tree as the shipped artifact.
             </p>
+            {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              {session ? null : auth.githubApp ? (
+              {!sessionReady||sessionError||session ? null : auth.githubApp ? (
                 <a className="scan-primary-action" href="/api/auth/github">
                   Sign in with GitHub <ChevronRight className="size-4" aria-hidden />
                 </a>
@@ -385,7 +388,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 {session && coverage?.status === "trial" ? " Hosted scanning is active for your trial." : null}
               </p>
               <div className="relative mt-7 min-h-52">
-                {sessionError ? <div role="alert"><p>{sessionError}</p><HeadlessButton type="button" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div> : lockReason ? <p role="status" className="mb-4 text-sm text-mute">{lockReason}</p> : locked ? <CoverageLock variant="scan" title="Subscribe to unpack here." /> : null}
+                {sessionError ? null : lockReason ? <p role="status" className="mb-4 text-sm text-mute">{lockReason}</p> : locked ? <CoverageLock variant="scan" title="Subscribe to unpack here." /> : null}
                 <Field>
                   <Label
                     htmlFor={locked ? undefined : inputId}
