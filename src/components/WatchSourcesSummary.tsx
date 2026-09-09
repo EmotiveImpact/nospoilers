@@ -107,7 +107,7 @@ export function WatchSourcesSummary({
       );
 
     return (
-      <div className="watch-narrow mb-8">
+      <div className="setup-capabilities watch-narrow mb-8">
         <WatchPageHeader
           title={headline}
           lede={
@@ -141,8 +141,8 @@ export function WatchSourcesSummary({
             </p>
           </div>
         </div>
-        <div className="mt-4">
-          {setup.steps.map((step, index) => {
+        <div className="setup-capability-grid">
+          {setup.steps.map((step) => {
             const active = setup.next?.key === step.key;
             const done = step.proof === "covered";
             return (
@@ -159,7 +159,7 @@ export function WatchSourcesSummary({
                     className={cn("watch-mark", done && "watch-mark-done", active && "watch-mark-now")}
                     aria-hidden
                   >
-                    {done ? <CheckCircle2 className="size-3" aria-hidden /> : index + 1}
+                    {done ? <CheckCircle2 className="size-4" aria-hidden /> : <Box className="size-4" aria-hidden />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <strong className="watch-small block text-snow">{step.label}</strong>
@@ -169,18 +169,9 @@ export function WatchSourcesSummary({
                     {step.proof === "check-needed" ? "check needed" : step.proof}
                   </span>
                 </div>
-                {active ? (
-                  <div className="watch-stepbody">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-line bg-inset px-3.5 py-3">
-                      <p className="watch-tiny min-w-0 flex-1 text-mute">{step.summary}</p>
-                      <Button type="button" size="sm" onClick={() => goToStep(step.key)}>
-                        {step.action}
-                      </Button>
-                    </div>
-                  </div>
-                ) : !done ? (
-                  <div className="flex justify-end px-4 pb-3">
-                    <Button type="button" size="sm" variant="outline" onClick={() => goToStep(step.key)}>
+                {!done ? (
+                  <div className="setup-capability-action">
+                    <Button type="button" size="sm" variant={active ? "default" : "outline"} onClick={() => goToStep(step.key)}>
                       {step.action}
                     </Button>
                   </div>

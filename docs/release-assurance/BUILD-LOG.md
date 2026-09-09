@@ -504,3 +504,8 @@ Command selection now scrolls the active option into view and removes options fr
 ## Shared tool-group component and PR synchronization
 
 Extracted the three release-tool scope sections into QuietToolGroup, preserving rendered headings, descriptions and children. Build/typecheck and diff check passed; lint has three existing history effect warnings and no errors. Reused the immediately preceding13-case history verification because this is a markup-preserving extraction. PR44 was read as draft on the expected branch and its outdated mockup28 section replaced with current Quiet Structure scope, separate focused checks and explicit C1–C3 limits. No draft-state change.
+
+
+## Optional capability cards
+
+Setup now lays optional capabilities out as responsive cards with evidence icons rather than numbered sequential steps. Removed duplicated recommended-step description and retained existing proof, next-action and route decisions. Five source-monitoring UI cases passed (1.54s); final build and diff check passed with existing chunk warning. Real signed-in desktop showed2/5 evidence states and all five capability cards; compact actual355px matched document width355 with wrapping and single-column cards. Desktop restored. No connection or scan action invoked.
