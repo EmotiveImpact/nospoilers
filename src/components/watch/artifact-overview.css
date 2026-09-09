@@ -1,8 +1,8 @@
-/* Approved mockup 28: shared graphite surfaces, capsule controls, top app glow. */
+/* Approved mockup 30: quiet structure, aligned labels and semantic status colors. */
 .overview-panel{min-width:0;padding:24px;border:0;border-radius:10px;background:#141517;overflow-wrap:anywhere}
 .overview-panel h2{font-size:16px;font-weight:500}.overview-panel>p{font-size:12px;line-height:1.7;color:#a1a1aa;margin:8px 0 16px}.overview-panel button{max-width:100%;white-space:normal;height:auto;overflow-wrap:anywhere}
 .overview-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:20px}
-.workspace-overview{--overview-surface:#141517;max-width:1140px;min-width:0;padding:12px 20px 28px;margin:auto;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.workspace-overview{--overview-surface:#111214;max-width:1140px;min-width:0;padding:12px 20px 28px;margin:auto;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 .workspace-overview .uploaded-heading,.overview-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;min-width:0}
 .workspace-overview>.uploaded-heading{margin-bottom:32px}.workspace-overview .uploaded-heading>div{min-width:0}
 .workspace-overview .watch-page-title{font-family:inherit;font-size:38px;line-height:1.2;letter-spacing:-1.3px;font-weight:500;margin:0 0 13px;max-width:800px}
@@ -41,6 +41,32 @@
 .overview-monitoring{margin-top:32px;border-top:1px solid #ffffff0b;padding-top:21px}.overview-monitoring>summary{cursor:pointer;color:#b1b1ba;font-size:12px}.workspace-overview .overview-secondary .overview-panel{padding:22px;border-radius:10px}.workspace-overview .overview-secondary button{border-radius:8px;font-size:11px;min-height:34px;background:transparent}.workspace-overview .overview-secondary p{font-size:12px;line-height:1.8}.workspace-overview .overview-secondary summary{font-size:12px;cursor:pointer}.overview-footnote{font-size:11px;line-height:1.8;color:#a1a1aa;margin-top:26px}
 .overview-evidence-drawer{width:100%;max-width:440px;height:100%;overflow-y:auto;background:#17181b;border:1px solid #ffffff14;border-radius:10px;padding:28px;box-shadow:-20px 0 90px #0007;color:#f4f4f5;animation:overview-drawer-in .3s cubic-bezier(.22,1,.36,1);overflow-wrap:anywhere}.overview-evidence-drawer h2{font-size:24px;line-height:1.3;letter-spacing:-.6px;margin:26px 0 16px;font-weight:500}.overview-evidence-drawer p{font-size:13px;color:#a1a1aa;line-height:1.8;margin:18px 0}.overview-evidence-drawer dl{background:#ffffff02;border:1px solid #ffffff0a;padding:20px;border-radius:18px;font-size:12px;margin:26px 0}.overview-evidence-drawer dl>div{margin:10px 0}.overview-evidence-drawer dt{color:#a1a1aa}.overview-evidence-drawer dd{margin:5px 0 0}.overview-drawer-close{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;border:1px solid #ffffff10;background:transparent;cursor:pointer}.overview-drawer-close svg{width:16px;height:16px}
 @keyframes overview-drawer-in{from{opacity:0;transform:translateX(35px)}to{opacity:1;transform:translateX(0)}}
+/* Quiet structure shared by populated Overview cards. */
+.overview-panel,.overview-next,.overview-metric,.overview-release-card{background:var(--overview-surface,#111214);border:1px solid #ffffff0e;box-shadow:none}
+.overview-hero{grid-template-columns:minmax(0,1.85fr) minmax(260px,1fr);gap:12px}
+.workspace-overview>.uploaded-heading{margin-bottom:26px}.workspace-overview .watch-page-title{font-size:36px}
+.overview-next{padding:26px;min-height:230px;background:linear-gradient(135deg,#17181a,#111214 75%)}
+.overview-next>.overview-eyebrow{padding:0;border:0;background:none;border-radius:0;color:#a1a1aa;font-size:10px;margin-bottom:14px}
+.workspace-overview .overview-next h2{font-size:26px;line-height:1.2;margin-bottom:12px}
+.overview-next>p:not(.overview-eyebrow){line-height:1.65;max-width:510px}
+.overview-metric{display:flex;flex-direction:column;align-items:flex-start;padding:20px;min-height:142px}
+.overview-metric>span{order:-1;margin:0 0 13px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#a1a1aa}
+.overview-metric strong{font-size:31px;line-height:1;font-weight:500;margin:0}
+.overview-metric small{margin-top:14px}.overview-metric svg{width:17px;height:17px;top:20px;opacity:.55}
+.overview-metric:hover{transform:none}
+.overview-metric .overview-status-split{display:flex;flex-wrap:wrap;gap:7px 14px}
+.overview-status-split>span{display:inline-flex;align-items:center;gap:6px}.overview-status-split>span::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.overview-status-split .is-passed{color:#3fb950}.overview-status-split .is-review{color:#ff8a80}.overview-verdict.is-failed{color:#e2453a}
+.overview-coverage{padding:24px}.overview-coverage>.overview-eyebrow{margin-bottom:18px}.overview-coverage-total{font-size:44px;line-height:1;font-weight:500;margin-bottom:25px}
+.overview-coverage dl{font-size:11px;margin-bottom:0}.overview-coverage dl>div{padding:13px 0;border-top:1px solid #ffffff0d}
+.overview-coverage-progress{border-top:1px solid #ffffff0d;padding-top:22px;margin-top:0}.overview-coverage-ring>span{background:var(--overview-surface)}
+.overview-dashboard-grid{gap:12px;margin-top:18px}.overview-dashboard-grid .overview-section-heading{padding-bottom:14px;border-bottom:1px solid #ffffff0c;margin-bottom:14px}
+.overview-section-heading h2{font-size:15px}.overview-queue{border-radius:8px}.overview-queue::before,.overview-queue button{border-radius:5px}
+.overview-alert-row{border-bottom-color:#ffffff0c}
+.overview-release-deck,.overview-connected-cards{gap:12px}.overview-release-card::before{display:none}.overview-release-card:hover{transform:none;border-color:#ffffff20}
+.overview-release-card dl{border-top:1px solid #ffffff0c;border-bottom:1px solid #ffffff0c;padding:14px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.overview-release-card dl>div{display:block;margin:0;min-width:0}.overview-release-card dd{text-align:left;margin-top:4px}
+.overview-card-action{background:transparent;border-color:#ffffff14}.overview-footnote{border-top:1px solid #ffffff0c;padding-top:20px}
 @media(max-width:1100px){.workspace-overview{padding-inline:0}.overview-dashboard-grid{grid-template-columns:1fr 1fr}.overview-next{padding:25px}.overview-coverage{padding:25px}.overview-release-card{padding:18px}.workspace-overview .watch-page-title{font-size:34px}}
 @media(max-width:850px){.overview-hero{grid-template-columns:1.35fr 1fr;gap:12px}.overview-next{padding:22px}.overview-coverage{padding:22px}.workspace-overview .overview-next h2{font-size:24px}.overview-dashboard-grid{grid-template-columns:1fr}.overview-release-deck,.overview-connected-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-overview>.uploaded-heading{flex-wrap:wrap}.overview-next .overview-primary{max-width:100%}}
 @media(max-width:600px){.workspace-overview{padding-top:0}.workspace-overview .watch-page-title{font-size:30px}.overview-hero{grid-template-columns:1fr}.overview-metric{padding:18px;min-height:140px}.overview-coverage{margin-top:4px}.overview-coverage-total{margin-bottom:15px}.overview-coverage dl{margin-bottom:15px}.overview-dashboard-grid>.overview-panel{padding:19px}.overview-section-heading{flex-wrap:wrap;gap:8px}.overview-secondary,.overview-release-deck,.overview-connected-cards{grid-template-columns:1fr}.overview-release-deck{gap:22px}.overview-release-card{padding:22px}.overview-release-tabs{flex-wrap:wrap}.overview-evidence-counts{align-items:flex-start;flex-direction:column}.overview-evidence-drawer{padding:22px}.overview-context{font-size:9px}.overview-chart{gap:7px}}

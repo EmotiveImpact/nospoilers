@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest approved Overview is mockup30 quiet structure: fine lines, labels above counts, semantic summary colors and unstacked release cards.22 Overview tests, frontend build and desktop/390px browser review passed; see BUILD-LOG. This supersedes earlier borderless panel styling. Existing real-data semantics and beUI Select remain.
+
 Latest owner-directed styling: Overview panels now use borderless 10px corners; Activity range uses actual MIT beUI Select with pinned Motion 13.2.0 and keyboard/focus adaptations. Other dropdowns remain unchanged. Reuse 11/11 focused tests, clean affected lint, passing build and signed-in desktop selection/computed-style verification recorded in BUILD-LOG. Preserved server on4347 runs in session29809.
 
 ## Owner-directed loading and Alerts cleanup

@@ -444,3 +444,10 @@ Verification: `npx vitest run tests/beui-select-ui.test.tsx tests/overview-activ
 ## 9 September 2026 — quiet mockup typography and controls
 
 Matched mockup23's font stack in the Watch shell and portalled sidebar, increased sidebar navigation icons from15px to19px and labels to14px, and changed Overview action buttons to8px corners with the mockup's neutral primary fill. Selected response tabs retain their approved segmented shape. Homepage typography remains unchanged. `npm run build` passes with existing chunk warning; diff check passes. Actual signed-in browser confirms19px sidebar SVGs, the requested font stack and8px primary button corners; screenshot inspected. Presentation-only change, no repeated functional suite or server restart.
+
+
+## 9 September 2026 — approved quiet structure integrated
+
+Mockup30 now informs live Overview: uniform dark10px cards with fine outlines, coverage/header/metadata dividers, labels above counts, aligned card spacing,8px actions and tighter response segments. Removed stacked release-card decoration. Summary status spans preserve actual counts: policy passed green, needs review coral; failed attempt labels red. Existing data, navigation, chart, beUI Select, sidebar and coverage meaning are preserved; prototype setup progress and illustrative records were not copied.
+
+Verification: `npx vitest run tests/artifact-overview-ui.test.tsx` passed22/22 (2.28s). `npm run build` passed including TypeScript (existing chunk warning); diff check clean. Signed-in desktop screenshot/computed colors verified the actual3 passed/1 review summary and22 open alerts.390px rendered without document overflow; desktop restored. No server restart or data mutation.

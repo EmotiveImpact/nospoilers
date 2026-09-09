@@ -46,7 +46,7 @@ function OverviewScope({workspaceId,search,nowLabel}:{workspaceId:string;search:
    <div className="overview-hero-left">
     <section className="overview-next"><p className="overview-eyebrow">Next action · Release evidence</p><h2>{nextAction.label}</h2><p>{nextAction.text}</p><Button className="overview-primary" onClick={()=>navigate(nextAction.href)}>{nextAction.label}<ArrowUpRight aria-hidden/></Button><small>An incomplete check is not a detected leak.</small></section>
     <div className="overview-metrics">
-     <button className="overview-metric" aria-label={`Saved attempts ${data.counts.total}`} onClick={()=>go('releases')}><strong>{data.counts.total}</strong><PackageSearch aria-hidden/><span>Saved attempts</span><small>{data.counts.passed} policy passed · {data.counts.attention} need review</small></button>
+     <button className="overview-metric" aria-label={`Saved attempts ${data.counts.total}`} onClick={()=>go('releases')}><strong>{data.counts.total}</strong><PackageSearch aria-hidden/><span>Saved attempts</span><small className="overview-status-split"><span className="is-passed">{data.counts.passed} policy passed</span><span className="is-review">{data.counts.attention} need review</span></small></button>
      <button className="overview-metric overview-metric-attention" aria-label={`Open checks ${data.alertCounts?.open??0}`} onClick={()=>navigate(`/watch/alerts?${new URLSearchParams({workspace:workspaceId,tab:'open'})}`)}><strong>{data.alertCounts?.open??0}</strong><CircleAlert aria-hidden/><span>Open checks</span><small>Workspace alerts requiring a response</small></button>
     </div>
    </div>
