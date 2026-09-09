@@ -2,6 +2,9 @@
 
 ## Gate C continuation
 
+Settings/focus milestone now verified (105 UI tests; desktop/mobile route focus; final settings styles built). Next: ReleasesScreen shows two full browsers repeating connected upload records. Builder investigated, no edits: use one visible Saved attempts/Connected revisions browser, retain distinct history, links, pagination/export; never delete records. Broader viewport/zoom/state acceptance remains. Reuse completed checks.
+
+
 Latest batch covers Coverage mobile rows, Timeline alert activity/keyboard chart, Scan keyboard tabs and app-only metadata contrast. Reuse latest BUILD-LOG results; proceed with remaining UI/state and broader accessibility acceptance. No new backend work or repeated artifact scan is needed.
 
 

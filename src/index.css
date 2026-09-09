@@ -212,6 +212,7 @@ code {
 }
 
 .watch-rail {
+  --color-dim: #92929c;
   position: relative;
   background: #09090b;
 }

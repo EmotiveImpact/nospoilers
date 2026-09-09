@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C settings/focus milestone
+
+Settings reflow and route-change focus are implemented. Combined UI milestone105/17 passes; actual closing mobile drawer and desktop sidebar focus transfers verified. Later style-only polish has final build/render checks. Release-list duplicate presentation and wider viewport/zoom/state review remain open; see latest BUILD-LOG.
+
 ## Current Gate C Coverage/Timeline/Scan batch
 
 Coverage and Timeline responsive text, truthful alert-chart semantics, keyboard chart scrolling, Scan tab navigation and app metadata contrast are narrowly verified. Latest BUILD-LOG records focused test and signed-in browser evidence. Gate C remains partial; no full WCAG claim.

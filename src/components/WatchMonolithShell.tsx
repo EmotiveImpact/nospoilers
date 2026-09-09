@@ -34,7 +34,7 @@ import {
   watchHref,
   watchPath,
 } from "@/watch/routes.ts";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {WorkspaceSwitcher} from '@/components/watch/WorkspaceSwitcher';
 
 const SIDEBAR_COLLAPSED_KEY = "nospoilers.watch.sidebar-collapsed";
@@ -184,6 +184,33 @@ export function WatchMonolithShell({
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
+  const routeContent = useRef<HTMLDivElement|null>(null);
+  const previousView = useRef(route.view);
+  useEffect(() => {
+    if (previousView.current === route.view || navOpen) return;
+    previousView.current = route.view;
+    // Query-only changes retain the selected control. Dialogs own their focus.
+    if (plansOpen) return;
+    let observer:MutationObserver|undefined;
+    const focusPage = () => {
+      routeContent.current?.focus({preventScroll:true});
+      routeContent.current?.scrollTo({top:0});
+    };
+    let frame = requestAnimationFrame(() => {
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));
+      if (dialogs.some(dialog => !dialog.hasAttribute('data-watch-navigation'))) return;
+      if (!dialogs.length) { focusPage(); return; }
+      // Headless UI retains the closing drawer during its exit transition.
+      // Wait for teardown instead of racing its focus restoration with a timer.
+      observer = new MutationObserver(() => {
+        const remaining = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));
+        if (remaining.some(dialog => !dialog.hasAttribute('data-watch-navigation'))) { observer?.disconnect(); return; }
+        if (!remaining.length) { observer?.disconnect(); frame=requestAnimationFrame(focusPage); }
+      });
+      observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-modal']});
+    });
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); };
+  }, [route.view, navOpen, plansOpen]);
   const hrefFor = (view: WatchView, tab?: AlertTab) => {
     const params=new URLSearchParams(search);
     // The sidebar opens history, not the last full detail screen.
@@ -463,7 +490,7 @@ export function WatchMonolithShell({
         {rail({ collapsed, showToggle: true })}
       </aside>
 
-      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 lg:hidden">
+      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
           <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
@@ -548,8 +575,12 @@ export function WatchMonolithShell({
           </Button>
         </header>
         <div
+          ref={routeContent}
+          tabIndex={-1}
+          role="region"
+          aria-label={`${artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]} page`}
           className={cn(
-            "min-h-0 flex-1",
+            "min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
             route.view === "alerts" ? "overflow-hidden" : "overflow-auto px-5 py-8 md:px-8",
             !guidanceOpen && "[&_.watch-guidance]:hidden",
           )}
