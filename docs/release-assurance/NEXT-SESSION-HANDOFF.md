@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest page-composition increment: Team member/invite layout, Notification and Token creation/history separation, audit/retention record styling, policy choice separation, route-specific layouts and readable connected-release rows.45 focused tests plus15 final Team/policy tests, build and affected lint passed. Real desktop review and390px Team reflow verified; see latest BUILD-LOG for limits. Preserved server currently runs via /private/tmp/nospoilers-preserved-server-start-abs.mjs in exec session78764. Do not expose its configuration.
+
 Latest: approved quiet styles now shared across Watch screens and portal dialogs via design/app-system.css. Search has a beUI-pattern Motion shell while retaining original command items/permissions and Headless UI focus handling.42 tests/8 files, final build and representative signed-in desktop/compact review passed; see BUILD-LOG. No full native-select migration or exhaustive visual-state acceptance claimed.
 
 Latest approved Overview is mockup30 quiet structure: fine lines, labels above counts, semantic summary colors and unstacked release cards.22 Overview tests, frontend build and desktop/390px browser review passed; see BUILD-LOG. This supersedes earlier borderless panel styling. Existing real-data semantics and beUI Select remain.

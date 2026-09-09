@@ -1,3 +1,4 @@
+import './design/settings-pages.css';
 import {WatchPageHeader} from "./WatchPageHeader";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
@@ -12,7 +13,7 @@ function EvidenceSettings({workspaceId,view}:{workspaceId:string;view:'retention
  const [data,setData]=useState<Settings|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0),[before,setBefore]=useState('');
  useEffect(()=>{const controller=new AbortController();void fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}/evidence-settings${before?`?before=${encodeURIComponent(before)}`:''}`,{signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok)throw new Error(body.error??'Workspace settings could not be loaded.');if(!body.workspace||!body.retention||!Array.isArray(body.events))throw new Error('Workspace settings could not be confirmed.');if(!controller.signal.aborted)setData(body);}).catch(err=>{if(!controller.signal.aborted)setError(err instanceof Error?err.message:'Workspace settings could not be loaded.');});return()=>controller.abort();},[workspaceId,before,retry]);
  function page(cursor:string){setData(null);setError('');setBefore(cursor);}
- return <section className="min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label={view==='audit'?'Workspace audit log':'Workspace retention'}>
+ return <section className="evidence-settings-page min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label={view==='audit'?'Workspace audit log':'Workspace retention'}>
   <WatchPageHeader kicker="Workspace settings" title={view==='audit'?'Audit log':'Retention & history'}/>
   <div className="watch-card min-w-0 space-y-4 p-4 text-sm leading-relaxed text-mute sm:p-5">
   {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setData(null);setRetry(value=>value+1);}}>Retry</Button>{before?<Button variant="outline" onClick={()=>page('')}>Newest activity</Button>:null}</div>:!data?<WatchSkeleton variant="list" className="mt-4" />:view==='retention'?<>

@@ -1,0 +1,39 @@
+/* Page compositions built on the approved Overview system. */
+[data-watch-page=releases] .watch-release-list li>button{grid-template-columns:20px minmax(0,1fr) 16px;gap:7px 10px;padding:18px 16px}
+[data-watch-page=releases] .watch-release-list-icon{grid-column:1;grid-row:1}
+[data-watch-page=releases] .watch-release-list-copy{grid-column:2;grid-row:1}
+[data-watch-page=releases] .watch-release-list-copy strong{font-family:inherit;font-weight:500;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+[data-watch-page=releases] .watch-release-list-status{grid-column:2;grid-row:2;font-size:9px;letter-spacing:.04em}
+[data-watch-page=releases] .watch-release-list-arrow{grid-column:3;grid-row:1}
+.scan-policy-page .policy-choice{border:0;padding:0 0 22px;margin:0;border-bottom:1px solid #ffffff0e}
+.scan-policy-page .policy-choice+ .policy-choice{padding-top:8px}
+.scan-policy-page .policy-choice p{padding-left:28px;font-size:12px;line-height:1.8;max-width:680px}
+[data-watch-page]:not([data-watch-page=alerts])>section{max-width:1120px;margin-inline:auto}
+[data-watch-page=policy]>section,[data-watch-page=retention]>section,[data-watch-page=registries]>section{max-width:960px}
+[data-watch-page=alerts] .alerts-designed>[class*="shrink-0"]{padding-block:20px}
+.alerts-designed [role=tablist]{background:#090a0c;border:1px solid #ffffff0d;padding:4px;border-radius:8px}
+.alerts-designed [role=tab]{min-height:36px;border-radius:5px;font-size:11px}
+.alerts-designed [role=tab][aria-selected=true]{background:#f4f4f5;color:#171719}
+.alerts-designed [role=tab][aria-selected=true] span{background:#1717190d;color:#343438}
+.alerts-designed aside{background:#111214}.alerts-designed aside>p{font-size:10px;color:#92929c;line-height:1.7}
+.alerts-designed [role=tablist]+button{font-size:11px}
+[data-watch-page=releases] .uploaded-heading h2{font-size:18px;font-weight:500}
+[data-watch-page=releases] .uploaded-layout{gap:18px;grid-template-columns:minmax(240px,.7fr) minmax(0,1.3fr)}
+[data-watch-page=releases] .upload-row-title strong{font-size:13px;font-weight:500;line-height:1.6}
+[data-watch-page=releases] .uploaded-list button>span:nth-child(2){font-size:12px}
+[data-watch-page=releases] .uploaded-list small{font-size:10px;line-height:1.7}
+[data-watch-page=releases] .upload-preview{padding:24px;gap:14px}
+[data-watch-page=releases] .upload-preview h3{font-size:22px;line-height:1.4;overflow-wrap:anywhere}
+[data-watch-page=releases] .upload-preview>p:not(.watch-kicker){font-size:13px;line-height:1.7}
+[data-watch-page=releases] .upload-preview dl{border-top:1px solid #ffffff0e;border-bottom:1px solid #ffffff0e;padding-block:16px}
+[data-watch-page=releases] .upload-history-toolbar{padding-block:10px;border-bottom:1px solid #ffffff0e;font-size:11px}
+.timeline-summary{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:560px}
+.timeline-summary .watch-kv{display:block;border:0;padding:0}.timeline-summary .watch-kv>span{display:block;font-size:11px;color:#92929c}.timeline-summary .watch-kv>span+span{font-size:24px;font-weight:500;color:#f4f4f5;margin-top:10px}
+.timeline-events{max-width:none;padding:0 24px}.timeline-events li{padding:18px 0 18px 22px;position:relative}.timeline-events li:before{content:'';position:absolute;left:0;top:25px;width:5px;height:5px;border:1px solid #92929c;border-radius:50%}.timeline-events li p{font-size:12px}.timeline-events li time{font-size:11px}
+[data-watch-page=health] .watch-kv,[data-watch-page=audit] .watch-kv{padding-block:16px;border-color:#ffffff0d}
+[data-watch-page=setup] .watch-stepcard{padding:20px;margin-top:12px}
+[data-watch-page=retention] .watch-stat{padding:22px;min-height:110px}
+[data-watch-page=retention] .watch-stat[aria-pressed=true]{border-color:#ffffff50;background:#1a1b1e}
+[data-watch-page=registries] form,[data-watch-page=policy] form{max-width:760px}
+[data-watch-page=scan] .watch-card{border-radius:10px}
+@media(max-width:760px){[data-watch-page=releases] .uploaded-layout{grid-template-columns:1fr}.timeline-summary{gap:16px}.timeline-events{padding:0 18px}[data-watch-page=releases] .upload-preview{padding:20px}}

@@ -157,7 +157,7 @@ export function WatchAlertsWorkspace({
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col" onKeyDown={navigateQueue}>
+    <section className="alerts-designed flex h-full min-h-0 flex-col" onKeyDown={navigateQueue}>
       <p className="sr-only" role="status" aria-live="polite">
         {error ||
           exportError ||

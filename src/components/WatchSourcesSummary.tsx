@@ -70,8 +70,6 @@ export function WatchSourcesSummary({
   if (state.status === "loading") {
     return (
       <div className="mb-8" aria-busy="true">
-        <div className="h-9 w-80 max-w-full animate-pulse rounded bg-white/8 motion-reduce:animate-none" />
-        <div className="mt-2 h-4 w-[34rem] max-w-full animate-pulse rounded bg-white/5 motion-reduce:animate-none" />
         <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
       </div>
     );

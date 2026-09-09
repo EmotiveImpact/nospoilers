@@ -1,4 +1,5 @@
 import './watch/design/app-system.css';
+import './watch/design/page-layouts.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
@@ -593,6 +594,7 @@ export function WatchMonolithShell({
           ref={routeContent}
           tabIndex={-1}
           role="region"
+          data-watch-page={route.view}
           aria-label={`${artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]} page`}
           className={cn(
             "min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
