@@ -246,9 +246,9 @@ export function WatchMonolithShell({
               <img
                 src="/assets/brand/nospoilers-mark-white.png"
                 alt=""
-                className="size-7 object-contain transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0 motion-reduce:transition-none"
+                className="size-7 object-contain transition-opacity group-hover/rail:opacity-0 group-focus-visible:opacity-0 motion-reduce:transition-none"
               />
-              <PanelLeft className="absolute size-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" aria-hidden />
+              <PanelLeft className="absolute size-4 opacity-0 transition-opacity group-hover/rail:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" aria-hidden />
             </button>
           ) : (
             <a
