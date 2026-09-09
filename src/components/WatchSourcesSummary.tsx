@@ -1,3 +1,4 @@
+import {QuietSidePreview} from "./watch/design/QuietSidePreview";
 import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import "./watch/design/coverage-page.css";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import {
 } from "@/watch/view-models.ts";
 import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogTitle } from "@headlessui/react";
 import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X } from "lucide-react";
 import { useState } from "react";
 
@@ -362,9 +363,7 @@ export function WatchSourcesSummary({
       onClose={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}
       className="watch-design-surface relative z-40"
     >
-      <DialogBackdrop className="fixed inset-0 bg-black/55 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-      <div className="fixed inset-0 flex justify-end">
-        <DialogPanel className="h-full w-full max-w-lg overflow-y-auto border-l border-white/10 bg-inset p-6 shadow-2xl transition duration-150 data-closed:translate-x-full motion-reduce:transition-none">
+      <QuietSidePreview>
           {selectedSource ? (
             <>
               <div className="flex items-start justify-between gap-4">
@@ -467,8 +466,7 @@ export function WatchSourcesSummary({
               </div>
             </>
           ) : null}
-        </DialogPanel>
-      </div>
+        </QuietSidePreview>
     </Dialog>
     </>
   );

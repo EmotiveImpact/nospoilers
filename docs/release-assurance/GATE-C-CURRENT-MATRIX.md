@@ -8,7 +8,7 @@ Current source checkpoint: 2158712 plus the direct Coverage rendering test docum
 | --- | --- | --- |
 | C1 page heading, async state, status/action/panel | WatchPageHeader, WatchDataState, QuietComponents and app-system.css are used by live pages | Audit remaining direct markup against those primitives; do not substitute matching CSS for component reuse |
 | C1 evidence table | EvidenceTable is used by uploaded manifest and workspace audit; 13 focused cases and real compact manifest reviewed | Other evidence tables must be inventoried before claiming universal reuse |
-| C1 source picker, decision, preview, settings row, dialog | Existing domain components and Headless UI dialogs implement these behaviours | Settings rows now use QuietSettingRow; centred dialogs use QuietModalSurface; connected/uploaded decisions use ReleaseDecisionPanel. Source picker and side preview still need explicit component-boundary review. Domain authority remains in callers. |
+| C1 source picker, decision, preview, settings row, dialog | Existing domain components and Headless UI dialogs implement these behaviours | Settings rows now use QuietSettingRow; centred dialogs use QuietModalSurface; connected/uploaded decisions use ReleaseDecisionPanel. Side preview now uses QuietSidePreview in Overview and Coverage. Source picker still needs explicit component-boundary review. Domain authority remains in callers. |
 | C2 responsive | Historical core-route matrix and recent compact Team, Coverage, Setup and manifest observations are in BUILD-LOG | Latest changed routes at remaining prescribed widths; native 200% zoom is not proven by viewport reflow |
 | C2 keyboard/focus | Existing component checks; live search End visibility and Escape return | Finish live representative navigation/form/dialog checks for changed layouts |
 | C2 errors/permissions | Named test files below cover rejection, retry and role boundaries | Do not label component-injected states as live provider behaviour; verify current layout of representative states |
@@ -55,3 +55,8 @@ QuietModalSurface now owns the identical backdrop, centred scroll container and 
 ## Shared release decision panel
 
 ReleaseDecisionPanel now renders the common connected/uploaded decision layout, with each caller retaining its own tone, icon, copy, actions and scope/count summary. Twelve focused uploaded/hosted evidence cases passed (1.91s); final build/diff check passed. Signed-in saved upload decision/provenance reviewed with policy-passed wording and separate production scope intact. Hosted populated visual state remains unavailable locally; no scan repeated.
+
+
+## Shared side preview
+
+QuietSidePreview now provides caller-owned Dialog presentation for Overview evidence and Coverage detail, retaining inset/full-height variants and existing focus/navigation owners.24 Overview/Coverage cases passed (2.15s), build/diff check passed. Real saved evidence drawer reviewed, Escape closed and returned focus to the exact initiating artifact button. No evidence mutation. Coverage detail remains covered by the focused component cases; no new live Coverage-drawer claim.

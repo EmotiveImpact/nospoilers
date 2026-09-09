@@ -587,3 +587,8 @@ QuietModalSurface now owns the identical backdrop, centred scroll container and 
 ## Shared release decision panel
 
 ReleaseDecisionPanel now renders the common connected/uploaded decision layout, with each caller retaining its own tone, icon, copy, actions and scope/count summary. Twelve focused uploaded/hosted evidence cases passed (1.91s); final build/diff check passed. Signed-in saved upload decision/provenance reviewed with policy-passed wording and separate production scope intact. Hosted populated visual state remains unavailable locally; no scan repeated.
+
+
+## Shared side preview
+
+QuietSidePreview now provides caller-owned Dialog presentation for Overview evidence and Coverage detail, retaining inset/full-height variants and existing focus/navigation owners.24 Overview/Coverage cases passed (2.15s), build/diff check passed. Real saved evidence drawer reviewed, Escape closed and returned focus to the exact initiating artifact button. No evidence mutation. Coverage detail remains covered by the focused component cases; no new live Coverage-drawer claim.
