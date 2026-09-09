@@ -45,3 +45,8 @@ Shared Select follow-up: removed undefined beUI foreground/background/border/mut
 ## Shared policy settings row
 
 Extracted QuietSettingRow for the two independent policy choices, preserving presentation and save/permission boundaries. Each checkbox now references its explanatory text with aria-describedby. Four scan-policy cases passed (1.64s); final build/diff check passed. Actual signed-in page reviewed and both description references resolve to the correct existing explanations; no policy changed. This closes the concrete duplicate settings-row extraction, not universal C1 completion or screen-reader speech acceptance.
+
+
+## Shared modal surface
+
+QuietModalSurface now owns the identical backdrop, centred scroll container and panel used by Add coverage and plans dialogs. Existing Dialog owners/titles/actions remain intact. Build and diff check passed; real Add coverage rendering reviewed and Escape removed the dialog with focus returned to Add coverage. No source added or billing action. This is structural reuse with live dismissal evidence, not a fresh full interaction suite or full Gate C sign-off.

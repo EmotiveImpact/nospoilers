@@ -1,3 +1,4 @@
+import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
 import { signOut } from "@/auth.ts";
@@ -607,9 +608,7 @@ export function WatchMonolithShell({
         </div>
       </div>
       <Dialog open={plansOpen} onClose={setPlansOpen} className="watch-design-surface relative z-50">
-        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
-          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
+        <QuietModalSurface>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-dim">Hosted coverage</p>
@@ -630,8 +629,7 @@ export function WatchMonolithShell({
             <div className="mt-5 flex justify-end">
               <Button type="button" onClick={() => navigate("/pricing")}>Compare plans</Button>
             </div>
-          </DialogPanel>
-        </div>
+          </QuietModalSurface>
       </Dialog>
     </div>
   );

@@ -1,3 +1,4 @@
+import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import "./watch/design/coverage-page.css";
 import { Button } from "@/components/ui/button";
 import {
@@ -324,9 +325,7 @@ export function WatchSourcesSummary({
         </p>
       ) : null}
       <Dialog open={adding} onClose={setAdding} className="watch-design-surface relative z-50">
-        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
-          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
+        <QuietModalSurface>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-dim">Add coverage</p>
@@ -355,8 +354,7 @@ export function WatchSourcesSummary({
                 </button>
               ))}
             </div>
-          </DialogPanel>
-        </div>
+          </QuietModalSurface>
       </Dialog>
     </div>
     <Dialog
