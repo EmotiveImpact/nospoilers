@@ -6,7 +6,7 @@
 
 The owner review is now recorded for remediation case `d44de9f3…`. Fresh upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6` was scanned at 11:20:15 UTC, saved with 64 files and zero findings, recorded in the `NoSpoilers web build` stream, and linked through the remediation check as `verified_absent`. Original receipts and alerts remain unchanged; production is explicitly unverified. Review/build provenance remains human-declared rather than provider-attested.
 
-Published head is now `f23ab02`, verified locally after the sidebar workspace-selector cleanup; draft PR44 remains the target. Subsequent real-app investigation case `d44de9f3…` was created for DOC-001 on the original three-warning upload, with explicitly agent-authored factual notes. Original receipts/alerts remain unchanged. The pending-review wording in the remainder of this historical paragraph is superseded by the verified continuation section above. No repeated full suite is needed.
+Published head is now `42d7111`, verified locally after the sidebar workspace-selector cleanup; draft PR44 remains the target. Subsequent real-app investigation case `d44de9f3…` was created for DOC-001 on the original three-warning upload, with explicitly agent-authored factual notes. Original receipts/alerts remain unchanged. The pending-review wording in the remainder of this historical paragraph is superseded by the verified continuation section above. No repeated full suite is needed.
 
 The paragraph immediately above is historical checkpoint text. The verified continuation section above supersedes its pending-review state.
 
