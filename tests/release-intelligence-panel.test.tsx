@@ -1,0 +1,64 @@
+// @vitest-environment jsdom
+import {afterEach,it,expect,vi} from 'vitest';
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {ReleaseIntelligencePanel} from '../src/components/watch/ReleaseIntelligencePanel';
+vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptureControls:()=>null}));
+vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:()=>null}));
+vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseOutcomeControls',()=>({ReleaseOutcomeControls:()=>null}));
+afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
+const record={kind:'upload' as const,id:'record'};
+const stream={id:'stream',workspace_id:'workspace',name:'Release product',artifact_role:'Package',channel:'stable',revision:0};
+const list={streams:[stream],links:[{stream_id:'stream',snapshot_id:'snapshot'}],canManage:true,canWrite:true};
+const detail={stream,snapshots:[],selected:null,nextCursor:null,canManage:true,canWrite:true,unavailable:false,baselineEligible:false,analysis:null,baselines:[],events:[],currentBaselineState:'not_adopted',notice:'Scoped history.'};
+const isList=(url:unknown)=>String(url).includes('/streams?');
+it('explains the hidden capabilities and opens setup with focus without creating data',async()=>{
+  const fetch=vi.fn(async()=>Response.json({...list,streams:[],links:[]}));vi.stubGlobal('fetch',fetch);
+  Element.prototype.scrollIntoView=vi.fn();
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByText('Start a history for this product');
+  fireEvent.click(screen.getByRole('button',{name:'Set up release history'}));
+  const name=screen.getByLabelText('Name');expect(document.activeElement).toBe(name);
+  expect(name.closest('details')?.open).toBe(true);
+  expect(screen.getByText(/These are separate opt-ins/)).toBeTruthy();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('removes old history and creation controls after a failed list refresh, then recovers',async()=>{
+  let failed=false;
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>isList(url)?Response.json(failed?{error:'Workspace unavailable.'}:list,{status:failed?404:200}):Response.json(detail)));
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByText('Scoped history.');
+  await waitFor(()=>expect((screen.getByRole('button',{name:'Refresh history'}) as HTMLButtonElement).disabled).toBe(false));
+  failed=true;fireEvent.click(screen.getByRole('button',{name:'Refresh history'}));
+  await screen.findByRole('alert');
+  expect(screen.queryByText('Scoped history.')).toBeNull();
+  expect(screen.queryByRole('button',{name:'Create stream and record release',hidden:true})).toBeNull();
+  failed=false;fireEvent.click(screen.getByRole('button',{name:'Retry saved history'}));
+  await screen.findByText('Scoped history.');
+});
+it('clears old workspace controls immediately while a new workspace request is pending',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>String(url).includes('workspaceId=next')?new Promise<Response>(()=>{}):Response.json(isList(url)?list:detail)));
+  const result=render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByText('Scoped history.');
+  result.rerender(<ReleaseIntelligencePanel workspaceId="next" record={record}/>);
+  expect(screen.queryByText('Scoped history.')).toBeNull();
+  expect(screen.queryByRole('button',{name:'Export private history'})).toBeNull();
+});
+it('rejects stream lists belonging to another workspace',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...list,streams:[{...stream,workspace_id:'foreign'}]})));
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByRole('alert');
+  expect(screen.queryByRole('button',{name:'Create stream and record release',hidden:true})).toBeNull();
+});
+it('does not download a history export with an unconfirmed workspace',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/export')?{type:'nospoilers-private-history',signed:false,scope:{workspaceId:'foreign',streamId:'stream'}}:isList(url)?list:detail)));
+  const create=vi.fn();vi.stubGlobal('URL',Object.assign(URL,{createObjectURL:create,revokeObjectURL:vi.fn()}));
+  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+  await screen.findByText('Scoped history.');
+  await waitFor(()=>expect((screen.getByRole('button',{name:'Export private history'}) as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByRole('button',{name:'Export private history'}));
+  await screen.findByText('Export scope was not confirmed. Refresh history before exporting.');
+  expect(create).not.toHaveBeenCalled();expect(screen.queryByText('Scoped history.')).toBeNull();
+});

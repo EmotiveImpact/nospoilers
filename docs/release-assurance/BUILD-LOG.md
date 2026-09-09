@@ -1,5 +1,15 @@
 # Build and verification log
 
+## 9 September 2026 — history discovery, recovery and export scope (after 506a235)
+
+Final full regression for this increment: **1,311 tests / 224 files passed**, 279.59 seconds. This run precedes the separately delegated assurance/parity/remediation/agent-state fixes; their verification must be recorded separately. No blocked or restarted test process was substituted for this result.
+
+Implemented identity-keyed ReleaseIntelligencePanel, list workspace/link validation, stale control removal on list/mutation/export errors, skeleton reads and explicit private export scope validation. Service export adds workspace/stream scope without raw paths/people or changing unsigned status. Added a capability explanation and setup CTA that opens/focuses the existing form. No automatic grouping, policy adoption, agent grant or source activation.
+
+Focused **28 tests / 3 files passed**, 17.18 seconds: five new panel tests (isolated child controls), existing persistence tests including the new scope assertion, and actual Hono/session/HMAC integration. Tests cover failed-list recovery, pending workspace switch, foreign list/export, setup focus and no mutation on opening. Typecheck/frontend/API builds and lint passed with existing warnings; no dependencies or schema change. No fresh native PostgreSQL run for this additive export/UI increment; existing PGlite integration ran against current source.
+
+Browser verification used the existing supported Playwright fallback because agent-browser is unavailable. Fresh synthetic fixture4371 loaded meaningful app content with no overlay/errors. Actual user page4347 confirmed the missing-stream state and the new setup button/focus with no record mutation. In isolated4371, setup form created a real stream, revealed all connected controls and downloaded scoped private history JSON. No 390px overflow or console errors. `output/playwright/history-setup-mobile.png` visually inspected; synthetic evidence, not customer activation or full accessibility acceptance. Full-suite result recorded below after completion.
+
 ## 9 September 2026 — gate stale-state and authorization acceptance (after 37a89f6)
 
 Fixed real UI gaps in ReleaseGateControls: expired/superseded decisions previously retained override forms that the server would reject; failed writes left old actions visible. Decisions now say recorded readiness and explicit inactive reason; a deadline timer removes expired overrides while the page stays open. Failed writes clear stale view/confirmation, refresh uses WatchSkeleton, and a keyed child invalidates old bindings/requests immediately on identity changes. Existing black/off-white/red styling, original receipts and enforcement rules remain unchanged. React checklist informed request cleanup and identity-local state.

@@ -1,5 +1,7 @@
 # NoSpoilers agent entry point
 
+Latest history UI increment explains stream capabilities before setup and exposes a focused setup CTA. Failed list/mutation/export responses hide stale history controls; workspace/record identity resets the panel. History JSON now includes explicit scope, verified by the downloader. See latest BUILD-LOG for exact verification; no source or gate is activated by stream creation.
+
 Latest UI hardening: Release Gate decisions explicitly show expired/consumed/policy-changed states, remove inactive overrides and reset stale controls on record changes or failed mutations. See latest BUILD-LOG for 1,306-test verification and remaining acceptance. No enforcement semantics changed.
 
 Latest increment: opt-in private monthly outcomes (`ra_009_release_outcomes`) is implemented in release detail. Read `docs/release-assurance/OUTCOMES.md` and the latest build log. Summaries derive from retained verified stream evidence, not all customer activity; no email, telemetry provider or new analytics archive. Full regression: 1,300 tests / 223 files passed. Broader acceptance and optional provider-backed assistance remain open; earlier “outcomes unbuilt” statements are historical.

@@ -1,5 +1,7 @@
 # Complete vision: implementation and acceptance map
 
+History discovery/recovery increment (after 506a235): empty/unselected stream state now explains available tools and prerequisites, with a setup button that opens and focuses the form without mutation. Failed stream-list reads/mutations/exports hide old controls; workspace/record changes reset requests/state. Export validates explicit server-returned workspace/stream scope. Focused component/database/real API checks and actual synthetic setup-to-export flow pass; see latest BUILD-LOG for final full-suite result. Broader operational/provider and complete accessibility acceptance remain open.
+
 Latest gate-state acceptance increment (after 37a89f6): expired, consumed and superseded decisions no longer offer an override; expiry updates while open. Failed writes clear stale controls and reset consent; switching record/stream invalidates the old binding immediately. Refresh uses the existing skeleton. Actual API tests prove wrong digest/deployment, viewer/foreign access and token revocation cannot consume an outstanding decision. Full 1,306 tests / 223 files passed; native PostgreSQL + UI 9 tests passed. Built-app synthetic superseded decision and keyboard/mobile disclosure verified. This closes these specific stale-state cases, not the full role/error/operational matrix.
 
 ## Latest outcome-summary increment (after 55c7982)

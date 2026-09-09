@@ -1,5 +1,6 @@
 .ns-intelligence{margin-top:1.5rem;padding:1.5rem;border:1px solid #303035;border-radius:14px;background:#111114;color:#eeeef0;min-width:0;overflow-wrap:anywhere}
 .ns-intelligence header,.ns-intelligence__actions{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;justify-content:space-between}
+.ns-intelligence__setup{padding:.5rem 0 1.25rem}.ns-intelligence__setup dd{font-size:.9rem;line-height:1.55}.ns-intelligence__setup dt{color:#eeeef0;font-size:.85rem;font-weight:600}
 .ns-intelligence h2{font-size:1.3rem;line-height:1.4;margin:.2rem 0}.ns-intelligence h3{font-size:1.1rem}.ns-intelligence p{line-height:1.65;margin:.7rem 0;font-size:.9rem}
 .ns-intelligence__eyebrow{font-size:.72rem!important;letter-spacing:.1em;text-transform:uppercase;color:#b7b7bf}.ns-intelligence__badge{font-size:.75rem;padding:.35rem .6rem;border:1px solid #42424a;border-radius:20px}
 .ns-intelligence__muted,.ns-intelligence small{color:#aaaab4}.ns-intelligence__notice{padding:.65rem;border-left:2px solid #ccc}.ns-intelligence [role=alert]{color:#ff9b99}

@@ -164,6 +164,7 @@ describe('persistent release intelligence', () => {
   test('private export is bounded metadata, not a signature or source dump', async () => {
     const c = await create(); await adopt(c.stream.id, c.snapshot.id); const exported = await service.export(c.stream.id);
     expect(exported.signed).toBe(false); expect(exported.snapshots).toHaveLength(1);
+    expect(exported.scope).toEqual({workspaceId:c.stream.workspace_id,streamId:c.stream.id});
     const text = JSON.stringify(exported); expect(text).not.toContain('dist/index.js'); expect(text).not.toContain('fixture-reviewer'); expect(text).not.toContain('Reviewed this release');
   });
   test('snapshot IDs cannot cross stream boundaries', async () => {

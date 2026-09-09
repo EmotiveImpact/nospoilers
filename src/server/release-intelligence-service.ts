@@ -201,6 +201,7 @@ export function releaseIntelligence(sql: SqlClient, ports: IntelligencePorts) {
         const baselines = (await tx.query<Baseline>('SELECT * FROM release_intelligence_baselines WHERE stream_id=$1 ORDER BY revision DESC LIMIT 1001', [s.id])).rows.map(baselineRow);
         await ports.access(tx, s.workspace_id, 'read', s.source_binding);
         return { type: 'nospoilers-private-history', version: VERSION, signed: false, exportedAt: new Date().toISOString(),
+          scope: { workspaceId: s.workspace_id, streamId: s.id },
           stream: { name: s.name, key: s.stream_key, role: s.artifact_role, channel: s.channel, format: s.format },
           snapshots: rows.slice(0, 1000).map(r => ({ digest: r.digest, scannedAt: r.scanned_at, metrics: r.metrics, excluded: r.excluded })),
           baselines: baselines.slice(0, 1000).map(b => ({ revision: b.revision, action: b.action, digest: b.digest, at: b.created_at })),

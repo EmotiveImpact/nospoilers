@@ -1,5 +1,7 @@
 # Architecture and decision contract
 
+History UI is keyed to workspace and record identity. List responses must contain only the requested workspace's streams and links to listed streams; errors hide actionable history state. Private history exports carry explicit workspace/stream IDs, validated before Blob download. Existing server access checks remain authoritative; these client checks prevent stale or mismatched presentation, not a substitute for authorization. Empty-state capability discovery invokes only the existing explicit creation form.
+
 Gate UI state is keyed by stream/record/refresh identity. It discards stale actionable data on failed mutations and during refresh; decision expiry has a bounded next-deadline timer. Recorded readiness remains historical, not present permission. Only the server can authorize consumption under current policy/evidence/credentials; disabled UI is not a security boundary.
 
 ## Private outcomes (9 September 2026)

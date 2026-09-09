@@ -1,5 +1,9 @@
 # Release intelligence continuation
 
+## History discoverability and recovery (after 506a235)
+
+The owner could not discover tools because an unlinked release showed only a collapsed creation form. The empty/unselected state now explains streams, comparisons, gate/remediation, optional outcomes/agent access and separate source/production prerequisites. Set up release history opens the existing form and focuses Name; it never creates data automatically. Identity-keyed panel state, fail-closed list errors and scoped export validation prevent stale controls/downloads after workspace changes or request failures. `releaseIntelligence.export` adds `scope:{workspaceId,streamId}`; old responses without that scope are rejected by the new downloader. Restart older local API processes when testing this additive contract; do not weaken the check. The real user server at4347 was inspected without changing records; synthetic creation/export verified at4371. See BUILD-LOG.
+
 ## Gate stale-state correction (after 37a89f6)
 
 `ReleaseGateControls` is now identity-keyed to stream/record/refresh version; pending requests abort on replacement. Failed writes remove the stale view and consent; refresh uses WatchSkeleton. Historical decisions are labelled recorded, with expired/consumed/policy-changed states and no inactive override form. A deadline timer updates expiry without repeated polling. Server remains authoritative; no gate policy/permission semantics changed. Expanded real API tests cover unconsumed decisions after revoked token, wrong deployment/digest, viewer and foreign access. See latest BUILD-LOG for full/native/browser results. Continue the broader cross-flow acceptance matrix and optional model-provider contracts; do not rebuild completed core subsystems.
