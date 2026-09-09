@@ -1,5 +1,13 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C settings, CI-access recovery and viewport milestone
+
+Retention and audit now use the shared settings heading and solid content cards; empty styling is reserved for an actual empty audit result. Long audit identities wrap in a fixed-layout table. The deletion-review form is a responsive labelled card with full-width controls and wrapping confirmation text, while all owner authority, inventory checks and typed confirmation rules remain unchanged. Exception detail now has consistent card padding, wrapping actions and 44px selection targets.
+
+Connected-source gate access now removes stale grants, token selection and consent during refresh, scope changes and failed writes. A labelled loading state replaces old actions; revocation-only authority remains available after a fresh read. Conditional focus recovery handles an initiating action that disappears without stealing deliberately moved focus. Focused verification passed 54 tests / seven files and typecheck; the final gate-access correction passed 10/10 and affected lint cleanly. Final build passed with the existing chunk warning.
+
+Current signed-in browser evidence covers the seven core routes at 390, 768, 1024 and 1440 CSS pixels without observed document overflow, plus a 720×450 effective viewport representing 200%-equivalent reflow from 1440×900. This is not native browser zoom. Expanded real assurance controls and the retained 64-file manifest also fit at 720 and 390; the manifest table stayed within its local container and long digests wrap. The real connected CI-access disclosure fit at 390. Native 200% zoom and actual screen-reader speech remain unverified, so Gate C remains partial.
+
 ## Current Gate C shared-heading and connected-evidence milestone
 
 Workspace notification, token and independent-policy pages now reuse the shared page heading while retaining their existing settings copy, landmarks and controls. Connected release findings reuse the responsive evidence panel used by uploaded artifacts: the selected finding is a named polite live region, long content wraps, the two-column row geometry is correct and the narrow layout collapses cleanly. Focus, URL scope, receipt binding and exception permissions are unchanged.

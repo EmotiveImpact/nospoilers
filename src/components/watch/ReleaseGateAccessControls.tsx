@@ -1,11 +1,27 @@
 import {useEffect,useRef,useState} from 'react';
+import {WatchSkeleton} from '../WatchDataState';
 import type {Ref} from '../../release-intelligence/model';
 type Grant={token_id:number;revision:number;enabled:boolean;expires_at:string;expired:boolean;selector:string;name:string;revoked_at:string|null};
 type View={tokens:Array<{id:number;name:string;token_prefix:string}>;grants:Grant[];eligible:boolean;canEnable:boolean;canDisable:boolean;notice:string};
-export function ReleaseGateAccessControls({streamId,record}:{streamId:string;record:Ref}){
+type Props={streamId:string;record:Ref};
+export function ReleaseGateAccessControls(props:Props){
+  return <GateAccessScope key={`${props.streamId}:${props.record.kind}:${props.record.id}`} {...props}/>;
+}
+function GateAccessScope({streamId,record}:Props){
   const [view,setView]=useState<View|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false);
   const [token,setToken]=useState(''),[days,setDays]=useState(30),[reason,setReason]=useState(''),[confirm,setConfirm]=useState(false);
   const lifetime=useRef<AbortController|null>(null);
+  const initiatingControl=useRef<HTMLElement|null>(null),errorTarget=useRef<HTMLParagraphElement|null>(null),statusTarget=useRef<HTMLParagraphElement|null>(null);
+  useEffect(()=>{
+    const moved=(event:FocusEvent)=>{if(initiatingControl.current&&event.target!==initiatingControl.current)initiatingControl.current=null;};
+    document.addEventListener('focusin',moved);return()=>document.removeEventListener('focusin',moved);
+  },[]);
+  useEffect(()=>{
+    if(!error&&!notice)return;
+    const control=initiatingControl.current;initiatingControl.current=null;
+    if(control&&!control.isConnected&&document.activeElement===document.body)(error?errorTarget.current:statusTarget.current)?.focus();
+  },[error,notice]);
+  function clearActionableView(){setView(null);setToken('');setConfirm(false);}
   useEffect(()=>{const c=new AbortController();lifetime.current=c;return()=>c.abort();},[]);
   useEffect(()=>{
     const c=new AbortController(),params=new URLSearchParams({recordKind:record.kind,recordId:record.id});
@@ -17,20 +33,21 @@ export function ReleaseGateAccessControls({streamId,record}:{streamId:string;rec
     return()=>c.abort();
   },[streamId,record.kind,record.id,reload]);
   async function save(tokenId:number,expectedRevision:number,enabled:boolean){
-    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy)return;
+    const signal=lifetime.current?.signal;if(!signal||signal.aborted||busy||!view||!(enabled?view.canEnable&&view.eligible:view.canDisable))return;
     if(reason.trim().length<8){setError('Enter a reason of at least eight characters.');return;}
+    initiatingControl.current=document.activeElement instanceof HTMLElement&&document.activeElement!==document.body?document.activeElement:null;
     setBusy(true);setError('');setNotice('');
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/gate-access`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tokenId,expectedRevision,enabled,record,days,reason,confirm})});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'CI access was not saved.');
-      if(!signal.aborted){setNotice(enabled?'Gate-only CI access saved for this asset selection. Other token permissions are unchanged.':'CI grant revoked. Previously granted decisions cannot be consumed with a renewed grant.');setReload(n=>n+1);setReason('');setConfirm(false);}
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'CI access was not saved.');}
+      if(!signal.aborted){clearActionableView();setNotice(enabled?'Gate-only CI access saved for this asset selection. Other token permissions are unchanged.':'CI grant revoked. Previously granted decisions cannot be consumed with a renewed grant.');setReload(n=>n+1);setReason('');setConfirm(false);}
+    }catch(e){if(!signal.aborted){clearActionableView();setError(e instanceof Error?e.message:'CI access was not saved.');}}
     finally{if(!signal.aborted)setBusy(false);}
   }
   return <details><summary>Connected-source CI access</summary>
-    <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh CI access</button>
-    {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
-    {!view&&!error?<p role="status">Reading explicit CI grants…</p>:null}
+    <button type="button" disabled={busy} onClick={()=>{clearActionableView();setError('');setNotice('');setReload(n=>n+1);}}>Refresh CI access</button>
+    {error?<p ref={errorTarget} tabIndex={-1} role="alert">{error}</p>:null}{notice?<p ref={statusTarget} tabIndex={-1} role="status">{notice}</p>:null}
+    {!view&&!error?<WatchSkeleton variant="list" label="Reading explicit CI grants"/>:null}
     {view?<><p>{view.notice}</p><label>CI access change reason<textarea value={reason} minLength={8} maxLength={1000} onChange={e=>{setReason(e.target.value);setConfirm(false);}}/></label>
       {view.canEnable&&view.eligible?<form onSubmit={e=>{e.preventDefault();void save(Number(token),Number(view.grants.find(g=>Number(g.token_id)===Number(token))?.revision??0),true);}}>
         <label>Existing workspace token<select required value={token} onChange={e=>{setToken(e.target.value);setConfirm(false);}}><option value="">Choose a CI token</option>{view.tokens.map(t=><option key={t.id} value={t.id}>{t.name} · {t.token_prefix}</option>)}</select></label>

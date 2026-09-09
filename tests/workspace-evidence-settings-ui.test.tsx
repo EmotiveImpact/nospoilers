@@ -27,3 +27,14 @@ it('offers retry after a failed settings request',async()=>{
  expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Please retry.'));
  expect(screen.getByRole('button',{name:'Retry'})).toBeTruthy();
 });
+it('keeps long audit identities readable in a populated settings card',async()=>{
+ const actor='owner-'+ 'long-account-'.repeat(30);
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,events:[{id:'long',action:'workspace_created',actor,created_at:'2026-09-05T12:00:00Z'}]}))));
+ render(<WorkspaceEvidenceSettings workspaceId="first" view="audit"/>);
+ const cell=await screen.findByRole('cell',{name:actor});
+ expect(cell.textContent).toBe(actor);
+ expect(cell.className).toContain('[overflow-wrap:anywhere]');
+ expect(screen.getByRole('heading',{name:'Audit log',level:1})).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Workspace audit log'}).className).not.toContain('watch-empty');
+ expect(screen.getByRole('table').closest('.watch-card')).toBeTruthy();
+});
