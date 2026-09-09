@@ -2,6 +2,8 @@
 
 ## Latest real-app remediation evidence
 
+The workspace management page no longer renders a duplicate **Create new workspace** tile beneath the workspace list. Its existing creation form remains available, while the sidebar plus item is the single compact entry point. Focused UI coverage passes 8/8.
+
 The signed-in sidebar workspace control now owns the workspace list: avatar/initials rows, a plus tile for the existing create-workspace route, and no duplicate single-install identity card. Focused UI coverage passes 8/8; the current API has no avatar metadata, so initials are the verified live fallback. No workspace mutation or billing behavior is implied by the plus item.
 
 The private outcome export flow now keeps its selected UTC month stable until the export response completes. The focused rendered control regression passes 4/4; this closes a stale-response UI race without changing summary authority or export privacy.

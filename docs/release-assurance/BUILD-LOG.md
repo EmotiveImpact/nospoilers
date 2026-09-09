@@ -1,5 +1,9 @@
 # Build and verification log
 
+## 9 September 2026 — duplicate workspace creation affordance removed
+
+The workspace management page now keeps its existing **Create a workspace** form without the redundant plus tile. The sidebar workspace menu remains the single compact entry point for opening that form. Focused workspace UI coverage passes 8/8; no workspace, billing or authorization behavior changed.
+
 ## 9 September 2026 — sidebar workspace selector
 
 The signed-in sidebar workspace control now presents avatar/initials rows and a **Create new workspace** plus item routed to the existing management form. The duplicate single-install identity card was removed; multi-source GitHub selection remains. Avatar URLs are accepted when supplied and fall back to initials on missing or failed images. The focused workspace-management and selector regression file passed 8/8. No workspace, billing, connection or authorization semantics changed.
