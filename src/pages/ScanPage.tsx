@@ -334,10 +334,9 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         <section className="scan-website-panel" aria-labelledby="github-connect-title">
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
-            <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">Connect the repository behind your release.</h2>
+            <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              GitHub creates ongoing Coverage and queues the first release check. NoSpoilers watches
-              visibility, release assets, and packed CI output without treating the source tree as the shipped artifact.
+              {session&&selectedInstall?"Choose a repository to inspect its latest published release assets. The source tree is not treated as the shipped artifact.":"GitHub creates ongoing Coverage and queues the first release check. NoSpoilers watches visibility, release assets, and packed CI output without treating the source tree as the shipped artifact."}
             </p>
             {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -350,9 +349,10 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                   Continue to sign in <ChevronRight className="size-4" aria-hidden />
                 </HeadlessButton>
               )}
-              {session&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
+              {session&&!selectedInstall&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
             </div>
             {session&&selectedInstall?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
+            {session&&selectedInstall&&new URLSearchParams(search).get('workspace')?<details className="mt-6 border-t border-white/10 pt-4 text-sm text-mute"><summary className="cursor-pointer">Connect another GitHub source</summary><div className="mt-4"><GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/></div></details>:null}
           </div>
           <aside>
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What this creates</p>

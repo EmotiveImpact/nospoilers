@@ -509,3 +509,8 @@ Extracted the three release-tool scope sections into QuietToolGroup, preserving 
 ## Optional capability cards
 
 Setup now lays optional capabilities out as responsive cards with evidence icons rather than numbered sequential steps. Removed duplicated recommended-step description and retained existing proof, next-action and route decisions. Five source-monitoring UI cases passed (1.54s); final build and diff check passed with existing chunk warning. Real signed-in desktop showed2/5 evidence states and all five capability cards; compact actual355px matched document width355 with wrapping and single-column cards. Desktop restored. No connection or scan action invoked.
+
+
+## Connected Scan priority
+
+For signed-in selected installations, Scan now leads with checking a connected release and the existing repository picker. Additional GitHub connection is a secondary disclosure below the picker; first-time sign-in/connect paths are preserved.19 scan-submission-navigation UI tests passed (1.75s), final build passed with existing chunk warning, diff check clean. Real signed-in desktop confirmed updated heading and picker-first order. No scan submission, connection mutation or server restart.
