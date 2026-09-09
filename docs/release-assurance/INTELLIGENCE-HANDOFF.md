@@ -2,6 +2,24 @@
 
 Date: 8 September 2026. Branch: `codex/release-assurance-spine-v1`. Review container: draft PR #44.
 
+## 9 September versioned gate increment
+
+New `release-gate-{schema,service}.ts`, `release-intelligence/gate.ts`, `ReleaseGateControls.tsx` and `cli-gate.ts` connect explicit gate policy adoption, rollback, evaluation, reviewed override and one-use CI consumption. Migration `ra_005_release_gate` defaults to no adopted enforcement (advisory revision zero). Existing receipt and scanner policy are unchanged. The canonical assessment comes from the existing `assessRelease` implementation after HMAC verification, with stricter freshness applied separately.
+
+GET `streams/:id/gate` returns current policy, optional recorded-build binding and bounded history. POST accepts `configure`, `evaluate`, `override` or `consume`. Configure/override require an active administrator, confirmation and reason. Tokens may evaluate/consume only evidence already available under their existing independent-workspace scope. Policy revision, digest, record, deployment attempt and five-minute expiry are enforced; consumption is one-use and rechecks current evidence/authority. Unknown/stale evidence and holds cannot be overridden. Overrides preserve blocked/review status; original signed evidence never becomes clean because permission was granted.
+
+After the existing scan-and-record workflow, an independently scoped upload can be checked immediately before deployment:
+
+```sh
+npm run nospoilers -- gate --api https://YOUR-APP-HOST \
+  --stream STREAM_UUID --upload UPLOAD_UUID \
+  --digest EXACT_ARTIFACT_SHA256 --deployment DEPLOYMENT_ATTEMPT_ID
+```
+
+Set `NOSPOILERS_TOKEN` through CI secrets, never committed files or CLI arguments. Gate exit 2 means deny/error; exit 0 in advisory/warn means **not enforced**, not a passing security result. Original `scan` exit semantics are untouched. To consume a separately reviewed, unexpired UI decision, supply `--decision DECISION_UUID` with the same upload/digest/deployment binding. A previously consumed denied decision cannot be overridden; evaluate a new attempt for review. Enabling enforce in the UI does not modify external CI automatically. Existing tokens still cannot inspect connected GitHub release streams: scoped connected-source CI capability remains unbuilt, not silently granted.
+
+Local connected tests cover Hono/session/token/HMAC, viewer/foreign/CSRF rejection, competing revision saves, concurrent single-use consumption, idempotent evaluation, stale policy/decision expiry, stale evidence, override denial for unknown, explicit blocked override, token revocation, CLI consumption and immutable receipt/deletion linkage. Native PostgreSQL gate and production-observation race scenarios passed; exact source boundaries, final full-tree results and synthetic browser details are recorded in BUILD-LOG. Provider-attested deploy provenance, wider governance races, full keyboard/role UI acceptance and operational CI rollout remain open. Durable remediation, agent/MCP and retention outcomes follow.
+
 ## 9 September bounded production-observation increment
 
 Final local tree: 209 files / 1,252 tests passed on Node 24.19.0; typecheck, frontend/API builds, lint (warnings) and diff validation passed. Native PostgreSQL and integrated synthetic browser scope are recorded in BUILD-LOG. DNS cancellation is covered; broader mid-flight authority/lease races and keyboard/role/error acceptance remain next, followed by versioned opt-in release enforcement. No production acceptance is implied.

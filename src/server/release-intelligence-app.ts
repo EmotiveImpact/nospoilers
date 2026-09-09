@@ -5,6 +5,7 @@ import { releaseIntelligence } from './release-intelligence-service.ts';
 import type { IntelligencePorts } from './release-intelligence-service.ts';
 import {automaticCapture} from './automatic-capture.ts';
 import {productionParity} from './production-parity-service.ts';
+import {releaseGate} from './release-gate-service.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
@@ -53,9 +54,22 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='gate'){
+        const gate=releaseGate(options.sql,options.ports(request));
+        if(request.method==='GET'){
+          const kind=url.searchParams.get('recordKind'),recordId=url.searchParams.get('recordId');
+          return json(await gate.view(id,kind||recordId?reference({kind,id:recordId}):undefined));
+        }
+        const input=await body(request);
+        if(input.action==='configure')return json(await gate.configure(id,input));
+        if(input.action==='evaluate')return json(await gate.evaluate(id,input),201);
+        if(input.action==='override')return json(await gate.override(id,input));
+        if(input.action==='consume')return json(await gate.consume(id,input));
+        return json({error:'Choose a gate action.'},400);
+      }
       if(action==='production-parity'){
         const parity=productionParity(options.sql,options.ports(request));
         if(request.method==='GET')return json(await parity.view(id));

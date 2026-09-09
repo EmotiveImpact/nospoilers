@@ -4,6 +4,8 @@ export const HISTORY_LIMIT = 30;
 export const MIN_SAMPLES = 5;
 export type Ref = { kind: 'upload' | 'release'; id: string };
 export type Evidence = {
+  /** Server-derived canonical pre-deploy assessment; never supplied by the caller. */
+  readiness?: 'ready' | 'review' | 'blocked' | 'unknown';
   ref: Ref; workspaceId: string; source: string; channel: 'stable' | 'beta' | 'canary'; format: string;
   digest: string; fingerprint: string; scannedAt: string; engine: string; policy: string | null;
   status: 'passed' | 'failed-policy' | 'inconclusive'; suppressed: number; findings: string[];

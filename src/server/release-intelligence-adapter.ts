@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson, verifyReceipt } from '../receipt.ts';
 import { readReceipt } from '../assurance/evidence.ts';
+import {assessRelease} from '../assurance/decision.ts';
 import { createStore, readSignedSession } from './store.ts';
 import { listUserWorkspaces } from './workspaces.ts';
 import { authenticateWorkspaceToken } from './workspace-tokens.ts';
@@ -117,7 +118,12 @@ function createIntelligencePorts(request: Request, secrets: { sessionSecret: str
       engine: receipt.engineVersion, policy: receipt.policyHash, status: receipt.status,
       suppressed: receipt.suppressedCount, findings: receipt.findingFingerprints,
       manifest: receipt.manifest.map(f => ({ ...f, sha256: f.sha256.toLowerCase() })), bytes: receipt.artifactBytes, held: governance };
-    validate(result); await access(sql, workspaceId, 'read', source); return result;
+    validate(result);
+    result.readiness=assessRelease({scopeKey:workspaceId,signature:'verified',receipt,release:{
+      id:ref.id,receiptId:null,coordinate,channel,artifactSha256:digest,artifactBytes:receipt.artifactBytes,mediaType:format,
+      createdAt:receipt.scannedAt,receiptStatus:receipt.status,mismatch:false,legalHold:{active:governance},
+    }}).beforeDeploy;
+    await access(sql, workspaceId, 'read', source); return result;
   }
   return {
     access, evidence,

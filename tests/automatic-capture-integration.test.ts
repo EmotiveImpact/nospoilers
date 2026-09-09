@@ -19,6 +19,7 @@ import {createWorkspaceOrigin,verifyWorkspaceOrigin} from '../src/server/workspa
 import {processUploadedScan} from '../src/server/upload-worker.ts';
 import {processAutomaticCapture} from '../src/server/automatic-capture-worker.ts';
 import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
+import {randomUUID} from 'node:crypto';
 
 it('connects explicit capture grants to GitHub, npm and website publication with durable owned jobs',async()=>{
   const database=process.env.NOSPOILERS_PR44_TEST_DATABASE_URL;
@@ -204,6 +205,32 @@ it('captures verified independent-workspace website completions without a GitHub
     expect((await request(parityPath,{action:'cancel',runId:cancelId})).status).toBe(200);
     expect(await store.claimJob('heavy',1,'cancelled-parity-worker')).toBeNull();
     expect((await sql.query('SELECT j.status,j.usage_reserved FROM jobs j JOIN release_production_observations r ON r.job_id=j.id WHERE r.id=$1',[cancelId])).rows).toEqual([{status:'done',usage_reserved:false}]);
+    // Mutate authority after the request starts, not merely before queueing.
+    for(const change of ['cancel','revoke','lease'] as const){
+      const response=await request(parityPath,{...parityInput,requestKey:randomUUID()});
+      expect(response.status).toBe(202);const runId=(await response.json() as {id:string}).id;
+      const claimed=await store.claimJob('heavy',1,'race-worker');expect(claimed?.kind).toBe(PRODUCTION_PARITY_JOB);
+      if(!claimed)throw new Error('Expected race observation job.');
+      let requests=0;
+      await handleJob(claimed,{store,workerId:'race-worker',receiptSecret:secrets.receiptSecret,github:stubGithub(),scan,maxAssetBytes:100000,
+        webLookup:async()=>[{address:'1.1.1.1',family:4}],webFetch:async()=>{
+          requests++;
+          if(change==='cancel')expect((await request(parityPath,{action:'cancel',runId})).status).toBe(200);
+          if(change==='revoke')await sql.query("INSERT INTO product_workspace_revocations(workspace_id,user_id) VALUES($1,'independent-owner')",[workspace.id]);
+          if(change==='lease')await sql.query("UPDATE jobs SET locked_by='replacement-worker' WHERE id=$1",[claimed.id]);
+          return new Response('<html>Owned synthetic website</html>',{headers:{'content-type':'text/html'}});
+        },notifier:{send:async()=>{throw new Error('No external delivery permitted.');}}});
+      expect(requests).toBe(1);
+      expect((await sql.query('SELECT status,result FROM release_production_observations WHERE id=$1',[runId])).rows).toEqual([{status:change==='cancel'?'cancelled':change==='revoke'?'stopped':'running',result:null}]);
+      if(change==='revoke')await sql.query("DELETE FROM product_workspace_revocations WHERE workspace_id=$1 AND user_id='independent-owner'",[workspace.id]);
+      if(change==='lease'){
+        // The legitimate replacement owner can retry; the former worker saved nothing.
+        await handleJob(claimed,{store,workerId:'replacement-worker',receiptSecret:secrets.receiptSecret,github:stubGithub(),scan,maxAssetBytes:100000,
+          webLookup:async()=>[{address:'1.1.1.1',family:4}],webFetch:async()=>new Response('<html>Owned synthetic website</html>',{headers:{'content-type':'text/html'}}),notifier:{send:async()=>{throw new Error('No external delivery permitted.');}}});
+        expect((await sql.query('SELECT status FROM release_production_observations WHERE id=$1',[runId])).rows).toEqual([{status:'completed'}]);
+      }
+      await store.finishJob(claimed.id,undefined,change==='lease'?'replacement-worker':'race-worker');
+    }
     await sql.query("UPDATE watched_origins SET verified_at=now()-interval '31 days' WHERE id=$1",[origin.id]);
     expect((await request(parityPath,{...parityInput,requestKey:'9c27a17e-1c97-4a70-b85b-9976ec6a6197'})).status).toBe(409);
     const historical=(await readParity()).runs.find(r=>r.id===queuedBody.id)!;

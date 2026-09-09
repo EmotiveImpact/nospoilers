@@ -1,5 +1,11 @@
 # Architecture and decision contract
 
+## Versioned gate addition (9 September 2026)
+
+`ra_005_release_gate` stores append-only policy revisions, evidence-bound decisions, overrides and consumptions. Gate evaluation reuses `assessRelease` through the verified intelligence adapter, adding an explicitly adopted age bound and excluding website observations from pre-deploy build permission. Policy mutation and consumption serialize on the workspace row; consumption rechecks current permissions, policy revision, original evidence fingerprint, current governance, digest, deployment identity and expiry. Each decision can be consumed once. Rollback appends a new policy revision; it never rewrites history or revalidates an older decision.
+
+Advisory/warn return `not_enforced`, never `allowed`; warn emits a CLI warning for non-ready evidence. Enforce returns allowed, explicit override or denied. An override cannot apply to unknown/stale evidence or a recorded hold, and never changes the original readiness or receipt. There is no implicit deployment interception: a customer must explicitly integrate the CLI/API step. Existing workspace-token boundaries remain; connected source CI grants are not broadened. See handoff for supported independent-upload CI usage and remaining acceptance.
+
 ## Current production-observation addition (9 September 2026)
 
 The companion-only descriptions below are historical. The branch now has `ra_002` history, `ra_003` opt-in capture and `ra_004` production-observation migrations. Production runs reuse an explicitly adopted signed reference and store binding metadata, hashes and bounded outcomes, not fetched source bodies. Original evidence deletion controls dependent run retention.

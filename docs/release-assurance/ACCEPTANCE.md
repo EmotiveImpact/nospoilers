@@ -14,7 +14,7 @@ Latest continuation: 9 September 2026. Read `INTELLIGENCE-HANDOFF.md` for exact 
 | Customer-specific normal behaviour | Implemented median/MAD advisory analysis, minimum eligible samples, deduplication, exclusions/restoration and explicit comparison windows | Not an ML model; heuristics need customer calibration and load testing; no calibrated probability or security score |
 | Automatic history capture | Explicit UI/API/CI capture preserved; opt-in exact-source completion hooks use durable jobs and revisioned grants; missing-seed stop controls and competing revisions verified locally | Operational rollout and broader lifecycle acceptance remain open. No live rule enabled |
 | Deterministic readiness | Canonical HMAC-verified server assessment drives hosted/upload detail/list and additive token scan readiness | Newly introduced assessment remains advisory; versioned enforcement is unbuilt |
-| Policy engine and exceptions | Existing policy/exception engine preserved; historical reference changes never rewrite them | No newly adopted enforcement policy in this continuation |
+| Policy engine and exceptions | Existing scanner policy preserved; separate opt-in versioned Release Gate with explicit override and rollback | Independent-upload CI connected; scoped connected-source CI authority, wider governance races and rollout remain open |
 | Policy preview | Existing reversible stricter-findings preview retained | Not a full policy editor or automatic adoption flow |
 | Before/after separation | Canonical pre-deploy assessment and separate bounded production observation | Future versioned enforcement must preserve this separation |
 | Production verification | Existing saved delivery checks interpreted with binding/freshness | Runtime verification; no new delivery worker |
@@ -41,7 +41,7 @@ Follow-on readiness cutover: hosted/upload list and detail surfaces now receive 
 
 The integration-repair tree based on `a4a3e10` passes the full supported-runtime regression: 205 files, 1,222 tests. Real Hono/store/session/token/HMAC integration and migration/concurrent-reference checks passed on PGlite and disposable native PostgreSQL. Scan-mode navigation and workspace-preserving claim navigation are repaired. See BUILD-LOG.md for exact scope and limitations; these results supersede historical unverified full-suite statements only for this increment.
 
-Current boundary: canonical readiness and opt-in automatic capture are implemented and locally verified in the scopes recorded above. Bounded production observation is connected and locally tested, with final increment results in BUILD-LOG. The full integrated browser matrix and broader race/operational acceptance remain incomplete. Versioned enforcement, durable remediation, agent tools and retention outcomes remain unbuilt. Remote CI was externally blocked before execution by the GitHub billing/spending-limit annotation. PR #44 stays draft.
+Current boundary: canonical readiness, opt-in automatic capture, bounded production observation and versioned gate are implemented in the scopes recorded here and in BUILD-LOG. The full integrated browser matrix, connected-source CI capability and broader race/operational acceptance remain incomplete. Durable remediation, agent tools and retention outcomes remain unbuilt. Remote CI was externally blocked before execution by the GitHub billing/spending-limit annotation. PR #44 stays draft.
 
 ## Verification precedence
 
@@ -59,7 +59,7 @@ RA-03: versioned baseline adoption/revocation, exclusions and advisory analysis 
 
 RA-04: bounded post-deploy observation is implemented with an adopted snapshot/receipt fingerprint, declared deployment ID and explicit file mapping. Distinct outcome states, cache metadata, same-origin redirects, identity-only transport, ownership expiry, cancellation and original-evidence linkage are covered locally. Finish broader concurrent revocation/long-delay/lease acceptance. Provider-attested deployment identity and cross-region cache proof are not implemented. This does not activate a deployment gate.
 
-RA-05: version and explicitly adopt a new preflight enforcement contract. Test timeout, stale receipt, digest binding, concurrent policy changes, audited override and rollback. Post-deployment evidence must not be required before permission to deploy.
+RA-05: versioned preflight contract is implemented: adopted advisory/warn/enforce, exact stream/record/digest/deployment binding, five-minute single-use decisions, age checks, audited non-clean override and append-only rollback. Connected tests and native PostgreSQL cover competing policy saves/consumption, stale evidence, revoked token and unchanged receipts; focused post-native cases cover decision expiry and reviewed-decision CLI consumption. Existing independent-upload token CI is supported; connected-source token capabilities, wider governance races and complete UI/operational acceptance remain open. Production evidence is never required before the deployment that creates it.
 
 RA-06: durable remediation linkage from original finding to reviewed PR, build, new signed evidence and verified resolution. Acknowledgement or an accepted exception is not a fix.
 

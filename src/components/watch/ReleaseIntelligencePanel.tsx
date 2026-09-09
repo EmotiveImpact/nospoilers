@@ -3,6 +3,7 @@ import type { Analysis, Baseline, Ref, Snapshot, Stream } from '../../release-in
 import './release-intelligence.css';
 import {AutomaticCaptureControls} from './AutomaticCaptureControls';
 import {ProductionParityControls} from './ProductionParityControls';
+import {ReleaseGateControls} from './ReleaseGateControls';
 type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
 type View = {
   stream: Stream; snapshots: Snapshot[]; selected: Snapshot | null; nextCursor: string | null;
@@ -112,6 +113,7 @@ export function ReleaseIntelligencePanel({ workspaceId, record }: { workspaceId:
       <header><h3>{view.stream.name}</h3><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing} onClick={() => setReload(n => n + 1)}>Refresh history</button><button type="button" disabled={busy || refreshing} onClick={() => void exportHistory()}>Export private history</button></div></header>
       <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
+      <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       {viewingAnother ? <p className="ns-intelligence__notice">You are inspecting a different saved historical record, not the release displayed above this section.</p> : null}
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>

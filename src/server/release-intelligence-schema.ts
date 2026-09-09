@@ -1,6 +1,7 @@
 import type { SqlClient } from './sql.ts';
 import {migrateAutomaticCapture} from './automatic-capture-schema.ts';
 import {migrateProductionParity} from './production-parity-schema.ts';
+import {migrateReleaseGate} from './release-gate-schema.ts';
 export const INTELLIGENCE_MIGRATION = 'ra_002_release_intelligence';
 export const intelligenceSchema = `
 CREATE TABLE IF NOT EXISTS release_intelligence_streams (
@@ -81,4 +82,5 @@ export async function migrateReleaseIntelligence(sql: SqlClient): Promise<void> 
   });
   await migrateAutomaticCapture(sql);
   await migrateProductionParity(sql);
+  await migrateReleaseGate(sql);
 }
