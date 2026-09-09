@@ -1,5 +1,7 @@
 ## Gate C current requirement map
 
+Populated settings UI now has isolated actual-component visual evidence (tests/ui-fixtures), including read-only/error and confirmation states. Typecheck/build and production marker exclusion passed. Customer API lifecycle is not claimed; see BUILD-LOG.
+
 Additional live release-tool acceptance: default gate/agent forms and unavailable explanation/capture/production states reviewed at four widths (see BUILD-LOG). Enabled-provider/mapping states and external zoom/AT remain unverified.
 
 Current continuation authority: NEXT-SESSION-HANDOFF.md (consolidated10 September). Earlier checkpoint entries below are chronological; they do not override the current handoff or later BUILD-LOG evidence. Gate C remains partial.

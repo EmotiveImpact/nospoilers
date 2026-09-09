@@ -52,8 +52,8 @@ Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test
 | History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Default gate/agent forms and unavailable explanation/capture/production states now reviewed at390 and geometry-checked at all four widths; enabled-provider/mapping states remain unverified |
 | Team | workspace-team-ui | Members/invite composition reviewed desktop and compact; denied-write/read-only tests exist |
 | Notifications | workspace-notifications-ui | Setup/history composition reviewed; test/rejection/duplicate protection covered without sending |
-| Tokens | workspace-tokens-ui | Reveal/revoke/read-only/uncertain creation tests exist; populated current visual state not live exercised |
-| Audit/retention | workspace-evidence-settings-ui, deletion-request-ui | Shared named table and retained deletion boundaries; real connected audit is empty and its empty state was reviewed. Populated workspace audit remains fixture-only |
+| Tokens | workspace-tokens-ui | Reveal/revoke/read-only/uncertain creation tests exist; populated/confirmation/read-only/error states now visually reviewed in isolated actual-component fixtures; real credential lifecycle not exercised |
+| Audit/retention | workspace-evidence-settings-ui, deletion-request-ui | Shared named table and retained deletion boundaries; real connected audit is empty and its empty state was reviewed. Populated workspace audit now has isolated actual-component fixture screenshots at390/1440 and geometry at all four widths; remains fixture-only |
 | Policy/exceptions | workspace-scan-policy-ui, workspace-exceptions-ui | Independent choices and expanded connected signing controls reviewed at390px without document overflow; direct exception form reviewed and improved at768px with shortcut focus verified; mutation confirmations remain component-test evidence |
 | Health/registries | settings-install-interactions-ui, workspace-coverage-health-ui | Earlier compact/focus evidence preserved; no provider or credential writes authorised by design verification |
 

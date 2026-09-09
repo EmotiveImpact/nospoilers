@@ -1,0 +1,16 @@
+import {useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {WorkspaceTokens} from '../../src/components/watch/WorkspaceTokens';
+import {WorkspaceEvidenceSettings} from '../../src/components/watch/WorkspaceEvidenceSettings';
+import './app-styles.css';
+import '../../src/components/watch/design/app-system.css';
+import './review.css';
+type Mode='tokens'|'readonly'|'audit'|'error';
+let mode:Mode='tokens';
+// Every request is resolved here. There is deliberately no network fallback.
+window.fetch=async(_input,init)=>init?.method&&init.method!=='GET'?Response.json({error:'Fixture mutations are disabled.'},{status:405}):Response.json(mode==='error'?{error:'Fixture: access is unavailable. Retry after access is restored.'}:mode==='audit'?{
+ workspace:{name:'Fixture workspace',organization_id:'fixture',role:'viewer',organization_owner:false},retention:{savedScans:4,activeScans:0},nextCursor:null,
+ events:[{id:'1',action:'workspace_created',actor:'example-owner-with-a-long-account-name',created_at:'2026-09-09T12:00:00Z'},{id:'2',action:'member_role_changed',actor:null,created_at:'2026-09-09T12:30:00Z'}],
+}:{tokens:[{id:1,name:'CI — release-package-with-a-long-integration-name',token_prefix:'fixture_only',revoked_at:null,last_used_at:'2026-09-09T12:00:00Z'},{id:2,name:'Retired build integration',token_prefix:'fixture_only',revoked_at:'2026-09-08T12:00:00Z',last_used_at:null}],nextCursor:null,canManage:mode!=='readonly'}, {status:mode==='error'?403:200});
+function Review(){const [selected,setSelected]=useState<Mode>('tokens');return <><aside className="fixture-toolbar"><strong>ISOLATED UI FIXTURES · NOT CUSTOMER DATA</strong><p>Actual components, local responses. No customer API or credentials. Mutation outcomes are not simulated.</p><div role="group" aria-label="Review state">{([['tokens','Populated tokens'],['readonly','Read-only tokens'],['audit','Populated audit'],['error','Access error']] as const).map(([value,label])=><button key={value} aria-pressed={selected===value} onClick={()=>{mode=value;setSelected(value);}}>{label}</button>)}</div></aside><main className="watch-desk fixture-page" key={selected}>{selected==='audit'?<WorkspaceEvidenceSettings workspaceId="fixture" view="audit"/>:<WorkspaceTokens workspaceId="fixture"/>}</main></>}
+createRoot(document.getElementById('root')!).render(<Review/>);

@@ -688,3 +688,9 @@ Replaced conflicting historical NEXT-SESSION-HANDOFF paragraphs with one current
 ## 2026-09-10 — Remaining expanded tool states
 
 At6821f27 (runtime88406f5), real saved upload expanded gate policy, agent access, optional explanation, automatic capture and production comparison were reviewed. Controls stayed within actual390/768/1024/1440 CSS widths. Screenshots reviewed at390 for gate/agent/explanation/production, and1440 for agent access. Explanation provider disabled, no capture selector and missing adopted reference rendered truthful unavailable states. No fields changed or actions submitted; viewport restored. This does not verify enabled-provider/mapping forms or native zoom. No build/test repeated for this read-only browser review.
+
+## 2026-09-10 — Isolated populated settings fixture
+
+Added isolated actual-component QA fixture under tests/ui-fixtures, served locally on4351 without the application API plugin. Local fetch responses have no network fallback; mutations return405, server /api returns503, CSP restricts connections. Real4347 app untouched. Populated token/confirmation, read-only and error states screenshot-reviewed at390; audit screenshot-reviewed at390/1440. Token/audit geometry fits390/768/1024/1440. This is synthetic fixture visual evidence, explicitly not real credential or API lifecycle evidence. Fixture typecheck and production build passed; fixture marker strings absent from dist.
+
+Commands: `npx tsc -p tests/ui-fixtures/tsconfig.json`, `npm run build`, `rg -l "ISOLATED UI FIXTURES|Fixture mutations are disabled|fixture_only" dist` (no matches), diff check. Initial fixture omitted utility source scanning; corrected with app-styles.css @source before accepting screenshots. Fixture server live exec86333, not the real server. No backend scan or account changes.
