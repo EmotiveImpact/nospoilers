@@ -70,7 +70,7 @@ it('routes connected evidence to its own installation instead of the selected on
 it('shows the daily workspace rather than first proof when alerts exist without uploads',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...data,counts:{total:0,active:0,attention:0,passed:0},recent:[],alertCounts:{open:1,waiting:0,done:0,mine:0}}))));
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
- expect(await screen.findByRole('heading',{name:'Product'})).toBeTruthy();
+ expect(await screen.findByText(/Product · Your releases/)).toBeTruthy();
  expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Open: 1'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&tab=open');
@@ -139,7 +139,7 @@ it.each([403,503])('recovers from HTTP%s without presenting denied or unavailabl
  render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
  await screen.findByRole('alert');expect(screen.queryByRole('heading',{name:'Prove your first release is clean.'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Choose a workspace'}));expect(navigate).toHaveBeenLastCalledWith('/watch/workspaces');
- fireEvent.click(screen.getByRole('button',{name:'Retry'}));await screen.findByRole('heading',{name:'Product'});
+ fireEvent.click(screen.getByRole('button',{name:'Retry'}));await screen.findByText(/Product · Your releases/);
  expect(screen.queryByRole('alert')).toBeNull();expect(fetcher).toHaveBeenCalledTimes(2);
 });
 it('clears prior overview on workspace change and ignores its late response',async()=>{
@@ -147,8 +147,8 @@ it('clears prior overview on workspace change and ignores its late response',asy
  vi.stubGlobal('fetch',vi.fn((url:string)=>url.includes('/old/')?new Promise<Response>(resolve=>{finish=resolve;}):Promise.resolve(Response.json({...data,workspace:{name:'Current workspace',archived:false}}))));
  const view=render(<ArtifactOverview workspaceId="old" search="?workspace=old" nowLabel="Today"/>);
  view.rerender(<ArtifactOverview workspaceId="new" search="?workspace=new" nowLabel="Today"/>);
- await screen.findByRole('heading',{name:'Current workspace'});
+ await screen.findByText(/Current workspace · Your releases/);
  await act(async()=>finish(Response.json(data)));
- expect(screen.queryByRole('heading',{name:'Product'})).toBeNull();
- expect(screen.getByRole('heading',{name:'Current workspace'})).toBeTruthy();
+ expect(screen.queryByText(/Product · Your releases/)).toBeNull();
+ expect(screen.getByText(/Current workspace · Your releases/)).toBeTruthy();
 });

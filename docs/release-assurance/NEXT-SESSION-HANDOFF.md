@@ -104,3 +104,7 @@ The workspace currently has 88 repository surfaces and 24 missing-release alerts
 5. Continue the remaining full acceptance, prioritizing one real scan → saved release → review/evidence loop. Production non-Docker parser isolation and optional live-provider proof remain separate unresolved requirements, not permission to deploy or activate providers. Agency delegation/CSV remain deferred; reuse explicit individual invitations.
 
 Reuse builder/fixer/tester if still present. Keep file ownership separate; orchestrator owns shared server/browser, cumulative tests and publishing. Do not keep all agents busy with duplicate audits. Stop the old task before continuing in a new conversation.
+
+## Latest owner-approved visual direction — Overview 23
+
+Owner approved the quiet Overview mockup and requested implementation. ArtifactOverview now uses the reference's large rounded cards, open evidence rows and restrained surfaces, preserving sidebar behavior and real existing data/navigation. Cards are retained attempt totals, not invented monthly activity; the prototype heatmap is not connected because its historical series is unavailable here. BUILD-LOG records 30 focused passing tests, successful production build and signed-in desktop verification. No need to rerun the backend suite or artifact scan. Live app uses the same preserved launcher on 4347. Further visual review/mobile verification remains separate from this desktop increment.
