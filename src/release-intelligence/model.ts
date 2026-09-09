@@ -6,6 +6,8 @@ export type Ref = { kind: 'upload' | 'release'; id: string };
 export type Evidence = {
   /** Server-derived canonical pre-deploy assessment; never supplied by the caller. */
   readiness?: 'ready' | 'review' | 'blocked' | 'unknown';
+  /** Full commit hash, only when present in the verified signed receipt. Not provider attestation. */
+  sourceRevision?: string | null;
   ref: Ref; workspaceId: string; source: string; channel: 'stable' | 'beta' | 'canary'; format: string;
   digest: string; fingerprint: string; scannedAt: string; engine: string; policy: string | null;
   status: 'passed' | 'failed-policy' | 'inconclusive'; suppressed: number; findings: string[];

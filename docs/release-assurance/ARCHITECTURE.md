@@ -1,5 +1,11 @@
 # Architecture and decision contract
 
+## Durable remediation (9 September 2026)
+
+`ra_007_remediation` binds a case to an immutable original snapshot and signed finding fingerprint. Append-only events record human investigation, reviewed change declarations, scoped signed rebuild observations and reopening. Workspace locks and expected revisions serialize mutations. Reads inspect only one selected case and re-derive its current observation from authorized original/new receipts; a historical successful check cannot remain current after expiry or evidence deletion. Reopening or a new reviewed change invalidates the previous current observation. Original-snapshot deletion cascades cases/events; candidate references are checked for availability rather than perpetually retaining deleted evidence.
+
+The signed adapter optionally exposes a full signed source revision hash; contradictions with the declared reviewed commit yield unknown. This is not provider attestation. Equal scanner/policy and exact connected-asset identity, newer bytes/time, freshness, no suppression and no hold are required. Same-rule findings on a different path cannot be used to fake a fix. Website observations remain in the production lane. Neither a case state nor a model can mint a receipt, approve a deployment or close an alert through this API. Human remediation notes are not exposed to existing scan tokens.
+
 ## Connected-source gate capability (9 September 2026)
 
 Migration `ra_006_gate_ci_access` adds opt-in grants keyed by stream/token and a capability key on gate decisions. The gate-route-only adapter delegates signed-evidence reads to the granting administrator's current authority, but audits the token actor and denies all management operations. Asset selector, channel/format, source generation, installation generation, expiry and token/workspace boundaries are checked. The installation counter advances on suspension/disconnection changes, including reconnection, so an old grant cannot silently resume. Grant renewal changes the capability key and invalidates decisions made under the old grant. Current policy is readable; general decision/policy history is not returned to this capability. Other API routes retain their ordinary token permissions.

@@ -4,6 +4,7 @@ import './release-intelligence.css';
 import {AutomaticCaptureControls} from './AutomaticCaptureControls';
 import {ProductionParityControls} from './ProductionParityControls';
 import {ReleaseGateControls} from './ReleaseGateControls';
+import {ReleaseRemediationControls} from './ReleaseRemediationControls';
 type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
 type View = {
   stream: Stream; snapshots: Snapshot[]; selected: Snapshot | null; nextCursor: string | null;
@@ -114,6 +115,7 @@ export function ReleaseIntelligencePanel({ workspaceId, record }: { workspaceId:
       <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
+      <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/>
       {viewingAnother ? <p className="ns-intelligence__notice">You are inspecting a different saved historical record, not the release displayed above this section.</p> : null}
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>

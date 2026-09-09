@@ -114,7 +114,9 @@ function createIntelligencePorts(request: Request, secrets: { sessionSecret: str
     if (!secrets.receiptSecret.trim() || !verifyReceipt(encoded, secrets.receiptSecret, digest).ok) return fail('The original receipt signature could not be verified.', 422);
     const receipt = readReceipt(raw);
     if (!receipt || receipt.coordinate !== coordinate || (receipt.channel ?? 'stable') !== channel || receipt.status !== expectedStatus) return fail('Receipt evidence is incomplete or belongs to another record.', 422);
+    const signedRevision=(raw as {sourceRevision?:unknown}).sourceRevision;
     const result: Evidence = { ref, workspaceId, source, channel, format, digest,
+      sourceRevision:typeof signedRevision==='string'&&/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(signedRevision)?signedRevision.toLowerCase():null,
       fingerprint: createHash('sha256').update(encoded).digest('hex'), scannedAt: receipt.scannedAt,
       engine: receipt.engineVersion, policy: receipt.policyHash, status: receipt.status,
       suppressed: receipt.suppressedCount, findings: receipt.findingFingerprints,

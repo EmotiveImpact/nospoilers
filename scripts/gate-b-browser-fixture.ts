@@ -57,6 +57,10 @@ await sql.query("UPDATE watched_origins SET verified_at=now(),last_checked_at=no
 const upload=randomUUID(),receipt=signReceipt(buildUnsignedReceipt(dirty,'qa-independent-upload'),secret);
 await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
  VALUES($1,'qa-owner',$2,'QA independent sourcemap.tgz',$3,'done',$4::jsonb,$5::jsonb,now())`,[upload,workspace.id,dirty.artifactSha256??'',JSON.stringify(dirty),JSON.stringify(receipt)]);
+// Fresh rebuilt bytes for the explicit, human-reviewed remediation UI flow.
+const rebuiltUpload=randomUUID(),rebuiltReport={...clean,scannedAt:new Date().toISOString()},rebuiltReceipt=signReceipt(buildUnsignedReceipt(rebuiltReport,'qa-rebuilt-upload'),secret);
+await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
+ VALUES($1,'qa-owner',$2,'QA rebuilt clean.tgz',$3,'done',$4::jsonb,$5::jsonb,now())`,[rebuiltUpload,workspace.id,clean.artifactSha256??'',JSON.stringify(rebuiltReport),JSON.stringify(rebuiltReceipt)]);
 const websiteAttempt=randomUUID();
 await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,source_origin_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
  VALUES($1,'qa-owner',$2,$3,'https://qa-fixture.example.com/',$4,'done',$5::jsonb,$6::jsonb,now())`,[websiteAttempt,workspace.id,website.id,dirty.artifactSha256??'',JSON.stringify(dirty),JSON.stringify(receipt)]);
@@ -95,5 +99,5 @@ const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
  const candidate=path.resolve(dist,`.${decodeURIComponent(url.pathname)}`);
  if(!candidate.startsWith(dist+path.sep))return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});
  try{return new Response(await readFile(candidate),{headers:{'Content-Type':mime[path.extname(candidate)]??'application/octet-stream','Cache-Control':'no-store'}});}catch{return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});}
-}},()=>console.log(JSON.stringify({qaOnly:true,entry:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
+}},()=>console.log(JSON.stringify({qaOnly:true,entry:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,rebuiltUpload,reviewedAt:dirty.scannedAt,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
 async function stop(){server.close();await sql.close();process.exit(0);}process.once('SIGINT',stop);process.once('SIGTERM',stop);
