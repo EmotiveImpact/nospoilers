@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import {ReleaseIntelligencePanel} from '../src/components/watch/ReleaseIntelligencePanel';
 vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptureControls:()=>null}));
 vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=>null}));
-vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:({record}:{record:{id:string}})=><button type="button">Gate for {record.id}</button>}));
 vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:()=>null}));
 vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:({snapshotId}:{snapshotId:string})=><button type="button">Grant agent for {snapshotId}</button>}));
 vi.mock('../src/components/watch/ReleaseExplanationControls',()=>({ReleaseExplanationControls:()=>null}));
@@ -109,7 +109,7 @@ it('does not steal focus after the customer has left the history panel during a 
 it('identifies same-digest records distinctly and announces a keyboard-selected historical record',async()=>{
   const snapshot={id:'snapshot',record_kind:'upload',record_id:'record',scanned_at:'2026-09-09T00:00:00.000Z',digest:'a'.repeat(64),metrics:{files:1},excluded:false};
   const next={...snapshot,id:'next',record_id:'another-record'};
-  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(isList(url)?list:{...detail,snapshots:[snapshot,next],selected:String(url).includes('snapshotId=next')?next:snapshot})));
+  vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(isList(url)?list:{...detail,canAdminister:true,snapshots:[snapshot,next],selected:String(url).includes('snapshotId=next')?next:snapshot})));
   render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
   const button=await screen.findByRole('button',{name:/Inspect upload another-record/});
   await waitFor(()=>expect((button as HTMLButtonElement).disabled).toBe(false));
@@ -117,6 +117,13 @@ it('identifies same-digest records distinctly and announces a keyboard-selected 
   await waitFor(()=>expect(button.getAttribute('aria-pressed')).toBe('true'));
   expect(screen.getByRole('status').textContent).toContain('Selected upload another-record');
   expect(screen.getByRole('status').textContent).toContain('different historical record');
+  const scope=screen.getByRole('status');
+  expect(scope.getAttribute('aria-atomic')).toBe('true');
+  const gate=screen.getByRole('button',{name:'Gate for record'});
+  const agent=screen.getByRole('button',{name:'Grant agent for next'});
+  expect(scope.compareDocumentPosition(gate)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(scope.compareDocumentPosition(agent)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('button',{name:'Gate for another-record'})).toBeNull();
 });
 
 it.each(['selection','refresh'] as const)('removes prior scoped child actions during pending history %s',async(action)=>{

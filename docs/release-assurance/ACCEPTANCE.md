@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Current Gate C release-detail batch
+
+Uploaded evidence now precedes supporting tools, with keyboard section navigation and truthful zero-findings states. Selected-history scope precedes grouped actions. The latest BUILD-LOG records 29 cases covered by focused runs and real signed-in desktop/mobile evidence. Gate C remains partial.
+
 ## Current Gate C presentation batch
 
 Alerts filters, tablet shell navigation and mobile notification forms are improved and narrowly verified. See the latest BUILD-LOG for 31 focused passing tests, rendered widths, drawer focus recovery and limitations. This is partial Gate C acceptance, not a full accessibility or production declaration.

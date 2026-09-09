@@ -34,7 +34,7 @@ it('does not offer history setup while loading or explicitly pending, and mounts
   expect(screen.queryByRole('region',{name:'Independent history'})).toBeNull();expect(assessment).toHaveBeenLastCalledWith(null);
   fireEvent.click(screen.getByRole('button',{name:'Retry saved evidence'}));
   await screen.findByRole('region',{name:'Independent history'});
-  expect(renderView).toHaveBeenCalled();expect(assessment).toHaveBeenLastCalledWith(view.assessment);
+  await waitFor(()=>expect(renderView).toHaveBeenCalled());expect(assessment).toHaveBeenLastCalledWith(view.assessment);
 });
 it('removes the previous record history immediately when the selected record changes',async()=>{
   vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>String(url).endsWith('record-two')?new Promise<Response>(()=>{}):Response.json({error:'Assurance unavailable.'},{status:500})));

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
+import userEvent from '@testing-library/user-event';
 import {UploadedReleaseBrief} from '../src/components/watch/UploadedReleaseBrief';
 import type {UploadedRelease} from '../src/watch/uploaded-release';
 import {sample,NOW} from './assurance-fixtures';
@@ -66,4 +67,32 @@ describe('uploaded readiness evidence',()=>{
     expect(screen.getByText(/No completed artifact evidence/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:/Signed scan record/})).toBeNull();
   });
+});
+
+it('moves keyboard focus to release landmarks without changing record scope',async()=>{
+  const fetcher=vi.fn(()=>new Promise<Response>(()=>{}));vi.stubGlobal('fetch',fetcher);
+  const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
+  const search='?workspace=workspace-1&upload=scan-1&uploadView=detail';
+  window.history.replaceState({},'', '/watch/releases'+search);
+  render(<UploadedReleaseBrief {...props} upload={{...record,receipt_json:{signature:'test'}}} search={search}/>);
+  const nav=within(screen.getByRole('navigation',{name:'In this release'}));
+  for(const [label,target] of [
+    ['Findings',screen.getByRole('heading',{name:'Findings and next steps'})],
+    ['Release tools',screen.getByRole('heading',{name:'Release tools'})],
+    ['Artifact details',screen.getByRole('region',{name:'Artifact record'})],
+    ['Proof sharing',screen.getByRole('region',{name:'Release proof'})],
+  ] as const){
+    nav.getByRole('button',{name:label}).focus();await userEvent.keyboard('{Enter}');
+    expect(document.activeElement).toBe(target);
+    expect(window.location.search).toBe(search);
+  }
+  expect(scroll).toHaveBeenCalledTimes(4);
+});
+it('does not present zero recorded findings as a passing decision',()=>{
+  vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+  render(<UploadedReleaseBrief {...props} upload={{...record,report_json:{...record.report_json!,findings:[],ok:false,status:'inconclusive'}}} search=""/>);
+  expect(screen.getByRole('heading',{name:'No findings to review'})).toBeTruthy();
+  expect(screen.getByText(/This does not establish a passing decision; review/)).toBeTruthy();
+  expect(screen.queryByRole('heading',{name:'Select a finding'})).toBeNull();
+  expect(screen.queryByRole('heading',{name:'Passes recorded checks'})).toBeNull();
 });

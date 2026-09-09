@@ -28,6 +28,12 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
   const selectedParam=params.get('uploadFinding');
   const selected=selectedParam===null?visible[0]:visible.find(({index})=>String(index)===selectedParam);
   const evidenceHeading=useRef<HTMLHeadingElement>(null);
+  const toolsHeading=useRef<HTMLHeadingElement>(null);
+  const artifactDetails=useRef<HTMLElement>(null);
+  const proofSection=useRef<HTMLElement>(null);
+  function jumpTo(target:HTMLElement|null){
+    target?.focus();target?.scrollIntoView({block:'start',behavior:'auto'});
+  }
   function choose(key:'uploadTab'|'uploadFinding',value:string){
     const next=new URLSearchParams(search);next.set(key,value);
     if(key==='uploadTab')next.delete('uploadFinding');
@@ -47,6 +53,12 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
     <header className="watch-release-heading"><div><span className="watch-kicker">Release readiness brief</span><h1 id="uploaded-brief-title">{upload.target}</h1><p>{website?'Website check':'Packed artifact'} · {new Date(upload.created_at).toLocaleString()} · {upload.installation_id?'GitHub-connected workspace':'Workspace evidence'}</p></div>
       {upload.receipt_json!=null?<Button variant="outline" onClick={()=>downloadUploadedRecord(upload)}><Download className="size-4" aria-hidden/>Signed scan record</Button>:null}
     </header>
+    <nav aria-label="In this release" className="mt-5 flex flex-wrap gap-x-5 border-b border-white/10 text-sm text-mute">
+      <button type="button" className="min-h-11 hover:text-snow" onClick={()=>jumpTo(evidenceHeading.current)}>Findings</button>
+      {report?<button type="button" className="min-h-11 hover:text-snow" onClick={()=>jumpTo(toolsHeading.current)}>Release tools</button>:null}
+      <button type="button" className="min-h-11 hover:text-snow" onClick={()=>jumpTo(artifactDetails.current)}>Artifact details</button>
+      {upload.receipt_json!=null?<button type="button" className="min-h-11 hover:text-snow" onClick={()=>jumpTo(proofSection.current)}>Proof sharing</button>:null}
+    </nav>
     <div className="watch-release-decision-grid">
       <article className={`watch-release-decision is-${decision.tone}`}>
         <div className="watch-release-verdict-icon">{decision.tone==='blocked'?<AlertTriangle aria-hidden/>:decision.tone==='ready'?<ShieldCheck aria-hidden/>:<Clock3 aria-hidden/>}</div>
@@ -63,7 +75,6 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
       </dl></aside>
     </div>
     <div className="upload-scope-note"><strong>Recorded scope</strong><p>{website?'Evidence covers only the public assets retrieved during this bounded website check. It does not establish complete site coverage, repository visibility, private map custody or release approval.':<>{report?'Evidence is limited to the recorded artifact inspection.':'No completed artifact evidence is available yet.'} Repository visibility, production assets, private map custody and release approval are separate checks; this upload does not establish them.</>}</p></div>
-    {report?<ReleaseAssurancePanel kind="upload" recordId={upload.id} evidenceId="upload-evidence-title" onAssessment={onAssessment}/>:null}
     <section className="upload-evidence" aria-labelledby="upload-evidence-title">
       <div className="watch-release-section-heading"><div><span className="watch-kicker">Evidence workspace</span><h2 ref={evidenceHeading} tabIndex={-1} id="upload-evidence-title">Findings and next steps</h2></div><span>{report?`${report.fileCount} files inspected`:'Waiting for completed evidence'}</span></div>
       <div className="upload-evidence-tabs" role="tablist" aria-label="Finding category">
@@ -80,14 +91,15 @@ export function UploadedReleaseBrief({upload,search,onBack,onNewScan}:{upload:Up
         {selected?<><span className="watch-kicker">{selected.finding.rule} · Recorded evidence</span><h3>{selected.finding.title}</h3><code>{selected.finding.path}</code><p>{selected.finding.detail}</p>
           <div className="upload-next-step"><strong>Next step</strong><p>{website?'Review the publicly served asset, address or explicitly assess the exposure, then run another website check from Coverage.':'Review this file in the release build, address or explicitly assess the exposure, then upload the rebuilt artifact.'} A new scan records a new decision; it does not rewrite this evidence.</p><Button variant="outline" disabled={website&&!upload.workspace_id} onClick={nextAttempt}>{retryLabel} <ArrowRight className="size-4" aria-hidden/></Button></div>
           {upload.workspace_id&&upload.status==='done'?<WorkspaceExceptionRequest workspaceId={upload.workspace_id} attemptId={upload.id} findingIndex={selected.index} website={website}/>:null}
-        </>:<><h3>{selectedParam!==null?'Finding unavailable in this view':'Select a finding'}</h3><p>{selectedParam!==null?'Choose a recorded finding from this release.':'Details, the affected file and the next step appear here. No evidence is invented for an empty result.'}</p></>}
+        </>:<><h3>{selectedParam!==null?'Finding unavailable in this view':report&&findings.length===0?'No findings to review':'Select a finding'}</h3><p>{selectedParam!==null?'Choose a recorded finding from this release.':report&&findings.length===0?decision.tone==='ready'?'No unsuppressed findings were recorded in this completed check. Its decision applies only to the recorded scope.':'No findings were recorded. This does not establish a passing decision; review the check status and limitations.':'Details, the affected file and the next step appear here. No evidence is invented for an empty result.'}</p></>}
       </aside></div>
     </section>
-    <section className="upload-record-details" aria-label="Artifact record">
+    <section ref={artifactDetails} tabIndex={-1} className="upload-record-details" aria-label="Artifact record">
       <details><summary>Artifact identity and scope</summary><dl><dt>SHA-256</dt><dd><code>{upload.artifact_sha256}</code></dd><dt>Record ID</dt><dd>{upload.id}</dd><dt>Recorded size</dt><dd>{report?.artifactBytes!=null?`${report.artifactBytes.toLocaleString()} bytes`:'Not recorded'}</dd><dt>Format</dt><dd>{report?.kind??'Not recorded'}</dd></dl></details>
       <details><summary>Policy exceptions ({report?.suppressed?.length??0})</summary>{report?.suppressed?.length?report.suppressed.map((entry,index)=><article key={index}><h3>{entry.finding.title}</h3><code>{entry.finding.path}</code><p>{entry.reason}</p><p>Recorded by {entry.actor} · expires {entry.expiresAt}</p></article>):<p>No exceptions are recorded on this scan.</p>}</details>
       <details><summary>Inspected file manifest ({report?.manifest?.length??0})</summary>{report?.manifest?.length?<div className="upload-manifest"><table><thead><tr><th>File</th><th>Bytes</th><th>SHA-256</th></tr></thead><tbody>{report.manifest.map(file=><tr key={file.path}><td>{file.path}</td><td>{file.size.toLocaleString()}</td><td><code>{file.sha256}</code></td></tr>)}</tbody></table></div>:<p>No manifest is available for this result.</p>}</details>
     </section>
-    <div className="upload-proof-note"><p>A signed scan record preserves the decision and scope. A valid signature does not mean the artifact passed. Downloading it does not publish a public verification page.</p>{upload.receipt_json!=null?<><p>The downloaded JSON may contain file names and evidence metadata; review it before sharing.</p><Button variant="outline" onClick={verifyRecord}>Verify a downloaded record</Button><ProofSharing key={upload.id} uploadId={upload.id}/></>:null}</div>
+    {report?<section aria-label="Release tools" className="mt-6"><h2 ref={toolsHeading} tabIndex={-1} className="font-display text-xl text-snow">Release tools</h2><ReleaseAssurancePanel kind="upload" recordId={upload.id} evidenceId="upload-evidence-title" onAssessment={onAssessment}/></section>:null}
+    <section ref={proofSection} tabIndex={-1} aria-label="Release proof" className="upload-proof-note"><p>A signed scan record preserves the decision and scope. A valid signature does not mean the artifact passed. Downloading it does not publish a public verification page.</p>{upload.receipt_json!=null?<><p>The downloaded JSON may contain file names and evidence metadata; review it before sharing.</p><Button variant="outline" onClick={verifyRecord}>Verify a downloaded record</Button><ProofSharing key={upload.id} uploadId={upload.id}/></>:null}</section>
   </section>;
 }

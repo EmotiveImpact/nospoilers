@@ -133,16 +133,20 @@ function IntelligencePanel({ workspaceId, record }: { workspaceId: string; recor
     {streamId && !view && !error ? <WatchSkeleton variant="list" label="Reading selected history"/> : null}
     {view && list && !error ? <>
       <header><h3>{view.stream.name}</h3><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing} onClick={() => setReload(n => n + 1)}>Refresh history</button><button type="button" disabled={busy || refreshing} onClick={() => void exportHistory()}>Export private history</button></div></header>
+      <p role="status" aria-live="polite" aria-atomic="true">{refreshing?'Refreshing saved history…':selected?`Selected ${selected.record_kind} ${selected.record_id}, checked ${new Date(selected.scanned_at).toLocaleString()}. ${viewingAnother?'This is a different historical record, not the release displayed above.':'This is the release displayed above.'}`:'No saved record selected.'}</p>
       {refreshing?<WatchSkeleton variant="list" label="Refreshing release tools"/>:<>
+      <h4>Stream settings and outcomes</h4>
       <ReleaseOutcomeControls key={`outcomes:${view.stream.id}`} streamId={view.stream.id} workspaceId={workspaceId}/>
       <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
+      <h4>Tools for the release displayed above</h4>
+      <p>Release Gate and finding reviews apply to this release, even when you inspect an older history record.</p>
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/>
+      {view.selected&&view.canAdminister?<><h4>Tools for the selected history record</h4><p>Agent access and optional explanations apply to the selected record identified above.</p></>:null}
       {view.selected&&view.canAdminister?<AgentAccessControls key={`agent:${view.stream.id}:${view.selected.id}`} streamId={view.stream.id} snapshotId={view.selected.id}/>:null}
       {view.selected&&view.canAdminister?<ReleaseExplanationControls workspaceId={workspaceId} streamId={view.stream.id} snapshotId={view.selected.id}/>:null}
       </>}
-      <p role="status" aria-live="polite" aria-atomic="true">{refreshing?'Refreshing saved history…':selected?`Selected ${selected.record_kind} ${selected.record_id}, checked ${new Date(selected.scanned_at).toLocaleString()}. ${viewingAnother?'This is a different historical record, not the release displayed above.':'This is the release displayed above.'}`:'No saved record selected.'}</p>
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>
         <dl className="ns-intelligence__facts"><div><dt>Distinct prior releases</dt><dd>{analysis.history}</dd></div><div><dt>Eligible statistical samples</dt><dd>{analysis.eligible}</dd></div><div><dt>Current approved reference</dt><dd>{view.currentBaselineState.replaceAll('_', ' ')}</dd></div></dl>
