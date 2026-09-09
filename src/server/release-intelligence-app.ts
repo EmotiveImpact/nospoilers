@@ -10,11 +10,15 @@ import {releaseGateAccess} from './release-gate-access.ts';
 import {releaseRemediation} from './release-remediation-service.ts';
 import {agentAccess,callAgentTool} from './agent-access.ts';
 import {releaseOutcomes} from './release-outcomes-service.ts';
+import {releaseExplanations} from './release-explanations.ts';
+import type {ExplanationProvider} from './release-explanations.ts';
 const PREFIX = '/api/release-intelligence/';
 export type IntelligenceAppOptions = {
   sql: SqlClient; appBaseUrl: string; ports: (request: Request) => IntelligencePorts;
   reserve: (request: Request) => Promise<boolean>;
   context: (request: Request, ref: Ref) => Promise<{ workspaceId: string }>;
+  /** Explicit operator-supplied adapter only. Production has no default provider. */
+  explanationProvider?: ExplanationProvider;
 };
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' } });
@@ -64,9 +68,15 @@ export function withReleaseIntelligence(core: { fetch: (request: Request) => Res
         const ref = recordKind !== null || recordId !== null ? reference({ kind: recordKind, id: recordId }) : undefined;
         return json(await service.list(uuid(url.searchParams.get('workspaceId')), ref));
       }
-      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation|agent-access|outcomes))?$/.exec(path);
+      const route = /^streams\/([^/]+)(?:\/(records|baseline|exclusions|export|automatic-capture|production-parity|gate|gate-access|remediation|agent-access|outcomes|explanations))?$/.exec(path);
       if (!route) return json({ error: 'Route unavailable.' }, 404);
       const id = uuid(route[1]), action = route[2];
+      if(action==='explanations'){
+        const explanations=releaseExplanations(options.sql,options.ports(request),options.explanationProvider);
+        return json(request.method==='POST'
+          ?await explanations.change(id,await body(request),AbortSignal.any([request.signal,AbortSignal.timeout(20000)]))
+          :await explanations.view(id,uuid(url.searchParams.get('snapshotId'))));
+      }
       if(action==='outcomes'){
         const outcomes=releaseOutcomes(options.sql,options.ports(request));
         return json(request.method==='POST'?await outcomes.configure(id,await body(request)):await outcomes.view(id,url.searchParams.get('month')??undefined,AbortSignal.any([request.signal,AbortSignal.timeout(20000)])));

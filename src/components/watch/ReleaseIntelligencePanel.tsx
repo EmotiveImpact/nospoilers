@@ -6,6 +6,7 @@ import {ProductionParityControls} from './ProductionParityControls';
 import {ReleaseGateControls} from './ReleaseGateControls';
 import {ReleaseRemediationControls} from './ReleaseRemediationControls';
 import {AgentAccessControls} from './AgentAccessControls';
+import {ReleaseExplanationControls} from './ReleaseExplanationControls';
 import {ReleaseOutcomeControls} from './ReleaseOutcomeControls';
 import {WatchSkeleton} from '../WatchDataState';
 type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
@@ -138,6 +139,7 @@ function IntelligencePanel({ workspaceId, record }: { workspaceId: string; recor
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/>
       {view.selected&&view.canAdminister?<AgentAccessControls key={`agent:${view.stream.id}:${view.selected.id}`} streamId={view.stream.id} snapshotId={view.selected.id}/>:null}
+      {view.selected&&view.canAdminister?<ReleaseExplanationControls workspaceId={workspaceId} streamId={view.stream.id} snapshotId={view.selected.id}/>:null}
       <p role="status" aria-live="polite" aria-atomic="true">{refreshing?'Refreshing saved history…':selected?`Selected ${selected.record_kind} ${selected.record_id}, checked ${new Date(selected.scanned_at).toLocaleString()}. ${viewingAnother?'This is a different historical record, not the release displayed above.':'This is the release displayed above.'}`:'No saved record selected.'}</p>
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>

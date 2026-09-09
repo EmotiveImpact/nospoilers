@@ -1,5 +1,9 @@
 # Complete vision: implementation and acceptance map
 
+## Current optional explanation contract increment
+
+The connected explanation UI/API, explicit provider adapter contract, configuration-bound consent, workspace-wide call/reserved-spend limits, idempotent requests, cancellation and human-reviewed drafts are implemented. Migration ra_010 links private drafts to retained snapshots; it enables no provider. Exact data and activation boundaries: EXPLANATIONS.md. Production composition remains unavailable by default. A concrete paid-provider adapter, provider-specific evaluations/charge verification, finding-level root-cause assistance and deployment/review attestation remain unbuilt/unverified respectively; do not describe generic aggregate explanations as those capabilities. BUILD-LOG records local checks and remaining acceptance.
+
 Owner update, 9 September: customer-facing synthetic dev review has been removed. Keep QA fixtures internal. Real GitHub setup/live verification is deferred to production by request; do not count that as verified or recreate a fake workspace for the owner. Original Gate B remains accepted; newer release-assurance scope is additive, while Gates C/D/E retain their separate requirements.
 
 Current Gate C increment: parity choices expose verified eligibility and recovery labels rather than calling every website verified. History selection names/announcements and failed mutation focus recovery are covered by focused rendered checks; initial read failures do not steal focus. Existing skeletons cover agent/remediation reads. This closes those specific interaction gaps, not full WCAG or production acceptance. See BUILD-LOG for cumulative results.

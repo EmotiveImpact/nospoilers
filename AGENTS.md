@@ -1,5 +1,7 @@
 # NoSpoilers agent entry point
 
+Optional explanation contracts now exist in `release-explanations.ts` and `ra_010_release_explanations`, with a connected UI/API and no configured production provider. Read `docs/release-assurance/EXPLANATIONS.md`: aggregate-only data, config-bound consent, workspace budget reservations, cancellation and human review. This is not a live AI integration, root-cause investigation or release authority. Latest BUILD-LOG contains actual checks.
+
 For coordinated continuation use `docs/release-assurance/CONTINUE-FOUR-AGENT-IMPLEMENTATION.md`: orchestrator plus builder, fixer and tester; avoid repeated bootstrap/remote polling. Customer-facing synthetic dev review has been removed at the owner's request. Internal QA fixtures are tests, not a usable customer workspace. Real GitHub configuration and live-provider verification are deferred to production; do not restart fake review mode. Latest BUILD-LOG records verification.
 
 Latest history UI increment explains stream capabilities before setup and exposes a focused setup CTA. Failed list/mutation/export responses hide stale history controls; workspace/record identity resets the panel. History JSON now includes explicit scope, verified by the downloader. See latest BUILD-LOG for exact verification; no source or gate is activated by stream creation.

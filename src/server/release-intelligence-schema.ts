@@ -6,6 +6,7 @@ import {migrateReleaseGateAccess} from './release-gate-access-schema.ts';
 import {migrateReleaseRemediation} from './release-remediation-schema.ts';
 import {migrateAgentAccess} from './agent-access-schema.ts';
 import {migrateReleaseOutcomes} from './release-outcomes-schema.ts';
+import {migrateReleaseExplanations} from './release-explanations-schema.ts';
 export const INTELLIGENCE_MIGRATION = 'ra_002_release_intelligence';
 export const intelligenceSchema = `
 CREATE TABLE IF NOT EXISTS release_intelligence_streams (
@@ -91,4 +92,5 @@ export async function migrateReleaseIntelligence(sql: SqlClient): Promise<void> 
   await migrateReleaseRemediation(sql);
   await migrateAgentAccess(sql);
   await migrateReleaseOutcomes(sql);
+  await migrateReleaseExplanations(sql);
 }

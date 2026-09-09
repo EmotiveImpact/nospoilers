@@ -27,7 +27,7 @@ Implemented on the Release Assurance feature branch; not a provider activation o
 
 Evidence paths, findings and human notes are untrusted data even when their receipt is valid. Tool descriptions are fixed code, not derived from artifact text. Returned text cannot grant authority. Consumers must not follow embedded links or instructions automatically. Raw file bodies and discovered secret values are not tool inputs; only the existing bounded evidence projection is exposed.
 
-NoSpoilers makes no model calls in this increment. The customer's chosen coding-agent client may send the explicitly shared metadata to its own provider and incur its own charges. Local API call budgets are not a promise to cap that provider's spending. There is no MCP sampling capability, remote MCP OAuth endpoint, autonomous investigation or provider-backed explanation service here. Those remain separate opt-in work, including provider contracts/evaluations and cost controls before activation.
+The MCP layer makes no model calls. The customer's chosen coding-agent client may send the explicitly shared metadata to its own provider and incur its own charges. Local MCP call budgets are not a promise to cap that provider's spending. There is no MCP sampling capability, remote MCP OAuth endpoint or autonomous investigation. The separate optional explanation UI/API now has explicit adapter contracts, consent and reserved-cost controls (see EXPLANATIONS.md), but production configures no provider. Concrete provider evaluation and activation remain separate work.
 
 ## Protocol references
 

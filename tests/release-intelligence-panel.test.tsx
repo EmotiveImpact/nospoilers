@@ -8,6 +8,7 @@ vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParit
 vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:()=>null}));
 vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:()=>null}));
 vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseExplanationControls',()=>({ReleaseExplanationControls:()=>null}));
 vi.mock('../src/components/watch/ReleaseOutcomeControls',()=>({ReleaseOutcomeControls:()=>null}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const record={kind:'upload' as const,id:'record'};
