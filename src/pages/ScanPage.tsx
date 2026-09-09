@@ -690,7 +690,7 @@ export function ReceiptVerifyPanel() {
           ) : null}
           {view.status === "working" ? (
             <div className="flex items-center gap-3">
-              <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-snow" aria-hidden />
               <p className="text-sm text-mute">{view.label}</p>
             </div>
           ) : null}
@@ -745,7 +745,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
   if (state.status === "loading") {
     return (
       <div className="flex min-h-52 items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
-        <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-snow" aria-hidden />
         <p className="text-sm text-mute">Submitting {state.label}… Waiting for the server to confirm the saved attempt.</p>
       </div>
     )

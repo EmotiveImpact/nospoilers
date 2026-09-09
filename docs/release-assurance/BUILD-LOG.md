@@ -549,3 +549,8 @@ Made the existing eight-character shared-note requirement explicit beside the no
 ## Quiet redesign cumulative UI milestone
 
 At488a9b2, ran the existing38-file cumulative UI command recorded above:259 passed/2 failed,261 cases,18.07s. Failures were the blanket core-disclosure source ban (now narrowly permits only the optional Timeline chart) and a gallery test that included untracked files despite its committed-file contract. Corrected inventory to git-tracked HTML; this exposed a genuine missing31-design-system link, now added. Final architecture file13/13 passed (152ms). No runtime code changed after this run. These results are a cumulative run plus focused correction, not a fresh single all-green261-case run. Unrelated gallery edits preserved unstaged. Native zoom/AT and other matrix gaps remain open; do not rerun this milestone without new changes.
+
+
+## Remaining loading animation cleanup
+
+Source audit found two inline pulse bars in WatchOverview loading, outside shared WatchSkeleton. Removed them while retaining aria-busy and screen-reader statuses; initial lighthouse unchanged. Scan submission/receipt progress spinners now use motion-reduce:animate-none. Build initially exposed the previous test correction's unused readdirSync import; removed it, final build passed. No OS reduced-motion or live delayed-response simulation claimed. This is source/build verification; previous cumulative result remains distinct.
