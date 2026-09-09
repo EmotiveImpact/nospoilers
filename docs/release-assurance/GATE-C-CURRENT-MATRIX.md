@@ -65,3 +65,8 @@ QuietSidePreview now provides caller-owned Dialog presentation for Overview evid
 ## Evidence type picker boundary
 
 Extracted EvidenceTypePicker from ScanPage, retaining the four existing evidence choices, IDs, arrow/Home/End activation and caller-owned mode/navigation. GithubRepositoryScan remains the scoped repository selection/submission owner.19 scan navigation cases passed (2.21s), final build/diff check passed; actual signed-in picker reviewed and End selected/focused Verify release proof with mode=receipt while preserving workspace/install. No scan submitted.
+
+
+## Compact shared-control verification
+
+At b4b45a2 runtime, signed-in Team member menu reviewed at actual355 CSS pixels with document width355. Requested390 viewport initially yielded355; adjusted tool viewport to429 and confirmed innerWidth390, innerHeight844. At actual390, Notifications open destination menu, connected decision filters/empty state, and Add coverage open modal were visually reviewed with document width390. All four modal source choices were visible; Escape dismissed, then normal viewport restored. No source/account mutation. This is CSS viewport evidence, not native200% zoom, and does not cover every state/width. No tests/build repeated for this read-only check.

@@ -611,3 +611,8 @@ npm test -- tests/artifact-shell-navigation.test.tsx tests/watch-accessibility.t
 Source inventory: all visible JSX evidence tables use EvidenceTable; the only separate table in src/components/src/pages is the screen-reader-only chart text equivalent. C1 now has extracted heading, evidence picker, status, async state, evidence table, decision panel, side preview, empty state, centred dialog and settings-row components. This establishes component boundaries; it does not establish universal token/style compliance or close C2/C3. Current remaining work is the matrix, particularly latest responsive/state fidelity and actual motion/AT/native-zoom evidence.
 
 Final `npx tsc -b` and `git diff --check` passed after the test corrections.
+
+
+## Compact shared-control verification
+
+At b4b45a2 runtime, signed-in Team member menu reviewed at actual355 CSS pixels with document width355. Requested390 viewport initially yielded355; adjusted tool viewport to429 and confirmed innerWidth390, innerHeight844. At actual390, Notifications open destination menu, connected decision filters/empty state, and Add coverage open modal were visually reviewed with document width390. All four modal source choices were visible; Escape dismissed, then normal viewport restored. No source/account mutation. This is CSS viewport evidence, not native200% zoom, and does not cover every state/width. No tests/build repeated for this read-only check.
