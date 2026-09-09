@@ -352,7 +352,7 @@ export function WatchAlertsWorkspace({
                       {selected.resolved_at ? "resolved" : selectedRow.severity}
                     </span>
                     <span className="watch-pill">{selectedRow.rule}</span>
-                    <span className="watch-pill">{selectedRow.status} · {selectedRow.exposure} exposed</span>
+                    <span className="watch-pill">{selectedRow.operational?`${selectedRow.status} · Check incomplete`:`${selectedRow.status} · ${selectedRow.exposure} exposed`}</span>
                   </div>
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">{selected.body}</p>
@@ -376,11 +376,11 @@ export function WatchAlertsWorkspace({
 
                   {relatedReleases}
                   <section className="mt-7">
-                    <p className="watch-kicker">Exposure</p>
+                    <p className="watch-kicker">{selectedRow.operational?'Check status':'Exposure'}</p>
                     <div className="mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
                       <div>
-                        <p className="watch-kicker">Reachable for</p>
-                        <p className={selected.resolved_at ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.exposure}</p>
+                        <p className="watch-kicker">{selectedRow.operational?'Result':'Reachable for'}</p>
+                        <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':selectedRow.exposure}</p>
                       </div>
                       <div>
                         <p className="watch-kicker">Opened</p>
@@ -389,7 +389,7 @@ export function WatchAlertsWorkspace({
                     </div>
                   </section>
 
-                  <section className="mt-7">
+                  {!selectedRow.operational?<section className="mt-7">
                     <p className="watch-kicker">Rotation checklist · read-only</p>
                     <div className="mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                       {(selected.rotation_checklist ?? []).length ? (
@@ -403,7 +403,7 @@ export function WatchAlertsWorkspace({
                         <p className="py-3 text-xs text-dim">No checklist was attached to this alert.</p>
                       )}
                     </div>
-                  </section>
+                  </section>:<p className="mt-7 text-sm text-mute">This is an incomplete check, not evidence of exposed content. Publish an eligible release or choose an existing artifact, then run the check again. Resolving this alert does not establish a passing scan.</p>}
 
                   <section className="mt-7 pb-10">
                     <p className="watch-kicker">Activity</p>

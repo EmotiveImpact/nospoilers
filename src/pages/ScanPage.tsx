@@ -5,11 +5,12 @@ import { coverageFrom, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
-import { watchHref, watchPath } from "@/watch/routes.ts"
+import { watchPath } from "@/watch/routes.ts"
 import { Box, ChevronRight, FileJson, GitBranch, Globe2, Loader2, LockKeyhole, ShieldCheck, Upload } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
+import {GithubRepositoryScan} from '@/components/watch/GithubRepositoryScan'
 
 type ViewState =
   | { status: "idle" }
@@ -483,11 +484,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               visibility, release assets, and packed CI output without treating the source tree as the shipped artifact.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              {session ? (selectedInstall ? (
-                <HeadlessButton type="button" className="scan-primary-action" onClick={() => navigate(watchHref(watchPath("sources"), search, { configure: "github" }))}>
-                  Choose repository <ChevronRight className="size-4" aria-hidden />
-                </HeadlessButton>
-              ) : null) : auth.githubApp ? (
+              {session ? null : auth.githubApp ? (
                 <a className="scan-primary-action" href="/api/auth/github">
                   Sign in with GitHub <ChevronRight className="size-4" aria-hidden />
                 </a>
@@ -498,6 +495,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               )}
               {session&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
             </div>
+            {session&&selectedInstall?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
           </div>
           <aside>
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What this creates</p>

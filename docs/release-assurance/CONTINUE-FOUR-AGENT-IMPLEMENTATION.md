@@ -6,7 +6,7 @@ Repository: `/Users/augustusedem/Nospoilers` — `EmotiveImpact/nospoilers`
 Branch: `codex/release-assurance-spine-v1`
 Existing draft PR: #44
 
-Owner correction: synthetic customer dev review has been removed. Do not restore it or start it as the owner's workspace. Internal isolated fixtures may still support tests. Real GitHub configuration and live-provider verification are deferred to production by request; preserve this as unverified rather than blocking unrelated implementation or simulating completion.
+Owner correction: synthetic customer dev review has been removed. Do not restore it or start it as the owner's workspace. Internal isolated fixtures may still support tests. The owner subsequently completed real local GitHub sign-in and installation, and the signed-in Codex browser shows real coverage and alerts. Preserve the running local server and its separate database. Production deployment and optional explanation-provider verification remain open.
 
 ## Start once, then maintain continuity
 
@@ -32,6 +32,8 @@ Assign non-overlapping runtime/test files before work starts. Agents must preser
 The browser, development servers and disposable databases are shared resources. Give one agent explicit ownership at a time. Do not kill another agent's process or restart a test solely because it has not produced output recently. Poll the confirmed live handle until terminal, or establish that it no longer exists. Keep my normal local review server and data intact.
 
 ## What to complete
+
+Owner decision after the agency discussion: option A is the chosen collaboration model. Reuse individual invitations, explicit existing roles and isolated client workspaces. Organization-level agency delegation is deferred; CSV invitations are only a later possibility. Do not hold the customer's first usable app behind either feature. Real sign-in and an end-to-end real scan remain necessary for customer testing; the previous GitHub/production deferral does not constitute verified operation or deployment authorization.
 
 Use the saved brief and current implementation as authoritative. Much of the core may already exist: do not rebuild it or treat superseded “unbuilt” notes as current facts. Classify requirements as built-and-verified, built-but-unverified, partly built, genuinely unbuilt or blocked, then close the actual gaps.
 

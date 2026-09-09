@@ -27,5 +27,13 @@ it('filters before paging and returns whole-workspace counts without leaking for
   expect(new Set([...latest.events,...older.events,...oldest.events].map(row=>row.id)).size).toBe(120);
   expect(latest.events[0].id).toBeLessThan(latest.events[49].id);
   await expect(workspaceAlertDetail(sql,'owner',workspace,String(first.alerts[1].id),latest.nextEventsCursor!)).rejects.toMatchObject({status:404});
+  await store.upsertRepo({id:9001,installationId:7,owner:'owner',name:'selected',fullName:'owner/selected',private:false,htmlUrl:'https://github.com/owner/selected'});
+  await sql.query('UPDATE alerts SET repo_id=9001 WHERE installation_id=7 AND id IN (SELECT id FROM alerts WHERE installation_id=7 ORDER BY id LIMIT 3)');
+  const scoped=await listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'open',source:'repo-9001'});
+  expect(scoped.alerts).toHaveLength(3);expect(scoped.nextCursor).toBeNull();expect(scoped.counts.open).toBe(3);
+  expect(scoped.alerts.every(row=>Number(row.repo_id)===9001)).toBe(true);
+  expect((await listWorkspaceAlerts(sql,'owner',workspace,undefined,{source:'repo-9999'})).alerts).toHaveLength(0);
+  await expect(listWorkspaceAlerts(sql,'owner',workspace,undefined,{source:'npm-1'})).rejects.toMatchObject({status:400});
+  await expect(listWorkspaceAlerts(sql,'owner',workspace,undefined,{source:'repo-invalid'})).rejects.toMatchObject({status:400});
  }finally{await sql.close();}
 });

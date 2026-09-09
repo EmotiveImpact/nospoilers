@@ -587,6 +587,10 @@ code {
   line-height: 1.04;
 }
 
+.watch-first-proof {
+  container-type: inline-size;
+}
+
 .watch-proof-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -656,7 +660,7 @@ code {
   color: var(--color-mute);
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .watch-proof-steps .is-active .watch-proof-step-copy strong {
@@ -668,6 +672,24 @@ code {
   color: #85858e;
   font-size: 11px;
   line-height: 1.35;
+}
+
+/* Respond to the space beside the sidebar, not just the browser width. */
+@container (max-width: 900px) {
+  .watch-proof-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
+
+  .watch-proof-steps li:not(:last-child)::after {
+    display: none;
+  }
+}
+
+@container (max-width: 460px) {
+  .watch-proof-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .watch-proof-next {

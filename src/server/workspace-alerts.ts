@@ -5,7 +5,7 @@ function alertId(value:string){
  if(!/^[1-9]\d*$/.test(value)||!Number.isSafeInteger(Number(value)))throw Object.assign(new Error('Alert unavailable.'),{status:404});
  return Number(value);
 }
-const projection=`id,installation_id,workspace_id,source_origin_id,scan_attempt_id,kind,title,body,findings,
+const projection=`id,installation_id,workspace_id,repo_id,source_origin_id,scan_attempt_id,kind,title,body,findings,
  created_at,acknowledged_at,acknowledged_by_login,assigned_to_user_id,assigned_to_login,resolved_at,resolved_by_login,resolution_note`;
 
 export async function workspaceAlertCounts(sql:SqlClient,userId:string,workspaceId:string){
@@ -71,26 +71,30 @@ export async function respondToWorkspaceAlert(sql:SqlClient,userId:string,worksp
 }
 
 /** Workspace identity is authoritative; null installations remain null. */
-export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceId:string,before?:string,filter:{status?:string;mine?:boolean}={}){
+export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceId:string,before?:string,filter:{status?:string;mine?:boolean;source?:string}={}){
  await workspaceEvidenceSettings(sql,userId,workspaceId);
  const status=filter.status??'all';
  if(!['all','open','waiting','done','mine'].includes(status))throw Object.assign(new Error('Unknown alert status.'),{status:400});
+ const source=filter.source;
+ if(source&&(!/^(repo|web)-[1-9]\d*$/.test(source)||!Number.isSafeInteger(Number(source.split('-')[1]))))throw Object.assign(new Error('This source filter is unavailable. Clear the source filter to view workspace alerts.'),{status:400});
+ const sourceType=source?.split('-')[0]??null,sourceId=source?Number(source.split('-')[1]):null;
  const cursor=before?alertId(before):null;
  if(cursor&&!(await sql.query('SELECT id FROM alerts WHERE workspace_id=$1 AND id=$2',[workspaceId,cursor])).rows.length)
   throw Object.assign(new Error('Alert page unavailable.'),{status:404});
  const {rows}=await sql.query<Record<string,unknown>&{id:number}>(`SELECT ${projection} FROM alerts WHERE workspace_id=$1
  AND ($2::bigint IS NULL OR id<$2)
  AND (NOT $4::boolean OR assigned_to_user_id=$5)
+ AND ($6::text IS NULL OR $6='repo' AND repo_id=$7 OR $6='web' AND source_origin_id=$7)
  AND ($3='all' OR $3='open' AND resolved_at IS NULL AND acknowledged_at IS NULL
   OR $3='waiting' AND resolved_at IS NULL AND acknowledged_at IS NOT NULL
   OR $3='done' AND resolved_at IS NOT NULL OR $3='mine' AND resolved_at IS NULL AND assigned_to_user_id=$5)
- ORDER BY id DESC LIMIT 51`,[workspaceId,cursor,status,filter.mine??false,userId]);
+ ORDER BY id DESC LIMIT 51`,[workspaceId,cursor,status,filter.mine??false,userId,sourceType,sourceId]);
  const totals=(await sql.query<{open:string;waiting:string;done:string;mine:string}>(`SELECT
  count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
  count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
  count(*) FILTER(WHERE resolved_at IS NOT NULL) AS done,
  count(*) FILTER(WHERE resolved_at IS NULL AND assigned_to_user_id=$2) AS mine
- FROM alerts WHERE workspace_id=$1`,[workspaceId,userId])).rows[0];
+ FROM alerts WHERE workspace_id=$1 AND ($3::text IS NULL OR $3='repo' AND repo_id=$4 OR $3='web' AND source_origin_id=$4)`,[workspaceId,userId,sourceType,sourceId])).rows[0];
  const sources=await sql.query<{count:number|string}>(`SELECT
   (SELECT count(*) FROM watched_origins s WHERE s.workspace_id=$1 AND s.disconnected_at IS NULL AND (s.installation_id IS NULL OR EXISTS(SELECT 1 FROM installations i WHERE i.id=s.installation_id AND i.disconnected_at IS NULL))) +
   (SELECT count(*) FROM repos r JOIN product_workspace_installations c ON c.installation_id=r.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND r.disconnected_at IS NULL AND i.disconnected_at IS NULL) +

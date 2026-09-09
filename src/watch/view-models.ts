@@ -470,6 +470,7 @@ export type AlertListViewModel = {
   severity: "critical" | "warning";
   status: "open" | "waiting" | "resolved";
   exposure: string;
+  operational?: boolean;
 };
 
 export function buildAlertListViewModels(
@@ -487,6 +488,7 @@ export function buildAlertListViewModels(
       severity: severityFor(rule),
       status: alert.resolved_at ? "resolved" : alert.acknowledged_at ? "waiting" : "open",
       exposure: formatExposure(alert),
+      operational: alert.kind === 'scan_latest_release' && !finding,
     };
   });
 }

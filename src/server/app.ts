@@ -2401,7 +2401,7 @@ export function createApp(deps: AppDeps): Hono {
   }));
   app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'),deps.config.pollIntervalMs)));
   app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
-  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1'})));
+  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1',source:c.req.query('source')})));
   app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
   app.get('/api/workspaces/:id/alerts/:alertId/assignees',c=>workspaceAction(c,userId=>workspaceAlertAssignees(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'))));
   app.post('/api/workspaces/:id/alerts/:alertId/respond',c=>workspaceAction(c,async userId=>{

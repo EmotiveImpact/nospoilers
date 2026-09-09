@@ -15,7 +15,7 @@ import {Button} from '@/components/ui/button';
 type WorkspaceAlert=Alert&{installation_id:number|null;scan_attempt_id:string|null;source_origin_id:number|null};
 type Detail={alert:WorkspaceAlert;events:AlertEvent[];nextEventsCursor?:string|null};
 type Props={workspaceId:string;search:string};
-export function WorkspaceAlerts(props:Props){const p=new URLSearchParams(props.search);return <WorkspaceAlertPage key={`${props.workspaceId}:${p.get('tab')}:${p.get('mine')}:${p.get('before')}`} {...props}/>;}
+export function WorkspaceAlerts(props:Props){const p=new URLSearchParams(props.search);return <WorkspaceAlertPage key={`${props.workspaceId}:${p.get('tab')}:${p.get('mine')}:${p.get('before')}:${p.get('source')}`} {...props}/>;}
 async function json<T>(url:string,signal:AbortSignal,body?:unknown):Promise<T>{
  const response=await fetch(url,{signal,credentials:'include',...(body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})});
  const data=await response.json();if(!response.ok)throw new Error(data.error??'Alerts could not be loaded.');return data;
@@ -24,6 +24,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/alerts`;
  const route=parseWatchRoute('/watch/alerts',search),mine=new URLSearchParams(search).get('mine')==='1';
  const before=new URLSearchParams(search).get('before');
+ const source=new URLSearchParams(search).get('source');
  const eventBefore=new URLSearchParams(search).get('eventBefore');
  const [page,setPage]=useState<{nextCursor:string|null;counts:{open:number;waiting:number;mine:number;done:number}}|null>(null);
  const [alerts,setAlerts]=useState<WorkspaceAlert[]>([]),[state,setState]=useState<WatchSectionState>({status:'loading'});
@@ -41,16 +42,16 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
     json<{workspace:{role:string;archived_at:string|null}}>(`/api/workspaces/${workspaceId}/evidence-settings`,request.signal),
     json<{user:{id:string;login:string}}>('/api/me',request.signal),
    ]);
-   const query=new URLSearchParams({status:route.tab,mine:mine?'1':'0'});if(before)query.set('before',before);
+   const query=new URLSearchParams({status:route.tab,mine:mine?'1':'0'});if(before)query.set('before',before);if(source)query.set('source',source);
    const result=await json<{alerts:WorkspaceAlert[];nextCursor:string|null;sourceCount:number;counts:{open:number;waiting:number;mine:number;done:number}}>(`${base}?${query}`,request.signal);
    if(request.signal.aborted)return;
    setIdentity({...me.user,canRespond:!settings.workspace.archived_at&&['owner','admin','member'].includes(settings.workspace.role)});
    setPage(result);setSourceCount(result.sourceCount);setAlerts(result.alerts);setState({status:'ready'});
   })().catch(e=>{if(!request.signal.aborted){setAlerts([]);setDetail(null);setIdentity({id:'',login:'',canRespond:false});setState({status:'error',message:e.message});}});
   return()=>request.abort();
- },[workspaceId,base,revision,route.tab,mine,before]);
+ },[workspaceId,base,revision,route.tab,mine,before,source]);
  const listed=filterDeskAlerts(alerts,route.tab,identity.login,mine,identity.id) as WorkspaceAlert[];
- const selectedId=route.alertId??listed[0]?.id??null;
+ const selectedId=route.alertId!==null?(!source||listed.some(row=>row.id===route.alertId)?route.alertId:null):listed[0]?.id??null;
  const selected=state.status!=='ready'?null:detail?.alert.id===selectedId?detail.alert:listed.find(row=>row.id===selectedId)??null;
  const detailReady=state.status==='ready'&&activity.status==='ready'&&detail?.alert.id===selectedId;
  useEffect(()=>{if(selectedId===null)return;const request=new AbortController();
@@ -71,7 +72,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   }catch(e){if(!request.signal.aborted)setError(e instanceof Error?e.message:'Response could not be saved.');}
   finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  };
- return <WatchAlertsWorkspace workspaceId={workspaceId} userId={identity.id} alerts={listed} allAlerts={alerts} sourceCount={sourceCount} login={identity.login}
+ return <>{source?<div className="flex items-center gap-3 px-4 py-2 text-sm"><span>Filtered to selected source</span><Button variant="ghost" size="sm" onClick={()=>go({source:null,alert:null,before:null,eventBefore:null})}>Show all workspace alerts</Button></div>:null}<WatchAlertsWorkspace workspaceId={workspaceId} userId={identity.id} alerts={listed} allAlerts={alerts} sourceCount={sourceCount} login={identity.login}
  counts={page?.counts} exportLabel="Export this page"
   activityPagination={(eventBefore||detail?.nextEventsCursor)&&<nav aria-label="Alert activity pages" className="mt-3 flex gap-2"><Button variant="outline" size="sm" disabled={!eventBefore} onClick={()=>go({eventBefore:null})}>Latest activity</Button><Button variant="outline" size="sm" disabled={!detail?.nextEventsCursor||!detailReady} onClick={()=>go({eventBefore:detail?.nextEventsCursor??null})}>Older activity</Button></nav>}
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
@@ -82,7 +83,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   onSelect={id=>{setError(null);setActivity({status:'loading'});go({alert:String(id)});}} onBack={()=>go({alert:null})} onRetry={retry} onRetryActivity={retry}
   onTab={tab=>go({tab,alert:null,before:null})} onAssignedToMe={()=>go({mine:mine?null:'1',alert:null,before:null})}
   onNote={value=>{if(selected)setNotes(rows=>({...rows,[selected.id]:value}));}} onAssignee={value=>{if(selected)setAssignees(rows=>({...rows,[selected.id]:value}));}} onAction={action=>void act(action)}
-  onExport={()=>{if(state.status!=='ready')return;const url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),workspaceId,scope:'current_page',status:route.tab,mine,before,nextCursor:page?.nextCursor,alerts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='nospoilers-alert-page.json';a.click();URL.revokeObjectURL(url);}}
+  onExport={()=>{if(state.status!=='ready')return;const url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),workspaceId,scope:'current_page',source,status:route.tab,mine,before,nextCursor:page?.nextCursor,alerts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='nospoilers-alert-page.json';a.click();URL.revokeObjectURL(url);}}
   onConnectSource={()=>navigate(`/watch/sources?workspace=${workspaceId}`)}
-relatedReleases={selected&&!detailReady?<p className="text-sm text-mute">Recheck actions require loaded alert evidence. Retry loading the selected alert before starting another scan.</p>:selected?.scan_attempt_id?<><a className="text-sm underline" href={`/watch/releases?workspace=${workspaceId}&upload=${encodeURIComponent(selected.scan_attempt_id)}&uploadView=detail`}>Open the saved website check</a>{selected.source_origin_id?<WebsiteAlertRecheck workspaceId={workspaceId} sourceId={selected.source_origin_id} canRespond={identity.canRespond}/>:null}</>:selected?.installation_id?<><AlertRecheck alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId} canRespond={identity.canRespond} ended={false}/><AlertRelatedReleases alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId}/></>:null}/>
+relatedReleases={selected&&!detailReady?<p className="text-sm text-mute">Recheck actions require loaded alert evidence. Retry loading the selected alert before starting another scan.</p>:selected?.scan_attempt_id?<><a className="text-sm underline" href={`/watch/releases?workspace=${workspaceId}&upload=${encodeURIComponent(selected.scan_attempt_id)}&uploadView=detail`}>Open the saved website check</a>{selected.source_origin_id?<WebsiteAlertRecheck workspaceId={workspaceId} sourceId={selected.source_origin_id} canRespond={identity.canRespond}/>:null}</>:selected?.installation_id?<><AlertRecheck alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId} canRespond={identity.canRespond} ended={false}/><AlertRelatedReleases alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId}/></>:null}/></>
 }

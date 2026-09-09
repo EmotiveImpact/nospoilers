@@ -5,6 +5,36 @@ import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
 const nav=vi.hoisted(()=>vi.fn());
 vi.mock('../src/nav',()=>({navigate:nav}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
+it('presents a missing release as an incomplete check rather than exposure',async()=>{
+ const alert={id:24,kind:'scan_latest_release',title:'No release on owner/repo',body:'No published release available.',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,source_origin_id:null,scan_attempt_id:null,acknowledged_at:null,resolved_at:null};
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.endsWith('/alerts/24'))return Response.json({alert,events:[]});
+  return Response.json({alerts:[alert],nextCursor:null,sourceCount:1,counts:{open:1,waiting:0,done:0,mine:0}});
+ }));
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=24"/>);
+ await screen.findByText('No scanned release');
+ expect(screen.queryByText('Reachable for')).toBeNull();
+ expect(screen.queryByText('Rotation checklist · read-only')).toBeNull();
+ expect(screen.queryByText(/Saved check exposed/)).toBeNull();
+ expect(screen.getByText('open · Check incomplete')).toBeTruthy();
+});
+it('forwards source scope and excludes an unrelated detail URL with a workspace-preserving clear action',async()=>{
+ const alert={id:9,kind:'repo_visibility',title:'Selected repository exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:7,repo_id:9001,acknowledged_at:null,resolved_at:null};
+ const fetcher=vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.includes('/alerts?'))return Response.json({alerts:[alert],nextCursor:null,sourceCount:1,counts:{open:1,waiting:0,done:0,mine:0}});
+  throw new Error(`Unexpected request ${url}`);
+ });vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&install=7&source=repo-9001&alert=24"/>);
+ await screen.findByText('Selected repository exposure');
+ expect(fetcher.mock.calls.some(([url])=>url.includes('source=repo-9001'))).toBe(true);
+ expect(fetcher.mock.calls.some(([url])=>url.includes('/alerts/24'))).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'Show all workspace alerts'}));
+ expect(nav).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
+});
 it('restores activity pages from the URL and clears their cursor on queue navigation',async()=>{
  const alert={id:9,kind:'web_origin_scan',title:'Website exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,source_origin_id:null,scan_attempt_id:'attempt-9',acknowledged_at:null,resolved_at:null};
  const fetcher=vi.fn(async(url:string)=>{
