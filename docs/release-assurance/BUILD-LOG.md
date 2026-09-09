@@ -650,3 +650,9 @@ Commands: `npx vitest run tests/release-remediation-controls.test.tsx`, `npm run
 Shared component inventory is now in GATE-C-COMPONENT-INVENTORY.md. Shared design styles use Watch palette tokens for matching values. Build and real settings/Overview computed-colour checks pass; domain-specific styles outside design/ still require consistency review. No whole-gate completion claim.
 
 `npm run build` passed with existing bundle warning; diff check passed. Rebuilt live token history computed background rgb(17,18,20), border rgba(255,255,255,0.055), text rgb(244,244,245); screenshot reviewed. Overview QuietStatus computed passed rgb(63,185,80), review rgb(255,138,128). No behavioural suite repeated for exact-value CSS refactor.
+
+## 2026-09-10 — Release form intrinsic overflow
+
+Release-tool responsive fix: native selects with long options could exceed their grid labels despite document width matching the viewport. Labels now use minmax(0,1fr); text controls have min-width:0 and width:100%. Build passed. Expanded remediation review/rebuild controls measured zero clipped controls at actual390/768/1024/1440; compact and desktop screenshots reviewed. No mutation; native zoom remains separate.
+
+Before: at429px, labels311px but Gate mode/select373.6px, remediation case620.6px and rebuild630.6px; document width alone concealed clipping. After: `.ns-intelligence` select/input/textarea right bounds stayed within every tested viewport. `npm run build` and diff check passed; existing bundle warning. No behavioural tests repeated for grid-sizing correction. Viewport reset after review.

@@ -1,5 +1,8 @@
 # Gate C current evidence map
 
+Release-tool responsive fix: native selects with long options could exceed their grid labels despite document width matching the viewport. Labels now use minmax(0,1fr); text controls have min-width:0 and width:100%. Build passed. Expanded remediation review/rebuild controls measured zero clipped controls at actual390/768/1024/1440; compact and desktop screenshots reviewed. No mutation; native zoom remains separate.
+
+
 Shared component inventory is now in GATE-C-COMPONENT-INVENTORY.md. Shared design styles use Watch palette tokens for matching values. Build and real settings/Overview computed-colour checks pass; domain-specific styles outside design/ still require consistency review. No whole-gate completion claim.
 
 

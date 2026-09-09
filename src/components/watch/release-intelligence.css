@@ -6,7 +6,7 @@
 .ns-intelligence__muted,.ns-intelligence small{color:var(--color-mute)}.ns-intelligence__notice{padding:.65rem;border-left:2px solid var(--color-snow)}.ns-intelligence [role=alert]{color:var(--color-danger-text)}
 .ns-intelligence button,.ns-intelligence input,.ns-intelligence select,.ns-intelligence textarea{font:inherit;font-size:.85rem;color:inherit;background:var(--color-panel-raised);border:1px solid var(--color-line-strong);border-radius:7px;padding:.65rem .8rem;max-width:100%}
 .ns-intelligence button{cursor:pointer}.ns-intelligence button:hover:not(:disabled){background:var(--color-action-hover)}.ns-intelligence button:disabled{opacity:.5;cursor:not-allowed}.ns-intelligence :focus-visible{outline:2px solid var(--color-snow);outline-offset:3px}
-.ns-intelligence label{display:grid;gap:.4rem;margin:.7rem 0;flex:1;min-width:0}.ns-intelligence textarea{min-height:5rem;resize:vertical}.ns-intelligence details{border-top:1px solid var(--color-line);padding:.9rem 0}.ns-intelligence summary{cursor:pointer;font-size:.9rem;line-height:1.6}.ns-intelligence summary span{float:right;font-variant-numeric:tabular-nums}
+.ns-intelligence label{display:grid;grid-template-columns:minmax(0,1fr);gap:.4rem;margin:.7rem 0;flex:1;min-width:0}.ns-intelligence textarea{min-height:5rem;resize:vertical}.ns-intelligence details{border-top:1px solid var(--color-line);padding:.9rem 0}.ns-intelligence summary{cursor:pointer;font-size:.9rem;line-height:1.6}.ns-intelligence summary span{float:right;font-variant-numeric:tabular-nums}
 .ns-intelligence label:has(>input[type=checkbox]){display:flex;align-items:flex-start;gap:.65rem;line-height:1.5}
 .ns-intelligence label>input[type=checkbox]{flex:none;width:1rem;height:1rem;margin:.2rem 0 0;padding:0;accent-color:var(--color-danger)}
 .ns-intelligence code{display:block;overflow-wrap:anywhere;white-space:pre-wrap;font-size:.78rem;margin:.5rem 0}.ns-intelligence__facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1.1rem 0}.ns-intelligence dt{font-size:.75rem;color:var(--color-mute)}.ns-intelligence dd{font-size:1.1rem;margin:.3rem 0}
@@ -19,3 +19,6 @@
 .ns-intelligence .ns-intelligence__toolgroup>details{border-inline:0;border-radius:0;background:transparent;margin:0;border-bottom:0;padding:16px 0}
 .ns-intelligence .ns-intelligence__toolgroup>details>summary{font-size:13px}
 @media(max-width:600px){.ns-intelligence .ns-intelligence__toolgroup{padding:16px}}
+
+/* Native option text must not impose an intrinsic minimum on a form track. */
+.ns-intelligence :is(select,textarea,input:not([type=checkbox]):not([type=radio])){min-width:0;width:100%;box-sizing:border-box}
