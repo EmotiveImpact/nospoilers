@@ -1,13 +1,19 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Ref} from '@/release-intelligence/model';
+import {WatchSkeleton} from '../WatchDataState';
 type State={config:{enabled:boolean;revision:number;selector:string}|null;candidate:{selector:string;channel:string;format:string}|null;
   canManage:boolean;canDisable:boolean;notice:string;attempts:Array<{id:string;record_kind:string;record_id:string;status:string;outcome:string|null;job_status:string|null}>};
 export function AutomaticCaptureControls({streamId,record,refreshVersion=0}:{streamId:string;record:Ref;refreshVersion?:number}){
+  return <CaptureScope key={`${streamId}:${record.kind}:${record.id}:${refreshVersion}`} streamId={streamId} record={record}/>;
+}
+function CaptureScope({streamId,record}:{streamId:string;record:Ref}){
   const [state,setState]=useState<State|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reason,setReason]=useState(''),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[reload,setReload]=useState(0);
   const lifetime=useRef<AbortController|null>(null);
+  const errorTarget=useRef<HTMLParagraphElement|null>(null),focusFailure=useRef(false);
+  useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
   useEffect(()=>{const controller=new AbortController();lifetime.current=controller;return()=>controller.abort();},[]);
   useEffect(()=>{
-    const controller=new AbortController();setError('');
+    const controller=new AbortController();
     const params=new URLSearchParams({recordKind:record.kind,recordId:record.id});
     void fetch(`/api/release-intelligence/streams/${streamId}/automatic-capture?${params}`,{signal:controller.signal,cache:'no-store',credentials:'same-origin'}).then(async response=>{
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Automatic capture is unavailable.');
@@ -15,22 +21,22 @@ export function AutomaticCaptureControls({streamId,record,refreshVersion=0}:{str
       if(!controller.signal.aborted)setState(body);
     }).catch(e=>{if(!controller.signal.aborted){setState(null);setError(e instanceof Error?e.message:'Capture settings are unavailable.');}});
     return()=>controller.abort();
-  },[streamId,record.kind,record.id,reload,refreshVersion]);
+  },[streamId,record.kind,record.id,reload]);
   async function save(enabled:boolean){
     const signal=lifetime.current?.signal;
-    if(!state||busy||!signal||signal.aborted)return;setBusy(true);setError('');setNotice('');
+    if(!state||busy||!signal||signal.aborted)return;const initiatingControl=document.activeElement;setBusy(true);setError('');setNotice('');
     try{
       const response=await fetch(`/api/release-intelligence/streams/${streamId}/automatic-capture`,{method:'POST',signal,credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({enabled,expectedRevision:state.config?.revision??0,record,confirm:confirmed,reason})});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Capture settings were not saved.');
       if(signal.aborted)return;
-      setNotice(enabled?'Automatic history capture enabled for this exact selection. References still require your approval.':'Automatic history capture disabled. Saved scans and history are unchanged.');setConfirmed(false);setReason('');setReload(n=>n+1);
-    }catch(e){if(!signal.aborted)setError(e instanceof Error?e.message:'Capture settings were not saved.');}finally{if(!signal.aborted)setBusy(false);}
+      setState(null);setNotice(enabled?'Automatic history capture enabled for this exact selection. References still require your approval.':'Automatic history capture disabled. Saved scans and history are unchanged.');setConfirmed(false);setReason('');setReload(n=>n+1);
+    }catch(e){if(!signal.aborted){focusFailure.current=document.activeElement===initiatingControl;setState(null);setConfirmed(false);setError(e instanceof Error?e.message:'Capture settings were not saved.');}}finally{if(!signal.aborted)setBusy(false);}
   }
-  return <details><summary>Automatic history capture{state?.config?.enabled?' · Enabled':' · Off'}</summary>
+  return <details><summary>Automatic history capture{state?(state.config?.enabled?' · Enabled':' · Off'):error?' · Unavailable':' · Checking'}</summary>
     <p>Save future completed checks into this stream without recording each one manually. This does not schedule more scans, change policy or approve a reference.</p>
-    {error?<p role="alert">{error} <button type="button" onClick={()=>setReload(n=>n+1)}>Reload capture settings</button></p>:null}
+    {error?<p role="alert" tabIndex={-1} ref={errorTarget}>{error} <button type="button" onClick={()=>{setState(null);setConfirmed(false);setNotice('');setError('');setReload(n=>n+1);}}>Reload capture settings</button></p>:null}
     {notice?<p role="status">{notice}</p>:null}
-    {!state?(error?null:<p role="status">Reading capture settings…</p>):<>
+    {!state?(error?null:<WatchSkeleton variant="list" label="Reading capture settings"/>):<>
       <p>{state.notice}</p>
       <p><strong>Exact artifact selection</strong><br/><code>{state.config?.selector??state.candidate?.selector??'No connected selector is available for this record.'}</code></p>
       {state.candidate?<p>{state.candidate.channel} · {state.candidate.format}</p>:<p>This record has no currently eligible connected selection. Check source access and connection status. Manual uploads keep explicit capture or the CI scan-and-record command.</p>}
