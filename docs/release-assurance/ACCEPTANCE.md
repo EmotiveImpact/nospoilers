@@ -1,5 +1,8 @@
 ## Gate C current requirement map
 
+Remediation follow-up: review/rebuild prerequisites now include Add required note, which focuses the shared note field; note guidance is programmatically associated. Ten remediation controls cases passed (1.60s), frontend build passed, and real saved-release click focused/scrolled the note into view. No mutation. Remaining Gate C scope is unchanged.
+
+
 Latest runtime follow-up: page scroll resets before paint (abaaac9; four navigation cases and live scrolled Overview→Timeline check). Token revocation now focuses confirmation, returns focus on cancel and conditionally focuses history after success. Seven token cases pass (1.28s), final build passes; live empty token page reviewed, populated revocation remains component-test evidence. Prior cumulative milestone remains historical; Gate C C2/C3 and final consistency review are still open.
 
 

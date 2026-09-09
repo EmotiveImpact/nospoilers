@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
 import type {Ref,Snapshot} from '../../release-intelligence/model';
 import type {RemediationResult} from '../../release-intelligence/remediation';
@@ -11,6 +11,10 @@ export function ReleaseRemediationControls({streamId,workspaceId,record,snapshot
 function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{streamId:string;workspaceId:string;record:Ref;snapshots:Snapshot[]}){
   const [view,setView]=useState<View|null>(null),[selected,setSelected]=useState(''),[reload,setReload]=useState(0),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   const [finding,setFinding]=useState(''),[reason,setReason]=useState(''),[changeUrl,setChangeUrl]=useState(''),[commit,setCommit]=useState(''),[reviewedAt,setReviewedAt]=useState(''),[candidate,setCandidate]=useState(''),[reviewConfirm,setReviewConfirm]=useState(false),[buildConfirm,setBuildConfirm]=useState(false);
+  const noteId=useId();
+  const noteInput=useRef<HTMLTextAreaElement|null>(null);
+  const noteHelp=<p id={noteId} className="ns-intelligence__muted">Each action below requires a note of at least 8 characters. Explain what you reviewed or changed; do not include secrets.</p>;
+  const requiredNote=<div className="ns-intelligence__note-required"><p role="status">Add a remediation note of at least 8 characters to continue.</p><button type="button" onClick={()=>noteInput.current?.focus()}>Add required note</button></div>;
   const resetConfirmation=()=>{setReviewConfirm(false);setBuildConfirm(false);};
   const lifetime=useRef<AbortController|null>(null);
   const errorTarget=useRef<HTMLParagraphElement|null>(null),focusFailure=useRef(false);
@@ -59,7 +63,7 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
     {view?<><p>{view.notice}</p>
       <a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a>
       {!view.current?<p>Record this release in the selected stream to investigate its signed findings. Existing cases below belong to this stream, not necessarily this release.</p>:!view.current.findings.length?<p>This recorded release has no signed findings to investigate. Existing stream cases remain available; a clean scan does not automatically resolve them.</p>:null}
-      {view.canWrite?<><label>Remediation note (no secrets)<textarea minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label><p className="ns-intelligence__muted">Each action below requires a note of at least 8 characters. Explain what you reviewed or changed; do not include secrets.</p></>:<p>Saved remediation is read-only for your current access.</p>}
+      {view.canWrite?<><label>Remediation note (no secrets)<textarea ref={noteInput} aria-describedby={noteId} minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label>{noteHelp}</>:<p>Saved remediation is read-only for your current access.</p>}
       {view.canWrite&&!!view.current?.findings.length?<form onSubmit={e=>{e.preventDefault();void save('start');}}>
         <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
         <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
@@ -74,14 +78,14 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
             <label>Full reviewed commit hash<input required minLength={40} maxLength={64} value={commit} onChange={e=>{setCommit(e.target.value);resetConfirmation();}}/></label>
             <label>Review time (ISO timestamp with timezone)<input required value={reviewedAt} onChange={e=>{setReviewedAt(e.target.value);setReviewConfirm(false);}} placeholder="2026-09-09T12:00:00Z"/></label>
             <label><input type="checkbox" checked={reviewConfirm} onChange={e=>setReviewConfirm(e.target.checked)}/> I reviewed this change. NoSpoilers has not independently verified its review or merge status.</label>
-            {reason.trim().length<8?<p role="status">Add a remediation note of at least 8 characters above to enable recording.</p>:!reviewConfirm?<p>Confirm that you reviewed this change to enable recording.</p>:null}
+            {reason.trim().length<8?requiredNote:!reviewConfirm?<p>Confirm that you reviewed this change to enable recording.</p>:null}
             <button type="submit" disabled={busy||!reviewConfirm||reason.trim().length<8}>Record reviewed change</button>
           </form></details>
           {review?<details><summary>Check a rebuilt artifact</summary><p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
             <form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<select required value={candidate} onChange={e=>{setCandidate(e.target.value);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</select></label>
               <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
               <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
-              {reason.trim().length<8?<p role="status">Add a remediation note of at least 8 characters above before verifying.</p>:null}
+              {reason.trim().length<8?requiredNote:null}
               <button type="submit" disabled={busy||!buildConfirm||!candidate||reason.trim().length<8}>Verify selected rebuild</button>
             </form></details>:null}
         </>:null}

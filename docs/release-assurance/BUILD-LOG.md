@@ -638,3 +638,9 @@ Verification: `npx vitest run tests/artifact-shell-navigation.test.tsx` — 4/4 
 WorkspaceTokens now moves focus to the exact-name confirmation input on Revoke, restores the initiating button on Cancel, and focuses Token history after success only while focus remains inside the removed form. Confirmation form has an accessible name. Existing permissions, exact-name check and requests unchanged.
 
 `npx vitest run tests/workspace-tokens-ui.test.tsx`:7/7 passed,1.28s; `npm run build` passed with existing chunk warning; diff check passed. Signed-in rebuilt empty token page screenshot reviewed. No real token created/revoked; populated keyboard sequence is rendered component evidence, not live credential lifecycle verification.
+
+## 2026-09-10 — Remediation prerequisite navigation
+
+Remediation follow-up: review/rebuild prerequisites now include Add required note, which focuses the shared note field; note guidance is programmatically associated. Ten remediation controls cases passed (1.60s), frontend build passed, and real saved-release click focused/scrolled the note into view. No mutation. Remaining Gate C scope is unchanged.
+
+Commands: `npx vitest run tests/release-remediation-controls.test.tsx`, `npm run build`, `git diff --check`. Build retains the existing bundle warning. Live uploaded release6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6: expanded remediation/review; Add required note focused TEXTAREA labelled Remediation note (no secrets), top444 CSS pixels in the viewport. Screenshot reviewed. No text entered or action submitted.

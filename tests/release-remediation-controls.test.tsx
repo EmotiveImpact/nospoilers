@@ -100,3 +100,20 @@ it('abandons pending case focus and data when the record scope changes',async()=
  await waitFor(()=>expect(screen.queryByText('Remediation case · secret')).toBeNull());
  expect(document.activeElement).toBe(outside);
 });
+
+it('takes review and rebuild users directly to their required note without saving',async()=>{
+ const fetcher=vi.fn(async()=>Response.json(view));vi.stubGlobal('fetch',fetcher);
+ render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
+ await screen.findByText('Scoped remediation only.');
+ fireEvent.click(screen.getByText('Remediation · finding to rebuilt evidence'));
+ fireEvent.click(screen.getByText('Record a human-reviewed change'));
+ fireEvent.click(screen.getByText('Check a rebuilt artifact'));
+ const note=screen.getByLabelText('Remediation note (no secrets)');
+ for(const button of screen.getAllByRole('button',{name:'Add required note'})){
+  button.focus();fireEvent.click(button);expect(document.activeElement).toBe(note);
+ }
+ expect(document.getElementById(note.getAttribute('aria-describedby')!)).toHaveProperty('textContent',expect.stringContaining('at least 8 characters'));
+ expect(fetcher).toHaveBeenCalledTimes(1);
+ fireEvent.change(note,{target:{value:'Reviewed the original signed finding.'}});
+ expect(screen.queryByRole('button',{name:'Add required note'})).toBeNull();
+});
