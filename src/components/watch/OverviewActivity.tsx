@@ -4,6 +4,7 @@ import {navigate} from '@/nav';
 import {buildAlertListViewModels} from '@/watch/view-models';
 import type {Alert,TimelineEntry} from '@/watch/types';
 import {overviewActivityBuckets} from './overview-activity';
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/motion/select';
 
 type Remote<T>={status:'loading'}|{status:'error';code:number}|{status:'ready';data:T};
 function useOverviewRead<T>(url:string|null,retry:number){
@@ -56,7 +57,7 @@ function TimelinePreview({workspaceId,connection,retry,onRetry}:{workspaceId:str
  const total=buckets.reduce((sum,b)=>sum+b.opened,0);
  const timeline=()=>navigate(`/watch/timeline?${new URLSearchParams({workspace:workspaceId,...(connection?{install:String(connection.installationId)}:{})})}`);
  return <section className="overview-panel overview-activity" aria-label="Alert activity">
-  <div className="overview-section-heading"><h2>Alert activity</h2>{ready?<select aria-label="Activity range" value={days} onChange={event=>setDays(Number(event.target.value))}><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option></select>:null}</div>
+  <div className="overview-section-heading"><h2>Alert activity</h2>{ready?<Select className="overview-activity-select" value={String(days)} onValueChange={value=>setDays(Number(value))}><SelectTrigger aria-label="Activity range"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="7">Last 7 days</SelectItem><SelectItem value="30">Last 30 days</SelectItem></SelectContent></Select>:null}</div>
   <p>{connection?`${connection.name} · Selected connection`:'Choose a connection to view its timeline'}</p>
   {!connection?<div className="overview-empty"><button className="overview-link" onClick={timeline}>Open timeline<ArrowUpRight aria-hidden/></button></div>:state.status==='loading'?<div className="overview-chart-loading" aria-busy="true"><span className="sr-only" role="status">Loading activity</span></div>:!ready?<div className="overview-empty"><p>{state.status==='error'&&[402,403].includes(state.code)?'Timeline is available with Team or an active trial.':'Activity could not be loaded.'}</p><button className="overview-link" onClick={state.status==='error'&&[402,403].includes(state.code)?timeline:onRetry}>{state.status==='error'&&[402,403].includes(state.code)?'View timeline access':'Retry activity'}<ArrowUpRight aria-hidden/></button></div>:<>
    <div className="overview-chart-total"><strong>{total}</strong><span>alerts opened in the returned history</span></div>

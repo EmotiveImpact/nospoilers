@@ -432,3 +432,10 @@ The compiled app was restarted through the same private preserved launcher, data
 ## 9 September 2026 — Overview panel refinement
 
 Owner approved removing main panel outlines and reducing panel corners to 16px. Next-action, metric, coverage and activity/attention surfaces are now borderless; release cards retain their faint outlines. Panel/drawer corners are consistent at 16px; capsule buttons and alert tabs remain rounded. CSS-only change: production build/typecheck and diff check passed, with the existing chunk warning. Signed-in browser computed styles confirmed 16px corners and zero main borders, and a screenshot verified the result. No repeated functional suite was needed. Preserved local server restarted; current exec session 93841.
+
+
+## 9 September 2026 — tighter panels and beUI Select
+
+Owner requested further corner reduction and the actual beUI motion Select. Overview panels now use 10px corners, matching existing app panels; main panel borders remain absent. Activity range uses the upstream MIT Select with Motion 13.2.0 pinned, dark app styling, reduced-motion support, keyboard navigation, disabled-option skipping and focus recovery. Shared primitives are reusable; other app dropdowns have not been migrated. License retained in docs and public/licenses/beui.txt.
+
+Verification: `npx vitest run tests/beui-select-ui.test.tsx tests/overview-activity-ui.test.tsx` passed 11/11 in two files (1.65s). Affected-file oxlint clean; `npm run build` passed including TypeScript with existing chunk-size warning; diff check passed. Signed-in existing Codex tab confirmed borderless 10px Activity/Attention panels, visible dark dropdown and Last 30 days selection. No mobile verification or full-suite rerun claimed. Preserved launcher restarted the same app/database/GitHub connection on 4347 (session 29809). No evidence or policy mutation.

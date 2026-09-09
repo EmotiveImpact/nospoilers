@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest owner-directed styling: Overview panels now use borderless 10px corners; Activity range uses actual MIT beUI Select with pinned Motion 13.2.0 and keyboard/focus adaptations. Other dropdowns remain unchanged. Reuse 11/11 focused tests, clean affected lint, passing build and signed-in desktop selection/computed-style verification recorded in BUILD-LOG. Preserved server on4347 runs in session29809.
+
 ## Owner-directed loading and Alerts cleanup
 
 Visible Watch skeleton placeholders are removed globally through the shared `WatchSkeleton`; a polite screen-reader-only loading status remains, and the initial Watch-opening lighthouse is unchanged. Alerts no longer shows a redundant **Status** label before Open, In progress and Resolved. Overview connected-release links now select Connected revisions with exact scope, operational alert copy is neutral, and archived workspaces have a contextual settings action without restoring the removed sidebar Manage link. Independent verification passed 49 tests / seven files plus typecheck and diff check; final build passed with the existing chunk warning. The preserved signed-in app was reloaded and visibly verified. No mutation occurred.
