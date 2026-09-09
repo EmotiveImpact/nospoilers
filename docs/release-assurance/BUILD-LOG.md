@@ -494,3 +494,8 @@ Focused source-monitoring tests5/5 passed (1.23s); final build including TypeScr
 ## Release tool scope design
 
 Moved current-release gate/remediation ahead of stream settings and grouped current-record, selected-history and stream-wide tools in distinct quiet panels. Preserved component keys, record arguments and administrator conditions.13 release-intelligence-panel tests passed (1.92s); frontend build passed with existing chunk warning. Signed-in real upload detail confirmed the grouped layout. No mutation or source/provider changes. Acceptance now names mockup30 as the current reference; prior mockup28 text is historical.
+
+
+## Search keyboard visibility
+
+Command selection now scrolls the active option into view and removes options from the Tab sequence, retaining combobox focus ownership. Actual signed-in browser End selected Finish setup and scrolled the list; screenshot showed the complete option (bounding rect rounding difference0.12px). Escape removed the dialog and restored the header search trigger. Focused accessibility/command checks and build recorded in this batch; reduced-motion handling remains source-covered, not OS-emulated evidence.

@@ -1,5 +1,7 @@
 # Resume checkpoint — 9 September 2026
 
+Latest: release tools grouped by scope (3916aeb); search active keyboard option scrolls into view and options leave Tab order. Four focused accessibility/command tests and build passed; real End selection and Escape focus return verified. Continue full design and C1–C3 audit; do not infer native zoom or screen-reader speech from DOM checks.
+
 Latest follow-up: Coverage real summary/filter/row redesign and activity-first Timeline with expandable source chart.5 source-monitoring tests, final build/lint and real desktop/390px Coverage review passed; see BUILD-LOG.
 
 Latest page-composition increment: Team member/invite layout, Notification and Token creation/history separation, audit/retention record styling, policy choice separation, route-specific layouts and readable connected-release rows.45 focused tests plus15 final Team/policy tests, build and affected lint passed. Real desktop review and390px Team reflow verified; see latest BUILD-LOG for limits. Preserved server currently runs via /private/tmp/nospoilers-preserved-server-start-abs.mjs in exec session78764. Do not expose its configuration.

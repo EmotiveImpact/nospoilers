@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowRight, Bell, Box, FileCheck2, Search } from "lucide-react";
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "@/nav.ts";
 import {
   buildPaletteItems,
@@ -43,6 +43,10 @@ export function WatchCommandPalette({
     [adminOnly, artifactOnly, alerts, query, releases, search, sources, teamOnly],
   );
   const active = items[activeIndex] ?? items[0] ?? null;
+  const activeOptionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open) activeOptionRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, active?.id]);
 
   const close = () => {
     setQuery("");
@@ -127,10 +131,12 @@ export function WatchCommandPalette({
                     </p>
                   ) : null}
                   <button
+                    ref={active?.id === item.id ? activeOptionRef : undefined}
                     id={`${listboxId}-${item.id}`}
                     role="option"
                     aria-selected={active?.id === item.id}
                     type="button"
+                    tabIndex={-1}
                     className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-mute hover:bg-white/5 hover:text-snow aria-selected:bg-white/8 aria-selected:text-snow"
                     onMouseMove={() => setActiveIndex(index)}
                     onClick={() => choose(item)}

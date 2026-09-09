@@ -1,3 +1,7 @@
+## Gate C current requirement map
+
+Authoritative requirements: ENTERPRISE-READINESS-PLAN.md C1–C3. C1 is partial: common page header, status/action/panel foundation and tokens exist; complete extraction/parity for source picker, evidence table, decision/side preview, dialog and settings row still needs a source-level audit. C2 is partial: prior viewport and focused interaction evidence is in BUILD-LOG; latest search End scrolling and Escape return are live verified, four focused accessibility/command tests pass. Native200% zoom and audible screen-reader execution remain unverified. C3 is partial: mockups are excluded from production and the approved current target is Quiet Structure; remaining detailed route/state fidelity requires review. This map supersedes implied whole-gate completion from individual increments.
+
 ## Current design continuation — release tool scope
 
 The approved design target is now mockup30 / the live Quiet Structure Overview, superseding the older mockup28 description below. Subsequent Coverage and Timeline compositions are recorded in BUILD-LOG. Release intelligence now groups current-release gate/remediation first, selected-history tools separately, and stream settings last. Its original role and record conditions remain intact.13 release-intelligence-panel tests and the frontend build pass; signed-in desktop grouping was inspected. Gate C remains partial: native zoom, audible assistive-technology evidence, and remaining detailed page design acceptance are not proven by this increment.
