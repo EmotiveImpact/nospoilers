@@ -514,3 +514,8 @@ Setup now lays optional capabilities out as responsive cards with evidence icons
 ## Connected Scan priority
 
 For signed-in selected installations, Scan now leads with checking a connected release and the existing repository picker. Additional GitHub connection is a secondary disclosure below the picker; first-time sign-in/connect paths are preserved.19 scan-submission-navigation UI tests passed (1.75s), final build passed with existing chunk warning, diff check clean. Real signed-in desktop confirmed updated heading and picker-first order. No scan submission, connection mutation or server restart.
+
+
+## Shared named evidence tables
+
+Added EvidenceTable for workspace audit and uploaded file manifest: consistent fixed-layout wrapping, screen-reader caption and explicit column-header scopes.13 focused evidence-settings/uploaded-brief tests passed (1.91s), build passed with existing chunk warning. Actual signed-in64-file manifest caption/headers inspected; compact355px document matched viewport and visible cells wrapped. Desktop restored. This is semantic/browser evidence, not audible screen-reader execution.
