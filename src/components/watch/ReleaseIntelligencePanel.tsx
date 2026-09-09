@@ -1,3 +1,4 @@
+import { QuietToolGroup } from './design/QuietComponents';
 import { useEffect, useRef, useState } from 'react';
 import type { Analysis, Baseline, Ref, Snapshot, Stream } from '../../release-intelligence/model';
 import './release-intelligence.css';
@@ -135,19 +136,17 @@ function IntelligencePanel({ workspaceId, record }: { workspaceId: string; recor
       <header><h3>{view.stream.name}</h3><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing} onClick={() => setReload(n => n + 1)}>Refresh history</button><button type="button" disabled={busy || refreshing} onClick={() => void exportHistory()}>Export private history</button></div></header>
       <p role="status" aria-live="polite" aria-atomic="true">{refreshing?'Refreshing saved history…':selected?`Selected ${selected.record_kind} ${selected.record_id}, checked ${new Date(selected.scanned_at).toLocaleString()}. ${viewingAnother?'This is a different historical record, not the release displayed above.':'This is the release displayed above.'}`:'No saved record selected.'}</p>
       {refreshing?<WatchSkeleton variant="list" label="Refreshing release tools"/>:<>
-      <section className="ns-intelligence__toolgroup"><h4>Tools for the release displayed above</h4>
-      <p>Release Gate and finding reviews apply to this release, even when you inspect an older history record.</p>
+      <QuietToolGroup title="Tools for the release displayed above" description="Release Gate and finding reviews apply to this release, even when you inspect an older history record.">
       <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
-      <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/></section>
-      {view.selected&&view.canAdminister?<section className="ns-intelligence__toolgroup"><h4>Tools for the selected history record</h4><p>Agent access and optional explanations apply to the selected record identified above.</p>
+      <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/></QuietToolGroup>
+      {view.selected&&view.canAdminister?<QuietToolGroup title="Tools for the selected history record" description="Agent access and optional explanations apply to the selected record identified above.">
       <AgentAccessControls key={`agent:${view.stream.id}:${view.selected.id}`} streamId={view.stream.id} snapshotId={view.selected.id}/>
-      <ReleaseExplanationControls workspaceId={workspaceId} streamId={view.stream.id} snapshotId={view.selected.id}/></section>:null}
-      <section className="ns-intelligence__toolgroup ns-intelligence__toolgroup--stream">
-      <h4>Stream settings and outcomes</h4>
+      <ReleaseExplanationControls workspaceId={workspaceId} streamId={view.stream.id} snapshotId={view.selected.id}/></QuietToolGroup>:null}
+      <QuietToolGroup title="Stream settings and outcomes">
       <ReleaseOutcomeControls key={`outcomes:${view.stream.id}`} streamId={view.stream.id} workspaceId={workspaceId}/>
       <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
       <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
-      </section>
+      </QuietToolGroup>
       </>}
       {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
       {analysis ? <>

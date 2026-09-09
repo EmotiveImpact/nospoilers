@@ -499,3 +499,8 @@ Moved current-release gate/remediation ahead of stream settings and grouped curr
 ## Search keyboard visibility
 
 Command selection now scrolls the active option into view and removes options from the Tab sequence, retaining combobox focus ownership. Actual signed-in browser End selected Finish setup and scrolled the list; screenshot showed the complete option (bounding rect rounding difference0.12px). Escape removed the dialog and restored the header search trigger. Focused accessibility/command checks and build recorded in this batch; reduced-motion handling remains source-covered, not OS-emulated evidence.
+
+
+## Shared tool-group component and PR synchronization
+
+Extracted the three release-tool scope sections into QuietToolGroup, preserving rendered headings, descriptions and children. Build/typecheck and diff check passed; lint has three existing history effect warnings and no errors. Reused the immediately preceding13-case history verification because this is a markup-preserving extraction. PR44 was read as draft on the expected branch and its outdated mockup28 section replaced with current Quiet Structure scope, separate focused checks and explicit C1–C3 limits. No draft-state change.
