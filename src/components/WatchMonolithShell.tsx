@@ -234,22 +234,36 @@ export function WatchMonolithShell({
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
-          <div className={cn("flex items-center gap-2", opts.collapsed ? "flex-col justify-center" : "justify-between")}>
-          <a
-            href="/"
-            onClick={(event) => go(event, "/")}
-            className={cn(
-              "flex min-w-0 items-center text-snow hover:text-snow",
-              opts.collapsed ? "justify-center" : "flex-1",
-            )}
-          >
-            <img
-              src={opts.collapsed ? "/assets/brand/nospoilers-mark-white.png" : "/assets/brand/nospoilers-wordmark.png"}
-              alt="NoSpoilers"
-              className={cn("block object-contain", opts.collapsed ? "size-7" : "h-[25px] w-auto max-w-[152px]")}
-            />
-          </a>
-          {opts.showToggle ? (
+        <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
+          {opts.collapsed && opts.showToggle ? (
+            <button
+              type="button"
+              className="group relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
+              aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!opts.collapsed}
+              onClick={toggleCollapsed}
+            >
+              <img
+                src="/assets/brand/nospoilers-mark-white.png"
+                alt=""
+                className="size-7 object-contain transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0 motion-reduce:transition-none"
+              />
+              <PanelLeft className="absolute size-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" aria-hidden />
+            </button>
+          ) : (
+            <a
+              href="/"
+              onClick={(event) => go(event, "/")}
+              className="flex min-w-0 flex-1 items-center text-snow hover:text-snow"
+            >
+              <img
+                src="/assets/brand/nospoilers-wordmark.png"
+                alt="NoSpoilers"
+                className="block h-[25px] w-auto max-w-[152px] object-contain"
+              />
+            </a>
+          )}
+          {opts.showToggle && !opts.collapsed ? (
             <button
               type="button"
               className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
@@ -257,11 +271,7 @@ export function WatchMonolithShell({
               aria-expanded={!opts.collapsed}
               onClick={toggleCollapsed}
             >
-              {opts.collapsed ? (
-                <PanelLeft className="size-4" aria-hidden />
-              ) : (
-                <PanelLeftClose className="size-4" aria-hidden />
-              )}
+              <PanelLeftClose className="size-4" aria-hidden />
             </button>
           ) : null}
         </div>
