@@ -17,3 +17,6 @@ Hosted findings renders two recorded findings with long paths and an exception f
 Hosted brief renders the complete read-only brief with an unavailable assessment and blocked receipt. Proof focus is interactive; downloads fail locally. It does not simulate a ready assessment or governance actions.
 
 Ready, review and blocked assessment variants use buildAssuranceView and the existing assurance test snapshots. Blocked uses a legal hold; the underlying passed receipt remains separately labelled. These are QA evidence states, not customer attestations.
+
+### Configured-form visual review — 10 September
+Added isolated actual-component production mapping and configured explanation/pending-review fixtures. All writes remain rejected locally; no provider or production setting was activated. In-app browser geometry at390/768/1024/1440 showed matching document width and zero clipped controls for both forms, with one mapping row and expanded aggregate disclosure. Screenshots inspected production at1280/390 and explanation at1440/390, including the mobile review editor. Fixture TypeScript check passed. This proves presentation only, not provider integration, native zoom or spoken screen-reader acceptance.

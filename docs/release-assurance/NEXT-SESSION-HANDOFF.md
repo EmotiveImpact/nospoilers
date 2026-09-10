@@ -46,7 +46,7 @@ Real scan-to-saved-evidence workflow is already verified: upload `6f7e4c8c-0bd1-
 
 Use GATE-C-CURRENT-MATRIX.md for route/state evidence and GATE-C-COMPONENT-INVENTORY.md for source boundaries. Do not treat every historical missing item as still unbuilt.
 
-1. Finish detailed state/visual review where the matrix lacks matching evidence: enabled-provider/production-mapping states, enabled-provider/production-mapping forms beyond the reviewed default/unavailable controls, and any additional state gaps in the matrix. Populated token/audit states now have isolated actual-component visual evidence at tests/ui-fixtures (4351); this does not prove real API lifecycle. Existing injected tests prove behaviour only; no fake live data or unnecessary credential creation.
+1. Configured production mapping and explanation/pending-review forms now have isolated visual evidence at all four widths; see latest BUILD-LOG. Any remaining state audit must use the current matrix rather than repeating these reviews. No real provider integration is implied.
 2. Finish domain-style consistency review against mock30/live Overview, preserving functioning controls. Common component extraction is evidenced; universal palette/typography/spacing compliance is not automatically established by extraction.
 3. Native200% zoom and audible screen-reader execution remain unperformed. GATE-C-MANUAL-VERIFICATION.md gives the exact external checklist. Viewport reflow and ARIA inspections do not close these. A user question about external verification is pending; lack of reply is not sign-off.
 4. Build and inspect any actual changes, use focused tests, then update acceptance/matrix/log and the existing draft PR. Reuse the cumulative milestone unless further changes justify another.
