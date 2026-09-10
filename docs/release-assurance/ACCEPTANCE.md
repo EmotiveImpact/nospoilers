@@ -1,5 +1,7 @@
 ## Gate C current requirement map
 
+Canonical hosted decision variants now have model-driven fixture visual evidence. Receipt/hold labelling corrected with rendered regression. This is not live provider evidence; see BUILD-LOG.
+
 Hosted incomplete-assessment header now fixture-reviewed, including proof-focus action and responsive geometry. Zero-check score now says assessment unavailable. Remaining variants/external checks stay open.
 
 Hosted finding/exception detail now has actual-component fixture visual evidence and an accessible disclosure association. Full hosted provider/decision acceptance is not inferred; see BUILD-LOG.

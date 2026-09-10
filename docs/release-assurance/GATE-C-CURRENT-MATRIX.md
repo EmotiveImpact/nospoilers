@@ -48,7 +48,7 @@ Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test
 | Setup | Actual signed-in optional cards and compact reflow | Direct setup-card semantic test coverage not established |
 | Scan | scan-submission-navigation-ui | Connected picker now precedes extra connection setup; complete current compact/keyboard review |
 | Alerts | watch-accessibility, workspace-alerts-rendered, alert-response-permissions-ui | Queue/tab styling and role semantics checked; remaining changed-state visual review |
-| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted finding/exception detail now fixture-reviewed at390/1440 with all-width geometry; incomplete hosted decision header now fixture-reviewed; ready/blocked variants and enabled deeper form states remain |
+| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted finding/exception detail now fixture-reviewed at390/1440 with all-width geometry; incomplete hosted decision header now fixture-reviewed; canonical ready/review/blocked variants now fixture-reviewed; enabled deeper form states remain |
 | History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Default gate/agent forms and unavailable explanation/capture/production states now reviewed at390 and geometry-checked at all four widths; enabled-provider/mapping states remain unverified |
 | Team | workspace-team-ui | Members/invite composition reviewed desktop and compact; denied-write/read-only tests exist |
 | Notifications | workspace-notifications-ui | Setup/history composition reviewed; test/rejection/duplicate protection covered without sending |
@@ -123,3 +123,8 @@ HostedReleaseEvidence is now available in the isolated fixture with two findings
 ## Hosted incomplete header
 
 Added full read-only WatchReleaseBrief fixture with incomplete assessment, blocked receipt and long package coordinate.390/1440 screenshots and390/768/1024/1440 geometry reviewed; Review release proof focused release-proof-artifact. Replaced misleading0-of-0 score with assessment unavailable when no applicable verified checks exist. Fixture typecheck/build/diff check passed; fixture markers absent from dist. No real hosted lifecycle, ready assessment or governance mutation is claimed.
+
+
+## Canonical decision variants
+
+Hosted fixture now uses buildAssuranceView with existing test snapshots for ready, review and legal-hold blocked variants. All three fit390/768/1024/1440; ready/review390 screenshots and blocked1440 screenshot reviewed. No customer assessment generated. Found/fixed Receipt status incorrectly reflecting legal hold: it now derives solely from receiptStatus; release state remains Legal hold. One rendered regression passed (1.18s), fixture typecheck passed; final build passed after correcting explicit .ts import paths. No full suite repeated.

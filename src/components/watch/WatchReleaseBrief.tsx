@@ -29,6 +29,13 @@ function StepIcon({ tone }: { tone: ReleaseProofStep["tone"] }) {
   return <CircleDashed className="size-4" aria-hidden />;
 }
 
+function receiptStatusLabel(release: ReleaseRevision) {
+  if (release.receiptStatus === "passed") return "Scan passed";
+  if (release.receiptStatus === "failed-policy") return "Blocked";
+  if (release.receiptStatus === "inconclusive") return "Inconclusive";
+  return "Pending";
+}
+
 function releaseStatusLabel(release: ReleaseRevision) {
   if (release.mismatch) return "Digest changed";
   if (release.legalHold?.active) return "Legal hold";
@@ -168,7 +175,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             <div><dt>Artifact digest</dt><dd>{release.artifactSha256.slice(0, 16)}…</dd></div>
             <div><dt>Media type</dt><dd>{release.mediaType ?? "Not recorded"}</dd></div>
             <div><dt>Sealed size</dt><dd>{release.artifactBytes != null ? formatSealedBytes(release.artifactBytes) : "Not recorded"}</dd></div>
-            <div><dt>Receipt status</dt><dd>{releaseStatusLabel(release)}</dd></div>
+            <div><dt>Receipt status</dt><dd>{receiptStatusLabel(release)}</dd></div>
           </dl>
         </aside>
       </div>

@@ -15,3 +15,5 @@ The entry lives under tests and is not imported by production. Use `npx tsc -p t
 Hosted findings renders two recorded findings with long paths and an exception form. Supporting assurance/history are deliberately unavailable. Finding selection follows the actual URL-change event; mutations remain disabled. This does not model an entire successful hosted-release workflow.
 
 Hosted brief renders the complete read-only brief with an unavailable assessment and blocked receipt. Proof focus is interactive; downloads fail locally. It does not simulate a ready assessment or governance actions.
+
+Ready, review and blocked assessment variants use buildAssuranceView and the existing assurance test snapshots. Blocked uses a legal hold; the underlying passed receipt remains separately labelled. These are QA evidence states, not customer attestations.
