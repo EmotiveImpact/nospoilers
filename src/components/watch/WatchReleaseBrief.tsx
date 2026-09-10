@@ -144,10 +144,10 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
       {deliveryError ? <p className="watch-release-error">{deliveryError}</p> : null}
 
       <div className="watch-release-decision-grid">
-        <ReleaseDecisionPanel tone={brief.status} icon={brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />} kicker="Release decision" title={brief.title} description={brief.detail} summary={<div className="watch-release-score" aria-label={`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`}>
+        <ReleaseDecisionPanel tone={brief.status} icon={brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />} kicker="Release decision" title={brief.title} description={brief.detail} summary={<div className="watch-release-score" aria-label={brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`:"No verified release assessment"}>
             <FileCheck2 className="size-7" aria-hidden />
-            <strong>{brief.cleanChecks} of {brief.applicableChecks}</strong>
-            <span>recorded checks passed</span>
+            <strong>{brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks}`:"—"}</strong>
+            <span>{brief.applicableChecks?"recorded checks passed":"assessment unavailable"}</span>
           </div>}>
             <Button
               type="button"

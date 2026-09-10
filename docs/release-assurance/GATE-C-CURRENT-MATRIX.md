@@ -48,7 +48,7 @@ Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test
 | Setup | Actual signed-in optional cards and compact reflow | Direct setup-card semantic test coverage not established |
 | Scan | scan-submission-navigation-ui | Connected picker now precedes extra connection setup; complete current compact/keyboard review |
 | Alerts | watch-accessibility, workspace-alerts-rendered, alert-response-permissions-ui | Queue/tab styling and role semantics checked; remaining changed-state visual review |
-| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted finding/exception detail now fixture-reviewed at390/1440 with all-width geometry; complete hosted decision header and enabled deeper form states remain |
+| Releases | uploaded-release-brief-ui, uploaded-releases-ui, hosted-release-evidence-ui | Real connected rows and uploaded manifest checked; hosted finding/exception detail now fixture-reviewed at390/1440 with all-width geometry; incomplete hosted decision header now fixture-reviewed; ready/blocked variants and enabled deeper form states remain |
 | History/tools | release-intelligence-panel; tool-specific rendered tests | Current/selected/stream scope groups reviewed. Default gate/agent forms and unavailable explanation/capture/production states now reviewed at390 and geometry-checked at all four widths; enabled-provider/mapping states remain unverified |
 | Team | workspace-team-ui | Members/invite composition reviewed desktop and compact; denied-write/read-only tests exist |
 | Notifications | workspace-notifications-ui | Setup/history composition reviewed; test/rejection/duplicate protection covered without sending |
@@ -118,3 +118,8 @@ Removed remaining visual fetch placeholders in ArtifactOverview (temporary headi
 ## Hosted finding fixture
 
 HostedReleaseEvidence is now available in the isolated fixture with two findings and an exception form. Supporting assurance/history deliberately return unavailable; no mutation succeeds.390 and1440 screenshots reviewed, geometry fits390/768/1024/1440, selected finding updates URL and detail. WorkspaceExceptionRequest now exposes aria-expanded/aria-controls and names its form.3 hosted tests passed (1.31s), fixture typecheck and frontend build passed. This verifies the real component with fixture responses, not live hosted receipt/provider behaviour or the full hosted decision header.
+
+
+## Hosted incomplete header
+
+Added full read-only WatchReleaseBrief fixture with incomplete assessment, blocked receipt and long package coordinate.390/1440 screenshots and390/768/1024/1440 geometry reviewed; Review release proof focused release-proof-artifact. Replaced misleading0-of-0 score with assessment unavailable when no applicable verified checks exist. Fixture typecheck/build/diff check passed; fixture markers absent from dist. No real hosted lifecycle, ready assessment or governance mutation is claimed.

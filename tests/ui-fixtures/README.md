@@ -13,3 +13,5 @@ States: populated token history, read-only token history, populated audit and ac
 The entry lives under tests and is not imported by production. Use `npx tsc -p tests/ui-fixtures/tsconfig.json` for its type check. Do not add these fixtures to customer routes or production entrypoints.
 
 Hosted findings renders two recorded findings with long paths and an exception form. Supporting assurance/history are deliberately unavailable. Finding selection follows the actual URL-change event; mutations remain disabled. This does not model an entire successful hosted-release workflow.
+
+Hosted brief renders the complete read-only brief with an unavailable assessment and blocked receipt. Proof focus is interactive; downloads fail locally. It does not simulate a ready assessment or governance actions.

@@ -1,5 +1,7 @@
 ## Gate C current requirement map
 
+Hosted incomplete-assessment header now fixture-reviewed, including proof-focus action and responsive geometry. Zero-check score now says assessment unavailable. Remaining variants/external checks stay open.
+
 Hosted finding/exception detail now has actual-component fixture visual evidence and an accessible disclosure association. Full hosted provider/decision acceptance is not inferred; see BUILD-LOG.
 
 Overview and release-assurance visual fetch placeholders removed, with delayed-response regressions; pending/error states preserved.29 affected tests/build/live Overview review pass; see BUILD-LOG.
