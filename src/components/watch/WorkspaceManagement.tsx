@@ -1,3 +1,4 @@
+import {WatchPageHeader} from "./WatchPageHeader";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
@@ -31,7 +32,7 @@ export function WorkspaceManagement(){
     try{const response=await fetch(path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});const result=await response.json() as {error?:string};if(!response.ok)throw new Error(result.error??'Could not save workspace.');setNotice('Workspace saved. Existing evidence and subscription allowances are unchanged.');setName('');setRenameId(null);setRevision(value=>value+1);window.dispatchEvent(new Event('nospoilers:workspaces-changed'));}
     catch(err){setError(err instanceof Error?err.message:'Could not save workspace.');}finally{setBusy(false);}
   }
-  return <section className="workspace-management"><header className="watch-release-heading"><div><span className="watch-kicker">Organisation settings</span><h1>Workspaces</h1><p>Separate evidence and access. One shared subscription and scan allowance per organisation.</p></div></header>
+  return <section className="workspace-management"><WatchPageHeader kicker="Organisation settings" title="Workspaces" lede="Separate evidence and access. One shared subscription and scan allowance per organisation."/>
     <WorkspaceInvitationInbox/>
     {error?<div role="alert" className="watch-empty"><p>{error}</p><Button variant="outline" onClick={()=>{setError(null);setLoading(true);setRevision(value=>value+1);}}>Retry</Button></div>:null}
     {notice?<p role="status" className="mt-4 text-sm text-mute">{notice}</p>:null}

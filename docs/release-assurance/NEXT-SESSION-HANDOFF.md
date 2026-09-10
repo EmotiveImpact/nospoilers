@@ -2,7 +2,7 @@
 
 ## Start here
 
-Current implementation head: `88406f5`, pushed to `codex/release-assurance-spine-v1`; PR #44 remains draft. Inspect the actual worktree/head before writes. This handoff supersedes the conflicting older checkpoint paragraphs archived in HANDOFF-HISTORY-2026-09-10.md. Full chronological commands/results remain in BUILD-LOG.md.
+Latest previously pushed checkpoint: `0c79431`, pushed to `codex/release-assurance-spine-v1`; PR #44 remains draft. Inspect the actual worktree/head before writes. This handoff supersedes the conflicting older checkpoint paragraphs archived in HANDOFF-HISTORY-2026-09-10.md. Full chronological commands/results remain in BUILD-LOG.md.
 
 The active scope is app-wide design and Gate C C1–C3, not another backend feature build. Use one agent unless bounded parallel work materially helps. Follow AGENTS.md and current owner constraints; do not repeat its historical first-scan task.
 
@@ -52,3 +52,6 @@ Use GATE-C-CURRENT-MATRIX.md for route/state evidence and GATE-C-COMPONENT-INVEN
 4. Build and inspect any actual changes, use focused tests, then update acceptance/matrix/log and the existing draft PR. Reuse the cumulative milestone unless further changes justify another.
 
 Gate C and the active goal are not complete. Do not mark them complete or infer production readiness from this handoff.
+
+## Settings heading consistency
+Team and Workspaces now consume WatchPageHeader instead of duplicating heading markup. Preserved page-specific member/invitation and workspace/create compositions. `npx vitest run tests/workspace-team-ui.test.tsx tests/workspace-management-ui.test.tsx`:20/20 passed,2 files,1.62s. `npm run build` passed (existing chunk warning); diff check passed. Real signed-in Team and Workspaces screenshots inspected after build, with shared heading rendering and working controls retained. No mutation or restart.

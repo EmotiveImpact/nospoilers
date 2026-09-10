@@ -4,7 +4,7 @@ Inspected at runtime checkpoint9879664 plus the shared-palette refactor in this 
 
 | Required component | Source owner | Actual consumers / boundary |
 | --- | --- | --- |
-| Page heading | WatchPageHeader | Coverage, Releases, Timeline, workspace settings, health and registry screens; approved Overview keeps its composed hero |
+| Page heading | WatchPageHeader | Coverage, Releases, Timeline, Team, Workspaces, other workspace settings, health and registry screens; approved Overview keeps its composed hero |
 | Source picker | EvidenceTypePicker, GithubRepositoryScan | ScanPage evidence-type keyboard tabs; scoped repository selection stays in GithubRepositoryScan |
 | Status badge | QuietStatus | Overview saved-attempt summary; domain-specific release statuses retain their explanatory wording |
 | Async state | WatchDataState | WatchSkeleton is screen-reader-only between pages; initial Watch lighthouse remains separate |

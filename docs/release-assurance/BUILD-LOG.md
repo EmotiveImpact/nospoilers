@@ -715,3 +715,6 @@ Hosted fixture now uses buildAssuranceView with existing test snapshots for read
 
 ### Configured-form visual review — 10 September
 Added isolated actual-component production mapping and configured explanation/pending-review fixtures. All writes remain rejected locally; no provider or production setting was activated. In-app browser geometry at390/768/1024/1440 showed matching document width and zero clipped controls for both forms, with one mapping row and expanded aggregate disclosure. Screenshots inspected production at1280/390 and explanation at1440/390, including the mobile review editor. Fixture TypeScript check passed. This proves presentation only, not provider integration, native zoom or spoken screen-reader acceptance.
+
+## Settings heading consistency
+Team and Workspaces now consume WatchPageHeader instead of duplicating heading markup. Preserved page-specific member/invitation and workspace/create compositions. `npx vitest run tests/workspace-team-ui.test.tsx tests/workspace-management-ui.test.tsx`:20/20 passed,2 files,1.62s. `npm run build` passed (existing chunk warning); diff check passed. Real signed-in Team and Workspaces screenshots inspected after build, with shared heading rendering and working controls retained. No mutation or restart.

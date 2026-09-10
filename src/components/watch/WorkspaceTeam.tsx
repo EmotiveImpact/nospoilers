@@ -1,3 +1,4 @@
+import {WatchPageHeader} from "./WatchPageHeader";
 import './design/team-page.css';
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
@@ -24,7 +25,7 @@ function TeamScope({workspaceId}:{workspaceId:string}){
     catch(err){if(active.current)setError(err instanceof Error?err.message:'Could not save access changes.');}finally{submitting.current=false;if(active.current)setBusy(false);}
   }
   const canManage=team&&!team.archived&&['owner','admin'].includes(team.role);
-  return <section className="workspace-management team-page min-w-0 [overflow-wrap:anywhere]"><header className="watch-release-heading"><div><span className="watch-kicker">Workspace settings</span><h1>Team & access</h1><p>Manage the people who can view evidence, run scans and respond in this workspace.</p></div></header>
+  return <section className="workspace-management team-page min-w-0 [overflow-wrap:anywhere]"><WatchPageHeader kicker="Workspace settings" title="Team & access" lede="Manage the people who can view evidence, run scans and respond in this workspace."/>
     {error?<div role="alert" className="watch-empty"><p>{error}</p><Button variant="outline" onClick={()=>{setError('');setRevision(v=>v+1);}}>Retry</Button></div>:null}
     {notice?<p role="status" className="watch-empty">{notice}</p>:null}
     {!team&&!error?<WatchSkeleton variant="list" className="mt-4" />:null}
