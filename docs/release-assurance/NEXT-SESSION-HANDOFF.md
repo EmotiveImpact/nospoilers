@@ -61,3 +61,5 @@ Calculated WCAG sRGB contrast for current Watch text tokens against panel111214,
 
 ## Scan and Alerts responsive closure
 At8fb4e7a, real signed-in Scan and selected Alert22 were checked at actual390/768/1024/1440 CSS pixels. Document width matched each viewport; inspected8 Scan and7 Alerts main controls, zero clipped controls. Scan screenshot reviewed at390; selected alert screenshots reviewed at390/1440, including long repository title wrapping and mobile Back to inbox. Back to inbox then Resolved displayed the genuine empty queue at390, with screenshot reviewed. No scan submitted or alert changed; viewport restored. This closes the listed Scan compact and Alerts selected/empty layout checks, not native zoom or spoken AT. No runtime edits or repeated build/tests for this read-only evidence.
+
+Scope audit: ENTERPRISE-READINESS-PLAN also contains C4/C5. Owner clarification is pending because this handoff says C1–C3 while the goal says remaining Gate C. Neither wider requirement is verified complete. See current matrix; do not silently expand into deployment or replace the approved homepage.

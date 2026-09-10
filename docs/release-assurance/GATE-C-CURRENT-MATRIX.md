@@ -25,6 +25,10 @@ Latest runtime follow-up: page scroll resets before paint (abaaac9; four navigat
 
 Current runtime checkpoint:6d84d33; latest40-file milestone and two focused test corrections are recorded in BUILD-LOG. This is a continuation checklist, not a completed gate. Historical test totals are not a current all-green run.
 
+## Gate scope clarification — 10 September
+
+The source plan also defines **C4** (physical web/app separation and preview-domain auth/pending-intent verification) and **C5** (website completion). The saved continuation limits the current implementation pass to C1–C3, while the goal says remaining Gate C. Neither C4 nor C5 is proven complete by this matrix. An owner scope question is pending. Do not claim the whole Gate C complete or silently authorize deployment/domain changes. Existing architecture notes explicitly defer physical separation. Preserve the approved homepage until scope is resolved.
+
 ## Requirements
 
 | Requirement | Current evidence | Still required |
