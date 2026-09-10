@@ -56,7 +56,7 @@
 .overview-metric:hover{transform:none}
 .overview-metric .overview-status-split{display:flex;flex-wrap:wrap;gap:7px 14px}
 .overview-status-split>span{display:inline-flex;align-items:center;gap:6px}.overview-status-split>span::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
-.overview-status-split .is-passed{color:var(--color-ok)}.overview-status-split .is-review{color:var(--color-review)}.overview-verdict.is-failed{color:var(--color-danger)}
+.overview-status-split .is-passed{color:var(--color-ok)}.overview-status-split .is-review{color:var(--color-review)}.overview-verdict.is-failed{color:var(--color-danger-text)}
 .overview-coverage{padding:24px}.overview-coverage>.overview-eyebrow{margin-bottom:18px}.overview-coverage-total{font-size:44px;line-height:1;font-weight:500;margin-bottom:25px}
 .overview-coverage dl{font-size:11px;margin-bottom:0}.overview-coverage dl>div{padding:13px 0;border-top:1px solid #ffffff0d}
 .overview-coverage-progress{border-top:1px solid #ffffff0d;padding-top:22px;margin-top:0}.overview-coverage-ring>span{background:var(--overview-surface)}
