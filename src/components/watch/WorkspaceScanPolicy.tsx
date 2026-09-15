@@ -43,7 +43,7 @@ function ScopedPolicy({workspaceId,connectionPanels}:{workspaceId:string;connect
  const rules=<section className="policy-rules" aria-label="Scan rules">
   <div className="policy-section-heading"><h2>Scan rules</h2><p>Choose when independent artifact and website scans can pass.</p></div>
   {!policy&&!error&&<WatchSkeleton variant="list" className="mt-4" />}
-  {error&&<div role="alert" className="policy-notice"><p>{error}</p><Button variant="outline" disabled={busy} onClick={()=>{setSaved(false);setRetry(value=>value+1);}}>Reload policy</Button></div>}
+  {error&&<div role="alert" className="policy-notice"><p>{error}</p><Button variant="outline" disabled={busy} onClick={()=>{setPolicy(null);setError('');setSaved(false);setConflict(true);setRetry(value=>value+1);}}>Reload policy</Button></div>}
   {policy&&<>{!policy.supported?<p className="policy-notice">Independent scan policy is unavailable for this workspace.</p>:<form className="policy-rules-form" onSubmit={event=>{event.preventDefault();void save();}}>
    <QuietSettingRow label="Strict policy: any finding blocks a pass" description="When off, critical findings block a pass. Inconclusive scans are not proof of a clean release." checked={strict} disabled={!policy.canEdit||busy||conflict} onChange={next=>{setStrict(next);setSaved(false);}}/>
    <QuietSettingRow label="Require a different administrator to approve exceptions" description="When enabled, request authors cannot approve their own exceptions and new direct GitHub allowlist entries are blocked. Another administrator must be available." checked={requireApproval} disabled={!policy.canEdit||busy||conflict} onChange={next=>{setRequireApproval(next);setSaved(false);}}/>

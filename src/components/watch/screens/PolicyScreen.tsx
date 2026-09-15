@@ -1,15 +1,24 @@
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {QuietSettingRow} from "../design/QuietComponents";
 import "../design/policy-page.css";
 
 export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
   const exceptionRuleRef = useRef<HTMLInputElement>(null);
+  const allowRequest = useRef<AbortController | null>(null);
   const [allowError, setAllowError] = useState<{installationId:number|null;message:string}|null>(null);
   const {search,watchHref} = useWatchScreenContext();
   const { Button, SIGNING_POLICY_CLEAR_CONFIRM, SIGNING_POLICY_CONFIRM, activeInstallId, allowExpires, allowPath, allowReason, allowRule, baselineReason, beginConfirm, canManageSigningPolicy, confirmBusy, confirmForm, confirming, exceptions, installAdmin, locked, previewing, refreshSignedIn, route, savingAllow, selectedInstallId, setAllowExpires, setAllowPath, setAllowReason, setAllowRule, setBaselineReason, setPackageError, setSavingAllow, setSigningDraft, setSigningError, signingDraft, signingError, signingPolicy } = useWatchScreenContext();
+  useLayoutEffect(() => () => {
+    const request = allowRequest.current;
+    if (request) {
+      allowRequest.current = null;
+      request.abort();
+      setSavingAllow(false);
+    }
+  }, [activeInstallId, selectedInstallId, setSavingAllow]);
   const activeExceptions = exceptions.filter((entry) => entry.active).length;
   const signingLabel =
     signingPolicy.status === "ready" ? (signingPolicy.policy ? "on" : "off") : "—";
@@ -184,7 +193,9 @@ export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
                     className="policy-allowlist-form"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      if (locked || savingAllow) return;
+                      if (locked || savingAllow || allowRequest.current) return;
+                      const request = new AbortController();
+                      allowRequest.current = request;
                       setPackageError(null);
                       setAllowError(null);
                       setSavingAllow(true);
@@ -192,6 +203,7 @@ export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
                         try {
                           const response = await fetch("/api/exceptions", {
                             method: "POST",
+                            signal: request.signal,
                             credentials: "include",
                             headers: { "content-type": "application/json" },
                             body: JSON.stringify({
@@ -203,18 +215,23 @@ export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
                             }),
                           });
                           const body = (await response.json()) as { error?: string };
+                          if (request.signal.aborted || allowRequest.current !== request) return;
                           if (!response.ok) throw new Error(body.error ?? "Could not save allowlist entry.");
                           setAllowRule("");
                           setAllowPath("");
                           setAllowReason("");
                           await refreshSignedIn(selectedInstallId);
                         } catch (error) {
+                          if (request.signal.aborted || allowRequest.current !== request) return;
                           setAllowError({installationId:activeInstallId,message:error instanceof Error ? error.message : "Could not save allowlist entry."});
                           setPackageError(
                             error instanceof Error ? error.message : "Could not save allowlist entry.",
                           );
                         } finally {
-                          setSavingAllow(false);
+                          if (allowRequest.current === request) {
+                            allowRequest.current = null;
+                            setSavingAllow(false);
+                          }
                         }
                       })();
                     }}

@@ -625,3 +625,13 @@ describe("overview bento", () => {
     expect(formatAgo("2026-09-04T11:20:00Z", Date.parse("2026-09-04T12:00:00Z"))).toBe("40m ago");
   });
 });
+
+it('keeps exception detail and pagination local to policy rather than reopening them after unrelated navigation',()=>{
+ const search='?workspace=team&install=7&exception=older&exceptionBefore=older-page';
+ expect(watchHref('/watch/policy',search)).toBe('/watch/policy'+search);
+ const releaseHref=watchHref('/watch/releases',search);
+ expect(releaseHref).toBe('/watch/releases?workspace=team&install=7');
+ const returned=watchHref('/watch/policy',new URL(releaseHref,'http://localhost').search);
+ expect(returned).toBe('/watch/policy?workspace=team&install=7');
+ for(const path of ['/watch','/watch/sources','/watch/notifications','/watch/workspaces','/watch/scan'])expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
+});

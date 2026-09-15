@@ -59,3 +59,21 @@ it('opens exception deep links initially and when navigation changes after retur
  view.rerender(<WorkspaceScanPolicy workspaceId="workspace"/>);
  await waitFor(()=>expect(screen.getByRole('tab',{name:'Exceptions'}).getAttribute('aria-selected')).toBe('true'));
 });
+
+it('removes stale editing controls when reload loses access after a failed save',async()=>{
+ let reads=0;
+ const fetcher=vi.fn(async(url:string,options?:RequestInit)=>{
+  if(url.endsWith('/exceptions'))return Response.json({exceptions:[],nextCursor:null});
+  if(options?.method)return Response.json({error:'Save temporarily unavailable.'},{status:503});
+  return ++reads===1?Response.json({policy}):Response.json({error:'Workspace access was removed.'},{status:403});
+ });vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceScanPolicy workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('checkbox',{name:/Strict policy/}));
+ fireEvent.click(screen.getByRole('button',{name:'Save policy'}));
+ await screen.findByText('Save temporarily unavailable.');
+ fireEvent.click(screen.getByRole('button',{name:'Reload policy'}));
+ await screen.findByText('Workspace access was removed.');
+ expect(screen.queryByRole('checkbox',{name:/Strict policy/})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Save policy'})).toBeNull();
+ expect(fetcher.mock.calls.filter(([,options])=>options?.method==='PUT')).toHaveLength(1);
+});

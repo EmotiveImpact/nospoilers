@@ -138,3 +138,28 @@ it('hides pagination for an empty first page while retaining navigation from an 
  expect(await screen.findByRole('button',{name:'Newest'})).toHaveProperty('disabled',false);
  expect(screen.getByRole('button',{name:'Older'})).toHaveProperty('disabled',true);
 });
+
+it('rejects an incomplete successful detail response without exposing decision controls',async()=>{
+ window.history.replaceState(null,'','/watch/policy?exception=older');
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/older')?{canDecide:true,events:[]}:{exceptions:[],nextCursor:null})));
+ render(<WorkspaceExceptions workspaceId="workspace"/>);
+ expect((await screen.findByRole('alert')).textContent).toBe('Exception response was incomplete. Refresh exceptions.');
+ expect(screen.queryByRole('button',{name:'Approve exception'})).toBeNull();
+});
+
+it('rejects an incomplete successful list response while preserving valid selected evidence',async()=>{
+ window.history.replaceState(null,'','/watch/policy?exception=older');
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/older')?{exception:entry,events:[],canDecide:false,currentUserId:'viewer'}:{})));
+ render(<WorkspaceExceptions workspaceId="workspace"/>);
+ expect((await screen.findByRole('alert')).textContent).toBe('Exception list response was incomplete. Refresh exceptions.');
+ expect(await screen.findByText(entry.reason)).toBeTruthy();
+ expect(screen.queryByRole('navigation',{name:'Exception history'})).toBeNull();
+});
+
+it('renders BIGSERIAL event identifiers returned as decimal strings without losing precision',async()=>{
+ window.history.replaceState(null,'','/watch/policy?exception=older');
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/older')?{exception:entry,events:[{id:'9223372036854775807',action:'requested',actor_user_id:'author',note:'Database event retained without numeric conversion',created_at:'2026-09-15T10:00:00Z'}],canDecide:false,currentUserId:'viewer'}:{exceptions:[],nextCursor:null})));
+ render(<WorkspaceExceptions workspaceId="workspace"/>);
+ expect(await screen.findByText('Database event retained without numeric conversion')).toBeTruthy();
+ expect(screen.queryByRole('alert')).toBeNull();
+});

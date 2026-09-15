@@ -1,5 +1,7 @@
 # Current NoSpoilers continuation — 15 September 2026
 
+15 September engineering follow-up (base cdcdfd9): fixed shared Select truncation, failed workspace-menu refresh/focus, exception query leakage, stale policy/organisation/notification controls, lost creation drafts, scoped allowlist/role/billing late responses and dead-end notification choices. Combined 117/117 tests across12 files and final build passed; mobile Select and Escape focus verified in the signed-in browser. See latest BUILD-LOG for exact scope. No deployment or Gate C completion; preserved unrelated dirty CSS/mockups.
+
 15 September dense settings batch: Policy, Notifications and Workspaces now use task-based Radix tabs, quiet rows and secondary disclosures. Organisation access/activity/billing/deletion review is separated. Drafts, exception deep links and workspace scope are preserved. Focused tests, typecheck/build and signed-in desktop/390px visual checks passed; exact evidence is in the latest BUILD-LOG. The hosted coral alias still serves a different frontend bundle; no deployment performed. Other pages, active-coverage funnel and Gate C remain open.
 
 15 September Radix batch: shared Select and workspace menu migrated; Workspaces/billing/release-status fields connected.61 focused cases, final typecheck and Vite build pass; desktop/mobile browser checks recorded in latest BUILD-LOG. Other native domain dropdowns and billing/provider acceptance remain open. Preserve existing dirty CSS/mockups.

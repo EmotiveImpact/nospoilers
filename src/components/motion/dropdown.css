@@ -48,6 +48,8 @@
 }
 
 .ns-select-value {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

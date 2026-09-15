@@ -2,7 +2,7 @@
 import userEvent from '@testing-library/user-event';
 import {radixUiTestSupport} from './helpers/radix-ui';
 radixUiTestSupport();
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {SettingsTabs} from '../src/components/watch/design/SettingsTabs';
 import {WorkspaceManagement} from '../src/components/watch/WorkspaceManagement';
@@ -158,4 +158,70 @@ it('reveals the active settings tab after activation and resize by scrolling onl
   expect(list.scrollLeft).toBe(120);
   expect(scrollPage).not.toHaveBeenCalled();expect(scrollElement).not.toHaveBeenCalled();
  }finally{bounds.mockRestore();scrollPage.mockRestore();scrollElement.mockRestore();}
+});
+
+it('keeps a creation draft when an unrelated workspace is archived',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async(_url:string,init?:RequestInit)=>Response.json(init?.method?{}:{workspaces:[workspace],organizations,invites:[]})));
+ render(<WorkspaceManagement/>);
+ await userEvent.click(screen.getByRole('tab',{name:'Create workspace'}));
+ fireEvent.change(await screen.findByLabelText('Workspace name'),{target:{value:'Unfinished workspace'}});
+ await userEvent.click(screen.getByRole('tab',{name:'Workspaces',exact:true}));
+ await userEvent.click(screen.getByRole('button',{name:'Archive'}));
+ await screen.findByRole('button',{name:'Archive'});
+ await userEvent.click(screen.getByRole('tab',{name:'Create workspace'}));
+ expect(await screen.findByLabelText('Workspace name')).toHaveProperty('value','Unfinished workspace');
+});
+
+it('removes stale workspace mutation controls after a failed list refresh',async()=>{
+ let saved=false;
+ vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
+  if(init?.method){saved=true;return Response.json({});}
+  if(url==='/api/workspaces'&&saved)return Response.json({error:'Access revoked'},{status:403});
+  return Response.json({workspaces:[workspace],organizations,invites:[]});
+ }));
+ render(<WorkspaceManagement/>);
+ await userEvent.click(await screen.findByRole('button',{name:'Archive'}));
+ await waitFor(()=>expect(screen.getByRole('alert').textContent).toContain('Could not load workspaces.'));
+ expect(screen.queryByRole('button',{name:'Archive'})).toBeNull();
+ expect(screen.queryByText('No workspaces yet')).toBeNull();
+ await userEvent.click(screen.getByRole('tab',{name:'Create workspace'}));
+ expect(screen.queryByRole('button',{name:'Create workspace'})).toBeNull();
+ await userEvent.click(screen.getByRole('tab',{name:'Organisation',exact:true}));
+ expect(screen.queryByText('Account · organisation administration')).toBeNull();
+ expect(screen.queryByText('No organisation administration access')).toBeNull();
+});
+
+it('requires a fresh organisation choice when the selected organisation disappears on refresh',async()=>{
+ let saved=false;
+ const fetcher=vi.fn(async(_url:string,init?:RequestInit)=>{
+  if(init?.method){saved=true;return Response.json({});}
+  return Response.json({workspaces:[workspace],organizations:saved?organizations:[...organizations,{...organizations[0],id:'o2',name:'Client'}],invites:[]});
+ });
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+ await userEvent.click(screen.getByRole('tab',{name:'Create workspace'}));
+ await userEvent.click(await screen.findByRole('combobox',{name:'Organisation'}));
+ await userEvent.click(screen.getByRole('option',{name:'Client · existing subscription'}));
+ fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Client draft'}});
+ await userEvent.click(screen.getByRole('tab',{name:'Workspaces',exact:true}));
+ await userEvent.click(screen.getByRole('button',{name:'Archive'}));
+ await screen.findByRole('button',{name:'Archive'});
+ await userEvent.click(screen.getByRole('tab',{name:'Create workspace'}));
+ const button=await screen.findByRole('button',{name:'Create workspace'});
+ expect(button).toHaveProperty('disabled',true);
+ expect(screen.getByRole('combobox',{name:'Organisation'}).textContent).toContain('Choose an organisation');
+ expect(screen.getByLabelText('Workspace name')).toHaveProperty('value','Client draft');
+ fireEvent.submit(button.closest('form')!);
+ expect(fetcher.mock.calls.filter(([,init])=>init?.method==='POST')).toHaveLength(0);
+});
+
+it('synchronises popstate tabs without rewriting scoped history or discarding the create draft',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w1&install=7&workspaceTab=create');
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace],organizations,invites:[]})));
+ render(<WorkspaceManagement/>);
+ fireEvent.change(await screen.findByLabelText('Workspace name'),{target:{value:'Keep this draft'}});
+ await userEvent.click(screen.getByRole('tab',{name:'Connections',exact:true}));
+ expect(Object.fromEntries(new URLSearchParams(window.location.search))).toEqual({workspace:'w1',install:'7',workspaceTab:'connections'});
+ act(()=>{window.history.replaceState({},'','/watch/workspaces?workspace=w1&install=7&workspaceTab=create');window.dispatchEvent(new PopStateEvent('popstate'));});
+ expect(screen.getByRole('tab',{name:'Create workspace'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.getByLabelText('Workspace name')).toHaveProperty('value','Keep this draft');
 });

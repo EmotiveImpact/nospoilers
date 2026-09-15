@@ -166,14 +166,13 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                     {!ended && installAdmin ? (
                       <div className="mt-6">
                         <p className="text-xs font-medium text-snow">Choose a focused flow</p>
-                        <div className="watch-seg mt-3" role="tablist" aria-label="Notification configuration">
+                        <div className="watch-seg mt-3" role="group" aria-label="Notification configuration">
                           {FLOWS.map((item) => (
                             <button
                               key={item.value}
                               type="button"
-                              role="tab"
-                              aria-selected={flow === item.value}
-                              aria-current={flow === item.value ? "page" : undefined}
+                              aria-pressed={flow === item.value}
+                              disabled={(deskCoverage?.plan === "solo" && ["slack", "siem", "jira", "pagerduty"].includes(item.value)) || (destinations.length === 0 && ["route", "route-test"].includes(item.value))}
                               className="watch-seg-item"
                               onClick={() => setFlow(item.value)}
                             >
@@ -181,6 +180,8 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                             </button>
                           ))}
                         </div>
+                        {deskCoverage?.plan === "solo"?<p className="settings-note mt-3">Slack, SIEM, Jira and PagerDuty require Team or an active trial.</p>:null}
+                        {destinations.length === 0?<p className="settings-note mt-3">Save a destination before adding or testing routing rules.</p>:null}
                       </div>
                     ) : null}
                     {!ended && installAdmin && flow === "email" ? (

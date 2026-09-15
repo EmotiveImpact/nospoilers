@@ -5,7 +5,7 @@ radixUiTestSupport();
 import {it,expect,vi,afterEach} from 'vitest';
 import {act,render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceNotifications} from '../src/components/watch/WorkspaceNotifications';
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 const page={destinations:[{id:1,kind:'email',host:'example.com',independent:true,last_delivery_status:null,test_status:null}],deliveries:[],nextCursor:null,canManage:true,providers:{email:true,slack:true}};
 it('locks destination editing during a save and restores it after a service failure',async()=>{
  let finish!:(response:Response)=>void;
@@ -125,5 +125,56 @@ it('closes the destination editor on Cancel and returns focus without submitting
  expect(screen.getByRole('button',{name:'Add destination'})).toBe(compose);
  expect(compose.getAttribute('aria-expanded')).toBe('false');
  expect(document.activeElement).toBe(compose);
+ expect(fetcher.mock.calls.every(call=>!Reflect.get(call,1)?.method)).toBe(true);
+});
+
+it('invalidates a disconnect confirmation when the destination disappears on refresh',async()=>{
+ vi.useFakeTimers();let current=page;
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(current)));
+ render(<WorkspaceNotifications workspaceId="one"/>);
+ await act(async()=>{});
+ fireEvent.click(screen.getByRole('button',{name:'Disconnect example.com'}));
+ fireEvent.change(screen.getByLabelText('Type example.com to disconnect'),{target:{value:'example.com'}});
+ current={...page,destinations:[]};
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ expect(screen.queryByRole('button',{name:'Confirm disconnect'})).toBeNull();
+});
+
+it('clears private drafts when polling discovers revoked management authority',async()=>{
+ vi.useFakeTimers();let allowed=true;
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...page,canManage:allowed})));
+ render(<WorkspaceNotifications workspaceId="one"/>);await act(async()=>{});
+ fireEvent.click(screen.getByRole('button',{name:'Add destination'}));
+ fireEvent.change(screen.getByLabelText('Email address'),{target:{value:'private@example.com'}});
+ allowed=false;await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ allowed=true;await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ expect(screen.queryByDisplayValue('private@example.com')).toBeNull();
+});
+
+it('does not let an older poll resurrect controls after a forbidden mutation',async()=>{
+ vi.useFakeTimers();let reads=0;let oldPoll!:(response:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>{
+  if(init?.method)return Response.json({error:'Access changed'},{status:403});
+  reads++;if(reads===2)return new Promise<Response>(resolve=>{oldPoll=resolve;});
+  return Response.json({...page,canManage:reads===1});
+ }));
+ render(<WorkspaceNotifications workspaceId="one"/>);await act(async()=>{});
+ fireEvent.click(screen.getByRole('button',{name:'Add destination'}));
+ fireEvent.change(screen.getByLabelText('Email address'),{target:{value:'private@example.com'}});
+ await act(async()=>{await vi.advanceTimersByTimeAsync(5000);});
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Save destination'}));});
+ await act(async()=>{oldPoll(Response.json(page));});
+ expect(screen.queryByRole('button',{name:'Add destination'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Save destination'})).toBeNull();
+});
+
+it('focuses disconnect confirmation and returns focus on cancellation without a request',async()=>{
+ const fetcher=vi.fn(async()=>Response.json(page));vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceNotifications workspaceId="one"/>);
+ const trigger=await screen.findByRole('button',{name:'Disconnect example.com'});
+ await userEvent.click(trigger);
+ expect(document.activeElement).toBe(screen.getByLabelText('Type example.com to disconnect'));
+ await userEvent.click(screen.getByRole('button',{name:'Cancel',exact:true}));
+ expect(document.activeElement).toBe(trigger);
  expect(fetcher.mock.calls.every(call=>!Reflect.get(call,1)?.method)).toBe(true);
 });

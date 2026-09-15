@@ -42,3 +42,12 @@ it('does not open a disabled select',async()=>{
  expect(trigger).toHaveProperty('disabled',true);await user.click(trigger);await user.keyboard('{ArrowDown}');
  expect(screen.queryByRole('listbox')).toBeNull();expect(trigger.textContent).toContain('Last 7 days');
 });
+
+it('retains the value styling hook and caller class for long selected labels',()=>{
+ const label='A long organisation name that must remain contained inside its trigger';
+ render(<Select value="org"><SelectTrigger aria-label="Organisation"><SelectValue className="custom-value"/></SelectTrigger><SelectContent><SelectItem value="org">{label}</SelectItem></SelectContent></Select>);
+ const trigger=screen.getByRole('combobox',{name:'Organisation'});
+ const value=trigger.querySelector('.ns-select-value.custom-value');
+ expect(value).not.toBeNull();
+ expect(value?.textContent).toBe(label);
+});

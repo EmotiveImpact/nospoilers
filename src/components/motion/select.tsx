@@ -49,7 +49,7 @@ export interface SelectValueProps {
 }
 
 export function SelectValue({ className, placeholder = "Select" }: SelectValueProps) {
-  return <SelectPrimitive.Value className={cn("ns-select-value", className)} placeholder={placeholder} />;
+  return <span className={cn("ns-select-value", className)}><SelectPrimitive.Value placeholder={placeholder} /></span>;
 }
 
 export interface SelectContentProps {
