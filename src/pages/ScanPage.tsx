@@ -335,10 +335,10 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
             <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              {session&&selectedInstall?"Choose a repository to inspect its latest published release assets. The source tree is not treated as the shipped artifact.":"Connect GitHub to choose a repository and check its published release assets. Manage monitoring separately in Coverage; a connection alone is not a completed scan."}
+              {session&&selectedInstall?"Inspect the assets attached to a published release, not the repository source code.":"Connect GitHub, choose a repository, then scan its published release assets."}
             </p>
             {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            {!session || !selectedInstall ? <div className="mt-7 flex flex-wrap items-center gap-3">
               {!sessionReady||sessionError||session ? null : auth.githubApp ? (
                 <a className="scan-primary-action" href="/api/auth/github">
                   Sign in with GitHub <ChevronRight className="size-4" aria-hidden />
@@ -349,17 +349,21 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </HeadlessButton>
               )}
               {session&&!selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
-            </div>
+            </div> : null}
             {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
-            {session&&selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<details className="mt-6 border-t border-white/10 pt-4 text-sm text-mute"><summary className="cursor-pointer">Connect another GitHub source</summary><div className="mt-4"><GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/></div></details>:null}
           </div>
-          <aside>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What happens next</p>
-            <ol>
-              <li><span>1</span><div><strong>Choose a repository</strong><small>It needs a published release with supported assets.</small></div></li>
-              <li><span>2</span><div><strong>Queue a release check</strong><small>A queued check is not a completed scan or a passing result.</small></div></li>
-              <li><span>3</span><div><strong>Review the outcome</strong><small>Open Releases for saved artifact evidence, or Alerts when a check could not inspect an artifact.</small></div></li>
-            </ol>
+          <aside className="space-y-8">
+            {session&&selectedInstall&&!lockReason&&!sessionError&&workspaceId ? (
+              <section aria-labelledby="github-add-source-title">
+                <h3 id="github-add-source-title" className="mb-4 font-display text-lg text-snow">Another GitHub source?</h3>
+                <GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={lockReason} compact/>
+              </section>
+            ) : null}
+            <section aria-labelledby="github-outcome-title">
+              <h3 id="github-outcome-title" className="font-display text-lg text-snow">Your scan results</h3>
+              <p className="mt-3 text-sm leading-relaxed text-mute">Completed artifact scans appear in Releases. If a check cannot inspect an artifact, review its alert.</p>
+              <a className="mt-4 inline-block text-sm text-snow underline underline-offset-4" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
+            </section>
           </aside>
         </section>
       ) : null}

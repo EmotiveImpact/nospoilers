@@ -1,10 +1,11 @@
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
-export function GithubWorkspaceConnect({workspaceId,disabledReason}:{workspaceId:string;disabledReason?:string|null}){
- return <GithubWorkspaceConnectScope key={workspaceId} workspaceId={workspaceId} disabledReason={disabledReason}/>;
+type ConnectProps={workspaceId:string;disabledReason?:string|null;compact?:boolean};
+export function GithubWorkspaceConnect(props:ConnectProps){
+ return <GithubWorkspaceConnectScope key={props.workspaceId} {...props}/>;
 }
-function GithubWorkspaceConnectScope({workspaceId,disabledReason}:{workspaceId:string;disabledReason?:string|null}){
+function GithubWorkspaceConnectScope({workspaceId,disabledReason,compact=false}:ConnectProps){
  const [busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null);const submitting=useRef(false);
  const active=useRef(true);
  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
@@ -18,7 +19,7 @@ function GithubWorkspaceConnectScope({workspaceId,disabledReason}:{workspaceId:s
   }catch(reason){if(active.current)setError(reason instanceof Error?reason.message:'Connection unavailable.');}
   finally{submitting.current=false;if(active.current)setBusy(false);}
  }
- return <div><Button disabled={busy||!!disabledReason} onClick={()=>void start()}>{busy?'Opening GitHub…':'Connect GitHub to this workspace'}</Button><p className="mt-2 text-sm text-mute">An organisation and workspace administrator must authorise a new GitHub App installation. Existing connections keep their workspace and history.</p>{disabledReason?<p role="status">{disabledReason}</p>:null}{error?<p className="mt-2 text-sm" role="alert">{error}</p>:null}</div>;
+ return <div><Button variant={compact?'outline':'default'} disabled={busy||!!disabledReason} onClick={()=>void start()}>{busy?'Opening GitHub…':compact?'Connect GitHub':'Connect GitHub to this workspace'}</Button><p className="mt-3 text-sm leading-relaxed text-mute">{compact?'Requires organisation and workspace admin approval. Existing connections and history stay in place.':'An organisation and workspace administrator must authorise a new GitHub App installation. Existing connections keep their workspace and history.'}</p>{disabledReason?<p role="status">{disabledReason}</p>:null}{error?<p className="mt-2 text-sm" role="alert">{error}</p>:null}</div>;
 }
 
 export function GithubConnectionReturn(){

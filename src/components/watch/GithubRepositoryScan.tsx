@@ -80,7 +80,6 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
   }
   return <section className="mt-6 space-y-4" aria-label="Choose repository to scan">
     <h3 className="font-display text-lg text-snow">Choose a connected repository</h3>
-    <p className="text-sm text-mute">Scan the latest published release assets—not the repository source tree. If no supported artifact is published, review setup or upload the packed build instead.</p>
     {repos===null&&!error?<WatchSkeleton variant="list"/>:null}
     {repos?<>{repos.length?<><label className="block text-sm">Find repository<input className="mt-2 block w-full rounded-md border border-white/10 bg-black p-2" value={query} disabled={busy} onChange={event=>setQuery(event.target.value)} placeholder="Search owner / repository"/></label>
       <label className="block text-sm">Repository<select className="mt-2 block w-full rounded-md border border-white/10 bg-black p-2" value={selected} disabled={busy} onChange={event=>{setSelected(event.target.value);setNotice('');setError('');setJobId(null);setProgressError('');}}><option value="">Choose repository</option>{repo&&!visible.includes(repo)?<option value={repo.id}>{repo.full_name}</option>:null}{visible.map(row=><option key={row.id} value={row.id}>{row.full_name}</option>)}</select></label>

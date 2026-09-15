@@ -80,3 +80,5 @@ At8fb4e7a, real signed-in Scan and selected Alert22 were checked at actual390/76
 Scope audit: ENTERPRISE-READINESS-PLAN also contains C4/C5. Owner clarification is pending because this handoff says C1–C3 while the goal says remaining Gate C. Neither wider requirement is verified complete. See current matrix; do not silently expand into deployment or replace the approved homepage.
 
 Alert queue copy follow-up: missing releases now show repository + No published release; repeated job codes and Saved check removed from rows. Detail retains evidence with readable Latest release check label. Four focused tests/build/live screenshot passed; see latest BUILD-LOG.
+
+Scan disclosure follow-up: GitHub connection is now a visible secondary action, stacked on mobile, rather than a hidden details section. Repeated guide/copy and empty spacer removed.24 focused cases and final build passed; real desktop/390px reviewed with zero panel disclosures and no horizontal overflow. See latest BUILD-LOG. No connection/scan mutation or restart.
