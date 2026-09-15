@@ -1,8 +1,16 @@
-# Current NoSpoilers continuation — 10 September 2026
+# Current NoSpoilers continuation — 15 September 2026
+
+## Current customer-journey priority
+
+Owner correction: the funnel and UI still need functional tightening; do not describe the remaining work as styling alone. First scan-entry/navigation batch is now implemented and verified (see latest BUILD-LOG). Start with the remaining concrete journey checks recorded there; reuse the82 passing focused cases and original saved scan proof.
+
+Real local coverage has expired. Existing evidence and proof verification remain accessible; new scans remain denied. Organisation billing reports unconfigured, so no live renewal path has been proven. Do not extend the trial or activate billing to conceal this limitation. Current hosted alias supplied by owner is https://nospoilers-coral.vercel.app; its deployed commit remains unverified. The earlier4 September immutable URL was not the current alias.
+
+Local restart configuration was recovered12 September with the original GitHub key and derived signing values. Durable private launcher: `data/nospoilers-local-start.mjs` (ignored by git). Use `node --import tsx data/nospoilers-local-start.mjs` only when a listener is absent and local work requires the server; never print/commit its configuration. Server was restarted15 September for this review, preserving the database.
 
 ## Start here
 
-Latest previously pushed checkpoint: `0c79431`, pushed to `codex/release-assurance-spine-v1`; PR #44 remains draft. Inspect the actual worktree/head before writes. This handoff supersedes the conflicting older checkpoint paragraphs archived in HANDOFF-HISTORY-2026-09-10.md. Full chronological commands/results remain in BUILD-LOG.md.
+Previously pushed base for the current scan-journey batch: `440785f`, pushed to `codex/release-assurance-spine-v1`; PR #44 remains draft. Inspect the actual worktree/head before writes. This handoff supersedes the conflicting older checkpoint paragraphs archived in HANDOFF-HISTORY-2026-09-10.md. Full chronological commands/results remain in BUILD-LOG.md.
 
 The active scope is app-wide design and Gate C C1–C3, not another backend feature build. Use one agent unless bounded parallel work materially helps. Follow AGENTS.md and current owner constraints; do not repeat its historical first-scan task.
 

@@ -1,9 +1,15 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type MouseEvent} from 'react';
 import {Button} from '@/components/ui/button';
 import {WatchSkeleton} from '@/components/WatchDataState';
+import {navigate} from '@/nav';
 import type {Repo,TenantJob} from '@/watch/types';
 
 type Props={installationId:string;search:string;disabledReason:string|null};
+function openWatchLink(event:MouseEvent<HTMLAnchorElement>){
+  if(event.defaultPrevented||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;
+  event.preventDefault();
+  navigate(event.currentTarget.getAttribute('href')!);
+}
 export function GithubRepositoryScan(props:Props){
   return <RepositoryScan key={`${props.installationId}:${new URLSearchParams(props.search).get('workspace')}`} {...props}/>;
 }
@@ -49,7 +55,8 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
   },[jobId,installationId,progressRetry,selected]);
   const repo=repos?.find(row=>String(row.id)===selected);
   const visible=repos?.filter(row=>row.full_name.toLowerCase().includes(query.toLowerCase()))??[];
-  const params=new URLSearchParams(search);params.set('install',installationId);params.delete('mode');
+  const params=new URLSearchParams({install:installationId});
+  const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId);
   const setup=new URLSearchParams(params);setup.set('configure','github');if(repo)setup.set('source',`repo-${repo.id}`);
   const alerts=new URLSearchParams(params);if(repo)alerts.set('source',`repo-${repo.id}`);
   async function scan(){
@@ -84,6 +91,6 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
     {error?<div role="alert"><p>{error}</p>{!repos?<Button variant="outline" onClick={()=>{setError('');setRetry(value=>value+1);}}>Retry repositories</Button>:null}</div>:null}
     {notice?<p role="status">{notice}</p>:null}
     {progressError?<div role="alert"><p>{progressError}</p><Button variant="outline" onClick={()=>{setProgressError('');setProgressRetry(value=>value+1);}}>Check progress again</Button></div>:null}
-    <div className="flex flex-wrap gap-4 text-sm"><a className="underline underline-offset-4" href={`/watch/releases?${params}`}>View releases and scan progress</a>{repo?<a className="underline underline-offset-4" href={`/watch/alerts?${alerts}`}>View this repository’s alerts</a>:null}<a className="underline underline-offset-4" href={`/watch/sources?${setup}`}>Repository setup and prerequisites</a></div>
+    <div className="flex flex-wrap gap-4 text-sm"><a className="underline underline-offset-4" href={`/watch/releases?${params}`} onClick={openWatchLink}>View releases and scan progress</a>{repo?<a className="underline underline-offset-4" href={`/watch/alerts?${alerts}`} onClick={openWatchLink}>View this repository’s alerts</a>:null}<a className="underline underline-offset-4" href={`/watch/sources?${setup}`} onClick={openWatchLink}>Repository setup and prerequisites</a></div>
   </section>;
 }

@@ -118,6 +118,8 @@ export function watchHref(
 ): string {
   const params = paramsOf(search);
   // Keep tenant scope across navigation, but never carry a detail screen into another page.
+  if(path!=="/watch/scan")params.delete('mode');
+  if(path!=="/watch/sources")for(const key of ['configure','origin'])params.delete(key);
   if(path!=="/watch/sources")params.delete('coverageHealth');
   if(path!=="/watch/releases"&&params.has('hostedDecision')){params.delete('hostedDecision');params.delete('before');}
   if(path!=="/watch/releases")for(const key of ['release','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore'])params.delete(key);

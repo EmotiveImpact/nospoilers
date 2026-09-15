@@ -727,3 +727,18 @@ At8fb4e7a, real signed-in Scan and selected Alert22 were checked at actual390/76
 
 ## Gate scope audit
 Read C1–C5 definitions and mockup contract against current handoff. Identified unaccounted C4/C5 scope, explicitly recorded as unverified and requested owner clarification. No runtime change or repeated tests. This corrects the acceptance boundary, not gate completion.
+
+## 15 September — scan entry and return-path fixes
+
+The owner clarified that customer journeys remain unfinished, not merely visual polish. The first bounded batch fixes Scan prerequisites and navigation; it does not close Gate C or the full funnel.
+
+Real local trial is now expired. Scan previously led through repository controls before revealing the restriction; its plain links also reloaded Watch. Proof verification mode leaked through Overview back into New scan. Scan now shows an early permission/coverage explanation with scoped saved-release/coverage/settings links; unusable picker controls are omitted, website continuation waits for valid permissions, and existing proof verification remains available. GitHub copy distinguishes queued checks from completed evidence and monitoring. Ordinary local links use client navigation with modified-click semantics retained. Scan mode and source configuration intent stop following unrelated pages.
+
+Verification on the batch based on440785f:
+- `npx vitest run tests/scan-prerequisites-ui.test.tsx tests/scan-submission-navigation-ui.test.tsx tests/github-repository-scan.test.tsx tests/github-repository-scan-scope.test.tsx`:40/40,4 files,2.78s. First run found duplicate viewer messaging; redundant blocked connector was removed without weakening the old assertion.
+- `npx vitest run tests/watch-desk.test.ts tests/artifact-shell-navigation.test.tsx`:42/42,2 files,1.27s. These are two focused runs, not a repeated full suite.
+- `npm run build` passed including TypeScript; existing chunk-size warning. Affected-file oxlint exited0 with3 existing ScanPage warnings; `git diff --check` passed. Existing unrelated src/index.css and mock edits were preserved, excluded from the commit, and present during the local build.
+- Real signed-in browser: expired Scan -> saved Releases -> existing full release brief -> proof verification remained navigable. Rebuilt Scan banner -> saved Releases stayed in the app shell. Verify proof -> Overview -> New scan now returns to default GitHub mode with workspace/install retained. No new scan, payment, evidence mutation, provider activation or production deployment.
+- Desktop and390px Scan screenshots inspected; mobile document width390 and prerequisite bounds25–365. This is not all-width or native zoom/AT acceptance. Local screenshots: output/journey-2026-09-15/01-scan-before.png,02-releases.png,03-scan-after.png,04-scan-mobile.png.
+
+Remaining concrete work: real active-coverage source setup/latest-release scanning and error recovery; broader finding-to-action usability; final design/accessibility consistency; establish which commit nospoilers-coral.vercel.app serves before hosted review. The old immutable Vercel deployment inspected12 September is not proof of that alias's version. Local organisation billing displays not configured; no renewal or trial extension performed. Do not repeat the already-proven artifact upload merely to fill UI evidence.

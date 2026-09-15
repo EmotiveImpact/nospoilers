@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 
+it('leaves proof verification behind when returning through Overview to New scan',()=>{
+ const overview=watchHref('/watch','?workspace=team&install=7&mode=receipt');
+ expect(overview).toBe('/watch?workspace=team&install=7');
+ expect(watchHref('/watch/scan',new URL(overview,'http://localhost').search)).toBe('/watch/scan?workspace=team&install=7');
+});
+
+it('keeps source setup intent on Coverage without carrying it into unrelated pages',()=>{
+ const search='?workspace=team&install=7&configure=website&origin=https%3A%2F%2Fexample.com';
+ expect(watchHref('/watch/sources',search)).toBe('/watch/sources'+search);
+ expect(watchHref('/watch/releases',search)).toBe('/watch/releases?workspace=team&install=7');
+ expect(watchHref('/watch/notifications',search)).toBe('/watch/notifications?workspace=team&install=7');
+});
+
 it('drops release pagination when leaving history while preserving workspace and scan mode',()=>{
  const search='?workspace=team&install=7&uploadBefore=old&upload=record&uploadView=detail&mode=github';
  expect(watchHref('/watch/scan',search)).toBe('/watch/scan?workspace=team&install=7&mode=github');

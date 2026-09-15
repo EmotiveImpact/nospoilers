@@ -15,7 +15,7 @@ export function EvidenceTypePicker({id,mode,onChange}:{id:string;mode:EvidenceTy
         <button type="button" role="tab" id={`${id}-github`} aria-controls={`${id}-panel`} tabIndex={mode === "github"?0:-1} aria-selected={mode === "github"} className={cn(mode === "github" && "is-selected")} onClick={() => onChange("github")}>
           <GitBranch aria-hidden />
           <strong>GitHub repository</strong>
-          <span>Connect a repo and keep watching releases.</span>
+          <span>Check published release assets from GitHub.</span>
         </button>
         <button type="button" role="tab" id={`${id}-package`} aria-controls={`${id}-panel`} tabIndex={mode === "package"?0:-1} aria-selected={mode === "package"} className={cn(mode === "package" && "is-selected")} onClick={() => onChange("package")}>
           <Box aria-hidden />

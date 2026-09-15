@@ -1,5 +1,7 @@
 ## Gate C current requirement map
 
+Scan journey batch15 September: early prerequisites, scoped recovery links, client navigation and stale-mode cleanup implemented.40 Scan/navigation cases plus42 route/shell cases pass in separate focused runs; build and signed-in desktop/mobile checks recorded in BUILD-LOG. Active scan admission remains blocked by the real expired trial; billing is unconfigured locally. Full customer-funnel and Gate C acceptance remain open.
+
 Canonical hosted decision variants now have model-driven fixture visual evidence. Receipt/hold labelling corrected with rendered regression. This is not live provider evidence; see BUILD-LOG.
 
 Hosted incomplete-assessment header now fixture-reviewed, including proof-focus action and responsive geometry. Zero-check score now says assessment unavailable. Remaining variants/external checks stay open.

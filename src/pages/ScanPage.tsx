@@ -1,6 +1,5 @@
 import {EvidenceTypePicker,type EvidenceType} from '@/components/watch/EvidenceTypePicker';
 import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
-import { CoverageLock } from "@/components/CoverageLock.tsx"
 import { Badge } from "@/components/ui/badge"
 import { WatchSkeleton } from "@/components/WatchDataState"
 import { coverageFrom, type Coverage } from "@/coverage.ts"
@@ -9,7 +8,7 @@ import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { watchPath } from "@/watch/routes.ts"
 import { ChevronRight, FileJson, Loader2, LockKeyhole, Upload } from "lucide-react"
-import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
 import {GithubRepositoryScan} from '@/components/watch/GithubRepositoryScan'
@@ -211,10 +210,23 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const coverage = productWorkspace?coverageFrom(productWorkspace.trial_ends_at,productWorkspace.plan):selectedInstall ? (workspace ? coverageFrom(workspace.trialEndsAt, workspace.plan) : undefined) : session?.personalCoverage ?? session?.coverage
   const lockReason = !sessionReady ? 'Checking sign-in and workspace permissions…' : productWorkspace?.archived_at?'This workspace is archived. Restore it before starting a scan.':(productWorkspace?.role??workspace?.role)==='viewer' ? 'Viewer access is read-only. Ask an administrator for permission to start scans.' : workspace?.suspended ? 'This GitHub connection is suspended. An administrator needs to reconnect it.' : session && selectedInstall && !workspace ? 'This workspace is unavailable or outside your access. Choose another workspace.' : null
   const locked = coverage?.status === "ended" || lockReason!==null
+  const showPrerequisite = sessionReady && !sessionError && locked && mode !== 'receipt'
+  const scope = new URLSearchParams()
+  const workspaceId = productWorkspace?.id ?? new URLSearchParams(search).get('workspace')
+  if (workspaceId) scope.set('workspace', workspaceId)
+  if (selectedInstall) scope.set('install', selectedInstall)
+  const scopedPath = (view: 'releases' | 'sources' | 'workspaces') => `${watchPath(view)}${scope.size ? `?${scope}` : ''}`
+
+  const followAppLink = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    navigate(event.currentTarget.getAttribute('href')!)
+  }
 
   const continueWebsite = async () => {
+    if (locked || sessionError || savingWebsite) return
     if (session) {
-      const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+      const params = new URLSearchParams(scope)
       params.set("configure", "website")
       params.set("origin", websiteUrl.trim())
       navigate(`${watchPath("sources")}?${params.toString()}`)
@@ -298,6 +310,21 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         Verify an existing proof separately without starting a new scan.
       </p>
 
+      {showPrerequisite ? (
+        <section className="watch-card mt-6 space-y-3 p-5" aria-label="Scan prerequisites">
+          <h2 className="font-display text-lg text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</h2>
+          <p role="status" className="text-sm leading-relaxed text-mute">
+            {lockReason ?? 'New scans and monitoring are paused until coverage is active. You can still open saved releases and verify existing proof.'}
+            {!lockReason && workspaceId ? ' Your organisation owner manages coverage in workspace settings.' : null}
+          </p>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            {!lockReason ? <a className="scan-primary-action" onClick={followAppLink} href={workspaceId ? scopedPath('workspaces') : '/pricing'}>{workspaceId ? 'Workspace settings' : 'See plans'} <ChevronRight className="size-4" aria-hidden /></a> : null}
+            <a className="underline underline-offset-4" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
+            <a className="underline underline-offset-4" onClick={followAppLink} href={scopedPath('sources')}>View coverage</a>
+          </div>
+        </section>
+      ) : null}
+
       <EvidenceTypePicker id={modeId} mode={mode} onChange={chooseMode}/>
 
       <div role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
@@ -308,7 +335,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
             <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              {session&&selectedInstall?"Choose a repository to inspect its latest published release assets. The source tree is not treated as the shipped artifact.":"GitHub creates ongoing Coverage and queues the first release check. NoSpoilers watches visibility, release assets, and packed CI output without treating the source tree as the shipped artifact."}
+              {session&&selectedInstall?"Choose a repository to inspect its latest published release assets. The source tree is not treated as the shipped artifact.":"Connect GitHub to choose a repository and check its published release assets. Manage monitoring separately in Coverage; a connection alone is not a completed scan."}
             </p>
             {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -321,17 +348,17 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                   Continue to sign in <ChevronRight className="size-4" aria-hidden />
                 </HeadlessButton>
               )}
-              {session&&!selectedInstall&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
+              {session&&!selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
             </div>
-            {session&&selectedInstall?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
-            {session&&selectedInstall&&new URLSearchParams(search).get('workspace')?<details className="mt-6 border-t border-white/10 pt-4 text-sm text-mute"><summary className="cursor-pointer">Connect another GitHub source</summary><div className="mt-4"><GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/></div></details>:null}
+            {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
+            {session&&selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<details className="mt-6 border-t border-white/10 pt-4 text-sm text-mute"><summary className="cursor-pointer">Connect another GitHub source</summary><div className="mt-4"><GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/></div></details>:null}
           </div>
           <aside>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What this creates</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What happens next</p>
             <ol>
-              <li><span>1</span><div><strong>Repository coverage</strong><small>Visibility and release events stay monitored.</small></div></li>
-              <li><span>2</span><div><strong>Initial release check</strong><small>The latest shipped artifact becomes a Release.</small></div></li>
-              <li><span>3</span><div><strong>Actionable alerts</strong><small>Exposure changes route to the right owner.</small></div></li>
+              <li><span>1</span><div><strong>Choose a repository</strong><small>It needs a published release with supported assets.</small></div></li>
+              <li><span>2</span><div><strong>Queue a release check</strong><small>A queued check is not a completed scan or a passing result.</small></div></li>
+              <li><span>3</span><div><strong>Review the outcome</strong><small>Open Releases for saved artifact evidence, or Alerts when a check could not inspect an artifact.</small></div></li>
             </ol>
           </aside>
         </section>
@@ -360,7 +387,6 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 {session && coverage?.status === "trial" ? " Hosted scanning is active for your trial." : null}
               </p>
               <div className="relative mt-7 min-h-52">
-                {sessionError ? null : lockReason ? <p role="status" className="mb-4 text-sm text-mute">{lockReason}</p> : locked ? <CoverageLock variant="scan" title="Subscribe to unpack here." /> : null}
                 <Field>
                   <Label
                     htmlFor={locked ? undefined : inputId}
@@ -386,7 +412,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </Field>
               </div>
             </section>
-            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} lockReason={lockReason} auth={auth} />}
+            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} auth={auth} />}
           </div>
 
           {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}
@@ -406,7 +432,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               <label htmlFor="scan-website-url">HTTPS production URL</label>
               <div>
                 <input id="scan-website-url" type="url" required inputMode="url" placeholder="https://app.example.com/" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
-                <HeadlessButton type="submit" className="scan-primary-action" disabled={savingWebsite || !websiteUrl.trim()}>
+                <HeadlessButton type="submit" className="scan-primary-action" disabled={savingWebsite || !websiteUrl.trim() || locked || !!sessionError}>
                   {savingWebsite ? "Saving…" : session ? "Continue to verification" : "Sign in to continue"}
                   <ChevronRight className="size-4" aria-hidden />
                 </HeadlessButton>
@@ -690,14 +716,14 @@ export function ReceiptVerifyPanel() {
   )
 }
 
-function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; locked: boolean; lockReason: string|null; auth: { githubApp: boolean } }) {
+function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boolean; auth: { githubApp: boolean } }) {
   if (locked && state.status === "idle") {
     return (
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Report</p>
-        <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">No hosted scan yet.</h2>
+        <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">New scan paused</h2>
         <p className="mt-2 text-sm leading-relaxed text-mute">
-          {lockReason??'Choose an active workspace or renew coverage to start a hosted scan.'} Existing release records remain separate from new scan access.
+          No artifact has been submitted from this page. Your saved release records are available in Releases.
         </p>
       </div>
     )
