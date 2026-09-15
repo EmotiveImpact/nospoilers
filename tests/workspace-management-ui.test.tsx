@@ -4,14 +4,16 @@ import {radixUiTestSupport} from './helpers/radix-ui';
 radixUiTestSupport();
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
+import {SettingsTabs} from '../src/components/watch/design/SettingsTabs';
 import {WorkspaceManagement} from '../src/components/watch/WorkspaceManagement';
 import {WorkspaceSwitcher} from '../src/components/watch/WorkspaceSwitcher';
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 const workspace={id:'w1',name:'Original',organization_id:'o1',role:'owner',archived_at:null,installation_id:null};
 const organizations=[{id:'o1',name:'Account',role:'owner',workspace_limit:2}];
 it('submits workspace creation through its visible button',async()=>{
   const fetcher=vi.fn((_url:string,options?:RequestInit)=>Promise.resolve(new Response(JSON.stringify(options?.method?{}:{workspaces:[workspace],organizations,invites:[]}))));
   vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+  await userEvent.click(await screen.findByRole('tab',{name:'Create workspace'}));
   fireEvent.change(await screen.findByLabelText('Workspace name'),{target:{value:'Production'}});
   fireEvent.click(screen.getByRole('button',{name:'Create workspace'}));
   await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'o1',name:'Production'})})));
@@ -68,6 +70,7 @@ it('shows available workspace avatars and readable initials when absent or unava
 it('keeps the existing creation form without a duplicate plus tile',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace],organizations,invites:[]})));
   render(<WorkspaceManagement/>);
+  await userEvent.click(await screen.findByRole('tab',{name:'Create workspace'}));
   expect(await screen.findByLabelText('Workspace name')).toBeTruthy();
   expect(screen.getByRole('button',{name:'Create workspace'})).toBeTruthy();
   expect(screen.queryByRole('button',{name:'Create new workspace'})).toBeNull();
@@ -76,7 +79,7 @@ it('keeps the existing creation form without a duplicate plus tile',async()=>{
 it('offers workspace choices with avatars and a plus creation action in the sidebar menu',async()=>{
  vi.stubGlobal('ResizeObserver',class {observe(){}unobserve(){}disconnect(){}});
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace,{...workspace,id:'w2',name:'Client Studio',installation_id:7,avatar_url:'/client.png'}]})));
- render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
+ const view=render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
  await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
  await userEvent.click(screen.getByRole('button',{name:'Workspace'}));
  expect(screen.queryByRole('button',{name:'Manage workspaces'})).toBeNull();
@@ -84,10 +87,13 @@ it('offers workspace choices with avatars and a plus creation action in the side
  expect(target.querySelector('img')?.getAttribute('src')).toBe('/client.png');
  fireEvent.error(target.querySelector('img')!);expect(target.textContent).toContain('CS');
  await userEvent.click(target);expect(window.location.search).toBe('?workspace=w2&install=7');
+ view.rerender(<WorkspaceSwitcher search="?workspace=w2&install=7&upload=old&uploadView=detail&configure=github" installationId={7}/>);
  await userEvent.click(screen.getByRole('button',{name:'Workspace'}));
  const create=await screen.findByRole('menuitem',{name:'Create new workspace'});
  expect(create.querySelector('svg')).not.toBeNull();await userEvent.click(create);
  expect(window.location.pathname).toBe('/watch/workspaces');
+ const query=new URLSearchParams(window.location.search);
+ expect(Object.fromEntries(query)).toEqual({workspaceTab:'create',workspace:'w2',install:'7'});
 });
 
 it('supports workspace typeahead and Escape without changing workspace, then returns focus',async()=>{
@@ -107,9 +113,49 @@ it('supports workspace typeahead and Escape without changing workspace, then ret
 it('uses the explicitly selected organisation when creating a workspace',async()=>{
  const fetcher=vi.fn((_url:string,options?:RequestInit)=>Promise.resolve(Response.json(options?.method?{}:{workspaces:[workspace],organizations:[...organizations,{...organizations[0],id:'o2',name:'Client account'}],invites:[]})));
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+ await userEvent.click(await screen.findByRole('tab',{name:'Create workspace'}));
  await userEvent.click(await screen.findByRole('combobox',{name:'Organisation'}));
  await userEvent.click(screen.getByRole('option',{name:'Client account · existing subscription'}));
  fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Client production'}});
  fireEvent.click(screen.getByRole('button',{name:'Create workspace'}));
  await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'o2',name:'Client production'})})));
+});
+
+it('opens the create deep link and keeps its draft while moving between settings tabs',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspaceTab=create');
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace],organizations,invites:[]})));
+ render(<WorkspaceManagement/>);
+ const createTab=await screen.findByRole('tab',{name:'Create workspace'});
+ await waitFor(()=>expect(createTab.getAttribute('aria-selected')).toBe('true'));
+ fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Draft workspace'}});
+ await userEvent.click(screen.getByRole('tab',{name:'Workspaces',exact:true}));
+ expect(screen.queryByRole('button',{name:'Create workspace'})).toBeNull();
+ await userEvent.click(createTab);
+ expect(screen.getByLabelText('Workspace name')).toHaveProperty('value','Draft workspace');
+});
+
+it('reveals the active settings tab after activation and resize by scrolling only its tab list',async()=>{
+ vi.stubGlobal('ResizeObserver',undefined);
+ const scrollPage=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ const scrollElement=vi.spyOn(HTMLElement.prototype,'scrollIntoView');
+ let width=100;
+ const bounds=vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+  if(this.getAttribute('role')==='tablist')return new DOMRect(0,0,width,40);
+  if(this.getAttribute('role')==='tab'){
+   const left=this.textContent==='Organisation'?90:0;
+   return new DOMRect(left-(this.parentElement?.scrollLeft??0),0,90,40);
+  }
+  return new DOMRect();
+ });
+ try{
+  const tabs=[{id:'workspaces',label:'Workspaces',content:<p>Workspace content</p>},{id:'organisation',label:'Organisation',content:<p>Organisation content</p>}];
+  const view=render(<SettingsTabs label="Settings" tabs={tabs} value="workspaces"/>);
+  const list=screen.getByRole('tablist',{name:'Settings'});
+  expect(list.scrollLeft).toBe(0);
+  view.rerender(<SettingsTabs label="Settings" tabs={tabs} value="organisation"/>);
+  expect(list.scrollLeft).toBe(80);
+  width=60;fireEvent(window,new Event('resize'));
+  expect(list.scrollLeft).toBe(120);
+  expect(scrollPage).not.toHaveBeenCalled();expect(scrollElement).not.toHaveBeenCalled();
+ }finally{bounds.mockRestore();scrollPage.mockRestore();scrollElement.mockRestore();}
 });

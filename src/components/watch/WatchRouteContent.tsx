@@ -36,11 +36,11 @@ export function WatchRouteContent({ context }: { context: WatchScreenContext }) 
       <SetupScreen />
       <TimelineRouteScreen />
       <RetentionRouteScreen />
-      {context.route.view==='policy'&&workspaceId?<><WorkspaceScanPolicy workspaceId={workspaceId}/><details className="mt-8"><summary>GitHub connection policy settings</summary><PolicyScreen/></details></>:<PolicyScreen />}
+      {context.route.view==='policy'&&workspaceId?<WorkspaceScanPolicy workspaceId={workspaceId} connectionPanels={{signing:<PolicyScreen section="signing"/>,allowlist:<PolicyScreen section="allowlist"/>}}/>:<PolicyScreen />}
       <AuditRouteScreen />
       {context.route.view==='team'&&workspaceId?<WorkspaceTeam workspaceId={workspaceId}/>:<TeamScreen />}
       <HealthScreen />
-      {context.route.view==='notifications'&&workspaceId?<><WorkspaceNotifications workspaceId={workspaceId}/><details className="mt-8"><summary>GitHub connection notification settings</summary><NotificationsScreen/></details></>:<NotificationsScreen />}
+      {context.route.view==='notifications'&&workspaceId?<WorkspaceNotifications workspaceId={workspaceId} connectionSettings={<NotificationsScreen embedded/>}/>:<NotificationsScreen />}
       <SourcesProductionScreens />
       <RegistriesScreen />
       {context.route.view==='tokens'&&workspaceId?<WorkspaceTokens workspaceId={workspaceId}/>:<TokensScreen />}

@@ -127,3 +127,14 @@ it('uses current detail permissions and approval policy rather than stale list p
  expect(screen.getByText(/No other eligible administrator/)).toBeTruthy();
  expect(screen.getByRole('link',{name:'team access'})).toHaveProperty('href',expect.stringContaining('/watch/team?workspace=workspace'));
 });
+
+it('hides pagination for an empty first page while retaining navigation from an older page',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({exceptions:[],nextCursor:null,canDecide:false,currentUserId:'viewer'})));
+ const view=render(<WorkspaceExceptions workspaceId="workspace"/>);
+ await screen.findByText('No exception requests on this page.');
+ expect(screen.queryByRole('navigation',{name:'Exception history'})).toBeNull();
+ window.history.replaceState(null,'','/watch/policy?workspace=workspace&exceptionBefore=older');
+ view.rerender(<WorkspaceExceptions workspaceId="workspace"/>);
+ expect(await screen.findByRole('button',{name:'Newest'})).toHaveProperty('disabled',false);
+ expect(screen.getByRole('button',{name:'Older'})).toHaveProperty('disabled',true);
+});

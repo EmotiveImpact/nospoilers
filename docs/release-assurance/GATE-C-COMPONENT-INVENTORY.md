@@ -13,6 +13,7 @@ Inspected at runtime checkpoint9879664 plus the shared-palette refactor in this 
 | Side preview | design/QuietSidePreview | ArtifactOverview and WatchSourcesSummary; caller owns Dialog and record scope |
 | Empty state | design/QuietComponents QuietEmptyState | Connected decisions and connected audit |
 | Dialog | design/QuietModalSurface | Add coverage and plans; caller owns authority/actions/title |
+| Settings tabs | design/SettingsTabs | Policy, Notifications, Workspaces and organisation administration; Radix manual activation, retained drafts, hidden inactive panels and local horizontal reveal |
 | Settings row | design/QuietComponents QuietSettingRow | Independent workspace policy choices and explanatory IDs |
 
 Shared design CSS now references existing Watch panel/line/text/muted/status tokens instead of repeating matching hex values across coverage, team, page layouts, settings, evidence tables and quiet primitives. The palette definitions remain scoped in app-system.css; global marketing styles are untouched. This is exact-value consolidation, not a colour redesign.

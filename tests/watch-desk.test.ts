@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 
+
+it('keeps the workspace settings tab local while preserving tenant scope on navigation',()=>{
+ const search='?workspace=team&install=7&workspaceTab=create';
+ expect(watchHref('/watch/workspaces',search)).toBe('/watch/workspaces'+search);
+ for(const path of ['/watch','/watch/scan','/watch/releases','/watch/sources','/watch/notifications']){
+  expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
+ }
+});
+
 it('leaves proof verification behind when returning through Overview to New scan',()=>{
  const overview=watchHref('/watch','?workspace=team&install=7&mode=receipt');
  expect(overview).toBe('/watch?workspace=team&install=7');

@@ -4,11 +4,13 @@ import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/motion/select';
 import {navigate} from '@/nav';
-import type {ProductWorkspace} from '@/watch/workspace-types';
+import {workspaceInstallationIds,type ProductWorkspace} from '@/watch/workspace-types';
 import {WorkspaceInvitationInbox} from './WorkspaceTeam';
 import {OrganizationAccess,type ManagedOrganization} from './OrganizationAccess';
 import {WorkspaceConnectionPlacement} from './WorkspaceConnectionPlacement';
 import {WorkspaceDeletionRequest} from './WorkspaceDeletionRequest';
+import {SettingsTabs} from './design/SettingsTabs';
+import './workspace-settings.css';
 
 type WorkspaceListRow = ProductWorkspace & {avatar_url?: string | null};
 function WorkspaceAvatar({name,url}:{name:string;url?:string|null}){
@@ -20,11 +22,14 @@ function WorkspaceAvatar({name,url}:{name:string;url?:string|null}){
 }
 
 export function WorkspaceManagement(){
+  const readTab=()=>new URLSearchParams(window.location.search).get('workspaceTab')??'workspaces';
+  const [tab,setTab]=useState(readTab);
   const [rows,setRows]=useState<WorkspaceListRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null);
   const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[name,setName]=useState(''),[organization,setOrganization]=useState('');
   const [renameId,setRenameId]=useState<string|null>(null),[rename,setRename]=useState('');
   const [notice,setNotice]=useState('');
   const [organizations,setOrganizations]=useState<ManagedOrganization[]>([]);
+  useEffect(()=>{const sync=()=>setTab(readTab());window.addEventListener('popstate',sync);return()=>window.removeEventListener('popstate',sync);},[]);
   useEffect(()=>{const controller=new AbortController();void fetch('/api/workspaces',{signal:controller.signal}).then(async response=>{
     if(!response.ok)throw new Error('Could not load workspaces.');const body=await response.json() as {workspaces:WorkspaceListRow[];organizations?:ManagedOrganization[]};if(!controller.signal.aborted){setRows(body.workspaces);setOrganizations(body.organizations??[]);setLoading(false);}
   }).catch(err=>{if(!controller.signal.aborted){setError(err.message);setLoading(false);}});return()=>controller.abort();},[revision]);
@@ -33,19 +38,24 @@ export function WorkspaceManagement(){
     try{const response=await fetch(path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});const result=await response.json() as {error?:string};if(!response.ok)throw new Error(result.error??'Could not save workspace.');setNotice('Workspace saved. Existing evidence and subscription allowances are unchanged.');setName('');setRenameId(null);setRevision(value=>value+1);window.dispatchEvent(new Event('nospoilers:workspaces-changed'));}
     catch(err){setError(err instanceof Error?err.message:'Could not save workspace.');}finally{setBusy(false);}
   }
-  return <section className="workspace-management"><WatchPageHeader kicker="Organisation settings" title="Workspaces" lede="Separate evidence and access. One shared subscription and scan allowance per organisation."/>
+  const workspaceList=<>
+    <div className="workspace-section-heading"><div><h2>Your workspaces</h2><p>Separate evidence, connections and access.</p></div>{!loading?<span className="workspace-count">{rows.length} {rows.length===1?'workspace':'workspaces'}</span>:null}</div>
     <WorkspaceInvitationInbox/>
+    {loading?<WatchSkeleton variant="list" className="mt-4" />:rows.length?<div className="workspace-settings-list">{rows.map(workspace=><article className="workspace-settings-row" key={workspace.id}>
+      <div className="workspace-row-main"><WorkspaceAvatar key={`${workspace.id}:${workspace.avatar_url??''}`} name={workspace.name} url={workspace.avatar_url}/><div className="workspace-row-identity"><h3>{workspace.name}</h3><p><span>{workspace.role}</span><span>{workspace.archived_at?'Archived · evidence retained':'Active'}</span><span>{workspace.installation_id?'GitHub connected':'No GitHub connection'}</span></p></div></div>
+      <div className="workspace-row-actions"><Button variant="outline" onClick={()=>{const p=new URLSearchParams({workspace:workspace.id});if(workspace.installation_id)p.set('install',String(workspace.installation_id));navigate(`/watch?${p}`);}}>Open workspace</Button>
+      <Button variant="ghost" onClick={()=>navigate(`/watch/team?workspace=${workspace.id}`)}>Team & access</Button>
+      {['owner','admin'].includes(workspace.role)?<><Button variant="ghost" disabled={busy} onClick={()=>{setRenameId(workspace.id);setRename(workspace.name);}}>Rename</Button><Button variant="ghost" disabled={busy} onClick={()=>void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{archived:!workspace.archived_at})}>{workspace.archived_at?'Restore':'Archive'}</Button></>:null}</div>
+      {renameId===workspace.id?<form className="workspace-rename-form" onSubmit={event=>{event.preventDefault();void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{name:rename});}}><input aria-label="Workspace name" maxLength={100} value={rename} onChange={event=>setRename(event.target.value)}/><Button type="submit" disabled={busy||!rename.trim()}>Save name</Button><Button type="button" variant="ghost" onClick={()=>setRenameId(null)}>Cancel</Button></form>:null}
+      {organizations.some(o=>o.id===workspace.organization_id&&o.role==='owner')?<details className="workspace-history-review"><summary>History deletion review</summary><WorkspaceDeletionRequest organizationId={workspace.organization_id} workspaceId={workspace.id} workspaceName={workspace.name}/></details>:null}
+    </article>)}</div>:<div className="workspace-settings-empty"><h3>No workspaces yet</h3><p>Accepted invitations and workspaces you create appear here.</p></div>}
+  </>;
+  const creation=organizations.length?<form className="workspace-create workspace-settings-form" onSubmit={event=>{event.preventDefault();void mutate('/api/workspaces','POST',{organizationId:organization||organizations[0].id,name});}}><div className="workspace-section-heading"><div><h2>Create a workspace</h2><p>A separate home for a project’s evidence and team.</p></div></div><label>Organisation<Select value={organization||organizations[0].id} onValueChange={setOrganization}><SelectTrigger aria-label="Organisation"><SelectValue/></SelectTrigger><SelectContent>{organizations.map(row=><SelectItem key={row.id} value={row.id}>{row.name} · existing subscription</SelectItem>)}</SelectContent></Select></label><label>Workspace name<input required maxLength={100} value={name} onChange={event=>setName(event.target.value)} placeholder="For example, Production"/></label><p className="workspace-form-note">Uses the organisation’s existing subscription and scan allowance. Creating a workspace does not restart the trial. Migrated default and connected workspaces cannot yet be archived.</p><Button type="submit" disabled={busy||!name.trim()}>{busy?'Saving…':'Create workspace'}</Button></form>:<div className="workspace-settings-empty"><h2>Create a workspace</h2><p>An organisation owner or administrator can create workspaces within the shared allowance.</p></div>;
+  const connections=<><div className="workspace-section-heading"><div><h2>Connection placement</h2><p>Move an unused GitHub connection between workspaces in the same organisation.</p></div></div><WorkspaceConnectionPlacement workspaces={rows} organizationIds={organizations.map(o=>o.id)} onChanged={()=>setRevision(v=>v+1)}/>{!rows.some(w=>!w.archived_at&&['owner','admin'].includes(w.role)&&organizations.some(o=>o.id===w.organization_id)&&workspaceInstallationIds(w).length)?<div className="workspace-settings-empty"><h3>No connections available to place</h3><p>Connect GitHub in a workspace you administer. Only connections without repositories, scans or history can move.</p></div>:null}</>;
+  const administration=<><div className="workspace-section-heading"><div><h2>Organisation settings</h2><p>Shared administration, subscription and history controls.</p></div></div>{organizations.length?<div className="workspace-organisation-list">{organizations.map(organization=><OrganizationAccess key={organization.id} organization={organization} onChanged={()=>setRevision(v=>v+1)}/>)}</div>:<div className="workspace-settings-empty"><h3>No organisation administration access</h3><p>Your workspace role still controls the evidence and tools you can use.</p></div>}</>;
+  return <section className="workspace-management workspace-settings"><WatchPageHeader kicker="Settings" title="Workspaces" lede="Your workspaces, connections and shared organisation settings."/>
     {error?<div role="alert" className="watch-empty"><p>{error}</p><Button variant="outline" onClick={()=>{setError(null);setLoading(true);setRevision(value=>value+1);}}>Retry</Button></div>:null}
     {notice?<p role="status" className="mt-4 text-sm text-mute">{notice}</p>:null}
-    {loading?<WatchSkeleton variant="list" className="mt-4" />:<div className="workspace-cards">{rows.map(workspace=><article key={workspace.id}><div className="flex items-start gap-3"><WorkspaceAvatar key={`${workspace.id}:${workspace.avatar_url??''}`} name={workspace.name} url={workspace.avatar_url}/><div><h2>{workspace.name}</h2><p>{workspace.role} · {workspace.archived_at?'Archived · evidence retained':'Active'} · {workspace.installation_id?'GitHub-connected':'No GitHub connection'}</p></div></div>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>{const p=new URLSearchParams({workspace:workspace.id});if(workspace.installation_id)p.set('install',String(workspace.installation_id));navigate(`/watch?${p}`);}}>Open workspace</Button>
-      <Button variant="outline" onClick={()=>navigate(`/watch/team?workspace=${workspace.id}`)}>Team & access</Button>
-      {['owner','admin'].includes(workspace.role)?<><Button variant="ghost" disabled={busy} onClick={()=>{setRenameId(workspace.id);setRename(workspace.name);}}>Rename</Button><Button variant="ghost" disabled={busy} onClick={()=>void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{archived:!workspace.archived_at})}>{workspace.archived_at?'Restore':'Archive'}</Button></>:null}</div>
-      {renameId===workspace.id?<form className="mt-4 flex gap-3" onSubmit={event=>{event.preventDefault();void mutate(`/api/workspaces/${workspace.id}`,'PATCH',{name:rename});}}><input aria-label="Workspace name" maxLength={100} value={rename} onChange={event=>setRename(event.target.value)}/><Button type="submit" disabled={busy||!rename.trim()}>Save name</Button><Button type="button" variant="ghost" onClick={()=>setRenameId(null)}>Cancel</Button></form>:null}
-      {organizations.some(o=>o.id===workspace.organization_id&&o.role==='owner')?<details className="mt-4"><summary>History deletion review</summary><WorkspaceDeletionRequest organizationId={workspace.organization_id} workspaceId={workspace.id} workspaceName={workspace.name}/></details>:null}
-    </article>)}</div>}
-    {organizations.length?<form className="workspace-create" onSubmit={event=>{event.preventDefault();void mutate('/api/workspaces','POST',{organizationId:organization||organizations[0].id,name});}}><h2>Create a workspace</h2><p>Creating another workspace does not restart the trial or add scan allowances. Migrated default and connected workspaces cannot yet be archived.</p><label>Organisation<Select value={organization||organizations[0].id} onValueChange={setOrganization}><SelectTrigger aria-label="Organisation"><SelectValue/></SelectTrigger><SelectContent>{organizations.map(row=><SelectItem key={row.id} value={row.id}>{row.name} · existing subscription</SelectItem>)}</SelectContent></Select></label><label>Workspace name<input required maxLength={100} value={name} onChange={event=>setName(event.target.value)} placeholder="For example, Production"/></label><Button type="submit" disabled={busy||!name.trim()}>{busy?'Saving…':'Create workspace'}</Button></form>:null}
-    <WorkspaceConnectionPlacement workspaces={rows} organizationIds={organizations.map(o=>o.id)} onChanged={()=>setRevision(v=>v+1)}/>
-    {organizations.map(organization=><OrganizationAccess key={organization.id} organization={organization} onChanged={()=>setRevision(v=>v+1)}/>)}
+    <SettingsTabs label="Workspace settings" value={['workspaces','create','connections','organisation'].includes(tab)?tab:'workspaces'} onValueChange={value=>{setTab(value);const query=new URLSearchParams(window.location.search);if(value==='workspaces')query.delete('workspaceTab');else query.set('workspaceTab',value);navigate(`/watch/workspaces${query.size?`?${query}`:''}`);}} tabs={[{id:'workspaces',label:'Workspaces',content:workspaceList},{id:'create',label:'Create workspace',content:creation},{id:'connections',label:'Connections',content:connections},{id:'organisation',label:'Organisation',content:administration}]}/>
   </section>;
 }

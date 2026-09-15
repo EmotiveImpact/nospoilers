@@ -14,13 +14,14 @@ const FLOWS: { value: NotificationFlow; label: string }[] = [
   { value: "route-test", label: "Test routing" },
 ];
 
-export function NotificationsScreen() {
+export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
   const [flow, setFlow] = useState<NotificationFlow | null>(null);
   const { Button, WatchNotificationSummary, WatchSectionError, WatchSkeleton, activeInstallId, beginConfirm, confirmBusy, confirmForm, confirming, datasetState, deliveries, deskCoverage, deskPackages, deskRepos, destinationKindLabel, destinations, emailAddress, ended, installAdmin, jiraEmail, jiraProjectKey, jiraSite, jiraToken, members, pagerDutyKey, previewing, refreshSignedIn, retryDeskSection, route, routeDestinationId, routeMinSeverity, routeMinSeverityLabel, routePackage, routeRepo, routeTeam, routeTestPackage, routeTestRepo, routeTestSeverity, routes, savingEmail, savingJira, savingPagerDuty, savingRoute, savingSiem, savingSlack, selectedInstallId, setEmailAddress, setJiraEmail, setJiraProjectKey, setJiraSite, setJiraToken, setPagerDutyKey, setRouteDestinationId, setRouteMinSeverity, setRoutePackage, setRouteRepo, setRouteTeam, setRouteTestPackage, setRouteTestRepo, setRouteTestSeverity, setSavingEmail, setSavingJira, setSavingPagerDuty, setSavingRoute, setSavingSiem, setSavingSlack, setSiemWebhook, setSlackError, setSlackWebhook, setTestingRoute, setTestingSlackId, siemWebhook, slackError, slackWebhook, testingRoute, testingSlackId } = useWatchScreenContext();
   return (
     <>
       {route.view === "notifications" && (
               <section className="mt-4">
+                {embedded?<div className="settings-section-head"><div><h2>GitHub notifications</h2><p>Destinations and routing rules for GitHub-connected alerts.</p></div>{!previewing&&!ended&&installAdmin?<Button size="sm" onClick={()=>setFlow('email')}>Add GitHub destination</Button>:null}</div>:<>
                 <WatchPageHeader
                   title="Notifications"
                   lede="Destinations and routing rules for real Watch alerts."
@@ -32,6 +33,7 @@ export function NotificationsScreen() {
                     ) : undefined
                   }
                 />
+                </>}
                 {datasetState.notifications.status === "loading" ? (
                   <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
                 ) : datasetState.notifications.status === "error" ? (

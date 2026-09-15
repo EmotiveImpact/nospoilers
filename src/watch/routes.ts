@@ -118,6 +118,7 @@ export function watchHref(
 ): string {
   const params = paramsOf(search);
   // Keep tenant scope across navigation, but never carry a detail screen into another page.
+  if(path!=="/watch/workspaces")params.delete('workspaceTab');
   if(path!=="/watch/scan")params.delete('mode');
   if(path!=="/watch/sources")for(const key of ['configure','origin'])params.delete(key);
   if(path!=="/watch/sources")params.delete('coverageHealth');
