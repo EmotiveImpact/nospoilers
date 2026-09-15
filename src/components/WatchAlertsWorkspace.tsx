@@ -183,8 +183,8 @@ export function WatchAlertsWorkspace({
           </Button>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-white/[0.015] px-4 py-3 md:px-8">
-      <div className="flex min-w-0 flex-wrap items-center gap-3"><div className="inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
+      <div className="alert-queue-toolbar flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-white/[0.015] px-3 py-3 md:px-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-3"><div className="alert-queue-tabs inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
         {([
           ["open", "Open", queueCounts.open],
           ["waiting", "In progress", queueCounts.waiting],
@@ -212,7 +212,7 @@ export function WatchAlertsWorkspace({
               <span className="watch-queue-label">{label}</span>
               <span
                 className={cn(
-                  "min-w-5 rounded-full bg-white/5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
+                  "watch-queue-count min-w-5 rounded-full bg-white/5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
                   value === "open" && count > 0 && "bg-danger/15 text-danger-text",
                 )}
               >
