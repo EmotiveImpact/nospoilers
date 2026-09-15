@@ -28,3 +28,16 @@ it('leaves outside, form, modal and modified shortcuts alone',()=>{
  const modal=document.createElement('div');modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');document.body.append(modal);fireEvent.keyDown(row,{key:'j'});modal.remove();
  expect(p.onSelect).not.toHaveBeenCalled();expect(p.onAction).not.toHaveBeenCalled();
 });
+
+it('shows a concise repository and issue in incomplete-check rows without internal job labels',()=>{
+ const p=props();
+ p.alerts=[{...p.alerts[0],title:'No release on Acme/web'}];
+ p.rows=[{...p.rows[0],title:'No release on Acme/web',coordinate:'scan_latest_release',rule:'scan_latest_release',operational:true,exposure:'Saved check'}];
+ p.selected=p.alerts[0];
+ render(<WatchAlertsWorkspace {...p}/>);
+ const row=screen.getByRole('button',{name:'Acme/web. No published release'});
+ expect(row.textContent).not.toContain('scan_latest_release');
+ expect(row.textContent).not.toContain('Saved check');
+ expect(screen.getByText('Latest release check').getAttribute('title')).toBe('scan_latest_release');
+ expect(screen.getByRole('heading',{name:'No release on Acme/web'})).toBeTruthy();
+});

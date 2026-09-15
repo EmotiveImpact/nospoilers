@@ -13,6 +13,16 @@ import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+function alertQueueCopy(row: AlertListViewModel) {
+  const missingRelease = row.operational && row.title.startsWith("No release on ");
+  return {
+    title: missingRelease ? row.title.slice("No release on ".length) : row.title,
+    summary: missingRelease ? "No published release" : row.operational ? "Release check incomplete" :
+      row.coordinate !== row.rule && !row.title.includes(row.coordinate) ? row.coordinate : null,
+  };
+}
+
 import type {KeyboardEvent,ReactNode} from 'react';
 
 export type WatchAlertDetail = {
@@ -258,11 +268,13 @@ export function WatchAlertsWorkspace({
                 </div>
               </li>
             ) : (
-              rows.map((row) => (
-                <li key={row.id}>
+              rows.map((row) => {
+                const copy=alertQueueCopy(row);
+                return <li key={row.id}>
                   <button
                     type="button"
                     data-alert-id={row.id}
+                    aria-label={[copy.title,copy.summary].filter(Boolean).join(". ")}
                     aria-pressed={selected?.id===row.id}
                     className={cn(
                       "w-full border-l-2 border-transparent px-4 py-3 text-left hover:bg-white/[0.035]",
@@ -281,15 +293,12 @@ export function WatchAlertsWorkspace({
                               : "bg-warn",
                         )}
                       />
-                      <strong className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{row.title}</strong>
-                      <span className="shrink-0 text-xs text-dim">{row.exposure}</span>
+                      <strong className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
                     </span>
-                    <span className="mt-1.5 block truncate pl-3.5 font-mono text-xs text-dim">
-                      {row.coordinate} · {row.rule}
-                    </span>
+                    {copy.summary?<span className="mt-1 block truncate pl-3.5 text-xs text-mute">{copy.summary}</span>:null}
                   </button>
-                </li>
-              ))
+                </li>;
+              })
             )}
           </ol>
         )}
@@ -351,7 +360,7 @@ export function WatchAlertsWorkspace({
                     <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.severity === "critical" ? "watch-pill watch-pill-crit" : "watch-pill watch-pill-warn"}>
                       {selected.resolved_at ? "resolved" : selectedRow.severity}
                     </span>
-                    <span className="watch-pill">{selectedRow.rule}</span>
+                    <span className="watch-pill" title={selectedRow.rule}>{selectedRow.operational?"Latest release check":selectedRow.rule}</span>
                     <span className="watch-pill">{selectedRow.operational?`${selectedRow.status} · Check incomplete`:`${selectedRow.status} · ${selectedRow.exposure} exposed`}</span>
                   </div>
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
@@ -369,7 +378,7 @@ export function WatchAlertsWorkspace({
                           </div>
                         ))
                       ) : (
-                        <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? selected.kind}</div>
+                        <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational && selected.title.startsWith("No release on ") ? alertQueueCopy(selectedRow).title : selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
                       )}
                     </div>
                   </section>
