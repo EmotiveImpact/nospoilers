@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {WorkspaceManagement} from '../src/components/watch/WorkspaceManagement';
@@ -75,14 +78,38 @@ it('offers workspace choices with avatars and a plus creation action in the side
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace,{...workspace,id:'w2',name:'Client Studio',installation_id:7,avatar_url:'/client.png'}]})));
  render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
  await waitFor(()=>expect(screen.getByRole('button',{name:'Workspace'}).textContent).toContain('Original'));
- fireEvent.click(screen.getByRole('button',{name:'Workspace'}));
+ await userEvent.click(screen.getByRole('button',{name:'Workspace'}));
  expect(screen.queryByRole('button',{name:'Manage workspaces'})).toBeNull();
  const target=await screen.findByRole('menuitem',{name:'Client Studio'});
  expect(target.querySelector('img')?.getAttribute('src')).toBe('/client.png');
  fireEvent.error(target.querySelector('img')!);expect(target.textContent).toContain('CS');
- fireEvent.click(target);expect(window.location.search).toBe('?workspace=w2&install=7');
- fireEvent.click(screen.getByRole('button',{name:'Workspace'}));
+ await userEvent.click(target);expect(window.location.search).toBe('?workspace=w2&install=7');
+ await userEvent.click(screen.getByRole('button',{name:'Workspace'}));
  const create=await screen.findByRole('menuitem',{name:'Create new workspace'});
- expect(create.querySelector('svg')).not.toBeNull();fireEvent.click(create);
+ expect(create.querySelector('svg')).not.toBeNull();await userEvent.click(create);
  expect(window.location.pathname).toBe('/watch/workspaces');
+});
+
+it('supports workspace typeahead and Escape without changing workspace, then returns focus',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace,{...workspace,id:'w2',name:'Client Studio',installation_id:7}]})));
+ window.history.replaceState({},'','/watch?workspace=w1');
+ render(<WorkspaceSwitcher search="?workspace=w1" installationId={null}/>);
+ const trigger=await screen.findByRole('button',{name:'Workspace'});
+ await waitFor(()=>expect(trigger.textContent).toContain('Original'));
+ trigger.focus();await userEvent.keyboard('{ArrowDown}');await screen.findByRole('menu');await userEvent.keyboard('cli');
+ await waitFor(()=>expect(document.activeElement).toBe(screen.getByRole('menuitem',{name:'Client Studio'})));
+ await userEvent.keyboard('{Escape}');
+ await waitFor(()=>expect(screen.queryByRole('menu')).toBeNull());
+ await waitFor(()=>expect(document.activeElement).toBe(trigger));
+ expect(window.location.search).toBe('?workspace=w1');
+});
+
+it('uses the explicitly selected organisation when creating a workspace',async()=>{
+ const fetcher=vi.fn((_url:string,options?:RequestInit)=>Promise.resolve(Response.json(options?.method?{}:{workspaces:[workspace],organizations:[...organizations,{...organizations[0],id:'o2',name:'Client account'}],invites:[]})));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+ await userEvent.click(await screen.findByRole('combobox',{name:'Organisation'}));
+ await userEvent.click(screen.getByRole('option',{name:'Client account · existing subscription'}));
+ fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Client production'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create workspace'}));
+ await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'o2',name:'Client production'})})));
 });

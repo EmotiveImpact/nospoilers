@@ -1,5 +1,8 @@
 # Current NoSpoilers continuation — 15 September 2026
 
+15 September Radix batch: shared Select and workspace menu migrated; Workspaces/billing/release-status fields connected.61 focused cases, final typecheck and Vite build pass; desktop/mobile browser checks recorded in latest BUILD-LOG. Other native domain dropdowns and billing/provider acceptance remain open. Preserve existing dirty CSS/mockups.
+
+
 ## Current customer-journey priority
 
 Owner correction: the funnel and UI still need functional tightening; do not describe the remaining work as styling alone. First scan-entry/navigation batch is now implemented and verified (see latest BUILD-LOG). Start with the remaining concrete journey checks recorded there; reuse the82 passing focused cases and original saved scan proof.

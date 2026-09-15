@@ -1,5 +1,8 @@
 # Gate C current evidence map
 
+15 September Radix batch: shared Select and workspace menu migrated; Workspaces/billing/release-status fields connected.61 focused cases, final typecheck and Vite build pass; desktop/mobile browser checks recorded in latest BUILD-LOG. Other native domain dropdowns and billing/provider acceptance remain open. Preserve existing dirty CSS/mockups.
+
+
 Scan journey batch15 September: early prerequisites, scoped recovery links, client navigation and stale-mode cleanup implemented.40 Scan/navigation cases plus42 route/shell cases pass in separate focused runs; build and signed-in desktop/mobile checks recorded in BUILD-LOG. Active scan admission remains blocked by the real expired trial; billing is unconfigured locally. Full customer-funnel and Gate C acceptance remain open.
 
 Current continuation authority: NEXT-SESSION-HANDOFF.md (consolidated10 September). Earlier checkpoint entries below are chronological; they do not override the current handoff or later BUILD-LOG evidence. Gate C remains partial.

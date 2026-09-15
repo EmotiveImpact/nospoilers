@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
-import {afterEach,beforeEach,it,expect,vi} from 'vitest';
+import {afterEach,it,expect,vi} from 'vitest';
 import {WorkspaceTeam,WorkspaceInvitationInbox} from '../src/components/watch/WorkspaceTeam';
-class TestResizeObserver {observe(){} unobserve(){} disconnect(){}}
-beforeEach(()=>vi.stubGlobal('ResizeObserver',TestResizeObserver));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 const team={role:'owner',archived:false,members:[{user_id:'owner',login:'Owner',role:'owner',access_source:'explicit'}],invites:[],events:[]};
 const inbox={invites:[{id:'i1',workspace_name:'Production',invited_by:'Owner',role:'viewer',expires_at:'2026-09-10'}]};
@@ -85,10 +86,10 @@ it('requires an explicit acceptance action and navigates only after the API succ
 it('limits administrator role choices and keeps role selection separate from saving',async()=>{
  const fetcher=vi.fn(async()=>Response.json({...team,role:'admin',members:[{user_id:'reader',login:'Reader',role:'viewer',access_source:'explicit'}]}));
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceTeam workspaceId="w1"/>);
- fireEvent.click(await screen.findByRole('combobox',{name:'Role for Reader'}));
+ await userEvent.click(await screen.findByRole('combobox',{name:'Role for Reader'}));
  expect(screen.queryByRole('option',{name:'Admin',exact:true})).toBeNull();
  expect(screen.queryByRole('option',{name:'Owner',exact:true})).toBeNull();
- fireEvent.click(screen.getByRole('option',{name:'Member',exact:true}));
+ await userEvent.click(screen.getByRole('option',{name:'Member',exact:true}));
  expect(screen.getByRole('button',{name:'Save role for Reader'})).toHaveProperty('disabled',false);
  expect(fetcher).toHaveBeenCalledTimes(1);
 });

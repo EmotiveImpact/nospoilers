@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UploadedReleases } from '../src/components/watch/UploadedReleases';
@@ -100,4 +103,16 @@ describe('uploaded release workspace flow',()=>{
     await waitFor(()=>expect(screen.queryByRole('heading',{name:'first.zip'})).toBeNull());
     expect(screen.getByRole('status').textContent).toContain('Loading');
   });
+});
+
+it('selects a status by keyboard while preserving tenant scope and clearing the old page and finding',async()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7)]})));
+ render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first&uploadBefore=old&uploadFinding=2&uploadTab=findings"/>);
+ await screen.findByRole('heading',{name:'first.zip'});
+ const trigger=screen.getByRole('combobox',{name:'Status'});trigger.focus();
+ await userEvent.keyboard('{Enter}');await screen.findByRole('listbox');await userEvent.keyboard('{End}{Enter}');
+ await waitFor(()=>expect(new URLSearchParams(window.location.search).get('uploadStatus')).toBe('passed'));
+ const query=new URLSearchParams(window.location.search);
+ expect(query.get('workspace')).toBe('team');expect(query.get('install')).toBe('7');
+ for(const key of ['uploadBefore','upload','uploadFinding','uploadTab'])expect(query.has(key)).toBe(false);
 });

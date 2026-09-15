@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-import {afterEach,beforeEach,it,expect,vi} from 'vitest';
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
+import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,cleanup,act} from '@testing-library/react';
 import {OverviewActivity,OverviewAttention} from '../src/components/watch/OverviewActivity';
 import {overviewActivityBuckets} from '../src/components/watch/overview-activity';
 import type {TimelineEntry} from '../src/watch/types';
 import {navigate} from '../src/nav';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
-class TestResizeObserver { observe(){} unobserve(){} disconnect(){} }
-beforeEach(()=>vi.stubGlobal('ResizeObserver',TestResizeObserver));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
 const counts={open:2,waiting:0,done:0,mine:0};
 const alert={id:23,kind:'scan_latest_release',title:'Missing release',body:'',findings:null,created_at:'2026-09-09T10:00:00Z',full_name:'org/app'};
@@ -70,8 +71,8 @@ it('renders retained activity with explicit bounds and a scoped timeline link',a
  render(<OverviewActivity workspaceId="workspace" connection={{installationId:9,name:'Connection'}}/>);
  expect((await screen.findByRole('img')).getAttribute('aria-label')).toContain('1 alerts opened, 0 response events');
  expect(screen.getByText(/Up to 200 retained events/)).toBeTruthy();
- fireEvent.click(screen.getByRole('combobox',{name:'Activity range'}));
- fireEvent.click(screen.getByRole('option',{name:'Last 30 days'}));
+ await userEvent.click(screen.getByRole('combobox',{name:'Activity range'}));
+ await userEvent.click(screen.getByRole('option',{name:'Last 30 days'}));
  expect(screen.getByRole('img').getAttribute('aria-label')).toContain('1 alerts opened');
  fireEvent.click(screen.getByRole('button',{name:'View timeline'}));
  expect(navigate).toHaveBeenCalledWith('/watch/timeline?workspace=workspace&install=9');

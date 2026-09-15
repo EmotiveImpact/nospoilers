@@ -1,6 +1,7 @@
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/motion/select';
 type Billing={stripe:boolean;billing:{plan:string|null;trialEndsAt:string|null;status:string|null;periodEnd:string|null;hasCustomer:boolean;subscribed:boolean}};
 
 export function OrganizationBilling({id}:{id:string}){
@@ -26,7 +27,7 @@ export function OrganizationBilling({id}:{id:string}){
     {!data&&!error?<WatchSkeleton variant="list" className="mt-4" />:null}
     {data?<><p>Plan: {data.billing.plan??'No active plan'} · {data.billing.subscribed?'Subscribed':data.billing.trialEndsAt&&new Date(data.billing.trialEndsAt)>new Date()?`Trial ends ${new Date(data.billing.trialEndsAt).toLocaleDateString()}`:'Subscription required'}</p>
       {!data.stripe?<p role="status">Billing is not configured on this host. No payment can be taken here.</p>:null}
-      {data.billing.hasCustomer?<Button variant="outline" disabled={busy||!data.stripe} onClick={()=>void open('portal')}>Manage subscription</Button>:<form onSubmit={event=>{event.preventDefault();void open('checkout');}}><label>Plan <select value={plan} onChange={event=>setPlan(event.target.value)} disabled={busy}><option value="solo">Solo</option><option value="team">Team</option></select></label><label>Billing interval <select value={interval} onChange={event=>setInterval(event.target.value)} disabled={busy}><option value="month">Monthly</option><option value="year">Yearly</option></select></label><p>Review the price and terms in secure checkout before subscribing.</p><Button type="submit" disabled={busy||!data.stripe}>{busy?'Opening checkout…':'Continue to secure checkout'}</Button></form>}
+      {data.billing.hasCustomer?<Button variant="outline" disabled={busy||!data.stripe} onClick={()=>void open('portal')}>Manage subscription</Button>:<form onSubmit={event=>{event.preventDefault();void open('checkout');}}><label>Plan <Select value={plan} onValueChange={setPlan} disabled={busy}><SelectTrigger aria-label="Plan"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="solo">Solo</SelectItem><SelectItem value="team">Team</SelectItem></SelectContent></Select></label><label>Billing interval <Select value={interval} onValueChange={setInterval} disabled={busy}><SelectTrigger aria-label="Billing interval"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="month">Monthly</SelectItem><SelectItem value="year">Yearly</SelectItem></SelectContent></Select></label><p>Review the price and terms in secure checkout before subscribing.</p><Button type="submit" disabled={busy||!data.stripe}>{busy?'Opening checkout…':'Continue to secure checkout'}</Button></form>}
     </>:null}
   </section>;
 }
