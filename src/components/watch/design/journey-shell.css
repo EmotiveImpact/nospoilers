@@ -235,3 +235,20 @@
 .watch-desk .watch-queue-item[aria-current="page"] .watch-queue-pair {
   border-bottom-color: #e2453a;
 }
+
+/* Shared type and alignment for the approved journey shell. */
+.watch-desk .watch-rail-link[aria-current=page] svg{color:#e2453a;opacity:1}
+.watch-desk .watch-page-title{margin:0;font-size:34px;line-height:1.18;font-weight:550;letter-spacing:-1.1px}
+.watch-desk .watch-page-lede{margin-top:10px;font-size:14px;line-height:1.65}
+.watch-desk :is(.settings-tab,.alerts-journey-tab,.journey-tab,.watch-settings-navigation a){font-size:12px;font-weight:500}
+.watch-desk .settings-tab-panel[data-state=active]{animation:watch-settings-reveal 140ms ease-out}
+@keyframes watch-settings-reveal{from{opacity:.88}to{opacity:1}}
+@media(max-width:600px){.watch-desk .watch-page-title{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.watch-desk .settings-tab-panel[data-state=active]{animation:none}}
+
+.watch-desk [role=tab]{font-size:12px;font-weight:500;line-height:1.5}
+.watch-desk .scan-workspace{padding-top:0}
+.watch-desk .alerts-journey{padding-top:39px}
+.watch-desk .timeline-filter-tabs button[aria-selected=true]{border-bottom-color:#e2453a}
+.watch-content-enter{animation:watch-settings-reveal 140ms ease-out}
+@media(prefers-reduced-motion:reduce){.watch-content-enter{animation:none}}

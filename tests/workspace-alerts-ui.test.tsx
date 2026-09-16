@@ -71,3 +71,24 @@ it('does not flash unavailable guidance while a selected alert is still loading'
  expect(await screen.findByRole('link',{name:'Open the saved website check'})).toBeTruthy();
  expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(false);
 });
+it('keeps the current queue visible until the next tab response arrives',async()=>{
+ const first={id:9,kind:'scan_latest_release',title:'First alert',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null};
+ const second={...first,id:10,title:'Second alert',acknowledged_at:'2026-09-06'};
+ let requested=false;
+ let finish:(value:Response)=>void=()=>{};
+ const page=(alerts:unknown[])=>({alerts,nextCursor:null,sourceCount:1,counts:{open:1,waiting:1,done:0,mine:0}});
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.includes('status=waiting'))return new Promise<Response>(resolve=>{requested=true;finish=resolve;});
+  if(url.includes('/alerts?'))return Response.json(page([first]));
+  return Response.json({alert:url.endsWith('/10')?second:first,events:[]});
+ }));
+ const view=render(<WorkspaceAlerts workspaceId="workspace" search="?tab=open"/>);
+ await screen.findByRole('heading',{name:'First alert'});
+ view.rerender(<WorkspaceAlerts workspaceId="workspace" search="?tab=waiting"/>);
+ expect(screen.getByRole('heading',{name:'First alert'})).toBeTruthy();
+ await waitFor(()=>expect(requested).toBe(true));
+ await act(async()=>finish(Response.json(page([second]))));
+ expect(await screen.findByRole('heading',{name:'Second alert'})).toBeTruthy();
+});

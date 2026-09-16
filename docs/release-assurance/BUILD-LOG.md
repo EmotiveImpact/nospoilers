@@ -1,3 +1,11 @@
+## 16 September — stable tab transitions and shared chrome
+
+Removed topbar Guide and account avatar; explicit sign-out remains in sidebar footer. Active sidebar icons are red. Shared tab type is 12px medium, page title/lede typography and Scan/Alerts top spacing aligned. Coverage/Alerts/settings content uses restrained 140ms opacity reveal with reduced-motion opt-out.
+
+Root flash cause: shared bootstrap depended on the full URL search and route, resetting all datasets for local filter/tab changes. It now depends on installation/connection identity, with current navigation location retained for default-install redirects. Explicit refresh and scoped server checks remain. Alerts no longer remounts for queue changes; it retains the displayed queue until the requested queue arrives and blocks responses during that transition. Deferred-response regression verifies that behavior. Pending errors still clear/disable evidence.
+
+Validation: final build passed (existing chunk warning), 16 focused tests across workspace-alerts-ui, artifact-shell-navigation, coverage-detail-ui and alert-response-permissions-ui passed cumulatively. Signed-in browser switched Coverage to Packages (counts retained; all tab fonts12px; active icon rgb226,69,58), and Alerts to In progress. Topbar has Search/New scan without Guide/avatar; footer sign-out present. No response/scan/payment submitted. Other dirty CSS/mockups preserved. No full-suite or deployment claim.
+
 ## 16 September — consistent active underlines
 
 Added shared red active-tab/queue/evidence underline styling and corrected Coverage’s specific override. Scan, Alerts and Settings already use the same #e2453a. Existing unrelated index.css edits preserved. Build passed (existing chunk warning); signed-in Coverage computed selected underline rgb(226,69,58). No behavioral change or full-suite rerun.

@@ -14,6 +14,7 @@ it('keeps real artifact settings reachable during first proof without inert conn
  expect(screen.getByRole('link',{name:'New scan'})).toHaveProperty('href',expect.stringContaining('/watch/scan?workspace=example'));
  expect(screen.getByText('First proof content')).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Guide'})).toBeNull();
+ expect(screen.getByRole('button',{name:'Sign out viewer'}).closest('header')).toBeNull();
  expect(screen.getByRole('button',{name:'New scan'})).toBeTruthy();
  expect(screen.getByRole('button',{name:'New scan'}).className).not.toContain('hidden');
  expect(screen.getByRole('button',{name:'Search or run a command'}).getAttribute('aria-label')).toBe('Search or run a command');

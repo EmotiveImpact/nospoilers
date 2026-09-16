@@ -15,6 +15,7 @@ import {
   Settings,
   CircleHelp,
   CreditCard,
+  LogOut,
   Bell,
   BookOpenCheck,
   Boxes,
@@ -189,7 +190,7 @@ export function WatchMonolithShell({
 }) {
   const [navOpen, setNavOpen] = useState(false);
   const workspaceId=new URLSearchParams(search).get('workspace');
-  const [guidanceOpen, setGuidanceOpen] = useState(false);
+
   const [plansOpen, setPlansOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const routeContent = useRef<HTMLDivElement|null>(null);
@@ -403,6 +404,7 @@ export function WatchMonolithShell({
         <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
         <a href="/docs" onClick={event=>go(event,'/docs')} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
         <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('mt-2 flex items-center gap-3 py-2 text-[13px] text-snow',opts.collapsed&&'justify-center')}><span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-xs">{login.slice(0,2).toUpperCase()}</span><span className={cn('min-w-0',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span></a>
+        <button type="button" onClick={()=>void signOut()} aria-label={`Sign out ${login}`} className={cn('flex w-full items-center gap-3 py-2 text-left text-[12px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><LogOut className="size-[17px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Sign out</span></button>
       </div>
     </>
   );
@@ -467,15 +469,6 @@ export function WatchMonolithShell({
             <PackageSearch className="size-4" aria-hidden />
             <span className="hidden sm:inline">New scan</span>
           </Button>
-          {!artifactOnly ? <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="hidden lg:inline-flex"
-            onClick={() => setGuidanceOpen((open) => !open)}
-          >
-            {guidanceOpen ? "Hide guide" : "Guide"}
-          </Button> : null}
           {ended ? (
             <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => setPlansOpen(true)}>
               See plans
@@ -487,17 +480,6 @@ export function WatchMonolithShell({
             </Button>
           ) : null}
           {billing}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="size-12 shrink-0 rounded-full border border-white/10 px-0 text-xs text-snow sm:size-8 sm:text-xs"
-            onClick={() => void signOut()}
-            title="Sign out"
-            aria-label={`Sign out ${login}`}
-          >
-            {login.slice(0, 2).toUpperCase()}
-          </Button>
         </header>
         <div
           ref={routeContent}
@@ -508,7 +490,7 @@ export function WatchMonolithShell({
           className={cn(
             "watch-route-content min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
             route.view === "alerts" ? "overflow-hidden" : "overflow-auto",
-            !guidanceOpen && "[&_.watch-guidance]:hidden",
+            "[&_.watch-guidance]:hidden",
           )}
         >
           {settingsActive ? <nav aria-label="Settings sections" className="watch-settings-navigation">{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav> : null}

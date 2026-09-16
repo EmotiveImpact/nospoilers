@@ -203,7 +203,7 @@ export function WatchSourcesSummary({
           >{option.label}{" "}<span>{count}</span></button>;
         })}
       </div>
-      <div id="coverage-source-panel" role="tabpanel" aria-labelledby={`coverage-tab-${filter}`}>
+      <div key={filter} className="watch-content-enter" id="coverage-source-panel" role="tabpanel" aria-labelledby={`coverage-tab-${filter}`}>
         {sources.length > 0 ? <div className="coverage-attention-filter"><label><input type="checkbox" checked={attention} onChange={()=>navigate(watchHref(watchPath('sources'),search,{attention:!attention}))}/>Needs attention <span>{sources.filter(source=>source.attention==='critical'||source.attention==='warning').length}</span></label></div> : null}
         {sources.length === 0 ? <div className="coverage-journey-empty"><Box aria-hidden/><h2>Connect your first source</h2><p>Connect GitHub or add a website to keep release checks in one place.</p>{admin?<Button type="button" onClick={()=>setAdding(true)}>Connect source<Plus className="size-4" aria-hidden/></Button>:<p>A workspace administrator can connect a source.</p>}</div> : filteredSources.length===0 ? <p className="coverage-no-match">No coverage matches these filters.</p> : <div className="coverage-table-wrap"><table className="coverage-table"><thead><tr><th>Source</th><th>Connection</th><th>Latest check</th><th><span className="sr-only">Source actions</span></th></tr></thead><tbody>{filteredSources.map(source=>{
           const verificationNeeded=source.kind==='website'&&source.status==='verification required';

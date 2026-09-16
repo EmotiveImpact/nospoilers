@@ -235,7 +235,7 @@ export function WatchAlertsWorkspace({
       </div></div>
       {onAssignedToMe ? <Button type="button" size="sm" variant="outline" className="min-h-11 aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button> : null}
       </div>
-      <div className={cn("alerts-journey-inbox grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
+      <div key={tab} className={cn("alerts-journey-inbox watch-content-enter grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
         <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           <p className="alerts-journey-shortcuts border-b border-white/8 px-4 py-2 text-xs text-mute">J / K moves through the queue. Arrow keys work while the list is focused.</p>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}

@@ -15,14 +15,19 @@ import {Button} from '@/components/ui/button';
 type WorkspaceAlert=Alert&{installation_id:number|null;scan_attempt_id:string|null;source_origin_id:number|null};
 type Detail={alert:WorkspaceAlert;events:AlertEvent[];nextEventsCursor?:string|null};
 type Props={workspaceId:string;search:string};
-export function WorkspaceAlerts(props:Props){const p=new URLSearchParams(props.search);return <WorkspaceAlertPage key={`${props.workspaceId}:${p.get('tab')}:${p.get('mine')}:${p.get('before')}:${p.get('source')}`} {...props}/>;}
+export function WorkspaceAlerts(props:Props){return <WorkspaceAlertPage key={props.workspaceId} {...props}/>;}
 async function json<T>(url:string,signal:AbortSignal,body?:unknown):Promise<T>{
  const response=await fetch(url,{signal,credentials:'include',...(body===undefined?{}:{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})});
  const data=await response.json();if(!response.ok)throw new Error(data.error??'Alerts could not be loaded.');return data;
 }
 function WorkspaceAlertPage({workspaceId,search}:Props){
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/alerts`;
- const route=parseWatchRoute('/watch/alerts',search),mine=new URLSearchParams(search).get('mine')==='1';
+ const [loadedSearch,setLoadedSearch]=useState(search);
+ const requestedRoute=parseWatchRoute('/watch/alerts',search);
+ const requestedMine=new URLSearchParams(search).get('mine')==='1';
+ const route={...requestedRoute,tab:parseWatchRoute('/watch/alerts',loadedSearch).tab},mine=new URLSearchParams(loadedSearch).get('mine')==='1';
+ const queryKey=(value:string)=>{const p=new URLSearchParams(value);return ['tab','mine','before','source'].map(key=>p.get(key)??'').join(':');};
+ const queryPending=queryKey(search)!==queryKey(loadedSearch);
  const before=new URLSearchParams(search).get('before');
  const source=new URLSearchParams(search).get('source');
  const eventBefore=new URLSearchParams(search).get('eventBefore');
@@ -43,14 +48,14 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
     json<{workspace:{role:string;archived_at:string|null}}>(`/api/workspaces/${workspaceId}/evidence-settings`,request.signal),
     json<{user:{id:string;login:string}}>('/api/me',request.signal),
    ]);
-   const query=new URLSearchParams({status:route.tab,mine:mine?'1':'0'});if(before)query.set('before',before);if(source)query.set('source',source);
+   const query=new URLSearchParams({status:requestedRoute.tab,mine:requestedMine?'1':'0'});if(before)query.set('before',before);if(source)query.set('source',source);
    const result=await json<{alerts:WorkspaceAlert[];nextCursor:string|null;sourceCount:number;counts:{open:number;waiting:number;mine:number;done:number}}>(`${base}?${query}`,request.signal);
    if(request.signal.aborted)return;
    setIdentity({...me.user,canRespond:!settings.workspace.archived_at&&['owner','admin','member'].includes(settings.workspace.role)});
-   setPage(result);setSourceCount(result.sourceCount);setAlerts(result.alerts);setState({status:'ready'});
+   setLoadedSearch(search);setPage(result);setSourceCount(result.sourceCount);setAlerts(result.alerts);setState({status:'ready'});
   })().catch(e=>{if(!request.signal.aborted){setAlerts([]);setDetail(null);setIdentity({id:'',login:'',canRespond:false});setState({status:'error',message:e.message});}});
   return()=>request.abort();
- },[workspaceId,base,revision,route.tab,mine,before,source]);
+ },[workspaceId,base,revision,requestedRoute.tab,requestedMine,before,source]);
  const listed=filterDeskAlerts(alerts,route.tab,identity.login,mine,identity.id) as WorkspaceAlert[];
  const selectedId=route.alertId!==null?(!source||listed.some(row=>row.id===route.alertId)?route.alertId:null):listed[0]?.id??null;
  const selected=state.status!=='ready'?null:detail?.alert.id===selectedId?detail.alert:listed.find(row=>row.id===selectedId)??null;
@@ -65,7 +70,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const go=(updates:Record<string,string|null>)=>{const params=new URLSearchParams(search);if('alert' in updates||'tab' in updates||'mine' in updates)params.delete('eventBefore');for(const [key,value] of Object.entries(updates)){if(value===null)params.delete(key);else params.set(key,value);}navigate(`/watch/alerts?${params}`);};
  const retry=()=>{setState({status:'loading'});setActivity({status:'loading'});setRevision(n=>n+1);};
  const act=async(action:'acknowledge'|'resolve'|'reopen'|'assign')=>{
-  if(!selected||!detailReady||mutation.current||!identity.canRespond)return;
+  if(queryPending||!selected||!detailReady||mutation.current||!identity.canRespond)return;
   const request=new AbortController();mutation.current=request;setBusy(true);setError(null);
   try{
    const body=await json<Detail>(`${base}/${selected.id}/respond`,request.signal,{action,note:notes[selected.id]??'',...(action==='assign'?{userId:assignees[selected.id]===CLEAR_ALERT_ASSIGNMENT?null:assignees[selected.id]??''}:{})});
@@ -80,7 +85,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
   pagination={<nav aria-label="Alert history pages" className="flex items-center justify-between gap-2 border-t border-white/8 p-3 text-xs"><span>{alerts.length} alerts on this page</span><Button size="sm" variant="outline" disabled={!before||state.status!=='ready'} onClick={()=>go({before:null,alert:null})}>Newest</Button><Button size="sm" variant="outline" disabled={!page?.nextCursor||state.status!=='ready'} onClick={()=>go({before:page?.nextCursor??null,alert:null})}>Older</Button></nav>}
   rows={buildAlertListViewModels(listed,()=> 'Saved check')} selected={selected} events={detail?.alert.id===selectedId?detail.events:[]}
-  previewing={false} canRespond={identity.canRespond&&detailReady} ended={false} busy={busy} note={selected?notes[selected.id]??'':''} assignee={selected?assignees[selected.id]??'':''}
+  previewing={false} canRespond={identity.canRespond&&detailReady} ended={false} busy={busy||queryPending} note={selected?notes[selected.id]??'':''} assignee={selected?assignees[selected.id]??'':''}
   error={error} exportError={null} state={state} activityState={activity.status==='error'||detail?.alert.id===selectedId?activity:{status:'loading'}} detailOpen={route.alertId!==null} tab={route.tab} assignedToMe={mine} teamOnly={false}
   onSelect={id=>{if(id===selectedId&&route.alertId===id)return;setError(null);if(id!==selectedId)setActivity({status:'loading'});go({alert:String(id)});}} onBack={()=>go({alert:null})} onRetry={retry} onRetryActivity={retry}
   onTab={tab=>go({tab,alert:null,before:null})} onAssignedToMe={()=>go({mine:mine?null:'1',alert:null,before:null})}
