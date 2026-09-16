@@ -112,7 +112,7 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/aria-label=\{opts\.collapsed \? "Expand sidebar" : "Collapse sidebar"\}/);
     expect(shell).toMatch(/showToggle: true/);
     expect(shell).toMatch(/showToggle: false/);
-    expect(shell).toMatch(/w-\[244px\]/);
+    expect(shell).toMatch(/w-\[224px\]/);
     expect(shell).toMatch(/PanelLeftClose/);
   });
 
@@ -148,7 +148,7 @@ describe("Watch architecture boundaries", () => {
     expect(scan).toMatch(/params\.set\("configure", "website"\)/);
     expect(scan).toMatch(/watchPath\("sources"\)/);
     expect(scan).toMatch(/scanModeFromSearch/);
-    expect(scan).toMatch(/Each scan records its supported checks, findings and limitations/);
+    expect(scan).toMatch(/the supported checks, findings, and limits of that evidence/);
     expect(scan).not.toMatch(/automatically checks every relevant exposure category/);
     expect(scan).toMatch(/Inspect supported same-origin assets within the scan limits/);
     expect(scan).not.toMatch(/Check every public release asset and map/);
@@ -229,7 +229,8 @@ describe("Watch architecture boundaries", () => {
     const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
     const root = readFileSync("public/mockup-review/index.html", "utf8");
     const files = execFileSync('git', ['ls-files', '--', 'public/mockup-review/2b/*.html'], {encoding:'utf8'})
-      .trim().split('\n').filter(Boolean).map(file=>path.basename(file)).filter(name=>name !== 'index.html');
+      .trim().split('\n').filter(file=>path.dirname(file) === 'public/mockup-review/2b')
+      .map(file=>path.basename(file)).filter(name=>name !== 'index.html');
     expect(files.length).toBeGreaterThanOrEqual(20);
     for (const file of files) {
       expect(index).toContain(file);

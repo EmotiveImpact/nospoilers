@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {AlertMemberSelect} from './watch/AlertMemberSelect';
+import './watch/design/alerts-page.css';
 import {
   WatchSectionError,
   WatchSkeleton,
@@ -167,7 +168,7 @@ export function WatchAlertsWorkspace({
   }
 
   return (
-    <section className="alerts-designed flex h-full min-h-0 flex-col" onKeyDown={navigateQueue}>
+    <section className="alerts-designed alerts-journey flex h-full min-h-0 flex-col" onKeyDown={navigateQueue}>
       <p className="sr-only" role="status" aria-live="polite">
         {error ||
           exportError ||
@@ -185,16 +186,16 @@ export function WatchAlertsWorkspace({
           No new jobs run. Existing alerts can still be acknowledged, assigned, resolved, and reopened.
         </div>
       ) : null}
-      <div className="flex shrink-0 items-center gap-4 border-b border-white/8 px-5 py-4 md:px-8">
-        <div className="min-w-0"><h1 className="watch-page-title">Alerts</h1><p className="mt-2 text-sm text-mute">Review evidence, assign a response, and follow each alert to resolution.</p></div>
+      <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
+        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Review findings and incomplete checks without mixing them together.</p></div>
         {!previewing ? (
           <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
             {exportLabel}
           </Button>
         ) : null}
       </div>
-      <div className="alert-queue-toolbar flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-white/[0.015] px-3 py-3 md:px-4">
-      <div className="flex min-w-0 flex-wrap items-center gap-3"><div className="alert-queue-tabs inline-flex rounded-lg border border-white/10 bg-white/[0.025] p-1" role="tablist" aria-label="Alert queues">
+      <div className="alert-queue-toolbar alerts-journey-toolbar flex shrink-0 flex-wrap items-center justify-between gap-3 px-5 md:px-8">
+      <div className="flex min-w-0 flex-wrap items-center gap-3"><div className="alert-queue-tabs alerts-journey-tabs inline-flex" role="tablist" aria-label="Alert queues">
         {([
           ["open", "Open", queueCounts.open],
           ["waiting", "In progress", queueCounts.waiting],
@@ -206,7 +207,7 @@ export function WatchAlertsWorkspace({
             role="tab"
             aria-selected={(tab==='mine'?'open':tab) === value}
             tabIndex={(tab==='mine'?'open':tab) === value?0:-1}
-            className="flex min-h-11 items-center justify-center rounded-md px-2 text-xs text-mute hover:bg-white/5 aria-selected:bg-white/10 aria-selected:text-snow sm:px-3"
+            className="alerts-journey-tab flex min-h-11 items-center justify-center text-xs text-mute aria-selected:text-snow"
             onClick={() => onTab(value)}
             onKeyDown={(event)=>{
               const keys=['ArrowRight','ArrowLeft','Home','End'];
@@ -222,8 +223,8 @@ export function WatchAlertsWorkspace({
               <span className="watch-queue-label">{label}</span>
               <span
                 className={cn(
-                  "watch-queue-count min-w-5 rounded-full bg-white/5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
-                  value === "open" && count > 0 && "bg-danger/15 text-danger-text",
+                  "watch-queue-count min-w-5 px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums text-mute",
+                  value === "open" && count > 0 && "text-danger-text",
                 )}
               >
                 {count}
@@ -234,16 +235,16 @@ export function WatchAlertsWorkspace({
       </div></div>
       {onAssignedToMe ? <Button type="button" size="sm" variant="outline" className="min-h-11 aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button> : null}
       </div>
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className={cn("min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
-          <p className="border-b border-white/8 px-4 py-2 text-xs text-mute">Use J / K for next or previous alert. Arrow keys work within the queue.</p>
+      <div className="alerts-journey-inbox grid min-h-0 flex-1">
+        <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
+          <p className="alerts-journey-shortcuts border-b border-white/8 px-4 py-2 text-xs text-mute">J / K moves through the queue. Arrow keys work while the list is focused.</p>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
           {state.status === "loading" ? (
             <WatchSkeleton variant="list" className="min-h-0 flex-1 overflow-hidden" />
           ) : state.status === "error" ? (
             <WatchSectionError className="m-4" message={state.message} onRetry={onRetry} />
           ) : (
-          <ol ref={listRef} className="min-h-0 flex-1 divide-y divide-white/5 overflow-auto">
+          <ol ref={listRef} className="alerts-journey-rows min-h-0 flex-1 overflow-auto">
             {rows.length === 0 ? (
               <li>
                 <div className="watch-empty m-4">
@@ -277,25 +278,13 @@ export function WatchAlertsWorkspace({
                     aria-label={[copy.title,copy.summary].filter(Boolean).join(". ")}
                     aria-pressed={selected?.id===row.id}
                     className={cn(
-                      "w-full border-l-2 border-transparent px-4 py-3 text-left hover:bg-white/[0.035]",
-                      selected?.id === row.id && "border-l-snow bg-white/[0.055]",
+                      "alerts-journey-row w-full px-3 py-4 text-left",
+                      selected?.id === row.id && "is-selected",
                     )}
                     onClick={() => onSelect(row.id)}
                   >
-                    <span className="flex items-start gap-2">
-                      <span
-                        className={cn(
-                          "mt-1.5 size-1.5 shrink-0 rounded-full",
-                          row.status === "resolved"
-                            ? "bg-white/25"
-                            : row.severity === "critical"
-                              ? "bg-danger"
-                              : "bg-warn",
-                        )}
-                      />
-                      <strong className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
-                    </span>
-                    {copy.summary?<span className="mt-1 block truncate pl-3.5 text-xs text-mute">{copy.summary}</span>:null}
+                    <strong className="alerts-journey-row-title line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
+                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block truncate text-xs",row.status === "resolved" ? "text-dim" : row.severity === "critical" ? "text-danger-text" : "text-mute")}>{copy.summary}</span>:null}
                   </button>
                 </li>;
               })
@@ -305,7 +294,7 @@ export function WatchAlertsWorkspace({
         {pagination}
         </aside>
 
-        <main className={cn("min-h-0 lg:block", detailOpen ? "block" : "hidden")}>
+        <main className={cn("alerts-journey-detail min-h-0 lg:block", detailOpen ? "block" : "hidden")}>
           {!selected || !selectedRow ? (
             <div className="grid h-full place-items-center px-5 text-center">
               <div>
@@ -322,7 +311,7 @@ export function WatchAlertsWorkspace({
             </div>
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <div className="sticky top-0 z-10 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-white/8 px-4 py-2">
+              <div className="alerts-journey-actions sticky top-0 z-10 flex min-h-12 shrink-0 flex-wrap items-center gap-2 px-4 py-2">
                 <Button type="button" size="sm" variant="ghost" className="lg:hidden" onClick={onBack}>
                   <ArrowLeft className="size-4" aria-hidden />
                   Back to inbox
@@ -354,9 +343,9 @@ export function WatchAlertsWorkspace({
                   <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
-                <div className="mx-auto max-w-3xl">
-                  <div className="flex flex-wrap gap-2">
+              <div className="alerts-journey-detail-scroll min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
+                <div className="alerts-journey-detail-content mx-auto max-w-3xl">
+                  <div className="alerts-journey-context flex flex-wrap gap-2">
                     <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.severity === "critical" ? "watch-pill watch-pill-crit" : "watch-pill watch-pill-warn"}>
                       {selected.resolved_at ? "resolved" : selectedRow.severity}
                     </span>
@@ -366,9 +355,9 @@ export function WatchAlertsWorkspace({
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
-                  <section className="mt-8">
+                  <section className="alerts-journey-section mt-8">
                     <p className="watch-kicker">Where</p>
-                    <div className="mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
+                    <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
                       {Array.isArray(selected.findings) && selected.findings.length ? (
                         selected.findings.map((finding) => (
                           <div key={`${finding.rule}:${finding.path}`} className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
@@ -378,15 +367,23 @@ export function WatchAlertsWorkspace({
                           </div>
                         ))
                       ) : (
-                        <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational && selected.title.startsWith("No release on ") ? alertQueueCopy(selectedRow).title : selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
+                        <>
+                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational && selected.title.startsWith("No release on ") ? alertQueueCopy(selectedRow).title : selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
+                          {selectedRow.operational ? (
+                            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-dim">
+                              <span>Technical check</span>
+                              <code className="text-[11px] text-mute">{selected.kind}</code>
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </section>
 
                   {relatedReleases}
-                  <section className="mt-7">
+                  <section className="alerts-journey-section mt-7">
                     <p className="watch-kicker">{selectedRow.operational?'Check status':'Exposure'}</p>
-                    <div className="mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
+                    <div className="alerts-journey-surface mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
                       <div>
                         <p className="watch-kicker">{selectedRow.operational?'Result':'Reachable for'}</p>
                         <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':selectedRow.exposure}</p>
@@ -398,9 +395,9 @@ export function WatchAlertsWorkspace({
                     </div>
                   </section>
 
-                  {!selectedRow.operational?<section className="mt-7">
+                  {!selectedRow.operational?<section className="alerts-journey-section mt-7">
                     <p className="watch-kicker">Rotation checklist · read-only</p>
-                    <div className="mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
+                    <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                       {(selected.rotation_checklist ?? []).length ? (
                         selected.rotation_checklist?.map((item) => (
                           <label key={item} className="flex gap-3 py-3 text-xs leading-relaxed text-mute">
@@ -414,12 +411,12 @@ export function WatchAlertsWorkspace({
                     </div>
                   </section>:<p className="mt-7 text-sm text-mute">This is an incomplete check, not evidence of exposed content. Publish an eligible release or choose an existing artifact, then run the check again. Resolving this alert does not establish a passing scan.</p>}
 
-                  <section className="mt-7 pb-10">
+                  <section className="alerts-journey-section alerts-journey-activity mt-7 pb-10">
                     <p className="watch-kicker">Activity</p>
-                    <div className="mt-2 rounded-lg border border-white/8 bg-panel px-4">
+                    <div className="alerts-journey-surface mt-2 rounded-lg border border-white/8 bg-panel px-4">
                       <div className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute">
                         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">NS</span>
-                        <p><span className="text-snow">NoSpoilers</span> opened this from {selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
+                        <p><span className="text-snow">NoSpoilers</span> opened this from {selectedRow.operational ? "a latest release check" : selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
                       </div>
                       {activityState.status === "loading" ? (
                         <WatchSkeleton variant="list" className="py-2" />

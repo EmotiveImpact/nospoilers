@@ -166,11 +166,20 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                     {!ended && installAdmin ? (
                       <div className="mt-6">
                         <p className="text-xs font-medium text-snow">Choose a focused flow</p>
-                        <div className="watch-seg mt-3" role="group" aria-label="Notification configuration">
+                        <div className="watch-seg mt-3" role="tablist" aria-label="Notification configuration" onKeyDown={event=>{
+                          if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+                          const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'));
+                          const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;
+                          event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+                          tabs[next]?.focus();tabs[next]?.click();
+                        }}>
                           {FLOWS.map((item) => (
                             <button
                               key={item.value}
                               type="button"
+                              role="tab"
+                              aria-selected={flow === item.value}
+                              tabIndex={flow === item.value || flow === null && item.value === 'email' ? 0 : -1}
                               aria-pressed={flow === item.value}
                               disabled={(deskCoverage?.plan === "solo" && ["slack", "siem", "jira", "pagerduty"].includes(item.value)) || (destinations.length === 0 && ["route", "route-test"].includes(item.value))}
                               className="watch-seg-item"

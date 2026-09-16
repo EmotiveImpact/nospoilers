@@ -1,7 +1,7 @@
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 
 export function TimelineRouteScreen() {
-  const { TimelineScreen, alertSectionState, deskAlerts, previewing, retryDeskSection, route, timeline } = useWatchScreenContext();
+  const { TimelineScreen, alertSectionState, deskAlerts, previewing, retryDeskSection, route, timeline, search } = useWatchScreenContext();
   return (
     <>
       {route.view === "timeline" ? (
@@ -10,6 +10,7 @@ export function TimelineRouteScreen() {
                   timeline={timeline}
                   alerts={deskAlerts}
                   alertState={alertSectionState}
+                  search={search}
                   onRetryTimeline={() => void retryDeskSection("timeline")}
                   onRetryAlerts={() => void retryDeskSection("alerts")}
                 />

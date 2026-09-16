@@ -1,0 +1,29 @@
+.watch-desk .timeline-page{max-width:1120px;margin-top:8px}
+.watch-desk .timeline-page>.watch-between{margin-bottom:10px}
+.watch-desk .timeline-page>.watch-guidance{max-width:720px;margin-top:0;font-size:12px;line-height:1.75;color:#898c96}
+.watch-desk .timeline-summary{display:flex;gap:24px;margin-top:22px;padding:15px 0;border-block:1px solid #ffffff10}
+.watch-desk .timeline-summary .watch-kv{display:flex;align-items:baseline;gap:9px;padding-right:24px;border-right:1px solid #ffffff10;font-size:11px}
+.watch-desk .timeline-summary .watch-kv:last-child{border:0}
+.watch-desk .timeline-summary .watch-kv span:first-child{color:#898c96}
+.watch-desk .timeline-filter-tabs{display:flex;gap:24px;margin:26px 0 0;border-bottom:1px solid #ffffff10;overflow:auto}
+.watch-desk .timeline-filter-tabs button{flex:0 0 auto;padding:11px 1px;border-bottom:2px solid transparent;color:#898c96;font-size:12px}
+.watch-desk .timeline-filter-tabs button:hover{color:#d8d8dd}
+.watch-desk .timeline-filter-tabs button[aria-selected=true]{border-color:#e4e4e7;color:#f4f4f5}
+.watch-desk .timeline-chart-disclosure{margin-top:20px;border:0;border-bottom:1px solid #ffffff10;border-radius:0;background:transparent}
+.watch-desk .timeline-chart-disclosure>summary{padding:13px 0}
+.watch-desk .timeline-feed{margin-top:31px}
+.watch-desk .timeline-feed>header{display:flex;align-items:baseline;justify-content:space-between;gap:18px}
+.watch-desk .timeline-feed>header h2{font-size:15px;font-weight:550}
+.watch-desk .timeline-feed>header p{color:#898c96;font-size:11px}
+.watch-desk .timeline-events{margin-top:15px;border:0;border-radius:0;background:transparent;padding:0}
+.watch-desk .timeline-event{display:grid;grid-template-columns:70px 30px minmax(0,1fr) auto;gap:14px;align-items:start;padding:19px 0;border-bottom:1px solid #ffffff10}
+.watch-desk .timeline-event>time{padding-top:2px;color:#898c96;font-size:11px}
+.watch-desk .timeline-event-icon{display:grid;width:26px;height:26px;place-items:center;color:#898c96}
+.watch-desk .timeline-event-icon svg{width:16px;height:16px}
+.watch-desk .timeline-event strong{display:block;color:#f4f4f5;font-size:13px;font-weight:500;overflow-wrap:anywhere}
+.watch-desk .timeline-event p{margin-top:4px;color:#898c96;font-size:11px;overflow-wrap:anywhere}
+.watch-desk .timeline-event-link{display:inline-flex;align-items:center;gap:7px;padding:4px 1px;color:#cdced4;font-size:11px}
+.watch-desk .timeline-event-link:hover{color:#f4f4f5}
+.watch-desk .timeline-event-link svg{width:13px;height:13px}
+.watch-desk .timeline-event-unlinked{padding-top:4px;color:#6f727c;font-size:10px}
+@media(max-width:600px){.watch-desk .timeline-summary{gap:14px}.watch-desk .timeline-summary .watch-kv{padding-right:14px}.watch-desk .timeline-filter-tabs{gap:18px}.watch-desk .timeline-event{grid-template-columns:42px 24px minmax(0,1fr);gap:9px}.watch-desk .timeline-event-icon{width:22px;height:22px}.watch-desk .timeline-event-link,.watch-desk .timeline-event-unlinked{grid-column:3;justify-self:start}.watch-desk .timeline-feed>header{align-items:flex-start;flex-direction:column;gap:4px}}

@@ -1,4 +1,10 @@
-# Current NoSpoilers continuation — 15 September 2026
+# Current NoSpoilers continuation — 16 September 2026
+
+16 September approved-journey milestone: the `public/mockup-review/2b/36-journey` direction is now implemented in the real signed-in app across the shared shell, Overview, Alerts, Scan, Timeline, Notifications, Policy and the release remediation workflow. Real data and existing authorization/evidence contracts are preserved. Original finding → reviewed change → rebuilt evidence is visible as one three-step workflow. Final verification passed 1,521 tests / 255 files, typecheck, frontend/API builds and lint exit 0 with existing warnings. Signed-in desktop/responsive visual QA and screenshot paths are in BUILD-LOG and `/design-qa.md`; no browser errors or document overflow were observed in the inspected routes.
+
+The local all-role server is running at `http://127.0.0.1:4347` from the ignored private launcher, with the preserved PGlite database, signing state and GitHub connection. Do not restart it without need. The next product/infrastructure task is to prepare the Railway worker connection against the existing queue/worker safeguards, then obtain final approval before any external deployment, secret/access change or production cutover. Do not deploy from this UI milestone.
+
+Gate C still has explicit external/manual limits: native 200% zoom and audible screen-reader execution. Provider-backed explanations, production mapping/worker operational acceptance and hosted deployment remain separate. Do not describe the full gate or production readiness as complete.
 
 15 September engineering follow-up (base cdcdfd9): fixed shared Select truncation, failed workspace-menu refresh/focus, exception query leakage, stale policy/organisation/notification controls, lost creation drafts, scoped allowlist/role/billing late responses and dead-end notification choices. Combined 117/117 tests across12 files and final build passed; mobile Select and Escape focus verified in the signed-in browser. See latest BUILD-LOG for exact scope. No deployment or Gate C completion; preserved unrelated dirty CSS/mockups.
 

@@ -31,7 +31,7 @@ it('hides stale remediation actions and evidence after a rejected mutation',asyn
   fireEvent.click(screen.getByRole('button',{name:'Add investigation note',hidden:true}));
   await screen.findByText('Access revoked');
   expect(screen.queryByRole('button',{name:'Add investigation note',hidden:true})).toBeNull();
-  expect(screen.queryByText('Original finding')).toBeNull();
+  expect(screen.queryByRole('heading',{name:'Remediation case · map'})).toBeNull();
 });
 
 it('resets private drafts and consent when the record changes',async()=>{
@@ -51,12 +51,11 @@ it('explains why the selected release has no new investigation action',async()=>
   render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
   await screen.findByText(/Record this release in the selected stream/);
   expect(screen.queryByRole('button',{name:'Start investigation',hidden:true})).toBeNull();
-  expect(screen.getByText('Original finding')).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'Original finding'})).toBeTruthy();
 });
 const otherCase={id:'second-case',finding:'secret',revision:1,original_snapshot:'second-original'};
 const multipleCases={...view,cases:[...view.cases,otherCase]};
 function selectOtherCase(){
- (screen.getByText('Remediation · finding to rebuilt evidence').closest('details') as HTMLDetailsElement).open=true;
  const selector=screen.getByLabelText('Remediation case');selector.focus();
  fireEvent.change(selector,{target:{value:otherCase.id}});
 }
@@ -105,9 +104,8 @@ it('takes review and rebuild users directly to their required note without savin
  const fetcher=vi.fn(async()=>Response.json(view));vi.stubGlobal('fetch',fetcher);
  render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
  await screen.findByText('Scoped remediation only.');
- fireEvent.click(screen.getByText('Remediation · finding to rebuilt evidence'));
- fireEvent.click(screen.getByText('Record a human-reviewed change'));
- fireEvent.click(screen.getByText('Check a rebuilt artifact'));
+ expect(screen.getByRole('heading',{name:'Record a human-reviewed change'}).closest('details')).toBeNull();
+ expect(screen.getByRole('heading',{name:'Check a rebuilt artifact'}).closest('details')).toBeNull();
  const note=screen.getByLabelText('Remediation note (no secrets)');
  for(const button of screen.getAllByRole('button',{name:'Add required note'})){
   button.focus();fireEvent.click(button);expect(document.activeElement).toBe(note);
@@ -116,4 +114,18 @@ it('takes review and rebuild users directly to their required note without savin
  expect(fetcher).toHaveBeenCalledTimes(1);
  fireEvent.change(note,{target:{value:'Reviewed the original signed finding.'}});
  expect(screen.queryByRole('button',{name:'Add required note'})).toBeNull();
+});
+
+it('shows finding, reviewed change and rebuilt evidence as one visible three-step workflow',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(view)));
+ render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
+ await screen.findByText('Scoped remediation only.');
+ const progress=screen.getByRole('list',{name:'Remediation progress'});
+ expect(progress.textContent).toContain('Original finding');
+ expect(progress.textContent).toContain('Reviewed change');
+ expect(progress.textContent).toContain('Rebuilt evidence');
+ expect(screen.getByRole('heading',{name:'Original finding'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Record a human-reviewed change'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Check a rebuilt artifact'})).toBeTruthy();
+ expect(screen.getByText('Linked evidence and technical activity').closest('details')).toBeTruthy();
 });

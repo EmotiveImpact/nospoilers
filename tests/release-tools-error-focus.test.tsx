@@ -9,7 +9,8 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const record={kind:'upload' as const,id:'upload'};
 function responses(view:unknown){vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>init?.method==='POST'?Response.json({error:'Permission changed. Refresh before continuing.'},{status:403}):Response.json(view)));}
 async function checkFocus(button:HTMLElement){
-  const panel=button.closest('details')!;panel.open=true;button.focus();expect(document.activeElement).toBe(button);
+  const disclosure=button.closest('details');if(disclosure)disclosure.open=true;
+  const panel=(disclosure??button.closest('section[aria-labelledby="remediation-workflow-title"]')??button.closest('section'))!;button.focus();expect(document.activeElement).toBe(button);
   fireEvent.click(button);
   await screen.findByText('Permission changed. Refresh before continuing.');
   await waitFor(()=>{

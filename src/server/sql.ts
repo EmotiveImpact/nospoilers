@@ -696,13 +696,13 @@ export async function migrate(sql: SqlClient): Promise<void> {
       SELECT COALESCE(
         (
           SELECT CASE
-            WHEN b.retention_days = 0 THEN TRUE
-            ELSE $2 >= now() - (b.retention_days * INTERVAL '1 day')
+            WHEN b.retention_days = 0 THEN $2 <= now()
+            ELSE $2 BETWEEN now() - (b.retention_days * INTERVAL '1 day') AND now()
           END
           FROM billing_accounts b
           WHERE b.installation_id = $1
         ),
-        $2 >= now() - INTERVAL '90 days'
+        $2 BETWEEN now() - INTERVAL '90 days' AND now()
       );
     $$;
   `);

@@ -56,41 +56,76 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
     finally{if(!signal.aborted)setBusy(false);}
   }
   const current=view?.selected,review=current?.history.find(e=>e.action==='review');
-  return <details><summary>Remediation · finding to rebuilt evidence</summary>
-    <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh remediation</button>
+  const phase=current?.observation?3:review?2:current?1:0;
+  return <section className="border-t border-white/8 pt-5" aria-labelledby="remediation-workflow-title">
+    <header className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p className="ns-intelligence__eyebrow">Finding to rebuilt evidence</p>
+        <h4 id="remediation-workflow-title" className="mt-1 text-[15px] font-medium text-snow">Verify a fix without rewriting the original.</h4>
+        <p className="ns-intelligence__muted max-w-2xl text-xs">Record the reviewed change, then compare it with fresh signed evidence from the rebuilt artifact.</p>
+      </div>
+      <button type="button" disabled={busy} onClick={()=>setReload(n=>n+1)}>Refresh remediation</button>
+    </header>
+
+    <ol className="mt-5 grid gap-2 border-y border-white/8 py-3 sm:grid-cols-3" aria-label="Remediation progress">
+      {[[1,'Original finding'],[2,'Reviewed change'],[3,'Rebuilt evidence']].map(([step,label])=><li key={step} aria-current={phase===step?'step':undefined} className={phase===step?'text-snow':'text-mute'}><span className="mr-2 font-mono text-[10px] tabular-nums text-dim">0{step}</span><span className="text-xs">{label}</span></li>)}
+    </ol>
+
     {error?<p role="alert" tabIndex={-1} ref={errorTarget}>{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
     {!view&&!error?<WatchSkeleton variant="list" label="Reading remediation evidence"/>:null}
-    {view?<><p>{view.notice}</p>
-      <a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a>
+    {view?<>
+      <p className="ns-intelligence__muted">{view.notice}</p>
       {!view.current?<p>Record this release in the selected stream to investigate its signed findings. Existing cases below belong to this stream, not necessarily this release.</p>:!view.current.findings.length?<p>This recorded release has no signed findings to investigate. Existing stream cases remain available; a clean scan does not automatically resolve them.</p>:null}
-      {view.canWrite?<><label>Remediation note (no secrets)<textarea ref={noteInput} aria-describedby={noteId} minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label>{noteHelp}</>:<p>Saved remediation is read-only for your current access.</p>}
-      {view.canWrite&&!!view.current?.findings.length?<form onSubmit={e=>{e.preventDefault();void save('start');}}>
-        <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
-        <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
-      </form>:null}
-      {view.cases.length?<label>Remediation case<select disabled={busy} value={current?.id??''} onChange={e=>{caseFocus.current=document.activeElement===e.currentTarget?{control:e.currentTarget,id:e.target.value}:null;setError('');setSelected(e.target.value);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</select></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
-      {current?<><h4 ref={caseHeading} tabIndex={-1}>Remediation case · {current.finding}</h4><p><strong>Original finding</strong> <code>{current.finding}</code></p>
-        <p role="status">{current.unavailable?'Linked evidence is unavailable; no current resolution is inferred.':current.observation?current.observation.reason:review?'Reviewed change recorded. Rebuild and check fresh signed evidence next.':'Investigation open. Record a reviewed change before checking a rebuild.'}</p>
-        {current.observation?<><p>{current.observation.scope}</p><p>Other recorded findings in this rebuild: {current.observation.otherFindings}. This observation does not approve the release.</p></>:null}
-        {view.canWrite?<><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('investigate')}>Add investigation note</button><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('reopen')}>Reopen investigation</button>
-          <details><summary>Record a human-reviewed change</summary><p>Add the change URL, full commit hash and review time, then confirm your review. The remediation note above is saved with this action.</p><form onSubmit={e=>{e.preventDefault();void save('review');}}>
+      {view.canWrite?<div className="mt-5 rounded-lg bg-white/[0.025] p-4"><label>Remediation note (no secrets)<textarea ref={noteInput} aria-describedby={noteId} minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);resetConfirmation();}}/></label>{noteHelp}</div>:<p>Saved remediation is read-only for your current access.</p>}
+
+      <section className="mt-6 border-t border-white/8 pt-5" aria-labelledby="remediation-step-finding">
+        <p className="ns-intelligence__eyebrow">Step 1</p>
+        <h4 id="remediation-step-finding" className="mt-1 text-base font-medium text-snow">Original finding</h4>
+        {view.cases.length?<label>Remediation case<select disabled={busy} value={current?.id??''} onChange={e=>{caseFocus.current=document.activeElement===e.currentTarget?{control:e.currentTarget,id:e.target.value}:null;setError('');setSelected(e.target.value);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</select></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
+        {current?<><h5 ref={caseHeading} tabIndex={-1} className="mt-4 text-sm font-medium text-snow">Remediation case · {current.finding}</h5><p><strong>Original finding</strong> <code>{current.finding}</code></p>
+          <p role="status">{current.unavailable?'Linked evidence is unavailable; no current resolution is inferred.':current.observation?current.observation.reason:review?'Reviewed change recorded. Rebuild and check fresh signed evidence next.':'Investigation open. Record a reviewed change before checking a rebuild.'}</p>
+          {current.observation?<><p>{current.observation.scope}</p><p>Other recorded findings in this rebuild: {current.observation.otherFindings}. This observation does not approve the release.</p></>:null}
+          {view.canWrite?<div className="ns-intelligence__actions justify-start"><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('investigate')}>Add investigation note</button><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('reopen')}>Reopen investigation</button></div>:null}
+        </>:null}
+        {view.canWrite&&!!view.current?.findings.length?<form className="mt-4" onSubmit={e=>{e.preventDefault();void save('start');}}>
+          <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
+          {reason.trim().length<8?requiredNote:null}
+          <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
+        </form>:null}
+      </section>
+
+      <section className="mt-6 border-t border-white/8 pt-5" aria-labelledby="remediation-step-review">
+        <p className="ns-intelligence__eyebrow">Step 2</p>
+        <h4 id="remediation-step-review" className="mt-1 text-base font-medium text-snow">Record a human-reviewed change</h4>
+        {!current?<p>Start or select an investigation before recording what a person reviewed.</p>:!view.canWrite?<p>The reviewed change is available as read-only evidence for your current access.</p>:<>
+          <p>Add the change URL, full commit hash and review time, then confirm your review. The remediation note above is saved with this action.</p>
+          <form onSubmit={e=>{e.preventDefault();void save('review');}}>
             <label>Change or PR URL<input required type="url" maxLength={500} value={changeUrl} onChange={e=>{setChangeUrl(e.target.value);setReviewConfirm(false);}} placeholder="https://github.com/your-org/repo/pull/123"/></label>
             <label>Full reviewed commit hash<input required minLength={40} maxLength={64} value={commit} onChange={e=>{setCommit(e.target.value);resetConfirmation();}}/></label>
             <label>Review time (ISO timestamp with timezone)<input required value={reviewedAt} onChange={e=>{setReviewedAt(e.target.value);setReviewConfirm(false);}} placeholder="2026-09-09T12:00:00Z"/></label>
             <label><input type="checkbox" checked={reviewConfirm} onChange={e=>setReviewConfirm(e.target.checked)}/> I reviewed this change. NoSpoilers has not independently verified its review or merge status.</label>
             {reason.trim().length<8?requiredNote:!reviewConfirm?<p>Confirm that you reviewed this change to enable recording.</p>:null}
             <button type="submit" disabled={busy||!reviewConfirm||reason.trim().length<8}>Record reviewed change</button>
-          </form></details>
-          {review?<details><summary>Check a rebuilt artifact</summary><p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
-            <form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<select required value={candidate} onChange={e=>{setCandidate(e.target.value);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</select></label>
-              <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
-              <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
-              {reason.trim().length<8?requiredNote:null}
-              <button type="submit" disabled={busy||!buildConfirm||!candidate||reason.trim().length<8}>Verify selected rebuild</button>
-            </form></details>:null}
-        </>:null}
-        <details><summary>Linked evidence and activity</summary>{current.history.map(e=><article key={e.id}><strong>{e.action} · {e.actor_login}</strong><p>{new Date(e.created_at).toLocaleString()} · {e.detail.reason}</p>{e.detail.changeUrl?<a href={e.detail.changeUrl} target="_blank" rel="noopener noreferrer">Human-linked change</a>:null}{e.detail.commit?<code>{e.detail.commit}</code>:null}{e.detail.record?<a href={`/watch/releases?workspace=${encodeURIComponent(workspaceId)}&${e.detail.record.kind==='upload'?`upload=${encodeURIComponent(e.detail.record.id)}&uploadView=detail`:`release=${encodeURIComponent(e.detail.record.id)}`}`}>Inspect linked signed rebuild</a>:null}{e.detail.digest?<code>{e.detail.digest}</code>:null}{e.detail.result?<p>Historical check: {e.detail.result.reason} Current availability and freshness are checked above.</p>:null}</article>)}</details>
-      </>:null}
+          </form>
+        </>}
+      </section>
+
+      <section className="mt-6 border-t border-white/8 pt-5" aria-labelledby="remediation-step-rebuild">
+        <p className="ns-intelligence__eyebrow">Step 3</p>
+        <h4 id="remediation-step-rebuild" className="mt-1 text-base font-medium text-snow">Check a rebuilt artifact</h4>
+        {!current?<p>Select an investigation first. A clean build cannot create or replace an original finding.</p>:!review?<p>Record the reviewed change before connecting a rebuilt artifact to this case.</p>:<>
+          <p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
+          {view.canWrite?<form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<select required value={candidate} onChange={e=>{setCandidate(e.target.value);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</select></label>
+            <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
+            <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
+            {reason.trim().length<8?requiredNote:null}
+            <button type="submit" disabled={busy||!buildConfirm||!candidate||reason.trim().length<8}>Verify selected rebuild</button>
+          </form>:null}
+        </>}
+      </section>
+
+      <div className="mt-5"><a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a></div>
+      {current?<details><summary>Linked evidence and technical activity</summary>{current.history.map(e=><article key={e.id}><strong>{e.action} · {e.actor_login}</strong><p>{new Date(e.created_at).toLocaleString()} · {e.detail.reason}</p>{e.detail.changeUrl?<a href={e.detail.changeUrl} target="_blank" rel="noopener noreferrer">Human-linked change</a>:null}{e.detail.commit?<code>{e.detail.commit}</code>:null}{e.detail.record?<a href={`/watch/releases?workspace=${encodeURIComponent(workspaceId)}&${e.detail.record.kind==='upload'?`upload=${encodeURIComponent(e.detail.record.id)}&uploadView=detail`:`release=${encodeURIComponent(e.detail.record.id)}`}`}>Inspect linked signed rebuild</a>:null}{e.detail.digest?<code>{e.detail.digest}</code>:null}{e.detail.result?<p>Historical check: {e.detail.result.reason} Current availability and freshness are checked above.</p>:null}</article>)}</details>:null}
     </>:null}
-  </details>;
+  </section>;
 }

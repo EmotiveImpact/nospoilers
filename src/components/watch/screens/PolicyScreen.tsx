@@ -62,7 +62,7 @@ export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
                 {section !== "allowlist" && <section className="policy-signing">
                 <div className="policy-section-heading"><h2>Signing policy</h2><p>Require attestation documents for the selected GitHub connection.</p></div>
                 <p className="policy-scope-caveat">Checks document presence and declared builder identity. This is not Sigstore verification and not a malware verdict.</p>
-                <details className="policy-scope-note"><summary>Scope and confirmation</summary><p>Trial and Team can require a present GitHub or npm attestation document, or a builder prefix, before a passing revision is approved to ship. Type signing-policy to save. Type clear-signing-policy to remove it. Expired policies do not block.</p></details>
+                <aside className="policy-scope-note" aria-label="Scope and confirmation"><h3>Scope and confirmation</h3><p>Trial and Team can require a present GitHub or npm attestation document, or a builder prefix, before a passing revision is approved to ship. Type signing-policy to save. Type clear-signing-policy to remove it. Expired policies do not block.</p></aside>
                 {previewing ? (
                   <>
                     <p className="mt-6 text-[13px] leading-relaxed text-mute">
@@ -174,7 +174,7 @@ export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
                 <div className="policy-section-heading"><h2>GitHub allowlist</h2><p>Time-bound exceptions for the selected connection.</p></div>
                 <p className="policy-scope-caveat">Exceptions accept bounded risk; they do not fix a finding or rewrite saved evidence.</p>
                 <p className="policy-scope-caveat">Request a scoped exception from a saved release finding. <a className="underline underline-offset-4" href={watchHref('/watch/releases',search,{install:activeInstallId})}>Open saved releases</a></p>
-                <details className="policy-scope-note"><summary>Scope and approval rules</summary><p>Exceptions are exact-rule, attributable, and they expire. They never suppress a different rule. If your workspace requires independent approval, direct allowlist creation below is blocked; another administrator must approve the request. Historical entries remain available for review and revocation.</p><p>Approve a packed receipt as the shipping baseline; later diffs use that receipt instead of whichever scan happened last.</p></details>
+                <aside className="policy-scope-note" aria-label="Scope and approval rules"><h3>Scope and approval rules</h3><p>Exceptions are exact-rule, attributable, and they expire. They never suppress a different rule. If your workspace requires independent approval, direct allowlist creation below is blocked; another administrator must approve the request. Historical entries remain available for review and revocation.</p><p>Approve a packed receipt as the shipping baseline; later diffs use that receipt instead of whichever scan happened last.</p></aside>
                 {allowError?.installationId === activeInstallId && <p role="alert" className="mt-3 text-sm text-danger">{allowError.message}</p>}
                 {!previewing && installAdmin && (
                   <label className="mt-6 block max-w-xl">

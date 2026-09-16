@@ -1,6 +1,7 @@
 import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
+import './watch/design/journey-shell.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
@@ -125,8 +126,8 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center rounded-[7px] border-0 text-[14px] leading-[1.5]",
-        collapsed ? "justify-center px-1 py-[7px]" : "gap-2.5 px-[9px] py-[7px]",
+        "watch-rail-link flex items-center rounded-[5px] border-0 text-[13px] leading-[1.5]",
+        collapsed ? "justify-center px-1 py-[10px]" : "gap-3 px-3 py-[10px]",
         active ? "text-snow" : "text-mute hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
@@ -245,7 +246,7 @@ export function WatchMonolithShell({
 
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
-      <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
+      <div className={cn("watch-rail-head", opts.collapsed ? "px-1.5" : "px-3")}>
         <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
           {opts.collapsed && opts.showToggle ? (
             <button
@@ -271,7 +272,7 @@ export function WatchMonolithShell({
               <img
                 src="/assets/brand/nospoilers-wordmark.png"
                 alt="NoSpoilers"
-                className="block h-[25px] w-auto max-w-[152px] object-contain"
+                className="watch-rail-wordmark block h-[38px] w-auto max-w-[152px] object-contain"
               />
             </a>
           )}
@@ -312,8 +313,8 @@ export function WatchMonolithShell({
 
       <nav
         className={cn(
-          "flex flex-1 flex-col gap-[18px] overflow-auto py-3.5",
-          opts.collapsed ? "px-1.5" : "px-2.5",
+          "watch-rail-nav flex flex-1 flex-col gap-[18px] overflow-auto",
+          opts.collapsed ? "px-1.5" : "px-3",
         )}
         aria-label="Watch desk"
       >
@@ -479,8 +480,8 @@ export function WatchMonolithShell({
           closeNav();
         }}
         className={cn(
-          "flex items-center border-t border-line text-left hover:bg-white/[0.03]",
-          opts.collapsed ? "justify-center px-1.5 py-3" : "gap-3 px-3.5 py-3",
+          "watch-rail-foot flex items-center border-t border-line text-left hover:bg-white/[0.03]",
+          opts.collapsed ? "justify-center px-1.5" : "gap-3 px-3.5",
         )}
       >
         {artifactOnly ? <Boxes className="size-5 shrink-0 text-mute" aria-hidden/> : <span
@@ -510,8 +511,8 @@ export function WatchMonolithShell({
     <div className="watch-desk">
       <aside
         className={cn(
-          "group/rail watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
-          collapsed ? "w-14" : "w-[244px]",
+          "group/rail watch-rail watch-rail--desktop hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
+          collapsed ? "watch-rail--collapsed w-[60px]" : "watch-rail--expanded w-[224px]",
         )}
       >
         {rail({ collapsed, showToggle: true })}
@@ -529,7 +530,7 @@ export function WatchMonolithShell({
 
       <div className="watch-gutter">
         <div className="watch-stage">
-        <header className="watch-stage-head flex h-14 shrink-0 items-center gap-2 border-b px-2 sm:gap-3 sm:px-4 md:px-5">
+        <header className="watch-stage-head flex h-16 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-5 md:px-[34px]">
           <button
             type="button"
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-md text-snow hover:bg-white/5 lg:hidden"
@@ -538,15 +539,15 @@ export function WatchMonolithShell({
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-mute sm:flex-none sm:max-w-[200px]"><PageIcon className="hidden size-[19px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
-          {coverage ? <span className={cn("hidden shrink-0 whitespace-nowrap text-xs sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
+          <div className="watch-stage-crumb flex min-w-0 flex-1 items-center gap-2 text-[12px] text-mute sm:flex-none sm:max-w-[220px]"><PageIcon className="hidden size-[17px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
+          {coverage ? <span className={cn("watch-stage-coverage hidden shrink-0 whitespace-nowrap text-[10px] sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
           <span className="hidden flex-1 sm:block" />
           <button
             type="button"
             onClick={onOpenPalette}
             aria-label="Search or run a command"
             data-watch-search-trigger="true"
-            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-40 lg:w-56 sm:justify-start sm:gap-2 sm:px-3"
+            className="watch-search-trigger flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[12px] text-dim hover:border-line-strong sm:h-8 sm:w-40 lg:w-[250px] sm:justify-start sm:gap-2 sm:px-3"
           >
             <Search className="size-4 shrink-0" aria-hidden />
             <span className="hidden truncate sm:inline">Search…</span>
@@ -580,7 +581,7 @@ export function WatchMonolithShell({
             </Button>
           ) : null}
           {installUrl ? (
-            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden xl:inline-flex">
+            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden 2xl:inline-flex">
               Install on GitHub
             </Button>
           ) : null}
@@ -604,8 +605,8 @@ export function WatchMonolithShell({
           data-watch-page={route.view}
           aria-label={`${artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]} page`}
           className={cn(
-            "min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
-            route.view === "alerts" ? "overflow-hidden" : "overflow-auto px-5 py-8 md:px-8",
+            "watch-route-content min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
+            route.view === "alerts" ? "overflow-hidden" : "overflow-auto",
             !guidanceOpen && "[&_.watch-guidance]:hidden",
           )}
         >

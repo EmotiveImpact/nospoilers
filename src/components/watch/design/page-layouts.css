@@ -12,7 +12,7 @@
 [data-watch-page]:not([data-watch-page=alerts])>section{max-width:1120px;margin-inline:auto}
 [data-watch-page=policy]>section,[data-watch-page=retention]>section,[data-watch-page=registries]>section{max-width:960px}
 [data-watch-page=alerts] .alerts-designed>[class*="shrink-0"]{padding-block:20px}
-.alerts-designed [role=tablist]{background:#090a0c;border:1px solid #ffffff0d;padding:4px;border-radius:8px}
+.alerts-designed [role=tablist]{background:#090a0c;border:1px solid #ffffff0d;padding:4px;border-radius:7px}
 .alerts-designed [role=tab]{min-height:36px;border-radius:5px;font-size:11px}
 .alerts-designed [role=tab][aria-selected=true]{background:var(--color-snow);color:#171719}
 .alerts-designed [role=tab][aria-selected=true] span{color:inherit}
@@ -40,5 +40,5 @@
 [data-watch-page=retention] .watch-stat{padding:22px;min-height:110px}
 [data-watch-page=retention] .watch-stat[aria-pressed=true]{border-color:#ffffff50;background:#1a1b1e}
 [data-watch-page=registries] form,[data-watch-page=policy] form{max-width:760px}
-[data-watch-page=scan] .watch-card{border-radius:10px}
+[data-watch-page=scan] .watch-card{border-radius:7px}
 @media(max-width:760px){[data-watch-page=releases] .uploaded-layout{grid-template-columns:1fr}.timeline-summary{gap:16px}.timeline-events{padding:0 18px}[data-watch-page=releases] .upload-preview{padding:20px}}

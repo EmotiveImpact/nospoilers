@@ -81,17 +81,7 @@
   line-height: 1.7;
 }
 
-.policy-scope-note summary {
-  width: fit-content;
-  padding: 4px 0;
-  color: var(--color-mute, #a1a1aa);
-  cursor: pointer;
-}
-
-.policy-scope-note summary:focus-visible {
-  outline: 2px solid #a1a1aa;
-  outline-offset: 3px;
-}
+.policy-scope-note h3 { color: var(--color-snow, #f4f4f5); font-size: 12px; font-weight: 550; }
 
 .policy-scope-note p,
 .policy-scope-note ul {

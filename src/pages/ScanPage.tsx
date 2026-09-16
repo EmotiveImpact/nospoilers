@@ -12,6 +12,7 @@ import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type M
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
 import {GithubRepositoryScan} from '@/components/watch/GithubRepositoryScan'
+import '@/components/watch/design/scan-journey.css'
 
 type ViewState =
   | { status: "idle" }
@@ -301,13 +302,13 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
   return (
     <main className={cn("scan-workspace mx-auto w-full max-w-6xl", embedded ? "pb-12" : "px-5 py-12 md:py-16")}>
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">New evidence</p>
+      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">New scan</p>
       <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-        What do you want to prove?
+        Check what you’re about to ship.
       </h1>
       <p className="mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg">
-        Choose the release surface. Each scan records its supported checks, findings and limitations.
-        Verify an existing proof separately without starting a new scan.
+        Choose the exact artifact or release surface your customers will receive. Each result records
+        the supported checks, findings, and limits of that evidence.
       </p>
 
       {showPrerequisite ? (

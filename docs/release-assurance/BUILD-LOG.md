@@ -1,5 +1,24 @@
 # Build and verification log
 
+## 16 September 2026 — approved connected-journey production implementation
+
+The approved `public/mockup-review/2b/36-journey` direction is implemented in the real signed-in Watch application. The shared shell now uses the 224px rail, 64px top bar, quiet charcoal stage, restrained seven-pixel surfaces, fine dividers, Inter stack and semantic review/warning/clear colours. Overview renders the approved release-decision hierarchy from real saved evidence; Alerts uses quiet queues and human-readable rows; Scan exposes evidence-type tabs and visible GitHub/result actions; Timeline presents retained activity with keyboard-complete filters; Notifications and Policy use task tabs with visible explanatory content. The existing evidence, permissions, workspace scoping and API behavior remain in place.
+
+Release remediation now presents Original finding, Reviewed change and Rebuilt evidence as one visible three-step workflow. Technical activity remains secondary. Future-dated Timeline rows are excluded from the retained window, and tests prove the boundary. Notification and Timeline tabs expose tab/panel relationships and roving Arrow/Home/End behavior. The optional GitHub-install header action appears only at the 2xl breakpoint so normal desktop widths preserve the primary search, scan, guidance and account controls.
+
+Independent four-role focused verification covered 20 files / 183 tests before integration. Final current-source verification:
+
+- `npx vitest run` outside the restricted sandbox: **1,521 tests / 255 files passed**, 330.93s. The first restricted run passed 1,513 cases and failed seven loopback/CLI cases with `listen EPERM`, plus one obsolete notification-role assertion. The four affected integration files then passed **63/63** with loopback access, the semantic-tab assertion was corrected, and the final complete run passed.
+- `npm run typecheck`: passed.
+- `npm run lint`: exited 0 with the repository's existing warning set; this is not a warning-free claim.
+- `npm run build`: passed; existing >500 kB chunk warning remains.
+- `npm run build:api`: passed.
+- `git diff --check`: passed.
+
+The preserved signed-in Codex browser verified Overview, Alerts, Scan, Timeline, Notifications, Policy and saved upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6`. The release detail visibly contains the three remediation steps. Desktop reported 1422×800 CSS pixels; a requested 390×844 responsive override reported the browser's 433×800 minimum viewport. Document width matched viewport in the inspected layouts, mobile alert selection opened the exact detail, and the final browser log contained no warnings or errors. Reference and implementation capture paths, inspected regions and limits are recorded in `/design-qa.md`.
+
+No scan, alert response, remediation action, provider, billing, deployment, production safeguard or customer record was changed. The local server/database/GitHub connection remain live. Railway worker connection and deployment are a separate next step. Native 200% zoom and audible screen-reader execution remain external manual acceptance items, so this milestone does not declare all of Gate C or production readiness complete.
+
 ## 9 September 2026 — quiet loading and compact Alerts navigation
 
 Shared Watch data loading now keeps only a screen-reader-only polite status and renders no visible skeleton cards, rows, borders or reserved placeholder height. The separate initial Watch-opening lighthouse is unchanged. Alerts removes the redundant visible **Status** label so Open, In progress and Resolved retain the full queue row; its named tablist, roving keyboard behavior, counts and ownership filter remain. Connected-release actions from Overview now open Connected revisions with their workspace and installation scope, and alert priority copy no longer calls operational response state verified exposure. The archived-workspace boundary uses a contextual **Open workspace settings** action without restoring the removed sidebar Manage link.

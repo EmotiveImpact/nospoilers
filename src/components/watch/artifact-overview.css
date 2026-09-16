@@ -73,3 +73,46 @@
 @media(prefers-reduced-motion:reduce){.overview-primary,.overview-primary svg,.overview-metric,.overview-queue::before,.overview-release-card{transition:none}.overview-evidence-drawer{animation:none}.overview-metric:hover,.overview-release-card:hover,.overview-primary:active,.overview-primary:hover svg{transform:none}}
 
 .overview-activity{overflow:visible}.overview-activity-select{width:145px;flex-shrink:0}.overview-activity-select button{font-size:11px;min-height:34px}.overview-activity-select [role=listbox]{background:#191a1d;border-color:#ffffff12;box-shadow:0 12px 30px #0005}.overview-activity-select [role=combobox]{background:transparent;color:#b1b1ba;border-color:transparent}.overview-activity-select [role=option]{color:#d0d0d5}.overview-activity-select [role=option]:hover,.overview-activity-select [role=option]:focus-visible,.overview-activity-select [aria-selected=true]{background:#ffffff08}
+
+/* Journey 36: one decision, one evidence list, then supporting operations. */
+.workspace-overview{max-width:1120px;padding:8px 0 42px}
+.workspace-overview>.uploaded-heading{margin:0 0 28px}
+.workspace-overview .watch-page-title{font-size:34px;line-height:1.18;letter-spacing:-1.1px;margin-bottom:10px}
+.workspace-overview .watch-page-lede{font-size:14px;line-height:1.6}
+.overview-context{margin-bottom:11px;color:#898c96;letter-spacing:.16em}
+.overview-latest{padding:29px 30px;border:0;border-radius:7px;background:radial-gradient(ellipse at 95% 0,#72252b35,transparent 68%),#111315}
+.overview-latest-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.overview-latest h2{margin:9px 0 11px;font-size:27px;line-height:1.3;font-weight:500;letter-spacing:-.7px}
+.overview-latest h2 span{color:#a2a3ad;font-weight:450;overflow-wrap:anywhere}
+.overview-latest>p{max-width:660px;margin-bottom:20px;color:#a2a3ad;font-size:13px;line-height:1.7}
+.overview-latest-meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:23px;color:#898c96;font-size:11px}
+.overview-stat-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 30px;padding:22px 0;border-bottom:1px solid #ffffff10}
+.overview-stat-strip>button{display:flex;align-items:baseline;gap:13px;min-width:0;padding:0 23px;border-right:1px solid #ffffff10;text-align:left;color:#a2a3ad}
+.overview-stat-strip>button:first-child{padding-left:0}.overview-stat-strip>button:last-child{border-right:0}
+.overview-stat-strip strong{font-size:30px;line-height:1;font-weight:450;letter-spacing:-.8px;color:#f4f4f5}
+.overview-stat-strip>button:nth-child(2) strong{color:#ff8a80}
+.overview-stat-strip span{font-size:12px}
+.overview-stat-strip>button:hover span{color:#f4f4f5}
+.overview-releases{margin:0 0 34px;padding:0;border:0;background:transparent}
+.overview-section-heading{margin-bottom:15px}
+.overview-section-heading h2{font-size:15px}
+.overview-release-tabs{display:flex;gap:18px;border:0;background:transparent}
+.overview-release-tabs button{padding:7px 1px;border-bottom:1px solid transparent;border-radius:0;color:#898c96;font-size:11px}
+.overview-release-tabs button[aria-pressed=true]{border-color:#f4f4f5;background:transparent;color:#f4f4f5}
+.overview-release-list{border-top:1px solid #ffffff10}
+.overview-release-row{display:grid;grid-template-columns:34px minmax(180px,1.4fr) minmax(140px,.75fr) minmax(120px,.75fr) auto;gap:16px;align-items:center;min-width:0;padding:17px 0;border-bottom:1px solid #ffffff10}
+.overview-release-row>div{min-width:0}.overview-release-row h3{font-size:13px;font-weight:500}.overview-release-row p{margin-top:3px;overflow:hidden;color:#898c96;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.overview-release-row time{color:#898c96;font-size:11px}.overview-release-row .overview-verdict{justify-self:start}
+.overview-source-icon{display:grid;width:34px;height:34px;place-items:center;border-radius:7px;background:#ffffff04;color:#a2a3ad}.overview-source-icon svg{width:17px;height:17px}
+.overview-card-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 11px;border:1px solid #ffffff17;border-radius:6px;color:#cdced4;font-size:11px}.overview-card-action:hover{background:#ffffff07;color:#f4f4f5}.overview-card-action svg{width:13px;height:13px}
+.overview-evidence-counts{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px}.overview-evidence-counts>div{display:flex;gap:8px;flex-wrap:wrap}.overview-evidence-counts>div button{color:#898c96;font-size:10px}.overview-evidence-counts>div span{color:#f4f4f5}
+.overview-connected-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.overview-connected-cards .overview-release-card{padding:20px;border:0;border-radius:7px;background:#121416}
+.overview-activity-section{margin:0 0 32px;padding-top:2px}
+.overview-activity-section>.overview-section-heading{margin-bottom:14px}
+.overview-activity-section>.overview-panel{padding:0;border:0;background:transparent}
+.overview-monitoring{margin:0;padding:26px 0 0;border-top:1px solid #ffffff10}
+.overview-monitoring .overview-secondary{margin-top:0}
+.workspace-overview .overview-secondary .overview-panel{padding:20px;border-radius:7px;background:#121416}
+.overview-footnote{margin-top:25px;color:#898c96;font-size:11px;line-height:1.75}
+@media(max-width:850px){.overview-release-row{grid-template-columns:34px minmax(0,1fr) auto}.overview-release-row time,.overview-release-row .overview-verdict{grid-column:2}.overview-release-row .overview-card-action{grid-column:3;grid-row:1/3}.overview-connected-cards{grid-template-columns:1fr}}
+@media(max-width:600px){.workspace-overview{padding-top:0}.workspace-overview .watch-page-title{font-size:28px}.overview-latest{padding:24px 21px}.overview-latest h2{font-size:23px;overflow-wrap:anywhere}.overview-latest-top{align-items:flex-start;flex-wrap:wrap}.overview-stat-strip{gap:0}.overview-stat-strip>button{display:block;padding:0 11px}.overview-stat-strip strong{display:block;margin-bottom:7px;font-size:27px}.overview-stat-strip span{font-size:10px}.overview-release-row{gap:11px}.overview-release-row time{display:none}.overview-evidence-counts{align-items:flex-start;flex-direction:column}.overview-secondary{grid-template-columns:1fr}}
