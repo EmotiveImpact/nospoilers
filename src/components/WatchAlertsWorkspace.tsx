@@ -235,7 +235,7 @@ export function WatchAlertsWorkspace({
       </div></div>
       {onAssignedToMe ? <Button type="button" size="sm" variant="outline" className="min-h-11 aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button> : null}
       </div>
-      <div className="alerts-journey-inbox grid min-h-0 flex-1">
+      <div className={cn("alerts-journey-inbox grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
         <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
           <p className="alerts-journey-shortcuts border-b border-white/8 px-4 py-2 text-xs text-mute">J / K moves through the queue. Arrow keys work while the list is focused.</p>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
@@ -346,15 +346,14 @@ export function WatchAlertsWorkspace({
               <div className="alerts-journey-detail-scroll min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
                 <div className="alerts-journey-detail-content mx-auto max-w-3xl">
                   <div className="alerts-journey-context flex flex-wrap gap-2">
-                    <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.severity === "critical" ? "watch-pill watch-pill-crit" : "watch-pill watch-pill-warn"}>
-                      {selected.resolved_at ? "resolved" : selectedRow.severity}
+                    <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.operational || selectedRow.severity !== "critical" ? "watch-pill watch-pill-warn" : "watch-pill watch-pill-crit"}>
+                      {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : "Finding needs review"}
                     </span>
-                    <span className="watch-pill" title={selectedRow.rule}>{selectedRow.operational?"Latest release check":selectedRow.rule}</span>
-                    <span className="watch-pill">{selectedRow.operational?`${selectedRow.status} · Check incomplete`:`${selectedRow.status} · ${selectedRow.exposure} exposed`}</span>
                   </div>
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
+                  {!selectedRow.operational ? <>
                   <section className="alerts-journey-section mt-8">
                     <p className="watch-kicker">Where</p>
                     <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
@@ -380,7 +379,10 @@ export function WatchAlertsWorkspace({
                     </div>
                   </section>
 
+                  </> : null}
+
                   {relatedReleases}
+                  {!selectedRow.operational ? <>
                   <section className="alerts-journey-section mt-7">
                     <p className="watch-kicker">{selectedRow.operational?'Check status':'Exposure'}</p>
                     <div className="alerts-journey-surface mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
@@ -394,6 +396,8 @@ export function WatchAlertsWorkspace({
                       </div>
                     </div>
                   </section>
+
+                  </> : null}
 
                   {!selectedRow.operational?<section className="alerts-journey-section mt-7">
                     <p className="watch-kicker">Rotation checklist · read-only</p>

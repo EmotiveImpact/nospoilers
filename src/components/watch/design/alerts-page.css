@@ -304,3 +304,19 @@
     font-size: 23px;
   }
 }
+
+/* Override the earlier shared card-toolbar skin at its own specificity. */
+.watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-header{padding:0;margin-bottom:24px}
+.watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-toolbar{padding:0;background:transparent}
+.watch-desk .alerts-journey .alerts-journey-toolbar .alerts-journey-tabs{padding:0;gap:26px;border:0;border-radius:0;background:transparent}
+.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab{padding:12px 0;min-height:44px;border-radius:0;background:transparent}
+.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected=true]{background:transparent;color:var(--color-snow)}
+
+.alerts-journey [aria-label="Recheck source"]{padding:22px 0 0;margin-top:28px;border:0;border-top:1px solid var(--alerts-line);border-radius:0}
+.alerts-journey [aria-label="Recheck source"]>.watch-kicker{font-size:14px;font-weight:550;letter-spacing:0;text-transform:none;color:var(--color-snow)}
+.alerts-journey .alerts-journey-context .watch-pill::before{content:"•";margin-right:6px}
+
+.alerts-journey .alerts-journey-inbox.is-empty{grid-template-columns:1fr;min-height:260px}
+.alerts-journey .alerts-journey-inbox.is-empty .alerts-journey-list{border:0;padding:0}
+.alerts-journey .alerts-journey-inbox.is-empty .alerts-journey-detail{display:none}
+.alerts-journey .alerts-journey-inbox.is-empty .watch-empty{max-width:540px;margin:28px 0;padding:0;border:0;background:transparent}

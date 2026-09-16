@@ -1,5 +1,13 @@
 # Build and verification log
 
+## 16 September 2026 — Scan and Alerts regression correction
+
+Owner reported Scan/Alerts still broken visually after the composition batch. Direct browser comparison found old CSS leaking into new layout: Scan tabs inherited column direction/icon bottom margins/inset shadow and upload panel border; Alerts inherited the former toolbar padding and tab container border. Scoped overrides now explicitly reset these properties. GitHub Scan puts connection management below the form and scope guidance on the right, and removes duplicate repository heading. No scan submission logic changed.
+
+Incomplete alerts now show one status, omit redundant technical location/check-status sections, and hide empty related-release blocks in both actual WorkspaceAlerts and legacy AlertsScreen mounts. Finding-specific locations/exposure and nonempty related evidence remain. Empty queues use one column instead of two empty panels. Read-only/resolve/assignment safeguards are unchanged.
+
+Verification: 33/33 focused tests across7 files (workspace alerts, response permissions, related releases, recheck, Scan prerequisites and GitHub scan/scope). TypeScript/Vite build passed; existing chunk warning. Browser exercised In progress (3 rows), Resolved (0), and Package or build switching without mutating data. Computed Scan tabs now row/48px with outer panel border0; upload grid and aside fit1422px viewport. No full-suite repetition, deployment, server restart or account mutation.
+
 ## 16 September 2026 — approved journey composition correction
 
 Owner rejected the preceding visual-completion claim. It established functioning components but did not faithfully reproduce `36-journey`, especially Overview/Releases. This batch replaces the old dashboard panels with the approved hero/totals/recent table/activity structure; replaces Releases with uploaded/connected/attempt collections; and gives results compact metadata and Findings/Files/History/Proof views. Finding explanations use two columns; manifests remain real retained evidence. History actions reveal the required tab before focus. Failed attempts no longer appear under completed uploads, and Overview attention links open the Attempts filter.

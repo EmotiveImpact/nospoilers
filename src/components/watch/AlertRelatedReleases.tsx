@@ -3,10 +3,10 @@ import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
 type RelatedRelease={id:number;coordinate:string};
-export function AlertRelatedReleases(props:{alertId:number;installationId:number;workspaceId:string|null}) {
+export function AlertRelatedReleases(props:{alertId:number;installationId:number;workspaceId:string|null;hideEmpty?:boolean}) {
   return <RelatedReleaseList key={`${props.workspaceId}:${props.installationId}:${props.alertId}`} {...props}/>;
 }
-function RelatedReleaseList({alertId,installationId,workspaceId}:{alertId:number;installationId:number;workspaceId:string|null}) {
+function RelatedReleaseList({alertId,installationId,workspaceId,hideEmpty}:{alertId:number;installationId:number;workspaceId:string|null;hideEmpty?:boolean}) {
   const [state,setState]=useState<{releases:RelatedRelease[];error:string|null;loading:boolean}>({releases:[],error:null,loading:true});
   const [retry,setRetry]=useState(0);
   useEffect(()=>{
@@ -22,6 +22,7 @@ function RelatedReleaseList({alertId,installationId,workspaceId}:{alertId:number
       }).catch(()=>{if(!controller.signal.aborted)setState({releases:[],error:'Related releases could not be loaded.',loading:false});});
     return ()=>controller.abort();
   },[alertId,installationId,workspaceId,retry]);
+  if(hideEmpty&&!state.loading&&!state.error&&!state.releases.length)return null;
   return <section className="mt-7" aria-label="Related releases">
     <p className="watch-kicker">Related releases</p>
     <div className="mt-2 rounded-lg border border-white/8 bg-panel p-4 text-sm text-mute">

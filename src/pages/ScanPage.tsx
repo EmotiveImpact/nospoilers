@@ -351,19 +351,17 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               {session&&!selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
             </div> : null}
             {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
-          </div>
-          <aside className="space-y-8">
             {session&&selectedInstall&&!lockReason&&!sessionError&&workspaceId ? (
-              <section aria-labelledby="github-add-source-title">
+              <section className="scan-add-source" aria-labelledby="github-add-source-title">
                 <h3 id="github-add-source-title" className="mb-4 font-display text-lg text-snow">Another GitHub source?</h3>
                 <GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={lockReason} compact/>
               </section>
             ) : null}
-            <section aria-labelledby="github-outcome-title">
-              <h3 id="github-outcome-title" className="font-display text-lg text-snow">Your scan results</h3>
-              <p className="mt-3 text-sm leading-relaxed text-mute">Completed artifact scans appear in Releases. If a check cannot inspect an artifact, review its alert.</p>
-              <a className="mt-4 inline-block text-sm text-snow underline underline-offset-4" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
-            </section>
+          </div>
+          <aside className="scan-scope-note">
+            <h3>What this checks</h3><ul><li>Source maps and source files</li><li>Credentials and sensitive files</li><li>The connection’s configured scan policy</li></ul>
+            <h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p>
+            <a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight className="size-4" aria-hidden /></a>
           </aside>
         </section>
       ) : null}

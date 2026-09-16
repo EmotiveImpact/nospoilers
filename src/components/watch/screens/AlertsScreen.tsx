@@ -17,7 +17,7 @@ export function AlertsScreen() {
                   login={user?.login ?? ""}
                   rows={controller.alertRows}
                   selected={selectedAlert}
-                  relatedReleases={selectedAlert && activeInstallId ? <><AlertRecheck alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')} canRespond={canRespond&&!previewing} ended={ended}/><AlertRelatedReleases alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')}/></> : null}
+                  relatedReleases={selectedAlert && activeInstallId ? <><AlertRecheck alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')} canRespond={canRespond&&!previewing} ended={ended}/><AlertRelatedReleases hideEmpty alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')}/></> : null}
                   events={selectedAlert ? alertEvents[selectedAlert.id] ?? [] : []}
                   previewing={previewing}
                   canRespond={canRespond}
