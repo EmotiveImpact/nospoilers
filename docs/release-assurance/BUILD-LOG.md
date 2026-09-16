@@ -1,3 +1,11 @@
+## 16 September — focused navigation, billing access and alert loading
+
+Main sidebar now contains daily workflow links and Settings. Settings routes expose scoped local navigation with existing role visibility. Footer replaces setup progress with Plan & billing, Help & guides and account/workspace access. Billing links directly to workspaceTab=billing and reuses authorized organization billing; prices and the host’s actual checkout availability are shown. Settings links reset that billing subtab, and active settings underlines are red. No payment, provider activation or production deployment occurred.
+
+Alerts no longer render transient unavailable/read-only copy or empty related-release/recheck panels during loading. Same-record background refresh preserves the loaded detail state; failures still clear evidence/disable response. Re-selecting the current alert no longer leaves response controls waiting for the next refresh. Added deferred detail test verifies pending evidence cannot enable acknowledgement or flash unavailable guidance.
+
+Focused checks cumulatively: 41 tests across workspace-alerts-ui, alert-response-permissions-ui, alert-related-releases-ui, alert-recheck-ui, artifact-shell-navigation, workspace-management-ui, organization-billing-ui passed. Related-release screen-reader loading status was preserved after its existing test caught its removal. Workspace tab expectation updated for intentional billing tab. Final build (tsc + Vite) and final changed-file tests (25/25) passed; existing chunk warning remains. Signed-in browser checked selection, sidebar, direct billing, default Settings URL, prices and disabled local checkout (Stripe not configured). Unrelated src/index.css and historical mockups remain unstaged. No full-suite repeat or full-platform acceptance claim.
+
 ## 16 September — Scan reference accents and explanation icons
 
 Restored red selected-tab underlines for Scan and Alerts, and added file, lock and shield icon tiles with concise descriptions to both GitHub and upload scan explanations. No scan behavior changed. npm run build passed (existing chunk warning); diff check passed. Signed-in browser verified three rendered icons and selected Scan underline rgb(226,69,58). Sidebar regrouping and billing discoverability remain recommendations, not implemented by this visual patch.

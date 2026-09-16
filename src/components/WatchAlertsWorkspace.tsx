@@ -295,7 +295,7 @@ export function WatchAlertsWorkspace({
         </aside>
 
         <main className={cn("alerts-journey-detail min-h-0 lg:block", detailOpen ? "block" : "hidden")}>
-          {!selected || !selectedRow ? (
+          {state.status === "loading" ? null : !selected || !selectedRow ? (
             <div className="grid h-full place-items-center px-5 text-center">
               <div>
                 <p className="text-sm text-snow">
@@ -456,7 +456,7 @@ export function WatchAlertsWorkspace({
                     ) : null}
                     {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
                     {previewing ? <p className="mt-3 text-xs text-dim">Preview does not mutate alerts.</p> : null}
-                    {!canRespond && !previewing ? <p className="mt-3 text-xs text-dim">Read-only access. A workspace member or administrator can respond to this alert.</p> : null}
+                    {!canRespond && !previewing && activityState.status !== "loading" ? <p className="mt-3 text-xs text-dim">Read-only access. A workspace member or administrator can respond to this alert.</p> : null}
                   </section>
                 </div>
               </div>

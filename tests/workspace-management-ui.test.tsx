@@ -230,10 +230,10 @@ it('synchronises popstate tabs without rewriting scoped history or discarding th
  expect(screen.getByLabelText('Workspace name')).toHaveProperty('value','Keep this draft');
 });
 
-it('uses three default workspace tabs and exposes administration only after Manage',async()=>{
+it('includes billing in workspace tabs and exposes administration only after Manage',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({workspaces:[workspace],organizations,invites:[]})));
  render(<WorkspaceManagement/>);await screen.findByRole('heading',{name:'Original'});
- expect(screen.getAllByRole('tab').map(tab=>tab.textContent)).toEqual(['Workspaces','Connections','Organisation']);
+ expect(screen.getAllByRole('tab').map(tab=>tab.textContent)).toEqual(['Workspaces','Connections','Organisation','Plan & billing']);
  expect(screen.queryByRole('button',{name:'Archive'})).toBeNull();
  await userEvent.click(screen.getByRole('button',{name:'Manage Original'}));
  expect(screen.getByRole('region',{name:'Manage Original'})).toBeTruthy();

@@ -12,6 +12,9 @@ import type { Coverage } from "@/coverage.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import {
   Activity,
+  Settings,
+  CircleHelp,
+  CreditCard,
   Bell,
   BookOpenCheck,
   Boxes,
@@ -149,9 +152,7 @@ export function WatchMonolithShell({
   login,
   sourceCount,
   openAlertCount,
-  setupDone,
-  setupTotal,
-  firstRun,
+
   artifactOnly = false,
   installations,
   activeInstallId,
@@ -226,6 +227,7 @@ export function WatchMonolithShell({
   }, [route.view, navOpen, plansOpen]);
   const hrefFor = (view: WatchView, tab?: AlertTab) => {
     const params=new URLSearchParams(search);
+    if(view==='workspaces')params.delete('workspaceTab');
     // The sidebar opens history, not the last full detail screen.
     if(view==='releases')for(const key of ['uploadView','uploadFinding','uploadTab','release'])params.delete(key);
     return watchHref(watchPath(view), params.toString(), tab ? { tab } : {});
@@ -242,7 +244,20 @@ export function WatchMonolithShell({
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
       ? "⌘K"
       : "Ctrl K";
-  const compactFirstRunNav = firstRun;
+  const settingsViews: WatchView[] = ['workspaces','notifications','policy','team','retention','audit','health','tokens','registries','setup'];
+  const settingsActive = settingsViews.includes(route.view);
+  const settingsLinks: {view:WatchView;label:string}[] = [
+    {view:'workspaces',label:'Workspace'}, {view:'notifications',label:'Notifications'},
+    {view:'policy',label:artifactOnly?'Scan policy':'Policy & allowlist'}, {view:'team',label:'Team & roles'},
+    {view:'retention',label:'Retention'},
+    ...(artifactOnly||teamOnly?[{view:'audit' as const,label:'Audit log'}]:[]),
+    ...(!artifactOnly?[{view:'health' as const,label:'Install health'},{view:'setup' as const,label:'Connection diagnostics'}]:[]),
+    ...(artifactOnly||adminOnly?[{view:'tokens' as const,label:'Scan API tokens'}]:[]),
+    ...(!artifactOnly&&adminOnly?[{view:'registries' as const,label:'Private registries'}]:[]),
+  ];
+  const billingParams = new URLSearchParams(search);
+  billingParams.set('workspaceTab','billing');
+  const billingHref = watchHref('/watch/workspaces', billingParams.toString());
 
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
@@ -364,7 +379,8 @@ export function WatchMonolithShell({
               Releases
             </NavLink>
           )}
-          {teamOnly && !compactFirstRunNav ? (
+          <NavLink href={hrefFor('scan')} active={route.view==='scan'} collapsed={opts.collapsed} onNavigate={closeNav}>New scan</NavLink>
+          {teamOnly ? (
             <NavLink
               href={hrefFor("timeline")}
               active={route.view === "timeline"}
@@ -376,133 +392,18 @@ export function WatchMonolithShell({
           ) : null}
         </div>
 
-        <div className={cn(compactFirstRunNav && !opts.collapsed && "border-t border-line pt-[17px]")}>
-          {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Settings</p>}
-          <div className="flex flex-col gap-0.5">
-            {artifactOnly ? <>
-              <NavLink href={hrefFor('notifications')} active={route.view==='notifications'} collapsed={opts.collapsed} onNavigate={closeNav}>Notifications</NavLink>
-              <NavLink href={hrefFor('tokens')} active={route.view==='tokens'} collapsed={opts.collapsed} onNavigate={closeNav}>Scan API tokens</NavLink>
-              <NavLink href={hrefFor('team')} active={route.view==='team'} collapsed={opts.collapsed} onNavigate={closeNav}>Team &amp; roles</NavLink>
-              <NavLink href={hrefFor('policy')} active={route.view==='policy'} collapsed={opts.collapsed} onNavigate={closeNav}>Scan policy</NavLink>
-              <NavLink href={hrefFor('retention')} active={route.view==='retention'} collapsed={opts.collapsed} onNavigate={closeNav}>Retention</NavLink>
-              <NavLink href={hrefFor('audit')} active={route.view==='audit'} collapsed={opts.collapsed} onNavigate={closeNav}>Audit log</NavLink>
-            </> : compactFirstRunNav ? (
-              <NavLink
-                href={hrefFor("setup")}
-                active={route.view === "setup"}
-                collapsed={opts.collapsed}
-                onNavigate={closeNav}
-              >
-                Connection diagnostics
-              </NavLink>
-            ) : (
-              <>
-            <NavLink
-              href={hrefFor("notifications")}
-              active={route.view === "notifications"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Notifications
-            </NavLink>
-            <NavLink
-              href={hrefFor("policy")}
-              active={route.view === "policy"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Policy &amp; allowlist
-            </NavLink>
-            <NavLink
-              href={hrefFor("team")}
-              active={route.view === "team"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Team &amp; roles
-            </NavLink>
-            <NavLink
-              href={hrefFor("retention")}
-              active={route.view === "retention"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Retention
-            </NavLink>
-            {teamOnly ? (
-              <NavLink
-                href={hrefFor("audit")}
-                active={route.view === "audit"}
-                collapsed={opts.collapsed}
-                onNavigate={closeNav}
-              >
-                Audit log
-              </NavLink>
-            ) : null}
-            <NavLink
-              href={hrefFor("health")}
-              active={route.view === "health"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Install health
-            </NavLink>
-            {adminOnly ? (
-              <>
-                <NavLink
-                  href={hrefFor("tokens")}
-                  active={route.view === "tokens"}
-                  collapsed={opts.collapsed}
-                  onNavigate={closeNav}
-                >
-                  Scan API tokens
-                </NavLink>
-                <NavLink
-                  href={hrefFor("registries")}
-                  active={route.view === "registries"}
-                  collapsed={opts.collapsed}
-                  onNavigate={closeNav}
-                >
-                  Private registries
-                </NavLink>
-              </>
-            ) : null}
-              </>
-            )}
-          </div>
+        <div className="flex flex-col gap-0.5">
+          <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('watch-rail-link flex items-center rounded-[5px] py-[10px] text-[13px]',opts.collapsed?'justify-center':'gap-3 px-3',settingsActive?'text-snow':'text-mute hover:text-snow')} aria-current={settingsActive?'page':undefined}>
+            <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
+          </a>
         </div>
       </nav>
 
-      <a
-        href={hrefFor(artifactOnly ? 'workspaces' : 'setup')}
-        onClick={(event) => {
-          go(event, hrefFor(artifactOnly ? 'workspaces' : 'setup'));
-          closeNav();
-        }}
-        className={cn(
-          "watch-rail-foot flex items-center border-t border-line text-left hover:bg-white/[0.03]",
-          opts.collapsed ? "justify-center px-1.5" : "gap-3 px-3.5",
-        )}
-      >
-        {artifactOnly ? <Boxes className="size-5 shrink-0 text-mute" aria-hidden/> : <span
-          className="grid size-10 shrink-0 place-items-center rounded-full"
-          title="Optional connection checks, not release proof progress"
-          style={{ background: `conic-gradient(#f4f4f5 ${setupTotal ? (setupDone / setupTotal) * 360 : 0}deg, #252529 0)` }}
-        >
-          <span className="grid size-[32px] place-items-center rounded-full bg-canvas text-[9px] text-snow">
-            {setupTotal>0?`${setupDone}/${setupTotal}`:'—'}
-          </span>
-        </span>}
-        <span className={cn("min-w-0", opts.collapsed && "sr-only")}>
-          <span className="block text-[11px] text-snow">
-            {artifactOnly ? 'Manage workspace connections' : setupDone > 0 ? `${setupDone} connection checks ready` : "Connection diagnostics"}
-          </span>
-          <span className={cn("mt-0.5 block text-[11px]", ended ? "text-danger" : "text-dim")}>
-            {coverage?.label ?? "Coverage"}
-            {role ? ` · ${role}` : ""}
-          </span>
-        </span>
-      </a>
+      <div className="watch-rail-foot border-t border-line px-3 py-3">
+        <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
+        <a href="/docs" onClick={event=>go(event,'/docs')} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
+        <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('mt-2 flex items-center gap-3 py-2 text-[13px] text-snow',opts.collapsed&&'justify-center')}><span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-xs">{login.slice(0,2).toUpperCase()}</span><span className={cn('min-w-0',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span></a>
+      </div>
     </>
   );
 
@@ -610,6 +511,7 @@ export function WatchMonolithShell({
             !guidanceOpen && "[&_.watch-guidance]:hidden",
           )}
         >
+          {settingsActive ? <nav aria-label="Settings sections" className="watch-settings-navigation">{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav> : null}
           {children}
         </div>
         </div>

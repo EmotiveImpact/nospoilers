@@ -7,13 +7,11 @@ vi.mock('../src/components/watch/WorkspaceSwitcher',()=>({WorkspaceSwitcher:()=>
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 it('keeps real artifact settings reachable during first proof without inert connection settings',()=>{
  render(<WatchMonolithShell route={parseWatchRoute('/watch','?workspace=example')} search="?workspace=example" ended={false} role="viewer" teamOnly={false} adminOnly={false} login="viewer" sourceCount={0} openAlertCount={0} waitingCount={0} mineCount={0} resolvedCount={0} setupDone={0} setupTotal={0} firstRun artifactOnly installations={[]} activeInstallId={null} onInstall={()=>{}} onOpenPalette={()=>{}}><p>First proof content</p></WatchMonolithShell>);
- for(const [name,path] of [['Team & roles','team'],['Retention','retention'],['Audit log','audit']] as const)expect(screen.getByRole('link',{name})).toHaveProperty('href',expect.stringContaining(`/watch/${path}?workspace=example`));
- expect(screen.getByRole('link',{name:/Manage workspace connections/})).toHaveProperty('href',expect.stringContaining('/watch/workspaces?workspace=example'));
+ expect(screen.getByRole('link',{name:'Settings'})).toHaveProperty('href',expect.stringContaining('/watch/workspaces?workspace=example'));
+ expect(screen.getByRole('link',{name:'Plan & billing'})).toHaveProperty('href',expect.stringContaining('workspaceTab=billing'));
+ for(const name of ['Team & roles','Scan API tokens','Notifications','Install health'])expect(screen.queryByRole('link',{name})).toBeNull();
  expect(screen.getByRole('link',{name:'Coverage'})).toHaveProperty('href',expect.stringContaining('/watch/sources?workspace=example'));
- expect(screen.getByRole('link',{name:'Alerts'})).toHaveProperty('href',expect.stringContaining('/watch/alerts?workspace=example'));
- expect(screen.getByRole('link',{name:'Scan API tokens'})).toHaveProperty('href',expect.stringContaining('/watch/tokens?workspace=example'));
- expect(screen.getByRole('link',{name:'Notifications'})).toHaveProperty('href',expect.stringContaining('/watch/notifications?workspace=example'));
- for(const name of ['Policy & allowlist','Connection diagnostics','Install health'])expect(screen.queryByRole('link',{name})).toBeNull();
+ expect(screen.getByRole('link',{name:'New scan'})).toHaveProperty('href',expect.stringContaining('/watch/scan?workspace=example'));
  expect(screen.getByText('First proof content')).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Guide'})).toBeNull();
  expect(screen.getByRole('button',{name:'New scan'})).toBeTruthy();
@@ -55,4 +53,11 @@ it('resets the new page before animation frames and does not reset again after f
  expect(scroll).toHaveBeenCalledTimes(1);
  view.rerender(<Route path="/watch/sources" search="?workspace=example&sourceType=github"/>);
  expect(scroll).toHaveBeenCalledTimes(1);
+});
+
+it('keeps artifact settings reachable in local navigation without connection-only settings',()=>{
+ render(<Route path="/watch/workspaces"/>);
+ for(const name of ['Team & roles','Retention','Audit log','Scan API tokens','Notifications','Scan policy'])expect(screen.getByRole('link',{name})).toBeTruthy();
+ expect(screen.queryByRole('link',{name:'Install health'})).toBeNull();
+ expect(screen.queryByRole('link',{name:'Private registries'})).toBeNull();
 });

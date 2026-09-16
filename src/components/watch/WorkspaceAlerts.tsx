@@ -34,6 +34,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null);
  const [notes,setNotes]=useState<Record<number,string>>({}),[assignees,setAssignees]=useState<Record<number,string>>({});
  const mutation=useRef<AbortController|null>(null);
+ const loadedDetailKey=useRef<string|null>(null);
  useEffect(()=>()=>mutation.current?.abort(),[]);
  useEffect(()=>{const timer=window.setInterval(()=>{if(!mutation.current)setRevision(n=>n+1);},30_000);return()=>window.clearInterval(timer);},[]);
  useEffect(()=>{const request=new AbortController();
@@ -55,9 +56,10 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const selected=state.status!=='ready'?null:detail?.alert.id===selectedId?detail.alert:listed.find(row=>row.id===selectedId)??null;
  const detailReady=state.status==='ready'&&activity.status==='ready'&&detail?.alert.id===selectedId;
  useEffect(()=>{if(selectedId===null)return;const request=new AbortController();
-  setActivity({status:'loading'});
-  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){setDetail(body);setActivity({status:'ready'});}})
-   .catch(e=>{if(!request.signal.aborted){setDetail(null);setActivity({status:'error',message:e.message});}});
+  const requestKey=`${selectedId}:${eventBefore??''}`;
+  if(loadedDetailKey.current!==requestKey)setActivity({status:'loading'});
+  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){loadedDetailKey.current=requestKey;setDetail(body);setActivity({status:'ready'});}})
+   .catch(e=>{if(!request.signal.aborted){loadedDetailKey.current=null;setDetail(null);setActivity({status:'error',message:e.message});}});
   return()=>request.abort();
  },[base,selectedId,revision,eventBefore]);
  const go=(updates:Record<string,string|null>)=>{const params=new URLSearchParams(search);if('alert' in updates||'tab' in updates||'mine' in updates)params.delete('eventBefore');for(const [key,value] of Object.entries(updates)){if(value===null)params.delete(key);else params.set(key,value);}navigate(`/watch/alerts?${params}`);};
@@ -80,10 +82,10 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   rows={buildAlertListViewModels(listed,()=> 'Saved check')} selected={selected} events={detail?.alert.id===selectedId?detail.events:[]}
   previewing={false} canRespond={identity.canRespond&&detailReady} ended={false} busy={busy} note={selected?notes[selected.id]??'':''} assignee={selected?assignees[selected.id]??'':''}
   error={error} exportError={null} state={state} activityState={activity.status==='error'||detail?.alert.id===selectedId?activity:{status:'loading'}} detailOpen={route.alertId!==null} tab={route.tab} assignedToMe={mine} teamOnly={false}
-  onSelect={id=>{setError(null);setActivity({status:'loading'});go({alert:String(id)});}} onBack={()=>go({alert:null})} onRetry={retry} onRetryActivity={retry}
+  onSelect={id=>{if(id===selectedId&&route.alertId===id)return;setError(null);if(id!==selectedId)setActivity({status:'loading'});go({alert:String(id)});}} onBack={()=>go({alert:null})} onRetry={retry} onRetryActivity={retry}
   onTab={tab=>go({tab,alert:null,before:null})} onAssignedToMe={()=>go({mine:mine?null:'1',alert:null,before:null})}
   onNote={value=>{if(selected)setNotes(rows=>({...rows,[selected.id]:value}));}} onAssignee={value=>{if(selected)setAssignees(rows=>({...rows,[selected.id]:value}));}} onAction={action=>void act(action)}
   onExport={()=>{if(state.status!=='ready')return;const url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),workspaceId,scope:'current_page',source,status:route.tab,mine,before,nextCursor:page?.nextCursor,alerts},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='nospoilers-alert-page.json';a.click();URL.revokeObjectURL(url);}}
   onConnectSource={()=>navigate(`/watch/sources?workspace=${workspaceId}`)}
-relatedReleases={selected&&!detailReady?<p className="text-sm text-mute">Recheck actions require loaded alert evidence. Retry loading the selected alert before starting another scan.</p>:selected?.scan_attempt_id?<><a className="text-sm underline" href={`/watch/releases?workspace=${workspaceId}&upload=${encodeURIComponent(selected.scan_attempt_id)}&uploadView=detail`}>Open the saved website check</a>{selected.source_origin_id?<WebsiteAlertRecheck workspaceId={workspaceId} sourceId={selected.source_origin_id} canRespond={identity.canRespond}/>:null}</>:selected?.installation_id?<><AlertRecheck alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId} canRespond={identity.canRespond} ended={false}/><AlertRelatedReleases hideEmpty alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId}/></>:null}/></>
+relatedReleases={selected&&!detailReady?(activity.status==='error'?<p className="text-sm text-mute">Recheck actions require loaded alert evidence. Retry loading the selected alert before starting another scan.</p>:null):selected?.scan_attempt_id?<><a className="text-sm underline" href={`/watch/releases?workspace=${workspaceId}&upload=${encodeURIComponent(selected.scan_attempt_id)}&uploadView=detail`}>Open the saved website check</a>{selected.source_origin_id?<WebsiteAlertRecheck workspaceId={workspaceId} sourceId={selected.source_origin_id} canRespond={identity.canRespond}/>:null}</>:selected?.installation_id?<><AlertRecheck alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId} canRespond={identity.canRespond} ended={false}/><AlertRelatedReleases hideEmpty alertId={selected.id} installationId={selected.installation_id} workspaceId={workspaceId}/></>:null}/></>
 }

@@ -221,3 +221,10 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Settings have a local navigation; the main rail stays focused on daily work. */
+.watch-settings-navigation{display:flex;flex-wrap:wrap;gap:4px 20px;padding:18px 0 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.watch-settings-navigation a{padding:9px 0 12px;color:#93939f;font-size:12px;border-bottom:2px solid transparent;white-space:nowrap}
+.watch-settings-navigation a:hover{color:#f4f4f5}
+.watch-settings-navigation a[aria-current=page]{color:#f4f4f5;border-bottom-color:#e2453a}
+@media(max-width:640px){.watch-settings-navigation{padding:12px 0 0;gap:2px 16px}}

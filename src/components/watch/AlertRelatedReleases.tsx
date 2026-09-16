@@ -22,7 +22,8 @@ function RelatedReleaseList({alertId,installationId,workspaceId,hideEmpty}:{aler
       }).catch(()=>{if(!controller.signal.aborted)setState({releases:[],error:'Related releases could not be loaded.',loading:false});});
     return ()=>controller.abort();
   },[alertId,installationId,workspaceId,retry]);
-  if(hideEmpty&&!state.loading&&!state.error&&!state.releases.length)return null;
+  if(state.loading)return <WatchSkeleton />;
+  if(hideEmpty&&!state.error&&!state.releases.length)return null;
   return <section className="mt-7" aria-label="Related releases">
     <p className="watch-kicker">Related releases</p>
     <div className="mt-2 rounded-lg border border-white/8 bg-panel p-4 text-sm text-mute">
