@@ -1,3 +1,7 @@
+## 16 September — Scan reference accents and explanation icons
+
+Restored red selected-tab underlines for Scan and Alerts, and added file, lock and shield icon tiles with concise descriptions to both GitHub and upload scan explanations. No scan behavior changed. npm run build passed (existing chunk warning); diff check passed. Signed-in browser verified three rendered icons and selected Scan underline rgb(226,69,58). Sidebar regrouping and billing discoverability remain recommendations, not implemented by this visual patch.
+
 ## 16 September — Alerts response placement (base a77b724)
 
 Reviewed signed-in Alerts alongside the approved journey mock. Moved Resolve from the top action bar to the required resolution note, with an explicit eight-character requirement; Reopen remains in the top bar for resolved records. Shortened repetitive incomplete-check guidance and named the recheck section Next step. Response authorization, note validation, stored evidence and recheck endpoints are unchanged.

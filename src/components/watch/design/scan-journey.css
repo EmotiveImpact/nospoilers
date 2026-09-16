@@ -5,7 +5,7 @@
 .watch-desk .scan-mode-grid{display:flex;gap:24px;margin:29px 0 27px;padding:0;border-bottom:1px solid #ffffff10;overflow:auto}
 .watch-desk .scan-mode-grid>button{display:flex;flex-direction:row;flex:0 0 auto;min-height:48px;align-items:center;gap:8px;padding:10px 1px 11px;border:0;border-bottom:2px solid transparent;border-radius:0;box-shadow:none;background:transparent;color:#898c96;text-align:left}
 .watch-desk .scan-mode-grid>button:hover,.watch-desk .scan-mode-grid>button:focus-visible{border-color:transparent;background:transparent;color:#f4f4f5}
-.watch-desk .scan-mode-grid>button.is-selected{border-color:#e4e4e7;background:transparent;color:#f4f4f5}
+.watch-desk .scan-mode-grid>button.is-selected{border-color:#e2453a;background:transparent;color:#f4f4f5}
 .watch-desk .scan-mode-grid svg{width:16px;height:16px;margin:0;flex-shrink:0}.watch-desk .scan-mode-grid strong{font-size:12px;font-weight:500}.watch-desk .scan-mode-grid span{display:none}
 .watch-desk .scan-launch-layout,.watch-desk .scan-website-panel{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:44px;align-items:start;margin-top:0;padding:0;border:0;background:transparent}
 .watch-desk .scan-launch-panel{min-width:0;padding:0;background:transparent}
@@ -40,3 +40,10 @@
 .watch-desk .scan-launch-panel>p,.watch-desk .scan-launch-panel>label{font-size:12px;line-height:1.7}
 .watch-desk .scan-launch-panel select{min-height:38px;padding:9px 12px;background:#101114;border:1px solid #ffffff10;border-radius:5px;font-size:12px}
 .watch-desk .scan-website-panel .scan-scope-note li{padding:0;margin:10px 0;border:0;display:list-item}
+
+.watch-desk .scan-scope-note .scan-check-list{list-style:none;padding:0;margin:20px 0 28px}
+.watch-desk .scan-scope-note .scan-check-list li{display:flex;align-items:flex-start;gap:16px;padding:0;margin:0 0 24px;border:0}
+.watch-desk .scan-check-icon{display:grid;place-items:center;flex:0 0 40px;height:40px;border:1px solid #ffffff10;border-radius:7px;background:#ffffff03;color:#e4e4e7}
+.watch-desk .scan-check-icon svg{width:20px;height:20px}
+.watch-desk .scan-check-list strong{font-size:13px;font-weight:500;color:#f4f4f5}
+.watch-desk .scan-check-list p{margin:5px 0 0;font-size:12px;line-height:1.65}
