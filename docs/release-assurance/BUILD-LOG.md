@@ -15,6 +15,8 @@ Independent four-role focused verification covered 20 files / 183 tests before i
 - `npm run build:api`: passed.
 - `git diff --check`: passed.
 
+After commit `556f4ae` was pushed, GitHub created push and pull-request runs for both CI workflows but executed no steps. Each check was annotated: `The job was not started because recent account payments have failed or your spending limit needs to be increased.` This is an external GitHub Actions account-state block, not a source-test failure. Correct the repository owner's Actions billing/spending limit and rerun the checks; do not represent the remote checks as passing until that happens.
+
 The preserved signed-in Codex browser verified Overview, Alerts, Scan, Timeline, Notifications, Policy and saved upload `6f7e4c8c-0bd1-48e8-84c2-b5f10487dcd6`. The release detail visibly contains the three remediation steps. Desktop reported 1422×800 CSS pixels; a requested 390×844 responsive override reported the browser's 433×800 minimum viewport. Document width matched viewport in the inspected layouts, mobile alert selection opened the exact detail, and the final browser log contained no warnings or errors. Reference and implementation capture paths, inspected regions and limits are recorded in `/design-qa.md`.
 
 No scan, alert response, remediation action, provider, billing, deployment, production safeguard or customer record was changed. The local server/database/GitHub connection remain live. Railway worker connection and deployment are a separate next step. Native 200% zoom and audible screen-reader execution remain external manual acceptance items, so this milestone does not declare all of Gate C or production readiness complete.
