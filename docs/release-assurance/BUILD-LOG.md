@@ -1,3 +1,9 @@
+## 16 September — Alerts response placement (base a77b724)
+
+Reviewed signed-in Alerts alongside the approved journey mock. Moved Resolve from the top action bar to the required resolution note, with an explicit eight-character requirement; Reopen remains in the top bar for resolved records. Shortened repetitive incomplete-check guidance and named the recheck section Next step. Response authorization, note validation, stored evidence and recheck endpoints are unchanged.
+
+Validation: workspace-alerts-ui, alert-response-permissions-ui and alert-recheck-ui: 9/9 tests across 3 files passed. npm run build (TypeScript + Vite) passed with the existing chunk warning; git diff --check passed. Rebuilt signed-in page showed Acknowledge/Assign at the top and the resolution note/help in the scrollable detail. No response or scan submitted. This is a focused usability correction, not full design or operational acceptance. Unrelated dirty CSS and mockups preserved.
+
 # Build and verification log
 
 ## 16 September 2026 — Scan and Alerts regression correction

@@ -31,7 +31,7 @@ function Recheck({alertId,installationId,workspaceId,canRespond,ended}:Props){
     }catch(reason){setError(reason instanceof Error?reason.message:'The check could not be started.');}finally{setBusy(false);}
   }
   return <section aria-label="Recheck source" className="mt-5 rounded-lg border border-white/8 p-4 text-sm">
-    <p className="watch-kicker">Verify your fix</p>
+    <p className="watch-kicker">Next step</p>
     {target?<><p className="mt-2 text-mute">{target.detail}</p><div className="mt-3 flex flex-wrap gap-3">
       {target.endpoint?<Button size="sm" disabled={!canRespond||ended||busy||!!message} onClick={()=>void run()}>{busy?'Starting scan…':target.label}</Button>:null}
       <a className="underline underline-offset-4" href={`/watch/sources?${params}`}>Open Coverage</a>

@@ -323,16 +323,11 @@ export function WatchAlertsWorkspace({
                 ) : selected.acknowledged_at ? (
                   <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-mute">Acknowledged</span>
                 ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="min-h-12 lg:min-h-8"
-                  disabled={responseDisabled || (!selected.resolved_at && note.trim().length < 8)}
-                  onClick={() => onAction(selected.resolved_at ? "reopen" : "resolve")}
-                >
-                  {selected.resolved_at ? "Reopen" : "Resolve"}
-                </Button>
+                {selected.resolved_at ? (
+                  <Button type="button" size="sm" variant="outline" disabled={responseDisabled} onClick={() => onAction("reopen")}>
+                    Reopen
+                  </Button>
+                ) : null}
                 {!selected.resolved_at ? (
                   <Button type="button" size="sm" variant="outline" className="min-h-12 lg:min-h-8" disabled={responseDisabled} onClick={() => setAssignOpen(true)}>
                     {selected.assigned_to_login ? `@${selected.assigned_to_login}` : "Assign"}
@@ -413,7 +408,7 @@ export function WatchAlertsWorkspace({
                         <p className="py-3 text-xs text-dim">No checklist was attached to this alert.</p>
                       )}
                     </div>
-                  </section>:<p className="mt-7 text-sm text-mute">This is an incomplete check, not evidence of exposed content. Publish an eligible release or choose an existing artifact, then run the check again. Resolving this alert does not establish a passing scan.</p>}
+                  </section>:<p className="mt-7 text-sm text-mute">An incomplete check is not evidence of exposed content. Resolving this alert records your response; it does not establish a passing scan.</p>}
 
                   <section className="alerts-journey-section alerts-journey-activity mt-7 pb-10">
                     <p className="watch-kicker">Activity</p>
@@ -435,9 +430,12 @@ export function WatchAlertsWorkspace({
                       {activityPagination}
                     </div>
                     {!selected.resolved_at ? (
-                      <label className="mt-4 block">
-                        <span className="watch-kicker">Resolution note</span>
+                      <div className="mt-5">
+                      <label className="block">
+                        <span className="watch-kicker">Resolve this alert</span>
                         <textarea
+                          aria-label="Resolution note"
+                          aria-describedby="alert-resolution-help"
                           value={note}
                           onChange={(event) => onNote(event.target.value)}
                           placeholder="What changed. Do not paste secret values."
@@ -446,6 +444,13 @@ export function WatchAlertsWorkspace({
                           className="mt-2 w-full rounded-md border border-white/15 bg-panel px-3 py-2 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
                         />
                       </label>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <p id="alert-resolution-help" className="text-xs text-mute">Add a note of at least 8 characters to record what changed.</p>
+                        <Button type="button" size="sm" variant="outline" disabled={responseDisabled || note.trim().length < 8} onClick={() => onAction("resolve")}>
+                          Resolve
+                        </Button>
+                      </div>
+                      </div>
                     ) : selected.resolution_note ? (
                       <p className="mt-4 text-xs text-mute">Resolution note · {selected.resolution_note}</p>
                     ) : null}
