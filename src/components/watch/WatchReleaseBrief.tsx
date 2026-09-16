@@ -1,3 +1,4 @@
+import './design/release-journey.css';
 import {ReleaseDecisionPanel} from "./design/ReleaseDecisionPanel";
 import { Button } from "@/components/ui/button";
 import {HostedReleaseEvidence} from './HostedReleaseEvidence';
@@ -81,6 +82,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
     watchHref,
     watchPath,
   } = useWatchScreenContext();
+  const [section,setSection]=useState('findings');
   const [observed,setObserved]=useState<{record:ReleaseRevision;assessment:Assessment|null}|null>(null);
   const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:release,assessment}),[release]);
   const brief = useMemo(() => buildReleaseBriefModel({...release,readiness:observed?.record===release?observed.assessment??undefined:release.readiness}), [release,observed]);
@@ -116,7 +118,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
   };
 
   return (
-    <section className="watch-release-brief" aria-labelledby="release-brief-title">
+    <section className="watch-release-brief journey-hosted-brief" aria-labelledby="release-brief-title">
       <button
         type="button"
         className="watch-release-back"
@@ -128,7 +130,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
 
       <header className="watch-release-heading">
         <div className="min-w-0">
-          <span className="watch-kicker">Release readiness brief</span>
+          <span className="watch-kicker">Release evidence</span>
           <h1 id="release-brief-title">{release.coordinate}</h1>
           <p>
             {release.channel} channel
@@ -136,7 +138,17 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             {release.createdAt ? ` · ${new Date(release.createdAt).toLocaleString()}` : ""}
           </p>
         </div>
-        <Button
+        <Button onClick={()=>setSection('history')}>Verify a fix</Button>
+      </header>
+
+      {receiptError ? <p className="watch-release-error">{receiptError}</p> : null}
+      {deliveryError ? <p className="watch-release-error">{deliveryError}</p> : null}
+
+      <h2 className={`journey-result-status is-${brief.status}`}>{brief.title}</h2>
+      <div className="journey-result-metadata"><span>{receiptStatusLabel(release)}</span><span>{release.artifactBytes!=null?formatSealedBytes(release.artifactBytes):'Size not recorded'}</span><span>Production evidence is separate</span></div>
+      <div className="journey-release-tabs" role="tablist" aria-label="Release evidence sections" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>{['findings','files','history','proof','controls'].map(tab=><button role="tab" id={`release-${release.id}-${tab}`} aria-controls={`release-${release.id}-section`} aria-selected={section===tab} tabIndex={section===tab?0:-1} key={tab} onClick={()=>setSection(tab)}>{tab==='controls'?'Release controls':tab.charAt(0).toUpperCase()+tab.slice(1)}</button>)}</div>
+      <div role="tabpanel" id={`release-${release.id}-section`} aria-labelledby={`release-${release.id}-${section}`}>
+      <div hidden={section!=='proof'}>        <Button
           type="button"
           variant="outline"
           onClick={downloadReceipt}
@@ -145,12 +157,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
           <Download className="size-4" aria-hidden />
           {downloadingReceiptId === release.receiptId ? "Saving…" : "Receipt JSON"}
         </Button>
-      </header>
-
-      {receiptError ? <p className="watch-release-error">{receiptError}</p> : null}
-      {deliveryError ? <p className="watch-release-error">{deliveryError}</p> : null}
-
-      <div className="watch-release-decision-grid">
+<div className="watch-release-decision-grid">
         <ReleaseDecisionPanel tone={brief.status} icon={brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />} kicker="Release decision" title={brief.title} description={brief.detail} summary={<div className="watch-release-score" aria-label={brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`:"No verified release assessment"}>
             <FileCheck2 className="size-7" aria-hidden />
             <strong>{brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks}`:"—"}</strong>
@@ -251,7 +258,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
         </div>
       </section>
 
-      <section className="watch-release-operations" aria-labelledby="release-operations-heading">
+      </div><div hidden={section!=='controls'}><section className="watch-release-operations" aria-labelledby="release-operations-heading">
         <div className="watch-release-section-heading">
           <div><span className="watch-kicker">Controls</span><h2 id="release-operations-heading">Evidence and governance</h2></div>
           <p>Actions remain scoped to this release.</p>
@@ -358,7 +365,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
         )}
       </section>
 
-      <section className="watch-release-history" aria-labelledby="release-history-heading">
+      </div><div hidden={section!=='history'}><section className="watch-release-history" aria-labelledby="release-history-heading">
         <div className="watch-release-section-heading"><div><span className="watch-kicker">History</span><h2 id="release-history-heading">Recent revisions</h2></div></div>
         <div className="watch-release-history-table">
           {history.map((row) => (
@@ -368,7 +375,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
           ))}
         </div>
       </section>
-      <HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search} onAssessment={onAssessment}/>
+      </div><HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search} activeSection={section} onReveal={setSection} onAssessment={onAssessment}/></div>
     </section>
   );
 }

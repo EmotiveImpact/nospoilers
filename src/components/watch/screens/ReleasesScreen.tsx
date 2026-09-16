@@ -1,3 +1,4 @@
+import '../design/release-journey.css';
 import '../release-responsive.css';
 import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
@@ -79,12 +80,12 @@ export function ReleasesScreen() {
   const uploadInstallationId=params.has('workspace') || params.has('upload') && !params.has('install') ? null : activeInstallId;
   const showRepositoryLedger=activeInstallId!==null || releases.length>0;
   if(params.get('uploadView')==='detail')return <UploadedReleases search={search} installationId={uploadInstallationId}/>;
-  const browser=showRepositoryLedger&&(route.releaseId||route.releasePreviewId||(!params.has('upload')&&params.get('releaseView')==='connected'))?'connected':'attempts';
-  const chooseBrowser=(next:'attempts'|'connected')=>{
+  const browser=showRepositoryLedger&&(route.releaseId||route.releasePreviewId||(!params.has('upload')&&params.get('releaseView')==='connected'))?'connected':params.get('releaseView')==='attempts'?'attempts':'uploads';
+  const chooseBrowser=(next:'uploads'|'attempts'|'connected')=>{
     if(next===browser)return;
     const query=new URLSearchParams(search);query.set('releaseView',next);
-    query.delete('hostedDecision');query.delete('before');
-    if(next==='attempts'){query.delete('release');query.delete('preview');}
+    query.delete('hostedDecision');query.delete('before');if(next==='uploads'&&query.get('uploadStatus')==='active')query.delete('uploadStatus');
+    if(next!=='connected'){query.delete('release');query.delete('preview');}
     else for(const key of ['upload','uploadView','uploadFinding','uploadTab'])query.delete(key);
     navigate(`/watch/releases?${query}`);
   };
@@ -134,14 +135,14 @@ export function ReleasesScreen() {
   return (
     <section className="watch-release-index" aria-label="Releases">
       <WatchPageHeader
-        title="Releases"
-        lede="Choose a revision for a quick decision preview, then open its complete evidence brief."
+        title="Release evidence."
+        lede="Find a build, understand its result, or return to an unfinished attempt."
         action={
           canExportReleases && showRepositoryLedger && browser==='connected' ? (
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
               Export ledger
             </Button>
-          ) : undefined
+          ) : <Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan</Button>
         }
       />
 
@@ -152,18 +153,18 @@ export function ReleasesScreen() {
         const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
         tabs[next].focus();tabs[next].click();
       }}>
-        {(['attempts','connected'] as const).filter(value=>value==='attempts'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} className="min-h-11 border-b-2 border-transparent px-3 text-sm text-mute aria-selected:border-white/60 aria-selected:text-snow" onClick={()=>chooseBrowser(value)}>{value==='attempts'?'Saved attempts':'Connected revisions'}</button>)}
+        {(['uploads','connected','attempts'] as const).filter(value=>value!=='connected'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} className="min-h-11 border-b-2 border-transparent px-3 text-sm text-mute aria-selected:border-white/60 aria-selected:text-snow" onClick={()=>chooseBrowser(value)}>{value==='uploads'?'Uploaded builds':value==='attempts'?'Attempts':'Connected releases'}</button>)}
       </div>
       <div role="tabpanel" id={`${browserId}-panel`} aria-labelledby={`${browserId}-${browser}`}>
-      {browser==='attempts'?<UploadedReleases search={search} installationId={uploadInstallationId} />:null}
+      {browser!=='connected'?<UploadedReleases search={search} installationId={uploadInstallationId} collection={browser} />:null}
       {browser==='connected' ? <>
-      <div className="watch-release-index-stats" aria-label="Release ledger summary">
+      <div hidden className="watch-release-index-stats" aria-label="Release ledger summary">
         <div><span>Revisions</span><strong>{releases.length}</strong><small>On this install</small></div>
         <div><span>Ready</span><strong className="is-ready">{readyCount}</strong><small>Clean required evidence</small></div>
         <div><span>Blocked</span><strong className={blockedCount ? "is-blocked" : "is-ready"}>{blockedCount}</strong><small>Needs attention</small></div>
       </div>
 
-      <p className="watch-release-index-guidance">
+      <p hidden className="watch-release-index-guidance">
         Failed-policy, inconclusive, and digest-changed revisions are never clean. Select any revision to compare its decision before opening the complete brief.
       </p>
 
@@ -184,45 +185,8 @@ export function ReleasesScreen() {
           <p className="mt-1.5">Choose Saved attempts for uploads, website checks and queued or failed work. This ledger contains signed revisions saved to the selected GitHub connection.</p>
         </div>
       ) : (
-        <div className="watch-release-browser">
-          <section className="watch-release-list" aria-labelledby="release-list-heading">
-            <div className="watch-release-list-heading">
-              <div><span className="watch-kicker">Ledger</span><h2 id="release-list-heading">Connected revisions</h2></div>
-              <span>{releases.length}</span>
-            </div>
-            <ol>
-              {releases.map((release) => {
-                const state = releaseStatus(release);
-                const selected = preview?.id === release.id;
-                return (
-                  <li key={release.id}>
-                    <button
-                      type="button"
-                      className={selected ? "is-selected" : undefined}
-                      aria-pressed={selected}
-                      onClick={() =>
-                        navigate(
-                          watchHref(watchPath("releases"), search, {
-                            release: null,
-                            previewRelease: release.id,
-                          }),
-                        )
-                      }
-                    >
-                      <span className={`watch-release-list-icon is-${state.status}`}><StatusIcon status={state.status} /></span>
-                      <span className="watch-release-list-copy">
-                        <strong title={release.coordinate}>{releaseDisplayName(release.coordinate)}</strong>
-                        <small>{release.channel} · {release.sourceRevision ?? release.artifactSha256.slice(0, 12)} · {new Date(release.createdAt).toLocaleDateString()}</small>
-                      </span>
-                      <span className={`watch-release-list-status is-${state.status}`}>{state.label}</span>
-                      <ArrowRight className="watch-release-list-arrow size-4" aria-hidden />
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-
+        <div className="journey-connected-results">
+          <div className="journey-release-table-wrap"><table className="journey-release-table"><thead><tr><th>Release</th><th>Source</th><th>Result</th><th>Scanned</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{releases.map(release=>{const state=releaseStatus(release);return <tr key={release.id}><td><strong className="text-snow font-medium">{releaseDisplayName(release.coordinate)}</strong><small className="block mt-1">{release.sourceRevision??release.artifactSha256.slice(0,12)}</small></td><td>{release.channel}</td><td><span className={`journey-result-status is-${state.status}`}>{state.label}</span></td><td>{new Date(release.createdAt).toLocaleDateString()}</td><td><Button variant="ghost" onClick={()=>navigate(watchHref(watchPath('releases'),search,{release:release.id,previewRelease:null}))}>View evidence <ArrowRight className="size-4" aria-hidden/></Button></td></tr>})}</tbody></table></div>
           {preview && previewModel ? (
             <article className={`watch-release-preview is-${previewModel.status}`} aria-live="polite">
               <div className="watch-release-preview-topline">
@@ -283,7 +247,7 @@ export function ReleasesScreen() {
               </div>
             </article>
           ) : (
-            <div className="watch-release-preview-empty">Select a revision to inspect it.</div>
+            null
           )}
         </div>
       )}

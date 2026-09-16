@@ -1,3 +1,4 @@
+import {flushSync} from 'react-dom';
 import {WatchSkeleton} from '../WatchDataState';
 import {useEffect,useRef,useState} from 'react';
 import {renderAssurancePanel} from '../../assurance/render';
@@ -5,9 +6,9 @@ import {downloadPassport,readAssuranceView} from '../../assurance/client';
 import type {Assessment,AssuranceView} from '../../assurance/types';
 import {ReleaseIntelligenceFromRecord} from './ReleaseIntelligencePanel';
 import './release-assurance.css';
-type Props={kind:'release'|'upload';recordId:number|string;evidenceId:string;onAssessment?:(assessment:Assessment|null)=>void};
+type Props={kind:'release'|'upload';recordId:number|string;evidenceId:string;onReveal?:(section:'findings'|'proof'|'controls')=>void;onAssessment?:(assessment:Assessment|null)=>void};
 export function ReleaseAssurancePanel(props:Props){return <ScopedPanel key={`${props.kind}:${props.recordId}`} {...props}/>;}
-function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
+function ScopedPanel({kind,recordId,evidenceId,onAssessment,onReveal}:Props){
   const root=useRef<HTMLDivElement>(null);
   const [view,setView]=useState<AssuranceView|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(''),[retry,setRetry]=useState(0);
   useEffect(()=>{
@@ -31,6 +32,7 @@ function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
       review:()=>{
         const action=view.assessment.nextAction;
         const id=kind==='release'&&['configure-delivery','verify-delivery'].includes(action)?'release-proof-delivery':kind==='release'&&action==='review-approval'?'release-operations-heading':evidenceId;
+        if(onReveal)flushSync(()=>onReveal(id==='release-proof-delivery'?'proof':id==='release-operations-heading'?'controls':'findings'));
         const target=document.getElementById(id)??document.getElementById(evidenceId);
         if(target){
           if(id==='release-proof-delivery'&&target instanceof HTMLButtonElement)target.click();
@@ -40,7 +42,7 @@ function ScopedPanel({kind,recordId,evidenceId,onAssessment}:Props){
       refresh:()=>setRetry(value=>value+1),
       exportPassport:()=>downloadPassport(view.passport,recordId),
     },{supporting:true});
-  },[view,kind,recordId,evidenceId]);
+  },[view,kind,recordId,evidenceId,onReveal]);
   return <div className="release-assurance-slot">
     {!view&&!error&&!pending?<WatchSkeleton label="Reading this release’s saved evidence…"/>:null}
     {!view&&(error||pending)?<section className="ns-assurance" aria-label="Release assurance companion"><h2>Release assurance</h2><p role={error?'alert':'status'}>{error||pending}</p>{error||pending?<button type="button" onClick={()=>setRetry(value=>value+1)}>Retry saved evidence</button>:null}<p className="ns-assurance__muted">The original findings and controls below remain available. No passing decision is inferred from missing data.</p></section>:null}

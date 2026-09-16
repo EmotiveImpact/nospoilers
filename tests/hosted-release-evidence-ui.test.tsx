@@ -45,3 +45,15 @@ it('announces the selected connected finding while preserving URL scope and queu
  expect(row.getAttribute('aria-pressed')).toBe('true');
  expect(document.activeElement).toBe(row);
 });
+
+it('shows only a genuinely retained manifest in the Files section',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({available:true,workspaceId:'workspace',report:{fileCount:1,findings:[],manifest:[{path:'dist/app.js',size:123,sha256:'abc'}]}})));
+ const view=render(<HostedReleaseEvidence releaseId={8} receiptId={17} search="?release=8" activeSection="files"/>);
+ expect(await screen.findByRole('cell',{name:'dist/app.js'})).toBeTruthy();
+ expect(screen.getByRole('cell',{name:'123 bytes'})).toBeTruthy();
+ expect(screen.queryByRole('region',{name:'Saved release findings'})).toBeNull();
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({available:true,workspaceId:'workspace',report:{fileCount:1,findings:[]}})));
+ view.rerender(<HostedReleaseEvidence releaseId={9} receiptId={18} search="?release=9" activeSection="files"/>);
+ expect(await screen.findByText(/No file manifest was retained/)).toBeTruthy();
+ expect(screen.queryByRole('cell',{name:'dist/app.js'})).toBeNull();
+});

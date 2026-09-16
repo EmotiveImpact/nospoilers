@@ -254,3 +254,16 @@
     margin-bottom: 16px;
   }
 }
+
+/* The approved rule editor keeps context beside the choices. */
+.watch-desk .policy-journey-form{grid-template-columns:minmax(0,1fr) 260px;column-gap:40px;align-items:start}
+.watch-desk .policy-journey-form>.policy-choice,.watch-desk .policy-journey-form>.policy-form-footer,.watch-desk .policy-journey-form>.policy-notice{grid-column:1}
+.watch-desk .policy-journey-form>.policy-scope-note{grid-column:2;grid-row:1 / span 4;margin:0;padding-left:26px;border-left:1px solid #ffffff10}
+.watch-desk .policy-journey-form .policy-choice{padding:20px 0}
+.watch-desk .policy-journey-form .policy-choice>label{display:flex;flex-direction:row-reverse;justify-content:space-between;font-size:13px;font-weight:500}
+.watch-desk .policy-journey-form .policy-choice>p{margin:5px 42px 0 0;font-size:12px}
+.watch-desk .policy-journey-form .policy-choice input{appearance:none;width:31px;height:18px;border:1px solid #ffffff20;border-radius:20px;background:#34363a;position:relative}
+.watch-desk .policy-journey-form .policy-choice input::before{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#91939d}
+.watch-desk .policy-journey-form .policy-choice input:checked{background:#e3e3e6}
+.watch-desk .policy-journey-form .policy-choice input:checked::before{left:14px;background:#16171a}
+@media(max-width:800px){.watch-desk .policy-journey-form{grid-template-columns:1fr}.watch-desk .policy-journey-form>.policy-scope-note{grid-column:1;grid-row:auto;margin-top:24px;padding:20px 0 0;border-left:0;border-top:1px solid #ffffff10}}

@@ -66,7 +66,7 @@ describe('uploaded release workspace flow',()=>{
   it('requests server-side filters and restores an older page from its URL',async()=>{
     const fetcher=vi.fn(()=>json({uploads:[upload('old',7)],nextCursor:null}));vi.stubGlobal('fetch',fetcher);
     render(<UploadedReleases installationId={7} search="?install=7&uploadBefore=cursor&uploadStatus=attention"/>);
-    await screen.findByRole('heading',{name:'old.zip'});
+    await screen.findByRole('button',{name:/old.zip/});
     expect(fetcher).toHaveBeenCalledWith('/api/uploads?installationId=7&before=cursor&status=attention',expect.anything());
     fireEvent.click(screen.getByRole('button',{name:'Newest releases'}));expect(new URLSearchParams(window.location.search).has('uploadBefore')).toBe(false);
   });
@@ -97,7 +97,7 @@ describe('uploaded release workspace flow',()=>{
   it('clears previous workspace evidence while the next workspace loads',async()=>{
     const fetcher=vi.fn((url:string)=>url.includes('installationId=7')?json({uploads:[upload('first',7)]}):new Promise<Response>(()=>{}));
     vi.stubGlobal('fetch',fetcher);
-    const view=render(<UploadedReleases installationId={7} search="?install=7"/>);
+    const view=render(<UploadedReleases installationId={7} search="?install=7&upload=first"/>);
     await screen.findByRole('heading',{name:'first.zip'});
     view.rerender(<UploadedReleases installationId={8} search="?install=8"/>);
     await waitFor(()=>expect(screen.queryByRole('heading',{name:'first.zip'})).toBeNull());
@@ -115,4 +115,14 @@ it('selects a status by keyboard while preserving tenant scope and clearing the 
  const query=new URLSearchParams(window.location.search);
  expect(query.get('workspace')).toBe('team');expect(query.get('install')).toBe('7');
  for(const key of ['uploadBefore','upload','uploadFinding','uploadTab'])expect(query.has(key)).toBe(false);
+});
+
+it('keeps completed builds separate from unfinished attempts and filters visible names',async()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('failed',7),{...upload('complete',7),status:'done',report_json:{ok:true,status:'passed',fileCount:2,findings:[]}}]})));
+ const view=render(<UploadedReleases installationId={7} search="?install=7" collection="uploads"/>);
+ await screen.findByRole('button',{name:/complete.zip/});expect(screen.queryByRole('button',{name:/failed.zip/})).toBeNull();
+ fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:'absent'}});expect(screen.queryByRole('button',{name:/complete.zip/})).toBeNull();
+ fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:''}});
+ view.rerender(<UploadedReleases installationId={7} search="?install=7" collection="attempts"/>);
+ expect(screen.getByRole('button',{name:/failed.zip/})).toBeTruthy();
 });

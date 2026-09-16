@@ -11,6 +11,7 @@ it('clears token controls after access rejection and reloads current authority',
   return new Response(JSON.stringify({tokens:[token],canManage:!rejected,nextCursor:null}));
  }));
  render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create token'}));
  fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'New CI'}});
  fireEvent.click(screen.getByRole('button',{name:'Create token'}));
  await screen.findByRole('alert');
@@ -23,6 +24,7 @@ it('clears token controls after access rejection and reloads current authority',
 it('does not claim successful creation when the response omits the secret',async()=>{
  vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>new Response(JSON.stringify(init?.method==='POST'?{}:{tokens:[],canManage:true,nextCursor:null}))));
  render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create token'}));
  fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'CI'}});
  fireEvent.click(screen.getByRole('button',{name:'Create token'}));
  await screen.findByText(/Creation was not confirmed/);
@@ -33,6 +35,7 @@ it('does not claim successful creation when the response omits the secret',async
 it('requires history review after an unconfirmed creation rather than silently retrying',async()=>{
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>{if(init?.method==='POST')throw new TypeError('Network disconnected');return new Response(JSON.stringify({tokens:[],canManage:true,nextCursor:null}));});
  vi.stubGlobal('fetch',fetcher);render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create token'}));
  fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'CI'}});
  fireEvent.click(screen.getByRole('button',{name:'Create token'}));
  await screen.findByText(/Creation was not confirmed/);
@@ -45,6 +48,7 @@ it('creates once, reveals the secret transiently and clears it on workspace chan
  const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>new Response(JSON.stringify(init?.method==='POST'?{token:'nsp_test_secret'}:{tokens:[],nextCursor:null,canManage:true})));
  vi.stubGlobal('fetch',fetcher);
  const view=render(<WorkspaceTokens workspaceId="first"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create token'}));
  fireEvent.change(await screen.findByLabelText('Token name'),{target:{value:'CI'}});
  fireEvent.click(screen.getByRole('button',{name:'Create token'}));
  expect(await screen.findByLabelText('New token')).toHaveProperty('value','nsp_test_secret');
@@ -90,5 +94,16 @@ it('focuses confirmation and returns to the initiating token on cancellation',as
  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
  expect(document.activeElement).toBe(trigger);
  expect(screen.queryByRole('form',{name:'Revoke scan token'})).toBeNull();
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('starts with saved tokens and opens creation without minting a credential',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({tokens:[token],canManage:true,nextCursor:null}));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceTokens workspaceId="workspace"/>);
+ expect(await screen.findByRole('table',{name:'Scan tokens'})).toBeTruthy();
+ expect(screen.queryByRole('textbox',{name:'Token name'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Create token'}));
+ expect(screen.getByRole('textbox',{name:'Token name'})).toBeTruthy();
+ expect(screen.getByRole('tab',{name:'Create token'}).getAttribute('aria-selected')).toBe('true');
  expect(fetcher).toHaveBeenCalledTimes(1);
 });

@@ -27,3 +27,5 @@
 .watch-desk .timeline-event-link svg{width:13px;height:13px}
 .watch-desk .timeline-event-unlinked{padding-top:4px;color:#6f727c;font-size:10px}
 @media(max-width:600px){.watch-desk .timeline-summary{gap:14px}.watch-desk .timeline-summary .watch-kv{padding-right:14px}.watch-desk .timeline-filter-tabs{gap:18px}.watch-desk .timeline-event{grid-template-columns:42px 24px minmax(0,1fr);gap:9px}.watch-desk .timeline-event-icon{width:22px;height:22px}.watch-desk .timeline-event-link,.watch-desk .timeline-event-unlinked{grid-column:3;justify-self:start}.watch-desk .timeline-feed>header{align-items:flex-start;flex-direction:column;gap:4px}}
+
+.watch-desk .timeline-date{font-size:15px;font-weight:550;margin:25px 0 3px}.watch-desk .timeline-page>.watch-between{margin-bottom:28px}.watch-desk .timeline-feed>header{font-size:11px;color:#898c96}.watch-desk .timeline-feed>header h2{font-size:12px;color:#898c96}

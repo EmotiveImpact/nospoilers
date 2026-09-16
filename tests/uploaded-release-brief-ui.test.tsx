@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import userEvent from '@testing-library/user-event';
 import {UploadedReleaseBrief} from '../src/components/watch/UploadedReleaseBrief';
@@ -20,6 +20,7 @@ describe('uploaded readiness evidence',()=>{
       return new Response(JSON.stringify({streams:[]}));
     }));
     render(<UploadedReleaseBrief {...props} upload={{...record,readiness:view.assessment}} search=""/>);
+    fireEvent.click(screen.getByRole('tab',{name:'History'}));
     await screen.findByRole('button',{name:'Refresh saved snapshot'});
     expect(screen.getAllByRole('heading',{name:'Passes recorded checks'})).toHaveLength(1);
     unavailable=true;fireEvent.click(screen.getByRole('button',{name:'Refresh saved snapshot'}));
@@ -37,6 +38,7 @@ describe('uploaded readiness evidence',()=>{
   it('explains private downloads and keeps verification inside the scoped app',()=>{
     render(<UploadedReleaseBrief {...props} upload={{...record,receipt_json:{signature:'test'}}} search="?workspace=workspace-1&install=2&upload=scan-1"/>);
     expect(screen.getByText(/downloaded JSON may contain file names/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab',{name:'Proof'}));
     fireEvent.click(screen.getByRole('button',{name:'Verify a downloaded record'}));
     expect(window.location.pathname).toBe('/watch/scan');
     const params=new URLSearchParams(window.location.search);
@@ -58,8 +60,8 @@ describe('uploaded readiness evidence',()=>{
     view.rerender(<UploadedReleaseBrief {...props} upload={record} search={window.location.search}/>);
     const maps=screen.getByRole('tab',{name:/Maps/});
     expect(maps.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tabpanel').id).toBe(maps.getAttribute('aria-controls'));
-    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(maps.id);
+    expect(screen.getByRole('tabpanel',{name:/Maps/}).id).toBe(maps.getAttribute('aria-controls'));
+    expect(screen.getByRole('tabpanel',{name:/Maps/}).getAttribute('aria-labelledby')).toBe(maps.id);
   });
   it('does not substitute another finding for a stale deep link',()=>{
     render(<UploadedReleaseBrief {...props} upload={record} search="?uploadTab=maps&uploadFinding=1"/>);
@@ -74,24 +76,19 @@ describe('uploaded readiness evidence',()=>{
   });
 });
 
-it('moves keyboard focus to release landmarks without changing record scope',async()=>{
-  const fetcher=vi.fn(()=>new Promise<Response>(()=>{}));vi.stubGlobal('fetch',fetcher);
-  const scroll=vi.fn();Element.prototype.scrollIntoView=scroll;
+it('switches release content with keyboard without changing record scope',async()=>{
+  vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
   const search='?workspace=workspace-1&upload=scan-1&uploadView=detail';
   window.history.replaceState({},'', '/watch/releases'+search);
   render(<UploadedReleaseBrief {...props} upload={{...record,receipt_json:{signature:'test'}}} search={search}/>);
-  const nav=within(screen.getByRole('navigation',{name:'In this release'}));
-  for(const [label,target] of [
-    ['Findings',screen.getByRole('heading',{name:'Findings and next steps'})],
-    ['Release tools',screen.getByRole('heading',{name:'Release tools'})],
-    ['Artifact details',screen.getByRole('region',{name:'Artifact record'})],
-    ['Proof sharing',screen.getByRole('region',{name:'Release proof'})],
-  ] as const){
-    nav.getByRole('button',{name:label}).focus();await userEvent.keyboard('{Enter}');
-    expect(document.activeElement).toBe(target);
-    expect(window.location.search).toBe(search);
-  }
-  expect(scroll).toHaveBeenCalledTimes(4);
+  const findings=screen.getByRole('tab',{name:'Findings 2'});findings.focus();
+  await userEvent.keyboard('{ArrowRight}');
+  expect(screen.getByRole('tab',{name:'Files'}).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('region',{name:'Artifact record'})).toBeTruthy();
+  expect(screen.queryByRole('heading',{name:'Public source map'})).toBeNull();
+  await userEvent.keyboard('{End}');
+  expect(screen.getByRole('region',{name:'Release proof'})).toBeTruthy();
+  expect(window.location.search).toBe(search);
 });
 it('does not present zero recorded findings as a passing decision',()=>{
   vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
@@ -100,4 +97,17 @@ it('does not present zero recorded findings as a passing decision',()=>{
   expect(screen.getByText(/This does not establish a passing decision; review/)).toBeTruthy();
   expect(screen.queryByRole('heading',{name:'Select a finding'})).toBeNull();
   expect(screen.queryByRole('heading',{name:'Passes recorded checks'})).toBeNull();
+});
+
+it('opens visible findings before focusing a review action from History',async()=>{
+ const snapshot=sample();snapshot.release.id=record.id;
+ const view=buildAssuranceView(snapshot,null,NOW,'uploaded-scan');view.assessment.nextAction='review-findings';
+ vi.stubGlobal('fetch',vi.fn(async(input:string)=>Response.json(String(input).startsWith('/api/assurance/')?{view}:{streams:[]})));
+ Element.prototype.scrollIntoView=vi.fn();
+ render(<UploadedReleaseBrief {...props} upload={record} search="?upload=scan-1&uploadView=detail"/>);
+ fireEvent.click(screen.getByRole('tab',{name:'History'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Review recorded findings'}));
+ expect(screen.getByRole('tab',{name:'Findings 2'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.getByRole('heading',{name:'Findings 2'})).toBe(document.activeElement);
+ expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();
 });

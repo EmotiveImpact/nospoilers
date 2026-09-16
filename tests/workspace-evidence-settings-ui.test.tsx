@@ -34,7 +34,8 @@ it('keeps long audit identities readable in a populated settings card',async()=>
  const cell=await screen.findByRole('cell',{name:actor});
  expect(cell.textContent).toBe(actor);
  expect(cell.className).toContain('[overflow-wrap:anywhere]');
- expect(screen.getByRole('heading',{name:'Audit log',level:1})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Who changed what.',level:1})).toBeTruthy();
  expect(screen.getByRole('region',{name:'Workspace audit log'}).className).not.toContain('watch-empty');
- expect(screen.getByRole('table').closest('.watch-card')).toBeTruthy();
+ expect(screen.getByRole('table').closest('.watch-card')).toBeNull();
+ expect(screen.getByRole('columnheader',{name:'Scope'})).toBeTruthy();
 });

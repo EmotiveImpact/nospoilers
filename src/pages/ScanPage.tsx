@@ -216,7 +216,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const workspaceId = productWorkspace?.id ?? new URLSearchParams(search).get('workspace')
   if (workspaceId) scope.set('workspace', workspaceId)
   if (selectedInstall) scope.set('install', selectedInstall)
-  const scopedPath = (view: 'releases' | 'sources' | 'workspaces') => `${watchPath(view)}${scope.size ? `?${scope}` : ''}`
+  const scopedPath = (view: 'releases' | 'sources' | 'workspaces' | 'policy') => `${watchPath(view)}${scope.size ? `?${scope}` : ''}`
 
   const followAppLink = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -302,13 +302,12 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
   return (
     <main className={cn("scan-workspace mx-auto w-full max-w-6xl", embedded ? "pb-12" : "px-5 py-12 md:py-16")}>
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">New scan</p>
+
       <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
         Check what you’re about to ship.
       </h1>
       <p className="mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg">
-        Choose the exact artifact or release surface your customers will receive. Each result records
-        the supported checks, findings, and limits of that evidence.
+        Choose the exact artifact your customers will receive.
       </p>
 
       {showPrerequisite ? (
@@ -417,7 +416,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </Field>
               </div>
             </section>
-            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} auth={auth} />}
+            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : state.status === "idle" ? <aside className="scan-scope-note"><h3>What this checks</h3><ul><li>Source maps and source files</li><li>Credentials and sensitive files</li><li>Your workspace scan policy</li></ul><h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p><p>Each result records the supported checks, findings, and limits of that evidence.</p><a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight size={14} aria-hidden /></a></aside> : <ResultsPanel state={state} locked={locked} auth={auth} />}
           </div>
 
           {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}

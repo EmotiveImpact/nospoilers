@@ -23,3 +23,10 @@
 .watch-desk .scan-workspace :is(.rounded-2xl){border-radius:7px}
 @media(max-width:900px){.watch-desk .scan-launch-layout,.watch-desk .scan-website-panel{grid-template-columns:1fr;gap:28px}.watch-desk .scan-launch-layout>.uploaded-detail,.watch-desk .scan-launch-layout>div:not(.relative),.watch-desk .scan-website-panel>aside{padding:24px 0 0;border-left:0;border-top:1px solid #ffffff10}}
 @media(max-width:600px){.watch-desk .scan-workspace{padding-top:0}.watch-desk .scan-workspace>h1{font-size:28px}.watch-desk .scan-mode-grid{gap:18px}.watch-desk .scan-mode-grid>button{min-height:44px}.watch-desk .scan-mode-grid strong{font-size:11px}.watch-desk .scan-dropzone{min-height:220px;padding:30px 18px}}
+
+.watch-desk .scan-workspace>h1+p{margin-bottom:28px}
+.watch-desk .scan-scope-note{border-left:1px solid #ffffff10;padding-left:26px;font-size:12px;color:#a2a3ad;line-height:1.8}
+.watch-desk .scan-scope-note h3{font-size:13px;color:#f4f4f5;font-weight:550;margin-bottom:12px}
+.watch-desk .scan-scope-note ul{list-style:disc;padding-left:17px;margin-bottom:27px}.watch-desk .scan-scope-note li{margin:10px 0}
+.watch-desk .scan-scope-note p{margin:9px 0 20px}.watch-desk .scan-scope-note a{display:inline-flex;align-items:center;gap:7px;color:#cdced4}
+@media(max-width:800px){.watch-desk .scan-scope-note{border-left:0;border-top:1px solid #ffffff10;padding:23px 0 0}}

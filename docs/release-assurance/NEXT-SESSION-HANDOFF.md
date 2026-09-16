@@ -1,5 +1,9 @@
 # Current NoSpoilers continuation — 16 September 2026
 
+## 16 September correction — reference fidelity
+
+The preceding “approved-journey milestone” overstates design completion. The owner rejected the mismatch against `public/mockup-review/2b/36-journey`: Overview and Releases still retained earlier compositions. The 1,521-test result remains functional regression evidence for that earlier source, not proof of visual fidelity or owner acceptance. The current fidelity batch replaces those compositions and extends the approved tables/sections across settings. See the new BUILD-LOG entry for exact checks; do not restore the older panels or claim pixel identity from test results. Railway/production work remains separate.
+
 16 September approved-journey milestone: the `public/mockup-review/2b/36-journey` direction is now implemented in the real signed-in app across the shared shell, Overview, Alerts, Scan, Timeline, Notifications, Policy and the release remediation workflow. Real data and existing authorization/evidence contracts are preserved. Original finding → reviewed change → rebuilt evidence is visible as one three-step workflow. Final verification passed 1,521 tests / 255 files, typecheck, frontend/API builds and lint exit 0 with existing warnings. Signed-in desktop/responsive visual QA and screenshot paths are in BUILD-LOG and `/design-qa.md`; no browser errors or document overflow were observed in the inspected routes.
 
 Remote GitHub Actions are externally blocked: the push and pull-request jobs for `556f4ae` started no steps and GitHub annotated an account payment/spending-limit failure. The local verification above is current-source evidence; it does not make the remote checks green. Fix the repository owner's Actions billing/spending limit, then rerun the existing workflows without changing production code solely for this account-state failure.

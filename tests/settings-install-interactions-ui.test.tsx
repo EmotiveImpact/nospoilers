@@ -19,6 +19,7 @@ function Harness({view,admin=true}:{view:'health'|'registries';admin?:boolean}){
 it.each(['health','registries'] as const)('%s announces mutation rejection and focuses it only when the user stays',async view=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({error:'Request rejected'}),{status:503})));
  render(<Harness view={view}/>);
+ if(view==='registries')fireEvent.click(screen.getByRole('button',{name:'Add registry'}));
  const trigger=screen.getAllByRole('button',{name:view==='health'?'Test install':'Save token'})[0];
  trigger.focus();fireEvent.click(trigger);
  const alert=await screen.findByRole('alert');
@@ -29,6 +30,7 @@ it.each(['health','registries'] as const)('%s leaves moved keyboard focus alone 
  let finish!:(value:Response)=>void;
  vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
  render(<Harness view={view}/>);
+ if(view==='registries')fireEvent.click(screen.getByRole('button',{name:'Add registry'}));
  const trigger=screen.getAllByRole('button',{name:view==='health'?'Test install':'Save token'})[0];
  trigger.focus();fireEvent.click(trigger);
  const other=screen.getByRole('button',{name:'Other action'});other.focus();

@@ -1,5 +1,7 @@
 # Design QA — connected customer journey
 
+> Correction, 16 September: the earlier review below did not establish faithful implementation of the approved journey. The owner rejected its Overview/Releases differences. Preserve these captures as historical evidence only; the current composition corrections and limits are recorded in BUILD-LOG. Do not treat the earlier “matches” wording as acceptance.
+
 Date: 2026-09-16
 
 ## Reference and implementation captures
