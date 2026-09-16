@@ -7,7 +7,7 @@
 /* Approved journey 36: source type tabs and a quiet comparison table. */
 .coverage-page .coverage-journey-tabs{display:flex;gap:22px;border-bottom:1px solid #ffffff10;margin:28px 0 24px;overflow:auto;white-space:nowrap}
 .coverage-page .coverage-journey-tabs>button{display:flex;align-items:center;gap:7px;padding:12px 1px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;font-size:12px;color:#a2a3ad;cursor:pointer}
-.coverage-page .coverage-journey-tabs>button[aria-selected=true]{color:#f4f4f5;border-bottom-color:#e4e4e7}
+.coverage-page .coverage-journey-tabs>button[aria-selected=true]{color:#f4f4f5;border-bottom-color:#e2453a}
 .coverage-page .coverage-journey-tabs>button>span{font-size:10px;border-radius:4px;background:#ffffff08;padding:2px 6px}
 .coverage-page .coverage-attention-filter{display:flex;justify-content:flex-end;margin:-9px 0 10px;font-size:11px;color:#a2a3ad}
 .coverage-page .coverage-attention-filter label{display:flex;align-items:center;gap:8px;cursor:pointer}.coverage-page .coverage-attention-filter input{accent-color:#a2a3ad}.coverage-page .coverage-attention-filter span{color:#898c96}

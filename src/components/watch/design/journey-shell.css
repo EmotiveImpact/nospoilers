@@ -228,3 +228,10 @@
 .watch-settings-navigation a:hover{color:#f4f4f5}
 .watch-settings-navigation a[aria-current=page]{color:#f4f4f5;border-bottom-color:#e2453a}
 @media(max-width:640px){.watch-settings-navigation{padding:12px 0 0;gap:2px 16px}}
+
+/* One active underline colour across queue, release and evidence navigation. */
+.watch-desk [role="tab"][aria-selected="true"],
+.watch-desk .upload-evidence-tabs button[aria-selected="true"],
+.watch-desk .watch-queue-item[aria-current="page"] .watch-queue-pair {
+  border-bottom-color: #e2453a;
+}

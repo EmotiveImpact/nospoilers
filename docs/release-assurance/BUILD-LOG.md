@@ -1,3 +1,7 @@
+## 16 September — consistent active underlines
+
+Added shared red active-tab/queue/evidence underline styling and corrected Coverage’s specific override. Scan, Alerts and Settings already use the same #e2453a. Existing unrelated index.css edits preserved. Build passed (existing chunk warning); signed-in Coverage computed selected underline rgb(226,69,58). No behavioral change or full-suite rerun.
+
 ## 16 September — focused navigation, billing access and alert loading
 
 Main sidebar now contains daily workflow links and Settings. Settings routes expose scoped local navigation with existing role visibility. Footer replaces setup progress with Plan & billing, Help & guides and account/workspace access. Billing links directly to workspaceTab=billing and reuses authorized organization billing; prices and the host’s actual checkout availability are shown. Settings links reset that billing subtab, and active settings underlines are red. No payment, provider activation or production deployment occurred.
