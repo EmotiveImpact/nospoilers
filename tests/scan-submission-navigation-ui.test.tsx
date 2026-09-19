@@ -127,3 +127,25 @@ it('offers permissions retry on the default GitHub tab without a premature sign-
  expect(screen.getByRole('tab',{name:/GitHub repository/}).getAttribute('aria-selected')).toBe('true');
  expect(uploadArtifact).not.toHaveBeenCalled();
 });
+
+it('stages and removes a file without submitting an artifact',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({user:{login:'owner'},coverage:{status:'active',plan:'solo'}})));
+ render(<ScanPage embedded search="?workspace=chosen&mode=package"/>);
+ const input=await uploadInput();
+ fireEvent.change(input,{target:{files:[artifact()]}});
+ expect(await screen.findByText('artifact.tgz')).toBeTruthy();
+ expect(uploadArtifact).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Remove selected artifact'}));
+ expect(screen.queryByRole('button',{name:'Scan this build'})).toBeNull();
+ expect(uploadArtifact).not.toHaveBeenCalled();
+});
+it('clears a staged artifact when its replacement is empty',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({user:{login:'owner'},coverage:{status:'active',plan:'solo'}})));
+ render(<ScanPage embedded search="?workspace=chosen&mode=package"/>);
+ const input=await uploadInput();
+ fireEvent.change(input,{target:{files:[artifact()]}});
+ await screen.findByRole('button',{name:'Scan this build'});
+ fireEvent.change(input,{target:{files:[new File([],'empty.zip')]}});
+ expect(screen.queryByRole('button',{name:'Scan this build'})).toBeNull();
+ expect(uploadArtifact).not.toHaveBeenCalled();
+});

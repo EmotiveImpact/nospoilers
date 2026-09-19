@@ -287,15 +287,13 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const onFiles = useCallback(
     (list: FileList | null) => {
       const file = list?.[0]
-      // Selecting a local file is harmless while the workspace check finishes.
-      // Starting the scan remains guarded below once the current permissions are known.
-      if (!file || uploadController.current) return
+      if (!file || locked || uploadController.current) return
       const limit=(session?80:25)*1024*1024
-      if(!file.size || file.size>limit){setState({status:'error',message:`Choose a non-empty artifact no larger than ${session?80:25} MiB.`});return;}
+      if(!file.size || file.size>limit){setSelectedArtifact(null);setState({status:'error',message:`Choose a non-empty artifact no larger than ${session?80:25} MiB.`});return;}
       setState({status:'idle'})
       setSelectedArtifact(file)
     },
-    [session],
+    [locked, session],
   )
 
   const startArtifactScan = useCallback(() => {
@@ -398,14 +396,13 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </select>
               </label> : null}
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-                Choose packed bytes—not the source tree. Before login the artifact is only staged;
-                scanning starts after coverage is active. Archives are opened but never executed.
+                Choose the packaged build your customers receive. Review the selected file before starting your scan.
                 {session && coverage?.status === "trial" ? " Hosted scanning is active for your trial." : null}
               </p>
               <div className="relative mt-7 min-h-52">
                 <Field>
-                    <Label
-                      htmlFor={locked ? undefined : inputId}
+                  <Label
+                    htmlFor={locked ? undefined : inputId}
                     onDragOver={(event: DragEvent<HTMLLabelElement>) => {
                       event.preventDefault()
                       if (!locked) setDragOver(true)
@@ -429,8 +426,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </Field>
               </div>
               {selectedArtifact&&uploadProgress===null?<>
-                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10?1:2)} MiB · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
-                <HeadlessButton type="button" className="scan-build-submit" onClick={startArtifactScan}>Scan this build <ChevronRight className="size-4" aria-hidden/></HeadlessButton>
+                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10*1024*1024?1:2)} MiB · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
+                <HeadlessButton type="button" className="scan-build-submit" disabled={locked || !!sessionError} onClick={startArtifactScan}>Scan this build <ChevronRight className="size-4" aria-hidden/></HeadlessButton>
                 <p className="scan-build-note">Artifacts are inspected, never executed.</p>
               </>:null}
             </section>

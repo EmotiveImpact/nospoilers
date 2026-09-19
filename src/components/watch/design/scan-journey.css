@@ -25,9 +25,9 @@
 .watch-desk .scan-website-panel>aside h3{font-size:13px;font-weight:550}.watch-desk .scan-website-panel>aside p,.watch-desk .scan-website-panel>aside small{font-size:12px;line-height:1.75}
 .watch-desk .scan-website-form{margin-top:26px;padding:0;border:0;background:transparent}.watch-desk .scan-website-form input{border-radius:5px;background:#0c0d0f}
 .watch-desk .scan-primary-action{min-height:38px;padding:9px 14px;border-radius:6px;font-size:12px}
-.watch-desk .scan-coverage-window{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;max-width:920px;margin:24px 0 28px;padding:20px 22px;border:1px solid #ffffff10;border-radius:8px;background:linear-gradient(135deg,#171114 0%,#111214 58%,#101114 100%)}
+.watch-desk .scan-coverage-window{display:flex;flex-direction:column;align-items:stretch;gap:16px;max-width:920px;margin:24px 0 28px;padding:20px 22px;border:1px solid #ffffff10;border-radius:8px;background:linear-gradient(135deg,#171114 0%,#111214 58%,#101114 100%)}
 .watch-desk .scan-coverage-window h2{margin:4px 0 7px;font-size:18px}.watch-desk .scan-coverage-window [role=status]{max-width:590px;margin:0;font-size:12px}.watch-desk .scan-coverage-kicker{margin:0;color:#e76b64;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
-.watch-desk .scan-coverage-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0}.watch-desk .scan-coverage-actions .scan-primary-action{display:inline-flex;align-items:center;gap:7px;margin:0;white-space:nowrap}
+.watch-desk .scan-coverage-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px;max-width:100%}.watch-desk .scan-coverage-actions .scan-primary-action{display:inline-flex;align-items:center;gap:7px;margin:0;white-space:nowrap}
 .watch-desk .scan-secondary-action{display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border:1px solid #ffffff16;border-radius:6px;color:#cdced4;font-size:12px;white-space:nowrap;transition:background .16s ease,border-color .16s ease,color .16s ease}.watch-desk .scan-secondary-action:hover{border-color:#ffffff32;background:#ffffff06;color:#f4f4f5}
 .watch-desk .scan-website-form .scan-primary-action{margin-top:0;flex:0 0 auto}.watch-desk .scan-website-form input{min-height:42px}
 .watch-desk .scan-trust-note{margin-top:30px;padding-top:19px;border-top:1px solid #ffffff10;color:#898c96;font-size:11px}
@@ -69,3 +69,5 @@
 .watch-desk .scan-check-list strong{font-size:13px;font-weight:500;color:#f4f4f5}
 .watch-desk .scan-check-list p{margin:5px 0 0;font-size:12px;line-height:1.65}
 @media(max-width:600px){.watch-desk .scan-repository-controls{grid-template-columns:1fr}.watch-desk .scan-repository-controls>button{width:100%}}
+
+.watch-desk .scan-build-submit{background:#f4f4f5;color:#101114;font-weight:600;border:1px solid transparent;cursor:pointer}.watch-desk .scan-build-submit:hover{background:#fff}.watch-desk .scan-build-submit:disabled{opacity:.45;cursor:not-allowed}
