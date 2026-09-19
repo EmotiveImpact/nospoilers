@@ -36,6 +36,7 @@ it.each([{},null,{queued:false},{pending:true},{pending:true,target:'artifact',e
   vi.mocked(uploadArtifact).mockResolvedValue(Response.json(response));
   render(<ScanPage embedded search="?workspace=chosen&mode=package"/>);
   fireEvent.change(await uploadInput(),{target:{files:[artifact()]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Scan this build'}));
   await screen.findByText('The server did not confirm a saved attempt. Check Releases before retrying.');
   expect(navigate).not.toHaveBeenCalled();
 });
@@ -79,6 +80,7 @@ it.each(['switch','stay','leave'])('scopes upload submission when the user choos
   const view=render(<ScanPage embedded search="?workspace=first&mode=package"/>);
   const file=artifact();
   fireEvent.change(await uploadInput(),{target:{files:[file]}});
+  fireEvent.click(await screen.findByRole('button',{name:'Scan this build'}));
   expect(uploadArtifact).toHaveBeenCalledWith(file,null,expect.any(Function),expect.any(AbortSignal),'first');
   if(choice==='switch')view.rerender(<ScanPage embedded search="?workspace=second"/>);
   if(choice==='leave')view.unmount();

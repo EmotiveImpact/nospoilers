@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
 import { watchPath } from "@/watch/routes.ts"
-import { ChevronRight, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload } from "lucide-react"
+import { ChevronRight, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload, X } from "lucide-react"
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
@@ -155,6 +155,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const uploadController=useRef<AbortController|null>(null)
   const mounted=useRef(true)
   const [uploadProgress,setUploadProgress]=useState<number|null>(null)
+  const [selectedArtifact,setSelectedArtifact]=useState<File|null>(null)
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;uploadController.current?.abort();}},[])
 
   useEffect(() => {
@@ -286,9 +287,20 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const onFiles = useCallback(
     (list: FileList | null) => {
       const file = list?.[0]
-      if (!file || locked || uploadController.current) return
+      // Selecting a local file is harmless while the workspace check finishes.
+      // Starting the scan remains guarded below once the current permissions are known.
+      if (!file || uploadController.current) return
       const limit=(session?80:25)*1024*1024
       if(!file.size || file.size>limit){setState({status:'error',message:`Choose a non-empty artifact no larger than ${session?80:25} MiB.`});return;}
+      setState({status:'idle'})
+      setSelectedArtifact(file)
+    },
+    [session],
+  )
+
+  const startArtifactScan = useCallback(() => {
+      const file = selectedArtifact
+      if (!file || locked || uploadController.current) return
       const controller=new AbortController()
       uploadController.current=controller
       setUploadProgress(0)
@@ -296,8 +308,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         uploadController.current=null
         setUploadProgress(null)
       })
-    },
-    [locked, run, session],
+    }, [locked, run, selectedArtifact],
   )
 
   return (
@@ -311,16 +322,19 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       </p>
 
       {showPrerequisite ? (
-        <section className="watch-card mt-6 space-y-3 p-5" aria-label="Scan prerequisites">
-          <h2 className="font-display text-lg text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</h2>
-          <p role="status" className="text-sm leading-relaxed text-mute">
-            {lockReason ?? 'New scans and monitoring are paused until coverage is active. You can still open saved releases and verify existing proof.'}
-            {!lockReason && workspaceId ? ' Your organisation owner manages coverage in workspace settings.' : null}
-          </p>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
+        <section className="scan-coverage-window" aria-label="Scan prerequisites">
+          <div>
+            <p className="scan-coverage-kicker">Coverage required</p>
+            <h2 className="font-display text-lg text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</h2>
+            <p role="status" className="text-sm leading-relaxed text-mute">
+              {lockReason ?? 'New scans and monitoring are paused until coverage is active. You can still open saved releases and verify existing proof.'}
+              {!lockReason && workspaceId ? ' Your organisation owner manages coverage in workspace settings.' : null}
+            </p>
+          </div>
+          <div className="scan-coverage-actions">
             {!lockReason ? <a className="scan-primary-action" onClick={followAppLink} href={workspaceId ? scopedPath('workspaces') : '/pricing'}>{workspaceId ? 'Workspace settings' : 'See plans'} <ChevronRight className="size-4" aria-hidden /></a> : null}
-            <a className="underline underline-offset-4" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
-            <a className="underline underline-offset-4" onClick={followAppLink} href={scopedPath('sources')}>View coverage</a>
+            <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
+            <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('sources')}>View coverage</a>
           </div>
         </section>
       ) : null}
@@ -390,8 +404,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               </p>
               <div className="relative mt-7 min-h-52">
                 <Field>
-                  <Label
-                    htmlFor={locked ? undefined : inputId}
+                    <Label
+                      htmlFor={locked ? undefined : inputId}
                     onDragOver={(event: DragEvent<HTMLLabelElement>) => {
                       event.preventDefault()
                       if (!locked) setDragOver(true)
@@ -405,14 +419,20 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                     className={cn("scan-dropzone", locked && "is-locked", !locked && dragOver && "is-dragging")}
                   >
                     <Upload className="h-6 w-6 text-mute" aria-hidden />
-                    <strong>Drop a package or build here</strong>
-                    <Description>tarball, zip, asar, VSIX, container image, APK, IPA, wheel, JAR, or Lambda zip</Description>
+                    <strong>Drop your release archive here</strong>
+                    <Description>.zip, .tgz, .tar and supported packages · up to {session?80:25} MiB</Description>
+                    <span className="scan-choose-file"><FileText className="size-4" aria-hidden />Choose file</span>
                     {!locked ? (
-                      <input id={inputId} type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
+                      <input id={inputId} aria-label="Drop a package or build here" type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
                     ) : null}
                   </Label>
                 </Field>
               </div>
+              {selectedArtifact&&uploadProgress===null?<>
+                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10?1:2)} MiB · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
+                <HeadlessButton type="button" className="scan-build-submit" onClick={startArtifactScan}>Scan this build <ChevronRight className="size-4" aria-hidden/></HeadlessButton>
+                <p className="scan-build-note">Artifacts are inspected, never executed.</p>
+              </>:null}
             </section>
             {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : state.status === "idle" ? <aside className="scan-scope-note"><h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>Your workspace scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul><h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p><p>Each result records the supported checks, findings, and limits of that evidence.</p><a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight size={14} aria-hidden /></a></aside> : <ResultsPanel state={state} locked={locked} auth={auth} />}
           </div>

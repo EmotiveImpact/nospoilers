@@ -4,7 +4,7 @@ import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
 import {websiteHealth,type WebsiteHealthInput} from '@/watch/website-health';
 type Origin={id:number;host:string;origin_url:string;verification_token:string|null;verified_at:string|null;disconnected_at:string|null;paused_at?:string|null;latest_attempt_id:string|null;last_scan_status:string|null;last_checked_at?:string|null;schedule_hours?:number;next_check_at?:string|null;schedule_error?:string|null;schedule_actor?:string|null;activity?:{action:string;created_at:string;actor:string|null}[]};
-export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',healthFilter='all'}:{workspaceId:string;disabledReason?:string|null;initialUrl?:string;healthFilter?:string}){
+export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',healthFilter='all',className=''}:{workspaceId:string;disabledReason?:string|null;initialUrl?:string;healthFilter?:string;className?:string}){
  const [rows,setRows]=useState<(Origin&WebsiteHealthInput)[]|null>(null),[error,setError]=useState(''),[url,setUrl]=useState(initialUrl),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0);
  const pending=useRef(false),mounted=useRef(true),attempts=useRef<Record<number,string>>({});
  const loadEpoch=useRef(0);
@@ -40,7 +40,7 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
   finally{pending.current=false;if(mounted.current)setBusy(false);}
  }
  const filteredRows=rows?.filter(row=>healthFilter==='attention'?websiteHealth(row,now).attention:healthFilter==='delayed'?websiteHealth(row,now).state==='delayed':true);
- return <section className="mt-6 rounded-lg border border-white/10 p-5" aria-labelledby="workspace-websites-heading">
+ return <section className={`mt-6 rounded-lg border border-white/10 p-5 ${className}`} aria-labelledby="workspace-websites-heading">
   <h2 id="workspace-websites-heading" className="text-lg font-semibold">Production websites</h2>
   <p className="mt-2 text-sm text-mute">Verify a website you control, then scan its public assets. Manual and scheduled checks share this workspace’s scan allowance. Scheduling is off until you enable it.</p>
   <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={event=>{event.preventDefault();void action(base,{url});}}>
