@@ -100,7 +100,7 @@
 }
 
 .watch-desk .watch-rail-link[aria-current="page"] {
-  background: #ffffff07;
+  background: transparent;
   color: var(--journey-text);
 }
 

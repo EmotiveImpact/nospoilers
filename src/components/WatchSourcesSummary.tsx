@@ -266,6 +266,46 @@ export function WatchSourcesSummary({
                   <X className="size-4" aria-hidden />
                 </Button>
               </div>
+              <div className="coverage-detail-actions mt-5 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    navigate(
+                      watchHref(watchPath("sources"), search, {
+                        source: null,
+                        configure: configureForKind(selectedSource.kind),
+                      }),
+                    );
+                  }}
+                >
+                  <Box className="size-4" aria-hidden />
+                  {selectedSource.primaryAction}
+                </Button>
+                {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      navigate(
+                        watchHref(watchPath("releases"), search, {
+                          release: relatedRelease?.id ?? null,
+                        }),
+                      )
+                    }
+                  >
+                    {relatedRelease ? "Open latest release brief" : "View release history"}
+                  </Button>
+                ) : null}
+                {selectedSource.alertCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
+                  >
+                    Open related alerts
+                  </Button>
+                ) : null}
+              </div>
               <div className="mt-6 divide-y divide-white/8 rounded-lg border border-white/8 bg-panel">
                 {[
                   ["Status", selectedSource.status],
@@ -286,7 +326,6 @@ export function WatchSourcesSummary({
                 ))}
               </div>
               <section className="mt-6">
-                <a className="text-sm underline underline-offset-4" href={watchHref('/watch/workspaces', search, {})}>Manage workspace connections</a>
                 <h2 className="text-sm font-semibold text-snow">Evidence and related work</h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg bg-white/[0.035] p-4">
@@ -313,46 +352,7 @@ export function WatchSourcesSummary({
                   {selectedSource.detail}. Checks, alerts, release evidence, and remediation actions remain scoped to this real source.
                 </p>
               </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    navigate(
-                      watchHref(watchPath("sources"), search, {
-                        source: null,
-                        configure: configureForKind(selectedSource.kind),
-                      }),
-                    );
-                  }}
-                >
-                  <Box className="size-4" aria-hidden />
-                  {selectedSource.primaryAction}
-                </Button>
-                {selectedSource.alertCount > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
-                  >
-                    Open related alerts
-                  </Button>
-                ) : null}
-                {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() =>
-                      navigate(
-                        watchHref(watchPath("releases"), search, {
-                          release: relatedRelease?.id ?? null,
-                        }),
-                      )
-                    }
-                  >
-                    {relatedRelease ? "Open latest release brief" : "View release history"}
-                  </Button>
-                ) : null}
-              </div>
+              <a className="mt-6 inline-flex text-sm text-mute underline underline-offset-4 hover:text-snow" href={watchHref('/watch/workspaces', search, {})}>Manage workspace connections</a>
             </>
           ) : null}
         </QuietSidePreview>

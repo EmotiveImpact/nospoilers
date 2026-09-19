@@ -34,12 +34,12 @@
 }
 
 .alerts-journey .alerts-journey-tabs {
-  gap: 26px;
+  gap: 6px;
   max-width: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  padding: 4px;
+  border: 1px solid var(--alerts-line);
+  border-radius: 7px;
+  background: #ffffff02;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -51,38 +51,36 @@
 .alerts-journey .alerts-journey-tabs .alerts-journey-tab {
   position: relative;
   flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 1px;
-  border-radius: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 5px;
   background: transparent;
   font-size: 12px;
 }
 
 .alerts-journey .alerts-journey-tabs .alerts-journey-tab:hover {
-  background: transparent;
+  background: #ffffff06;
   color: var(--color-snow);
 }
 
 .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected="true"] {
-  background: transparent;
-  color: var(--color-snow);
+  background: var(--color-snow);
+  color: var(--color-ink);
 }
 
 .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  background: #e2453a;
+  content: none;
 }
 
 .alerts-journey .alerts-journey-tabs .watch-queue-count,
 .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected="true"] .watch-queue-count {
-  border-radius: 0;
-  background: transparent;
+  border-radius: 4px;
+  background: #ffffff0a;
   color: inherit;
+}
+
+.alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected="true"] .watch-queue-count {
+  background: #17171914;
 }
 
 .alerts-journey .alerts-journey-toolbar > button {
@@ -310,9 +308,9 @@
 /* Override the earlier shared card-toolbar skin at its own specificity. */
 .watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-header{padding:0;margin-bottom:24px}
 .watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-toolbar{padding:0;background:transparent}
-.watch-desk .alerts-journey .alerts-journey-toolbar .alerts-journey-tabs{padding:0;gap:26px;border:0;border-radius:0;background:transparent}
-.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab{padding:12px 0;min-height:44px;border-radius:0;background:transparent}
-.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected=true]{background:transparent;color:var(--color-snow)}
+.watch-desk .alerts-journey .alerts-journey-toolbar .alerts-journey-tabs{padding:4px;gap:6px;border:1px solid var(--alerts-line);border-radius:7px;background:#ffffff02}
+.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab{padding:0 12px;min-height:36px;border-radius:5px;background:transparent}
+.watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected=true]{background:var(--color-snow);color:var(--color-ink)}
 
 .alerts-journey [aria-label="Recheck source"]{padding:22px 0 0;margin-top:28px;border:0;border-top:1px solid var(--alerts-line);border-radius:0}
 .alerts-journey [aria-label="Recheck source"]>.watch-kicker{font-size:14px;font-weight:550;letter-spacing:0;text-transform:none;color:var(--color-snow)}
