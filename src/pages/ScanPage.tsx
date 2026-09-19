@@ -327,7 +327,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
       <EvidenceTypePicker id={modeId} mode={mode} onChange={chooseMode}/>
 
-      <div role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
+      <div className="scan-mode-detail" role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
       {mode!=='receipt'&&sessionError?<div role="alert" className="mt-5 space-y-3 rounded-lg border border-white/15 bg-panel p-4 text-sm text-mute"><p>{sessionError}</p><HeadlessButton type="button" className="min-h-11 underline underline-offset-4" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div>:null}
       {mode === "github" ? (
         <section className="scan-website-panel" aria-labelledby="github-connect-title">
@@ -454,6 +454,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       ) : null}
 
       {mode === "receipt" ? <ReceiptVerifyPanel /> : null}
+      </div>
 
       {mode === "package" && !locked ? (
         <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
@@ -480,7 +481,6 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               ? "Website evidence is private and only appears after ownership verification."
               : "Proof verification checks authenticity without starting a paid scan."}
       </p>
-      </div>
     </main>
   )
 }

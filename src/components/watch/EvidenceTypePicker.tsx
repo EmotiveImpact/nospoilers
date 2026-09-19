@@ -13,22 +13,22 @@ export function EvidenceTypePicker({id,mode,onChange}:{id:string;mode:EvidenceTy
         tabs[next].focus();tabs[next].click()
       }}>
         <button type="button" role="tab" id={`${id}-github`} aria-controls={`${id}-panel`} tabIndex={mode === "github"?0:-1} aria-selected={mode === "github"} className={cn(mode === "github" && "is-selected")} onClick={() => onChange("github")}>
-          <GitBranch aria-hidden />
+          <span className="scan-mode-icon"><GitBranch aria-hidden /></span>
           <strong>GitHub repository</strong>
           <span>Check published release assets from GitHub.</span>
         </button>
         <button type="button" role="tab" id={`${id}-package`} aria-controls={`${id}-panel`} tabIndex={mode === "package"?0:-1} aria-selected={mode === "package"} className={cn(mode === "package" && "is-selected")} onClick={() => onChange("package")}>
-          <Box aria-hidden />
+          <span className="scan-mode-icon"><Box aria-hidden /></span>
           <strong>Package or build</strong>
           <span>Upload npm, archive, installer, or CI output.</span>
         </button>
         <button type="button" role="tab" id={`${id}-website`} aria-controls={`${id}-panel`} tabIndex={mode === "website"?0:-1} aria-selected={mode === "website"} className={cn(mode === "website" && "is-selected")} onClick={() => onChange("website")}>
-          <Globe2 aria-hidden />
+          <span className="scan-mode-icon"><Globe2 aria-hidden /></span>
           <strong>Production website</strong>
           <span>Inspect the assets a browser can download.</span>
         </button>
         <button type="button" role="tab" id={`${id}-receipt`} aria-controls={`${id}-panel`} tabIndex={mode === "receipt"?0:-1} aria-selected={mode === "receipt"} className={cn(mode === "receipt" && "is-selected")} onClick={() => onChange("receipt")}>
-          <ShieldCheck aria-hidden />
+          <span className="scan-mode-icon"><ShieldCheck aria-hidden /></span>
           <strong>Verify release proof</strong>
           <span>Check proof shared by a supplier or teammate.</span>
         </button>
