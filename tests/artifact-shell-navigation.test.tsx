@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,render,screen,waitFor,fireEvent} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {WatchMonolithShell} from '../src/components/WatchMonolithShell';
 import {parseWatchRoute} from '../src/watch/routes';
@@ -14,7 +14,8 @@ it('keeps real artifact settings reachable during first proof without inert conn
  expect(screen.getByRole('link',{name:'New scan'})).toHaveProperty('href',expect.stringContaining('/watch/scan?workspace=example'));
  expect(screen.getByText('First proof content')).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Guide'})).toBeNull();
- expect(screen.getByRole('button',{name:'Sign out viewer'}).closest('header')).toBeNull();
+ expect(screen.queryByRole('button',{name:'Sign out'})).toBeNull();
+ expect(screen.getByRole('button',{name:'Account menu for viewer'}).closest('header')).toBeNull();
  expect(screen.getByRole('button',{name:'New scan'})).toBeTruthy();
  expect(screen.getByRole('button',{name:'New scan'}).className).not.toContain('hidden');
  expect(screen.getByRole('button',{name:'Search or run a command'}).getAttribute('aria-label')).toBe('Search or run a command');
@@ -61,4 +62,11 @@ it('keeps artifact settings reachable in local navigation without connection-onl
  for(const name of ['Team & roles','Retention','Audit log','Scan API tokens','Notifications','Scan policy'])expect(screen.getByRole('link',{name})).toBeTruthy();
  expect(screen.queryByRole('link',{name:'Install health'})).toBeNull();
  expect(screen.queryByRole('link',{name:'Private registries'})).toBeNull();
+});
+
+it('exposes sign out inside the account menu without signing out on open',async()=>{
+ render(<Route path="/watch"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Account menu for viewer'}));
+ expect(await screen.findByRole('menuitem',{name:'Sign out'})).toBeTruthy();
+ expect(screen.getByRole('menuitem',{name:'Workspace settings'})).toBeTruthy();
 });

@@ -158,7 +158,7 @@
 .watch-desk .watch-search-trigger {
   border-color: var(--journey-line);
   border-radius: 6px;
-  background: #090a0c77;
+  background: #090a0c;
 }
 
 .watch-desk .watch-search-trigger:hover,
@@ -237,7 +237,7 @@
 }
 
 /* Shared type and alignment for the approved journey shell. */
-.watch-desk .watch-rail-link[aria-current=page] svg{color:#e2453a;opacity:1}
+.watch-desk .watch-rail-link[aria-current=page] svg{color:currentColor;opacity:1}
 .watch-desk .watch-page-title{margin:0;font-size:34px;line-height:1.18;font-weight:550;letter-spacing:-1.1px}
 .watch-desk .watch-page-lede{margin-top:10px;font-size:14px;line-height:1.65}
 .watch-desk :is(.settings-tab,.alerts-journey-tab,.journey-tab,.watch-settings-navigation a){font-size:12px;font-weight:500}

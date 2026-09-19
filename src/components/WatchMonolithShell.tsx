@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import type { Coverage } from "@/coverage.ts";
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Menu as AccountMenu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import {
   Activity,
   Settings,
   CircleHelp,
   CreditCard,
   LogOut,
+  ChevronUp,
   Bell,
   BookOpenCheck,
   Boxes,
@@ -400,11 +401,20 @@ export function WatchMonolithShell({
         </div>
       </nav>
 
-      <div className="watch-rail-foot border-t border-line px-3 py-3">
-        <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
-        <a href="/docs" onClick={event=>go(event,'/docs')} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
-        <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('mt-2 flex items-center gap-3 py-2 text-[13px] text-snow',opts.collapsed&&'justify-center')}><span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-xs">{login.slice(0,2).toUpperCase()}</span><span className={cn('min-w-0',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span></a>
-        <button type="button" onClick={()=>void signOut()} aria-label={`Sign out ${login}`} className={cn('flex w-full items-center gap-3 py-2 text-left text-[12px] text-mute hover:text-snow',opts.collapsed&&'justify-center')}><LogOut className="size-[17px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Sign out</span></button>
+      <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>
+        <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
+        <a href="/docs" onClick={event=>go(event,'/docs')} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
+        <AccountMenu as="div" className="relative mt-2">
+          <MenuButton aria-label={`Account menu for ${login}`} className={cn('flex w-full items-center rounded-md py-2 text-left text-[13px] text-snow hover:bg-white/[.04]',opts.collapsed?'justify-center':'gap-3 px-3')}>
+            <span aria-hidden className="grid size-[19px] shrink-0 place-items-center rounded-full bg-white/10 text-[8px]">{login.slice(0,2).toUpperCase()}</span>
+            <span className={cn('min-w-0 flex-1',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span>
+            {!opts.collapsed?<ChevronUp className="size-3.5 shrink-0 text-dim" aria-hidden/>:null}
+          </MenuButton>
+          <MenuItems anchor="top start" className="z-50 min-w-48 rounded-md border border-white/10 bg-[#090a0c] p-1 text-[13px] text-[#f4f4f5] shadow-xl outline-none [--anchor-gap:8px]">
+            <MenuItem><a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className="flex items-center gap-3 rounded px-3 py-2 data-focus:bg-white/[.07]"><Settings className="size-4" aria-hidden/>Workspace settings</a></MenuItem>
+            <MenuItem><button type="button" onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded px-3 py-2 text-left data-focus:bg-white/[.07]"><LogOut className="size-4" aria-hidden/>Sign out</button></MenuItem>
+          </MenuItems>
+        </AccountMenu>
       </div>
     </>
   );

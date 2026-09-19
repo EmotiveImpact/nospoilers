@@ -17,7 +17,7 @@
   padding: 7px 11px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 6px;
-  background: #171719;
+  background: #090a0c;
   color: #f4f4f5;
   font: inherit;
   font-size: 13px;
@@ -29,7 +29,7 @@
 
 .ns-select-trigger:hover:not(:disabled),
 .ns-select-trigger[data-state="open"] {
-  background: #1c1c1f;
+  background: #111216;
   border-color: rgb(255 255 255 / 13%);
 }
 
@@ -71,7 +71,7 @@
   box-sizing: border-box;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 6px;
-  background: #171719;
+  background: #090a0c;
   color: #f4f4f5;
   box-shadow: 0 12px 36px rgb(0 0 0 / 35%), 0 2px 6px rgb(0 0 0 / 20%);
   font-family: inherit;
@@ -148,7 +148,7 @@
   align-items: center;
   justify-content: center;
   height: 22px;
-  background: #171719;
+  background: #090a0c;
   color: #a1a1aa;
 }
 

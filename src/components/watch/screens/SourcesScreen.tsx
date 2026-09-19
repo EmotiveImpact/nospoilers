@@ -1,3 +1,4 @@
+import {WatchPageHeader} from "../WatchPageHeader";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import type { RemediationFileView, SetupStatusFacts } from "@/watch/types";
@@ -10,6 +11,7 @@ export function SourcesScreen() {
   const { Button, CoverageLock, DELETE_PACK_ASSETS_COPY, DISABLE_WORKFLOW_COPY, GithubResponseResult, MAKE_PRIVATE_COPY, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, githubRunnersReachable, hostedOrigin, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, releases, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
   const healthWorkspace=new URLSearchParams(search).get('workspace');
   if(route.view==='sources'&&healthWorkspace&&hasWorkspaceCoverageHealthFilter(search))return <WorkspaceCoverageHealth workspaceId={healthWorkspace} search={search}/>;
+  if(route.view==='sources'&&sourceSectionState.status==='loading')return <section aria-busy="true"><WatchPageHeader title="Know what’s being checked." lede="Connection, monitoring and latest result are separate states."/></section>;
   return (
     <>
       {route.view === "sources" && (
