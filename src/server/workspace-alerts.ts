@@ -7,15 +7,33 @@ function alertId(value:string){
 }
 const projection=`id,installation_id,workspace_id,repo_id,source_origin_id,scan_attempt_id,kind,title,body,findings,
  created_at,acknowledged_at,acknowledged_by_login,assigned_to_user_id,assigned_to_login,resolved_at,resolved_by_login,resolution_note`;
+// Repositories without a published release remain immutable history and Coverage state.
+// They are not response work, so queue counts must exclude them across every page.
+export const ACTIONABLE_ALERT_SQL=`NOT (
+ kind='scan_latest_release'
+ AND btrim(title) ~* '^No release on[[:space:]]+[^[:space:]]'
+ AND jsonb_array_length(CASE WHEN jsonb_typeof(findings)='array' THEN findings ELSE '[]'::jsonb END)=0
+)`;
 
 export async function workspaceAlertCounts(sql:SqlClient,userId:string,workspaceId:string){
  await workspaceEvidenceSettings(sql,userId,workspaceId);
  const row=(await sql.query<{open:string;waiting:string;done:string;mine:string}>(`SELECT
- count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
- count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
- count(*) FILTER(WHERE resolved_at IS NOT NULL) AS done,
- count(*) FILTER(WHERE resolved_at IS NULL AND assigned_to_user_id=$2) AS mine FROM alerts WHERE workspace_id=$1`,[workspaceId,userId])).rows[0];
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NOT NULL) AS done,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND assigned_to_user_id=$2) AS mine FROM alerts WHERE workspace_id=$1`,[workspaceId,userId])).rows[0];
  return {open:Number(row.open),waiting:Number(row.waiting),done:Number(row.done),mine:Number(row.mine)};
+}
+
+/** Full retained workspace alert history for an explicit customer export. */
+export async function exportWorkspaceAlerts(sql:SqlClient,userId:string,workspaceId:string,source?:string){
+ await workspaceEvidenceSettings(sql,userId,workspaceId);
+ if(source&&(!/^(repo|web)-[1-9]\d*$/.test(source)||!Number.isSafeInteger(Number(source.split('-')[1]))))throw Object.assign(new Error('This source filter is unavailable. Clear the source filter to export workspace alert history.'),{status:400});
+ const sourceType=source?.split('-')[0]??null,sourceId=source?Number(source.split('-')[1]):null;
+ const {rows}=await sql.query(`SELECT ${projection} FROM alerts WHERE workspace_id=$1
+  AND ($2::text IS NULL OR $2='repo' AND repo_id=$3 OR $2='web' AND source_origin_id=$3)
+  ORDER BY id DESC`,[workspaceId,sourceType,sourceId]);
+ return {exportedAt:new Date().toISOString(),workspaceId,scope:source?'selected_source_retained_history':'workspace_retained_history',source:source??null,alerts:rows};
 }
 
 export async function workspaceAlertAssignees(sql:SqlClient,userId:string,workspaceId:string,id:string){
@@ -82,6 +100,7 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
  if(cursor&&!(await sql.query('SELECT id FROM alerts WHERE workspace_id=$1 AND id=$2',[workspaceId,cursor])).rows.length)
   throw Object.assign(new Error('Alert page unavailable.'),{status:404});
  const {rows}=await sql.query<Record<string,unknown>&{id:number}>(`SELECT ${projection} FROM alerts WHERE workspace_id=$1
+ AND ${ACTIONABLE_ALERT_SQL}
  AND ($2::bigint IS NULL OR id<$2)
  AND (NOT $4::boolean OR assigned_to_user_id=$5)
  AND ($6::text IS NULL OR $6='repo' AND repo_id=$7 OR $6='web' AND source_origin_id=$7)
@@ -89,17 +108,18 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
   OR $3='waiting' AND resolved_at IS NULL AND acknowledged_at IS NOT NULL
   OR $3='done' AND resolved_at IS NOT NULL OR $3='mine' AND resolved_at IS NULL AND assigned_to_user_id=$5)
  ORDER BY id DESC LIMIT 51`,[workspaceId,cursor,status,filter.mine??false,userId,sourceType,sourceId]);
- const totals=(await sql.query<{open:string;waiting:string;done:string;mine:string}>(`SELECT
- count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
- count(*) FILTER(WHERE resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
- count(*) FILTER(WHERE resolved_at IS NOT NULL) AS done,
- count(*) FILTER(WHERE resolved_at IS NULL AND assigned_to_user_id=$2) AS mine
+ const totals=(await sql.query<{open:string;waiting:string;done:string;mine:string;coverage_history:string}>(`SELECT
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NOT NULL) AS done,
+ count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND assigned_to_user_id=$2) AS mine,
+ count(*) FILTER(WHERE NOT (${ACTIONABLE_ALERT_SQL})) AS coverage_history
  FROM alerts WHERE workspace_id=$1 AND ($3::text IS NULL OR $3='repo' AND repo_id=$4 OR $3='web' AND source_origin_id=$4)`,[workspaceId,userId,sourceType,sourceId])).rows[0];
  const sources=await sql.query<{count:number|string}>(`SELECT
   (SELECT count(*) FROM watched_origins s WHERE s.workspace_id=$1 AND s.disconnected_at IS NULL AND (s.installation_id IS NULL OR EXISTS(SELECT 1 FROM installations i WHERE i.id=s.installation_id AND i.disconnected_at IS NULL))) +
   (SELECT count(*) FROM repos r JOIN product_workspace_installations c ON c.installation_id=r.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND r.disconnected_at IS NULL AND i.disconnected_at IS NULL) +
   (SELECT count(*) FROM watched_packages p JOIN product_workspace_installations c ON c.installation_id=p.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND i.disconnected_at IS NULL AND p.disconnected_at IS NULL) AS count`,[workspaceId]);
- return {alerts:rows.slice(0,50),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
+ return {alerts:rows.slice(0,50),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),coverageHistoryCount:Number(totals.coverage_history),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
 }
 
 export async function workspaceAlertDetail(sql:SqlClient,userId:string,workspaceId:string,id:string,before?:string){

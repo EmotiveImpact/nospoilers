@@ -144,7 +144,9 @@
 }
 
 .alerts-journey .alerts-journey-row.is-selected {
+  border-left: 0 !important;
   background: #ffffff07;
+  box-shadow: inset 0 0 0 1px #ffffff0d;
 }
 
 .alerts-journey .alerts-journey-row-title {

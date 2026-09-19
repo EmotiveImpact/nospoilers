@@ -6,7 +6,7 @@ export type DeskAlert = {
   kind: string;
   title: string;
   body: string;
-  findings: { rule: string; path: string }[] | null;
+  findings: { rule: string; path: string; severity?: string }[] | null;
   created_at: string;
   full_name?: string | null;
   acknowledged_at?: string | null;

@@ -8,10 +8,11 @@ vi.mock('../src/components/watch/UploadedReleases',()=>({UploadedReleases:({coll
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 it('offers only real artifact collections and scopes tab changes',()=>{
  render(<WorkspaceReleaseCollection search="?workspace=one&uploadStatus=attention"/>);
- expect(screen.getByRole('heading',{name:'Release evidence.'})).toBeTruthy();
- expect(screen.getByRole('tab',{name:'Uploaded builds'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.getByRole('heading',{name:'Releases'})).toBeTruthy();
+ expect(screen.getByRole('tab',{name:'Recorded releases'}).getAttribute('aria-selected')).toBe('true');
  expect(screen.queryByRole('tab',{name:'Connected releases'})).toBeNull();
- fireEvent.keyDown(screen.getByRole('tab',{name:'Uploaded builds'}),{key:'End'});
+ expect(screen.getByText(/Connected GitHub releases appear only in workspaces that own that installation/)).toBeTruthy();
+ fireEvent.keyDown(screen.getByRole('tab',{name:'Recorded releases'}),{key:'End'});
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=one&releaseView=attempts');
 });
 it('keeps incomplete records available and respects archived scan restrictions',()=>{

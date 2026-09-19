@@ -18,7 +18,7 @@ import {workspaceNotifications,saveWorkspaceNotification,disconnectWorkspaceNoti
 import {listWorkspaceTokens,revokeWorkspaceToken,mintWorkspaceToken,authenticateWorkspaceToken} from './workspace-tokens.ts';
 import {workspaceOverview} from './workspace-overview.ts';
 import {requestWorkspaceException,decideWorkspaceException,listWorkspaceExceptions,workspaceExceptionDetail} from './workspace-exceptions.ts';
-import {listWorkspaceAlerts,workspaceAlertDetail,respondToWorkspaceAlert,workspaceAlertAssignees,workspaceAlertCounts} from './workspace-alerts.ts';
+import {listWorkspaceAlerts,workspaceAlertDetail,respondToWorkspaceAlert,workspaceAlertAssignees,workspaceAlertCounts,exportWorkspaceAlerts} from './workspace-alerts.ts';
 import {alertRecheckTarget} from './alert-recheck.ts';
 import {getWorkspaceArtifactPolicy,saveWorkspaceArtifactPolicy} from './workspace-policy.ts';
 import {deletionImpact} from './deletion-impact.ts';
@@ -2210,7 +2210,7 @@ export function createApp(deps: AppDeps): Hono {
     if(workspaceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))return c.json({error:'Invalid workspace.'},400);
     if(workspaceId && !(await listUserWorkspaces(deps.store.sql,user.userId)).some(workspace=>workspace.id===workspaceId))return c.json({error:'Workspace unavailable.'},404);
     try{
-      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status')});
+      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status'),collection:c.req.query('collection')});
       const now=Date.now();c.header('Cache-Control','no-store');
       return c.json({...page,uploads:page.uploads.map(upload=>({...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret,now)}))});
     }
@@ -2402,6 +2402,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'),deps.config.pollIntervalMs)));
   app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
   app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1',source:c.req.query('source')})));
+  app.get('/api/workspaces/:id/alerts-export',c=>workspaceAction(c,userId=>exportWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('source'))));
   app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
   app.get('/api/workspaces/:id/alerts/:alertId/assignees',c=>workspaceAction(c,userId=>workspaceAlertAssignees(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'))));
   app.post('/api/workspaces/:id/alerts/:alertId/respond',c=>workspaceAction(c,async userId=>{

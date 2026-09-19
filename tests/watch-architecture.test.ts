@@ -69,7 +69,7 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-empty/);
     expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/buildReleaseBriefModel/);
     expect(readFileSync("src/components/watch/screens/HealthScreen.tsx", "utf8")).toMatch(/watch-empty/);
-    expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
+    expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/journey-admin-table/);
   });
 
   it("applies Linear view tokens to the live Watch stage only", () => {
@@ -130,8 +130,8 @@ describe("Watch architecture boundaries", () => {
     expect(firstProof).not.toMatch(/checkout-web|Sample — not your data/);
     expect(firstProof).toMatch(/Connect a GitHub repo/);
     expect(firstProof).toMatch(/watchPath\("scan"\)/);
-    expect(shell).toMatch(/compactFirstRunNav/);
-    expect(shell).toMatch(/compactFirstRunNav = firstRun/);
+    expect(shell).not.toMatch(/compactFirstRunNav/);
+    expect(shell).toMatch(/hrefFor\(['"]scan['"]\)/);
     expect(readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8")).toMatch(
       /overviewSectionState\.status === "ready"/,
     );

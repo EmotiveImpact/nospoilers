@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState,type MouseEvent} from 'react';
 import {Button} from '@/components/ui/button';
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/motion/select';
 import {WatchSkeleton} from '@/components/WatchDataState';
 import {navigate} from '@/nav';
 import type {Repo,TenantJob} from '@/watch/types';
@@ -14,7 +15,7 @@ export function GithubRepositoryScan(props:Props){
   return <RepositoryScan key={`${props.installationId}:${new URLSearchParams(props.search).get('workspace')}`} {...props}/>;
 }
 function RepositoryScan({installationId,search,disabledReason}:Props){
-  const [repos,setRepos]=useState<Repo[]|null>(null),[query,setQuery]=useState(''),[selected,setSelected]=useState('');
+  const [repos,setRepos]=useState<Repo[]|null>(null),[selected,setSelected]=useState('');
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[retry,setRetry]=useState(0);
   const [jobId,setJobId]=useState<number|null>(null),[progressRetry,setProgressRetry]=useState(0),[progressError,setProgressError]=useState('');
   const [pendingRepositories,setPendingRepositories]=useState<Set<string>>(()=>new Set());
@@ -54,7 +55,6 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
     void poll();return()=>{controller.abort();if(timer)clearTimeout(timer);};
   },[jobId,installationId,progressRetry,selected]);
   const repo=repos?.find(row=>String(row.id)===selected);
-  const visible=repos?.filter(row=>row.full_name.toLowerCase().includes(query.toLowerCase()))??[];
   const params=new URLSearchParams({install:installationId});
   const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId);
   const setup=new URLSearchParams(params);setup.set('configure','github');if(repo)setup.set('source',`repo-${repo.id}`);
@@ -78,18 +78,17 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
     }catch(reason){if(active.current)setError(reason instanceof Error?reason.message:'Could not start the release check.');}
     finally{submitting.current=false;if(active.current)setBusy(false);}
   }
-  return <section className="mt-6 space-y-4" aria-label="Choose repository to scan">
-    <h3 className="font-display text-lg text-snow">Choose a connected repository</h3>
+  const chooseRepository=(value:string)=>{setSelected(value);setNotice('');setError('');setJobId(null);setProgressError('');};
+  return <section className="scan-repository-picker" aria-label="Choose repository to scan">
+    <div className="scan-repository-heading"><h3>Re-check a connected release</h3><p>Connected repositories are watched automatically. Choose one here only when you want to check its latest published release again now.</p></div>
     {repos===null&&!error?<WatchSkeleton variant="list"/>:null}
-    {repos?<>{repos.length?<><label className="block text-sm">Find repository<input className="mt-2 block w-full rounded-md border border-white/10 bg-black p-2" value={query} disabled={busy} onChange={event=>setQuery(event.target.value)} placeholder="Search owner / repository"/></label>
-      <label className="block text-sm">Repository<select className="mt-2 block w-full rounded-md border border-white/10 bg-black p-2" value={selected} disabled={busy} onChange={event=>{setSelected(event.target.value);setNotice('');setError('');setJobId(null);setProgressError('');}}><option value="">Choose repository</option>{repo&&!visible.includes(repo)?<option value={repo.id}>{repo.full_name}</option>:null}{visible.map(row=><option key={row.id} value={row.id}>{row.full_name}</option>)}</select></label>
-      {!visible.length?<p className="text-sm text-mute">No repositories match your search.</p>:null}
-      <Button disabled={!repo||!!disabledReason||busy||pendingRepositories.has(selected)} onClick={()=>void scan()}>{busy?'Queuing release check…':'Scan latest release'}</Button>
+    {repos?<>{repos.length?<><div className="scan-repository-controls"><div><span className="scan-field-label">Repository</span><Select value={selected||undefined} onValueChange={chooseRepository} disabled={busy}><SelectTrigger aria-label="Repository"><SelectValue placeholder="Choose a connected repository"/></SelectTrigger><SelectContent>{repos.map(row=><SelectItem key={row.id} value={String(row.id)}>{row.full_name}</SelectItem>)}</SelectContent></Select></div>
+      <Button disabled={!repo||!!disabledReason||busy||pendingRepositories.has(selected)} onClick={()=>void scan()}>{busy?'Queuing release check…':'Scan latest release'}</Button></div>
     </>:<p>No connected repositories are available. Add repository access to this GitHub installation first.</p>}</>:null}
     {disabledReason?<p className="text-sm text-mute">{disabledReason}</p>:null}
     {error?<div role="alert"><p>{error}</p>{!repos?<Button variant="outline" onClick={()=>{setError('');setRetry(value=>value+1);}}>Retry repositories</Button>:null}</div>:null}
     {notice?<p role="status">{notice}</p>:null}
     {progressError?<div role="alert"><p>{progressError}</p><Button variant="outline" onClick={()=>{setProgressError('');setProgressRetry(value=>value+1);}}>Check progress again</Button></div>:null}
-    <div className="flex flex-wrap gap-4 text-sm"><a className="underline underline-offset-4" href={`/watch/releases?${params}`} onClick={openWatchLink}>View releases and scan progress</a>{repo?<a className="underline underline-offset-4" href={`/watch/alerts?${alerts}`} onClick={openWatchLink}>View this repository’s alerts</a>:null}<a className="underline underline-offset-4" href={`/watch/sources?${setup}`} onClick={openWatchLink}>Repository setup and prerequisites</a></div>
+    <div className="scan-repository-links"><a href={`/watch/releases?${params}`} onClick={openWatchLink}>View releases and scan progress</a>{repo?<a href={`/watch/alerts?${alerts}`} onClick={openWatchLink}>View this repository’s alerts</a>:null}<a href={`/watch/sources?${setup}`} onClick={openWatchLink}>Repository setup and prerequisites</a></div>
   </section>;
 }

@@ -17,6 +17,7 @@ import {
   Download,
   FileCheck2,
   GitCommitHorizontal,
+  Plus,
 } from "lucide-react";
 
 function releaseStatus(release: ReleaseRevision) {
@@ -135,25 +136,26 @@ export function ReleasesScreen() {
   return (
     <section className="watch-release-index" aria-label="Releases">
       <WatchPageHeader
-        title="Release evidence."
-        lede="Find a build, understand its result, or return to an unfinished attempt."
+        title="Releases"
+        lede="Choose a saved release, understand its decision, then open the complete evidence brief."
         action={
           canExportReleases && showRepositoryLedger && browser==='connected' ? (
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
               Export ledger
             </Button>
-          ) : <Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan</Button>
+          ) : <Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>
         }
       />
+      <p className="journey-release-scope">Uploaded and website evidence belongs to this workspace. Connected GitHub releases remain scoped to the selected installation.</p>
 
-      <div className="mt-5 flex flex-wrap gap-1 border-b border-white/10" role="tablist" aria-label="Release history type" onKeyDown={event=>{
+      <div className="journey-release-tabs release-collection-tabs" role="tablist" aria-label="Release history type" onKeyDown={event=>{
         if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
         const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
         const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;event.preventDefault();
         const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
         tabs[next].focus();tabs[next].click();
       }}>
-        {(['uploads','connected','attempts'] as const).filter(value=>value!=='connected'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} className="min-h-11 border-b-2 border-transparent px-3 text-sm text-mute aria-selected:border-white/60 aria-selected:text-snow" onClick={()=>chooseBrowser(value)}>{value==='uploads'?'Uploaded builds':value==='attempts'?'Attempts':'Connected releases'}</button>)}
+        {(['uploads','connected','attempts'] as const).filter(value=>value!=='connected'||showRepositoryLedger).map(value=><button key={value} type="button" role="tab" id={`${browserId}-${value}`} aria-controls={`${browserId}-panel`} aria-selected={browser===value} tabIndex={browser===value?0:-1} onClick={()=>chooseBrowser(value)}>{value==='uploads'?'Recorded releases':value==='attempts'?'Attempts':'Connected releases'}</button>)}
       </div>
       <div role="tabpanel" id={`${browserId}-panel`} aria-labelledby={`${browserId}-${browser}`}>
       {browser!=='connected'?<UploadedReleases search={search} installationId={uploadInstallationId} collection={browser} />:null}

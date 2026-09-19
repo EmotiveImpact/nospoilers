@@ -29,15 +29,15 @@ it('leaves outside, form, modal and modified shortcuts alone',()=>{
  expect(p.onSelect).not.toHaveBeenCalled();expect(p.onAction).not.toHaveBeenCalled();
 });
 
-it('shows a concise repository and issue in incomplete-check rows without internal job labels',()=>{
+it('labels an actionable incomplete check without exposing internal job labels',()=>{
  const p=props();
- p.alerts=[{...p.alerts[0],title:'No release on Acme/web'}];
- p.rows=[{...p.rows[0],title:'No release on Acme/web',coordinate:'scan_latest_release',rule:'scan_latest_release',operational:true,exposure:'Saved check'}];
+ p.alerts=[{...p.alerts[0],title:'Latest release check could not finish',body:'GitHub returned an incomplete asset response.'}];
+ p.rows=[{...p.rows[0],title:'Latest release check could not finish',coordinate:'Acme/web',rule:'scan_latest_release',operational:true,queueKind:'incomplete-check',exposure:'Saved check'}];
  p.selected=p.alerts[0];
  render(<WatchAlertsWorkspace {...p}/>);
- const row=screen.getByRole('button',{name:'Acme/web. No published release'});
+ const row=screen.getByRole('button',{name:'Latest release check could not finish. Check incomplete · Acme/web'});
  expect(row.textContent).not.toContain('scan_latest_release');
  expect(row.textContent).not.toContain('Saved check');
- expect(screen.getByText('Latest release check').getAttribute('title')).toBe('scan_latest_release');
- expect(screen.getByRole('heading',{name:'No release on Acme/web'})).toBeTruthy();
+ expect(screen.getByText(/opened this from a latest release check/)).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Latest release check could not finish'})).toBeTruthy();
 });

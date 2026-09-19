@@ -39,7 +39,7 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  });vi.stubGlobal('fetch',fetch);
  render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=9"/>);
  await screen.findByRole('heading',{name:'Website exposure'});
- expect(screen.getByRole('link',{name:'Open the saved website check'}).getAttribute('href')).toContain('upload=attempt');
+ expect((await screen.findByRole('link',{name:'Open the saved website check'})).getAttribute('href')).toContain('upload=attempt');
  expect(fetch.mock.calls.filter(([url])=>url.includes('/alerts?'))).toHaveLength(1);
  expect(fetch.mock.calls.some(([url])=>url.includes('status=open&mine=0'))).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Older'}));

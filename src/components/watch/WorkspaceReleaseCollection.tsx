@@ -18,11 +18,12 @@ export function WorkspaceReleaseCollection({search,installationId,defaultCollect
   for(const key of ['upload','uploadView','uploadBefore','uploadFinding','uploadTab','uploadStatus','release','preview'])next.delete(key);
   navigate(`/watch/releases?${next}`);
  }
- return <section className="watch-release-index" aria-label="Releases"><WatchPageHeader title="Release evidence." lede="Find a build, understand its result, or return to an unfinished attempt." action={canScan?<Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>:undefined}/>
-  <div className="mt-5 flex flex-wrap gap-1 border-b border-white/10" role="tablist" aria-label="Release history type" onKeyDown={event=>{
+ return <section className="watch-release-index" aria-label="Releases"><WatchPageHeader title="Releases" lede="Choose a saved release, understand its decision, then open the complete evidence brief." action={canScan?<Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>:undefined}/>
+  <p className="journey-release-scope">This workspace contains uploaded and website release evidence. Connected GitHub releases appear only in workspaces that own that installation.</p>
+  <div className="journey-release-tabs release-collection-tabs" role="tablist" aria-label="Release history type" onKeyDown={event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
    const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next].focus();tabs[next].click();
-  }}>{(['uploads','attempts'] as const).map(value=><button key={value} type="button" role="tab" id={`${id}-${value}`} aria-controls={`${id}-panel`} aria-selected={collection===value} tabIndex={collection===value?0:-1} className="min-h-11 border-b-2 border-transparent px-3 text-sm text-mute aria-selected:border-white/60 aria-selected:text-snow" onClick={()=>choose(value)}>{value==='uploads'?'Uploaded builds':'Attempts'}</button>)}</div>
+  }}>{(['uploads','attempts'] as const).map(value=><button key={value} type="button" role="tab" id={`${id}-${value}`} aria-controls={`${id}-panel`} aria-selected={collection===value} tabIndex={collection===value?0:-1} onClick={()=>choose(value)}>{value==='uploads'?'Recorded releases':'Attempts'}</button>)}</div>
   <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${collection}`}><UploadedReleases search={search} installationId={installationId} collection={collection}/></div>
  </section>;
 }

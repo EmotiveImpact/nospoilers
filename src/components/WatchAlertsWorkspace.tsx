@@ -7,7 +7,7 @@ import {
   type WatchSectionState,
 } from "@/components/WatchDataState";
 import { cn } from "@/lib/utils";
-import type { AlertListViewModel } from "@/watch/view-models.ts";
+import {findingSeverity,type AlertListViewModel} from "@/watch/view-models.ts";
 import type { AlertActivityEvent } from "@/watch/useWatchDeskController.ts";
 import type { AlertTab } from "@/watch/routes.ts";
 import { filterDeskAlerts } from "@/watch/verdict.ts";
@@ -16,11 +16,17 @@ import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 function alertQueueCopy(row: AlertListViewModel) {
-  const missingRelease = row.operational && row.title.startsWith("No release on ");
+  const category = row.operational
+    ? "Check incomplete"
+    : row.severity === "critical"
+      ? "Critical finding"
+      : "Finding";
+  const context = row.coordinate !== row.rule && !row.title.includes(row.coordinate)
+    ? row.coordinate
+    : null;
   return {
-    title: missingRelease ? row.title.slice("No release on ".length) : row.title,
-    summary: missingRelease ? "No published release" : row.operational ? "Release check incomplete" :
-      row.coordinate !== row.rule && !row.title.includes(row.coordinate) ? row.coordinate : null,
+    title: row.title,
+    summary: [category, context].filter(Boolean).join(" · "),
   };
 }
 
@@ -31,7 +37,7 @@ export type WatchAlertDetail = {
   kind: string;
   title: string;
   body: string;
-  findings: { rule: string; path: string }[] | null;
+  findings: { rule: string; path: string; severity?: string }[] | null;
   created_at: string;
   full_name?: string | null;
   acknowledged_at?: string | null;
@@ -187,7 +193,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Review findings and incomplete checks without mixing them together.</p></div>
+        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Review findings and checks that need a response. Sources without a published release stay in Coverage and retained history.</p></div>
         {!previewing ? (
           <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
             {exportLabel}
@@ -249,11 +255,11 @@ export function WatchAlertsWorkspace({
               <li>
                 <div className="watch-empty m-4">
                   <strong className="block text-sm font-medium text-snow">
-                    {hasSources ? "No alerts match this view" : "The inbox starts after your first source"}
+                    {hasSources ? "No actionable alerts match this view" : "The inbox starts after your first source"}
                   </strong>
                   <p className="mt-1.5">
                     {hasSources
-                      ? "There are no real alerts in this queue."
+                      ? "Findings and incomplete checks that need a response will appear here."
                       : "Connect and check a source before treating an empty inbox as a clear release."}
                   </p>
                   {!hasSources ? (
@@ -357,12 +363,12 @@ export function WatchAlertsWorkspace({
                           <div key={`${finding.rule}:${finding.path}`} className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
                             <span className="font-mono text-xs text-snow">{finding.rule}</span>
                             <span className="truncate font-mono text-xs text-mute">{finding.path}</span>
-                            <span className={selectedRow.severity === "critical" ? "watch-pill watch-pill-crit" : "watch-pill watch-pill-warn"}>{selectedRow.severity}</span>
+                            <span className={findingSeverity(finding) === "critical" ? "watch-pill watch-pill-crit" : "watch-pill watch-pill-warn"}>{findingSeverity(finding)}</span>
                           </div>
                         ))
                       ) : (
                         <>
-                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational && selected.title.startsWith("No release on ") ? alertQueueCopy(selectedRow).title : selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
+                          <div className="px-4 py-3 text-xs text-mute">{selected.full_name ?? (selectedRow.operational ? "Repository not recorded" : selected.kind)}</div>
                           {selectedRow.operational ? (
                             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs text-dim">
                               <span>Technical check</span>

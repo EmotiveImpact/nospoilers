@@ -6,6 +6,7 @@ import {SourcesScreen} from '../src/components/watch/screens/SourcesScreen';
 const state=vi.hoisted(()=>({ended:true,view:'setup'}));
 vi.mock('../src/components/watch/useWatchScreenContext',()=>({useWatchScreenContext:()=>({
  ended:state.ended,route:{view:state.view},search:'',sourceRows:[],
+ sourceSectionState:{status:'ready'},
  CoverageLock:()=> <button>See plans</button>,
  WatchSourcesSummary:()=> <button>Configure source</button>,
 })}));

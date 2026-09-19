@@ -46,6 +46,8 @@ describe('uploaded release workspace flow',()=>{
   it('routes website retry to coverage instead of asking for an artifact upload',async()=>{
     vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('website',7),workspace_id:'team',source_origin_id:4,target:'https://example.com/'}]})));
     render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=website"/>);
+    expect(await screen.findByText('Unavailable')).toBeTruthy();
+    expect(screen.queryByText('Point-in-time public website scan')).toBeNull();
     fireEvent.click(await screen.findByRole('button',{name:'Open website controls'}));
     expect(window.location.pathname+window.location.search).toBe('/watch/sources?workspace=team&configure=website');
     expect(screen.queryByRole('button',{name:'Upload a new attempt'})).toBeNull();
@@ -67,7 +69,7 @@ describe('uploaded release workspace flow',()=>{
     const fetcher=vi.fn(()=>json({uploads:[upload('old',7)],nextCursor:null}));vi.stubGlobal('fetch',fetcher);
     render(<UploadedReleases installationId={7} search="?install=7&uploadBefore=cursor&uploadStatus=attention"/>);
     await screen.findByRole('button',{name:/old.zip/});
-    expect(fetcher).toHaveBeenCalledWith('/api/uploads?installationId=7&before=cursor&status=attention',expect.anything());
+    expect(fetcher).toHaveBeenCalledWith('/api/uploads?installationId=7&before=cursor&status=attention&collection=attempts',expect.anything());
     fireEvent.click(screen.getByRole('button',{name:'Newest releases'}));expect(new URLSearchParams(window.location.search).has('uploadBefore')).toBe(false);
   });
   it('distinguishes an unavailable deep link from a first-time empty workspace',async()=>{
@@ -107,7 +109,7 @@ describe('uploaded release workspace flow',()=>{
 
 it('selects a status by keyboard while preserving tenant scope and clearing the old page and finding',async()=>{
  vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7)]})));
- render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first&uploadBefore=old&uploadFinding=2&uploadTab=findings"/>);
+ render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first&uploadBefore=old&uploadFinding=2&uploadTab=findings" collection="uploads"/>);
  await screen.findByRole('heading',{name:'first.zip'});
  const trigger=screen.getByRole('combobox',{name:'Status'});trigger.focus();
  await userEvent.keyboard('{Enter}');await screen.findByRole('listbox');await userEvent.keyboard('{End}{Enter}');
@@ -124,5 +126,23 @@ it('keeps completed builds separate from unfinished attempts and filters visible
  fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:'absent'}});expect(screen.queryByRole('button',{name:/complete.zip/})).toBeNull();
  fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:''}});
  view.rerender(<UploadedReleases installationId={7} search="?install=7" collection="attempts"/>);
- expect(screen.getByRole('button',{name:/failed.zip/})).toBeTruthy();
+ expect(await screen.findByRole('button',{name:/failed.zip/})).toBeTruthy();
+ expect(screen.queryByRole('button',{name:/complete.zip/})).toBeNull();
+});
+
+it('selects the first visible release into the evidence pane without inventing production proof',async()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('complete',7),status:'done',report_json:{ok:true,status:'passed',fileCount:2,findings:[]}}]})));
+ render(<UploadedReleases installationId={7} search="?install=7" collection="uploads"/>);
+ expect(await screen.findByRole('heading',{name:'complete.zip'})).toBeTruthy();
+ expect(screen.getByRole('table').querySelector('tr[aria-current="true"]')).toBeTruthy();
+ expect(screen.getByText('Unobserved')).toBeTruthy();
+ expect(screen.getByText(/Matched, Mismatched, Unobserved and Unsupported appear only/)).toBeTruthy();
+});
+
+it('does not claim exact source identity when a failed attempt has no recorded digest',async()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('unidentified',7),artifact_sha256:null}]})));
+ render(<UploadedReleases installationId={7} search="?install=7" collection="attempts"/>);
+ expect(await screen.findByRole('heading',{name:'unidentified.zip'})).toBeTruthy();
+ expect(screen.getByText('Unrecorded')).toBeTruthy();
+ expect(screen.getByText('Exact artifact identity was not recorded for this attempt.')).toBeTruthy();
 });

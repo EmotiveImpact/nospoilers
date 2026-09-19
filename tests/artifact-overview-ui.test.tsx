@@ -9,7 +9,7 @@ const data={workspace:{name:'Product',archived:false},counts:{total:60,active:0,
 function load(extra:Record<string,unknown>={}){vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,...extra})));render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace&install=7" nowLabel="Today"/>);}
 it('matches the approved composition without old panels, release-mode tabs or an evidence drawer',async()=>{
  load({connectedCoverage:{total:4,paused:1,unknown:1,delayed:1,recent:1},alertCounts:{open:3,waiting:2,done:4,mine:1}});
- await screen.findByRole('heading',{name:'Your releases, at a glance.'});
+ await screen.findByRole('heading',{name:'Your latest release evidence is ready.'});
  expect(screen.getByRole('columnheader',{name:'Build'})).toBeTruthy();
  expect(screen.getByRole('columnheader',{name:'Files'})).toBeTruthy();
  const recent=screen.getByRole('heading',{name:'Recent release scans'});
@@ -26,22 +26,36 @@ it('matches the approved composition without old panels, release-mode tabs or an
 it('opens the latest evidence directly and keeps workspace and installation scope',async()=>{
  load();fireEvent.click(await screen.findByRole('button',{name:'Review evidence'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=7&upload=scan&uploadView=detail');
- fireEvent.click(screen.getByRole('button',{name:'Need review 2'}));
+ fireEvent.click(screen.getByRole('button',{name:'Failed attempts needing review 2'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=7&releaseView=attempts&uploadStatus=attention');
  fireEvent.click(screen.getByRole('button',{name:'All releases'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=7');
 });
-it('describes the hero release outcome rather than unrelated open alerts',async()=>{
- load({alertCounts:{open:22,waiting:0,done:0,mine:0}});
- expect(await screen.findByText('The recorded scan passed its configured policy. Open the evidence to review its scope.')).toBeTruthy();
- expect(screen.queryByText(/Open alerts need a response/)).toBeNull();
- expect(screen.getAllByText('Policy passed').length).toBe(2);
+it('places a repository exposure ahead of a passing upload and routes to the exact alert',async()=>{
+ load({alertCounts:{open:1,waiting:0,done:0,mine:0},priorityAlert:{id:77,title:'Public repository detected',body:'Repository visibility changed.',kind:'repo_publicized',findings:[],created_at:'2026-09-05T13:00:00Z',acknowledged_at:null,resolved_at:null,status:'open'}});
+ expect(await screen.findByRole('heading',{name:'One release alert needs your response.'})).toBeTruthy();
+ expect(screen.getAllByText('Repository exposure').length).toBeGreaterThan(0);
+ expect(screen.getByRole('heading',{name:'Public repository detected'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Review alert'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7&alert=77&tab=open');
+});
+it('uses recorded severity from every finding in the priority alert',async()=>{
+ load({priorityAlert:{id:78,title:'Critical archive evidence',body:'Critical evidence recorded.',kind:'release_scan',findings:[{rule:'DOC-001',path:'notes.md',severity:'warn'},{rule:'LNK-001',path:'unsafe-link',severity:'critical'}],created_at:'2026-09-05T13:00:00Z',acknowledged_at:null,resolved_at:null,status:'open'}});
+ expect(await screen.findByText('Critical finding')).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Critical archive evidence'})).toBeTruthy();
 });
 it('does not claim unavailable file counts or production verification',async()=>{
  load();await screen.findByRole('table');
  expect(screen.getByLabelText('File count not available in this summary').textContent).toBe('—');
- expect(screen.getByText('Production evidence is separate')).toBeTruthy();
+ expect(screen.getByText('Production evidence remains a separate lane')).toBeTruthy();
  expect(screen.queryByText('Production not checked')).toBeNull();
+});
+it('prioritises a returned release that needs review over a newer passing record',async()=>{
+ load({recent:[data.recent[0],{...data.recent[0],id:'review',target:'needs-review.tgz',created_at:'2026-09-04T12:00:00Z',verdict:'Review findings'}]});
+ expect(await screen.findByRole('heading',{name:'One release needs review.'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:/Release artifact.*needs-review\.tgz/})).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Release work'})).toBeTruthy();
+ expect(screen.getByRole('complementary',{name:'Coverage status'})).toBeTruthy();
 });
 it('uses only actual completed returned records for daily activity',async()=>{
  const now=new Date().toISOString();

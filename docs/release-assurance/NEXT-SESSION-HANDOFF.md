@@ -1,4 +1,12 @@
-# Current NoSpoilers continuation — 16 September 2026
+# Current NoSpoilers continuation — 19 September 2026
+
+## 19 September final-pass checkpoint
+
+The current real app now incorporates the owner-requested mock 39/final-pass hierarchy across Overview, Releases, Alerts and Scan. Overview ranks real failed attempts/findings ahead of passing evidence; Releases separates recorded releases, connected releases and attempts with server-side collection paging; Alerts contains only actionable findings/incomplete checks while retained coverage reminders remain exportable; Scan uses the shared connected-repository picker and visible re-check framing. The preserved signed-in workspace was reviewed after a same-state restart. Exact evidence and test commands are in the latest BUILD-LOG entry.
+
+Do not restore the 22 `scan_latest_release` “No release on …” records to the actionable Alerts inbox. They are retained history and Coverage evidence, not response work. Do not collapse failed attempts into completed releases, infer critical severity from a rule prefix, or label website/production evidence observed without a completed report.
+
+Latest verification: 73/73 focused product cases, 63/63 loopback/CLI integration cases, 22/22 repaired coverage/security/architecture contract cases, typecheck, lint exit 0 with existing warnings, build and diff check. One full-suite attempt was intentionally not repeated: its 11 failures were fully accounted for and the affected groups passed after sandbox access or stale-contract correction. PR #44 remains draft; Railway, deployment, native zoom and audible screen-reader checks remain separate.
 
 ## 16 September correction — reference fidelity
 
@@ -35,7 +43,7 @@ The active scope is app-wide design and Gate C C1–C3, not another backend feat
 
 ## Approved design and preserved runtime
 
-- Reference: `public/mockup-review/2b/30-quiet-structure.html`, design gallery31 and the approved live Overview. Earlier mockups23/28 are historical directions.
+- Current convergence reference: `public/mockup-review/2b/39-best-outcome.html`, informed by 38 and the approved quiet structure in 30/36. Earlier mockups23/28 are historical directions. The production app must keep real data and existing controls rather than copy sample records.
 - Preserve sidebar/logo/whole-sidebar hover behaviour and title/trial/search arrangement. Dark surfaces, restrained corners, fine dividers, semantic status colours and existing top glow remain approved.
 - No visible inter-page loading placeholders. WatchSkeleton is screen-reader-only. Initial Watch lighthouse remains. Page scroll resets before paint; delayed focus does not reset scroll again. Overview and release assurance no longer mount temporary visible reading cards/headings during fetch; pending/error messages remain. Latest focused29-case evidence is in BUILD-LOG.
 - Real signed-in app: `http://127.0.0.1:4347`, workspace `ccd3c6b7-1349-4b3b-1bfb-95298f23cd7e`, install `160267630`. Use its existing Codex in-app browser through computer use. Do not extract sessions/cookies or use a separate unauthenticated browser.
