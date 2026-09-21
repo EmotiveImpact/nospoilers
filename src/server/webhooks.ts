@@ -209,12 +209,20 @@ async function revokeGithubAppAuthorization(
     return { queued: false, kind: "github_app_authorization" };
   }
   const userId = String(senderId);
-  if (!(await store.userExists(userId))) {
+  const connectorUserId = await store.clearGithubConnectorAccessToken(senderId);
+  if (!connectorUserId && !(await store.userExists(userId))) {
     return { queued: false, kind: "github_app_authorization" };
   }
-  await store.deleteUserSessions(userId);
-  await store.clearUserAccessToken(userId);
-  logJson("info", "github_app_authorization.revoked", { userId });
+  // Preserve the historical GitHub-auth session behavior. Provider-neutral users
+  // keep their product session; revoking GitHub only disconnects that connector.
+  if (!connectorUserId || connectorUserId === userId) {
+    await store.deleteUserSessions(userId);
+    await store.clearUserAccessToken(userId);
+  }
+  logJson("info", "github_app_authorization.revoked", {
+    userId: connectorUserId ?? userId,
+    productSessionRevoked: !connectorUserId || connectorUserId === userId,
+  });
   return { queued: false, kind: "github_app_authorization" };
 }
 

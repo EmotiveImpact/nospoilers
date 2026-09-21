@@ -14,6 +14,7 @@ import { createWorker } from "../src/server/worker.ts";
 import { packAssetFingerprint, releaseScanDeliveryId } from "../src/server/webhooks.ts";
 import { scan } from "../src/scanner/index.ts";
 import { SOLO_HEAVY_FAIR_USE, TEAM_HEAVY_FAIR_USE } from "../src/server/fair-use.ts";
+import { resolveTrustedProductIdentity } from "../src/server/product-identity.ts";
 
 const SECRET = "test-webhook-secret";
 
@@ -754,6 +755,36 @@ describe("GitHub webhooks", () => {
         "SELECT count(*)::text AS n FROM installations",
       );
       expect(Number(installs[0]?.n)).toBe(1);
+    });
+  });
+
+  it("keeps a provider-neutral product session when a connected GitHub authorization is revoked", async () => {
+    await withStore(async ({ store }) => {
+      const identity = await resolveTrustedProductIdentity(store, {
+        issuer: "https://auth.example.test",
+        subject: "managed-user-4242",
+        login: "Managed user",
+      });
+      await store.upsertGithubConnectorAccount({
+        userId: identity.userId,
+        githubAccountId: 4242,
+        login: "octo",
+        accessToken: "ghu_connector",
+      });
+      const sessionId = await store.createSession(identity.userId);
+      const { app } = appFor(store);
+
+      const res = await postWebhook(app, "github_app_authorization", "d-authz-connector", {
+        action: "revoked",
+        sender: { id: 4242, login: "octo" },
+      });
+
+      expect(res.status).toBe(200);
+      expect(await store.getUserAccessToken(identity.userId)).toBeNull();
+      expect(await store.getSession(sessionId)).not.toBeNull();
+      const cookie = `ns_session=${signSession("sess", sessionId)}`;
+      const me = await app.request("/api/me", { headers: { cookie } });
+      expect(((await me.json()) as { user: { id: string } | null }).user?.id).toBe(identity.userId);
     });
   });
 

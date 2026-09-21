@@ -432,7 +432,7 @@ Internal staff running acquisition and disclosure work.
 - Change another customer’s billing or GitHub installation.
 - Export cross-customer datasets for research without anonymization review.
 
-**Current implementation:** Owner credentials (`ADMIN_TOKEN` or `ADMIN_GITHUB_LOGIN`)
+**Current implementation:** Owner credentials (`ADMIN_TOKEN`, stable `ADMIN_USER_ID`, or transitional `ADMIN_GITHUB_LOGIN`)
 are always operators. The owner can grant additional GitHub logins operator access
 (`GET`/`POST`/`DELETE /api/internal/operators`, cap 8, typed login confirm). Granted
 operators use Artifact Leads and Disclosure Desk. Queue counts and further grants stay
@@ -495,10 +495,13 @@ These are never customer features:
 - Sign-in (`/api/auth/github` and the OAuth callback) and owner Artifact Leads
   discover/inspect/rescan are rate-limited per address after the relevant auth check.
   Anonymous 401s do not consume the discovery budget. GitHub webhooks are not rate-limited.
-- GitHub `github_app_authorization` with `action: revoked` deletes that user’s sessions and
-  discards the stored GitHub OAuth token. HMAC is still required. The GitHub installation is
-  not deleted. Coverage does not gate this. Other users on the same install keep their sessions.
-  Sign-out deletes only the current session cookie’s row.
+- GitHub `github_app_authorization` with `action: revoked` discards that exact connector's stored
+  OAuth token. HMAC is still required. During the identity transition, a legacy GitHub-only user
+  (whose internal ID is the GitHub account ID) also loses product sessions, preserving the previous
+  behavior. A provider-neutral user keeps the NoSpoilers session because GitHub is a separately
+  authorised source connector. The GitHub installation is not deleted, coverage does not gate this,
+  and other users on the same installation keep their sessions. Sign-out deletes only the current
+  session cookie's row.
 - GitHub `installation_target` with `action: renamed` updates that installation’s stored
   account login in place. HMAC is still required. No job, no alert, no worker wake. Unpaid
   installs still update so Watch lists the current GitHub name. Unknown installs are a no-op
@@ -508,7 +511,8 @@ These are never customer features:
 
 1. **Public / customer APIs** — signed session cookie `ns_session` where required.
 2. **Internal APIs** — `Authorization: Bearer $ADMIN_TOKEN`, `x-admin-token`, a
-   session whose GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`),
+   session whose stable product identity matches `ADMIN_USER_ID`, a transitional session whose
+   GitHub login matches `ADMIN_GITHUB_LOGIN` (default `EmotiveImpact`),
    **or** a session whose GitHub login has an owner-granted `operator_grants` row.
    Queue counts and operator-grant admin stay owner-only (403).
 3. Health reports `database.mode` as `neon`, `postgres`, or `pglite` and never the URL.

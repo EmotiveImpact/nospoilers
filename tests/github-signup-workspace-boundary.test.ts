@@ -47,6 +47,14 @@ it('creates a scoped personal workspace after verified OAuth and preserves its o
     const signedIn = await finish(first);
     expect(signedIn.workspaces).toHaveLength(1);
     expect(signedIn.workspaces[0]).toMatchObject({role: 'owner', installation_id: null});
+    expect((await sql.query<{issuer:string;subject:string;user_id:string}>(
+      "SELECT issuer,subject,user_id FROM product_auth_identities WHERE user_id='9001'",
+    )).rows).toEqual([{issuer:'https://github.com',subject:'9001',user_id:'9001'}]);
+    expect((await sql.query<{github_account_id:string|number;user_id:string;login:string}>(
+      "SELECT github_account_id,user_id,login FROM github_connector_accounts WHERE user_id='9001'",
+    )).rows.map(row=>({...row,github_account_id:Number(row.github_account_id)}))).toEqual([
+      {github_account_id:9001,user_id:'9001',login:'signup-fixture'},
+    ]);
     const trial = (await sql.query<{trial_ends_at: Date | string | null}>("SELECT trial_ends_at FROM users WHERE id='9001'")).rows[0];
     expect(trial.trial_ends_at).toBeTruthy();
     expect((await finish(await begin())).workspaces.map(workspace => workspace.id)).toEqual(signedIn.workspaces.map(workspace => workspace.id));

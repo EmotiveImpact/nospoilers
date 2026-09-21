@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {lockAlertResponse} from './alert-response-authority.ts';
 import {refundJobReservation,reserveJobRetry,reserveBillingPayer,refundBillingPayer} from './job-billing.ts';
 import {sourceBillingSql} from './source-billing.ts';
@@ -1927,6 +1927,156 @@ export function createStore(
       );
     },
 
+    async resolveProductIdentity(input: {
+      issuer: string;
+      subject: string;
+      login: string;
+      avatarUrl?: string;
+      legacyUserId?: string;
+    }): Promise<{ userId: string; created: boolean }> {
+      return await sql.transaction(async tx => {
+        const existing = await tx.query<{ user_id: string }>(
+          `SELECT user_id FROM product_auth_identities WHERE issuer = $1 AND subject = $2`,
+          [input.issuer, input.subject],
+        );
+        if (existing.rows[0]) {
+          const userId = existing.rows[0].user_id;
+          await tx.query(
+            `UPDATE users SET login = $2, avatar_url = COALESCE($3, avatar_url) WHERE id = $1`,
+            [userId, input.login, input.avatarUrl ?? null],
+          );
+          await tx.query(
+            `UPDATE product_auth_identities SET last_seen_at = now()
+             WHERE issuer = $1 AND subject = $2`,
+            [input.issuer, input.subject],
+          );
+          return { userId, created: false };
+        }
+
+        const userId = input.legacyUserId || randomUUID();
+        await tx.query(
+          `INSERT INTO users (id, login, avatar_url, trial_ends_at, plan)
+           VALUES ($1, $2, $3, now() + interval '${TRIAL_DAYS} days', 'trial')
+           ON CONFLICT (id) DO UPDATE SET
+             login = excluded.login,
+             avatar_url = COALESCE(excluded.avatar_url, users.avatar_url),
+             trial_ends_at = COALESCE(users.trial_ends_at, now() + interval '${TRIAL_DAYS} days'),
+             plan = COALESCE(users.plan, 'trial')`,
+          [userId, input.login, input.avatarUrl ?? null],
+        );
+        const linked = await tx.query<{ user_id: string }>(
+          `INSERT INTO product_auth_identities (issuer, subject, user_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (issuer, subject) DO NOTHING
+           RETURNING user_id`,
+          [input.issuer, input.subject, userId],
+        );
+        if (linked.rows[0]) return { userId, created: true };
+
+        const winner = await tx.query<{ user_id: string }>(
+          `SELECT user_id FROM product_auth_identities WHERE issuer = $1 AND subject = $2`,
+          [input.issuer, input.subject],
+        );
+        if (!winner.rows[0]) throw new Error("Trusted identity could not be linked.");
+        if (winner.rows[0].user_id !== userId) {
+          await tx.query(
+            `DELETE FROM users u WHERE u.id = $1
+             AND NOT EXISTS (SELECT 1 FROM product_auth_identities i WHERE i.user_id = u.id)`,
+            [userId],
+          );
+        }
+        return { userId: winner.rows[0].user_id, created: false };
+      });
+    },
+
+    async linkProductIdentity(input: {
+      userId: string;
+      issuer: string;
+      subject: string;
+    }): Promise<void> {
+      await sql.transaction(async tx => {
+        const existing = await tx.query<{ user_id: string }>(
+          `SELECT user_id FROM product_auth_identities WHERE issuer = $1 AND subject = $2 FOR UPDATE`,
+          [input.issuer, input.subject],
+        );
+        if (existing.rows[0] && existing.rows[0].user_id !== input.userId) {
+          throw Object.assign(new Error("That sign-in identity is already linked to another account."), {
+            status: 409,
+          });
+        }
+        const inserted = await tx.query<{ user_id: string }>(
+          `INSERT INTO product_auth_identities (issuer, subject, user_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (issuer, subject) DO NOTHING
+           RETURNING user_id`,
+          [input.issuer, input.subject, input.userId],
+        );
+        if (inserted.rows[0]) return;
+        const linked = await tx.query<{ user_id: string }>(
+          `SELECT user_id FROM product_auth_identities WHERE issuer = $1 AND subject = $2`,
+          [input.issuer, input.subject],
+        );
+        if (linked.rows[0]?.user_id !== input.userId) {
+          throw Object.assign(new Error("That sign-in identity is already linked to another account."), {
+            status: 409,
+          });
+        }
+        await tx.query(
+          `UPDATE product_auth_identities SET last_seen_at = now()
+           WHERE issuer = $1 AND subject = $2 AND user_id = $3`,
+          [input.issuer, input.subject, input.userId],
+        );
+      });
+    },
+
+    async listProductIdentities(userId: string): Promise<Array<{ issuer: string; subject: string }>> {
+      const { rows } = await sql.query<{ issuer: string; subject: string }>(
+        `SELECT issuer, subject FROM product_auth_identities
+         WHERE user_id = $1 ORDER BY created_at ASC, issuer ASC, subject ASC`,
+        [userId],
+      );
+      return rows;
+    },
+
+    async upsertGithubConnectorAccount(input: {
+      userId: string;
+      githubAccountId: number;
+      login: string;
+      avatarUrl?: string;
+      accessToken: string;
+    }): Promise<void> {
+      const storedToken = tokenSecret ? encryptSecret(input.accessToken, tokenSecret) : input.accessToken;
+      await sql.transaction(async tx => {
+        const existing = await tx.query<{ user_id: string }>(
+          `SELECT user_id FROM github_connector_accounts WHERE github_account_id = $1 FOR UPDATE`,
+          [input.githubAccountId],
+        );
+        if (existing.rows[0] && existing.rows[0].user_id !== input.userId) {
+          throw Object.assign(new Error("That GitHub account is already connected to another NoSpoilers account."), {
+            status: 409,
+          });
+        }
+        const linked = await tx.query<{ user_id: string }>(
+          `INSERT INTO github_connector_accounts
+             (github_account_id, user_id, login, avatar_url, access_token)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (github_account_id) DO UPDATE SET
+             login = excluded.login,
+             avatar_url = excluded.avatar_url,
+             access_token = excluded.access_token,
+             refreshed_at = now()
+           WHERE github_connector_accounts.user_id = excluded.user_id
+           RETURNING user_id`,
+          [input.githubAccountId, input.userId, input.login, input.avatarUrl ?? null, storedToken],
+        );
+        if (linked.rows[0]?.user_id !== input.userId) {
+          throw Object.assign(new Error("That GitHub account is already connected to another NoSpoilers account."), {
+            status: 409,
+          });
+        }
+      });
+    },
+
     async createSession(userId: string, ttlMs = 30 * 24 * 60 * 60 * 1000): Promise<string> {
       await ensureUserWorkspaces(sql,userId);
       const id = randomBytes(24).toString("hex");
@@ -2093,19 +2243,42 @@ export function createStore(
     },
 
     async clearUserAccessToken(userId: string): Promise<void> {
-      await sql.query(`UPDATE users SET access_token = NULL WHERE id = $1`, [userId]);
+      await sql.transaction(async tx => {
+        await tx.query(`UPDATE users SET access_token = NULL WHERE id = $1`, [userId]);
+        await tx.query(`UPDATE github_connector_accounts SET access_token = NULL WHERE user_id = $1`, [userId]);
+      });
+    },
+
+    async clearGithubConnectorAccessToken(githubAccountId: number): Promise<string | null> {
+      const { rows } = await sql.query<{ user_id: string }>(
+        `UPDATE github_connector_accounts SET access_token = NULL, refreshed_at = now()
+         WHERE github_account_id = $1 RETURNING user_id`,
+        [githubAccountId],
+      );
+      return rows[0]?.user_id ?? null;
     },
 
     async getUserAccessToken(userId: string): Promise<string | null> {
       const { rows } = await sql.query<{ access_token: string | null }>(
-        `SELECT access_token FROM users WHERE id = $1`,
+        `SELECT access_token FROM github_connector_accounts
+         WHERE user_id = $1 AND access_token IS NOT NULL
+         ORDER BY refreshed_at DESC, github_account_id ASC LIMIT 1`,
         [userId],
       );
-      const stored = rows[0]?.access_token?.trim();
+      let stored = rows[0]?.access_token?.trim();
+      let legacy = false;
+      if (!stored) {
+        const fallback = await sql.query<{ access_token: string | null }>(
+          `SELECT access_token FROM users WHERE id = $1`,
+          [userId],
+        );
+        stored = fallback.rows[0]?.access_token?.trim();
+        legacy = Boolean(stored);
+      }
       if (!stored) return null;
       if (!tokenSecret) return stored;
       const plain = decryptSecret(stored, tokenSecret);
-      if (!looksEncrypted(stored)) {
+      if (legacy && !looksEncrypted(stored)) {
         await sql.query(`UPDATE users SET access_token = $2 WHERE id = $1`, [
           userId,
           encryptSecret(plain, tokenSecret),

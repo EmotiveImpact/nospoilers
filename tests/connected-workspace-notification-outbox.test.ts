@@ -51,6 +51,6 @@ it('queues only future connected alerts for independent workspace delivery',asyn
    .toEqual([{workspace_id:workspace.id,installation_id:null,alert_id:alertId,status:'sent'}]);
   expect((await sql.query('SELECT id FROM notification_deliveries WHERE alert_id=$1',[historical])).rows).toEqual([]);
   expect((await sql.query<{id:string}>('SELECT id FROM schema_migrations WHERE id=$1',[CURRENT_SCHEMA_MIGRATION])).rows)
-   .toEqual([{id:'122_connected_workspace_notification_outbox'}]);
+   .toEqual([{id:CURRENT_SCHEMA_MIGRATION}]);
  } finally {await sql.close();}
 },30000);

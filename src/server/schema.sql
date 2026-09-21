@@ -20,6 +20,31 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS product_auth_identities (
+  issuer TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (issuer, subject)
+);
+
+CREATE INDEX IF NOT EXISTS product_auth_identities_user_idx
+  ON product_auth_identities (user_id, created_at ASC);
+
+CREATE TABLE IF NOT EXISTS github_connector_accounts (
+  github_account_id BIGINT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  login TEXT NOT NULL,
+  avatar_url TEXT,
+  access_token TEXT,
+  connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  refreshed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS github_connector_accounts_user_idx
+  ON github_connector_accounts (user_id, refreshed_at DESC);
+
 CREATE TABLE IF NOT EXISTS installations (
   id BIGINT PRIMARY KEY,
   account_login TEXT NOT NULL,

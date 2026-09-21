@@ -14,6 +14,7 @@ export type AppConfig = {
   githubAppSlug: string;
   githubDiscoveryToken: string;
   adminToken: string;
+  adminUserId: string;
   adminGithubLogin: string;
   sessionSecret: string;
   receiptSecret: string;
@@ -134,6 +135,7 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     githubAppSlug: env("GITHUB_APP_SLUG", "nospoilers"),
     githubDiscoveryToken: env("GITHUB_DISCOVERY_TOKEN"),
     adminToken: env("ADMIN_TOKEN"),
+    adminUserId: env("ADMIN_USER_ID"),
     adminGithubLogin: env("ADMIN_GITHUB_LOGIN", "EmotiveImpact"),
     sessionSecret: env("SESSION_SECRET") || env("GITHUB_WEBHOOK_SECRET") || "dev-session-not-for-production",
     receiptSecret: env("RECEIPT_SECRET"),

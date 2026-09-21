@@ -31,6 +31,39 @@ function unusedGithub(): GithubPort {
 }
 
 describe("Disclosure Desk researcher roles", () => {
+  it("recognises the owner by stable product user ID without depending on a GitHub login", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "stable-owner", login: "email-account" });
+      await store.upsertUser({ id: "other-user", login: "email-account" });
+      const app = createApp({
+        config: loadConfig({
+          adminToken: "",
+          adminUserId: "stable-owner",
+          adminGithubLogin: "legacy-owner",
+          sessionSecret: "desk-op-session",
+        }),
+        store,
+        github: unusedGithub(),
+      });
+      const ownerSession = await store.createSession("stable-owner");
+      const otherSession = await store.createSession("other-user");
+
+      const owner = await app.request("/api/internal/operators", {
+        headers: { cookie: `ns_session=${signSession("desk-op-session", ownerSession)}` },
+      });
+      expect(owner.status).toBe(200);
+      const other = await app.request("/api/internal/operators", {
+        headers: { cookie: `ns_session=${signSession("desk-op-session", otherSession)}` },
+      });
+      expect(other.status).toBe(401);
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("lets the owner grant operator access without queue rights or a worker wake", async () => {
     const sql = await openSql("pglite://:memory:");
     try {

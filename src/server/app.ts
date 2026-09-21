@@ -235,6 +235,10 @@ import {stageUnboundGithubEvent} from './github-pending-events.ts';
 import {createGithubConnectionIntent,inspectGithubConnectionIntent} from './github-connection-intents.ts';
 import {connectGithubWorkspace} from './github-workspace-connection.ts';
 import {
+  PRODUCT_IDENTITY_ISSUER_GITHUB,
+  resolveTrustedProductIdentity,
+} from './product-identity.ts';
+import {
   parseReleaseScanMeta,
   ReleaseLedgerError,
 } from "./release-ledger.ts";
@@ -937,8 +941,9 @@ export function createApp(deps: AppDeps): Hono {
     const user = await currentUser(c);
     return Boolean(
       user &&
-        deps.config.adminGithubLogin &&
-        user.login.toLowerCase() === deps.config.adminGithubLogin.toLowerCase(),
+        ((deps.config.adminUserId && user.userId === deps.config.adminUserId) ||
+          (deps.config.adminGithubLogin &&
+            user.login.toLowerCase() === deps.config.adminGithubLogin.toLowerCase())),
     );
   }
 
@@ -2158,9 +2163,17 @@ export function createApp(deps: AppDeps): Hono {
     if (!code) return c.json({ error: "Missing code." }, 400);
     const token = await deps.github.exchangeCode(code);
     const user = await deps.github.getUser(token);
-    const userId = String(user.id);
-    await deps.store.upsertUser({
-      id: userId,
+    const identity = await resolveTrustedProductIdentity(deps.store, {
+      issuer: PRODUCT_IDENTITY_ISSUER_GITHUB,
+      subject: String(user.id),
+      login: user.login,
+      avatarUrl: user.avatar_url,
+      legacyUserId: String(user.id),
+    });
+    const userId = identity.userId;
+    await deps.store.upsertGithubConnectorAccount({
+      userId,
+      githubAccountId: user.id,
       login: user.login,
       avatarUrl: user.avatar_url,
       accessToken: token,

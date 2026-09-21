@@ -1,5 +1,9 @@
 # Identity, workspaces and source connections
 
+Latest (123): the database now has a provider-neutral product identity boundary. `product_auth_identities` maps a trusted issuer/subject to the stable internal user, while `github_connector_accounts` holds GitHub connection metadata and encrypted OAuth credentials separately from the person record. Existing GitHub users keep their numeric internal IDs during migration; new providers receive UUID-backed users. Email and display-name strings are never used to merge identities, and an identity or GitHub account cannot be moved between users by an upsert race. Revoking a GitHub connector clears its token without ending a provider-neutral product session; the legacy GitHub-only session behavior remains during transition.
+
+Neon Managed Better Auth is the selected self-service identity provider for email/password and later social login. It is not yet active in the runtime: the fresh Marketplace Neon account still requires owner email verification before an Auth endpoint can be provisioned and tested. WorkOS is a later enterprise extension for SAML/OIDC SSO and Directory Sync/SCIM; it maps into the same internal user and organisation model rather than replacing the product database or core identity layer. GitHub remains a separately authorised source connector. Internal owner access can now be bound to `ADMIN_USER_ID`; the GitHub-login owner check remains only as a migration fallback.
+
 Latest (089): one-use connection intents preserve the selected destination across a future GitHub handoff, bound to the same live session and rechecked organisation/workspace authority. This is an internal primitive, not an exposed setup flow. GitHub's accessible-installations response is repository-access evidence, NOT installation-admin evidence; fresh binding requires a separate verified installation-management action/authority plus webhook/callback coordination. Paginated repository inventory is now available for the later reconciliation step. Never grant product workspace membership just because GitHub lists an installation.
 
 Latest (088): billing API routing uses the source's current organisation with organisation administrator authority, including personal organisation billing. Job source references no longer require a separate billing account; immutable payer snapshots still govern usage. Workspaces share their organisation's subscription and allowance. Fresh registration still needs session-bound intent and webhook/setup/resync coordination; this checkpoint does not permit moving populated sources. Earlier source billing-routing limitations below are superseded.
@@ -29,6 +33,14 @@ Account (person) → billing organisation → workspace memberships → workspac
 - Different people may authorise different GitHub organisations/accounts. Do not pool personal access tokens or switch the NoSpoilers session to impersonate the connector. Reauthenticate with the correct GitHub account when needed for installation/approval; routine scans use installation access.
 - Invite teammates and assign NoSpoilers alerts by internal membership ID regardless of sign-in provider. GitHub-side user actions separately require the corresponding GitHub permission. Removing a teammate revokes product access without erasing historic actor attribution or breaking an organisation-owned installation.
 - Package-only and website-only workspaces do not need GitHub. Workspace switching changes every query, permission, mutation, count and result selection; clear previous data while switching and keep the scope in the URL.
+
+## Enterprise identity and execution boundary
+
+- Standard customers and enterprise tenants use the same trusted Railway coordinator and the same tenant-scoped data model. Every untrusted scan runs in a newly created Vercel Sandbox microVM with no database, GitHub or control-plane credentials forwarded into it.
+- Do not create a permanently running worker for every company by default. Dedicated compute, regional placement, private connectivity or customer-managed keys are contract options only after a customer requirement and operating model are agreed.
+- Enterprise SSO enforcement belongs to the organisation: verified domain, configured WorkOS connection, enforced sign-in policy, recovery/break-glass controls and immediate session revocation. It must not infer membership from an email domain.
+- SCIM provisions and suspends organisation memberships. It does not grant GitHub repository access; source connections still require explicit GitHub App installation authority.
+- Internal Artifact Leads, Disclosure Desk and campaign administration remain owner/operator surfaces. Customer organisation administrators never gain those routes through SSO, SCIM or a workspace role.
 
 GitHub supports installation access independently of interactive user access: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps
 
