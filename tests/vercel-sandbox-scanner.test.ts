@@ -77,8 +77,10 @@ describe('Vercel Sandbox scanner configuration',()=>{
  it('keeps the custom scanner image non-root by default',async()=>{
   const dockerfile=await readFile(path.join(process.cwd(),'Dockerfile.scanner'),'utf8');
   expect(dockerfile).toMatch(/useradd --uid 65532 .* scanner/);
+  expect(dockerfile).toMatch(/useradd --uid 65533 .* nospoilers-parser/);
   expect(dockerfile).not.toMatch(/chown .*\/parser/);
-  expect(dockerfile).not.toMatch(/install .*sudo/);
+  expect(dockerfile).toMatch(/scanner ALL=\(nospoilers-parser\) NOPASSWD: ALL/);
+  expect(dockerfile).not.toMatch(/scanner ALL=\(root\)/);
   const instructions=dockerfile.trim().split('\n');
   expect(instructions.at(-2)).toBe('USER scanner');
   expect(instructions.at(-1)).toMatch(/^ENTRYPOINT /);

@@ -71,22 +71,31 @@ export function vercelSandboxCreateOptions(env:NodeJS.ProcessEnv=process.env):Ve
 
 async function createVercelScannerSandbox(options:VercelSandboxCreateOptions,signal:AbortSignal):Promise<VercelScannerSandbox> {
  const sandbox=await Sandbox.create({...options,signal});
+ const parserUser=sandbox.asUser('nospoilers-parser');
  return {
   assertScannerIdentity:async requestSignal=>{
    const identity=await sandbox.runCommand('/usr/bin/id',['-u'],{signal:requestSignal,timeoutMs:5_000});
    if(identity.exitCode!==0||(await identity.stdout({signal:requestSignal})).trim()!=='65532')
     throw new Error('The Vercel Sandbox scanner image must run as uid 65532.');
+   const parserIdentity=await parserUser.runCommand({cmd:'/usr/bin/id',args:['-u'],signal:requestSignal,timeoutMs:5_000});
+   const parserUid=(await parserIdentity.stdout({signal:requestSignal})).trim();
+   if(parserIdentity.exitCode!==0||!/^\d+$/.test(parserUid)||parserUid==='0'||parserUid==='65532')
+    throw new Error('The Vercel Sandbox parser must run as a separate unprivileged user.');
   },
   mkdir:async(target,requestSignal)=>{await sandbox.fs.mkdir(target,{recursive:true,signal:requestSignal});},
   writeFiles:async(files,requestSignal)=>{await sandbox.writeFiles(files,{signal:requestSignal});},
   chmod:async(target,mode,requestSignal)=>{await sandbox.fs.chmod(target,mode,{signal:requestSignal});},
   sealInput:async(target,requestSignal)=>{
-   const sealed=await sandbox.runCommand({cmd:'/usr/bin/chown',args:['-R','root:root',target],sudo:true,signal:requestSignal,timeoutMs:10_000});
-   if(sealed.exitCode!==0)throw new Error('Vercel Sandbox could not seal the scanner input.');
+   const writeProbe=await parserUser.runCommand({
+    cmd:'/usr/bin/touch',args:[path.posix.join(target,'.nospoilers-write-probe')],signal:requestSignal,timeoutMs:5_000,
+   });
+   if(writeProbe.exitCode===0)throw new Error('Vercel Sandbox could not seal the scanner input.');
   },
-  runScanner:async(inputPath,reportPath,requestSignal)=>sandbox.runCommand('/usr/bin/timeout',[
+  runScanner:async(inputPath,reportPath,requestSignal)=>parserUser.runCommand({
+   cmd:'/usr/bin/timeout',args:[
     '--signal=KILL','100s','/usr/local/bin/node','--max-old-space-size=512','/parser/scanner-child.mjs',inputPath,reportPath,
-  ],{signal:requestSignal,timeoutMs:SCANNER_COMMAND_MS}),
+   ],signal:requestSignal,timeoutMs:SCANNER_COMMAND_MS,
+  }),
   statSize:async(target,requestSignal)=>(await sandbox.fs.stat(target,{signal:requestSignal})).size,
   readFile:(target,requestSignal)=>sandbox.readFileToBuffer({path:target},{signal:requestSignal}),
   stop:async(requestSignal)=>{await sandbox.stop({signal:requestSignal});},
