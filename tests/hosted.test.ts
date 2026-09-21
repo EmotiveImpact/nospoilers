@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -120,6 +120,22 @@ const sampleRepo = {
 };
 
 describe("runtime health", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("prefers the Vercel-scoped Neon pool and otherwise keeps DATABASE_URL", () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://worker:secret@db.internal/nospoilers");
+    vi.stubEnv(
+      "NEON_DATABASE_URL",
+      "postgresql://web:secret@ep-example-pooler.us-east-1.aws.neon.tech/neondb",
+    );
+    expect(loadConfig().databaseUrl).toContain("ep-example-pooler.us-east-1.aws.neon.tech");
+
+    vi.stubEnv("NEON_DATABASE_URL", "");
+    expect(loadConfig().databaseUrl).toBe("postgresql://worker:secret@db.internal/nospoilers");
+  });
+
   it("classifies neon hosts without exposing a connection string", () => {
     expect(databaseMode("pglite://./data/nospoilers")).toBe("pglite");
     expect(databaseMode("postgresql://u:p@ep-x.c-4.us-east-2.aws.neon.tech/neondb")).toBe("neon");

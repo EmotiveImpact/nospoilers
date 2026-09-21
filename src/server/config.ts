@@ -121,7 +121,11 @@ export function loadConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   const base: AppConfig = {
     port: envInt("PORT", 4347),
     appBaseUrl: env("APP_BASE_URL", "http://127.0.0.1:4347").replace(/\/$/, ""),
-    databaseUrl: env("DATABASE_URL", "pglite://./data/nospoilers"),
+    // Vercel Marketplace integrations can be namespaced to avoid overwriting an
+    // existing DATABASE_URL. Prefer the scoped Neon pool when it is available;
+    // long-lived workers continue to use their explicit DATABASE_URL.
+    databaseUrl:
+      env("NEON_DATABASE_URL") || env("DATABASE_URL", "pglite://./data/nospoilers"),
     githubAppId: env("GITHUB_APP_ID"),
     githubPrivateKey: normalizePem(env("GITHUB_APP_PRIVATE_KEY")),
     githubWebhookSecret: env("GITHUB_WEBHOOK_SECRET"),
