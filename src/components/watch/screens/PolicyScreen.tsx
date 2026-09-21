@@ -1,20 +1,32 @@
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import {QuietSettingRow} from "../design/QuietComponents";
+import "../design/policy-page.css";
 
-export function PolicyScreen() {
+export function PolicyScreen({section}:{section?:"signing"|"allowlist"}={}) {
   const exceptionRuleRef = useRef<HTMLInputElement>(null);
+  const allowRequest = useRef<AbortController | null>(null);
   const [allowError, setAllowError] = useState<{installationId:number|null;message:string}|null>(null);
   const {search,watchHref} = useWatchScreenContext();
   const { Button, SIGNING_POLICY_CLEAR_CONFIRM, SIGNING_POLICY_CONFIRM, activeInstallId, allowExpires, allowPath, allowReason, allowRule, baselineReason, beginConfirm, canManageSigningPolicy, confirmBusy, confirmForm, confirming, exceptions, installAdmin, locked, previewing, refreshSignedIn, route, savingAllow, selectedInstallId, setAllowExpires, setAllowPath, setAllowReason, setAllowRule, setBaselineReason, setPackageError, setSavingAllow, setSigningDraft, setSigningError, signingDraft, signingError, signingPolicy } = useWatchScreenContext();
+  useLayoutEffect(() => () => {
+    const request = allowRequest.current;
+    if (request) {
+      allowRequest.current = null;
+      request.abort();
+      setSavingAllow(false);
+    }
+  }, [activeInstallId, selectedInstallId, setSavingAllow]);
   const activeExceptions = exceptions.filter((entry) => entry.active).length;
   const signingLabel =
     signingPolicy.status === "ready" ? (signingPolicy.policy ? "on" : "off") : "—";
   return (
     <>
       {route.view === "policy" && (
-              <section className="mt-4">
+              <section className="policy-connection-section" aria-label={section === "signing" ? "Signing settings" : section === "allowlist" ? "GitHub allowlist settings" : "Connection policy"}>
+                {!section && <>
                 <WatchPageHeader
                   title="Policy & allowlist"
                   lede="Time-bound exceptions and shipping evidence."
@@ -46,14 +58,11 @@ export function PolicyScreen() {
                     <p className="watch-tiny mt-1 text-dim">Not Sigstore verification</p>
                   </div>
                 </div>
-                <div className="watch-card mt-5 p-5">
-                <h2 className="watch-kicker">Signing policy</h2>
-                <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-                  Trial and Team can require a present GitHub or npm attestation document, or a builder
-                  prefix, before a passing revision is approved to ship. Type signing-policy to save.
-                  Type clear-signing-policy to remove it. Expired policies do not block. This is not
-                  Sigstore verification and not a malware verdict.
-                </p>
+                </>}
+                {section !== "allowlist" && <section className="policy-signing">
+                <div className="policy-section-heading"><h2>Signing policy</h2><p>Require attestation documents for the selected GitHub connection.</p></div>
+                <p className="policy-scope-caveat">Checks document presence and declared builder identity. This is not Sigstore verification and not a malware verdict.</p>
+                <aside className="policy-scope-note" aria-label="Scope and confirmation"><h3>Scope and confirmation</h3><p>Trial and Team can require a present GitHub or npm attestation document, or a builder prefix, before a passing revision is approved to ship. Type signing-policy to save. Type clear-signing-policy to remove it. Expired policies do not block.</p></aside>
                 {previewing ? (
                   <>
                     <p className="mt-6 text-[13px] leading-relaxed text-mute">
@@ -74,35 +83,9 @@ export function PolicyScreen() {
                 ) : signingPolicy.status === "loading" ? (
                   <WatchSkeleton variant="list" className="mt-4" />
                 ) : (
-                  <div className="mt-6 max-w-xl space-y-3">
-                    <label className="flex items-center gap-2 text-sm text-snow">
-                      <input
-                        type="checkbox"
-                        checked={signingDraft.requireGithub}
-                        disabled={!canManageSigningPolicy || confirmBusy}
-                        onChange={(event) =>
-                          setSigningDraft((current) => ({
-                            ...current,
-                            requireGithub: event.target.checked,
-                          }))
-                        }
-                      />
-                      Require a present GitHub attestation
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-snow">
-                      <input
-                        type="checkbox"
-                        checked={signingDraft.requireNpm}
-                        disabled={!canManageSigningPolicy || confirmBusy}
-                        onChange={(event) =>
-                          setSigningDraft((current) => ({
-                            ...current,
-                            requireNpm: event.target.checked,
-                          }))
-                        }
-                      />
-                      Require a present npm attestation
-                    </label>
+                  <div className="policy-signing-form">
+                    <QuietSettingRow label="Require a present GitHub attestation" description="Check for a GitHub attestation document." checked={signingDraft.requireGithub} disabled={!canManageSigningPolicy || confirmBusy} onChange={checked=>setSigningDraft(current=>({...current,requireGithub:checked}))}/>
+                    <QuietSettingRow label="Require a present npm attestation" description="Check for an npm attestation document." checked={signingDraft.requireNpm} disabled={!canManageSigningPolicy || confirmBusy} onChange={checked=>setSigningDraft(current=>({...current,requireNpm:checked}))}/>
                     <label className="flex flex-col gap-1">
                       <span className="text-xs uppercase tracking-[0.16em] text-dim">
                         Builder prefix
@@ -186,20 +169,12 @@ export function PolicyScreen() {
                     )}
                   </div>
                 )}
-                </div>
-                <h2 className="watch-kicker mt-8">Allowlist and baseline</h2>
-                <p className="mt-2 text-[13px] text-mute">Time-bound exceptions and the approved comparison receipt.</p>
-                <p className="watch-guidance mt-3 max-w-2xl text-[13px] leading-relaxed text-mute">
-                  Exceptions are exact-rule, attributable, and they expire. They never suppress a different
-                  rule. Approve a packed receipt as the shipping baseline; later diffs use that receipt
-                  instead of whichever scan happened last.
-                </p>
-                <p className="mt-3 text-sm text-mute">
-                  For a scoped exception, open a saved release finding and request review. If your workspace
-                  requires independent approval, direct allowlist creation below is blocked; another
-                  administrator must approve the request. Historical entries remain available for review and revocation.
-                  {' '}<a className="underline underline-offset-4" href={watchHref('/watch/releases',search,{install:activeInstallId})}>Open saved releases</a>
-                </p>
+                </section>}
+                {section !== "signing" && <section className="policy-allowlist">
+                <div className="policy-section-heading"><h2>GitHub allowlist</h2><p>Time-bound exceptions for the selected connection.</p></div>
+                <p className="policy-scope-caveat">Exceptions accept bounded risk; they do not fix a finding or rewrite saved evidence.</p>
+                <p className="policy-scope-caveat">Request a scoped exception from a saved release finding. <a className="underline underline-offset-4" href={watchHref('/watch/releases',search,{install:activeInstallId})}>Open saved releases</a></p>
+                <aside className="policy-scope-note" aria-label="Scope and approval rules"><h3>Scope and approval rules</h3><p>Exceptions are exact-rule, attributable, and they expire. They never suppress a different rule. If your workspace requires independent approval, direct allowlist creation below is blocked; another administrator must approve the request. Historical entries remain available for review and revocation.</p><p>Approve a packed receipt as the shipping baseline; later diffs use that receipt instead of whichever scan happened last.</p></aside>
                 {allowError?.installationId === activeInstallId && <p role="alert" className="mt-3 text-sm text-danger">{allowError.message}</p>}
                 {!previewing && installAdmin && (
                   <label className="mt-6 block max-w-xl">
@@ -214,10 +189,13 @@ export function PolicyScreen() {
                 )}
                 {!previewing && installAdmin && (
                   <form
-                    className="mt-6 grid gap-4 md:grid-cols-[7rem_1fr_1fr_8rem_auto] md:items-end"
+                    aria-label="Create a scoped exception"
+                    className="policy-allowlist-form"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      if (locked || savingAllow) return;
+                      if (locked || savingAllow || allowRequest.current) return;
+                      const request = new AbortController();
+                      allowRequest.current = request;
                       setPackageError(null);
                       setAllowError(null);
                       setSavingAllow(true);
@@ -225,6 +203,7 @@ export function PolicyScreen() {
                         try {
                           const response = await fetch("/api/exceptions", {
                             method: "POST",
+                            signal: request.signal,
                             credentials: "include",
                             headers: { "content-type": "application/json" },
                             body: JSON.stringify({
@@ -236,18 +215,23 @@ export function PolicyScreen() {
                             }),
                           });
                           const body = (await response.json()) as { error?: string };
+                          if (request.signal.aborted || allowRequest.current !== request) return;
                           if (!response.ok) throw new Error(body.error ?? "Could not save allowlist entry.");
                           setAllowRule("");
                           setAllowPath("");
                           setAllowReason("");
                           await refreshSignedIn(selectedInstallId);
                         } catch (error) {
+                          if (request.signal.aborted || allowRequest.current !== request) return;
                           setAllowError({installationId:activeInstallId,message:error instanceof Error ? error.message : "Could not save allowlist entry."});
                           setPackageError(
                             error instanceof Error ? error.message : "Could not save allowlist entry.",
                           );
                         } finally {
-                          setSavingAllow(false);
+                          if (allowRequest.current === request) {
+                            allowRequest.current = null;
+                            setSavingAllow(false);
+                          }
                         }
                       })();
                     }}
@@ -294,7 +278,7 @@ export function PolicyScreen() {
                         className="mt-2 h-11 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none focus:border-white/40"
                       />
                     </label>
-                    <Button type="submit" disabled={locked || savingAllow || !allowRule.trim() || !allowReason.trim()}>
+                    <Button className="justify-self-start" type="submit" disabled={locked || savingAllow || !allowRule.trim() || !allowReason.trim()}>
                       {savingAllow ? "Saving…" : "Allow"}
                     </Button>
                   </form>
@@ -307,7 +291,7 @@ export function PolicyScreen() {
                 ) : exceptions.length === 0 ? (
                   <div className="watch-empty">No active allowlist entries.</div>
                 ) : (
-                  <ul className="mt-6 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
+                  <ul className="policy-allowlist-entries">
                     {exceptions.map((entry) => (
                       <li key={entry.id} className="py-4">
                         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -345,6 +329,7 @@ export function PolicyScreen() {
                     ))}
                   </ul>
                 )}
+                </section>}
               </section>
               )}
     </>

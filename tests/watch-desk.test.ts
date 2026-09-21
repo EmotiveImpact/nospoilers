@@ -2,6 +2,28 @@ import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
 import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
 
+
+it('keeps the workspace settings tab local while preserving tenant scope on navigation',()=>{
+ const search='?workspace=team&install=7&workspaceTab=create';
+ expect(watchHref('/watch/workspaces',search)).toBe('/watch/workspaces'+search);
+ for(const path of ['/watch','/watch/scan','/watch/releases','/watch/sources','/watch/notifications']){
+  expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
+ }
+});
+
+it('leaves proof verification behind when returning through Overview to New scan',()=>{
+ const overview=watchHref('/watch','?workspace=team&install=7&mode=receipt');
+ expect(overview).toBe('/watch?workspace=team&install=7');
+ expect(watchHref('/watch/scan',new URL(overview,'http://localhost').search)).toBe('/watch/scan?workspace=team&install=7');
+});
+
+it('keeps source setup intent on Coverage without carrying it into unrelated pages',()=>{
+ const search='?workspace=team&install=7&configure=website&origin=https%3A%2F%2Fexample.com';
+ expect(watchHref('/watch/sources',search)).toBe('/watch/sources'+search);
+ expect(watchHref('/watch/releases',search)).toBe('/watch/releases?workspace=team&install=7');
+ expect(watchHref('/watch/notifications',search)).toBe('/watch/notifications?workspace=team&install=7');
+});
+
 it('drops release pagination when leaving history while preserving workspace and scan mode',()=>{
  const search='?workspace=team&install=7&uploadBefore=old&upload=record&uploadView=detail&mode=github';
  expect(watchHref('/watch/scan',search)).toBe('/watch/scan?workspace=team&install=7&mode=github');
@@ -602,4 +624,23 @@ describe("overview bento", () => {
     expect(shortDigest("ab")).toBe("ab");
     expect(formatAgo("2026-09-04T11:20:00Z", Date.parse("2026-09-04T12:00:00Z"))).toBe("40m ago");
   });
+});
+
+it('keeps exception detail and pagination local to policy rather than reopening them after unrelated navigation',()=>{
+ const search='?workspace=team&install=7&exception=older&exceptionBefore=older-page';
+ expect(watchHref('/watch/policy',search)).toBe('/watch/policy'+search);
+ const releaseHref=watchHref('/watch/releases',search);
+ expect(releaseHref).toBe('/watch/releases?workspace=team&install=7');
+ const returned=watchHref('/watch/policy',new URL(releaseHref,'http://localhost').search);
+ expect(returned).toBe('/watch/policy?workspace=team&install=7');
+ for(const path of ['/watch','/watch/sources','/watch/notifications','/watch/workspaces','/watch/scan'])expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
+});
+
+
+it('does not carry a connected finding selection into another page or release',()=>{
+ const search='?workspace=team&install=7&release=65&releaseFinding=8';
+ expect(new URL(watchHref('/watch/workspaces',search),'http://localhost').searchParams.has('releaseFinding')).toBe(false);
+ const next=new URL(watchHref('/watch/releases',search,{release:66}),'http://localhost').searchParams;
+ expect(next.get('workspace')).toBe('team');expect(next.get('release')).toBe('66');expect(next.has('releaseFinding')).toBe(false);
+ expect(new URL(watchHref('/watch/releases',search,{release:65}),'http://localhost').searchParams.get('releaseFinding')).toBe('8');
 });

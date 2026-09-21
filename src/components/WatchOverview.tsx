@@ -68,8 +68,6 @@ export function WatchOverview({
   if (state.status === "loading") {
     return (
       <div className="mx-auto max-w-5xl" aria-busy="true">
-        <div className="h-10 w-80 max-w-full animate-pulse rounded bg-white/8 motion-reduce:animate-none" />
-        <div className="mt-3 h-4 w-[32rem] max-w-full animate-pulse rounded bg-white/5 motion-reduce:animate-none" />
         <WatchSkeleton className="mt-8" />
         <WatchSkeleton variant="detail" className="mt-8" />
       </div>

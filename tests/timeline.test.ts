@@ -99,6 +99,16 @@ describe("90-day timeline", () => {
         oldId,
       ]);
 
+      const futureId = await store.insertAlert({
+        installationId: 7,
+        kind: "repo_publicized",
+        title: "octo/future event",
+        body: "This clock-skewed row must not appear before it happens.",
+      });
+      await sql.query(`UPDATE alerts SET created_at = now() + interval '1 day' WHERE id = $1`, [
+        futureId,
+      ]);
+
       const siblingId = await store.insertAlert({
         installationId: 8,
         kind: "fork",
@@ -149,6 +159,7 @@ describe("90-day timeline", () => {
       expect(JSON.stringify(body)).not.toContain("Other tenant");
       expect(JSON.stringify(body)).not.toContain("Sibling org");
       expect(JSON.stringify(body)).not.toContain("Too old for the timeline");
+      expect(JSON.stringify(body)).not.toContain("future event");
       expect(body.entries.some((row) => row.type === "alert" && row.title?.includes("created public"))).toBe(
         true,
       );

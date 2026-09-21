@@ -1,0 +1,46 @@
+name: Release assurance review
+
+on:
+  push:
+    branches: [codex/release-assurance-spine-v1]
+  pull_request:
+    paths:
+      - 'src/assurance/**'
+      - 'src/server/assurance-*.ts'
+      - 'src/server/runtime.ts'
+      - 'src/components/watch/ReleaseAssurance*'
+      - 'src/components/watch/release-assurance.css'
+      - 'src/components/watch/HostedReleaseEvidence.tsx'
+      - 'src/components/watch/UploadedReleaseBrief.tsx'
+      - 'tests/assurance*'
+      - 'scripts/*assurance*'
+      - '.github/workflows/release-assurance-review.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assurance-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NOSPOILERS_INTERNAL_LOCAL_SCAN: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types --test scripts/test-assurance.mjs
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --maxWorkers=2
+      - run: npm run build
+      - run: npm run build:api

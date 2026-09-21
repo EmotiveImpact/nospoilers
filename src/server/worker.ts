@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {AUTOMATIC_CAPTURE_JOB} from './automatic-capture.ts';
+import {processAutomaticCapture} from './automatic-capture-worker.ts';
+import {PRODUCTION_PARITY_JOB} from './production-parity-service.ts';
+import {processProductionParity} from './production-parity-worker.ts';
 import { processUploadedScan } from './upload-worker.ts';
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -128,6 +132,14 @@ export async function handleJob(
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
+  if(job.kind===PRODUCTION_PARITY_JOB){
+    if(!deps.workerId)throw new Error('Production observation requires an owned job lease.');
+    await processProductionParity(deps.store.sql,payload.runId,deps.receiptSecret??'',{jobId:job.id,workerId:deps.workerId},{fetch:deps.webFetch,lookup:deps.webLookup});return;
+  }
+  if(job.kind===AUTOMATIC_CAPTURE_JOB){
+    if(!deps.workerId)throw new Error('Historical capture requires an owned job lease.');
+    await processAutomaticCapture(deps.store.sql,payload.captureId,deps.receiptSecret??'',{jobId:job.id,workerId:deps.workerId});return;
+  }
   if (job.kind === 'uploaded_scan'||job.kind==='workspace_origin_scan') {
     await processUploadedScan(String(payload.uploadId), deps.store, deps.scan, deps.receiptSecret ?? '',deps.workerId?{jobId:job.id,workerId:deps.workerId}:undefined,{fetch:deps.webFetch,lookup:deps.webLookup});
     return;

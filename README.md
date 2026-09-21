@@ -97,11 +97,15 @@ behind by a crash; it is not the normal pickup path. Failed jobs retry with back
 attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
 visibility backstop that catches a missed webhook.
 
-For production, Vercel serves web/API and Railway runs the persistent worker defined in
-`railway.toml`. Give the Railway service the same `DATABASE_URL`, GitHub App, session/receipt,
-notification, and concurrency environment variables, then run `npm run worker`. Normal database
-queries use Neon’s pooled URL; the worker automatically derives Neon’s direct endpoint for
-session-bound `LISTEN/NOTIFY`.
+The intended hosted split is Vercel for web/API and a persistent Railway worker. The checked-in
+Railway command now runs `npm run worker:hosted`, which fails before queue processing unless the
+external Postgres, hosted GitHub App, explicit notification path, production secrets, immutable
+scanner image and an actual worker-local isolated scan all pass. A plain Railpack service does not
+establish the local container executor required by the current scanner. Do not replace that check
+with process mode or a remote `DOCKER_HOST`: the staged artifact must stay local to the executor.
+See [Gate A implementation](docs/GATE-A-IMPLEMENTATION.md) for the finite operator checklist and
+the current external blocker. Normal database queries use Neon’s pooled URL; the worker derives
+Neon’s direct endpoint for session-bound `LISTEN/NOTIFY`.
 
 ```bash
 docker compose up -d

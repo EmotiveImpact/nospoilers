@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {WorkspaceTeam,WorkspaceInvitationInbox} from '../src/components/watch/WorkspaceTeam';
@@ -44,24 +47,26 @@ it('removes team controls after a denied write and reloads current permissions o
   return Response.json({...team,role:denied?'viewer':'owner'});
  }));
  render(<WorkspaceTeam workspaceId="w1"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Invite person'}));
  fireEvent.change(await screen.findByLabelText('Account name'),{target:{value:'teammate'}});
  fireEvent.click(screen.getByRole('button',{name:'Send invitation'}));
  await screen.findByText('Access changed.');
  expect(screen.queryByRole('button',{name:'Send invitation'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Retry'}));
- await screen.findByRole('heading',{name:'Owner'});
+ await screen.findByText('Owner');
  expect(screen.queryByRole('button',{name:'Send invitation'})).toBeNull();
 });
 it('submits an explicit viewer invitation through the visible form',async()=>{
   const fetcher=vi.fn(async(_url:string,options?:RequestInit)=>new Response(JSON.stringify(options?.method?{}:team)));
   vi.stubGlobal('fetch',fetcher);render(<WorkspaceTeam workspaceId="w1"/>);
-  fireEvent.change(await screen.findByLabelText('Account name'),{target:{value:'teammate'}});
+  fireEvent.click(await screen.findByRole('button',{name:'Invite person'}));
+ fireEvent.change(await screen.findByLabelText('Account name'),{target:{value:'teammate'}});
   fireEvent.click(screen.getByRole('button',{name:'Send invitation'}));
   await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces/w1/invitations',expect.objectContaining({method:'POST',body:JSON.stringify({login:'teammate',role:'viewer'})})));
 });
 it('does not offer invitations or role writes to a viewer',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({...team,role:'viewer'}))));
-  render(<WorkspaceTeam workspaceId="w1"/>);await screen.findByRole('heading',{name:'Owner'});
+  render(<WorkspaceTeam workspaceId="w1"/>);await screen.findByText('Owner');
   expect(screen.queryByRole('button',{name:'Send invitation'})).toBeNull();
   expect(screen.queryByRole('button',{name:'Remove Owner'})).toBeNull();
 });
@@ -78,4 +83,27 @@ it('requires an explicit acceptance action and navigates only after the API succ
   expect(fetcher.mock.calls.some(([,options])=>options?.method==='POST')).toBe(false);
   fireEvent.click(accept);
   await waitFor(()=>expect(window.location.pathname+window.location.search).toBe('/watch?workspace=w1'));
+});
+
+it('limits administrator role choices and keeps role selection separate from saving',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({...team,role:'admin',members:[{user_id:'reader',login:'Reader',role:'viewer',access_source:'explicit'}]}));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceTeam workspaceId="w1"/>);
+ await userEvent.click(await screen.findByRole('button',{name:'Edit role for Reader'}));
+ await userEvent.click(await screen.findByRole('combobox',{name:'Role for Reader'}));
+ expect(screen.queryByRole('option',{name:'Admin',exact:true})).toBeNull();
+ expect(screen.queryByRole('option',{name:'Owner',exact:true})).toBeNull();
+ await userEvent.click(screen.getByRole('option',{name:'Member',exact:true}));
+ expect(screen.getByRole('button',{name:'Save role for Reader'})).toHaveProperty('disabled',false);
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('starts with the member table and opens invitation work without sending a request',async()=>{
+ const fetcher=vi.fn(async()=>Response.json(team));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceTeam workspaceId="w1"/>);
+ expect(await screen.findByRole('table',{name:'Workspace members'})).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Send invitation'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Invite person'}));
+ expect(screen.getByRole('tab',{name:'Invitations'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.getByRole('button',{name:'Send invitation'})).toBeTruthy();
+ expect(fetcher).toHaveBeenCalledTimes(1);
 });

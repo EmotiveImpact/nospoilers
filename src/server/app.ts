@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { assessSavedRelease, assessSavedUpload } from './release-assessment.ts';
 import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
 import { Hono, type Context } from "hono";
@@ -17,7 +18,7 @@ import {workspaceNotifications,saveWorkspaceNotification,disconnectWorkspaceNoti
 import {listWorkspaceTokens,revokeWorkspaceToken,mintWorkspaceToken,authenticateWorkspaceToken} from './workspace-tokens.ts';
 import {workspaceOverview} from './workspace-overview.ts';
 import {requestWorkspaceException,decideWorkspaceException,listWorkspaceExceptions,workspaceExceptionDetail} from './workspace-exceptions.ts';
-import {listWorkspaceAlerts,workspaceAlertDetail,respondToWorkspaceAlert,workspaceAlertAssignees,workspaceAlertCounts} from './workspace-alerts.ts';
+import {listWorkspaceAlerts,workspaceAlertDetail,respondToWorkspaceAlert,workspaceAlertAssignees,workspaceAlertCounts,exportWorkspaceAlerts} from './workspace-alerts.ts';
 import {alertRecheckTarget} from './alert-recheck.ts';
 import {getWorkspaceArtifactPolicy,saveWorkspaceArtifactPolicy} from './workspace-policy.ts';
 import {deletionImpact} from './deletion-impact.ts';
@@ -1929,7 +1930,7 @@ export function createApp(deps: AppDeps): Hono {
       status: state.stripeStatus,
       periodEnd: state.periodEnd,
       hasCustomer: Boolean(state.stripeCustomerId),
-      subscribed: stripeSubscriptionCovers(state.stripeStatus),
+      subscribed: Boolean(parseStripePlan(state.plan)) && stripeSubscriptionCovers(state.stripeStatus),
     };
   }
 
@@ -1943,6 +1944,18 @@ export function createApp(deps: AppDeps): Hono {
   }
   async function billingState(account:{organizationId:string;installationId:number|null}){
     return account.installationId===null?personalStripeState(deps.store.sql,account.organizationId):deps.store.installationStripeState(account.installationId);
+  }
+  async function billingReturnUrl(userId:string,organizationId:string,workspaceId:unknown){
+    // Return destinations are fixed; billing authority alone does not grant workspace access.
+    const url=new URL('/watch/workspaces',deps.config.appBaseUrl);
+    url.searchParams.set('workspaceTab','billing');
+    url.searchParams.set('billingOrganization',organizationId);
+    if(workspaceId!==undefined){
+      const workspace=typeof workspaceId==='string'?(await listUserWorkspaces(deps.store.sql,userId)).find(row=>row.id===workspaceId&&row.organization_id===organizationId):undefined;
+      if(!workspace)throw Object.assign(new Error('The billing return workspace is unavailable for this organisation.'),{status:403});
+      url.searchParams.set('workspace',workspace.id);
+    }
+    return (result:'ok'|'canceled'|'returned')=>{const destination=new URL(url);destination.searchParams.set('billing',result);return destination.href;};
   }
   app.get("/api/billing", async (c) => {
     const user = await currentUser(c);
@@ -1985,6 +1998,9 @@ export function createApp(deps: AppDeps): Hono {
     let account;
     try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
     catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
+    let returnUrl;
+    try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
     const installationId=account.installationId;
     const plan = parseStripePlan(body.plan);
     const interval = parseStripeInterval(body.interval);
@@ -1995,7 +2011,7 @@ export function createApp(deps: AppDeps): Hono {
       try {
         const portal = await stripe.createPortalSession({
           customerId: state.stripeCustomerId,
-          returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
+          returnUrl: returnUrl('returned'),
         });
         await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
         return c.json({ url: portal.url, kind: "portal" });
@@ -2010,8 +2026,8 @@ export function createApp(deps: AppDeps): Hono {
       const session = await stripe.createCheckoutSession({
         customerId: state.stripeCustomerId,
         priceId,
-        successUrl: `${deps.config.appBaseUrl}/watch/workspaces?billing=ok`,
-        cancelUrl: `${deps.config.appBaseUrl}/pricing?canceled=1`,
+        successUrl: returnUrl('ok'),
+        cancelUrl: returnUrl('canceled'),
         clientReferenceId: installationId===null?account.organizationId:String(installationId),
         trialPeriodDays,
         metadata: {
@@ -2056,6 +2072,9 @@ export function createApp(deps: AppDeps): Hono {
     let account;
     try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
     catch(error){return c.json({error:error instanceof Error?error.message:STRIPE_ADMIN_ERROR},errorStatus(error));}
+    let returnUrl;
+    try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
     const installationId=account.installationId;
     const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
@@ -2063,7 +2082,7 @@ export function createApp(deps: AppDeps): Hono {
     try {
       const portal = await stripe.createPortalSession({
         customerId: state.stripeCustomerId,
-        returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
+        returnUrl: returnUrl('returned'),
       });
       await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
       if(installationId!==null && await deps.store.getInstallation(installationId))await deps.store.insertAuditEvent({
@@ -2208,13 +2227,18 @@ export function createApp(deps: AppDeps): Hono {
     const workspaceId=c.req.query('workspaceId');
     if(workspaceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))return c.json({error:'Invalid workspace.'},400);
     if(workspaceId && !(await listUserWorkspaces(deps.store.sql,user.userId)).some(workspace=>workspace.id===workspaceId))return c.json({error:'Workspace unavailable.'},404);
-    try{return c.json(await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status')}));}
+    try{
+      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status'),collection:c.req.query('collection')});
+      const now=Date.now();c.header('Cache-Control','no-store');
+      return c.json({...page,uploads:page.uploads.map(upload=>({...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret,now)}))});
+    }
     catch(error){return c.json({error:error instanceof Error&&'status' in error?error.message:'Release history could not be loaded.'},errorStatus(error));}
   });
   app.get("/api/uploads/:id",async c=>{
     const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
     const upload=await deps.store.getUploadedScan(user.userId,c.req.param("id"));
-    return upload?c.json({upload}):c.json({error:"Unknown upload."},404);
+    c.header('Cache-Control','no-store');
+    return upload?c.json({upload:{...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret)}}):c.json({error:"Unknown upload."},404);
   });
 
   app.post("/api/origin-intent", async (c) => {
@@ -2395,7 +2419,8 @@ export function createApp(deps: AppDeps): Hono {
   }));
   app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'),deps.config.pollIntervalMs)));
   app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
-  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1'})));
+  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1',source:c.req.query('source')})));
+  app.get('/api/workspaces/:id/alerts-export',c=>workspaceAction(c,userId=>exportWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('source'))));
   app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
   app.get('/api/workspaces/:id/alerts/:alertId/assignees',c=>workspaceAction(c,userId=>workspaceAlertAssignees(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'))));
   app.post('/api/workspaces/:id/alerts/:alertId/respond',c=>workspaceAction(c,async userId=>{
@@ -3875,7 +3900,8 @@ export function createApp(deps: AppDeps): Hono {
     const upload=independent?await deps.store.getWorkspaceTokenUpload(independent.workspaceId,c.req.param('id')):auth.installationId!==null?await deps.store.getInstallationUpload(auth.installationId,c.req.param('id')):null;
     if(!upload)return c.json({error:'Scan not found.'},404);
     const revision=upload.revision_id?await deps.store.getReleaseRevision(Number(upload.revision_id)):null;
-    return c.json({uploadId:upload.id,status:upload.status,report:upload.report_json,receipt:upload.receipt_json,receiptId:upload.receipt_id,release:revision?publicRelease(revision):null,error:upload.error});
+    c.header('Cache-Control','no-store');
+    return c.json({uploadId:upload.id,status:upload.status,report:upload.report_json,receipt:upload.receipt_json,receiptId:upload.receipt_id,release:revision?publicRelease(revision):null,error:upload.error,readiness:assessSavedUpload(upload,deps.config.receiptSecret)});
   });
 
   app.get("/api/packages", async (c) => {
@@ -5326,10 +5352,13 @@ export function createApp(deps: AppDeps): Hono {
       list.push(publicDeliveryLocation(location));
       byRevision.set(location.revision_id, list);
     }
+    const assessmentReceipts = await deps.store.assessmentReceiptsForUser(releases.map(row => row.receipt_id), user.userId);
+    const evaluatedAt = Date.now();
+    c.header('Cache-Control', 'no-store');
     return c.json({
       ...(hostedContext?{context:hostedContext}:{}),
-      releases: releases.map((row) =>
-        publicRelease(
+      releases: releases.map((row) => {
+        const release = publicRelease(
           row,
           byRevision.get(row.id) ?? [],
           approvals.get(row.id) ?? null,
@@ -5338,8 +5367,9 @@ export function createApp(deps: AppDeps): Hono {
           hideAttestations.has(row.installation_id)
             ? []
             : latestPublicAttestations(attestationsByRevision.get(row.id) ?? []),
-        ),
-      ),
+        );
+        return {...release, readiness: assessSavedRelease(release, assessmentReceipts.get(row.receipt_id), deps.config.receiptSecret, evaluatedAt)};
+      }),
     });
   });
 
@@ -5442,15 +5472,18 @@ export function createApp(deps: AppDeps): Hono {
     const attestations = hideAttestations
       ? []
       : latestPublicAttestations(await deps.store.listReleaseAttestationsForRevisions([row.id]));
-    return c.json({
-      release: publicRelease(
+    const release = publicRelease(
         row,
         locations.map(publicDeliveryLocation),
         latestByRevision(approvals).get(row.id) ?? null,
         latestByRevision(holds).get(row.id) ?? null,
         page,
         attestations,
-      ),
+      );
+    const signed = await deps.store.getScanReceiptForUser(row.receipt_id, user.userId);
+    c.header('Cache-Control', 'no-store');
+    return c.json({
+      release: {...release, readiness: assessSavedRelease(release, signed?.receipt, deps.config.receiptSecret)},
     });
   });
 

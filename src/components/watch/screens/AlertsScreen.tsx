@@ -2,33 +2,44 @@ import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext"
 import type { Alert, AlertEvent } from "@/watch/types";
 import {AlertRelatedReleases} from '@/components/watch/AlertRelatedReleases';
 import {AlertRecheck} from '@/components/watch/AlertRecheck';
+import {isAlertQueueActionable} from '@/watch/view-models';
 
 export function AlertsScreen() {
   const { selectedInstall } = useWatchScreenContext();
   const canRespond = selectedInstall?.role === "admin" || selectedInstall?.role === "member";
   const { WatchAlertsWorkspace, activeInstallId, alertAssignees, alertBusyId, alertErrorById, alertEvents, alertNotes, alertSectionState, controller, deskAlerts, ended, exportError, listedAlerts, loadJson, navigate, previewing, retryDeskSection, route, scopedApi, search, selectedAlert, setAlertAssignees, setAlertBusyId, setAlertErrorById, setAlertEvents, setAlertNotes, setAlerts, setExportError, sourceRows, teamOnly, user, watchHref, watchPath } = useWatchScreenContext();
+  const actionableAlerts=listedAlerts.filter(isAlertQueueActionable);
+  const actionableDeskAlerts=deskAlerts.filter(isAlertQueueActionable);
+  const actionableIds=new Set(actionableAlerts.map(alert=>alert.id));
+  const actionableRows=controller.alertRows.filter(row=>actionableIds.has(row.id));
+  const actionableSelected=route.alertId===null
+    ? actionableAlerts[0]??null
+    : selectedAlert&&isAlertQueueActionable(selectedAlert)?selectedAlert:null;
+  const actionableActivityState=actionableSelected?.id===selectedAlert?.id
+    ? controller.selectedActivityState
+    : {status:'ready' as const};
   return (
     <>
       {route.view === "alerts" ? (
                 <WatchAlertsWorkspace
-                  alerts={listedAlerts}
-                  allAlerts={deskAlerts}
+                  alerts={actionableAlerts}
+                  allAlerts={actionableDeskAlerts}
                   sourceCount={sourceRows.length}
                   login={user?.login ?? ""}
-                  rows={controller.alertRows}
-                  selected={selectedAlert}
-                  relatedReleases={selectedAlert && activeInstallId ? <><AlertRecheck alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')} canRespond={canRespond&&!previewing} ended={ended}/><AlertRelatedReleases alertId={selectedAlert.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')}/></> : null}
-                  events={selectedAlert ? alertEvents[selectedAlert.id] ?? [] : []}
+                  rows={actionableRows}
+                  selected={actionableSelected}
+                  relatedReleases={actionableSelected && activeInstallId ? <><AlertRecheck alertId={actionableSelected.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')} canRespond={canRespond&&!previewing} ended={ended}/><AlertRelatedReleases hideEmpty alertId={actionableSelected.id} installationId={activeInstallId} workspaceId={new URLSearchParams(search).get('workspace')}/></> : null}
+                  events={actionableSelected ? alertEvents[actionableSelected.id] ?? [] : []}
                   previewing={previewing}
                   canRespond={canRespond}
                   ended={ended}
-                  busy={Boolean(selectedAlert && alertBusyId === selectedAlert.id)}
-                  note={selectedAlert ? alertNotes[selectedAlert.id] ?? "" : ""}
-                  assignee={selectedAlert ? alertAssignees[selectedAlert.id] ?? "" : ""}
-                  error={selectedAlert ? alertErrorById[selectedAlert.id] ?? null : null}
+                  busy={Boolean(actionableSelected && alertBusyId === actionableSelected.id)}
+                  note={actionableSelected ? alertNotes[actionableSelected.id] ?? "" : ""}
+                  assignee={actionableSelected ? alertAssignees[actionableSelected.id] ?? "" : ""}
+                  error={actionableSelected ? alertErrorById[actionableSelected.id] ?? null : null}
                   exportError={exportError}
                   state={alertSectionState}
-                  activityState={controller.selectedActivityState}
+                  activityState={actionableActivityState}
                   detailOpen={route.alertId !== null}
                   tab={route.tab}
                   assignedToMe={new URLSearchParams(search).get('mine')==='1'}
@@ -68,16 +79,16 @@ export function AlertsScreen() {
                     )
                   }
                   onNote={(value) => {
-                    if (!selectedAlert) return;
-                    setAlertNotes((current) => ({ ...current, [selectedAlert.id]: value }));
+                    if (!actionableSelected) return;
+                    setAlertNotes((current) => ({ ...current, [actionableSelected.id]: value }));
                   }}
                   onAssignee={(value) => {
-                    if (!selectedAlert) return;
-                    setAlertAssignees((current) => ({ ...current, [selectedAlert.id]: value }));
+                    if (!actionableSelected) return;
+                    setAlertAssignees((current) => ({ ...current, [actionableSelected.id]: value }));
                   }}
                   onAction={(action) => {
-                    if (previewing || !canRespond || !selectedAlert) return;
-                    const alert = selectedAlert;
+                    if (previewing || !canRespond || !actionableSelected) return;
+                    const alert = actionableSelected;
                     setAlertErrorById((current) => {
                       const next = { ...current };
                       delete next[alert.id];
@@ -154,6 +165,7 @@ export function AlertsScreen() {
                     })();
                   }}
                   onConnectSource={() => navigate(watchHref(watchPath("sources"), search))}
+                  onReviewReleases={() => navigate(watchHref(watchPath("releases"), search))}
                 />
               ) : null}
     </>

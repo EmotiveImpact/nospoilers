@@ -39,7 +39,7 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  });vi.stubGlobal('fetch',fetch);
  render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=9"/>);
  await screen.findByRole('heading',{name:'Website exposure'});
- expect(screen.getByRole('link',{name:'Open the saved website check'}).getAttribute('href')).toContain('upload=attempt');
+ expect((await screen.findByRole('link',{name:'Open the saved website check'})).getAttribute('href')).toContain('upload=attempt');
  expect(fetch.mock.calls.filter(([url])=>url.includes('/alerts?'))).toHaveLength(1);
  expect(fetch.mock.calls.some(([url])=>url.includes('status=open&mine=0'))).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Older'}));
@@ -52,4 +52,43 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  await screen.findByText('error');
  expect(screen.queryByRole('heading',{name:'Website exposure'})).toBeNull();
  expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(true);
+});
+it('does not flash unavailable guidance while a selected alert is still loading',async()=>{
+ const alert={id:9,kind:'web_origin_scan',title:'Website exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,scan_attempt_id:'attempt'};
+ let finish:(value:Response)=>void=()=>{};
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  if(url==='/api/me')return new Response(JSON.stringify({user:{id:'owner',login:'Owner'}}));
+  if(url.endsWith('/evidence-settings'))return new Response(JSON.stringify({workspace:{role:'owner',archived_at:null}}));
+  if(url.endsWith('/alerts/9'))return new Promise<Response>(resolve=>{finish=resolve;});
+  if(url.includes('/alerts?'))return new Response(JSON.stringify({alerts:[alert],nextCursor:null,sourceCount:1,counts:{open:1,waiting:0,done:0,mine:0}}));
+  throw new Error(`Unexpected request ${url}`);
+ }));
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=9"/>);
+ await screen.findByRole('heading',{name:'Website exposure'});
+ expect(screen.queryByText(/Recheck actions require loaded alert evidence/)).toBeNull();
+ expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(true);
+ await act(async()=>finish(new Response(JSON.stringify({alert,events:[]}))));
+ expect(await screen.findByRole('link',{name:'Open the saved website check'})).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(false);
+});
+it('keeps the current queue visible until the next tab response arrives',async()=>{
+ const first={id:9,kind:'scan_latest_release',title:'First alert',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null};
+ const second={...first,id:10,title:'Second alert',acknowledged_at:'2026-09-06'};
+ let requested=false;
+ let finish:(value:Response)=>void=()=>{};
+ const page=(alerts:unknown[])=>({alerts,nextCursor:null,sourceCount:1,counts:{open:1,waiting:1,done:0,mine:0}});
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.includes('status=waiting'))return new Promise<Response>(resolve=>{requested=true;finish=resolve;});
+  if(url.includes('/alerts?'))return Response.json(page([first]));
+  return Response.json({alert:url.endsWith('/10')?second:first,events:[]});
+ }));
+ const view=render(<WorkspaceAlerts workspaceId="workspace" search="?tab=open"/>);
+ await screen.findByRole('heading',{name:'First alert'});
+ view.rerender(<WorkspaceAlerts workspaceId="workspace" search="?tab=waiting"/>);
+ expect(screen.getByRole('heading',{name:'First alert'})).toBeTruthy();
+ await waitFor(()=>expect(requested).toBe(true));
+ await act(async()=>finish(Response.json(page([second]))));
+ expect(await screen.findByRole('heading',{name:'Second alert'})).toBeTruthy();
 });

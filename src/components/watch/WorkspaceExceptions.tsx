@@ -2,8 +2,26 @@ import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {navigate} from '@/nav';
+import './design/policy-page.css';
 type Exception={id:string;rule:string;exact_path:string;reason:string;expires_at:string;requested_by:string;requested_login:string;effective_status:string;independent_approval:boolean;requires_independent_approval?:boolean;artifact_sha256:string|null;source_origin_id:number|null;installation_id?:number|null};
 type Page={exceptions:Exception[];nextCursor:string|null;canDecide:boolean;currentUserId:string};
+function record(value:unknown):value is Record<string,unknown>{return value!==null&&typeof value==='object';}
+function validException(value:unknown):boolean{
+ return record(value)&&['id','rule','exact_path','reason','expires_at','effective_status'].every(key=>typeof value[key]==='string');
+}
+function validEventId(value:unknown):boolean{
+ if(typeof value==='number')return Number.isSafeInteger(value)&&value>0;
+ return typeof value==='string'&&/^[1-9]\d{0,18}$/.test(value)&&(value.length<19||value<='9223372036854775807');
+}
+function validEvents(value:unknown):boolean{
+ return Array.isArray(value)&&value.every(event=>record(event)&&validEventId(event.id)&&['action','actor_user_id','note','created_at'].every(key=>typeof event[key]==='string'));
+}
+function validPage(value:unknown):boolean{
+ return record(value)&&Array.isArray(value.exceptions)&&value.exceptions.every(validException)&&(value.nextCursor===null||typeof value.nextCursor==='string');
+}
+function validDetail(value:unknown,selected:string):boolean{
+ return record(value)&&validException(value.exception)&&record(value.exception)&&value.exception.id===selected&&validEvents(value.events)&&typeof value.canDecide==='boolean'&&(value.canDecide===false||typeof value.currentUserId==='string');
+}
 export function WorkspaceExceptions({workspaceId}:{workspaceId:string}){
  const selected=new URLSearchParams(window.location.search).get('exception');
  return <ExceptionScope key={JSON.stringify([workspaceId,selected])} workspaceId={workspaceId}/>;
@@ -11,14 +29,14 @@ export function WorkspaceExceptions({workspaceId}:{workspaceId:string}){
 function ExceptionScope({workspaceId}:{workspaceId:string}){
  const params=new URLSearchParams(window.location.search),before=params.get('exceptionBefore'),selected=params.get('exception');
  const [page,setPage]=useState<Page|null>(null),[error,setError]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[notice,setNotice]=useState('');
- const [events,setEvents]=useState<{id:number;action:string;actor_user_id:string;note:string;created_at:string}[]>([]);
+ const [events,setEvents]=useState<{id:number|string;action:string;actor_user_id:string;note:string;created_at:string}[]>([]);
  const [listError,setListError]=useState('');
  const [detail,setDetail]=useState<{exception:Exception;canDecide:boolean;currentUserId:string;independentApproverAvailable?:boolean}|null>(null);
  const mutation=useRef<AbortController|null>(null);
  const detailGeneration=useRef(0);
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/exceptions`;
  useEffect(()=>()=>mutation.current?.abort(),[]);
- useEffect(()=>{const request=new AbortController();setPage(null);setListError('');void fetch(base+(before?`?before=${encodeURIComponent(before)}`:''),{signal:request.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error??'Exceptions unavailable.');if(!request.signal.aborted)setPage(data);}).catch(e=>{if(!request.signal.aborted)setListError(e.message);});return()=>request.abort();},[base,before,revision]);
+ useEffect(()=>{const request=new AbortController();setPage(null);setListError('');void fetch(base+(before?`?before=${encodeURIComponent(before)}`:''),{signal:request.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error??'Exceptions unavailable.');if(!validPage(data))throw new Error('Exception list response was incomplete. Refresh exceptions.');if(!request.signal.aborted)setPage(data);}).catch(e=>{if(!request.signal.aborted)setListError(e.message);});return()=>request.abort();},[base,before,revision]);
  useEffect(()=>{
   const request=new AbortController();let timer:ReturnType<typeof setTimeout>;
   setDetail(null);setEvents([]);setNote('');
@@ -28,6 +46,7 @@ function ExceptionScope({workspaceId}:{workspaceId:string}){
     if(!selected||mutation.current)return;
     const r=await fetch(`${base}/${encodeURIComponent(selected)}`,{signal:request.signal});const data=await r.json();
     if(!r.ok)throw new Error(data.error??'Exception unavailable.');
+    if(!validDetail(data,selected))throw new Error('Exception response was incomplete. Refresh exceptions.');
     if(!request.signal.aborted&&generation===detailGeneration.current){setEvents(data.events);setDetail(data);setError('');}
    }catch(e){if(!request.signal.aborted&&generation===detailGeneration.current){setDetail(null);setError(e instanceof Error?e.message:'Exception unavailable.');}}
    finally{if(selected&&!request.signal.aborted)timer=setTimeout(()=>void refresh(),30000);}
@@ -52,13 +71,13 @@ function ExceptionScope({workspaceId}:{workspaceId:string}){
    if(!request.signal.aborted){setDetail(null);setEvents([]);setError(e instanceof Error?e.message:'Decision failed.');}
   }finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  }
- return <section className="mt-8 space-y-4" aria-label="Policy exceptions"><header><h2 className="text-xl font-semibold">Policy exceptions</h2><p className="text-sm text-mute">Request from a saved release finding. Approval accepts bounded risk for future checks; it does not fix exposure or change old results.</p></header>
+ return <section className="policy-exceptions" aria-label="Policy exceptions"><header className="policy-section-heading"><h2>Policy exceptions</h2><p>Review requests from saved release findings.</p></header><p className="policy-scope-caveat">Approval accepts bounded risk for future checks; it does not fix exposure or change old results.</p>
   {error?<p role="alert">{error}</p>:null}{notice?<p role="status">{notice}</p>:null}
   {listError?<p role="alert">{listError}</p>:null}
   <Button variant="outline" disabled={busy} onClick={()=>setRevision(v=>v+1)}>Refresh exceptions</Button>
   {!page&&!listError?<WatchSkeleton variant="list" className="mt-4" />:null}
-{page?<><ul className="divide-y divide-white/10">{page.exceptions.map(e=><li className="py-3" key={e.id}><button className="text-left" type="button" aria-pressed={selected===e.id} onClick={()=>choose('exception',e.id)}><strong>{e.rule} · {e.exact_path}</strong><p>{e.effective_status} · expires {new Date(e.expires_at).toLocaleString(undefined,{timeZone:'UTC'})} UTC</p></button></li>)}</ul>{!page.exceptions.length?<p>No exception requests on this page.</p>:null}<nav className="flex gap-3" aria-label="Exception history"><Button variant="outline" disabled={!before||busy} onClick={()=>choose('exceptionBefore',null)}>Newest</Button><Button variant="outline" disabled={!page.nextCursor||busy} onClick={()=>choose('exceptionBefore',page.nextCursor)}>Older</Button></nav></>:null}
-  {entry?<article className="watch-card space-y-3"><h3>{entry.rule} · {entry.exact_path}</h3><p>{entry.reason}</p><p className="break-all">Scope: {entry.source_origin_id?`Website source ${entry.source_origin_id}`:`Artifact SHA-256 ${entry.artifact_sha256}`}</p><p>Requested by {entry.requested_login} · {independent?'Independent approval required':'Administrator approval required'}</p>
+{page?<><ul className="policy-exception-list">{page.exceptions.map(e=><li key={e.id}><button className="policy-exception-row" type="button" aria-pressed={selected===e.id} onClick={()=>choose('exception',e.id)}><strong>{e.rule} · {e.exact_path}</strong><p>{e.effective_status} · expires {new Date(e.expires_at).toLocaleString(undefined,{timeZone:'UTC'})} UTC</p></button></li>)}</ul>{!page.exceptions.length?<p className="policy-empty">No exception requests on this page.</p>:null}{before||page.nextCursor?<nav className="flex flex-wrap gap-3" aria-label="Exception history"><Button variant="outline" disabled={!before||busy} onClick={()=>choose('exceptionBefore',null)}>Newest</Button><Button variant="outline" disabled={!page.nextCursor||busy} onClick={()=>choose('exceptionBefore',page.nextCursor)}>Older</Button></nav>:null}</>:null}
+  {entry?<article className="policy-exception-detail"><h3>{entry.rule} · {entry.exact_path}</h3><p>{entry.reason}</p><p className="break-all">Scope: {entry.source_origin_id?`Website source ${entry.source_origin_id}`:`Artifact SHA-256 ${entry.artifact_sha256}`}</p><p>Requested by {entry.requested_login} · {independent?'Independent approval required':'Administrator approval required'}</p>
    <p>Status: {entry.effective_status} · Expires {new Date(entry.expires_at).toLocaleString(undefined,{timeZone:'UTC'})} UTC</p>
    {entry.installation_id!=null?<p>Limited to GitHub connection {entry.installation_id}. This does not apply to independent scans or another connection.</p>:null}
    {independent&&entry.effective_status==='pending'&&detail?.independentApproverAvailable===false?<p role="status">No other eligible administrator is available to approve this request. Ask a workspace owner to review <a className="underline" href={`/watch/team?workspace=${encodeURIComponent(workspaceId)}`}>team access</a>. The exception remains pending.</p>:null}

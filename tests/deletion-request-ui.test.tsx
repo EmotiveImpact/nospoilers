@@ -39,3 +39,15 @@ it('loads persisted requests and permits withdrawal without claiming deletion',a
  expect(await screen.findByText(/Withdrawn — nothing deleted/)).toBeTruthy();
  expect(fetcher).toHaveBeenCalledWith('/api/organizations/org/deletion-requests/saved/withdraw',{method:'POST'});
 });
+it('keeps long deletion scope and confirmation accessible in the responsive form',async()=>{
+ const workspace='workspace-'+ 'long-id-'.repeat(25);
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('deletion-impact')?{...preview,workspaceId:workspace}:{requests:[]}))));
+ render(<WorkspaceDeletionRequest organizationId="org" workspaceId={workspace} workspaceName={'Long workspace '.repeat(15)}/>);
+ await screen.findByText(/Counted/);
+ expect(screen.getByRole('region',{name:'Data deletion'}).className).not.toContain('watch-empty');
+ expect(screen.getByLabelText('Request scope').className).toContain('w-full');
+ const confirmation=screen.getByLabelText('Deletion confirmation');
+ expect(confirmation.className).toContain('w-full');
+ expect(screen.getByText(`DELETE HISTORY ${workspace}`)).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Request deletion review'}) as HTMLButtonElement).disabled).toBe(true);
+});

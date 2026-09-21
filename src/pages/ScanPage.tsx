@@ -1,15 +1,18 @@
-import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
-import { CoverageLock } from "@/components/CoverageLock.tsx"
+import {EvidenceTypePicker,type EvidenceType} from '@/components/watch/EvidenceTypePicker';
+import { Button as HeadlessButton, Description, Field, Label, Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
+import { WatchSkeleton } from "@/components/WatchDataState"
 import { coverageFrom, type Coverage } from "@/coverage.ts"
 import { cn } from "@/lib/utils"
 import { navigate } from "@/nav.ts"
 import type { Finding, ScanReport } from "@/report-types"
-import { watchHref, watchPath } from "@/watch/routes.ts"
-import { Box, ChevronRight, FileJson, GitBranch, Globe2, Loader2, LockKeyhole, ShieldCheck, Upload } from "lucide-react"
-import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react"
+import { watchPath } from "@/watch/routes.ts"
+import { ChevronRight, FileJson, FileText, ShieldCheck, Loader2, LockKeyhole, Upload, X } from "lucide-react"
+import { useCallback, useEffect, useId, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import { uploadArtifact, scanSubmissionUrl } from '@/watch/upload-transport'
 import {GithubWorkspaceConnect} from '@/components/watch/GithubWorkspaceConnection'
+import {GithubRepositoryScan} from '@/components/watch/GithubRepositoryScan'
+import '@/components/watch/design/scan-journey.css'
 
 type ViewState =
   | { status: "idle" }
@@ -41,175 +44,19 @@ function requireSubmission(value: unknown): asserts value is PendingScan | Queue
   requireQueuedScan(value)
 }
 
-type ScanMode = "github" | "package" | "website" | "receipt"
+type ScanMode = EvidenceType
 
 function scanModeFromSearch(search: string): ScanMode {
-  const mode = new URLSearchParams(search).get("mode")
+  const params = new URLSearchParams(search)
+  const mode = params.get("mode")
   // GitHub is the primary scan entry: packages, websites and receipts remain
   // explicit choices in the mode switcher.
+  if (!mode && params.get('reveal') === '1') return 'package'
   return mode === "package" || mode === "website" || mode === "receipt" ? mode : "github"
 }
 
-const EXAMPLES = [
-  {
-    path: "fixtures/clean.tgz",
-    label: "Clean npm pack",
-    hint: "Should pass",
-  },
-  {
-    path: "fixtures/sourcemap.tgz",
-    label: "Pack with a source map",
-    hint: "The Grok / Claude class of leak",
-  },
-  {
-    path: "fixtures/sourcemap.asar",
-    label: "Electron asar with a map",
-    hint: "What installers actually ship",
-  },
-  {
-    path: "fixtures/sourcemap.zip",
-    label: "Zip with a source map",
-    hint: "Same leak, zip wrapper",
-  },
-  {
-    path: "fixtures/sourcemap.vsix",
-    label: "VS Code VSIX with a map",
-    hint: "ZIP magic, not the extension",
-  },
-  {
-    path: "fixtures/sourcemap.crx",
-    label: "Chrome CRX with a source map",
-    hint: "CRX header stripped. Payload is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.xpi",
-    label: "Firefox XPI with a source map",
-    hint: "ZIP magic. Extension code is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.chrome.zip",
-    label: "Chrome ZIP with a source map",
-    hint: "WebExtension layout, not a CRX header. Extension code is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.whl",
-    label: "Python wheel with a source map",
-    hint: "ZIP magic. Python is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.sdist.tgz",
-    label: "Python sdist with a source map",
-    hint: "PKG-INFO layout. Python is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.jar",
-    label: "JAR with a source map",
-    hint: "ZIP magic. Bytecode is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.war",
-    label: "WAR with a source map",
-    hint: "WEB-INF layout. Bytecode is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.nupkg",
-    label: "NuGet pack with a source map",
-    hint: "ZIP magic. Install scripts are not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.snupkg",
-    label: "NuGet symbols pack with a source map",
-    hint: "ZIP magic. Symbols are not loaded.",
-  },
-  {
-    path: "fixtures/sourcemap.gem",
-    label: "Ruby gem with a source map",
-    hint: "Nested data.tar.gz. Ruby is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.docker.tar",
-    label: "Docker save with a source map",
-    hint: "Image layers, never executed",
-  },
-  {
-    path: "fixtures/sourcemap.oci.tar",
-    label: "OCI image with a source map",
-    hint: "Layout sniff. Layers are not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.apk",
-    label: "Android APK with a source map",
-    hint: "ZIP magic. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.xapk",
-    label: "Android XAPK with a source map",
-    hint: "Nested APK. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.aab",
-    label: "Android AAB with a source map",
-    hint: "BundleConfig layout. DEX is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.ipa",
-    label: "iOS IPA with a source map",
-    hint: "ZIP magic. Mach-O is not executed.",
-  },
-  {
-    path: "fixtures/sourcemap.lambda.zip",
-    label: "Lambda zip with a source map",
-    hint: "Handlers are not executed.",
-  },
-  {
-    path: "fixtures/dotenv.tgz",
-    label: "Pack with a .env",
-    hint: "Should fail",
-  },
-  {
-    path: "fixtures/workspace.tgz",
-    label: "npm workspace pack",
-    hint: "Lists members. Does not execute them.",
-  },
-  {
-    path: "fixtures/inconclusive.encrypted.zip",
-    label: "Encrypted zip",
-    hint: "Not decrypted. Inconclusive, not a passing receipt.",
-  },
-  {
-    path: "fixtures/inconclusive.crx",
-    label: "CRX without a ZIP payload",
-    hint: "Signing wrapper is not executed. Inconclusive, not a passing receipt.",
-  },
-  {
-    path: "fixtures/inconclusive.encrypted.oci.tar",
-    label: "OCI image with encrypted layers",
-    hint: "Layers are not decrypted or executed. Inconclusive, not a passing receipt.",
-  },
-] as const
-
-async function scanPath(path: string, search: string): Promise<ScanSubmission> {
-  const scope = new URLSearchParams(search)
-  const response = await fetch(scanSubmissionUrl(scope.get('install'),scope.get('workspace')), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path }),
-  })
-  const body = (await response.json()) as ScanSubmission | { error?: string }
-  if (!response.ok) {
-    throw new Error(
-      "error" in body && body.error
-          ? body.error
-          : "Scan failed.",
-    )
-  }
-  return body as ScanSubmission
-}
-
-async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal): Promise<ScanSubmission> {
-  const params = new URLSearchParams(window.location.search)
-  const install = params.get('install')
-  const response = await uploadArtifact(file,install,onProgress,signal,new URLSearchParams(window.location.search).get('workspace'))
+async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal, install:string|null, workspaceId:string|null): Promise<ScanSubmission> {
+  const response = await uploadArtifact(file,install,onProgress,signal,workspaceId)
   const body = (await response.json()) as ScanSubmission | { error?: string }
   if (!response.ok) {
     throw new Error(
@@ -289,12 +136,14 @@ export function ScanPage({ search, embedded = false,workspace }: { search: strin
 }
 
 function ScanPageScope({ search, embedded = false,productWorkspace }: { search: string; embedded?: boolean;productWorkspace?:import('@/watch/workspace-types').ProductWorkspace }) {
+  const productWorkspaceId = productWorkspace?.id
   const inputId = useId()
+  const modeId = useId()
   const [dragOver, setDragOver] = useState(false)
   const [state, setState] = useState<ViewState>({ status: "idle" })
   const [mode, setMode] = useState<ScanMode>(() => scanModeFromSearch(search))
   const [session, setSession] = useState<{ login: string; coverage: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; installUrl?: string } | null>(null)
-  const [auth, setAuth] = useState<{ githubApp: boolean; developmentLogin?: boolean }>({ githubApp: false })
+  const [auth, setAuth] = useState<{ githubApp: boolean }>({ githubApp: false })
   const [sessionReady,setSessionReady]=useState(false)
   const [sessionError,setSessionError]=useState<string|null>(null)
   const [sessionRetry,setSessionRetry]=useState(0)
@@ -305,6 +154,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const uploadController=useRef<AbortController|null>(null)
   const mounted=useRef(true)
   const [uploadProgress,setUploadProgress]=useState<number|null>(null)
+  const [selectedArtifact,setSelectedArtifact]=useState<File|null>(null)
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;uploadController.current?.abort();}},[])
 
   useEffect(() => {
@@ -312,15 +162,15 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     void fetch("/api/me", { credentials: "include" })
       .then(async (response) => {
         if(!response.ok)throw new Error('Could not check your sign-in and workspace permissions.')
-        const body = (await response.json()) as { user?: { login: string } | null; coverage?: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; githubApp?: boolean; developmentLogin?: boolean; installUrl?: string }
+        const body = (await response.json()) as { user?: { login: string } | null; coverage?: Coverage; personalCoverage?: Coverage; installations?: ScanWorkspace[]; githubApp?: boolean; installUrl?: string }
         if (cancelled) return
-        setAuth({ githubApp: Boolean(body.githubApp), developmentLogin: body.developmentLogin })
+        setAuth({ githubApp: Boolean(body.githubApp) })
         if (body.user && body.coverage) setSession({ login: body.user.login, coverage: body.coverage, personalCoverage: body.personalCoverage, installations: body.installations, installUrl: body.installUrl })
         else setSession(null)
         setSessionReady(true)
         setSessionError(null)
       })
-      .catch(() => {if(!cancelled)setSessionError('Could not check your sign-in and workspace permissions. Please retry before uploading.')})
+      .catch(() => {if(!cancelled)setSessionError('Could not check your sign-in and workspace permissions. Please retry before starting a scan.')})
     return () => {
       cancelled = true
     }
@@ -329,6 +179,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   useEffect(() => {
     const params=new URLSearchParams(search)
     if (params.get("reveal") !== "1") return
+    if(productWorkspaceId)params.set('workspace',productWorkspaceId)
     let cancelled = false
     setState({ status: "loading", label: "your staged artifact" })
     void fetch(scanSubmissionUrl(params.get('install'),params.get('workspace'),'claim'), { method: 'POST', credentials: "include" })
@@ -337,7 +188,12 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         if (cancelled) return
         if (!response.ok) throw new Error("error" in body && body.error ? body.error : "Could not reveal this scan.")
         requireQueuedScan(body)
-        navigate(`/watch/releases?upload=${encodeURIComponent(body.uploadId)}`)
+        const destination = new URLSearchParams({ upload: body.uploadId })
+        for (const key of ['workspace', 'install']) {
+          const value = params.get(key)
+          if (value) destination.set(key, value)
+        }
+        navigate(`/watch/releases?${destination}`)
       })
       .catch((error) => {
         if (!cancelled) setState({ status: "error", message: error instanceof Error ? error.message : "Could not reveal this scan." })
@@ -345,7 +201,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     return () => {
       cancelled = true
     }
-  }, [search,claimRetry])
+  }, [search,claimRetry,productWorkspaceId])
 
   useEffect(() => {
     setMode(scanModeFromSearch(search))
@@ -356,10 +212,25 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const coverage = productWorkspace?coverageFrom(productWorkspace.trial_ends_at,productWorkspace.plan):selectedInstall ? (workspace ? coverageFrom(workspace.trialEndsAt, workspace.plan) : undefined) : session?.personalCoverage ?? session?.coverage
   const lockReason = !sessionReady ? 'Checking sign-in and workspace permissions…' : productWorkspace?.archived_at?'This workspace is archived. Restore it before starting a scan.':(productWorkspace?.role??workspace?.role)==='viewer' ? 'Viewer access is read-only. Ask an administrator for permission to start scans.' : workspace?.suspended ? 'This GitHub connection is suspended. An administrator needs to reconnect it.' : session && selectedInstall && !workspace ? 'This workspace is unavailable or outside your access. Choose another workspace.' : null
   const locked = coverage?.status === "ended" || lockReason!==null
+  const [dismissedPrerequisite, setDismissedPrerequisite] = useState<string | null>(null)
+  const prerequisiteKey = `${productWorkspace?.id ?? selectedInstall ?? "personal"}:${lockReason ?? coverage?.status}`
+  const showPrerequisite = sessionReady && !sessionError && locked && mode !== 'receipt'
+  const scope = new URLSearchParams()
+  const workspaceId = productWorkspace?.id ?? new URLSearchParams(search).get('workspace')
+  if (workspaceId) scope.set('workspace', workspaceId)
+  if (selectedInstall) scope.set('install', selectedInstall)
+  const scopedPath = (view: 'releases' | 'sources' | 'workspaces' | 'policy') => `${watchPath(view)}${scope.size ? `?${scope}` : ''}`
+
+  const followAppLink = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    navigate(event.currentTarget.getAttribute('href')!)
+  }
 
   const continueWebsite = async () => {
+    if (locked || sessionError || savingWebsite) return
     if (session) {
-      const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+      const params = new URLSearchParams(scope)
       params.set("configure", "website")
       params.set("origin", websiteUrl.trim())
       navigate(`${watchPath("sources")}?${params.toString()}`)
@@ -385,8 +256,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
   const chooseMode = (next: ScanMode) => {
     setMode(next)
-    const params = new URLSearchParams(window.location.search)
-    if (next === "package") params.delete("mode")
+    const params = new URLSearchParams(search)
+    if (next === "github" && params.get('reveal') !== '1') params.delete("mode")
     else params.set("mode", next)
     window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`)
   }
@@ -401,7 +272,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         requireQueuedScan(report)
         const params = new URLSearchParams({ upload: report.uploadId })
         if (selectedInstall) params.set('install', selectedInstall)
-        const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId)
+        if(workspaceId)params.set('workspace',workspaceId)
         navigate(`/watch/releases?${params}`)
         return
       }
@@ -413,74 +284,86 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         message: error instanceof Error ? error.message : "Scan failed.",
       })
     }
-  }, [selectedInstall,search])
+  }, [selectedInstall,workspaceId])
 
   const onFiles = useCallback(
     (list: FileList | null) => {
       const file = list?.[0]
       if (!file || locked || uploadController.current) return
       const limit=(session?80:25)*1024*1024
-      if(!file.size || file.size>limit){setState({status:'error',message:`Choose a non-empty artifact no larger than ${session?80:25} MiB.`});return;}
+      if(!file.size || file.size>limit){setSelectedArtifact(null);setState({status:'error',message:`Choose a non-empty artifact no larger than ${session?80:25} MiB.`});return;}
+      setState({status:'idle'})
+      setSelectedArtifact(file)
+    },
+    [locked, session],
+  )
+
+  const startArtifactScan = useCallback(() => {
+      const file = selectedArtifact
+      if (!file || locked || uploadController.current) return
       const controller=new AbortController()
       uploadController.current=controller
       setUploadProgress(0)
-      void run(file.name, () => scanFile(file,setUploadProgress,controller.signal)).finally(()=>{
+      void run(file.name, () => scanFile(file,setUploadProgress,controller.signal,selectedInstall,workspaceId)).finally(()=>{
         uploadController.current=null
         setUploadProgress(null)
       })
-    },
-    [locked, run, session],
+    }, [locked, run, selectedArtifact, selectedInstall, workspaceId],
   )
 
   return (
     <main className={cn("scan-workspace mx-auto w-full max-w-6xl", embedded ? "pb-12" : "px-5 py-12 md:py-16")}>
-      <p className="text-[11px] uppercase tracking-[0.28em] text-dim">New evidence</p>
+
       <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-        What do you want to prove?
+        Check what you’re about to ship.
       </h1>
       <p className="mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg">
-        Choose the release surface. Each scan records its supported checks, findings and limitations.
-        Verify an existing proof separately without starting a new scan.
+        Choose the exact artifact your customers will receive.
       </p>
 
-      <div className="scan-mode-grid" role="tablist" aria-label="Evidence type">
-        <button type="button" role="tab" aria-selected={mode === "github"} className={cn(mode === "github" && "is-selected")} onClick={() => chooseMode("github")}>
-          <GitBranch aria-hidden />
-          <strong>GitHub repository</strong>
-          <span>Connect a repo and keep watching releases.</span>
-        </button>
-        <button type="button" role="tab" aria-selected={mode === "package"} className={cn(mode === "package" && "is-selected")} onClick={() => chooseMode("package")}>
-          <Box aria-hidden />
-          <strong>Package or build</strong>
-          <span>Upload npm, archive, installer, or CI output.</span>
-        </button>
-        <button type="button" role="tab" aria-selected={mode === "website"} className={cn(mode === "website" && "is-selected")} onClick={() => chooseMode("website")}>
-          <Globe2 aria-hidden />
-          <strong>Production website</strong>
-          <span>Inspect the assets a browser can download.</span>
-        </button>
-        <button type="button" role="tab" aria-selected={mode === "receipt"} className={cn(mode === "receipt" && "is-selected")} onClick={() => chooseMode("receipt")}>
-          <ShieldCheck aria-hidden />
-          <strong>Verify release proof</strong>
-          <span>Check proof shared by a supplier or teammate.</span>
-        </button>
-      </div>
+      {showPrerequisite ? (
+        <>
+        <button type="button" className="mt-4 inline-flex items-center gap-2 text-sm text-mute hover:text-snow" onClick={()=>setDismissedPrerequisite(null)}><LockKeyhole className="size-4" aria-hidden/>View scan access</button>
+        <Dialog open={dismissedPrerequisite !== prerequisiteKey} onClose={()=>setDismissedPrerequisite(prerequisiteKey)} className="relative z-50">
+          <DialogBackdrop className="fixed inset-0 bg-black/70 backdrop-blur-sm"/>
+          <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-5">
+          <DialogPanel className="scan-access-dialog relative w-full max-w-lg rounded-xl border border-white/10 bg-[#111113] p-7 shadow-2xl">
+          <button type="button" aria-label="Close scan access" className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-md text-mute hover:bg-white/5 hover:text-snow" onClick={()=>setDismissedPrerequisite(prerequisiteKey)}><X className="size-4" aria-hidden/></button>
+          <section aria-label="Scan prerequisites">
+          <div>
+            <p className="scan-coverage-kicker">Coverage required</p>
+            <DialogTitle className="mb-3 pr-8 font-display text-2xl text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</DialogTitle>
+            <p role="status" className="text-sm leading-relaxed text-mute">
+              {lockReason ?? 'New scans and monitoring are paused until coverage is active. You can still open saved releases and verify existing proof.'}
+              {!lockReason && workspaceId ? ' Your organisation owner manages coverage in Plan & billing.' : null}
+            </p>
+          </div>
+          <div className="scan-coverage-actions">
+            {!lockReason ? <a className="scan-primary-action" onClick={followAppLink} href={workspaceId ? `${scopedPath('workspaces')}&workspaceTab=billing` : '/pricing'}>{workspaceId ? 'Plan & billing' : 'See plans'} <ChevronRight className="size-4" aria-hidden /></a> : null}
+            <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
+            <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('sources')}>View coverage</a>
+          </div>
+          </section>
+          </DialogPanel></div>
+        </Dialog>
+        </>
+      ) : null}
 
+      <EvidenceTypePicker id={modeId} mode={mode} onChange={chooseMode}/>
+
+      <div className="scan-mode-detail" role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
+      {mode!=='receipt'&&sessionError?<div role="alert" className="mt-5 space-y-3 rounded-lg border border-white/15 bg-panel p-4 text-sm text-mute"><p>{sessionError}</p><HeadlessButton type="button" className="min-h-11 underline underline-offset-4" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div>:null}
       {mode === "github" ? (
         <section className="scan-website-panel" aria-labelledby="github-connect-title">
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
-            <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">Connect the repository behind your release.</h2>
+            <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
-              GitHub creates ongoing Coverage and queues the first release check. NoSpoilers watches
-              visibility, release assets, and packed CI output without treating the source tree as the shipped artifact.
+              {session&&selectedInstall?"Inspect the assets attached to a published release, not the repository source code.":"Connect GitHub, choose a repository, then scan its published release assets."}
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              {session ? (selectedInstall ? (
-                <HeadlessButton type="button" className="scan-primary-action" onClick={() => navigate(watchHref(watchPath("sources"), search, { configure: "github" }))}>
-                  Choose repository <ChevronRight className="size-4" aria-hidden />
-                </HeadlessButton>
-              ) : null) : auth.githubApp ? (
+            {!sessionReady&&!sessionError?<WatchSkeleton variant="detail" className="mt-5" label="Checking sign-in and workspace permissions…"/>:null}
+            {!session || !selectedInstall ? <div className="mt-7 flex flex-wrap items-center gap-3">
+              {!sessionReady||sessionError||session ? null : auth.githubApp ? (
                 <a className="scan-primary-action" href="/api/auth/github">
                   Sign in with GitHub <ChevronRight className="size-4" aria-hidden />
                 </a>
@@ -489,16 +372,20 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                   Continue to sign in <ChevronRight className="size-4" aria-hidden />
                 </HeadlessButton>
               )}
-              {session&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
-            </div>
+              {session&&!selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
+            </div> : null}
+            {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={`?${scope}`} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
+            {session&&selectedInstall&&!lockReason&&!sessionError&&workspaceId ? (
+              <section className="scan-add-source" aria-labelledby="github-add-source-title">
+                <h3 id="github-add-source-title" className="mb-4 font-display text-lg text-snow">Another GitHub source?</h3>
+                <GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={lockReason} compact/>
+              </section>
+            ) : null}
           </div>
-          <aside>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-dim">What this creates</p>
-            <ol>
-              <li><span>1</span><div><strong>Repository coverage</strong><small>Visibility and release events stay monitored.</small></div></li>
-              <li><span>2</span><div><strong>Initial release check</strong><small>The latest shipped artifact becomes a Release.</small></div></li>
-              <li><span>3</span><div><strong>Actionable alerts</strong><small>Exposure changes route to the right owner.</small></div></li>
-            </ol>
+          <aside className="scan-scope-note">
+            <h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>The connection’s configured scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul>
+            <h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p>
+            <a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight className="size-4" aria-hidden /></a>
           </aside>
         </section>
       ) : null}
@@ -521,12 +408,10 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </select>
               </label> : null}
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
-                Choose packed bytes—not the source tree. Before login the artifact is only staged;
-                scanning starts after coverage is active. Archives are opened but never executed.
+                Choose the packaged build your customers receive. Review the selected file before starting your scan.
                 {session && coverage?.status === "trial" ? " Hosted scanning is active for your trial." : null}
               </p>
               <div className="relative mt-7 min-h-52">
-                {sessionError ? <div role="alert"><p>{sessionError}</p><HeadlessButton type="button" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div> : lockReason ? <p role="status" className="mb-4 text-sm text-mute">{lockReason}</p> : locked ? <CoverageLock variant="scan" title="Subscribe to unpack here." /> : null}
                 <Field>
                   <Label
                     htmlFor={locked ? undefined : inputId}
@@ -543,33 +428,25 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                     className={cn("scan-dropzone", locked && "is-locked", !locked && dragOver && "is-dragging")}
                   >
                     <Upload className="h-6 w-6 text-mute" aria-hidden />
-                    <strong>Drop a package or build here</strong>
-                    <Description>tarball, zip, asar, VSIX, container image, APK, IPA, wheel, JAR, or Lambda zip</Description>
+                    <strong>Drop your release archive here</strong>
+                    <Description>.zip, .tgz, .tar and supported packages · up to {session?80:25} MiB</Description>
+                    <span className="scan-choose-file"><FileText className="size-4" aria-hidden />Choose file</span>
                     {!locked ? (
-                      <input id={inputId} type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
+                      <input id={inputId} aria-label="Drop a package or build here" type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
                     ) : null}
                   </Label>
                 </Field>
               </div>
+              {selectedArtifact&&uploadProgress===null?<>
+                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{selectedArtifact.size<1024?`${selectedArtifact.size} B`:selectedArtifact.size<1024*1024?`${(selectedArtifact.size/1024).toFixed(1)} KiB`:`${(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10*1024*1024?1:2)} MiB`} · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
+                <HeadlessButton type="button" className="scan-build-submit" disabled={locked || !!sessionError} onClick={startArtifactScan}>Scan this build <ChevronRight className="size-4" aria-hidden/></HeadlessButton>
+                <p className="scan-build-note">Artifacts are inspected, never executed.</p>
+              </>:null}
             </section>
-            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : <ResultsPanel state={state} locked={locked} lockReason={lockReason} auth={auth} />}
+            {uploadProgress!==null ? <section className="uploaded-detail" aria-label="Artifact upload"><h2>Uploading artifact</h2><progress aria-label="Upload progress" value={uploadProgress} max={100}/><p role="status">{uploadProgress<100?`${uploadProgress}% uploaded`:'Upload sent. Waiting for the server to accept the scan.'}</p><HeadlessButton type="button" onClick={()=>uploadController.current?.abort()}>Stop upload</HeadlessButton><p className="text-mute">Stopping the transfer cannot cancel a scan already accepted by the server.</p></section> : state.status === "idle" ? <aside className="scan-scope-note"><h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>Your workspace scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul><h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p><p>Each result records the supported checks, findings, and limits of that evidence.</p><a onClick={followAppLink} href={scopedPath('policy')}>Review scan rules <ChevronRight size={14} aria-hidden /></a></aside> : <ResultsPanel state={state} locked={locked} auth={auth} />}
           </div>
 
           {new URLSearchParams(search).get('reveal')==='1' && state.status==='error' ? <div className="mt-4"><HeadlessButton type="button" onClick={()=>setClaimRetry(value=>value+1)}>Retry staged upload</HeadlessButton><p className="mt-2 text-sm text-mute">Retry after resolving the permission or connection problem. If the staged artifact has expired, upload it again. An already accepted attempt is reopened, not scanned twice.</p></div> : null}
-          {auth.developmentLogin ? <details className={cn("scan-examples", locked && "pointer-events-none opacity-40")}>
-            <summary>Local review examples</summary>
-            <p className="text-sm text-mute">Development only. These fixtures use the same workspace scan queue and limits as uploads, and create saved attempts. This library is not available on the production website.</p>
-            <ul>
-              {EXAMPLES.map((example) => (
-                <li key={example.path}>
-                  <HeadlessButton type="button" disabled={locked || state.status==='loading'} onClick={() => !locked && state.status!=='loading' && void run(example.label, () => scanPath(example.path, search))}>
-                    <span><strong>{example.label}</strong><small>{example.hint}</small></span>
-                    <span>Run <ChevronRight className="h-3.5 w-3.5" aria-hidden /></span>
-                  </HeadlessButton>
-                </li>
-              ))}
-            </ul>
-          </details> : null}
         </>
       ) : null}
 
@@ -586,7 +463,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               <label htmlFor="scan-website-url">HTTPS production URL</label>
               <div>
                 <input id="scan-website-url" type="url" required inputMode="url" placeholder="https://app.example.com/" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
-                <HeadlessButton type="submit" className="scan-primary-action" disabled={savingWebsite || !websiteUrl.trim()}>
+                <HeadlessButton type="submit" className="scan-primary-action" disabled={savingWebsite || !websiteUrl.trim() || locked || !!sessionError}>
                   {savingWebsite ? "Saving…" : session ? "Continue to verification" : "Sign in to continue"}
                   <ChevronRight className="size-4" aria-hidden />
                 </HeadlessButton>
@@ -606,6 +483,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       ) : null}
 
       {mode === "receipt" ? <ReceiptVerifyPanel /> : null}
+      </div>
 
       {mode === "package" && !locked ? (
         <section className="mt-20 grid gap-10 border-t border-white/5 pt-12 md:grid-cols-3">
@@ -777,7 +655,7 @@ export function ReceiptVerifyPanel() {
                 "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
                 receiptOver
                   ? "border-snow bg-white/[0.06]"
-                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+                  : "border-white/25 hover:border-white/45",
               )}
             >
               <FileJson className="h-5 w-5 text-mute" aria-hidden />
@@ -811,7 +689,7 @@ export function ReceiptVerifyPanel() {
                 "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
                 packOver
                   ? "border-snow bg-white/[0.06]"
-                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+                  : "border-white/25 hover:border-white/45",
               )}
             >
               <Upload className="h-5 w-5 text-mute" aria-hidden />
@@ -841,7 +719,7 @@ export function ReceiptVerifyPanel() {
           ) : null}
           {view.status === "working" ? (
             <div className="flex items-center gap-3">
-              <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+              <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-snow" aria-hidden />
               <p className="text-sm text-mute">{view.label}</p>
             </div>
           ) : null}
@@ -869,14 +747,14 @@ export function ReceiptVerifyPanel() {
   )
 }
 
-function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; locked: boolean; lockReason: string|null; auth: { githubApp: boolean; developmentLogin?: boolean } }) {
+function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boolean; auth: { githubApp: boolean } }) {
   if (locked && state.status === "idle") {
     return (
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Report</p>
-        <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">No hosted scan yet.</h2>
+        <h2 className="mt-3 font-display text-2xl tracking-tight text-snow">New scan paused</h2>
         <p className="mt-2 text-sm leading-relaxed text-mute">
-          {lockReason??'Choose an active workspace or renew coverage to start a hosted scan.'} Existing release records remain separate from new scan access.
+          No artifact has been submitted from this page. Your saved release records are available in Releases.
         </p>
       </div>
     )
@@ -887,7 +765,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
       <div className="flex min-h-52 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="text-sm text-dim">No scan yet.</p>
         <p className="mt-2 text-sm text-mute">
-          {auth.developmentLogin ? "Drop the packed artifact you intend to release, or choose a local review fixture below." : "Drop the packed artifact you intend to release."}
+          Drop the packed artifact you intend to release.
         </p>
       </div>
     )
@@ -896,7 +774,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
   if (state.status === "loading") {
     return (
       <div className="flex min-h-52 items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
-        <Loader2 className="h-4 w-4 animate-spin text-snow" aria-hidden />
+        <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-snow" aria-hidden />
         <p className="text-sm text-mute">Submitting {state.label}… Waiting for the server to confirm the saved attempt.</p>
       </div>
     )
@@ -905,9 +783,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
   if (state.status === "pending") {
     const href = auth.githubApp
       ? "/api/auth/github"
-      : auth.developmentLogin
-        ? "/api/auth/development"
-        : "/watch"
+      : "/watch"
     return (
       <div className="scan-private-result rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
         <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Artifact secured · scan not started</p>
@@ -916,7 +792,7 @@ function ResultsPanel({ state, locked, lockReason, auth }: { state: ViewState; l
           Sign in to start scanning <span className="text-snow">{state.label}</span>. That begins your five-day trial; no scanning work has run yet.
         </p>
         <HeadlessButton as="a" href={href} className="scan-primary-action">
-          {auth.developmentLogin && !auth.githubApp ? "Start in local review" : "Sign in and start scan"}
+          Sign in and start scan
           <ChevronRight className="size-4" aria-hidden />
         </HeadlessButton>
         <p className="mt-4 text-xs text-dim">The staged artifact expires and is deleted after one hour.</p>

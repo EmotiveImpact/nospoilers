@@ -1,0 +1,37 @@
+/* Approved Overview visual language. Scoped to Watch, including its portals. */
+.watch-desk,.watch-rail,.watch-design-surface{
+ --color-panel:#121416;--color-inset:#0c0d0f;--color-line:#ffffff10;--color-line-strong:#ffffff20;
+ --color-dim:#898c96;--color-review:#ff8a80;--font-display:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+ --font-sans:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+ font-family:var(--font-sans);-webkit-font-smoothing:antialiased;
+}
+.watch-desk .watch-page-title{font-family:var(--font-sans);font-size:34px;line-height:1.2;letter-spacing:-1.1px;font-weight:550}
+.watch-desk .watch-page-lede{font-size:13px;line-height:1.7;max-width:680px;margin-top:12px}
+.watch-desk .watch-between{margin-bottom:26px}
+.watch-desk :is(.watch-card,.watch-stat,.watch-stepcard,.watch-progress,.workspace-create,.workspace-cards>article,.watch-release-operation-card){border-radius:7px;background:var(--color-panel);border-color:var(--color-line)}
+.watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article){padding:24px}
+.watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article) h2{font-family:var(--font-sans);font-size:16px;font-weight:500;line-height:1.5}
+.watch-desk :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-radius:5px;font-family:var(--font-sans);font-size:13px}
+.watch-desk :is(.uploaded-list button,.upload-finding-list>button){background:var(--color-panel);border-color:var(--color-line)}
+.watch-desk :is(.uploaded-list button,.upload-finding-list>button)[aria-pressed=true]{background:#ffffff05}
+.watch-desk :is(.upload-evidence-panel h3,.workspace-cards h2,.workspace-create h2){font-family:var(--font-sans);font-weight:500}
+.watch-desk :is(.uploaded-findings>div,.uploaded-findings>details){border-color:var(--color-line)}
+.watch-desk .upload-evidence-panel{padding:24px}.watch-desk .upload-evidence-panel h3{font-size:23px}
+.watch-desk .quiet-shared-button,.watch-design-surface .quiet-shared-button{border-radius:6px;font-family:var(--font-sans);font-size:12px;letter-spacing:0}
+.watch-desk .quiet-shared-card,.watch-design-surface .quiet-shared-card{border-radius:7px;background:var(--color-panel);border-color:var(--color-line)}
+.watch-desk .quiet-shared-card-title{font-family:var(--font-sans);font-size:16px;font-weight:500}
+.watch-search-panel{background:#090a0c;border:1px solid #ffffff20;border-radius:10px;box-shadow:0 24px 90px #0008;overflow:hidden;width:100%;max-width:520px;transform-origin:top left}
+.watch-search-panel [role=option]{border-radius:7px;width:calc(100% - 12px);margin:2px 6px;font-size:13px;min-height:42px}
+.watch-search-panel [role=option][aria-selected=true]{background:#ffffff08}
+.watch-search-panel [role=listbox]{padding:6px 0;max-height:min(380px,55vh)}
+.watch-search-help{border-top:1px solid var(--color-line);padding:12px 16px;color:var(--color-dim);font-size:10px}
+@media(max-width:600px){.watch-desk .watch-page-title{font-size:30px}.watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article){padding:19px}.watch-desk .watch-between{margin-bottom:20px}}
+.watch-desk h1{font-family:var(--font-sans);font-size:34px;line-height:1.2;letter-spacing:-1.1px;font-weight:550}
+.watch-search-panel input:focus-visible{outline:none;box-shadow:none}.watch-search-panel:focus-within{border-color:#ffffff30}
+@media(max-width:600px){.watch-desk h1{font-size:30px}}
+.watch-desk .watch-stage :is(.watch-release-heading,.watch-between,.workspace-gate) h1{font-family:var(--font-sans);font-size:34px;font-weight:550;line-height:1.2;letter-spacing:-1.1px}
+.watch-desk .watch-stage .watch-release-heading p{font-size:13px;line-height:1.7}
+@media(max-width:600px){.watch-desk .watch-stage :is(.watch-release-heading,.watch-between,.workspace-gate) h1{font-size:30px}}
+
+/* Error labels must retain normal-text contrast on raised and tinted panels. */
+.watch-desk :is(.upload-preview-verdict.is-blocked,.upload-severity.is-critical){color:var(--color-danger-text)}

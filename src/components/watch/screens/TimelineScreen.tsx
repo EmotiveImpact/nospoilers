@@ -1,11 +1,13 @@
-import { WatchExposureChart } from "@/components/WatchExposureChart";
 import {
   WatchSectionError,
-  WatchSkeleton,
   type WatchSectionState,
 } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import type { DeskAlert } from "@/watch/verdict";
+import { navigate } from "@/nav";
+import { Bell, ExternalLink, History, Send } from "lucide-react";
+import { useMemo, useState, type KeyboardEvent } from "react";
+import "../design/timeline-page.css";
 
 type TimelineEntry = {
   type: "alert" | "alert_event" | "delivery";
@@ -31,14 +33,6 @@ function windowLabel(days: number): string {
   return days === 0 ? "life of install" : `${days} days`;
 }
 
-function retainedWindow(days: number): string {
-  return days === 0 ? "for the life of this install" : `for the last ${days} days`;
-}
-
-function heading(days: number): string {
-  return days === 0 ? "Install timeline" : `${days}-day timeline`;
-}
-
 function destinationLabel(kind: string): string {
   if (kind === "email") return "Email";
   if (kind === "slack") return "Slack";
@@ -48,53 +42,99 @@ function destinationLabel(kind: string): string {
   return kind || "Notification";
 }
 
+type TimelineFilter = "all" | "alerts" | "responses" | "deliveries";
+
+const timelineFilters = [
+  ["all", "All activity"],
+  ["alerts", "Alerts"],
+  ["responses", "Responses"],
+  ["deliveries", "Deliveries"],
+] as const;
+
+function entryLabel(entry: TimelineEntry): string {
+  if (entry.type === "delivery") {
+    return `${destinationLabel(entry.kind ?? "")} ${entry.deliveryStatus ?? "delivery"}`;
+  }
+  if (entry.type === "alert_event") {
+    const action = entry.action?.replaceAll("_", " ") ?? "Response recorded";
+    return entry.actorLogin ? `${action} · ${entry.actorLogin}` : action;
+  }
+  return entry.title ?? entry.kind?.replaceAll("_", " ") ?? "Alert recorded";
+}
+
 export function TimelineScreen({
   previewing,
   timeline,
-  alerts,
-  alertState,
+  search,
   onRetryTimeline,
-  onRetryAlerts,
 }: {
   previewing: boolean;
   timeline: TimelineState;
   alerts: DeskAlert[];
   alertState: WatchSectionState;
+  search: string;
   onRetryTimeline: () => void;
   onRetryAlerts: () => void;
 }) {
   const ready = timeline.status === "ready";
+  const [filter, setFilter] = useState<TimelineFilter>("all");
+  const filteredEntries = useMemo(() => {
+    if (!ready || filter === "all") return ready ? timeline.entries : [];
+    if (filter === "alerts") return timeline.entries.filter((entry) => entry.type === "alert");
+    if (filter === "responses") return timeline.entries.filter((entry) => entry.type === "alert_event");
+    return timeline.entries.filter((entry) => entry.type === "delivery");
+  }, [filter, ready, timeline]);
+  const openEntry = (entry: TimelineEntry) => {
+    if (entry.alertId == null) return;
+    const params = new URLSearchParams(search);
+    params.set("alert", String(entry.alertId));
+    navigate(`/watch/alerts?${params}`);
+  };
+  const moveFilterFocus = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = timelineFilters.findIndex(([value]) => value === filter);
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % timelineFilters.length;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + timelineFilters.length) % timelineFilters.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = timelineFilters.length - 1;
+    else return;
+    event.preventDefault();
+    const nextFilter = timelineFilters[nextIndex][0];
+    setFilter(nextFilter);
+    event.currentTarget.parentElement
+      ?.querySelector<HTMLButtonElement>(`#timeline-filter-${nextFilter}`)
+      ?.focus();
+  };
   return (
-    <section className="mt-4">
+    <section className="timeline-page mt-4 min-w-0">
       <WatchPageHeader
-        title={ready ? heading(timeline.days) : "Timeline"}
-        lede="Alert and response activity within the retained window."
+        title="The story behind each release."
+        lede="Recorded alerts, responses, and delivery events in one place."
       />
-      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-        Team and trial installs see this install’s alerts, acknowledgement activity, and
-        notification deliveries {ready ? retainedWindow(timeline.days) : "for the list window"}.
-        Titles only — no secret values, webhook URLs, or other tenants. Append-only evidence stays
-        until uninstall.
-      </p>
-      <div className="watch-card mt-[18px]">
-        <div className="watch-kv">
-          <span>Events</span>
-          <span className={ready && timeline.entries.length > 0 ? "text-snow" : "text-dim"}>
-            {ready ? timeline.entries.length : previewing ? 0 : "—"}
-          </span>
+      {ready ? (
+        <div className="timeline-filter-tabs" role="tablist" aria-label="Timeline activity">
+          {timelineFilters.map(([value, label]) => (
+            <button
+              key={value}
+              id={`timeline-filter-${value}`}
+              type="button"
+              role="tab"
+              aria-selected={filter === value}
+              aria-controls="timeline-activity-panel"
+              tabIndex={filter === value ? 0 : -1}
+              onClick={() => setFilter(value)}
+              onKeyDown={moveFilterFocus}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="watch-kv">
-          <span>Window</span>
-          <span className="text-dim">{ready ? windowLabel(timeline.days) : "—"}</span>
-        </div>
-      </div>
-      {!previewing && ready && alertState.status === "ready" ? (
-        <WatchExposureChart alerts={alerts} days={Math.max(7, timeline.days || 90)} />
-      ) : timeline.status === "loading" || alertState.status === "loading" ? (
-        <WatchSkeleton variant="detail" className="mt-6" />
-      ) : alertState.status === "error" ? (
-        <WatchSectionError className="mt-6 max-w-2xl" message={alertState.message} onRetry={onRetryAlerts} />
       ) : null}
+      <div
+        id={ready ? "timeline-activity-panel" : undefined}
+        role={ready ? "tabpanel" : undefined}
+        aria-labelledby={ready ? `timeline-filter-${filter}` : undefined}
+      >
       {previewing ? (
         <>
           <p className="mt-6 text-[13px] leading-relaxed text-mute">
@@ -118,27 +158,33 @@ export function TimelineScreen({
             ? "Nothing on this install yet."
             : `Nothing in the last ${timeline.days} days on this install.`}
         </div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="watch-empty">No {filter} activity in this retained window.</div>
       ) : (
-        <ul className="mt-6 max-w-xl divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
-          {timeline.entries.map((entry, index) => (
-            <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="py-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm text-snow">
-                  {entry.type === "delivery"
-                    ? `${destinationLabel(entry.kind ?? "")} ${entry.deliveryStatus ?? "delivery"}`
-                    : entry.type === "alert_event"
-                      ? `${entry.action ?? "activity"}${entry.actorLogin ? ` · ${entry.actorLogin}` : ""}`
-                      : entry.title ?? entry.kind ?? "Alert"}
-                </p>
-                <time dateTime={entry.at} className="text-xs text-dim">
-                  {new Date(entry.at).toLocaleString()}
-                </time>
+        <section className="timeline-feed"><header><h2>Recorded activity</h2><p>{windowLabel(timeline.days)} · newest first</p></header><ul className="timeline-events mt-6 w-full min-w-0">
+          {filteredEntries.map((entry, index) => (
+            <li key={`${entry.type}-${entry.alertId ?? "x"}-${entry.at}-${index}`} className="timeline-day-entry">
+              {index === 0 || new Date(entry.at).toLocaleDateString() !== new Date(filteredEntries[index-1].at).toLocaleDateString() ? <h3 className="timeline-date">{new Date(entry.at).toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}</h3> : null}
+              <div className="timeline-event min-w-0">
+              <time dateTime={entry.at}>{new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+              <span className="timeline-event-icon" aria-hidden>
+                {entry.type === "delivery" ? <Send /> : entry.type === "alert_event" ? <History /> : <Bell />}
+              </span>
+              <div>
+                <strong>{entryLabel(entry)}</strong>
+                <p>{entry.fullName ?? new Date(entry.at).toLocaleDateString()}</p>
               </div>
-              {entry.fullName ? <p className="mt-1 font-mono text-xs text-dim">{entry.fullName}</p> : null}
+              {entry.alertId != null ? (
+                <button type="button" className="timeline-event-link" onClick={() => openEntry(entry)}>
+                  View <ExternalLink aria-hidden />
+                </button>
+              ) : <span className="timeline-event-unlinked">Recorded delivery</span>}
+              </div>
             </li>
           ))}
-        </ul>
+        </ul></section>
       )}
+      </div>
     </section>
   );
 }

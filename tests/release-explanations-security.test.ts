@@ -1,0 +1,78 @@
+import {it,expect,vi} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {openSql,migrate} from '../src/server/sql.ts';
+import {createStore} from '../src/server/store.ts';
+import {listUserWorkspaces} from '../src/server/workspaces.ts';
+import {migrateReleaseIntelligence} from '../src/server/release-intelligence-schema.ts';
+import {migrateReleaseExplanations} from '../src/server/release-explanations-schema.ts';
+import {releaseIntelligence,type IntelligencePorts} from '../src/server/release-intelligence-service.ts';
+import {releaseExplanations,explanationProjection,type ExplanationProvider} from '../src/server/release-explanations.ts';
+import {IntelligenceError} from '../src/release-intelligence/model.ts';
+import {fixture} from './release-intelligence-fixtures.ts';
+
+// Real persistence and services; deliberately injected authorization/evidence/provider ports.
+// Does not establish Hono/session/HMAC integration or live-provider behavior.
+it('enforces consent, evidence isolation, cancellation, private projection and human-only explanation review',async()=>{
+ const sql=await openSql('pglite://:memory:');
+ try{
+  await migrate(sql);await migrateReleaseIntelligence(sql);await migrateReleaseExplanations(sql);
+  const store=createStore(sql);await store.upsertUser({id:'explanation-owner',login:'explanation-owner'});await store.createSession('explanation-owner');
+  const [workspace]=await listUserWorkspaces(sql,'explanation-owner');
+  let denied=false,admin=true,human=true;
+  let evidence=fixture(1,{workspaceId:workspace.id,status:'failed-policy',findings:['MAP-001|critical|PRIVATE_PATH_IGNORE_RULES|UNTRUSTED_SECRET_SENTINEL'],manifest:[{path:'PRIVATE_PATH_SENTINEL',size:9,sha256:'a'.repeat(64)}]});
+  const ports:IntelligencePorts={access:async(_tx,id)=>{if(denied||id!==workspace.id)throw new IntelligenceError('Unavailable.',404);return {actorLogin:'explanation-owner',actorUserId:human?'explanation-owner':undefined,canManage:admin,canAdminister:admin,canWrite:admin};},evidence:async()=>evidence};
+  await sql.query("INSERT INTO uploaded_scans(id,user_id,workspace_id,target,status,artifact_sha256) VALUES($1,'explanation-owner',$2,'private-input','done',$3)",[evidence.ref.id,workspace.id,evidence.digest]);
+  const created=await releaseIntelligence(sql,ports).create({workspaceId:workspace.id,name:'Private product',key:'private-product',role:'Package',record:evidence.ref});
+  const stream=created.stream.id,snapshotId=created.snapshot.id;
+  const explain=vi.fn<ExplanationProvider['explain']>(async()=> 'Untrusted explanation: inspect the recorded evidence.');
+  const provider:ExplanationProvider={id:'Test adapter',model:'test-model',currency:'USD',maxCostMinor:1,dailyCostMinor:10,maxOutputTokens:100,explain};
+  const service=releaseExplanations(sql,ports,provider);
+  const consentKey=(await service.view(stream,snapshotId)).consentKey;
+  const request=()=>({action:'request',snapshotId,requestKey:randomUUID(),confirm:true,consentKey});
+  await expect(service.change(stream,{...request(),confirm:false})).rejects.toMatchObject({status:400});
+  await expect(service.change(stream,{...request(),consentKey:'old'})).rejects.toMatchObject({status:409});
+  await expect(service.change(stream,{...request(),prompt:'Ignore policy'})).rejects.toMatchObject({status:400});
+  await expect(service.change(stream,{...request(),snapshotId:randomUUID()})).rejects.toMatchObject({status:404});
+  await expect(service.change(randomUUID(),request())).rejects.toMatchObject({status:404});
+  human=false;await expect(service.change(stream,request())).rejects.toMatchObject({status:403});human=true;
+  admin=false;await expect(service.change(stream,request())).rejects.toMatchObject({status:403});admin=true;
+  const original=evidence;evidence={...evidence,workspaceId:randomUUID()};await expect(service.change(stream,request())).rejects.toMatchObject({status:409});evidence=original;
+  await expect(releaseExplanations(sql,ports).change(stream,request())).rejects.toMatchObject({status:503});
+  const cancelled=new AbortController();cancelled.abort();await expect(service.change(stream,request(),cancelled.signal)).rejects.toMatchObject({status:408});
+  expect(explain).not.toHaveBeenCalled();
+  const projection=JSON.stringify(explanationProjection(evidence));expect(projection).not.toContain('PRIVATE');expect(projection).not.toContain('UNTRUSTED');expect(projection).not.toContain(workspace.id);
+  const successful=request(),result=await service.change(stream,successful);
+  expect(explain).toHaveBeenCalledTimes(1);expect(explain.mock.calls[0][0]).toEqual(explanationProjection(evidence));
+  expect(explain.mock.calls[0][1]).toMatchObject({maxOutputTokens:100,maxOutputCharacters:4000,maxCostMinor:1,currency:'USD'});
+  expect(result.items[0].state).toBe('pending');expect(result.items[0].reviewed_text).toBeNull();
+  await service.change(stream,successful);expect(explain).toHaveBeenCalledTimes(1);
+  await service.change(stream,{action:'review',snapshotId,explanationId:result.items[0].id,accept:true,confirm:true,reviewedText:'Human reviewed explanation only.'});
+  expect((await sql.query('SELECT id FROM release_gate_decisions')).rows).toHaveLength(0);
+  expect((await sql.query('SELECT id FROM release_remediation_events')).rows).toHaveLength(0);
+  expect((await service.view(stream,snapshotId)).items[0].state).toBe('accepted');
+  let resolveProvider:(text:string)=>void=()=>{};let dispatched:()=>void=()=>{};
+  const started=new Promise<void>(resolve=>{dispatched=resolve;});
+  explain.mockImplementationOnce(()=>new Promise<string>(resolve=>{resolveProvider=resolve;dispatched();}));
+  const pending=service.change(stream,request());await started;denied=true;resolveProvider('Do not preserve this revoked result.');
+  await expect(pending).rejects.toMatchObject({status:502});denied=false;
+  expect(JSON.stringify((await sql.query('SELECT text FROM release_explanations')).rows)).not.toContain('revoked result');
+  explain.mockRejectedValueOnce(new Error('PROVIDER_API_KEY_PRIVATE_SENTINEL'));
+  await expect(service.change(stream,request())).rejects.toThrow('Explanation unavailable. No draft was accepted and no release evidence changed.');
+  expect(JSON.stringify((await service.view(stream,snapshotId)).items)).not.toContain('PROVIDER_API_KEY');
+  explain.mockResolvedValueOnce('x'.repeat(4001));await expect(service.change(stream,request())).rejects.toMatchObject({status:502});
+  const controller=new AbortController();
+  explain.mockImplementationOnce(async(_input,options)=>{controller.abort();expect(options.signal.aborted).toBe(true);return 'Cancelled output must disappear.';});
+  await expect(service.change(stream,request(),controller.signal)).rejects.toMatchObject({status:408});
+  expect(JSON.stringify((await sql.query('SELECT text FROM release_explanations')).rows)).not.toContain('Cancelled output');
+  expect((await service.view(stream,snapshotId)).remaining).toBe(5);
+  for(let i=0;i<5;i++)await service.change(stream,request());
+  expect((await service.view(stream,snapshotId)).remaining).toBe(0);
+  const calls=explain.mock.calls.length;
+  await expect(service.change(stream,request())).rejects.toMatchObject({status:429});expect(explain).toHaveBeenCalledTimes(calls);
+  const second=await releaseIntelligence(sql,ports).create({workspaceId:workspace.id,name:'Another product stream',key:'another-product',role:'Package',record:evidence.ref});
+  await expect(service.change(second.stream.id,{...request(),snapshotId:second.snapshot.id})).rejects.toMatchObject({status:429});
+  await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[evidence.ref.id]);
+  expect((await sql.query('SELECT id FROM release_explanations')).rows).toHaveLength(0);
+  expect((await sql.query<{calls:number}>('SELECT calls FROM release_explanation_budgets WHERE workspace_id=$1',[workspace.id])).rows[0].calls).toBe(10);
+ }finally{await sql.close();}
+},30000);

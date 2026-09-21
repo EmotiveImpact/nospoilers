@@ -1,0 +1,14 @@
+/* Shared geometry from the approved 36-journey settings screens. */
+.watch-desk .journey-settings-split{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:40px;margin-top:28px}
+.watch-desk .journey-setting-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:20px 0;border-bottom:1px solid #ffffff10}
+.watch-desk .journey-setting-row h2,.watch-desk .journey-setting-row h3{font-size:13px;font-weight:550;color:#f4f4f5}
+.watch-desk .journey-setting-row p{max-width:580px;font-size:12px;color:#a2a3ad;margin-top:5px;line-height:1.7}
+.watch-desk .journey-setting-row>span{font-size:12px;white-space:nowrap;color:#a2a3ad}
+.watch-desk .journey-setting-row select{max-width:200px;min-width:120px;font-size:12px;padding:8px 10px;border:1px solid #ffffff10;border-radius:5px;background:#101114;color:#c5c6cc}
+.watch-desk .journey-side-note{border-left:1px solid #ffffff10;padding-left:26px;min-width:0}
+.watch-desk .journey-side-note h3{font-size:13px;font-weight:550;color:#f4f4f5}
+.watch-desk .journey-side-note p{font-size:12px;line-height:1.8;margin:9px 0 24px;color:#a2a3ad}
+.watch-desk .journey-savebar{display:flex;gap:20px;align-items:center;justify-content:space-between;padding-top:24px;color:#898c96;font-size:12px}
+.watch-desk .journey-retention>.watch-between{margin-bottom:28px}
+@media(max-width:800px){.watch-desk .journey-settings-split{grid-template-columns:1fr;gap:28px}.watch-desk .journey-side-note{border-left:0;border-top:1px solid #ffffff10;padding:23px 0 0}}
+@media(max-width:560px){.watch-desk .journey-setting-row{gap:15px}.watch-desk .journey-setting-row select{min-width:100px;max-width:125px}}

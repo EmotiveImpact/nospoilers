@@ -18,6 +18,8 @@ it('pages the whole scoped history deterministically and filters before paging',
     const second=await store.listUploadedScanPage('owner',undefined,workspace.id,{before:first.nextCursor!});
     expect(second.uploads.map(row=>row.id)).toEqual(['scan-005','scan-004','scan-003','scan-002','scan-001']);expect(second.nextCursor).toBeNull();
     expect((await store.listUploadedScanPage('owner',undefined,workspace.id,{status:'passed'})).uploads.map(row=>row.id)).toEqual(['scan-001']);
+    expect((await store.listUploadedScanPage('owner',undefined,workspace.id,{collection:'uploads'})).uploads.map(row=>row.id)).toEqual(['scan-002','scan-001']);
+    expect((await store.listUploadedScanPage('owner',undefined,workspace.id,{collection:'attempts'})).uploads).toHaveLength(50);
     expect((await store.listUploadedScanPage('owner',undefined,workspace.id,{before:first.nextCursor!,status:'attention'})).uploads.map(row=>row.id)).toEqual(['scan-005','scan-004','scan-003','scan-002']);
     await expect(store.listUploadedScanPage('owner',undefined,other.id,{before:first.nextCursor!})).rejects.toMatchObject({status:404});
     await expect(store.listUploadedScanPage('stranger',undefined,workspace.id,{before:first.nextCursor!})).rejects.toMatchObject({status:404});

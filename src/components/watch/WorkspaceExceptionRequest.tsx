@@ -6,6 +6,7 @@ export function WorkspaceExceptionRequest(props:RequestProps){
 }
 function RequestScope({workspaceId,attemptId,receiptId,findingIndex,website}:RequestProps){
  const expiryHelpId=useId();
+ const formId=useId();
  const [open,setOpen]=useState(false),[canRequest,setCanRequest]=useState(false),[loaded,setLoaded]=useState(false),[reason,setReason]=useState(''),[expiresAt,setExpiry]=useState(''),[error,setError]=useState(''),[id,setId]=useState(''),[busy,setBusy]=useState(false);
  const requestKey=useRef(crypto.randomUUID()),mutation=useRef<AbortController|null>(null);
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/exceptions`;
@@ -19,9 +20,9 @@ function RequestScope({workspaceId,attemptId,receiptId,findingIndex,website}:Req
  return <div className="mt-4 space-y-3">
   {error?<p role="alert">{error}</p>:null}
   {id?<p role="status">Exception requested, not approved. <a className="underline" href={`/watch/policy?workspace=${encodeURIComponent(workspaceId)}&exception=${encodeURIComponent(id)}`}>Review exception</a></p>:<>
-   <Button variant="outline" disabled={!loaded||!canRequest} onClick={()=>setOpen(v=>!v)}>Request a policy exception</Button>
+   <Button variant="outline" aria-expanded={open} aria-controls={open?formId:undefined} disabled={!loaded||!canRequest} onClick={()=>setOpen(v=>!v)}>Request a policy exception</Button>
    {loaded&&!canRequest?<p className="text-sm text-mute">An active workspace responder can request an exception; an administrator must decide.</p>:null}
-   {open?<form className="space-y-3" onSubmit={e=>{e.preventDefault();void submit();}}>
+   {open?<form id={formId} aria-label="Request a policy exception" className="space-y-3" onSubmit={e=>{e.preventDefault();void submit();}}>
     <p className="text-sm">This accepts risk, not remediation. Scope is this exact rule and file path {website?'on this website source':'in this exact artifact digest and its source connection, if connected'}. Existing scan evidence is unchanged.</p>
     <label className="block">Exception justification<textarea className="block w-full rounded border border-white/15 bg-transparent p-2" required minLength={8} maxLength={4000} value={reason} disabled={busy} onChange={e=>{setReason(e.target.value);requestKey.current=crypto.randomUUID();}}/></label>
     <label className="block">Exception expiry<input aria-describedby={expiryHelpId} className="block rounded border border-white/15 bg-transparent p-2" type="date" required value={expiresAt} disabled={busy} onChange={e=>{setExpiry(e.target.value);requestKey.current=crypto.randomUUID();}}/></label>

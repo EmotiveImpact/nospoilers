@@ -1,3 +1,6 @@
+import './watch/design/app-system.css';
+import './watch/design/page-layouts.css';
+import './watch/design/journey-shell.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
@@ -5,9 +8,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import type { Coverage } from "@/coverage.ts";
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle, Menu as AccountMenu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import {
   Activity,
+  Settings,
+  CircleHelp,
+  CreditCard,
+  LogOut,
+  ChevronUp,
   Bell,
   BookOpenCheck,
   Boxes,
@@ -20,11 +28,11 @@ import {
   PackageSearch,
   PanelLeft,
   PanelLeftClose,
+  X,
   Scale,
   Search,
   ShieldCheck,
   Users,
-  X,
 } from "lucide-react";
 import {
   VIEW_TITLE,
@@ -34,8 +42,38 @@ import {
   watchHref,
   watchPath,
 } from "@/watch/routes.ts";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {WorkspaceSwitcher} from '@/components/watch/WorkspaceSwitcher';
+
+function watchViewIcon(path: string) {
+  return path === "/watch"
+      ? CircleGauge
+      : path.endsWith("/alerts")
+        ? Bell
+        : path.endsWith("/sources")
+          ? Boxes
+          : path.endsWith("/releases")
+            ? FileCheck2
+            : path.endsWith("/timeline")
+              ? Activity
+              : path.endsWith("/setup")
+                ? ShieldCheck
+                : path.endsWith("/notifications")
+                  ? Bell
+                  : path.endsWith("/policy")
+                    ? Scale
+                    : path.endsWith("/team")
+                      ? Users
+                      : path.endsWith("/retention")
+                        ? Clock3
+                        : path.endsWith("/audit")
+                          ? BookOpenCheck
+                          : path.endsWith("/health")
+                            ? HeartPulse
+                            : path.endsWith("/tokens")
+                              ? KeyRound
+                              : PackageSearch;
+}
 
 const SIDEBAR_COLLAPSED_KEY = "nospoilers.watch.sidebar-collapsed";
 
@@ -83,34 +121,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const path = href.split("?")[0] ?? href;
-  const Icon =
-    path === "/watch"
-      ? CircleGauge
-      : path.endsWith("/alerts")
-        ? Bell
-        : path.endsWith("/sources")
-          ? Boxes
-          : path.endsWith("/releases")
-            ? FileCheck2
-            : path.endsWith("/timeline")
-              ? Activity
-              : path.endsWith("/setup")
-                ? ShieldCheck
-                : path.endsWith("/notifications")
-                  ? Bell
-                  : path.endsWith("/policy")
-                    ? Scale
-                    : path.endsWith("/team")
-                      ? Users
-                      : path.endsWith("/retention")
-                        ? Clock3
-                        : path.endsWith("/audit")
-                          ? BookOpenCheck
-                          : path.endsWith("/health")
-                            ? HeartPulse
-                            : path.endsWith("/tokens")
-                              ? KeyRound
-                              : PackageSearch;
+  const Icon = watchViewIcon(path);
   return (
     <a
       href={href}
@@ -119,13 +130,13 @@ function NavLink({
         onNavigate?.();
       }}
       className={cn(
-        "flex items-center rounded-[6px] border-0 text-[13px] leading-[1.2]",
-        collapsed ? "justify-center px-1 py-[7px]" : "gap-2.5 px-[9px] py-[7px]",
+        "watch-rail-link flex items-center rounded-[5px] border-0 text-[13px] leading-[1.5]",
+        collapsed ? "justify-center px-1 py-[10px]" : "gap-3 px-3 py-[10px]",
         active ? "text-snow" : "text-mute hover:text-snow",
       )}
       aria-current={active ? "page" : undefined}
     >
-      <Icon className={cn("size-[15px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
+      <Icon className={cn("size-[19px] shrink-0", active ? "opacity-100" : "opacity-50")} aria-hidden />
       <span className={cn(collapsed ? "sr-only" : "flex min-w-0 flex-1 items-center")}>{children}</span>
     </a>
   );
@@ -142,9 +153,7 @@ export function WatchMonolithShell({
   login,
   sourceCount,
   openAlertCount,
-  setupDone,
-  setupTotal,
-  firstRun,
+
   artifactOnly = false,
   installations,
   activeInstallId,
@@ -180,12 +189,52 @@ export function WatchMonolithShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!navOpen || typeof window.matchMedia !== 'function') return;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) setNavOpen(false); };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, [navOpen]);
   const workspaceId=new URLSearchParams(search).get('workspace');
-  const [guidanceOpen, setGuidanceOpen] = useState(false);
-  const [plansOpen, setPlansOpen] = useState(false);
+
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
+  const routeContent = useRef<HTMLDivElement|null>(null);
+  const previousView = useRef(route.view);
+  const previousScrollView = useRef(route.view);
+  useLayoutEffect(() => {
+    if (previousScrollView.current === route.view) return;
+    previousScrollView.current = route.view;
+    // Reset before paint: otherwise the next page briefly inherits the old offset.
+    routeContent.current?.scrollTo({top:0, left:0, behavior:'instant'});
+  }, [route.view]);
+  useEffect(() => {
+    if (previousView.current === route.view || navOpen) return;
+    previousView.current = route.view;
+    // Query-only changes retain the selected control.
+    let observer:MutationObserver|undefined;
+    const focusPage = () => {
+      routeContent.current?.focus({preventScroll:true});
+    };
+    let frame = requestAnimationFrame(() => {
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));
+      if (dialogs.some(dialog => !dialog.hasAttribute('data-watch-navigation'))) return;
+      if (!dialogs.length) { focusPage(); return; }
+      // Headless UI retains the closing drawer during its exit transition.
+      // Wait for teardown instead of racing its focus restoration with a timer.
+      observer = new MutationObserver(() => {
+        const remaining = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));
+        if (remaining.some(dialog => !dialog.hasAttribute('data-watch-navigation'))) { observer?.disconnect(); return; }
+        if (!remaining.length) { observer?.disconnect(); frame=requestAnimationFrame(focusPage); }
+      });
+      observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-modal']});
+    });
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); };
+  }, [route.view, navOpen]);
   const hrefFor = (view: WatchView, tab?: AlertTab) => {
     const params=new URLSearchParams(search);
+    if(view==='workspaces')params.delete('workspaceTab');
     // The sidebar opens history, not the last full detail screen.
     if(view==='releases')for(const key of ['uploadView','uploadFinding','uploadTab','release'])params.delete(key);
     return watchHref(watchPath(view), params.toString(), tab ? { tab } : {});
@@ -198,45 +247,69 @@ export function WatchMonolithShell({
       return next;
     });
   };
-  const installIdentity =
-    installations.find((installation) => installation.id === activeInstallId)?.account_login ??
-    installations[0]?.account_login ??
-    login;
   const shortcutLabel =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
       ? "⌘K"
       : "Ctrl K";
-  const compactFirstRunNav = firstRun;
+  const settingsViews: WatchView[] = ['workspaces','notifications','policy','team','retention','audit','health','tokens','registries','setup'];
+  const settingsActive = settingsViews.includes(route.view);
+  const settingsLinks: {view:WatchView;label:string}[] = [
+    {view:'workspaces',label:'Workspace'}, {view:'notifications',label:'Notifications'},
+    {view:'policy',label:artifactOnly?'Scan policy':'Policy & allowlist'}, {view:'team',label:'Team & roles'},
+    {view:'retention',label:'Retention'},
+    ...(artifactOnly||teamOnly?[{view:'audit' as const,label:'Audit log'}]:[]),
+    ...(!artifactOnly?[{view:'health' as const,label:'Install health'},{view:'setup' as const,label:'Connection diagnostics'}]:[]),
+    ...(artifactOnly||adminOnly?[{view:'tokens' as const,label:'Scan API tokens'}]:[]),
+    ...(!artifactOnly&&adminOnly?[{view:'registries' as const,label:'Private registries'}]:[]),
+  ];
+  const billingParams = new URLSearchParams(search);
+  billingParams.set('workspaceTab','billing');
+  const billingHref = watchHref('/watch/workspaces', billingParams.toString());
 
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
-      <div className={cn("border-b border-line py-[18px]", opts.collapsed ? "px-2" : "px-4")}>
-          <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
-          <a
-            href="/"
-            onClick={(event) => go(event, "/")}
-            className={cn(
-              "font-display text-[15px] text-snow hover:text-snow",
-              opts.collapsed && "sr-only",
-            )}
-          >
-            NoSpoilers
-          </a>
-          {opts.showToggle ? (
+      <div className={cn("watch-rail-head", opts.collapsed ? "px-1.5" : "px-3")}>
+        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
+          {opts.collapsed && opts.showToggle ? (
             <button
               type="button"
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
+              className="group relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute hover:bg-white/[0.06] hover:text-snow"
               aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!opts.collapsed}
               onClick={toggleCollapsed}
             >
-              {opts.collapsed ? (
-                <PanelLeft className="size-4" aria-hidden />
-              ) : (
-                <PanelLeftClose className="size-4" aria-hidden />
-              )}
+              <img
+                src="/assets/brand/nospoilers-mark-white.png"
+                alt=""
+                className="size-7 object-contain transition-opacity group-hover/rail:opacity-0 group-focus-visible:opacity-0 motion-reduce:transition-none"
+              />
+              <PanelLeft className="absolute size-4 opacity-0 transition-opacity group-hover/rail:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" aria-hidden />
+            </button>
+          ) : (
+            <a
+              href="/"
+              onClick={(event) => go(event, "/")}
+              className="flex min-w-0 flex-1 items-center text-snow hover:text-snow"
+            >
+              <img
+                src="/assets/brand/nospoilers-wordmark.png"
+                alt="NoSpoilers"
+                className="watch-rail-wordmark block h-[38px] w-auto max-w-[152px] object-contain"
+              />
+            </a>
+          )}
+          {opts.showToggle && !opts.collapsed ? (
+            <button
+              type="button"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-snow focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
+              aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!opts.collapsed}
+              onClick={toggleCollapsed}
+            >
+              <PanelLeftClose className="size-4" aria-hidden />
             </button>
           ) : null}
+          {!opts.showToggle?<button type="button" className="watch-rail-close" aria-label="Close watch navigation" onClick={closeNav}><X size={20} aria-hidden/></button>:null}
         </div>
         {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
@@ -258,27 +331,13 @@ export function WatchMonolithShell({
               ))}
             </select>
           </label>
-        ) : (
-          <div className="mt-3 flex items-center gap-2 rounded-md border border-line bg-inset px-2.5 py-2">
-            <span className="grid size-[22px] place-items-center rounded-[5px] bg-gradient-to-br from-zinc-600 to-zinc-900 text-[10px] font-semibold text-snow">
-              {installIdentity.slice(0, 2).toUpperCase()}
-            </span>
-            <p className="min-w-0 flex-1 truncate text-[13px] text-snow">{installIdentity}</p>
-          </div>
-        )}
-        {opts.collapsed ? null : (
-          <p className="mt-1 text-[11px] text-dim">
-            {sourceCount > 0
-              ? `${sourceCount} monitored ${sourceCount === 1 ? "surface" : "surfaces"}`
-              : "nothing connected"}
-          </p>
-        )}
+        ) : null}
       </div>
 
       <nav
         className={cn(
-          "flex flex-1 flex-col gap-[18px] overflow-auto py-3.5",
-          opts.collapsed ? "px-1.5" : "px-2.5",
+          "watch-rail-nav flex flex-1 flex-col gap-[18px] overflow-auto",
+          opts.collapsed ? "px-1.5" : "px-3",
         )}
         aria-label="Watch desk"
       >
@@ -328,7 +387,8 @@ export function WatchMonolithShell({
               Releases
             </NavLink>
           )}
-          {teamOnly && !compactFirstRunNav ? (
+          <NavLink href={hrefFor('scan')} active={route.view==='scan'} collapsed={opts.collapsed} onNavigate={closeNav}>New scan</NavLink>
+          {teamOnly ? (
             <NavLink
               href={hrefFor("timeline")}
               active={route.view === "timeline"}
@@ -340,151 +400,47 @@ export function WatchMonolithShell({
           ) : null}
         </div>
 
-        <div className={cn(compactFirstRunNav && !opts.collapsed && "border-t border-line pt-[17px]")}>
-          {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Settings</p>}
-          <div className="flex flex-col gap-0.5">
-            {artifactOnly ? <>
-              <NavLink href={hrefFor('notifications')} active={route.view==='notifications'} collapsed={opts.collapsed} onNavigate={closeNav}>Notifications</NavLink>
-              <NavLink href={hrefFor('tokens')} active={route.view==='tokens'} collapsed={opts.collapsed} onNavigate={closeNav}>Scan API tokens</NavLink>
-              <NavLink href={hrefFor('team')} active={route.view==='team'} collapsed={opts.collapsed} onNavigate={closeNav}>Team &amp; roles</NavLink>
-              <NavLink href={hrefFor('policy')} active={route.view==='policy'} collapsed={opts.collapsed} onNavigate={closeNav}>Scan policy</NavLink>
-              <NavLink href={hrefFor('retention')} active={route.view==='retention'} collapsed={opts.collapsed} onNavigate={closeNav}>Retention</NavLink>
-              <NavLink href={hrefFor('audit')} active={route.view==='audit'} collapsed={opts.collapsed} onNavigate={closeNav}>Audit log</NavLink>
-            </> : compactFirstRunNav ? (
-              <NavLink
-                href={hrefFor("setup")}
-                active={route.view === "setup"}
-                collapsed={opts.collapsed}
-                onNavigate={closeNav}
-              >
-                Connection diagnostics
-              </NavLink>
-            ) : (
-              <>
-            <NavLink
-              href={hrefFor("notifications")}
-              active={route.view === "notifications"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Notifications
-            </NavLink>
-            <NavLink
-              href={hrefFor("policy")}
-              active={route.view === "policy"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Policy &amp; allowlist
-            </NavLink>
-            <NavLink
-              href={hrefFor("team")}
-              active={route.view === "team"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Team &amp; roles
-            </NavLink>
-            <NavLink
-              href={hrefFor("retention")}
-              active={route.view === "retention"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Retention
-            </NavLink>
-            {teamOnly ? (
-              <NavLink
-                href={hrefFor("audit")}
-                active={route.view === "audit"}
-                collapsed={opts.collapsed}
-                onNavigate={closeNav}
-              >
-                Audit log
-              </NavLink>
-            ) : null}
-            <NavLink
-              href={hrefFor("health")}
-              active={route.view === "health"}
-              collapsed={opts.collapsed}
-              onNavigate={closeNav}
-            >
-              Install health
-            </NavLink>
-            {adminOnly ? (
-              <>
-                <NavLink
-                  href={hrefFor("tokens")}
-                  active={route.view === "tokens"}
-                  collapsed={opts.collapsed}
-                  onNavigate={closeNav}
-                >
-                  Scan API tokens
-                </NavLink>
-                <NavLink
-                  href={hrefFor("registries")}
-                  active={route.view === "registries"}
-                  collapsed={opts.collapsed}
-                  onNavigate={closeNav}
-                >
-                  Private registries
-                </NavLink>
-              </>
-            ) : null}
-              </>
-            )}
-          </div>
+        <div className="flex flex-col gap-0.5">
+          <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('watch-rail-link flex items-center rounded-[5px] py-[10px] text-[13px]',opts.collapsed?'justify-center':'gap-3 px-3',settingsActive?'text-snow':'text-mute hover:text-snow')} aria-current={settingsActive?'page':undefined}>
+            <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
+          </a>
         </div>
       </nav>
 
-      <a
-        href={hrefFor(artifactOnly ? 'workspaces' : 'setup')}
-        onClick={(event) => {
-          go(event, hrefFor(artifactOnly ? 'workspaces' : 'setup'));
-          closeNav();
-        }}
-        className={cn(
-          "flex items-center border-t border-line text-left hover:bg-white/[0.03]",
-          opts.collapsed ? "justify-center px-1.5 py-3" : "gap-3 px-3.5 py-3",
-        )}
-      >
-        {artifactOnly ? <Boxes className="size-5 shrink-0 text-mute" aria-hidden/> : <span
-          className="grid size-10 shrink-0 place-items-center rounded-full"
-          title="Optional connection checks, not release proof progress"
-          style={{ background: `conic-gradient(#f4f4f5 ${setupTotal ? (setupDone / setupTotal) * 360 : 0}deg, #252529 0)` }}
-        >
-          <span className="grid size-[32px] place-items-center rounded-full bg-canvas text-[9px] text-snow">
-            {setupTotal>0?`${setupDone}/${setupTotal}`:'—'}
-          </span>
-        </span>}
-        <span className={cn("min-w-0", opts.collapsed && "sr-only")}>
-          <span className="block text-[11px] text-snow">
-            {artifactOnly ? 'Manage workspace connections' : setupDone > 0 ? `${setupDone} connection checks ready` : "Connection diagnostics"}
-          </span>
-          <span className={cn("mt-0.5 block text-[11px]", ended ? "text-danger" : "text-dim")}>
-            {coverage?.label ?? "Coverage"}
-            {role ? ` · ${role}` : ""}
-          </span>
-        </span>
-      </a>
+      <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>
+        <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
+        <a href="/docs" onClick={event=>{go(event,'/docs');closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
+        <AccountMenu as="div" className="relative mt-2">
+          <MenuButton aria-label={`Account menu for ${login}`} className={cn('flex w-full items-center rounded-md py-2 text-left text-[13px] text-snow hover:text-white',opts.collapsed?'justify-center':'gap-3 px-3')}>
+            <span aria-hidden className="grid size-[19px] shrink-0 place-items-center rounded-full bg-white/10 text-[8px]">{login.slice(0,2).toUpperCase()}</span>
+            <span className={cn('min-w-0 flex-1',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span>
+            {!opts.collapsed?<ChevronUp className="size-3.5 shrink-0 text-dim" aria-hidden/>:null}
+          </MenuButton>
+          <MenuItems anchor="top start" className="z-50 min-w-48 rounded-md border border-white/10 bg-[#090a0c] p-1 text-[13px] text-[#f4f4f5] shadow-xl outline-none [--anchor-gap:8px]">
+            <MenuItem><a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className="flex items-center gap-3 rounded px-3 py-2 data-focus:bg-white/[.07]"><Settings className="size-4" aria-hidden/>Workspace settings</a></MenuItem>
+            <MenuItem><button type="button" onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded px-3 py-2 text-left data-focus:bg-white/[.07]"><LogOut className="size-4" aria-hidden/>Sign out</button></MenuItem>
+          </MenuItems>
+        </AccountMenu>
+      </div>
     </>
   );
 
+  const PageIcon = watchViewIcon(watchPath(route.view));
   return (
     <div className="watch-desk">
       <aside
         className={cn(
-          "watch-rail hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex",
-          collapsed ? "w-14" : "w-[244px]",
+          "group/rail watch-rail watch-rail--desktop hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
+          collapsed ? "watch-rail--collapsed w-[60px]" : "watch-rail--expanded w-[224px]",
         )}
       >
         {rail({ collapsed, showToggle: true })}
       </aside>
 
-      <Dialog open={navOpen} onClose={setNavOpen} className="relative z-40 md:hidden">
+      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>
@@ -493,35 +449,33 @@ export function WatchMonolithShell({
 
       <div className="watch-gutter">
         <div className="watch-stage">
-        <header className="watch-stage-head flex h-14 shrink-0 items-center gap-2 border-b px-2 sm:gap-3 sm:px-4 md:px-5">
+        <header className="watch-stage-head flex h-16 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-5 md:px-[34px]">
           <button
             type="button"
-            className="inline-flex size-12 items-center justify-center rounded-md text-snow hover:bg-white/5 md:hidden"
+            className="inline-flex size-12 shrink-0 items-center justify-center rounded-md text-snow hover:bg-white/5 lg:hidden"
             onClick={() => setNavOpen(true)}
+            aria-expanded={navOpen}
+            aria-controls="watch-mobile-navigation"
           >
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <strong className="min-w-0 flex-1 truncate text-sm text-snow sm:flex-none md:hidden">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
+          <div className="watch-stage-crumb flex min-w-0 flex-1 items-center gap-2 text-[12px] text-mute sm:flex-none sm:max-w-[220px]"><PageIcon className="hidden size-[17px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
+          {coverage ? <span className={cn("watch-stage-coverage hidden shrink-0 whitespace-nowrap text-[10px] sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
+          <span className="hidden flex-1 sm:block" />
           <button
             type="button"
             onClick={onOpenPalette}
             aria-label="Search or run a command"
-            className="flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[13px] text-dim hover:border-line-strong sm:h-8 sm:w-auto sm:flex-1 sm:justify-start sm:px-3 md:max-w-sm"
+            data-watch-search-trigger="true"
+            className="watch-search-trigger flex size-12 min-w-12 items-center justify-center rounded-md border border-line bg-inset text-[12px] text-dim hover:border-line-strong sm:h-8 sm:w-40 lg:w-[250px] sm:justify-start sm:gap-2 sm:px-3"
           >
             <Search className="size-4 shrink-0" aria-hidden />
-            <span className="hidden truncate sm:inline">Search or run a command…</span>
-            <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-xs text-dim sm:inline">
+            <span className="hidden truncate sm:inline">Search…</span>
+            <span className="ml-auto hidden rounded border border-white/10 px-1.5 text-xs text-dim xl:inline">
               {shortcutLabel}
             </span>
           </button>
-          <span className="hidden flex-1 md:block" />
-          <strong className="hidden shrink-0 text-sm text-snow lg:inline">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</strong>
-          {coverage ? (
-            <span data-days-left={Math.max(1, Math.min(5, coverage.daysLeft ?? 5))} className={cn("hidden rounded-full border px-2 py-1 text-xs sm:inline", coverage.status === "trial" && "watch-trial-indicator is-pulsing", ended ? "border-danger/30 text-danger" : "border-white/10 text-dim")}>
-              <span className={coverage.status === "trial" ? "watch-trial-text" : undefined}>{coverage.label}</span>
-            </span>
-          ) : null}
           <Button
             type="button"
             size="sm"
@@ -533,76 +487,34 @@ export function WatchMonolithShell({
             <PackageSearch className="size-4" aria-hidden />
             <span className="hidden sm:inline">New scan</span>
           </Button>
-          {!artifactOnly ? <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="hidden sm:inline-flex"
-            onClick={() => setGuidanceOpen((open) => !open)}
-          >
-            {guidanceOpen ? "Hide guide" : "Guide"}
-          </Button> : null}
           {ended ? (
-            <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => setPlansOpen(true)}>
+            <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => navigate(billingHref)}>
               See plans
             </Button>
           ) : null}
           {installUrl ? (
-            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden md:inline-flex">
+            <Button as="a" href={installUrl} size="sm" variant="outline" className="hidden 2xl:inline-flex">
               Install on GitHub
             </Button>
           ) : null}
           {billing}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="size-12 rounded-full border border-white/10 px-0 text-xs text-snow sm:size-8 sm:text-xs"
-            onClick={() => void signOut()}
-            title="Sign out"
-            aria-label={`Sign out ${login}`}
-          >
-            {login.slice(0, 2).toUpperCase()}
-          </Button>
         </header>
         <div
+          ref={routeContent}
+          tabIndex={-1}
+          role="region"
+          data-watch-page={route.view}
+          aria-label={`${artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]} page`}
           className={cn(
-            "min-h-0 flex-1",
-            route.view === "alerts" ? "overflow-hidden" : "overflow-auto px-5 py-8 md:px-8",
-            !guidanceOpen && "[&_.watch-guidance]:hidden",
+            "watch-route-content min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
+            route.view === "alerts" ? "overflow-hidden" : "overflow-auto",
+            "[&_.watch-guidance]:hidden",
           )}
         >
-          {children}
+          {settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}
         </div>
         </div>
       </div>
-      <Dialog open={plansOpen} onClose={setPlansOpen} className="relative z-50">
-        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
-          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-dim">Hosted coverage</p>
-                <DialogTitle className="mt-1 font-display text-xl text-snow">Keep the desk looking.</DialogTitle>
-              </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setPlansOpen(false)} aria-label="Close plans"><X className="size-4" aria-hidden /></Button>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-white/8 bg-panel p-4">
-                <p className="text-sm text-snow">Solo · $29</p>
-                <p className="mt-2 text-xs leading-relaxed text-mute">One admin, email destination, and hosted Watch coverage.</p>
-              </div>
-              <div className="rounded-lg border border-white/8 bg-panel p-4">
-                <p className="text-sm text-snow">Team · $99</p>
-                <p className="mt-2 text-xs leading-relaxed text-mute">Roles, timeline, audit, routes, release governance, and signing policy.</p>
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button type="button" onClick={() => navigate("/pricing")}>Compare plans</Button>
-            </div>
-          </DialogPanel>
-        </div>
-      </Dialog>
     </div>
   );
 }

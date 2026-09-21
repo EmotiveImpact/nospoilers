@@ -70,14 +70,15 @@ export function kindLabel(kind: string): string {
 
 export function asFindingList(
   findings: unknown,
-): { rule: string; path: string }[] {
+): { rule: string; path: string; severity?: string }[] {
   if (!Array.isArray(findings)) return [];
-  return findings.filter((row): row is { rule: string; path: string } => {
+  return findings.filter((row): row is { rule: string; path?: unknown; severity?: unknown } => {
     if (!row || typeof row !== "object") return false;
     return typeof (row as { rule?: unknown }).rule === "string";
   }).map((row) => ({
     rule: row.rule,
     path: typeof row.path === "string" ? row.path : "",
+    ...(typeof row.severity === 'string' ? {severity:row.severity} : {}),
   }));
 }
 

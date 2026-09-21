@@ -1,4 +1,3 @@
-import type { Finding } from "../report-types.ts";
 import { asFindingList } from "./format.ts";
 import { isOpenAlert, alertAssignedTo, type DeskAlert } from "./verdict.ts";
 
@@ -410,12 +409,18 @@ export type TimelineLaneViewModel = {
   spans: TimelineSpanViewModel[];
 };
 
-function findingOf(alert: DeskAlert): Finding | null {
-  return (asFindingList(alert.findings)[0] as Finding | undefined) ?? null;
+function findingOf(alert: DeskAlert) {
+  return asFindingList(alert.findings)[0] ?? null;
 }
 
 function severityFor(rule: string): "critical" | "warning" {
   return /^(MAP|SEC|ENV|KEY|SRC)-/i.test(rule) ? "critical" : "warning";
+}
+
+export function findingSeverity(finding:{rule:string;severity?:string}):"critical"|"warning"{
+  if(finding.severity?.toLowerCase()==='critical')return 'critical';
+  if(finding.severity)return 'warning';
+  return severityFor(finding.rule);
 }
 
 export function buildTimelineLanes(
@@ -446,7 +451,7 @@ export function buildTimelineLanes(
       alertId: alert.id,
       label: alert.title,
       rule,
-      severity: severityFor(rule),
+      severity: alertSeverity(alert),
       open: !alert.resolved_at,
       startedAt: new Date(opened).toISOString(),
       endedAt: alert.resolved_at ? new Date(resolved).toISOString() : null,
@@ -470,7 +475,18 @@ export type AlertListViewModel = {
   severity: "critical" | "warning";
   status: "open" | "waiting" | "resolved";
   exposure: string;
+  operational?: boolean;
+  queueKind?: "finding" | "incomplete-check" | "coverage";
 };
+
+export function isAlertQueueActionable(alert: DeskAlert): boolean {
+  const finding = findingOf(alert);
+  return !(
+    alert.kind === "scan_latest_release" &&
+    !finding &&
+    /^No release on\s+\S/i.test(alert.title.trim())
+  );
+}
 
 export function buildAlertListViewModels(
   alerts: DeskAlert[],
@@ -479,20 +495,28 @@ export function buildAlertListViewModels(
   return alerts.map((alert) => {
     const finding = findingOf(alert);
     const rule = finding?.rule ?? alert.kind;
+    const operational = alert.kind === "scan_latest_release" && !finding;
     return {
       id: alert.id,
       title: alert.title,
       coordinate: alert.full_name ?? finding?.path ?? alert.kind,
       rule,
-      severity: severityFor(rule),
+      severity: alertSeverity(alert),
       status: alert.resolved_at ? "resolved" : alert.acknowledged_at ? "waiting" : "open",
       exposure: formatExposure(alert),
+      operational,
+      queueKind: !isAlertQueueActionable(alert)
+        ? "coverage"
+        : operational
+          ? "incomplete-check"
+          : "finding",
     };
   });
 }
 
 export function alertSeverity(alert: DeskAlert): "critical" | "warning" {
-  return severityFor(findingOf(alert)?.rule ?? alert.kind);
+  const findings=asFindingList(alert.findings);
+  return findings.some(finding=>findingSeverity(finding)==='critical')?'critical':findings.length?'warning':severityFor(alert.kind);
 }
 
 export function countOpenAlerts(

@@ -111,16 +111,19 @@ export function startPoller(
     staleAfterMs?: number;
   },
   intervalMs: number,
-): { stop: () => void } {
+): { stop: () => Promise<void> } {
+  let active: Promise<void> | undefined;
   const timer = setInterval(() => {
-    void runPollerTick(deps).catch((error: unknown) => {
+    if (active) return;
+    active = runPollerTick(deps).then(() => undefined).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "poller.failed", { message });
-    });
+    }).finally(() => { active = undefined; });
   }, intervalMs);
   return {
-    stop() {
+    async stop() {
       clearInterval(timer);
+      await active;
     },
   };
 }

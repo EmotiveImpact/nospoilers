@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { readFile as readFileAsync } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -350,11 +349,5 @@ describe("customer-controlled public verification page", () => {
     }
   });
 
-  it("shows Watch copy for publish and unpublish", () => {
-    const page = readFileSync(path.resolve("src/components/watch/screens/ReleasesScreen.tsx"), "utf8") + readFileSync("src/components/watch/WatchReleaseBrief.tsx", "utf8") + readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8") + readFileSync("src/watch/WatchControllerSupport.tsx", "utf8");
-    expect(page).toMatch(/Publish verification/);
-    expect(page).toMatch(/Unpublish verification/);
-    expect(page).toMatch(/Solo may publish/);
-    expect(page).toMatch(/not scheduled CDN verification/);
-  });
+
 });

@@ -18,7 +18,7 @@ export function RetainedSources({installationId,search,refreshKey}:{installation
     return()=>controller.abort();
   },[installationId,retry,refreshKey]);
   if(failed)return <section className="mb-6 rounded-lg border border-white/10 p-5"><p role="alert">Disconnected sources could not be loaded.</p><Button variant="outline" onClick={()=>{setFailed(false);setState(null);setRetry(n=>n+1);}}>Retry</Button></section>;
-  if(state?.scope!==installationId)return <p className="text-sm text-mute" role="status">Checking saved connections…</p>;
+  if(state?.scope!==installationId)return <p className="sr-only" role="status">Checking saved connections…</p>;
   if(!state.rows.length)return null;
   return <section className="mb-6 rounded-lg border border-white/10 p-5" aria-label="Disconnected sources">
     <h2 className="text-lg font-semibold">Disconnected sources</h2>

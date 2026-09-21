@@ -2,7 +2,7 @@
 
 Current product parity: artifact Overview has real all-history totals and recent attempts; empty workspaces retain First Proof. Release detail keeps approved Mock 3 structure and adds explicit redacted proof sharing. Artifact settings now contain real Team, Policy, Retention and Audit routes; unavailable connection actions are excluded from sidebar/palette rather than represented by simulated controls. Repository-alert rechecks create a new latest-release result, never silently resolve existing evidence. Prototype files remain unchanged. This does not close remaining source ownership, website monitoring or enterprise acceptance requirements.
 
-Reviewed 5 September 2026. Reference: `public/mockup-review/master-flow/`. Earlier `mock3-release-readiness` stays available as a visual reference.
+Reviewed 5 September 2026; production packaging boundary updated 9 September 2026. Reference: `public/mockup-review/master-flow/`. Earlier `mock3-release-readiness` stays available as a visual reference. These source galleries are local design fixtures and production builds exclude them in full.
 
 ## Verdict
 

@@ -349,6 +349,8 @@ export type DeliveryLocation = {
 };
 
 export type ReleaseRevision = {
+  /** Server-verified scoped assessment. Absence is unknown, never an implicit pass. */
+  readiness?: import('../assurance/types.ts').Assessment;
   id: number;
   receiptId: number;
   channel: "stable" | "beta" | "canary";

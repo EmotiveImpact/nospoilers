@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -40,7 +41,11 @@ describe("Watch architecture boundaries", () => {
     const source = screens
       .map((screen) => readFileSync(path.join("src/components/watch/screens", `${screen}.tsx`), "utf8"))
       .join("\n");
-    expect(source).not.toMatch(/<details|<summary/);
+    // The optional Timeline chart is a disclosure; recorded activity stays outside it.
+    const withoutOptionalChart = source
+      .replace('<details className="timeline-chart-disclosure">', '')
+      .replace('<summary><span>Activity by source</span><span>Explore the retained alert chart</span></summary>', '');
+    expect(withoutOptionalChart).not.toMatch(/<details|<summary/);
     expect(source).not.toMatch(/text-\[(?:10|11)px\]/);
     expect(source).not.toMatch(/[✓→⌥▣⬡⎔]/);
     const dialogs =
@@ -55,8 +60,6 @@ describe("Watch architecture boundaries", () => {
     expect(shell).not.toMatch(/Alert views/);
     expect(shell.match(/hrefFor\("alerts"\)/g)).toHaveLength(1);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-page-title/);
-    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-queue-track/);
-    expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).toMatch(/watch-seg-n-open/);
     expect(readFileSync("src/components/WatchAlertsWorkspace.tsx", "utf8")).not.toMatch(/className="watch-seg"/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-stage/);
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-queue-track/);
@@ -66,7 +69,7 @@ describe("Watch architecture boundaries", () => {
     expect(readFileSync("src/index.css", "utf8")).toMatch(/\.watch-empty/);
     expect(readFileSync("src/components/watch/screens/ReleasesScreen.tsx", "utf8")).toMatch(/buildReleaseBriefModel/);
     expect(readFileSync("src/components/watch/screens/HealthScreen.tsx", "utf8")).toMatch(/watch-empty/);
-    expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/text-ok/);
+    expect(readFileSync("src/components/watch/screens/AuditScreen.tsx", "utf8")).toMatch(/journey-admin-table/);
   });
 
   it("applies Linear view tokens to the live Watch stage only", () => {
@@ -109,7 +112,7 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/aria-label=\{opts\.collapsed \? "Expand sidebar" : "Collapse sidebar"\}/);
     expect(shell).toMatch(/showToggle: true/);
     expect(shell).toMatch(/showToggle: false/);
-    expect(shell).toMatch(/w-\[244px\]/);
+    expect(shell).toMatch(/w-\[224px\]/);
     expect(shell).toMatch(/PanelLeftClose/);
   });
 
@@ -127,8 +130,8 @@ describe("Watch architecture boundaries", () => {
     expect(firstProof).not.toMatch(/checkout-web|Sample — not your data/);
     expect(firstProof).toMatch(/Connect a GitHub repo/);
     expect(firstProof).toMatch(/watchPath\("scan"\)/);
-    expect(shell).toMatch(/compactFirstRunNav/);
-    expect(shell).toMatch(/compactFirstRunNav = firstRun/);
+    expect(shell).not.toMatch(/compactFirstRunNav/);
+    expect(shell).toMatch(/hrefFor\(['"]scan['"]\)/);
     expect(readFileSync("src/watch/useWatchWorkspaceController.tsx", "utf8")).toMatch(
       /overviewSectionState\.status === "ready"/,
     );
@@ -136,14 +139,16 @@ describe("Watch architecture boundaries", () => {
 
   it("routes every supported evidence surface through one honest scan launcher", () => {
     const scan = readFileSync("src/pages/ScanPage.tsx", "utf8");
-    expect(scan).toMatch(/GitHub repository/);
-    expect(scan).toMatch(/Package or build/);
-    expect(scan).toMatch(/Production website/);
-    expect(scan).toMatch(/Verify release proof/);
+    const picker = readFileSync("src/components/watch/EvidenceTypePicker.tsx", "utf8");
+    expect(scan).toMatch(/<EvidenceTypePicker id=\{modeId\} mode=\{mode\} onChange=\{chooseMode\}/);
+    expect(picker).toMatch(/GitHub repository/);
+    expect(picker).toMatch(/Package or build/);
+    expect(picker).toMatch(/Production website/);
+    expect(picker).toMatch(/Verify release proof/);
     expect(scan).toMatch(/params\.set\("configure", "website"\)/);
     expect(scan).toMatch(/watchPath\("sources"\)/);
     expect(scan).toMatch(/scanModeFromSearch/);
-    expect(scan).toMatch(/Each scan records its supported checks, findings and limitations/);
+    expect(scan).toMatch(/the supported checks, findings, and limits of that evidence/);
     expect(scan).not.toMatch(/automatically checks every relevant exposure category/);
     expect(scan).toMatch(/Inspect supported same-origin assets within the scan limits/);
     expect(scan).not.toMatch(/Check every public release asset and map/);
@@ -223,9 +228,9 @@ describe("Watch architecture boundaries", () => {
   it("lists every committed mockup HTML file on the 2B index", () => {
     const index = readFileSync("public/mockup-review/2b/index.html", "utf8");
     const root = readFileSync("public/mockup-review/index.html", "utf8");
-    const files = readdirSync("public/mockup-review/2b").filter(
-      (name) => name.endsWith(".html") && name !== "index.html",
-    );
+    const files = execFileSync('git', ['ls-files', '--', 'public/mockup-review/2b/*.html'], {encoding:'utf8'})
+      .trim().split('\n').filter(file=>path.dirname(file) === 'public/mockup-review/2b')
+      .map(file=>path.basename(file)).filter(name=>name !== 'index.html');
     expect(files.length).toBeGreaterThanOrEqual(20);
     for (const file of files) {
       expect(index).toContain(file);

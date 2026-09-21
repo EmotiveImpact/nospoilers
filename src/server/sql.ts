@@ -34,6 +34,7 @@ import {workspacePolicySchema} from './workspace-policy-schema.ts';
 import {jobBillingSchema} from './job-billing-schema.ts';
 import {githubConnectionIntentSchema} from './github-connection-intents.ts';
 import {githubPendingEventsSchema} from './github-pending-events.ts';
+import {connectedWorkspaceNotificationSchema} from './connected-workspace-notification-schema.ts';
 
 export type QueryResult<T> = { rows: T[] };
 
@@ -44,7 +45,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "121_repo_connection_generation";
+export const CURRENT_SCHEMA_MIGRATION = "122_connected_workspace_notification_outbox";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -696,13 +697,13 @@ export async function migrate(sql: SqlClient): Promise<void> {
       SELECT COALESCE(
         (
           SELECT CASE
-            WHEN b.retention_days = 0 THEN TRUE
-            ELSE $2 >= now() - (b.retention_days * INTERVAL '1 day')
+            WHEN b.retention_days = 0 THEN $2 <= now()
+            ELSE $2 BETWEEN now() - (b.retention_days * INTERVAL '1 day') AND now()
           END
           FROM billing_accounts b
           WHERE b.installation_id = $1
         ),
-        $2 >= now() - INTERVAL '90 days'
+        $2 BETWEEN now() - INTERVAL '90 days' AND now()
       );
     $$;
   `);
@@ -1282,6 +1283,13 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
       CREATE TRIGGER repo_connection_generation BEFORE UPDATE ON repos
       FOR EACH ROW EXECUTE FUNCTION advance_repo_connection_generation();`);
     await tx.query("INSERT INTO schema_migrations(id) VALUES ('121_repo_connection_generation')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='122_connected_workspace_notification_outbox'")).rows.length)return;
+    // Forward-only: install the trigger for future alerts. Deliberately do not
+    // scan alerts or populate jobs for records created before this migration.
+    await tx.exec(connectedWorkspaceNotificationSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('122_connected_workspace_notification_outbox')");
   });
 }
 

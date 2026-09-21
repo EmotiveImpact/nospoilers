@@ -82,7 +82,7 @@ import {
   combineWatchSectionStates,
   type WatchSectionState,
 } from "@/watch/data-state.ts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   TypeToConfirm,
   SetupStatusResult,
@@ -116,6 +116,8 @@ import {
 export function useWatchWorkspaceController({ path = "/watch", search, connectionIds }: { path?: string; search: string; connectionIds?:number[] }) {
   const connectionScope=connectionIds?.join(',');
   const authenticatedSearch = withoutWatchImpersonation(search);
+  const navigationLocation = useRef({path, search: authenticatedSearch});
+  navigationLocation.current = {path, search: authenticatedSearch};
   const [me, setMe] = useState<LoadState<Me>>({ status: "loading" });
   const [repos, setRepos] = useState<LoadState<{ repos: Repo[] }>>({ status: "loading" });
   const [alerts, setAlerts] = useState<LoadState<{ alerts: Alert[] }>>({ status: "loading" });
@@ -934,7 +936,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
           const pick = wanted && ids.includes(wanted) ? wanted : (ids[0] ?? null);
           setSelectedInstallId(pick);
           if (pick && wanted !== pick) {
-            navigate(watchHref(path, authenticatedSearch, { install: pick }));
+            navigate(watchHref(navigationLocation.current.path, navigationLocation.current.search, { install: pick }));
           }
           await refreshSignedIn(pick);
         } else {
@@ -990,7 +992,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
     return () => {
       cancelled = true;
     };
-  }, [authenticatedSearch, path, refreshSignedIn, requestedInstallId,connectionScope]);
+  }, [refreshSignedIn, requestedInstallId,connectionScope]);
 
   useEffect(() => {
     if (!selectedInstallId) {

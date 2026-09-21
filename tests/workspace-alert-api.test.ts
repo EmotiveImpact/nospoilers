@@ -41,6 +41,16 @@ it('serves independent alert history privately and protects HTTP response action
   const detail=await (await app.request(`${base}/${id}`,{headers:headers('owner')})).json() as {alert:Record<string,unknown>;events:unknown[]};
   expect(detail.alert).toMatchObject({installation_id:null,scan_attempt_id:'saved',body:'Original evidence',resolved_at:null});
   expect(detail.events).toHaveLength(5);
+  // Newer unrelated rows must not consume the selected source's page budget.
+  const anotherSource=await createWorkspaceOrigin(sql,'owner',workspace.id,'https://another.example.com');
+  await sql.query("INSERT INTO uploaded_scans(id,user_id,workspace_id,source_origin_id,target,artifact_sha256,status,report_json) SELECT 'other-saved-'||n,'owner',$1,$2,'https://another.example.com/','hash','done','{}' FROM generate_series(1,65)n",[workspace.id,anotherSource.id]);
+  await sql.query("INSERT INTO alerts(workspace_id,source_origin_id,scan_attempt_id,kind,title,body) SELECT $1,$2,'other-saved-'||n,'web_origin_scan','Unrelated '||n,'Other scope' FROM generate_series(1,65)n",[workspace.id,anotherSource.id]);
+  const scopedPath=`${base}?source=web-${source.id}`;
+  const scoped=await (await app.request(scopedPath,{headers:headers('viewer')})).json() as {alerts:Array<{id:number}>;nextCursor:string|null;counts:{open:number;waiting:number}};
+  expect(scoped.alerts.map(a=>a.id)).toEqual([id]);expect(scoped.nextCursor).toBeNull();expect(scoped.counts).toMatchObject({open:0,waiting:1});
+  expect((await app.request(scopedPath)).status).toBe(401);expect((await app.request(scopedPath,{headers:headers('stranger')})).status).toBe(404);
+  const foreignFilter=await (await app.request(`/api/workspaces/${other.id}/alerts?source=web-${source.id}`,{headers:headers('owner')})).json() as {alerts:unknown[]};expect(foreignFilter.alerts).toHaveLength(0);
+  for(const sourceFilter of ['npm-1','repo-invalid','web-0','repo-9007199254740992'])expect((await app.request(`${base}?source=${sourceFilter}`,{headers:headers('owner')})).status).toBe(400);
   await sql.query('UPDATE product_workspaces SET archived_at=now() WHERE id=$1',[workspace.id]);
   expect((await respond('owner',{action:'acknowledge'})).status).toBe(403);
   await sql.query('INSERT INTO product_workspace_revocations(workspace_id,user_id) VALUES($1,$2)',[workspace.id,'viewer']);

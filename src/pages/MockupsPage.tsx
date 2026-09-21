@@ -20,6 +20,7 @@ export function MockupsPage() {
           Open Scan
         </Button>
       </div>
+      {import.meta.env.DEV && <>
       <p className="mt-16 text-[11px] uppercase tracking-[0.28em] text-dim">Review comps</p>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-mute">
         Static HTML for shell and page studies. They are not the live desk.
@@ -29,6 +30,7 @@ export function MockupsPage() {
           All mockups
         </a>
       </p>
+      </>}
     </main>
   )
 }

@@ -14,13 +14,14 @@ const FLOWS: { value: NotificationFlow; label: string }[] = [
   { value: "route-test", label: "Test routing" },
 ];
 
-export function NotificationsScreen() {
+export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
   const [flow, setFlow] = useState<NotificationFlow | null>(null);
   const { Button, WatchNotificationSummary, WatchSectionError, WatchSkeleton, activeInstallId, beginConfirm, confirmBusy, confirmForm, confirming, datasetState, deliveries, deskCoverage, deskPackages, deskRepos, destinationKindLabel, destinations, emailAddress, ended, installAdmin, jiraEmail, jiraProjectKey, jiraSite, jiraToken, members, pagerDutyKey, previewing, refreshSignedIn, retryDeskSection, route, routeDestinationId, routeMinSeverity, routeMinSeverityLabel, routePackage, routeRepo, routeTeam, routeTestPackage, routeTestRepo, routeTestSeverity, routes, savingEmail, savingJira, savingPagerDuty, savingRoute, savingSiem, savingSlack, selectedInstallId, setEmailAddress, setJiraEmail, setJiraProjectKey, setJiraSite, setJiraToken, setPagerDutyKey, setRouteDestinationId, setRouteMinSeverity, setRoutePackage, setRouteRepo, setRouteTeam, setRouteTestPackage, setRouteTestRepo, setRouteTestSeverity, setSavingEmail, setSavingJira, setSavingPagerDuty, setSavingRoute, setSavingSiem, setSavingSlack, setSiemWebhook, setSlackError, setSlackWebhook, setTestingRoute, setTestingSlackId, siemWebhook, slackError, slackWebhook, testingRoute, testingSlackId } = useWatchScreenContext();
   return (
     <>
       {route.view === "notifications" && (
               <section className="mt-4">
+                {embedded?<div className="settings-section-head"><div><h2>GitHub notifications</h2><p>Destinations and routing rules for GitHub-connected alerts.</p></div>{!previewing&&!ended&&installAdmin?<Button size="sm" onClick={()=>setFlow('email')}>Add GitHub destination</Button>:null}</div>:<>
                 <WatchPageHeader
                   title="Notifications"
                   lede="Destinations and routing rules for real Watch alerts."
@@ -32,6 +33,7 @@ export function NotificationsScreen() {
                     ) : undefined
                   }
                 />
+                </>}
                 {datasetState.notifications.status === "loading" ? (
                   <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
                 ) : datasetState.notifications.status === "error" ? (
@@ -164,14 +166,22 @@ export function NotificationsScreen() {
                     {!ended && installAdmin ? (
                       <div className="mt-6">
                         <p className="text-xs font-medium text-snow">Choose a focused flow</p>
-                        <div className="watch-seg mt-3" role="tablist" aria-label="Notification configuration">
+                        <div className="watch-seg mt-3" role="tablist" aria-label="Notification configuration" onKeyDown={event=>{
+                          if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+                          const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'));
+                          const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;
+                          event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+                          tabs[next]?.focus();tabs[next]?.click();
+                        }}>
                           {FLOWS.map((item) => (
                             <button
                               key={item.value}
                               type="button"
                               role="tab"
                               aria-selected={flow === item.value}
-                              aria-current={flow === item.value ? "page" : undefined}
+                              tabIndex={flow === item.value || flow === null && item.value === 'email' ? 0 : -1}
+                              aria-pressed={flow === item.value}
+                              disabled={(deskCoverage?.plan === "solo" && ["slack", "siem", "jira", "pagerduty"].includes(item.value)) || (destinations.length === 0 && ["route", "route-test"].includes(item.value))}
                               className="watch-seg-item"
                               onClick={() => setFlow(item.value)}
                             >
@@ -179,6 +189,8 @@ export function NotificationsScreen() {
                             </button>
                           ))}
                         </div>
+                        {deskCoverage?.plan === "solo"?<p className="settings-note mt-3">Slack, SIEM, Jira and PagerDuty require Team or an active trial.</p>:null}
+                        {destinations.length === 0?<p className="settings-note mt-3">Save a destination before adding or testing routing rules.</p>:null}
                       </div>
                     ) : null}
                     {!ended && installAdmin && flow === "email" ? (

@@ -4,6 +4,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
 import { runCliVerify } from "./cli-verify.ts";
+import {runGate} from './cli-gate.ts';
+import {runMcp} from './cli-mcp.ts';
 import { loadPolicyFile } from "./policy.ts";
 import { formatReport, scan, toSarif } from "./scanner/index.ts";
 import { receiptSecretFromEnv } from "./receipt.ts";
@@ -83,6 +85,10 @@ async function scanViaHostedApi(
 }
 
 const program = new Command();
+
+program.command('mcp').description('Local MCP evidence tools using an explicit short-lived agent grant')
+  .option('--api <origin>','NoSpoilers application origin')
+  .action(async(options:{api?:string})=>{try{await runMcp({api:options.api??process.env.NOSPOILERS_BASE_URL??'',token:process.env.NOSPOILERS_AGENT_TOKEN??''});}catch{process.stderr.write('NoSpoilers MCP stopped. Check application origin and explicit agent access.\n');process.exitCode=2;}});
 
 program
   .name("nospoilers")
@@ -210,4 +216,16 @@ program
     }
   });
 
+program.command('gate').description('Consume a fresh, single-use pre-deployment gate decision for a recorded build')
+  .requiredOption('--api <origin>','NoSpoilers API origin')
+  .requiredOption('--stream <id>','Explicit release stream ID')
+  .option('--upload <id>','Completed upload already recorded in this stream')
+  .option('--release <id>','Connected release ID with an explicit gate-only CI grant')
+  .requiredOption('--digest <sha256>','Exact artifact SHA-256 to deploy')
+  .requiredOption('--deployment <id>','Deployment attempt identity')
+  .option('--decision <id>','Consume an existing unexpired decision, including an explicitly reviewed override')
+  .action(async options=>{
+    try{const {result,exitCode}=await runGate({...options,token:process.env.NOSPOILERS_TOKEN??''});process.stdout.write(`${JSON.stringify(result)}\n`);if(result.mode==='warn'&&result.readiness!=='ready')process.stderr.write(`Release Gate warning: ${result.readiness}. Warn mode does not block deployment.\n`);process.exitCode=exitCode;}
+    catch(error){process.stderr.write(`${error instanceof Error?error.message:'Gate unavailable. Do not deploy.'}\n`);process.exitCode=2;}
+  });
 await program.parseAsync(process.argv);

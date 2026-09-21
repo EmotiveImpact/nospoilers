@@ -62,3 +62,12 @@ it('does not restore stale controls when an inventory response arrives after acc
  expect(view.queryByText('Pause monitoring')).toBeNull();
  expect(view.getByRole('alert').textContent).toContain('check your access');
 });
+it('does not flash an empty monitoring card while inventory is pending',async()=>{
+ let finish!:(response:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(resolve=>{finish=resolve;})));
+ const view=render(<SourceMonitoringControls installationId={4}/>);
+ expect(view.queryByLabelText('Source monitoring controls')).toBeNull();
+ expect(view.getByRole('status').className).toContain('sr-only');
+ await act(async()=>finish(Response.json({sources:[]})));
+ expect(view.queryByLabelText('Source monitoring controls')).toBeNull();
+});

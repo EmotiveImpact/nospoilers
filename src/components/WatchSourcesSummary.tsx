@@ -1,3 +1,6 @@
+import {QuietSidePreview} from "./watch/design/QuietSidePreview";
+import {QuietModalSurface} from "./watch/design/QuietModalSurface";
+import "./watch/design/coverage-page.css";
 import { Button } from "@/components/ui/button";
 import {
   WatchSectionError,
@@ -21,16 +24,16 @@ import {
 } from "@/watch/view-models.ts";
 import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
-import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X } from "lucide-react";
+import { Dialog, DialogTitle } from "@headlessui/react";
+import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, Activity } from "lucide-react";
 import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "github", label: "GitHub exposure" },
-  { value: "npm", label: "Published packages" },
-  { value: "website", label: "Production web" },
-  { value: "map", label: "Private map custody" },
+  { value: "all", label: "All sources" },
+  { value: "github", label: "GitHub" },
+  { value: "npm", label: "Packages" },
+  { value: "website", label: "Websites" },
+  { value: "map", label: "Map custody" },
 ];
 
 function configureForKind(kind: SourceKind): SourceConfigure {
@@ -70,8 +73,6 @@ export function WatchSourcesSummary({
   if (state.status === "loading") {
     return (
       <div className="mb-8" aria-busy="true">
-        <div className="h-9 w-80 max-w-full animate-pulse rounded bg-white/8 motion-reduce:animate-none" />
-        <div className="mt-2 h-4 w-[34rem] max-w-full animate-pulse rounded bg-white/5 motion-reduce:animate-none" />
         <WatchSkeleton variant="list" className="mt-6 overflow-hidden rounded-lg border border-white/8" />
       </div>
     );
@@ -108,7 +109,7 @@ export function WatchSourcesSummary({
       );
 
     return (
-      <div className="watch-narrow mb-8">
+      <div className="setup-capabilities watch-narrow mb-8">
         <WatchPageHeader
           title={headline}
           lede={
@@ -142,8 +143,8 @@ export function WatchSourcesSummary({
             </p>
           </div>
         </div>
-        <div className="mt-4">
-          {setup.steps.map((step, index) => {
+        <div className="setup-capability-grid">
+          {setup.steps.map((step) => {
             const active = setup.next?.key === step.key;
             const done = step.proof === "covered";
             return (
@@ -160,7 +161,7 @@ export function WatchSourcesSummary({
                     className={cn("watch-mark", done && "watch-mark-done", active && "watch-mark-now")}
                     aria-hidden
                   >
-                    {done ? <CheckCircle2 className="size-3" aria-hidden /> : index + 1}
+                    {done ? <CheckCircle2 className="size-4" aria-hidden /> : <Box className="size-4" aria-hidden />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <strong className="watch-small block text-snow">{step.label}</strong>
@@ -170,18 +171,9 @@ export function WatchSourcesSummary({
                     {step.proof === "check-needed" ? "check needed" : step.proof}
                   </span>
                 </div>
-                {active ? (
-                  <div className="watch-stepbody">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-line bg-inset px-3.5 py-3">
-                      <p className="watch-tiny min-w-0 flex-1 text-mute">{step.summary}</p>
-                      <Button type="button" size="sm" onClick={() => goToStep(step.key)}>
-                        {step.action}
-                      </Button>
-                    </div>
-                  </div>
-                ) : !done ? (
-                  <div className="flex justify-end px-4 pb-3">
-                    <Button type="button" size="sm" variant="outline" onClick={() => goToStep(step.key)}>
+                {!done ? (
+                  <div className="setup-capability-action">
+                    <Button type="button" size="sm" variant={active ? "default" : "outline"} onClick={() => goToStep(step.key)}>
                       {step.action}
                     </Button>
                   </div>
@@ -196,138 +188,34 @@ export function WatchSourcesSummary({
 
   return (
     <>
-    <div className="mb-8">
+    <div className="coverage-page mb-8">
       <WatchPageHeader
-        title="Coverage"
-        lede="Repositories, registry packages, production websites, and private map custody under continuous watch."
-        action={
-          admin && sources.length > 0 ? (
-            <Button type="button" size="sm" onClick={() => setAdding(true)}>
-              Add coverage
-            </Button>
-          ) : undefined
-        }
+        title="Know what’s being checked."
+        lede="Connection, monitoring and latest result are separate states."
+        action={admin ? <Button type="button" size="sm" onClick={() => setAdding(true)}>Connect source<Plus className="size-4" aria-hidden /></Button> : undefined}
       />
-      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-        New Scan checks one release now. Coverage keeps watching the connected surfaces that can change later.
-      </p>
-        {sources.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">
-          {SOURCE_FILTERS.map((option) => {
-            const count =
-              option.value === "all" ? sources.length : sources.filter((source) => source.kind === option.value).length;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() =>
-                  navigate(
-                    watchHref(watchPath("sources"), search, {
-                      sourceType: option.value,
-                    }),
-                  )
-                }
-                className={filter === option.value ? "watch-chip watch-chip-ok min-h-9" : "watch-chip min-h-9"}
-                aria-pressed={filter === option.value}
-              >
-                {option.label} <span className="ml-1 text-dim">{count}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                watchHref(watchPath("sources"), search, {
-                  attention: !attention,
-                }),
-              )
-            }
-            className={
-              attention
-                ? "min-h-12 rounded-full border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs text-danger sm:ml-auto sm:min-h-9"
-                : "min-h-12 rounded-full border border-white/8 px-3 py-1.5 text-xs text-mute hover:border-white/20 sm:ml-auto sm:min-h-9"
-            }
-            aria-pressed={attention}
-          >
-            Needs attention{" "}
-            <span className="ml-1">
-              {sources.filter((source) => source.attention === "critical" || source.attention === "warning").length}
-            </span>
-          </button>
-        </div> : null}
-      {sources.length === 0 ? (
-        <div className="watch-empty mt-5 max-w-2xl">
-          <strong className="block text-sm font-medium text-snow">Add your first monitored surface</strong>
-          <p className="mt-1.5 max-w-xl">
-            GitHub is the quickest path to ongoing visibility and release checks. A one-off package
-            scan creates a release result without adding permanent coverage.
-          </p>
-          {admin ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={() => setAdding(true)}>
-                Add coverage
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => navigate(watchHref(watchPath("scan"), search ?? ""))}>
-                New scan
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <ul className="mt-5 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
-          {filteredSources.map((source) => (
-            <li
-              key={source.key}
-              className={
-                selectedSourceKey === source.key
-                  ? "grid gap-3 bg-white/[0.035] px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
-                  : "grid gap-3 px-4 py-4 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center"
-              }
-            >
-              <span className="grid size-8 place-items-center rounded-md border border-white/8 bg-inset text-mute">
-                {source.kind === "github" ? <GitBranch className="size-4" aria-hidden /> : source.kind === "npm" ? <Package className="size-4" aria-hidden /> : source.kind === "website" ? <Globe2 className="size-4" aria-hidden /> : <Map className="size-4" aria-hidden />}
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-mono text-sm text-snow">{source.name}</p>
-                  <span
-                    className={
-                      source.attention === "critical"
-                        ? "rounded-full border border-danger/35 bg-danger/10 px-2 py-0.5 text-xs text-danger"
-                        : "rounded-full border border-white/10 px-2 py-0.5 text-xs text-dim"
-                    }
-                  >
-                    {source.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-dim">
-                  {source.kindLabel} · {source.detail}
-                  {source.digest ? ` · sha256 ${source.digest.slice(0, 12)}` : ""}
-                  {source.lastCheckedAt ? ` · checked ${new Date(source.lastCheckedAt).toLocaleString()}` : ""}
-                  {` · ${source.alertCount} open ${source.alertCount === 1 ? "alert" : "alerts"}`}
-                </p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => navigate(watchHref(watchPath("sources"), search, { source: source.key }))}
-              >
-                {source.primaryAction}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {sources.length > 0 && filteredSources.length === 0 ? (
-        <p className="mt-5 rounded-lg border border-white/8 bg-panel p-6 text-sm text-mute">
-          No coverage matches these filters.
-        </p>
-      ) : null}
-      <Dialog open={adding} onClose={setAdding} className="relative z-50">
-        <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-        <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
-          <DialogPanel className="w-full max-w-xl rounded-xl border border-white/15 bg-panel p-5 shadow-2xl transition duration-150 data-closed:scale-95 data-closed:opacity-0 motion-reduce:transition-none">
+      <div className="coverage-journey-tabs" role="tablist" aria-label="Source types">
+        {SOURCE_FILTERS.map((option,index) => {
+          const count=option.value === "all" ? sources.length : sources.filter(source=>source.kind===option.value).length;
+          return <button key={option.value} type="button" role="tab" id={`coverage-tab-${option.value}`} aria-selected={filter===option.value} aria-controls="coverage-source-panel" tabIndex={filter===option.value?0:-1}
+            onClick={()=>navigate(watchHref(watchPath('sources'),search,{sourceType:option.value}))}
+            onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?SOURCE_FILTERS.length-1:(index+(event.key==='ArrowRight'?1:SOURCE_FILTERS.length-1))%SOURCE_FILTERS.length;document.getElementById(`coverage-tab-${SOURCE_FILTERS[next].value}`)?.focus();navigate(watchHref(watchPath('sources'),search,{sourceType:SOURCE_FILTERS[next].value}));}}
+          >{option.label}{" "}<span>{count}</span></button>;
+        })}
+      </div>
+      <div key={filter} className="watch-content-enter" id="coverage-source-panel" role="tabpanel" aria-labelledby={`coverage-tab-${filter}`}>
+        {sources.length > 0 ? <div className="coverage-attention-filter"><label><input type="checkbox" checked={attention} onChange={()=>navigate(watchHref(watchPath('sources'),search,{attention:!attention}))}/>Needs attention <span>{sources.filter(source=>source.attention==='critical'||source.attention==='warning').length}</span></label></div> : null}
+        {sources.length === 0 ? <div className="coverage-journey-empty"><Box aria-hidden/><h2>Connect your first source</h2><p>Connect GitHub or add a website to keep release checks in one place.</p>{admin?<Button type="button" onClick={()=>setAdding(true)}>Connect source<Plus className="size-4" aria-hidden/></Button>:<p>A workspace administrator can connect a source.</p>}</div> : filteredSources.length===0 ? <p className="coverage-no-match">No coverage matches these filters.</p> : <div className="coverage-table-wrap"><table className="coverage-table"><thead><tr><th>Source</th><th>Connection</th><th>Latest check</th><th><span className="sr-only">Source actions</span></th></tr></thead><tbody>{filteredSources.map(source=>{
+          const verificationNeeded=source.kind==='website'&&source.status==='verification required';
+          const checkLabel=source.kind==='github'?(source.lastCheckedAt?(source.status==='private'?'Private repository':'Public repository'):'Not checked'):source.status==='passed'?(source.kind==='map'?'Check passed':'Policy passed'):source.status==='failed-policy'?'Needs review':source.status==='check needed'?'Not checked':source.status==='checked'?'Metadata checked':source.status==='verification required'?'Not scanned':source.status.replace(/_/g,' ');
+          const checkTone=source.kind==='github'?'neutral':source.status==='passed'?'passed':['failed-policy','public map found'].includes(source.status)?'review':['error','inconclusive','failed'].includes(source.status)?'warn':'neutral';
+          const recordedAt=source.kind==='npm'?source.lastScannedAt:source.lastCheckedAt;
+          return <tr key={source.key} className={selectedSourceKey===source.key?'is-selected':undefined}><td><button className="coverage-entity" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="coverage-icon">{source.kind==='github'?<GitBranch aria-hidden/>:source.kind==='npm'?<Package aria-hidden/>:source.kind==='website'?<Globe2 aria-hidden/>:<Map aria-hidden/>}</span><span><strong>{source.name}</strong><small>{source.kind==='github'?'GitHub · repository visibility':source.kind==='npm'?'Package registry':source.kind==='website'?'Production website':'Private map custody'}</small></span></button></td><td><span className={`coverage-status ${verificationNeeded?'warn':'neutral'}`}>{verificationNeeded?'Verify ownership':'Configured'}</span>{source.connectionLabel?<small>{source.connectionLabel}</small>:null}</td><td><span className={`coverage-status ${checkTone}`}>{checkLabel}</span>{recordedAt?<small>{new Date(recordedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small>:null}</td><td><Button type="button" size="sm" variant="outline" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}>{source.primaryAction}</Button></td></tr>;
+        })}</tbody></table></div>}
+      </div>
+      {sources.length>0?<section className="coverage-health"><h2>Connection health</h2><div className="coverage-health-notice"><Activity aria-hidden/><div><strong>{sources.some(source=>source.status==='verification required')?`${sources.filter(source=>source.status==='verification required').length} ${sources.filter(source=>source.status==='verification required').length===1?'website needs':'websites need'} verification`:sources.some(source=>source.monitoring?.freshness==='delayed')?'Some source checks are delayed':'Connection and scan evidence are separate'}</strong><p>{sources.some(source=>source.status==='verification required')?'Repository access alone does not establish ownership of a production domain.':sources.some(source=>source.monitoring?.freshness==='delayed')?'Open a source to review its latest recorded check and configured cadence.':'Configured sources are not a guarantee of current access or a passing release. Review the recorded check for its scope.'}</p></div><button className="coverage-health-link" onClick={()=>navigate(watchHref(watchPath('setup'),search))}>Review<ArrowRight aria-hidden/></button></div></section>:null}
+      <Dialog open={adding} onClose={setAdding} className="watch-design-surface relative z-50">
+        <QuietModalSurface>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-dim">Add coverage</p>
@@ -356,30 +244,67 @@ export function WatchSourcesSummary({
                 </button>
               ))}
             </div>
-          </DialogPanel>
-        </div>
+          </QuietModalSurface>
       </Dialog>
     </div>
     <Dialog
       open={Boolean(selectedSource)}
       onClose={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}
-      className="relative z-40"
+      className="watch-design-surface relative z-40"
     >
-      <DialogBackdrop className="fixed inset-0 bg-black/55 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
-      <div className="fixed inset-0 flex justify-end">
-        <DialogPanel className="h-full w-full max-w-lg overflow-y-auto border-l border-white/10 bg-inset p-6 shadow-2xl transition duration-150 data-closed:translate-x-full motion-reduce:transition-none">
+      <QuietSidePreview>
           {selectedSource ? (
             <>
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="watch-kicker">{selectedSource.kindLabel}</p>
-                  <DialogTitle className="mt-2 break-words font-display text-2xl text-snow">
+                  <DialogTitle className="mt-2 font-display text-2xl text-snow [overflow-wrap:anywhere]">
                     {selectedSource.name}
                   </DialogTitle>
                 </div>
-                <Button type="button" variant="ghost" size="sm" aria-label="Close coverage detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
+                <Button type="button" variant="ghost" size="sm" className="size-11 shrink-0 p-0" aria-label="Close coverage detail" onClick={() => navigate(watchHref(watchPath("sources"), search, { source: null }))}>
                   <X className="size-4" aria-hidden />
                 </Button>
+              </div>
+              <div className="coverage-detail-actions mt-5 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    navigate(
+                      watchHref(watchPath("sources"), search, {
+                        source: null,
+                        configure: configureForKind(selectedSource.kind),
+                      }),
+                    );
+                  }}
+                >
+                  <Box className="size-4" aria-hidden />
+                  {selectedSource.primaryAction}
+                </Button>
+                {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      navigate(
+                        watchHref(watchPath("releases"), search, {
+                          release: relatedRelease?.id ?? null,
+                        }),
+                      )
+                    }
+                  >
+                    {relatedRelease ? "Open latest release brief" : "View release history"}
+                  </Button>
+                ) : null}
+                {selectedSource.alertCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
+                  >
+                    Open related alerts
+                  </Button>
+                ) : null}
               </div>
               <div className="mt-6 divide-y divide-white/8 rounded-lg border border-white/8 bg-panel">
                 {[
@@ -394,14 +319,13 @@ export function WatchSourcesSummary({
                   ["Digest / version", selectedSource.digest ? `sha256 ${selectedSource.digest}` : selectedSource.coordinate],
                   ["Open alerts", String(selectedSource.alertCount)],
                 ].map(([label, value]) => (
-                  <div key={label} className="grid gap-2 px-4 py-3 sm:grid-cols-[8rem_1fr]">
+                  <div key={label} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                     <span className="text-xs text-dim">{label}</span>
-                    <span className="break-words text-sm text-snow">{value}</span>
+                    <span className="min-w-0 text-sm text-snow [overflow-wrap:anywhere]">{value}</span>
                   </div>
                 ))}
               </div>
               <section className="mt-6">
-                <a className="text-sm underline underline-offset-4" href={watchHref('/watch/workspaces', search, {})}>Manage workspace connections</a>
                 <h2 className="text-sm font-semibold text-snow">Evidence and related work</h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg bg-white/[0.035] p-4">
@@ -428,50 +352,10 @@ export function WatchSourcesSummary({
                   {selectedSource.detail}. Checks, alerts, release evidence, and remediation actions remain scoped to this real source.
                 </p>
               </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    navigate(
-                      watchHref(watchPath("sources"), search, {
-                        source: null,
-                        configure: configureForKind(selectedSource.kind),
-                      }),
-                    );
-                  }}
-                >
-                  <Box className="size-4" aria-hidden />
-                  {selectedSource.primaryAction}
-                </Button>
-                {selectedSource.alertCount > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate(watchHref(watchPath("alerts"), search, { tab: "open" }))}
-                  >
-                    Open related alerts
-                  </Button>
-                ) : null}
-                {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() =>
-                      navigate(
-                        watchHref(watchPath("releases"), search, {
-                          release: relatedRelease?.id ?? null,
-                        }),
-                      )
-                    }
-                  >
-                    {relatedRelease ? "Open latest release brief" : "View release history"}
-                  </Button>
-                ) : null}
-              </div>
+              <a className="mt-6 inline-flex text-sm text-mute underline underline-offset-4 hover:text-snow" href={watchHref('/watch/workspaces', search, {})}>Manage workspace connections</a>
             </>
           ) : null}
-        </DialogPanel>
-      </div>
+        </QuietSidePreview>
     </Dialog>
     </>
   );

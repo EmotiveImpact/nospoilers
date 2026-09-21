@@ -1,9 +1,27 @@
 import path from "node:path";
-import { loadEnv } from "vite";
+import { rm } from "node:fs/promises";
+import { loadEnv, type Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nospoilersApi } from "./src/plugin.ts";
+
+// Static design galleries remain available in local development, never release assets.
+export function excludePrototypeGalleries(): Plugin {
+  let outputRoot = "";
+  return {
+    name: "exclude-prototype-galleries",
+    apply: "build",
+    configResolved(config) {
+      outputRoot = path.resolve(config.root, config.build.outDir);
+    },
+    async closeBundle() {
+      await Promise.all(["mockup-review", "mockups"].map(directory =>
+        rm(path.join(outputRoot, directory), { recursive: true, force: true }),
+      ));
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -11,7 +29,7 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
   return {
-    plugins: [react(), tailwindcss(), nospoilersApi()],
+    plugins: [react(), tailwindcss(), nospoilersApi(), excludePrototypeGalleries()],
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "src"),

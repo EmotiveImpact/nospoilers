@@ -14,7 +14,7 @@ export function DisconnectedRepositories({installationId,refreshKey}:{installati
   return()=>controller.abort();
  },[installationId,retry,refreshKey]);
  if(failed===installationId)return <section className="mb-6 rounded-lg border border-white/10 p-5"><p role="alert">Retained connections could not be loaded.</p><Button variant="outline" onClick={()=>{setFailed(null);setRetry(value=>value+1);}}>Retry</Button></section>;
- if(state?.scope!==installationId)return <p className="mb-4 text-sm text-mute" role="status">Checking retained connections…</p>;
+ if(state?.scope!==installationId)return <p className="sr-only" role="status">Checking retained connections…</p>;
  if(!state.rows.length)return null;
  return <section className="mb-6 rounded-lg border border-white/10 p-5" aria-labelledby="disconnected-heading">
   <h2 id="disconnected-heading" className="text-lg font-semibold">Disconnected repositories</h2>

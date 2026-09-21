@@ -1,7 +1,9 @@
+import "../design/journey-settings.css";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import type { ReactNode } from "react";
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/motion/select";
 
 type RetentionDays = 0 | 90 | 180 | 365;
 type RetentionState =
@@ -39,83 +41,20 @@ export function RetentionScreen({
 }) {
   const ready = retention.status === "ready";
   return (
-    <section className="watch-narrow mt-4">
-      <WatchPageHeader
-        title="Retention"
-        lede="How long operational lists remain visible."
-        action={
-          canChange && ready ? (
-            <div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy || draft === retention.days}
-                onClick={onSave}
-              >
-                Save
-              </Button>
-              {confirmation}
-            </div>
-          ) : undefined
-        }
-      />
-      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-        Lists hide older alerts, jobs, receipts, revisions, and audit rows after this window.
-        Append-only evidence is not deleted. Uninstall still drops the tenant.
-      </p>
-      {previewing ? (
-        <>
-          <p className="mt-6 text-[13px] leading-relaxed text-mute">
-            Preview cannot change live retention. No invented incident.
-          </p>
-          <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
-            {WINDOWS.map((option) => (
-              <div key={option.days} className="watch-stat">
-                <span className="watch-kicker">{option.label}</span>
-                <p className="watch-tiny mt-2 text-dim">{option.note}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : ended ? (
-        <p className="mt-6 text-[13px] leading-relaxed text-mute">
-          Subscribe to keep configurable retention.
-        </p>
-      ) : retention.status === "error" ? (
-        <p role="alert" className="mt-6 text-[13px] text-danger">{retention.message}</p>
-      ) : retention.status === "loading" ? (
-        <WatchSkeleton variant="list" className="mt-4" />
-      ) : (
-        <>
-          <div className="mt-[18px] grid gap-3 sm:grid-cols-2">
-            {WINDOWS.map((option) => {
-              const selected = draft === option.days;
-              const current = retention.days === option.days;
-              return (
-                <button
-                  key={option.days}
-                  type="button"
-                  disabled={!canChange || busy}
-                  onClick={() => onDraft(option.days)}
-                  className={`watch-stat text-left ${selected ? "border-line-strong" : ""}`}
-                  aria-pressed={selected}
-                >
-                  <span className="watch-kicker">{option.label}</span>
-                  <p className={`watch-tiny mt-2 ${current ? "text-snow" : "text-dim"}`}>
-                    {current ? "Current" : option.note}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-          {!canChange ? (
-            <p className="mt-3 text-[13px] leading-relaxed text-mute">
-              An install admin has to change this window.
-            </p>
-          ) : null}
-        </>
-      )}
+    <section className="journey-retention">
+      <WatchPageHeader title="Keep evidence deliberately." lede="Understand what stays available and what expires." />
+      <div className="journey-settings-split">
+        <div>
+          {previewing ? <p>Preview cannot change live retention.</p> : ended ? <p>Subscribe to keep configurable retention.</p> : retention.status === "error" ? <p role="alert">{retention.message}</p> : !ready ? <WatchSkeleton variant="list" /> : <>
+            <div className="journey-setting-row"><div><h2>Operational history window</h2><p>How long alerts, jobs, receipts, revisions and audit rows stay visible in lists.</p></div><Select value={String(draft)} disabled={!canChange||busy} onValueChange={value=>onDraft(Number(value) as RetentionDays)}><SelectTrigger aria-label="Operational history window" className="w-full sm:w-44"><SelectValue/></SelectTrigger><SelectContent>{WINDOWS.map(option=><SelectItem key={option.days} value={String(option.days)}>{option.label}</SelectItem>)}</SelectContent></Select></div>
+            <div className="journey-setting-row"><div><h2>Saved evidence</h2><p>Changing the list window does not delete append-only evidence.</p></div><span>Retained</span></div>
+            <div className="journey-setting-row"><div><h2>Current window</h2><p>Changes take effect only after confirmation.</p></div><span>{WINDOWS.find(option=>option.days===retention.days)?.label}</span></div>
+            {canChange ? <div className="journey-savebar"><span>Review the effect before saving.</span><Button disabled={busy || draft===retention.days} onClick={onSave}>Review changes</Button></div> : <p className="mt-6 text-sm text-mute">An install admin has to change this window.</p>}
+            {confirmation}
+          </>}
+        </div>
+        <aside className="journey-side-note"><h3>A list window is not deletion</h3><p>Older records can disappear from operational lists without their underlying evidence being erased.</p><h3>Check the scope</h3><p>This setting applies to the selected GitHub installation. Workspace history and deletion requests have their own authority and retention checks.</p></aside>
+      </div>
     </section>
   );
 }

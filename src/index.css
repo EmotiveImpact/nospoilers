@@ -48,7 +48,7 @@
 .upload-evidence-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border:1px solid var(--color-line);border-top:0;border-radius:0 0 10px 10px;overflow:hidden;background:var(--color-panel);}
 .upload-finding-list {border-right:1px solid var(--color-line);max-height:640px;overflow:auto;}
 .upload-finding-list>button {width:100%;display:grid;grid-template-columns:62px minmax(0,1fr) 16px;gap:12px;align-items:center;text-align:left;padding:20px 18px;border-bottom:1px solid var(--color-line);}
-.upload-finding-list>button[aria-pressed="true"],.upload-finding-list>button:hover {background:color-mix(in srgb,var(--color-snow) 4%,transparent);}
+.upload-finding-list>button[aria-pressed="true"] {background:color-mix(in srgb,var(--color-snow) 4%,transparent);}
 .upload-finding-list strong {display:block;font-size:13px;line-height:1.5;}
 .upload-finding-list code {display:block;margin-top:7px;overflow-wrap:anywhere;color:var(--color-mute);font-size:11px;}
 .upload-severity {font-size:10px;text-align:center;border-radius:4px;padding:5px 3px;background:color-mix(in srgb,var(--color-warn) 10%,transparent);color:var(--color-warn);}
@@ -78,6 +78,8 @@
   --color-rail: #050506;
   --color-canvas: #09090b;
   --color-panel: #111113;
+  --color-panel-raised: #19191e;
+  --color-action-hover: #292930;
   --color-inset: #0b0b0d;
   --color-line: #2a2a2e;
   --color-line-strong: #3f3f46;
@@ -85,6 +87,7 @@
   --color-mute: #a1a1aa;
   --color-dim: #71717a;
   --color-danger: #e2453a;
+  --color-danger-text: #ff9b99;
   --color-warn: #d99a2b;
   --color-ok: #3fb950;
   --color-info: #5b8def;
@@ -203,13 +206,22 @@ code {
    floor is the tile color. A wider stage-only glow keeps the command row
    and title visibly on that surface without lifting the surrounding chrome. */
 .watch-desk {
+  /* Keep small metadata readable on the app's dark panels and selected rows. */
+  --color-dim: #92929c;
   display: flex;
   height: 100svh;
   overflow: hidden;
   background: #09090b;
 }
 
+.watch-desk, .watch-rail {
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
 .watch-rail {
+  --color-dim: #92929c;
   position: relative;
   background: #09090b;
 }
@@ -219,7 +231,7 @@ code {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 8px;
+  padding: 4px;
   background: #09090b;
 }
 
@@ -587,6 +599,10 @@ code {
   line-height: 1.04;
 }
 
+.watch-first-proof {
+  container-type: inline-size;
+}
+
 .watch-proof-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -597,19 +613,20 @@ code {
 
 .watch-proof-steps li {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, max-content) minmax(16px, 1fr);
   min-width: 0;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: start;
+  column-gap: 10px;
 }
 
 .watch-proof-steps li:not(:last-child)::after {
   content: "";
-  position: absolute;
-  top: 18px;
-  right: 14px;
-  left: 48px;
+  grid-column: 3;
+  align-self: start;
+  width: 100%;
   height: 1px;
+  margin-top: 18px;
   background: var(--color-line-strong);
 }
 
@@ -623,11 +640,10 @@ code {
   display: grid;
   width: 36px;
   height: 36px;
-  flex: none;
   place-items: center;
   border: 1px solid #5b5b63;
   border-radius: 999px;
-  background: #111113;
+  background: #090a0c;
   color: var(--color-mute);
   font-family: var(--font-display);
   font-size: 13px;
@@ -640,11 +656,8 @@ code {
 }
 
 .watch-proof-step-copy {
-  position: relative;
-  z-index: 1;
   min-width: 0;
-  padding: 1px 12px 0 0;
-  background: #111113;
+  padding: 1px 0 0;
 }
 
 .watch-proof-step-copy strong,
@@ -656,7 +669,7 @@ code {
   color: var(--color-mute);
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .watch-proof-steps .is-active .watch-proof-step-copy strong {
@@ -668,6 +681,28 @@ code {
   color: #85858e;
   font-size: 11px;
   line-height: 1.35;
+}
+
+/* Respond to the space beside the sidebar, not just the browser width. */
+@container (max-width: 900px) {
+  .watch-proof-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
+
+  .watch-proof-steps li {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .watch-proof-steps li:not(:last-child)::after {
+    display: none;
+  }
+}
+
+@container (max-width: 460px) {
+  .watch-proof-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .watch-proof-next {
@@ -786,7 +821,6 @@ code {
 }
 
 .watch-proof-watch-list > button:hover {
-  background: #ffffff05;
   color: var(--color-snow);
 }
 
@@ -855,16 +889,20 @@ code {
   }
 
   .watch-proof-steps li {
+    grid-template-columns: 36px minmax(0, 1fr);
     min-height: 66px;
   }
 
   .watch-proof-steps li:not(:last-child)::after {
+    position: absolute;
+    grid-column: auto;
     top: 37px;
     right: auto;
     bottom: 3px;
     left: 18px;
     width: 1px;
     height: auto;
+    margin-top: 0;
   }
 
   .watch-proof-next-main,
@@ -978,7 +1016,6 @@ code {
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.scan-dropzone:hover,
 .scan-dropzone.is-dragging {
   border-color: color-mix(in srgb, var(--color-snow) 58%, transparent);
   background: color-mix(in srgb, var(--color-snow) 3.5%, var(--color-inset));
@@ -1093,7 +1130,6 @@ code {
   text-align: left;
 }
 
-.scan-examples li > button:hover,
 .scan-examples li > button:focus-visible {
   background: color-mix(in srgb, var(--color-snow) 3%, var(--color-panel));
 }
@@ -1614,7 +1650,6 @@ code {
   text-align: left;
 }
 
-.watch-release-list li > button:hover,
 .watch-release-list li > button:focus-visible,
 .watch-release-list li > button.is-selected {
   background: color-mix(in srgb, var(--color-snow) 4%, transparent);
@@ -2075,8 +2110,23 @@ code {
   border-color: color-mix(in srgb, var(--color-ok) 20%, var(--color-line));
 }
 
-.watch-release-decision.is-pending {
+.watch-release-decision.is-pending,
+.watch-release-decision.is-review {
   border-color: color-mix(in srgb, var(--color-warn) 22%, var(--color-line));
+}
+
+.watch-release-decision.is-unknown {
+  border-color: var(--color-line);
+}
+
+.watch-release-list-status.is-review,
+.watch-release-state.is-review {
+  color: var(--color-warn);
+}
+
+.watch-release-list-status.is-unknown,
+.watch-release-state.is-unknown {
+  color: var(--color-mute);
 }
 
 .watch-release-verdict-icon {
@@ -2231,9 +2281,6 @@ code {
   text-align: left;
 }
 
-.watch-release-proof-row:hover {
-  background: color-mix(in srgb, var(--color-snow) 3.5%, transparent);
-}
 
 .watch-release-proof-row.is-selected {
   background: color-mix(in srgb, var(--color-snow) 4.5%, transparent);
@@ -2468,7 +2515,6 @@ code {
   text-align: left;
 }
 
-.watch-release-history-table button:hover,
 .watch-release-history-table button.is-current {
   background: color-mix(in srgb, var(--color-snow) 3.5%, transparent);
   color: var(--color-snow);

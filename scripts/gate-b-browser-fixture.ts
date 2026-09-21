@@ -18,12 +18,20 @@ import {saveWorkspaceArtifactPolicy} from '../src/server/workspace-policy.ts';
 import {requestWorkspaceException} from '../src/server/workspace-exceptions.ts';
 import {moveUnusedWorkspaceConnection} from '../src/server/workspace-connections.ts';
 import {inviteWorkspaceMember,acceptWorkspaceInvite} from '../src/server/workspace-membership.ts';
+import {migrateReleaseIntelligence} from '../src/server/release-intelligence-schema.ts';
+import {intelligencePorts} from '../src/server/release-intelligence-adapter.ts';
+import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts';
+import {withReleaseAssurance} from '../src/server/assurance-app.ts';
+import {handleJob} from '../src/server/worker.ts';
+import {PRODUCTION_PARITY_JOB} from '../src/server/production-parity-service.ts';
 
-const host='localhost',port=4359,base=`http://${host}:${port}`;
+const port=process.argv[2]===undefined?4359:Number(process.argv[2]);
+if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use a valid unprivileged QA port.');
+const host='localhost',base=`http://${host}:${port}`;
 const secret=randomBytes(32).toString('hex'),entry=randomBytes(18).toString('hex');
 // Any accidental provider call fails locally; the fixture never starts a worker.
 globalThis.fetch=async()=>{throw new Error('QA fixture: outbound network is disabled.');};
-const sql=await openSql('pglite://:memory:');await migrate(sql);const store=createStore(sql);
+const sql=await openSql('pglite://:memory:');await migrate(sql);await migrateReleaseIntelligence(sql);const store=createStore(sql);
 for(const actor of ['owner','reviewer','viewer'])await store.upsertUser({id:`qa-${actor}`,login:`QA-${actor}`});
 await store.upsertInstallation({id:9901,accountId:9901,accountLogin:'QA primary connection',accountType:'User'});
 await store.linkUserInstallation(9901,'qa-owner');
@@ -49,6 +57,10 @@ await sql.query("UPDATE watched_origins SET verified_at=now(),last_checked_at=no
 const upload=randomUUID(),receipt=signReceipt(buildUnsignedReceipt(dirty,'qa-independent-upload'),secret);
 await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
  VALUES($1,'qa-owner',$2,'QA independent sourcemap.tgz',$3,'done',$4::jsonb,$5::jsonb,now())`,[upload,workspace.id,dirty.artifactSha256??'',JSON.stringify(dirty),JSON.stringify(receipt)]);
+// Fresh rebuilt bytes for the explicit, human-reviewed remediation UI flow.
+const rebuiltUpload=randomUUID(),rebuiltReport={...clean,scannedAt:new Date().toISOString()},rebuiltReceipt=signReceipt(buildUnsignedReceipt(rebuiltReport,'qa-rebuilt-upload'),secret);
+await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
+ VALUES($1,'qa-owner',$2,'QA rebuilt clean.tgz',$3,'done',$4::jsonb,$5::jsonb,now())`,[rebuiltUpload,workspace.id,clean.artifactSha256??'',JSON.stringify(rebuiltReport),JSON.stringify(rebuiltReceipt)]);
 const websiteAttempt=randomUUID();
 await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,source_origin_id,target,artifact_sha256,status,report_json,receipt_json,completed_at)
  VALUES($1,'qa-owner',$2,$3,'https://qa-fixture.example.com/',$4,'done',$5::jsonb,$6::jsonb,now())`,[websiteAttempt,workspace.id,website.id,dirty.artifactSha256??'',JSON.stringify(dirty),JSON.stringify(receipt)]);
@@ -57,16 +69,41 @@ const alert=(await sql.query<{id:number}>(`INSERT INTO alerts(workspace_id,sourc
 await saveWorkspaceArtifactPolicy(sql,'qa-owner',workspace.id,{strict:false,expectedRevision:0,requireExceptionApproval:true});
 const exception=await requestWorkspaceException(sql,'qa-owner',workspace.id,{attemptId:upload,findingIndex:0,requestKey:randomUUID(),reason:'QA bounded exception awaiting independent reviewer',expiresAt:new Date(Date.now()+86400000).toISOString()});
 const sessions=new Map<string,string>();for(const actor of ['owner','reviewer','viewer'])sessions.set(actor,signSession(secret,await store.createSession(`qa-${actor}`)));
-const app=createApp({store,github:stubGithub(),config:loadConfig({sessionSecret:secret,receiptSecret:secret,appBaseUrl:base}),wakeWorker:()=>{}});
+const app=createApp({store,github:stubGithub(),config:loadConfig({
+ sessionSecret:secret,receiptSecret:secret,appBaseUrl:base,databaseUrl:'pglite://:memory:',
+ githubAppId:'',githubPrivateKey:'',githubWebhookSecret:'',githubClientId:'',githubClientSecret:'',githubAppSlug:'',githubDiscoveryToken:'',
+ adminToken:'',adminGithubLogin:'',stripeSecretKey:'',stripeWebhookSecret:'',
+ stripePriceSoloMonthly:'',stripePriceSoloYearly:'',stripePriceTeamMonthly:'',stripePriceTeamYearly:'',
+ resendApiKey:'',resendFromEmail:'',cronSecret:'',processRole:'web',
+}),wakeWorker:()=>{}});
+const assurance=withReleaseAssurance(app,{receiptSecret:secret,scopeForRelease:async id=>{
+ const row=await store.getReleaseRevision(id);return row?{installationId:row.installation_id,receiptId:row.receipt_id}:null;
+}});
+const secrets={sessionSecret:secret,receiptSecret:secret};
+const integrated=withReleaseIntelligence(assurance,{sql,appBaseUrl:base,
+ ports:request=>intelligencePorts(request,secrets),
+ reserve:request=>intelligencePorts(request,secrets).reserve(sql),
+ context:(request,ref)=>intelligencePorts(request,secrets).context(sql,ref),
+});
 const dist=path.resolve('dist');await readFile(path.join(dist,'index.html'));
 const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};
 const server=serve({hostname:'127.0.0.1',port,fetch:async request=>{
  const url=new URL(request.url);
  if(url.hostname!==host)return new Response('QA loopback host only',{status:403});
+ if(url.pathname===`/__qa/${entry}/production-step`&&request.method==='POST'){
+  if(request.headers.get('origin')!==base||!request.headers.get('cookie')?.split(';').some(c=>c.trim()===`ns_session=${sessions.get('owner')}`))return new Response('QA owner only',{status:403});
+  const job=await store.claimJob('heavy',1,'qa-parity-worker');
+  if(!job)return Response.json({qaOnly:true,processed:false});
+  if(job.kind!==PRODUCTION_PARITY_JOB){await store.finishJob(job.id,'Unexpected job in disposable fixture','qa-parity-worker');return new Response('Unexpected QA job',{status:409});}
+  await handleJob(job,{store,workerId:'qa-parity-worker',receiptSecret:secret,github:stubGithub(),scan,maxAssetBytes:100000,
+    webLookup:async()=>[{address:'1.1.1.1',family:4}],webFetch:async()=>new Response('Synthetic QA delivered bytes',{headers:{'content-type':'text/javascript','cache-control':'no-cache'}}),
+    notifier:{send:async()=>{throw new Error('QA fixture does not send notifications.');}}});
+  await store.finishJob(job.id,undefined,'qa-parity-worker');return Response.json({qaOnly:true,processed:true,transport:'synthetic — no outbound network'});
+ }
  if(url.pathname===`/__qa/${entry}`){const actor=url.searchParams.get('actor')??'owner',session=sessions.get(actor);if(!session)return new Response('Unknown QA actor',{status:400});return new Response(null,{status:302,headers:{'Set-Cookie':`ns_session=${session}; Path=/; HttpOnly; SameSite=Strict`,'Location':`/watch?workspace=${workspace.id}`}});}
- if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return app.fetch(request);
+ if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/auth/'))return integrated.fetch(request);
  const candidate=path.resolve(dist,`.${decodeURIComponent(url.pathname)}`);
  if(!candidate.startsWith(dist+path.sep))return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});
  try{return new Response(await readFile(candidate),{headers:{'Content-Type':mime[path.extname(candidate)]??'application/octet-stream','Cache-Control':'no-store'}});}catch{return new Response(await readFile(path.join(dist,'index.html')),{headers:{'Content-Type':'text/html','Cache-Control':'no-store'}});}
-}},()=>console.log(JSON.stringify({qaOnly:true,entry:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
+}},()=>console.log(JSON.stringify({qaOnly:true,entry:`${base}/__qa/${entry}`,actors:['owner','reviewer','viewer'],workspace:workspace.id,emptyWorkspace:empty.id,upload,rebuiltUpload,reviewedAt:dirty.scannedAt,websiteAttempt,alert:alert.id,exception:exception.id,network:'disabled',database:'ephemeral-memory',workers:false})));
 async function stop(){server.close();await sql.close();process.exit(0);}process.once('SIGINT',stop);process.once('SIGTERM',stop);

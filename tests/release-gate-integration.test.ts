@@ -1,0 +1,93 @@
+import {it,expect,vi} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {openSql,migrate} from '../src/server/sql.ts';
+import {createStore,signSession} from '../src/server/store.ts';
+import {createApp} from '../src/server/app.ts';
+import {loadConfig} from '../src/server/config.ts';
+import {stubGithub} from '../src/server/stub-github.ts';
+import {listUserWorkspaces} from '../src/server/workspaces.ts';
+import {mintWorkspaceToken,revokeWorkspaceToken} from '../src/server/workspace-tokens.ts';
+import {migrateReleaseIntelligence} from '../src/server/release-intelligence-schema.ts';
+import {intelligencePorts} from '../src/server/release-intelligence-adapter.ts';
+import {withReleaseIntelligence} from '../src/server/release-intelligence-app.ts';
+import {scan} from '../src/scanner/index.ts';
+import {buildUnsignedReceipt,signReceipt} from '../src/receipt.ts';
+import {runGate} from '../src/cli-gate.ts';
+it('connects versioned policy, signed evidence, single-use CI and audited overrides without changing receipts',async()=>{
+  const database=process.env.NOSPOILERS_GATE_TEST_DATABASE_URL;
+  if(database){const u=new URL(database);if(u.hostname!=='127.0.0.1'||u.pathname!=='/nospoilers_pr44_review')throw new Error('Use disposable loopback gate database.');}
+  const sql=await openSql(database??'pglite://:memory:');
+  try{
+    await migrate(sql);await migrateReleaseIntelligence(sql);await migrateReleaseIntelligence(sql);
+    const secrets={sessionSecret:'gate-test-session',receiptSecret:'gate-test-receipt'},store=createStore(sql,{tokenSecret:secrets.sessionSecret});
+    const base='http://127.0.0.1:4347',cookies:Record<string,string>={};
+    for(const id of ['gate-owner','gate-viewer','gate-foreign']){await store.upsertUser({id,login:id});cookies[id]=`ns_session=${signSession(secrets.sessionSecret,await store.createSession(id))}`;}
+    const [workspace]=await listUserWorkspaces(sql,'gate-owner');
+    await sql.query("INSERT INTO product_workspace_members(workspace_id,user_id,role,access_source) VALUES($1,'gate-viewer','viewer','explicit')",[workspace.id]);
+    const core=createApp({store,github:stubGithub(),config:loadConfig({...secrets,appBaseUrl:base})});
+    const app=withReleaseIntelligence(core,{sql,appBaseUrl:base,ports:r=>intelligencePorts(r,secrets),reserve:async()=>true,context:(r,ref)=>intelligencePorts(r,secrets).context(sql,ref)});
+    const request=(path:string,payload?:unknown,actor='gate-owner',extra:Record<string,string>={})=>app.fetch(new Request(base+path,{method:payload?'POST':'GET',headers:{...(cookies[actor]?{cookie:cookies[actor]}:{}),origin:base,'content-type':'application/json',...extra},...(payload?{body:JSON.stringify(payload)}:{})}));
+    const report=await scan('fixtures/clean.tgz'),receipt=signReceipt(buildUnsignedReceipt(report,'upload:gate'),secrets.receiptSecret),record={kind:'upload',id:randomUUID()};
+    if(!report.artifactSha256)throw new Error('Expected a scanned artifact digest.');
+    await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json) VALUES($1,'gate-owner',$2,'clean.tgz',$3,'done',$4::jsonb,$5::jsonb)`,[record.id,workspace.id,report.artifactSha256,JSON.stringify(report),JSON.stringify(receipt)]);
+    const created=await request('/api/release-intelligence/streams',{workspaceId:workspace.id,name:'Gate build',key:'gate-build',role:'Package',record});expect(created.status).toBe(201);
+    const stream=(await created.json() as {stream:{id:string}}).stream.id,path=`/api/release-intelligence/streams/${stream}/gate`;
+    expect((await request(path,undefined,'')).status).toBe(401);
+    expect((await request(path,undefined,'gate-foreign')).status).toBe(404);
+    const config={action:'configure',mode:'enforce',maxAgeHours:24,expectedRevision:0,reason:'Require recorded build checks before deployment.',confirm:true};
+    expect((await request(path,config,'gate-viewer')).status).toBe(403);
+    expect((await request(path,config,'gate-owner',{origin:'https://foreign.invalid'})).status).toBe(403);
+    const competing=await Promise.all([request(path,config),request(path,config)]);expect(competing.map(r=>r.status).sort()).toEqual([200,409]);
+    const token=await mintWorkspaceToken(sql,'gate-owner',workspace.id,'Gate CI'),bearer={authorization:`Bearer ${token.token}`};
+    expect((await request(path,{...config,expectedRevision:1},'',bearer)).status).toBe(403);
+    const evaluate={action:'evaluate',record,digest:report.artifactSha256,expectedPolicyRevision:1,deploymentId:'test-deploy',requestKey:randomUUID()};
+    const response=await request(path,evaluate,'',bearer);expect(response.status).toBe(201);const decision=await response.json() as {id:string;result:{readiness:string}};
+    expect(decision.result.readiness).toBe('ready');expect((await (await request(path,evaluate,'',bearer)).json() as {id:string}).id).toBe(decision.id);
+    const consume={action:'consume',decisionId:decision.id,digest:report.artifactSha256,deploymentId:'test-deploy',expectedPolicyRevision:1};
+    const race=await Promise.all([request(path,consume,'',bearer),request(path,consume,'',bearer)]);expect(race.map(r=>r.status).sort()).toEqual([200,409]);
+    expect(await race.find(r=>r.status===200)!.json()).toMatchObject({outcome:'allowed',readiness:'ready',proceed:true});
+    const transport:typeof fetch=async(url,init)=>app.fetch(new Request(String(url),init));
+    const ci=await runGate({api:base,token:token.token,stream,upload:record.id,digest:report.artifactSha256,deployment:'cli-deploy'},transport);
+    expect(ci.exitCode).toBe(0);expect(ci.result.outcome).toBe('allowed');
+    const pending=await (await request(path,{...evaluate,requestKey:randomUUID()})).json() as {id:string};
+    const clock=vi.spyOn(Date,'now').mockReturnValue(Date.now()+6*60000);
+    try{expect((await request(path,{...consume,decisionId:pending.id})).status).toBe(409);}finally{clock.mockRestore();}
+    expect((await request(path,{...config,expectedRevision:1,mode:'warn'})).status).toBe(200);
+    expect((await request(path,{...consume,decisionId:pending.id})).status).toBe(409);
+    expect((await request(path,{...config,expectedRevision:2,rollbackFromRevision:1})).status).toBe(200);
+    expect((await (await request(path)).json() as {policy:{revision:number;mode:string}}).policy).toMatchObject({revision:3,mode:'enforce'});
+    await expect(sql.query("UPDATE release_gate_policies SET mode='advisory' WHERE stream_id=$1",[stream])).rejects.toThrow('immutable');
+    const failed=await scan('fixtures/sourcemap.tgz');expect(failed.status).toBe('failed-policy');
+    for(const [label,scanReport] of [['blocked',failed],['stale',{...report,scannedAt:new Date(Date.now()-48*3600000).toISOString()}]] as const){
+      const ref={kind:'upload',id:randomUUID()},signed=signReceipt(buildUnsignedReceipt(scanReport,`upload:${label}`),secrets.receiptSecret);
+      await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,report_json,receipt_json) VALUES($1,'gate-owner',$2,'fixture.tgz',$3,'done',$4::jsonb,$5::jsonb)`,[ref.id,workspace.id,scanReport.artifactSha256,JSON.stringify(scanReport),JSON.stringify(signed)]);
+      expect((await request(`/api/release-intelligence/streams/${stream}/records`,{record:ref})).status).toBe(200);
+      const evaluated=await request(path,{...evaluate,record:ref,digest:scanReport.artifactSha256,expectedPolicyRevision:3,requestKey:randomUUID()});expect(evaluated.status).toBe(201);
+      const d=await evaluated.json() as {id:string;result:{readiness:string}};expect(d.result.readiness).toBe(label==='blocked'?'blocked':'unknown');
+      const override={action:'override',decisionId:d.id,reason:'Authorised exact deployment exception for this synthetic test.',confirm:true};
+      expect((await request(path,override,'',bearer)).status).toBe(403);
+      expect((await request(path,override)).status).toBe(label==='blocked'?200:409);
+      const consumed=await runGate({api:base,token:token.token,stream,upload:ref.id,digest:scanReport.artifactSha256!,deployment:'test-deploy',decision:d.id},transport);
+      expect(consumed.result).toMatchObject({readiness:label==='blocked'?'blocked':'unknown',outcome:label==='blocked'?'override':'denied',proceed:label==='blocked'});
+      expect(consumed.exitCode).toBe(label==='blocked'?0:2);
+      expect((await sql.query('SELECT receipt_json FROM uploaded_scans WHERE id=$1',[ref.id])).rows[0]).toEqual({receipt_json:signed});
+      await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[ref.id]);
+    }
+    const beforeRevocation=await request(path,{...evaluate,requestKey:randomUUID(),expectedPolicyRevision:3},'',bearer);
+    expect(beforeRevocation.status).toBe(201);
+    const outstanding=await beforeRevocation.json() as {id:string};
+    const outstandingConsume={...consume,decisionId:outstanding.id,expectedPolicyRevision:3};
+    expect((await request(path,{...outstandingConsume,digest:'b'.repeat(64)},'',bearer)).status).toBe(409);
+    expect((await request(path,{...outstandingConsume,deploymentId:'different-attempt'},'',bearer)).status).toBe(409);
+    expect((await request(path,outstandingConsume,'gate-viewer')).status).toBe(403);
+    expect((await request(path,outstandingConsume,'gate-foreign')).status).toBe(404);
+    await revokeWorkspaceToken(sql,'gate-owner',workspace.id,String(token.scanToken.id),'Gate CI');
+    expect((await request(path,outstandingConsume,'',bearer)).status).toBe(401);
+    expect((await sql.query('SELECT id FROM release_gate_consumptions WHERE decision_id=$1',[outstanding.id])).rows).toHaveLength(0);
+    expect((await request(path,{...evaluate,requestKey:randomUUID(),expectedPolicyRevision:3},'',bearer)).status).toBe(401);
+    expect((await sql.query('SELECT receipt_json FROM uploaded_scans WHERE id=$1',[record.id])).rows[0]).toEqual({receipt_json:receipt});
+    await sql.query('DELETE FROM uploaded_scans WHERE id=$1',[record.id]);
+    expect((await sql.query('SELECT id FROM release_gate_decisions WHERE stream_id=$1',[stream])).rows).toHaveLength(0);
+    expect((await sql.query('SELECT id FROM release_gate_consumptions')).rows).toHaveLength(0);
+  }finally{await sql.close();}
+},60_000);

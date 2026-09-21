@@ -5,41 +5,22 @@ import { cn } from "@/lib/utils";
 export type { WatchSectionState } from "@/watch/data-state";
 
 export function WatchSkeleton({
-  variant = "cards",
-  className,
+  label = "Loading this section…",
 }: {
   variant?: "cards" | "list" | "detail";
   className?: string;
+  label?: string;
 }) {
-  const rows = variant === "detail" ? 3 : variant === "list" ? 6 : 4;
   return (
-    <div
-      className={cn(
-        "animate-pulse motion-reduce:animate-none",
-        variant === "cards" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4" : "space-y-px",
-        className,
-      )}
+    <span
+      className="sr-only"
       role="status"
-      aria-label="Loading"
+      aria-label={label}
+      aria-live="polite"
+      aria-atomic="true"
     >
-      {Array.from({ length: rows }, (_, index) => (
-        <div
-          key={index}
-          className={cn(
-            "bg-panel",
-            variant === "cards"
-              ? "h-28 rounded-lg border border-white/8 p-4"
-              : variant === "detail"
-                ? "h-28 rounded-lg border border-white/8"
-                : "h-[68px] border-b border-white/5 px-4 py-3",
-          )}
-        >
-          <div className="h-3 w-24 rounded bg-white/8" />
-          <div className="mt-3 h-4 w-2/3 rounded bg-white/5" />
-        </div>
-      ))}
-      <span className="sr-only">Loading this section…</span>
-    </div>
+      {label}
+    </span>
   );
 }
 

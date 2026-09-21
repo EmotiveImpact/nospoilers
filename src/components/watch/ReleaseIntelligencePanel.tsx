@@ -1,0 +1,198 @@
+import { QuietToolGroup } from './design/QuietComponents';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { GitCompareArrows, ShieldCheck, Wrench, SlidersHorizontal, Bot } from 'lucide-react';
+import type { Analysis, Baseline, Ref, Snapshot, Stream } from '../../release-intelligence/model';
+import './release-intelligence.css';
+import {AutomaticCaptureControls} from './AutomaticCaptureControls';
+import {ProductionParityControls} from './ProductionParityControls';
+import {ReleaseGateControls} from './ReleaseGateControls';
+import {ReleaseRemediationControls} from './ReleaseRemediationControls';
+import {AgentAccessControls} from './AgentAccessControls';
+import {ReleaseExplanationControls} from './ReleaseExplanationControls';
+import {ReleaseOutcomeControls} from './ReleaseOutcomeControls';
+import {WatchSkeleton} from '../WatchDataState';
+type Listed = { streams: Stream[]; links: Array<{ stream_id: string; snapshot_id: string }>; canManage: boolean; canWrite: boolean };
+type View = {
+  stream: Stream; snapshots: Snapshot[]; selected: Snapshot | null; nextCursor: string | null;
+  canManage: boolean; canAdminister?:boolean; canWrite: boolean; unavailable: boolean; baselineEligible: boolean;
+  analysis: (Analysis & { unavailable: number; inspectedHistoryRows: number; budgetLimited: boolean }) | null;
+  baselines: Baseline[]; currentBaselineState: string;
+  events: Array<{ id: string; action: string; actor_login: string; created_at: string }>; notice: string;
+};
+const API = '/api/release-intelligence';
+async function read<T>(path: string, signal: AbortSignal, input?: object): Promise<T> {
+  const response = await fetch(path, { signal, credentials: 'same-origin', cache: 'no-store',
+    ...(input ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) } : {}) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Release history is unavailable.');
+  return data as T;
+}
+type HistoryProps = { record: Ref; supportingReview?: ReactNode; decisionControls?: ReactNode; comparisonReview?:ReactNode };
+const HISTORY_TOOLS = [
+  { id: 'comparison', label: 'Comparison', icon: GitCompareArrows },
+  { id: 'decisions', label: 'Release decisions', icon: ShieldCheck },
+  { id: 'remediation', label: 'Finding reviews', icon: Wrench },
+  { id: 'settings', label: 'Stream settings', icon: SlidersHorizontal },
+  { id: 'assistance', label: 'Access & assistance', icon: Bot },
+] as const;
+type HistoryTool = typeof HISTORY_TOOLS[number]['id'];
+export function ReleaseIntelligenceFromRecord({ record, supportingReview, decisionControls, comparisonReview }: HistoryProps) {
+  return <RecordContext key={`${record.kind}:${record.id}`} record={record} supportingReview={supportingReview} decisionControls={decisionControls} comparisonReview={comparisonReview}/>;
+}
+function RecordContext({ record, supportingReview, decisionControls, comparisonReview }: HistoryProps) {
+  const [workspace, setWorkspace] = useState(''), [error, setError] = useState(''), [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController(); setError(''); setWorkspace('');
+    void read<{ workspaceId: string }>(`${API}/record-context/${record.kind}/${encodeURIComponent(record.id)}`, controller.signal)
+      .then(body => { if (!controller.signal.aborted) { if (!body.workspaceId) throw new Error('Record workspace was not returned.'); setWorkspace(body.workspaceId); } })
+      .catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'History unavailable.'); });
+    return () => controller.abort();
+  }, [record.kind, record.id, retry]);
+  if (workspace) return <ReleaseIntelligencePanel key={`${workspace}:${record.kind}:${record.id}`} workspaceId={workspace} record={record} supportingReview={supportingReview} decisionControls={decisionControls} comparisonReview={comparisonReview}/>;
+  return <section className="ns-intelligence" aria-label="Release history"><h2>Release history</h2><p role={error ? 'alert' : 'status'}>{error || 'Checking access to this release’s historical context…'}</p>{error ? <button type="button" onClick={() => setRetry(n => n + 1)}>Retry history</button> : null}{decisionControls}{comparisonReview}{supportingReview}</section>;
+}
+export function ReleaseIntelligencePanel({ workspaceId, record, supportingReview, decisionControls, comparisonReview }: HistoryProps & { workspaceId: string }) {
+  return <IntelligencePanel key={`${workspaceId}:${record.kind}:${record.id}`} workspaceId={workspaceId} record={record} supportingReview={supportingReview} decisionControls={decisionControls} comparisonReview={comparisonReview}/>;
+}
+function IntelligencePanel({ workspaceId, record, supportingReview, decisionControls, comparisonReview }: HistoryProps & { workspaceId: string }) {
+  const [activeTool, setActiveTool] = useState<HistoryTool>('comparison');
+  const [creatingStream, setCreatingStream] = useState(false);
+  const createName = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (creatingStream) createName.current?.focus(); }, [creatingStream]);
+  const [list, setList] = useState<Listed | null>(null), [view, setView] = useState<View | null>(null);
+  const [streamId, setStreamId] = useState(''), [snapshotId, setSnapshotId] = useState(''), [before, setBefore] = useState('');
+  const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false), [reload, setReload] = useState(0);
+  const [refreshing,setRefreshing]=useState(false);
+  const [name, setName] = useState(''), [streamKey, setStreamKey] = useState(''), [role, setRole] = useState(''), [reason, setReason] = useState('');
+  const lifetime = useRef<AbortController | null>(null), didAutoselect = useRef(false);
+  const root = useRef<HTMLElement|null>(null);
+  const errorPanel=useRef<HTMLDivElement|null>(null),lastFocused=useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    // Restore a useful keyboard destination only when the failed action removed its control.
+    // Do not steal focus if the customer has already moved elsewhere on the page.
+    if(error&&lastFocused.current&&!lastFocused.current.isConnected&&document.activeElement===document.body)errorPanel.current?.focus();
+  },[error]);
+  useEffect(() => { const controller = new AbortController(); lifetime.current = controller; return () => controller.abort(); }, []);
+  useEffect(() => {
+    const controller = new AbortController(); setError('');
+    const query = new URLSearchParams({ workspaceId, recordKind: record.kind, recordId: record.id });
+    void read<Listed>(`${API}/streams?${query}`, controller.signal).then(body => {
+      if (controller.signal.aborted) return;
+      if (!Array.isArray(body.streams) || !Array.isArray(body.links)||body.streams.some(s=>s.workspace_id!==workspaceId)||body.links.some(l=>!body.streams.some(s=>s.id===l.stream_id))) throw new Error('History response was incomplete or belongs to another workspace.');
+      setList(body);
+      if (!didAutoselect.current) { didAutoselect.current = true; if (!streamId && body.links.length === 1) { setStreamId(body.links[0].stream_id); setSnapshotId(body.links[0].snapshot_id); } }
+    }).catch(e => { if (!controller.signal.aborted) {setList(null);setView(null);setError(e instanceof Error ? e.message : 'History unavailable.');} });
+    return () => controller.abort();
+  }, [workspaceId, record.kind, record.id, reload, streamId]);
+  useEffect(() => {
+    const controller = new AbortController(); setView(current=>current?.stream.id===streamId?current:null);
+    if (!streamId) {setRefreshing(false);return () => controller.abort();}
+    setRefreshing(true);
+    const params = new URLSearchParams(); if (snapshotId) params.set('snapshotId', snapshotId); if (before) params.set('before', before);
+    void read<View>(`${API}/streams/${streamId}?${params}`, controller.signal).then(body => {
+      if (controller.signal.aborted) return;
+      if (body.stream?.id !== streamId || body.stream.workspace_id !== workspaceId || !Array.isArray(body.snapshots)) throw new Error('History belongs to another stream or is incomplete.');
+      setView(body);
+    }).catch(e => { if (!controller.signal.aborted) {setView(null);setError(e instanceof Error ? e.message : 'Stream unavailable.');} }).finally(()=>{if(!controller.signal.aborted)setRefreshing(false);});
+    return () => controller.abort();
+  }, [workspaceId, streamId, snapshotId, before, reload]);
+  async function save(action: 'create' | 'capture' | 'baseline' | 'exclusions', input: object, message: string) {
+    const signal = lifetime.current?.signal; if (!signal || busy || refreshing) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const suffix = action === 'create' ? '' : `/${streamId}/${action === 'capture' ? 'records' : action}`;
+      const result = await read<{ stream?: Stream; snapshot?: Snapshot; revision?: number }>(`${API}/streams${suffix}`, signal, input);
+      if (signal.aborted) return;
+      if (action === 'create' || action === 'capture') {
+        if (!result.snapshot || result.snapshot.record_kind !== record.kind || result.snapshot.record_id !== record.id || action === 'capture' && result.snapshot.stream_id !== streamId) throw new Error('The saved record was not confirmed.');
+        if (action === 'create' && (!result.stream || result.stream.id !== result.snapshot.stream_id)) throw new Error('The stream creation was not confirmed.');
+        if (result.stream) setStreamId(result.stream.id);
+        setSnapshotId(result.snapshot.id); setBefore(''); setCreatingStream(false);
+      } else if (!Number.isSafeInteger(result.revision)) throw new Error('The new history revision was not confirmed.');
+      setReason(''); setNotice(message); setReload(n => n + 1);
+    } catch (e) { if (!signal.aborted) {setList(null);setView(null);setError(e instanceof Error ? e.message : 'Change not saved.');} }
+    finally { if (!signal.aborted) setBusy(false); }
+  }
+  async function exportHistory() {
+    const signal = lifetime.current?.signal; if (!signal || busy || refreshing || !streamId) return;
+    setBusy(true); setError('');
+    try {
+      const data = await read<{ type: string; signed: boolean; scope?:{workspaceId:string;streamId:string} }>(`${API}/streams/${streamId}/export`, signal);
+      if (signal.aborted) return;
+      if (data.type !== 'nospoilers-private-history' || data.signed !== false||data.scope?.workspaceId!==workspaceId||data.scope?.streamId!==streamId) throw new Error('Export scope was not confirmed. Refresh history before exporting.');
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = `nospoilers-history-${streamId}.json`; link.click(); URL.revokeObjectURL(url);
+      setNotice('Private history exported. This is an unsigned summary, not a certificate.');
+    } catch (e) { if (!signal.aborted) {setList(null);setView(null);setError(e instanceof Error ? e.message : 'Export failed.');} }
+    finally { if (!signal.aborted) setBusy(false); }
+  }
+  const selected = view?.selected, analysis = view?.analysis;
+  const linked = list?.links.some(link => link.stream_id === streamId);
+  const viewingAnother = selected && (selected.record_id !== record.id || selected.record_kind !== record.kind);
+  return <section ref={root} className="ns-intelligence" aria-labelledby={`history-${record.kind}-${record.id}`} aria-busy={busy || refreshing} onFocusCapture={event=>{if(event.target instanceof HTMLElement)lastFocused.current=event.target;}}>
+    <header><div><h2 id={`history-${record.kind}-${record.id}`}>Release history &amp; controls</h2></div><span className="ns-intelligence__badge">Advisory analysis</span></header>
+    <p>Comparison, human decisions and follow-up evidence stay separate from the original scan.</p>
+    {error ? <div ref={errorPanel} role="alert" tabIndex={-1}><p>{error}</p><button type="button" onClick={() => setReload(n => n + 1)}>Retry saved history</button></div> : null}
+    {notice ? <p role="status">{notice}</p> : null}
+    {list&&!error&&!streamId?<div className="ns-intelligence__setup">
+      <h3>{list.streams.length?'Choose a stream to open release tools':'Start a history for this product'}</h3>
+      <p>A release stream groups successive builds of the same product and artifact role. Your scan and its findings already exist; setting up history does not rescan, approve or publish them.</p>
+      <dl className="ns-intelligence__facts"><div><dt>Compare builds</dt><dd>Recorded history and human-approved references.</dd></div><div><dt>Act on evidence</dt><dd>Release Gate and finding-to-rebuild tracking.</dd></div><div><dt>Keep useful context</dt><dd>Optional private outcomes and administrator-managed agent tools.</dd></div></dl>
+      <p>Automatic capture needs a compatible connected source. Production checks need an approved build and an authorized website. These are separate opt-ins, not enabled by creating a stream.</p>
+      {list.canManage?<button type="button" disabled={busy||refreshing} onClick={()=>setCreatingStream(true)}>Set up release history</button>:<p>Ask a workspace administrator with active coverage to create the stream. You can still review this scan’s findings below.</p>}
+    </div>:null}
+    {!(streamId && view && list && !error) ? <>{decisionControls}{comparisonReview}{supportingReview}</> : null}
+    {!list ? (!error?<WatchSkeleton variant="list" label="Reading release streams"/>:null) : <>
+      {!list.streams.length ? null : <div className="ns-intelligence__actions"><label>Release stream<select disabled={busy || refreshing} value={streamId} onChange={e => { setStreamId(e.target.value); setSnapshotId(''); setBefore(''); setError(''); setNotice(''); }}><option value="">Choose a stream</option>{list.streams.map(s => <option key={s.id} value={s.id}>{s.name} · {s.artifact_role} · {s.channel}</option>)}</select></label>{streamId && view?.canWrite && !linked ? <button type="button" disabled={busy || refreshing} onClick={() => void save('capture', { record }, 'This signed release was added to the selected history.')}>Add this release to history</button> : null}</div>}
+      {list.canManage ? <>{streamId || list.streams.length ? <button type="button" className="ns-intelligence__new-stream" aria-expanded={creatingStream} onClick={()=>setCreatingStream(value=>!value)}>Create a release stream from this record</button> : null}{creatingStream ? <form className="ns-intelligence__create" aria-label="Create a release stream" onSubmit={e => { e.preventDefault(); void save('create', { workspaceId, name, key: streamKey, role, record }, 'Stream created and the first signed record saved. No baseline was adopted automatically.'); }}><p>Choose a stable product name and artefact role. Source, channel and format are bound from this record and cannot be silently reassigned.</p><label>Name<input ref={createName} required maxLength={100} value={name} onChange={e => setName(e.target.value)}/></label><label>Stable key<input required minLength={2} maxLength={64} pattern="[a-z0-9][a-z0-9_\-]{1,63}" value={streamKey} onChange={e => setStreamKey(e.target.value)} placeholder="dashboard-web"/></label><label>Artefact role<input required maxLength={80} value={role} onChange={e => setRole(e.target.value)} placeholder="Production browser bundle"/></label><button type="submit" disabled={busy || refreshing}>Create stream and record release</button><button type="button" disabled={busy} onClick={()=>setCreatingStream(false)}>Cancel</button></form>:null}</> : <p className="ns-intelligence__muted">A workspace administrator with active coverage can create streams and manage approved references.</p>}
+    </>}
+    {streamId && !view && !error ? <WatchSkeleton variant="list" label="Reading selected history"/> : null}
+    {view && list && !error ? <>
+      <header><h3>{view.stream.name}</h3><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing} onClick={() => setReload(n => n + 1)}>Refresh history</button><button type="button" disabled={busy || refreshing} onClick={() => void exportHistory()}>Export private history</button></div></header>
+      <p role="status" aria-live="polite" aria-atomic="true">{refreshing?'Refreshing saved history…':selected?`Selected ${selected.record_kind} ${selected.record_id}, checked ${new Date(selected.scanned_at).toLocaleString()}. ${viewingAnother?'This is a different historical record, not the release displayed above.':'This is the release displayed above.'}`:'No saved record selected.'}</p>
+      <div className="ns-intelligence__workspace">
+      <nav className="ns-intelligence__toolnav" aria-label="History tools">{HISTORY_TOOLS.map(({id,label,icon:Icon})=><button key={id} id={`history-nav-${record.kind}-${record.id}-${id}`} type="button" aria-pressed={activeTool===id} aria-controls={`history-tool-${record.kind}-${record.id}-${id}`} onClick={()=>setActiveTool(id)}><Icon size={16} aria-hidden="true"/>{label}</button>)}<p>Release controls apply to the release displayed above. Selected history is identified separately.</p></nav>
+      <div className="ns-intelligence__toolcontent">
+      {refreshing?<WatchSkeleton variant="list" label="Refreshing release tools"/>:<>
+      <section id={`history-tool-${record.kind}-${record.id}-decisions`} hidden={activeTool!=='decisions'} aria-label="Release decisions">
+      <QuietToolGroup title="Release decisions" description="Review the gate and its recorded decisions for the release displayed above. Selecting older history does not change this scope.">
+      <ReleaseGateControls key={`gate:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} record={record} refreshVersion={reload}/>
+      </QuietToolGroup>
+      </section>
+      <section id={`history-tool-${record.kind}-${record.id}-remediation`} hidden={activeTool!=='remediation'} aria-label="Finding reviews">
+      <QuietToolGroup title="Finding reviews" description="Follow an original finding through a reviewed change and subsequent rebuild evidence. The original receipt remains unchanged.">
+      <ReleaseRemediationControls key={`remediation:${view.stream.id}:${record.kind}:${record.id}`} streamId={view.stream.id} workspaceId={workspaceId} record={record} snapshots={view.snapshots}/></QuietToolGroup>
+      </section>
+      <section id={`history-tool-${record.kind}-${record.id}-assistance`} hidden={activeTool!=='assistance'} aria-label="Access and assistance">
+      {view.selected&&view.canAdminister?<QuietToolGroup title="Access & assistance" description="Short-lived agent access and optional explanations apply to the selected history record identified above.">
+      <AgentAccessControls key={`agent:${view.stream.id}:${view.selected.id}`} streamId={view.stream.id} snapshotId={view.selected.id}/>
+      <ReleaseExplanationControls workspaceId={workspaceId} streamId={view.stream.id} snapshotId={view.selected.id}/></QuietToolGroup>:<div className="ns-intelligence__empty"><h3>Access &amp; assistance</h3><p>{!view.selected?'Select a saved history record before reviewing agent access or optional explanations.':'Workspace administrators manage agent access and optional explanations for this record.'}</p></div>}
+      </section>
+      <section id={`history-tool-${record.kind}-${record.id}-settings`} hidden={activeTool!=='settings'} aria-label="Stream settings">
+      <QuietToolGroup title="Stream settings" description="Configure each capability explicitly. Creating a stream does not enable capture, production checks or monthly outcomes.">
+      <AutomaticCaptureControls key={view.stream.id} streamId={view.stream.id} record={record} refreshVersion={reload}/>
+      <ProductionParityControls key={`parity:${view.stream.id}`} streamId={view.stream.id} refreshVersion={reload}/>
+      <ReleaseOutcomeControls key={`outcomes:${view.stream.id}`} streamId={view.stream.id} workspaceId={workspaceId}/>
+      </QuietToolGroup>
+      <section className="ns-intelligence__ci"><h3>Record subsequent builds from CI</h3><p>Use a workspace scan token with the repository’s scan-and-record command. It reuses the existing scan policy and never adopts references automatically.</p><code>node scripts/scan-release-stream.mjs {view.stream.id} path/to/build.tgz</code><p>Set NOSPOILERS_BASE_URL and NOSPOILERS_TOKEN securely in CI. This command supports workspace upload streams, not legacy installation-token streams.</p></section>
+      </section>
+      </>}
+      <div hidden={activeTool!=='decisions'}>{decisionControls}{supportingReview}</div>
+      <section id={`history-tool-${record.kind}-${record.id}-comparison`} hidden={activeTool!=='comparison'} aria-label="Comparison">
+      {comparisonReview}
+      <h3>Selected history context</h3>
+      {view.unavailable ? <p role="status">The original authorised evidence is unavailable or changed. No historical conclusion is inferred.</p> : null}
+      {analysis ? <>
+        <dl className="ns-intelligence__facts"><div><dt>Distinct prior releases</dt><dd>{analysis.history}</dd></div><div><dt>Eligible statistical samples</dt><dd>{analysis.eligible}</dd></div><div><dt>Current approved reference</dt><dd>{view.currentBaselineState.replaceAll('_', ' ')}</dd></div></dl>
+        <p>{analysis.state === 'first_release' ? 'First recorded release. Exact comparisons become available after another compatible release.' : analysis.eligible < 5 ? 'History is building. Statistical review needs at least five distinct, compatible passing releases without findings or exceptions.' : 'Historical comparison is available. Inspect changes in context before deciding what to do.'}</p>
+        <p className="ns-intelligence__muted">Reference applicable at scan time: {analysis.baseline.state.replaceAll('_', ' ')}. A newly adopted reference applies to subsequent scans.</p>
+        {!analysis.signals.length ? <p>No historical review signals in this bounded comparison. This is not a complete security verdict.</p> : <div className="ns-intelligence__signals">{analysis.signals.map(signal => <details key={signal.code}><summary>{signal.title} <span>{signal.count.toLocaleString()}</span></summary><p>{signal.detail}</p><p className="ns-intelligence__muted">Comparison samples: {signal.samples}. Up to 20 examples shown.</p>{signal.examples.map(example => <code key={example}>{example}</code>)}</details>)}</div>}
+        <details><summary>How this comparison was calculated</summary><p>{analysis.notice}</p><p>Window: {analysis.windowStart ?? 'No prior release'} to {analysis.windowEnd ?? 'No prior release'}. At most 30 distinct releases are used from 60 saved candidates.</p><p>{analysis.excluded} excluded; {analysis.duplicates} duplicate digests; {analysis.incompatible} incompatible; {analysis.unavailable} unavailable. {analysis.budgetLimited ? 'The metadata budget shortened this window. ' : ''}Current exclusions are respected. Different engine and policy contexts are not statistical peers.</p></details>
+      </> : null}
+      <details><summary>Approved reference and history exclusions</summary><p>{view.notice}</p>{view.canManage && selected ? <><label>Reason for change<textarea minLength={8} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Explain why this reference or history selection should change."/></label><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing || reason.trim().length < 8 || !view.baselineEligible} onClick={() => void save('baseline', { action: 'adopt', snapshotId: selected.id, reason, expectedRevision: view.stream.revision }, 'Reference adopted with a new revision. Original scan evidence is unchanged.')}>Adopt selected reference</button><button type="button" disabled={busy || refreshing || reason.trim().length < 8 || view.baselines[0]?.action !== 'adopt'} onClick={() => void save('baseline', { action: 'revoke', reason, expectedRevision: view.stream.revision }, 'Reference revoked. No older reference was silently reinstated.')}>Revoke current reference</button><button type="button" disabled={busy || refreshing || view.unavailable || reason.trim().length < 8} onClick={() => void save('exclusions', { snapshotId: selected.id, excluded: !selected.excluded, reason, expectedRevision: view.stream.revision }, selected.excluded ? 'Record restored to historical context.' : 'Record excluded from historical context; its evidence remains unchanged.')}>{selected.excluded ? 'Restore to history' : 'Exclude from analysis'}</button></div><p>Only passing, currently accessible records without findings, exceptions, rejection or hold are eligible references.</p></> : <p>Reference changes are restricted to workspace administrators. Read access does not authorise changes.</p>}{view.baselines.map(b => <article key={b.id}><strong>Revision {b.revision}: {b.action}</strong><p>{b.reason}</p><small>{b.actor_login} · {new Date(b.created_at).toLocaleString()}</small></article>)}</details>
+      <details open><summary>Recorded release history</summary><div className="ns-intelligence__history">{view.snapshots.map(s => <button type="button" key={s.id} disabled={busy || refreshing} aria-label={`Inspect ${s.record_kind} ${s.record_id}, checked ${new Date(s.scanned_at).toLocaleString()}, ${s.excluded?'excluded from analysis':'recorded'}`} aria-pressed={selected?.id === s.id} onClick={() => setSnapshotId(s.id)}><strong>{new Date(s.scanned_at).toLocaleString()}</strong><code>{s.digest.slice(0, 16)}…</code><span>{s.metrics.files} files · {s.excluded ? 'Excluded from analysis' : 'Recorded'}</span></button>)}</div><div className="ns-intelligence__actions"><button type="button" disabled={busy || refreshing || !before} onClick={() => { setBefore(''); setSnapshotId(''); }}>Newest history</button><button type="button" disabled={busy || refreshing || !view.nextCursor} onClick={() => { setBefore(view.nextCursor!); setSnapshotId(''); }}>Older history</button></div></details>
+      <details><summary>Recent history activity</summary>{view.events.map(event => <p key={event.id}>{event.action.replaceAll('_', ' ')} · {event.actor_login} · {new Date(event.created_at).toLocaleString()}</p>)}</details>
+      </section></div></div>
+    </> : null}
+  </section>;
+}

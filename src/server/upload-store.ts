@@ -110,16 +110,18 @@ export function createUploadStore(sql: SqlClient) {
     async listUploadedScans(userId:string,installationId?:number,workspaceId?:string):Promise<UploadedScan[]> {
       return (await this.listUploadedScanPage(userId,installationId,workspaceId)).uploads;
     },
-    async listUploadedScanPage(userId:string,installationId?:number,workspaceId?:string,options:{before?:string;status?:string}={}):Promise<{uploads:UploadedScan[];nextCursor:string|null}> {
+    async listUploadedScanPage(userId:string,installationId?:number,workspaceId?:string,options:{before?:string;status?:string;collection?:string}={}):Promise<{uploads:UploadedScan[];nextCursor:string|null}> {
       const status=options.status??'all';
-      if(!['all','active','attention','passed'].includes(status)||options.before!==undefined&&(!options.before||options.before.length>128))throw Object.assign(new Error('Invalid release history filter.'),{status:400});
+      const collection=options.collection??'all';
+      if(!['all','active','attention','passed'].includes(status)||!['all','uploads','attempts'].includes(collection)||options.before!==undefined&&(!options.before||options.before.length>128))throw Object.assign(new Error('Invalid release history filter.'),{status:400});
       const scope='AND ($2::bigint IS NULL OR s.installation_id=$2) AND ($3::uuid IS NULL OR s.workspace_id=$3)';
-      const params=[userId,installationId??null,workspaceId??null,options.before??null,status];
+      const params=[userId,installationId??null,workspaceId??null,options.before??null,status,collection];
       if(options.before&&!(await sql.query(`SELECT s.id FROM uploaded_scans s WHERE ${access} ${scope} AND s.id=$4`,params.slice(0,4))).rows.length)
         throw Object.assign(new Error('This history page is unavailable. Return to the newest releases.'),{status:404});
       const passed="(s.status='done' AND s.report_json->'ok'='true'::jsonb AND (s.report_json->>'status' IS NULL OR s.report_json->>'status'='passed'))";
       const {rows}=await sql.query<UploadedScan>(`SELECT ${fields} FROM uploaded_scans s WHERE ${access}
         ${scope} AND ($4::text IS NULL OR (s.created_at,s.id)<(SELECT cursor.created_at,cursor.id FROM uploaded_scans cursor WHERE cursor.id=$4))
+        AND ($6='all' OR $6='uploads' AND s.status='done' OR $6='attempts' AND s.status<>'done')
         AND ($5='all' OR $5='active' AND s.status IN ('queued','running') OR $5='passed' AND ${passed}
           OR $5='attention' AND (s.status='failed' OR s.status='done' AND NOT COALESCE(${passed},false)))
         ORDER BY s.created_at DESC,s.id DESC LIMIT 51`,params);

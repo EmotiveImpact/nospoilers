@@ -1,8 +1,11 @@
+import { QuietEmptyState } from '../design/QuietComponents';
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { loadWatchJson, scopedWatchApi } from "@/watch/api";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/motion/select";
+import "../design/journey-administration.css";
 
 type AuditRow = {
   id: number;
@@ -19,7 +22,10 @@ type AuditState =
   | { status: "error"; message: string }
   | { status: "ready"; rows: AuditRow[] };
 
-export function AuditScreen({
+export function AuditScreen(props:{previewing:boolean;audit:AuditState;installationId:number|null}){
+  return <AuditScope key={`${props.installationId??'account'}:${props.previewing}:${props.audit.status}`} {...props}/>;
+}
+function AuditScope({
   previewing,
   audit,
   installationId,
@@ -29,13 +35,19 @@ export function AuditScreen({
   installationId: number | null;
 }) {
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting,setExporting]=useState(false);
+  const exportRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{exportRequest.current?.abort();exportRequest.current=null;},[]);
 
   async function exportAudit(): Promise<void> {
-    setExportError(null);
+    if(previewing||audit.status!=='ready'||exportRequest.current)return;
+    const controller=new AbortController();exportRequest.current=controller;setExporting(true);setExportError(null);
     try {
       const body = await loadWatchJson<{ exportedAt: string }>(
-        scopedWatchApi("/api/audit/export", installationId),
+        scopedWatchApi("/api/audit/export", installationId),{signal:controller.signal},
       );
+      if(controller.signal.aborted)return;
+      if(typeof body.exportedAt!=='string'||!Number.isFinite(Date.parse(body.exportedAt)))throw new Error('The audit export was incomplete. Please retry.');
       const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -44,46 +56,36 @@ export function AuditScreen({
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : "Could not export the audit log.");
-    }
+      if(!controller.signal.aborted)setExportError(error instanceof Error ? error.message : "Could not export the audit log.");
+    }finally{if(exportRequest.current===controller)exportRequest.current=null;if(!controller.signal.aborted)setExporting(false);}
   }
 
+  const [filterNow]=useState(()=>Date.now());
+  const [filters,setFilters]=useState({installationId,action:'all',days:'all'});
+  const current=filters.installationId===installationId?filters:{installationId,action:'all',days:'all'};
+  const rows=audit.status==='ready'?audit.rows:[];
+  const actions=Array.from(new Set(rows.map(row=>row.action))).sort();
+  const filtered=rows.filter(row=>(current.action==='all'||row.action===current.action)&&(current.days==='all'||Date.parse(row.at)>=filterNow-Number(current.days)*86400000));
   const canExport = !previewing && audit.status === "ready";
 
   return (
-    <section className="watch-narrow">
+    <section className="journey-administration">
       <WatchPageHeader
-        title="Audit log"
-        lede="Administrative changes and response activity for this install."
+        title="Who changed what."
+        lede="Administrative changes, separate from scan activity."
         action={
           <Button
             type="button"
             size="sm"
             variant="outline"
-            disabled={!canExport}
+            disabled={!canExport||exporting}
             onClick={() => void exportAudit()}
           >
-            Export audit JSON
+            {exporting?"Preparing export…":"Export audit JSON"}
           </Button>
         }
       />
-      <p className="watch-guidance mt-3 max-w-xl text-[13px] leading-relaxed text-mute">
-        Team and trial installs can export this install’s admin writes, notification deliveries,
-        and alert titles. Destructive actions require typing the public identifier. Webhook URLs,
-        emails, tokens, and other secret values are never stored here.
-      </p>
-      <div className="watch-card mt-[18px]">
-        <div className="watch-kv">
-          <span>Rows</span>
-          <span className={audit.status === "ready" && audit.rows.length ? "text-snow" : "text-dim"}>
-            {audit.status === "ready" ? audit.rows.length : 0}
-          </span>
-        </div>
-        <div className="watch-kv">
-          <span>Secrets stored</span>
-          <span className="text-ok">never</span>
-        </div>
-      </div>
+      {canExport?<div className="journey-admin-toolbar"><Select value={current.action} onValueChange={action=>setFilters({...current,action})}><SelectTrigger aria-label="Audit event"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All changes</SelectItem>{actions.map(action=><SelectItem key={action} value={action}>{action.replaceAll('_',' ')}</SelectItem>)}</SelectContent></Select><Select value={current.days} onValueChange={days=>setFilters({...current,days})}><SelectTrigger aria-label="Audit date"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All recorded dates</SelectItem><SelectItem value="7">Last 7 days</SelectItem><SelectItem value="30">Last 30 days</SelectItem></SelectContent></Select><span>{filtered.length} of {rows.length} loaded events</span></div>:null}
       {exportError ? (
         <p role="alert" className="mt-3 text-[13px] text-danger">
           {exportError}
@@ -94,7 +96,7 @@ export function AuditScreen({
           <p className="mt-6 text-[13px] leading-relaxed text-mute">
             Preview cannot export a live audit log. No invented incident.
           </p>
-          <div className="watch-empty">No admin writes recorded on this install yet.</div>
+          <QuietEmptyState title="No admin writes recorded on this install yet."><p>Administrative changes will appear here when they are recorded. Scan findings remain in Releases.</p></QuietEmptyState>
         </>
       ) : audit.status === "solo" ? (
         <p className="mt-6 text-[13px] leading-relaxed text-mute">The audit log is on Team.</p>
@@ -107,26 +109,10 @@ export function AuditScreen({
       ) : audit.status === "loading" ? (
         <WatchSkeleton variant="list" className="mt-4" />
       ) : audit.rows.length === 0 ? (
-        <div className="watch-empty">No admin writes recorded on this install yet.</div>
+        <QuietEmptyState title="No admin writes recorded on this install yet."><p>Administrative changes will appear here when they are recorded. Scan findings remain in Releases.</p></QuietEmptyState>
       ) : (
-        <div className="watch-card mt-4">
-          {audit.rows.map((row) => (
-            <div key={row.id} className="watch-kv items-start">
-              <div className="min-w-0">
-                <p className="text-[13px] text-snow">{row.summary}</p>
-                <p className="watch-tiny mt-1 font-mono text-dim">
-                  {row.actorLogin} · {row.action}
-                </p>
-              </div>
-              <time className="watch-tiny shrink-0 text-dim" dateTime={row.at}>
-                {new Date(row.at).toLocaleString()}
-              </time>
-            </div>
-          ))}
-        </div>
+        <><div className="journey-admin-table"><table aria-label="Administrative changes"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Scope</th></tr></thead><tbody>{filtered.map(row=><tr key={row.id}><td><time dateTime={row.at}>{new Date(row.at).toLocaleString()}</time></td><td>{row.actorLogin}</td><td><strong>{row.action.replaceAll('_',' ')}</strong><small>{row.summary}</small></td><td>{installationId?`Installation ${installationId}`:'Current account'}</td></tr>)}</tbody></table></div>{filtered.length===0?<div className="watch-empty">No loaded events match these filters.</div>:null}<p className="journey-admin-note">Filters apply to loaded events. Export includes the available audit history for this scope. Secret values are excluded from the audit record.</p></>
       )}
     </section>
   );
 }
-
-undefined

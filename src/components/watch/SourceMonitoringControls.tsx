@@ -32,6 +32,7 @@ export function SourceMonitoringControls({installationId,refreshKey}:{installati
     }catch(e){if(!controller.signal.aborted){inventoryRequest.current?.abort();setRows(null);setError(e instanceof Error?e.message:'Monitoring could not be changed.');}}
     finally{if(mutation.current===controller){mutation.current=null;setBusy(null);}}
   }
+  if(!rows&&!error)return <WatchSkeleton />;
   if(rows?.length===0)return null;
   return <section className="mb-6 rounded-lg border border-white/10 p-5" aria-label="Source monitoring controls">
     <h2 className="text-lg font-semibold">Monitoring controls</h2>
