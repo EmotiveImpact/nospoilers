@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 import userEvent from '@testing-library/user-event';
-import {radixUiTestSupport} from './helpers/radix-ui';
-radixUiTestSupport();
 import {act,cleanup,render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {it,expect,vi,afterEach} from 'vitest';
 import {OrganizationBilling} from '../src/components/watch/OrganizationBilling';
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'','/');});
 const data={stripe:true,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}};
 it('does not offer a working payment action on an unconfigured host',async()=>{
   const fetcher=vi.fn(async()=>new Response(JSON.stringify({...data,stripe:false})));vi.stubGlobal('fetch',fetcher);
@@ -17,10 +15,8 @@ it('does not offer a working payment action on an unconfigured host',async()=>{
 it('uses organisation scope and displays recoverable checkout errors',async()=>{
   const fetcher=vi.fn(async(_url:string,input?:RequestInit)=>new Response(JSON.stringify(input?.method?{error:'Please retry checkout.'}:data),{status:input?.method?502:200}));vi.stubGlobal('fetch',fetcher);
   render(<OrganizationBilling id="org"/>);
-  await userEvent.click(await screen.findByRole('combobox',{name:'Plan'}));
-  await userEvent.click(screen.getByRole('option',{name:'Team'}));
-  await userEvent.click(screen.getByRole('combobox',{name:'Billing interval'}));
-  await userEvent.click(screen.getByRole('option',{name:'Yearly'}));
+  await userEvent.click(await screen.findByRole('radio',{name:'Team'}));
+  await userEvent.click(screen.getByRole('radio',{name:'Yearly'}));
   fireEvent.click(screen.getByRole('button',{name:'Continue to secure checkout'}));
   expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Please retry checkout.'));
   await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/billing/checkout',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'org',plan:'team',interval:'year'})})));
@@ -35,13 +31,12 @@ it('clears old billing data and selections immediately when organisation identit
  let resolveBilling!:(value:Response)=>void;
  vi.stubGlobal('fetch',vi.fn(async(url:string)=>url.endsWith('organizationId=other')?new Promise<Response>(resolve=>{resolveBilling=resolve;}):Response.json(data)));
  const view=render(<OrganizationBilling id="org"/>);
- await userEvent.click(await screen.findByRole('combobox',{name:'Plan'}));
- await userEvent.click(screen.getByRole('option',{name:'Team'}));
+ await userEvent.click(await screen.findByRole('radio',{name:'Team'}));
  view.rerender(<OrganizationBilling id="other"/>);
- expect(screen.queryByRole('combobox',{name:'Plan'})).toBeNull();
+ expect(screen.queryByRole('radio',{name:'Solo'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Continue to secure checkout'})).toBeNull();
  await act(async()=>resolveBilling(Response.json({...data,stripe:false})));
- expect((await screen.findByRole('combobox',{name:'Plan'})).textContent).toContain('Solo');
+ expect(await screen.findByRole('radio',{name:'Solo'})).toHaveProperty('checked',true);
  expect(screen.getByRole('button',{name:'Continue to secure checkout'})).toHaveProperty('disabled',true);
 });
 
@@ -75,4 +70,52 @@ it('withholds stale payment controls while retrying billing capability',async()=
  expect(screen.queryByRole('button',{name:'Continue to secure checkout'})).toBeNull();
  await act(async()=>resolveBilling(Response.json({...data,stripe:false})));
  expect(await screen.findByRole('button',{name:'Continue to secure checkout'})).toHaveProperty('disabled',true);
+});
+
+
+it('shows actual plan prices before checkout and only changes selection until explicitly submitted',async()=>{
+ const fetcher=vi.fn(async()=>Response.json(data));vi.stubGlobal('fetch',fetcher);
+ render(<OrganizationBilling id="org"/>);
+ await screen.findByRole('radio',{name:'Solo'});
+ expect(screen.getByText('$29 billed monthly')).toBeTruthy();
+ expect(screen.getByText('$99 billed monthly')).toBeTruthy();
+ await userEvent.click(screen.getByRole('radio',{name:'Team'}));
+ const monthly=screen.getByRole('radio',{name:'Monthly'});monthly.focus();fireEvent.keyDown(monthly,{key:'ArrowRight'});
+ expect(screen.getByRole('radio',{name:'Yearly'}).getAttribute('aria-checked')).toBe('true');
+ expect(screen.getByText('$990 billed annually · save two months')).toBeTruthy();
+ expect(screen.getByText('$290 billed annually · save two months')).toBeTruthy();
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('routes existing customers through management rather than creating a second subscription',async()=>{
+ const fetcher=vi.fn(async(_url:string,init?:RequestInit)=>Response.json(init?.method?{error:'Portal unavailable.'}:{...data,billing:{...data.billing,hasCustomer:true,subscribed:true,plan:'team',periodEnd:'2026-11-01T00:00:00Z'}},{status:init?.method?502:200}));vi.stubGlobal('fetch',fetcher);
+ render(<OrganizationBilling id="org"/>);
+ await screen.findByRole('button',{name:'Manage subscription'});
+ expect(screen.queryByRole('button',{name:'Continue to secure checkout'})).toBeNull();
+ expect(screen.queryByRole('radio',{name:'Solo'})).toBeNull();
+ expect(screen.getByText('Current plan')).toBeTruthy();
+ expect(screen.getByText(/Current period ends/)).toBeTruthy();
+ await userEvent.click(screen.getByRole('button',{name:'Manage subscription'}));
+ await screen.findByText('Portal unavailable.');
+ expect(fetcher).toHaveBeenCalledWith('/api/billing/portal',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'org',plan:'solo',interval:'month'})}));
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing/checkout')).toBe(false);
+});
+
+it('sends workspace context and never treats a successful return as verified payment',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspaceTab=billing&billingOrganization=org&billing=ok');
+ const fetcher=vi.fn(async(_url:string,init?:RequestInit)=>Response.json(init?.method?{error:'Retry later.'}:data,{status:init?.method?502:200}));vi.stubGlobal('fetch',fetcher);
+ render(<OrganizationBilling id="org" workspaceId="workspace"/>);
+ expect(await screen.findByText(/Subscription confirmation is pending/)).toBeTruthy();
+ expect(screen.queryByText('Subscribed')).toBeNull();
+ await userEvent.click(screen.getByRole('button',{name:'Refresh billing status'}));
+ await screen.findByText(/Subscription confirmation is pending/);
+ await userEvent.click(screen.getByRole('button',{name:'Continue to secure checkout'}));
+ expect(fetcher).toHaveBeenCalledWith('/api/billing/checkout',expect.objectContaining({body:JSON.stringify({organizationId:'org',plan:'solo',interval:'month',workspaceId:'workspace'})}));
+});
+it('does not present an unrecognised active Stripe subscription as paid coverage',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({...data,billing:{...data.billing,hasCustomer:true,status:'active',subscribed:true,plan:null}})));
+ render(<OrganizationBilling id="org"/>);
+ expect(await screen.findByText('Coverage is inactive')).toBeTruthy();
+ expect(screen.queryByText('Subscribed')).toBeNull();
+ expect(screen.getByRole('button',{name:'Manage subscription'})).toBeTruthy();
 });

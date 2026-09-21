@@ -635,3 +635,12 @@ it('keeps exception detail and pagination local to policy rather than reopening 
  expect(returned).toBe('/watch/policy?workspace=team&install=7');
  for(const path of ['/watch','/watch/sources','/watch/notifications','/watch/workspaces','/watch/scan'])expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
 });
+
+
+it('does not carry a connected finding selection into another page or release',()=>{
+ const search='?workspace=team&install=7&release=65&releaseFinding=8';
+ expect(new URL(watchHref('/watch/workspaces',search),'http://localhost').searchParams.has('releaseFinding')).toBe(false);
+ const next=new URL(watchHref('/watch/releases',search,{release:66}),'http://localhost').searchParams;
+ expect(next.get('workspace')).toBe('team');expect(next.get('release')).toBe('66');expect(next.has('releaseFinding')).toBe(false);
+ expect(new URL(watchHref('/watch/releases',search,{release:65}),'http://localhost').searchParams.get('releaseFinding')).toBe('8');
+});

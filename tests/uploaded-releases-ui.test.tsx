@@ -84,11 +84,12 @@ describe('uploaded release workspace flow',()=>{
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('button',{name:'Try again'})).toBeTruthy();
   });
-  it('keeps the workspace when starting a new attempt',async()=>{
-    vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7)]})));
-    render(<UploadedReleases installationId={7} search="?install=7&upload=first"/>);
+  it.each(['','&uploadView=detail'])('keeps the workspace and package mode when starting a new attempt %s',async detail=>{
+    vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('first',7),report_json:{ok:false,status:'failed-policy',kind:'tgz',fileCount:1,findings:[{rule:'MAP-001',severity:'critical',path:'index.js.map',title:'Source map',detail:'Packed map'}]}}]})));
+    render(<UploadedReleases installationId={7} search={`?workspace=team&install=7&upload=first${detail}`}/>);
+    if(detail)fireEvent.click(await screen.findByRole('button',{name:/Source map/}));
     fireEvent.click(await screen.findByRole('button',{name:'Upload a new attempt'}));
-    expect(window.location.pathname+window.location.search).toBe('/watch/scan?install=7');
+    expect(window.location.pathname+window.location.search).toBe('/watch/scan?install=7&workspace=team&mode=package');
   });
   it('does not insert another workspace result into the selected workspace',async()=>{
     vi.stubGlobal('fetch',vi.fn((url:string)=>url.startsWith('/api/uploads/')?json({upload:upload('other',8)}):json({uploads:[upload('first',7)]})));
@@ -136,7 +137,7 @@ it('selects the first visible release into the evidence pane without inventing p
  expect(await screen.findByRole('heading',{name:'complete.zip'})).toBeTruthy();
  expect(screen.getByRole('table').querySelector('tr[aria-current="true"]')).toBeTruthy();
  expect(screen.getByText('Unobserved')).toBeTruthy();
- expect(screen.getByText(/Matched, Mismatched, Unobserved and Unsupported appear only/)).toBeTruthy();
+ expect(screen.getByText(/Production delivery is assessed separately from artifact inspection/)).toBeTruthy();
 });
 
 it('does not claim exact source identity when a failed attempt has no recorded digest',async()=>{
@@ -145,4 +146,20 @@ it('does not claim exact source identity when a failed attempt has no recorded d
  expect(await screen.findByRole('heading',{name:'unidentified.zip'})).toBeTruthy();
  expect(screen.getByText('Unrecorded')).toBeTruthy();
  expect(screen.getByText('Exact artifact identity was not recorded for this attempt.')).toBeTruthy();
+});
+
+
+it('opens the selected full brief through one primary action and preserves workspace scope',async()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7),upload('second',7)]})));
+ const view=render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first"/>);
+ await screen.findByRole('heading',{name:'first.zip'});
+ expect(screen.queryByRole('button',{name:'View evidence'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:/second.zip/}));
+ view.rerender(<UploadedReleases installationId={7} search={window.location.search}/>);
+ await screen.findByRole('heading',{name:'second.zip'});
+ const actions=screen.getAllByRole('button',{name:'Open full release brief'});
+ expect(actions).toHaveLength(1);fireEvent.click(actions[0]);
+ const params=new URLSearchParams(window.location.search);
+ expect(params.get('workspace')).toBe('team');expect(params.get('install')).toBe('7');
+ expect(params.get('upload')).toBe('second');expect(params.get('uploadView')).toBe('detail');
 });

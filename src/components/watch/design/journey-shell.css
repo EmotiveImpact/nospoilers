@@ -1,5 +1,5 @@
 /* Production shell aligned with the approved 36-journey study. */
-.watch-desk {
+.watch-desk, .watch-navigation-dialog {
   --journey-bg: #090a0c;
   --journey-panel: #121416;
   --journey-raised: #1b1d20;
@@ -17,35 +17,35 @@
   line-height: 1.55;
 }
 
-.watch-desk .watch-rail {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail {
   border-right: 1px solid #ffffff07;
   background: #0a0b0d;
 }
 
-.watch-desk .watch-rail-head {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-head {
   flex: none;
   padding-top: 20px;
   padding-bottom: 0;
 }
 
-.watch-desk .watch-rail-head > div {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-head > .watch-rail-brand {
   min-height: 38px;
   margin: 0 8px 25px;
 }
 
-.watch-desk .watch-rail-wordmark {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-wordmark {
   width: 140px;
   height: 38px;
   object-fit: contain;
   object-position: left center;
 }
 
-.watch-desk .workspace-switcher {
+:is(.watch-desk,.watch-navigation-dialog) .workspace-switcher {
   margin-top: 0;
   margin-bottom: 27px;
 }
 
-.watch-desk .workspace-switcher > .watch-kicker {
+:is(.watch-desk,.watch-navigation-dialog) .workspace-switcher > .watch-kicker {
   display: block;
   margin: 0 0 8px 9px;
   color: #7b7e88;
@@ -53,7 +53,7 @@
   letter-spacing: .15em;
 }
 
-.watch-desk .workspace-switcher [aria-label="Workspace"] {
+:is(.watch-desk,.watch-navigation-dialog) .workspace-switcher [aria-label="Workspace"] {
   min-height: 49px;
   margin-top: 0;
   padding: 9px;
@@ -63,23 +63,22 @@
   font-size: 12px;
 }
 
-.watch-desk .workspace-switcher [aria-label="Workspace"]:hover,
-.watch-desk .workspace-switcher [aria-label="Workspace"][data-state="open"] {
+:is(.watch-desk,.watch-navigation-dialog) .workspace-switcher [aria-label="Workspace"][data-state="open"] {
   border-color: #ffffff1b;
   background: #ffffff03;
 }
 
-.watch-desk .watch-rail-nav {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-nav {
   padding-top: 0;
   padding-bottom: 14px;
 }
 
-.watch-desk .watch-rail-nav > div {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-nav > div {
   border-top: 0;
   padding-top: 0;
 }
 
-.watch-desk .watch-rail-nav .watch-kicker {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-nav .watch-kicker {
   margin: 0;
   padding: 0 12px 8px;
   color: #7b7e88;
@@ -87,29 +86,29 @@
   letter-spacing: .15em;
 }
 
-.watch-desk .watch-rail-link {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-link {
   min-height: 40px;
   margin: 1px 0;
   color: var(--journey-muted);
   white-space: nowrap;
 }
 
-.watch-desk .watch-rail-link:hover {
-  background: #ffffff04;
-  color: var(--journey-text);
-}
-
-.watch-desk .watch-rail-link[aria-current="page"] {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-link:hover {
   background: transparent;
   color: var(--journey-text);
 }
 
-.watch-desk .watch-rail-link svg {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-link[aria-current="page"] {
+  background: transparent;
+  color: var(--journey-text);
+}
+
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-link svg {
   width: 19px;
   height: 19px;
 }
 
-.watch-desk .watch-rail-foot {
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-foot {
   min-height: 65px;
   padding-top: 13px;
   padding-bottom: 13px;
@@ -180,7 +179,7 @@
 }
 
 @media (max-width: 1100px) {
-  .watch-desk .watch-rail--expanded {
+  :is(.watch-desk,.watch-navigation-dialog) .watch-rail--expanded {
     width: 200px;
   }
 
@@ -223,11 +222,16 @@
 }
 
 /* Settings have a local navigation; the main rail stays focused on daily work. */
-.watch-settings-navigation{display:flex;flex-wrap:wrap;gap:4px 20px;padding:18px 0 0;border-bottom:1px solid rgba(255,255,255,.07)}
-.watch-settings-navigation a{padding:9px 0 12px;color:#93939f;font-size:12px;border-bottom:2px solid transparent;white-space:nowrap}
-.watch-settings-navigation a:hover{color:#f4f4f5}
-.watch-settings-navigation a[aria-current=page]{color:#f4f4f5;border-bottom-color:#e2453a}
-@media(max-width:640px){.watch-settings-navigation{padding:12px 0 0;gap:2px 16px}}
+.watch-settings-layout{display:grid;grid-template-columns:164px minmax(0,1fr);gap:32px;max-width:1160px;margin-inline:auto;align-items:start}
+.watch-settings-navigation{display:flex;flex-direction:column;gap:3px;padding:0 20px 24px 0;border-right:1px solid #ffffff10;min-width:0}
+.watch-settings-label{color:#71717a;font-size:10px;text-transform:uppercase;letter-spacing:.15em;margin:1px 0 16px}
+.watch-settings-navigation a{display:block;padding:10px 0 10px 12px;color:#93939f;font-size:12px;border-left:2px solid transparent;line-height:1.5}
+.watch-settings-navigation a:hover{color:#f4f4f5;background:transparent}
+.watch-settings-navigation a[aria-current=page]{color:#f4f4f5;border-left-color:#e2453a}
+.watch-settings-content{min-width:0}
+.watch-settings-content>section{max-width:100%;margin-top:0}
+.watch-settings-content .watch-between .watch-kicker{display:none}
+@media(max-width:1100px){.watch-settings-layout{grid-template-columns:1fr;gap:26px}.watch-settings-navigation{flex-direction:row;overflow-x:auto;gap:22px;align-items:center;padding:0;border-right:0;border-bottom:1px solid #ffffff10}.watch-settings-label{display:none}.watch-settings-navigation a{flex:none;white-space:nowrap;padding:9px 0 12px;border-left:0;border-bottom:2px solid transparent}.watch-settings-navigation a[aria-current=page]{border-bottom-color:#e2453a}}
 
 /* One active underline colour across queue, release and evidence navigation. */
 .watch-desk [role="tab"][aria-selected="true"],
@@ -237,7 +241,7 @@
 }
 
 /* Shared type and alignment for the approved journey shell. */
-.watch-desk .watch-rail-link[aria-current=page] svg{color:currentColor;opacity:1}
+:is(.watch-desk,.watch-navigation-dialog) .watch-rail-link[aria-current=page] svg{color:currentColor;opacity:1}
 .watch-desk .watch-page-title{margin:0;font-size:34px;line-height:1.18;font-weight:550;letter-spacing:-1.1px}
 .watch-desk .watch-page-lede{margin-top:10px;font-size:14px;line-height:1.65}
 .watch-desk :is(.settings-tab,.alerts-journey-tab,.journey-tab,.watch-settings-navigation a){font-size:12px;font-weight:500}
@@ -252,3 +256,15 @@
 .watch-desk .timeline-filter-tabs button[aria-selected=true]{border-bottom-color:#e2453a}
 .watch-content-enter{animation:watch-settings-reveal 140ms ease-out}
 @media(prefers-reduced-motion:reduce){.watch-content-enter{animation:none}}
+
+/* Drawer uses the same rail styles even when Headless UI portals it to body. */
+.watch-rail-nav{min-height:0;overscroll-behavior:contain}
+.watch-rail-foot{flex-shrink:0}
+.watch-rail--mobile{max-width:calc(100vw - 40px);height:100dvh!important;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.watch-navigation-dialog .watch-rail-head{padding-top:12px}
+.watch-navigation-dialog .watch-rail-brand{min-height:44px;margin:0 8px 20px}
+.watch-rail-close{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border:0;border-radius:6px;background:transparent;color:var(--journey-muted)}
+.watch-rail-close:hover{color:var(--journey-text)}
+.watch-navigation-dialog .watch-rail-nav{gap:18px}
+.watch-navigation-dialog .watch-rail-link,.watch-navigation-dialog .watch-rail-foot>a,.watch-navigation-dialog .watch-rail-foot>button{min-height:44px}
+.watch-navigation-dialog :focus-visible{outline:2px solid var(--journey-text);outline-offset:2px}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,render,screen,fireEvent,act} from '@testing-library/react';
+import {cleanup,render,screen,fireEvent,act,within} from '@testing-library/react';
 import {it,expect,vi,afterEach} from 'vitest';
 import {ArtifactOverview} from '../src/components/watch/ArtifactOverview';
 import {navigate} from '../src/nav';
@@ -12,7 +12,7 @@ it('matches the approved composition without old panels, release-mode tabs or an
  await screen.findByRole('heading',{name:'Your latest release evidence is ready.'});
  expect(screen.getByRole('columnheader',{name:'Build'})).toBeTruthy();
  expect(screen.getByRole('columnheader',{name:'Files'})).toBeTruthy();
- const recent=screen.getByRole('heading',{name:'Recent release scans'});
+ const recent=screen.getByRole('heading',{name:'Latest releases'});
  const activity=screen.getByRole('heading',{name:'Source activity'});
  expect(recent.compareDocumentPosition(activity)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(screen.queryByRole('heading',{name:'Connected monitoring'})).toBeNull();
@@ -54,8 +54,16 @@ it('prioritises a returned release that needs review over a newer passing record
  load({recent:[data.recent[0],{...data.recent[0],id:'review',target:'needs-review.tgz',created_at:'2026-09-04T12:00:00Z',verdict:'Review findings'}]});
  expect(await screen.findByRole('heading',{name:'One release needs review.'})).toBeTruthy();
  expect(screen.getByRole('heading',{name:/Release artifact.*needs-review\.tgz/})).toBeTruthy();
- expect(screen.getByRole('region',{name:'Release work'})).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Saved release reviews'})).toBeTruthy();
  expect(screen.getByRole('complementary',{name:'Coverage status'})).toBeTruthy();
+});
+it('keeps saved release reviews separate from the alert response queue',async()=>{
+ load({counts:{total:1,active:0,attention:1,completedAttention:1,attemptAttention:0,passed:0},alertCounts:{open:0,waiting:0,done:0,mine:0},recent:[{...data.recent[0],id:'review',target:'needs-review.tgz',verdict:'Review findings'}]});
+ const reviews=await screen.findByRole('region',{name:'Saved release reviews'});
+ expect(within(reviews).getByRole('heading',{name:'Release reviews'})).toBeTruthy();
+ expect(within(reviews).getByText('Saved scan evidence is reviewed in Releases. Alerts is a separate response queue.')).toBeTruthy();
+ fireEvent.click(within(reviews).getByRole('button',{name:'Open Alerts response queue, 0 alerts need response'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
 });
 it('uses only actual completed returned records for daily activity',async()=>{
  const now=new Date().toISOString();
@@ -133,4 +141,26 @@ it('clears old workspace evidence and ignores a late response',async()=>{
  await screen.findByText(/Current workspace · Your releases/);
  await act(async()=>finish(Response.json(data)));
  expect(screen.queryByText(/Product · Your releases/)).toBeNull();
+});
+
+it.each([
+ [{counts:{total:1,active:0,attention:0,passed:1}},'quiet'],
+ [{counts:{total:1,active:0,attention:1,passed:0}},'review'],
+ [{counts:{total:1,active:1,attention:0,passed:0}},'running'],
+ [{counts:{total:1,active:0,attention:0,passed:1},alertCounts:{open:1,waiting:0,done:0,mine:0}},'review'],
+])('uses the real evidence scenario for the posture colour',async(extra,scenario)=>{
+ load(extra);
+ const panel=await screen.findByRole('region',{name:'Priority release decision'});
+ expect(panel.getAttribute('data-scenario')).toBe(scenario);
+});
+
+it('routes independent workspace activity to supported release history',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(data)));
+ render(<ArtifactOverview workspaceId="workspace" search="?workspace=workspace" nowLabel="Today"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'View history'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace');
+});
+it('keeps connected workspace timeline access',async()=>{
+ load();fireEvent.click(await screen.findByRole('button',{name:'View timeline'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/timeline?workspace=workspace&install=7');
 });

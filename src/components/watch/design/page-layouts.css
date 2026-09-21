@@ -14,9 +14,9 @@
 [data-watch-page=alerts] .alerts-designed>[class*="shrink-0"]{padding-block:20px}
 .alerts-designed [role=tablist]{background:#090a0c;border:1px solid #ffffff0d;padding:4px;border-radius:7px}
 .alerts-designed [role=tab]{min-height:36px;border-radius:5px;font-size:11px}
-.alerts-designed [role=tab][aria-selected=true]{background:var(--color-snow);color:#171719}
+.alerts-designed [role=tab][aria-selected=true]{background:#202022;color:#f4f4f5}
 .alerts-designed [role=tab][aria-selected=true] span{color:inherit}
-.alerts-designed [role=tab][aria-selected=true] .watch-queue-count{background:#1717190d;color:#343438}
+.alerts-designed [role=tab][aria-selected=true] .watch-queue-count{background:#ffffff0a;color:inherit}
 .alerts-designed .alert-queue-tabs{gap:8px;max-width:100%}
 .alerts-designed .alert-queue-tabs [role=tab]{padding-inline:14px;min-height:40px}
 @media(max-width:600px){.alerts-designed .alert-queue-tabs{gap:6px}.alerts-designed .alert-queue-tabs [role=tab]{padding-inline:10px}}

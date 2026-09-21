@@ -27,6 +27,7 @@ import { createWorker } from "./worker.ts";
 import { isolatedScan } from './isolated-scanner.ts';
 import { cleanupAbandonedParserFiles } from './parser-cleanup.ts';
 import { runWorkspaceNotification } from './workspace-notification-worker.ts';
+import { closeRuntimeResources } from './shutdown.ts';
 
 export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
@@ -47,13 +48,16 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       ? { apiKey: config.resendApiKey, fromEmail: config.resendFromEmail }
       : undefined,
   });
+  const runJobs = processRunsJobs(config.processRole);
   const worker = createWorker({
     scan: target=>isolatedScan(target,{requireContainer:!['localhost','127.0.0.1','[::1]'].includes(new URL(config.appBaseUrl).hostname)}),
     store,
     github,
     npm,
     notifier,
-    heavyConcurrency: config.heavyConcurrency,
+    // Request-tail flushes may process light work, but heavy jobs belong to
+    // the persistent worker even when callers invoke flushJobs explicitly.
+    heavyConcurrency: runJobs ? config.heavyConcurrency : 0,
     lightConcurrency: config.lightConcurrency,
     maxAssetBytes: config.maxAssetBytes,
     intervalMs: config.workerIntervalMs,
@@ -61,7 +65,6 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     receiptSecret: config.receiptSecret,
     processNotification:()=>runWorkspaceNotification(sql,{encryptionSecret:config.sessionSecret,emailApiKey:config.resendApiKey,emailFrom:config.resendFromEmail}),
   });
-  const runJobs = processRunsJobs(config.processRole);
   const wakeWorker = () => {
     if(runJobs)void worker.tick();
   };
@@ -110,7 +113,9 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const app = new Hono();
   app.all('*', c => intelligenceApp.fetch(c.req.raw));
   const poller = runJobs ? startPoller(pollerDeps, config.pollIntervalMs) : { stop() {} };
-  let stopListen: (() => Promise<void>) | undefined;
+  let listening: Promise<() => Promise<void>> | undefined;
+  let closing: Promise<void> | undefined;
+  let started = false;
   return {
     app,
     store,
@@ -120,6 +125,8 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     runJobs,
     flushJobs: () => worker.runUntilIdle(),
     startBackground() {
+      if (started || closing) return;
+      started = true;
       logJson("info", "runtime.start", {
         database: databaseMode(config.databaseUrl),
         githubApp: githubAppConfigured(config),
@@ -133,17 +140,18 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       if (!runJobs) return;
       void cleanupAbandonedParserFiles().catch(()=>logJson('warn','parser.cleanup.failed',{}));
       worker.start();
-      void listenJobQueued(config.databaseUrl, () => {
+      listening = listenJobQueued(config.databaseUrl, () => {
         void worker.tick();
-      }).then((stop) => {
-        stopListen = stop;
       });
     },
-    async close() {
-      await worker.stop();
-      poller.stop();
-      if (stopListen) await stopListen();
-      await sql.close();
+    close() {
+      closing ??= closeRuntimeResources([
+        async () => { await poller.stop(); },
+        async () => { if (listening) await (await listening)(); },
+        async () => { await worker.stop(); },
+        async () => { await sql.close(); },
+      ]);
+      return closing;
     },
   };
 }

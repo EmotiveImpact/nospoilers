@@ -124,7 +124,7 @@ export function watchHref(
   if(path!=="/watch/sources")for(const key of ['configure','origin'])params.delete(key);
   if(path!=="/watch/sources")params.delete('coverageHealth');
   if(path!=="/watch/releases"&&params.has('hostedDecision')){params.delete('hostedDecision');params.delete('before');}
-  if(path!=="/watch/releases")for(const key of ['release','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore'])params.delete(key);
+  if(path!=="/watch/releases")for(const key of ['release','releaseFinding','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore'])params.delete(key);
   if(path!=="/watch/alerts")for(const key of ['alert','tab','mine'])params.delete(key);
   if(extra.release || extra.previewRelease)for(const key of ['upload','uploadView','uploadFinding','uploadTab'])params.delete(key);
   if (extra.install !== undefined) {
@@ -136,6 +136,7 @@ export function watchHref(
     else params.delete("alert");
   }
   if (extra.release !== undefined) {
+    if (String(extra.release ?? '') !== (params.get('release') ?? '')) params.delete('releaseFinding');
     if (extra.release) params.set("release", String(extra.release));
     else params.delete("release");
   }

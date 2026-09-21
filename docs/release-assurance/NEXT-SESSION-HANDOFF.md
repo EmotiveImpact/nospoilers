@@ -1,4 +1,32 @@
-# Current NoSpoilers continuation — 19 September 2026
+# Current NoSpoilers continuation — 21 September 2026
+
+## 21 September — curated release candidate
+
+The current release-candidate source is on `codex/release-assurance-spine-v1` over `f85fae1`; see the latest BUILD-LOG and `RC-ACCEPTANCE-2026-09-21.md` for the exact frozen-source result. Complete verification passed **1,643/1,643 tests in 269 files**, typecheck, frontend/API builds and lint with no errors/33 warnings. The local app on port 4347 is healthy. Final signed-in Overview and Alerts checks produced no browser warnings or errors.
+
+Preserve the product rule now implemented: saved scan findings and failed evidence that need review belong to **Releases**; generated alert records requiring acknowledgement, assignment or resolution belong to **Alerts**; missing-release checks are Coverage/retained-history evidence. Do not repopulate Alerts from release-review or `scan_latest_release` rows simply to make its count match Overview.
+
+Future connected-GitHub workspace alerts are covered by migration `122_connected_workspace_notification_outbox`; it has no historical backfill. Hosted worker startup must continue through the fail-closed readiness preflight. The existing Railway/Railpack setup is not acceptable until it supplies the worker-local isolated scanner executor/image and all required hosted configuration. Do not bypass that check or enable local scanning in production.
+
+Remaining external work, in order: recover the GitHub Actions account payment/spending limit and rerun CI; link the intended Railway project/service and establish the isolated executor; prove hosted GitHub sign-in through repository selection, worker scan and saved result; configure and prove one notification delivery path; run native 200% zoom and audible screen-reader checks. Stripe sandbox/webhook work is explicitly deferred by the owner. No production deployment, merge, provider activation, price change or disclosure is authorised by this handoff.
+
+Local mockup studies and browser artifacts are intentionally not part of the release candidate. Keep them uncommitted unless the owner separately asks to publish those artifacts.
+
+## 20 September — current local runtime and acceptance (supersedes older launcher instructions)
+
+Continue from the existing dirty working tree over `f85fae1` on `codex/release-assurance-spine-v1`. Mock43 release details, later settings/sidebar work and this launch-hardening increment are local and uncommitted. Preserve them. Final1,636tests/267files passed; TypeScript/frontend/API builds pass, lint0errors/33warnings. Latest BUILD-LOG and `output/launch-acceptance-2026-09-20/LOCAL-ACCEPTANCE.md` record exact checks; do not infer a hosted deployment from local success.
+
+**Current server:** port4347 runs `npm start` using existing `.env`, database `data/nospoilers`. The old `data/nospoilers-local-start.mjs` points to a different legacy database; do not use it to replace the current app. The current workspace is `71a701c7-7d7a-9705-3426-4710762104d1`, existing local-review login. Current runtime reports GitHub App/Stripe/Resend unconfigured. It is not the earlier provider-authenticated workspace described in historical paragraphs below. No secrets were copied out of a running process. Prefer graceful SIGTERM to the confirmed current listener when a restart is necessary; the new shutdown handler drains work and closes the database.
+
+Owner requested another local trial in this turn; it now ends2026-09-24T23:33:21.394Z /25September00:33BST. Do not repeat the reset without another request. Current database was backed up while stopped to `/private/tmp/nospoilers-current-before-trial-20260920-stopped`. A separately recovered legacy checkpoint clone is diagnostic only, not the current app or a replacement database.
+
+Real local browser uploads and worker results: exposed archive `c5dfdf05-31cd-4e72-a443-978d7f86b131` has3files/3findings/blocked; corrected archive `fe0cfe1b-de4a-44a8-a75e-32a0714927b1` has2files/0findings/passed. Receipt signature validation and artifact mismatch rejection were exercised; both saved records survived a normal restart. These labelled QA inputs do not constitute fresh hosted OAuth or production scanner-container acceptance.
+
+Runtime fixes cover authoritative upload scope, correct upload retry, settings stale responses/secrets, Stripe current-price transitions and scoped return paths, web-role heavy-job exclusion, graceful shutdown and poll draining. No scanner isolation guard, price or public evidence permission changed.
+
+GitHub Actions run35464978393 on remotePR44 head36c35be8 did not start because of account payment/spending limits. Local tests cannot make that check green; owner account resolution and a later rerun remain needed.
+
+Next external step: owner was asked to sign in with `railway login` and identify the existing project/service. CLI currently unauthorised and unlinked. No Docker executor is established by the current RAILPACK config; preserve scanner isolation and staged-file locality when choosing the hosted executor. Fresh hosted GitHub sign-in→worker scan→saved result, Stripe sandbox/webhook entitlements and notification delivery remain unverified. Vercel project nospoilers was identified read-only; detail tool hit a schema mismatch. No preview or production deployment, environment changes, provider activation or payment was made. Keep the branch deployment guard.
 
 ## 19 September final-pass checkpoint
 

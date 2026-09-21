@@ -1,5 +1,5 @@
 import {EvidenceTypePicker,type EvidenceType} from '@/components/watch/EvidenceTypePicker';
-import { Button as HeadlessButton, Description, Field, Label } from "@headlessui/react"
+import { Button as HeadlessButton, Description, Field, Label, Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
 import { WatchSkeleton } from "@/components/WatchDataState"
 import { coverageFrom, type Coverage } from "@/coverage.ts"
@@ -55,10 +55,8 @@ function scanModeFromSearch(search: string): ScanMode {
   return mode === "package" || mode === "website" || mode === "receipt" ? mode : "github"
 }
 
-async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal): Promise<ScanSubmission> {
-  const params = new URLSearchParams(window.location.search)
-  const install = params.get('install')
-  const response = await uploadArtifact(file,install,onProgress,signal,new URLSearchParams(window.location.search).get('workspace'))
+async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal, install:string|null, workspaceId:string|null): Promise<ScanSubmission> {
+  const response = await uploadArtifact(file,install,onProgress,signal,workspaceId)
   const body = (await response.json()) as ScanSubmission | { error?: string }
   if (!response.ok) {
     throw new Error(
@@ -138,6 +136,7 @@ export function ScanPage({ search, embedded = false,workspace }: { search: strin
 }
 
 function ScanPageScope({ search, embedded = false,productWorkspace }: { search: string; embedded?: boolean;productWorkspace?:import('@/watch/workspace-types').ProductWorkspace }) {
+  const productWorkspaceId = productWorkspace?.id
   const inputId = useId()
   const modeId = useId()
   const [dragOver, setDragOver] = useState(false)
@@ -180,6 +179,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   useEffect(() => {
     const params=new URLSearchParams(search)
     if (params.get("reveal") !== "1") return
+    if(productWorkspaceId)params.set('workspace',productWorkspaceId)
     let cancelled = false
     setState({ status: "loading", label: "your staged artifact" })
     void fetch(scanSubmissionUrl(params.get('install'),params.get('workspace'),'claim'), { method: 'POST', credentials: "include" })
@@ -201,7 +201,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
     return () => {
       cancelled = true
     }
-  }, [search,claimRetry])
+  }, [search,claimRetry,productWorkspaceId])
 
   useEffect(() => {
     setMode(scanModeFromSearch(search))
@@ -212,6 +212,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   const coverage = productWorkspace?coverageFrom(productWorkspace.trial_ends_at,productWorkspace.plan):selectedInstall ? (workspace ? coverageFrom(workspace.trialEndsAt, workspace.plan) : undefined) : session?.personalCoverage ?? session?.coverage
   const lockReason = !sessionReady ? 'Checking sign-in and workspace permissions…' : productWorkspace?.archived_at?'This workspace is archived. Restore it before starting a scan.':(productWorkspace?.role??workspace?.role)==='viewer' ? 'Viewer access is read-only. Ask an administrator for permission to start scans.' : workspace?.suspended ? 'This GitHub connection is suspended. An administrator needs to reconnect it.' : session && selectedInstall && !workspace ? 'This workspace is unavailable or outside your access. Choose another workspace.' : null
   const locked = coverage?.status === "ended" || lockReason!==null
+  const [dismissedPrerequisite, setDismissedPrerequisite] = useState<string | null>(null)
+  const prerequisiteKey = `${productWorkspace?.id ?? selectedInstall ?? "personal"}:${lockReason ?? coverage?.status}`
   const showPrerequisite = sessionReady && !sessionError && locked && mode !== 'receipt'
   const scope = new URLSearchParams()
   const workspaceId = productWorkspace?.id ?? new URLSearchParams(search).get('workspace')
@@ -270,7 +272,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         requireQueuedScan(report)
         const params = new URLSearchParams({ upload: report.uploadId })
         if (selectedInstall) params.set('install', selectedInstall)
-        const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId)
+        if(workspaceId)params.set('workspace',workspaceId)
         navigate(`/watch/releases?${params}`)
         return
       }
@@ -282,7 +284,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
         message: error instanceof Error ? error.message : "Scan failed.",
       })
     }
-  }, [selectedInstall,search])
+  }, [selectedInstall,workspaceId])
 
   const onFiles = useCallback(
     (list: FileList | null) => {
@@ -302,11 +304,11 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       const controller=new AbortController()
       uploadController.current=controller
       setUploadProgress(0)
-      void run(file.name, () => scanFile(file,setUploadProgress,controller.signal)).finally(()=>{
+      void run(file.name, () => scanFile(file,setUploadProgress,controller.signal,selectedInstall,workspaceId)).finally(()=>{
         uploadController.current=null
         setUploadProgress(null)
       })
-    }, [locked, run, selectedArtifact],
+    }, [locked, run, selectedArtifact, selectedInstall, workspaceId],
   )
 
   return (
@@ -320,21 +322,31 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       </p>
 
       {showPrerequisite ? (
-        <section className="scan-coverage-window" aria-label="Scan prerequisites">
+        <>
+        <button type="button" className="mt-4 inline-flex items-center gap-2 text-sm text-mute hover:text-snow" onClick={()=>setDismissedPrerequisite(null)}><LockKeyhole className="size-4" aria-hidden/>View scan access</button>
+        <Dialog open={dismissedPrerequisite !== prerequisiteKey} onClose={()=>setDismissedPrerequisite(prerequisiteKey)} className="relative z-50">
+          <DialogBackdrop className="fixed inset-0 bg-black/70 backdrop-blur-sm"/>
+          <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-5">
+          <DialogPanel className="scan-access-dialog relative w-full max-w-lg rounded-xl border border-white/10 bg-[#111113] p-7 shadow-2xl">
+          <button type="button" aria-label="Close scan access" className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-md text-mute hover:bg-white/5 hover:text-snow" onClick={()=>setDismissedPrerequisite(prerequisiteKey)}><X className="size-4" aria-hidden/></button>
+          <section aria-label="Scan prerequisites">
           <div>
             <p className="scan-coverage-kicker">Coverage required</p>
-            <h2 className="font-display text-lg text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</h2>
+            <DialogTitle className="mb-3 pr-8 font-display text-2xl text-snow">{lockReason ? 'New scans are unavailable' : 'Coverage has ended'}</DialogTitle>
             <p role="status" className="text-sm leading-relaxed text-mute">
               {lockReason ?? 'New scans and monitoring are paused until coverage is active. You can still open saved releases and verify existing proof.'}
-              {!lockReason && workspaceId ? ' Your organisation owner manages coverage in workspace settings.' : null}
+              {!lockReason && workspaceId ? ' Your organisation owner manages coverage in Plan & billing.' : null}
             </p>
           </div>
           <div className="scan-coverage-actions">
-            {!lockReason ? <a className="scan-primary-action" onClick={followAppLink} href={workspaceId ? scopedPath('workspaces') : '/pricing'}>{workspaceId ? 'Workspace settings' : 'See plans'} <ChevronRight className="size-4" aria-hidden /></a> : null}
+            {!lockReason ? <a className="scan-primary-action" onClick={followAppLink} href={workspaceId ? `${scopedPath('workspaces')}&workspaceTab=billing` : '/pricing'}>{workspaceId ? 'Plan & billing' : 'See plans'} <ChevronRight className="size-4" aria-hidden /></a> : null}
             <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('releases')}>View saved releases</a>
             <a className="scan-secondary-action" onClick={followAppLink} href={scopedPath('sources')}>View coverage</a>
           </div>
-        </section>
+          </section>
+          </DialogPanel></div>
+        </Dialog>
+        </>
       ) : null}
 
       <EvidenceTypePicker id={modeId} mode={mode} onChange={chooseMode}/>
@@ -362,7 +374,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               )}
               {session&&!selectedInstall&&!lockReason&&!sessionError&&new URLSearchParams(search).get('workspace')?<GithubWorkspaceConnect workspaceId={new URLSearchParams(search).get('workspace')!} disabledReason={lockReason}/>:null}
             </div> : null}
-            {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={search} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
+            {session&&selectedInstall&&!locked&&!sessionError?<GithubRepositoryScan installationId={selectedInstall} search={`?${scope}`} disabledReason={lockReason??(coverage?.status==='ended'?'Active coverage is required to start a release check.':null)}/>:null}
             {session&&selectedInstall&&!lockReason&&!sessionError&&workspaceId ? (
               <section className="scan-add-source" aria-labelledby="github-add-source-title">
                 <h3 id="github-add-source-title" className="mb-4 font-display text-lg text-snow">Another GitHub source?</h3>
@@ -426,7 +438,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 </Field>
               </div>
               {selectedArtifact&&uploadProgress===null?<>
-                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10*1024*1024?1:2)} MiB · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
+                <div className="scan-staged-file" aria-live="polite"><FileText className="size-5" aria-hidden/><div><strong>{selectedArtifact.name}</strong><p>{selectedArtifact.size<1024?`${selectedArtifact.size} B`:selectedArtifact.size<1024*1024?`${(selectedArtifact.size/1024).toFixed(1)} KiB`:`${(selectedArtifact.size/1024/1024).toFixed(selectedArtifact.size>=10*1024*1024?1:2)} MiB`} · ready to scan</p></div><HeadlessButton type="button" className="scan-staged-remove" onClick={()=>setSelectedArtifact(null)} aria-label="Remove selected artifact"><X className="size-4" aria-hidden/></HeadlessButton></div>
                 <HeadlessButton type="button" className="scan-build-submit" disabled={locked || !!sessionError} onClick={startArtifactScan}>Scan this build <ChevronRight className="size-4" aria-hidden/></HeadlessButton>
                 <p className="scan-build-note">Artifacts are inspected, never executed.</p>
               </>:null}
@@ -643,7 +655,7 @@ export function ReceiptVerifyPanel() {
                 "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
                 receiptOver
                   ? "border-snow bg-white/[0.06]"
-                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+                  : "border-white/25 hover:border-white/45",
               )}
             >
               <FileJson className="h-5 w-5 text-mute" aria-hidden />
@@ -677,7 +689,7 @@ export function ReceiptVerifyPanel() {
                 "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
                 packOver
                   ? "border-snow bg-white/[0.06]"
-                  : "border-white/25 hover:border-white/45 hover:bg-white/[0.03]",
+                  : "border-white/25 hover:border-white/45",
               )}
             >
               <Upload className="h-5 w-5 text-mute" aria-hidden />

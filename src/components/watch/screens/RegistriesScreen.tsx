@@ -9,6 +9,8 @@ export function RegistriesScreen() {
   useEffect(()=>{if(addingRegistry)registryOriginRef.current?.focus();},[addingRegistry]);
   const registryOriginRef = useRef<HTMLInputElement>(null);
   const { Button, activeInstallId, allowReasonByCandidate, approvingId, baselineByPackage, baselineReason, beginConfirm, canManageEvidence, canReadEvidence, candidatesByPackage, checkingId, checkingNamespaceId, confirmBusy, confirmForm, confirming, deskCoverage, deskPackages, diffByPackage, diffingId, downloadingEvidenceId, ended, evidenceByPackage, identitySignals, importError, importNames, importResults, importingPackages, installAdmin, installations, loadJson, locked, namespaceError, namespaceScope, namespaces, packageError, packageName, packages, previewing, protectingId, protectionImportStatusLabel, protections, refreshSignedIn, registries, registryError, registryOriginInput, registryToken, riskByPackage, route, savingNamespace, savingRegistry, selectedInstallId, setAllowReasonByCandidate, setApprovingId, setCheckingId, setCheckingNamespaceId, setDiffByPackage, setDiffingId, setDownloadingEvidenceId, setImportError, setImportNames, setImportResults, setImportingPackages, setNamespaceError, setNamespaceScope, setPackageError, setPackageName, setProtectingId, setRegistryError, setRegistryOriginInput, setRegistryToken, setSavingNamespace, setSavingRegistry, setWatchRegistryOrigin, setWatchingPackage, sourceSectionState, user, watchRegistryOrigin, watchingPackage } = useWatchScreenContext();
+  const registryRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{if(registryRequest.current){registryRequest.current.abort();registryRequest.current=null;setSavingRegistry(false);}setRegistryToken("");},[activeInstallId,route.view,setSavingRegistry,setRegistryToken]);
   const failureRef = useRef<HTMLParagraphElement>(null);
   const initiatingFocus = useRef<Element | null>(null);
   useEffect(() => {
@@ -21,7 +23,7 @@ export function RegistriesScreen() {
                 (route.view === "sources" &&
                   route.sourceConfigure === "npm" &&
                   (previewing || sourceSectionState.status === "ready"))) && (
-              <section className={`mt-4 min-w-0 [overflow-wrap:anywhere] ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+              <section className={`mt-4 min-w-0 [overflow-wrap:anywhere] ${ended && route.view!=="registries" ? "pointer-events-none select-none opacity-25" : ""}`}>
                 {route.view === "registries" ? (
                   <>
                     <WatchPageHeader
@@ -32,6 +34,7 @@ export function RegistriesScreen() {
                           <Button
                             type="button"
                             size="sm"
+                            disabled={locked||savingRegistry}
                             onClick={() => setAddingRegistry(true)}
                           >
                             Add registry
@@ -41,6 +44,7 @@ export function RegistriesScreen() {
                     />
                   </>
                 ) : null}
+                {ended&&route.view==="registries"?<p className="mt-4 text-sm text-mute">Coverage has ended. Saved registry details remain readable; credential changes require active coverage.</p>:null}
                 <section id="watch-source-npm" tabIndex={-1} className={route.view === "registries" ? "mt-7 outline-none" : "scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50"}>
                 <h2 className={route.view === "registries" ? "sr-only" : "text-sm font-semibold text-snow"}>
                   {route.view === "registries" ? "Registry credentials" : "npm packages"}
@@ -250,13 +254,15 @@ export function RegistriesScreen() {
                     className="mt-6 flex max-w-xl flex-col gap-3"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      if (locked || savingRegistry) return;
+                      if (locked || savingRegistry || registryRequest.current) return;
+                      const controller=new AbortController();registryRequest.current=controller;
                       initiatingFocus.current = document.activeElement;
                       setRegistryError(null);
                       setSavingRegistry(true);
                       void (async () => {
                         try {
                           const response = await fetch("/api/registries", {
+                            signal:controller.signal,
                             method: "POST",
                             credentials: "include",
                             headers: { "content-type": "application/json" },
@@ -267,15 +273,17 @@ export function RegistriesScreen() {
                             }),
                           });
                           const body = (await response.json()) as { error?: string };
+                          if(controller.signal.aborted)return;
                           if (!response.ok) throw new Error(body.error ?? "Could not save registry.");
                           setRegistryToken("");
                           setRegistryOriginInput("");
                           setAddingRegistry(false);
                           await refreshSignedIn(selectedInstallId);
                         } catch (error) {
-                          setRegistryError(error instanceof Error ? error.message : "Could not save registry.");
+                          if(!controller.signal.aborted)setRegistryError(error instanceof Error ? error.message : "Could not save registry.");
                         } finally {
-                          setSavingRegistry(false);
+                          if(registryRequest.current===controller)registryRequest.current=null;
+                          if(!controller.signal.aborted)setSavingRegistry(false);
                         }
                       })();
                     }}

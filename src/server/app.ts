@@ -1930,7 +1930,7 @@ export function createApp(deps: AppDeps): Hono {
       status: state.stripeStatus,
       periodEnd: state.periodEnd,
       hasCustomer: Boolean(state.stripeCustomerId),
-      subscribed: stripeSubscriptionCovers(state.stripeStatus),
+      subscribed: Boolean(parseStripePlan(state.plan)) && stripeSubscriptionCovers(state.stripeStatus),
     };
   }
 
@@ -1944,6 +1944,18 @@ export function createApp(deps: AppDeps): Hono {
   }
   async function billingState(account:{organizationId:string;installationId:number|null}){
     return account.installationId===null?personalStripeState(deps.store.sql,account.organizationId):deps.store.installationStripeState(account.installationId);
+  }
+  async function billingReturnUrl(userId:string,organizationId:string,workspaceId:unknown){
+    // Return destinations are fixed; billing authority alone does not grant workspace access.
+    const url=new URL('/watch/workspaces',deps.config.appBaseUrl);
+    url.searchParams.set('workspaceTab','billing');
+    url.searchParams.set('billingOrganization',organizationId);
+    if(workspaceId!==undefined){
+      const workspace=typeof workspaceId==='string'?(await listUserWorkspaces(deps.store.sql,userId)).find(row=>row.id===workspaceId&&row.organization_id===organizationId):undefined;
+      if(!workspace)throw Object.assign(new Error('The billing return workspace is unavailable for this organisation.'),{status:403});
+      url.searchParams.set('workspace',workspace.id);
+    }
+    return (result:'ok'|'canceled'|'returned')=>{const destination=new URL(url);destination.searchParams.set('billing',result);return destination.href;};
   }
   app.get("/api/billing", async (c) => {
     const user = await currentUser(c);
@@ -1986,6 +1998,9 @@ export function createApp(deps: AppDeps): Hono {
     let account;
     try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
     catch(error){return c.json({error:error instanceof Error?error.message:'Billing unavailable.'},errorStatus(error));}
+    let returnUrl;
+    try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
     const installationId=account.installationId;
     const plan = parseStripePlan(body.plan);
     const interval = parseStripeInterval(body.interval);
@@ -1996,7 +2011,7 @@ export function createApp(deps: AppDeps): Hono {
       try {
         const portal = await stripe.createPortalSession({
           customerId: state.stripeCustomerId,
-          returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
+          returnUrl: returnUrl('returned'),
         });
         await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
         return c.json({ url: portal.url, kind: "portal" });
@@ -2011,8 +2026,8 @@ export function createApp(deps: AppDeps): Hono {
       const session = await stripe.createCheckoutSession({
         customerId: state.stripeCustomerId,
         priceId,
-        successUrl: `${deps.config.appBaseUrl}/watch/workspaces?billing=ok`,
-        cancelUrl: `${deps.config.appBaseUrl}/pricing?canceled=1`,
+        successUrl: returnUrl('ok'),
+        cancelUrl: returnUrl('canceled'),
         clientReferenceId: installationId===null?account.organizationId:String(installationId),
         trialPeriodDays,
         metadata: {
@@ -2057,6 +2072,9 @@ export function createApp(deps: AppDeps): Hono {
     let account;
     try{account=await billingTarget(user.userId,{organizationId:body.organizationId,installationId:body.installationId});}
     catch(error){return c.json({error:error instanceof Error?error.message:STRIPE_ADMIN_ERROR},errorStatus(error));}
+    let returnUrl;
+    try{returnUrl=await billingReturnUrl(user.userId,account.organizationId,body.workspaceId);}
+    catch(error){return c.json({error:error instanceof Error?error.message:'Billing return unavailable.'},errorStatus(error));}
     const installationId=account.installationId;
     const state = await billingState(account);
     if (!state) return c.json({ error: "Unknown installation." }, 404);
@@ -2064,7 +2082,7 @@ export function createApp(deps: AppDeps): Hono {
     try {
       const portal = await stripe.createPortalSession({
         customerId: state.stripeCustomerId,
-        returnUrl: `${deps.config.appBaseUrl}/watch/workspaces`,
+        returnUrl: returnUrl('returned'),
       });
       await deps.store.sql.query("INSERT INTO product_billing_events(id,organization_id,actor_user_id,action) VALUES($1,$2,$3,'portal')",[crypto.randomUUID(),account.organizationId,user.userId]);
       if(installationId!==null && await deps.store.getInstallation(installationId))await deps.store.insertAuditEvent({

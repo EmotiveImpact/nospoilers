@@ -13,12 +13,14 @@ it('offers scoped saved evidence and recovery while expired coverage blocks ever
  const fetcher=vi.fn(async(_url:unknown)=>Response.json(me));vi.stubGlobal('fetch',fetcher);
  render(<ScanPage embedded search={scope} workspace={workspace()}/>);
  const prerequisites=await screen.findByRole('region',{name:'Scan prerequisites'});
- expect(within(prerequisites).getByRole('link',{name:'Workspace settings'}).getAttribute('href')).toBe('/watch/workspaces?workspace=chosen&install=7');
+ expect(within(prerequisites).getByRole('link',{name:'Plan & billing'}).getAttribute('href')).toBe('/watch/workspaces?workspace=chosen&install=7&workspaceTab=billing');
  for(const [name,path] of [['View saved releases','releases'],['View coverage','sources']]){
   expect(within(prerequisites).getByRole('link',{name}).getAttribute('href')).toBe(`/watch/${path}?workspace=chosen&install=7`);
  }
  expect(screen.queryByLabelText('Repository')).toBeNull();
  expect(screen.queryByRole('button',{name:'Scan latest release'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Close scan access'}));
+ expect(screen.queryByRole('dialog')).toBeNull();
  fireEvent.click(screen.getByRole('tab',{name:/Package or build/}));
  expect(document.querySelector('input[type="file"]')).toBeNull();
  expect(screen.queryByText('No hosted scan yet.')).toBeNull();
@@ -43,6 +45,7 @@ it('keeps receipt verification operational when new scanning coverage has ended'
  const fetcher=vi.fn(async(url:unknown)=>String(url)==='/api/me'?Response.json(me):Response.json({ok:false,reason:'Test receipt signature is invalid.'}));vi.stubGlobal('fetch',fetcher);
  render(<ScanPage embedded search={scope} workspace={workspace()}/>);
  await screen.findByRole('region',{name:'Scan prerequisites'});
+ fireEvent.click(screen.getByRole('button',{name:'Close scan access'}));
  fireEvent.click(screen.getByRole('tab',{name:/Verify release proof/}));
  expect(screen.queryByRole('region',{name:'Scan prerequisites'})).toBeNull();
  const receipt=new File(['{}'],'receipt.json',{type:'application/json'});

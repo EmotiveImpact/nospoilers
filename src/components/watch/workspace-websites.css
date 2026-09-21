@@ -1,0 +1,30 @@
+.coverage-page .coverage-empty-window.coverage-source-stack{grid-template-columns:minmax(0,1fr)}
+.coverage-page .coverage-source-stack>.coverage-empty-card+.coverage-empty-card{border-left:0!important;border-top:1px solid var(--color-line)!important}
+.coverage-page .coverage-source-stack>.coverage-empty-card>p{max-width:72ch}
+.workspace-websites{min-width:0;color:var(--color-snow)}
+.workspace-websites :is(h3,p,label,li,code){overflow-wrap:anywhere}
+.workspace-websites :is(input,select){max-width:100%;min-width:0}
+.website-connect-form>label{flex-basis:24rem}
+.website-source-actions{align-items:center}
+.website-verification{margin-top:20px;padding:20px;border:1px solid var(--color-line);border-radius:8px;background:var(--color-panel);font-size:13px}
+.website-verification h4{margin:0;font-size:15px;font-weight:600}
+.website-verification header p,.website-verification-alternative p{margin:6px 0 0;color:var(--color-mute);line-height:1.6;max-width:76ch}
+.website-verification-record{display:grid;grid-template-columns:minmax(100px,.3fr) minmax(0,1fr);gap:16px;margin:18px 0}
+.website-verification-record>div{min-width:0}
+.website-verification-record dt,.website-verification-alternative h5{margin:0 0 7px;color:var(--color-mute);font-size:12px;font-weight:500}
+.website-verification-record dd{margin:0}
+.website-verification-value{grid-column:1/-1}
+.website-verification-record code,.website-verification-alternative>code{display:block;padding:10px 12px;border:1px solid var(--color-line);border-radius:5px;background:var(--color-surface);white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+.website-verification-alternative{display:grid;justify-items:start;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--color-line)}
+.website-verification-alternative>code{box-sizing:border-box;width:100%;min-width:0}
+.website-verification-alternative :is(h5,p){margin:0}
+.website-schedule>label{min-width:0}
+.website-disconnect label{overflow-wrap:anywhere}
+.workspace-websites :is(button,a,input,select,summary):focus-visible{outline:2px solid var(--color-snow);outline-offset:3px}
+@media(max-width:640px){
+ .website-connect-form>label,.website-schedule>label{flex-basis:100%;width:100%}
+ .website-schedule select{width:100%}
+ .website-verification{padding:14px}
+ .website-verification-record{grid-template-columns:minmax(0,1fr)}
+ .workspace-websites button{max-width:100%;height:auto;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+}

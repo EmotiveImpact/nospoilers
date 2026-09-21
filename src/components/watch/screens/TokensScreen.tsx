@@ -1,26 +1,29 @@
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
-import { useRef } from "react";
+import { useEffect,useRef } from "react";
 
 export function TokensScreen() {
   const tokenNameRef = useRef<HTMLInputElement>(null);
   const { Button, activeInstallId, beginConfirm, confirmBusy, confirmForm, confirming, ended, githubRunnersReachable, hostedOrigin, installAdmin, installations, locked, mintingScanToken, previewing, refreshSignedIn, revealedScanToken, route, scanTokenError, scanTokenName, scanTokens, selectedInstallId, setMintingScanToken, setRevealedScanToken, setScanTokenError, setScanTokenName, user } = useWatchScreenContext();
+  const mintRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{mintRequest.current?.abort();mintRequest.current=null;setMintingScanToken(false);setRevealedScanToken(null);},[activeInstallId,route.view,setMintingScanToken,setRevealedScanToken]);
   const canMint = !previewing && Boolean(user && installations.length > 0 && installAdmin);
   return (
     <>
       {route.view === "tokens" && (
-              <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
+              <section className="mt-4 min-w-0 [overflow-wrap:anywhere]">
                 <WatchPageHeader
                   title="Scan API tokens"
                   lede="Credentials for packed-artifact CI scans."
                   action={
                     canMint ? (
-                      <Button type="button" size="sm" onClick={() => tokenNameRef.current?.focus()}>
+                      <Button type="button" size="sm" disabled={locked||mintingScanToken} onClick={() => tokenNameRef.current?.focus()}>
                         Mint token
                       </Button>
                     ) : undefined
                   }
                 />
+                {ended?<p className="mt-4 text-sm text-mute">Coverage has ended. Saved token details remain readable; creating and revoking credentials requires active coverage.</p>:null}
                 <div className="watch-card mt-[18px]">
                   <div className="watch-kv">
                     <span>Tokens</span>
@@ -61,13 +64,15 @@ export function TokensScreen() {
                         className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
                         onSubmit={(event) => {
                           event.preventDefault();
-                          if (locked || mintingScanToken) return;
+                          if (locked || mintingScanToken || mintRequest.current) return;
+                          const controller=new AbortController();mintRequest.current=controller;
                           setScanTokenError(null);
                           setRevealedScanToken(null);
                           setMintingScanToken(true);
                           void (async () => {
                             try {
                               const response = await fetch("/api/scan-tokens", {
+                                signal:controller.signal,
                                 method: "POST",
                                 credentials: "include",
                                 headers: { "content-type": "application/json" },
@@ -77,15 +82,18 @@ export function TokensScreen() {
                                 }),
                               });
                               const body = (await response.json()) as { error?: string; token?: string };
+                              if(controller.signal.aborted)return;
                               if (!response.ok) throw new Error(body.error ?? "Could not mint token.");
+                              if(typeof body.token!=="string"||!body.token.trim())throw new Error("The token secret was not received. Check the token list before trying again.");
                               if (body.token) setRevealedScanToken(body.token);
                               await refreshSignedIn(selectedInstallId);
                             } catch (error) {
-                              setScanTokenError(
+                              if(!controller.signal.aborted)setScanTokenError(
                                 error instanceof Error ? error.message : "Could not mint token.",
                               );
                             } finally {
-                              setMintingScanToken(false);
+                              if(mintRequest.current===controller)mintRequest.current=null;
+                              if(!controller.signal.aborted)setMintingScanToken(false);
                             }
                           })();
                         }}
@@ -109,7 +117,7 @@ export function TokensScreen() {
                         </Button>
                       </form>
                     )}
-                    {scanTokenError && <p className="mt-4 text-sm text-danger">{scanTokenError}</p>}
+                    {scanTokenError && <p role="alert" className="mt-4 text-sm text-danger">{scanTokenError}</p>}
                     {revealedScanToken ? (
                       <div className="mt-6 max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
                         <p className="text-xs uppercase tracking-[0.16em] text-dim">
@@ -131,6 +139,7 @@ export function TokensScreen() {
                             </pre>
                           </>
                         ) : null}
+                        <Button type="button" variant="outline" className="mt-4" onClick={()=>setRevealedScanToken(null)}>I’ve saved it</Button>
                       </div>
                     ) : null}
                     {scanTokens.length === 0 ? (

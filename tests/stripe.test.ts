@@ -129,6 +129,46 @@ function signedEvent(event: Record<string, unknown>, timestamp = Math.floor(Date
 }
 
 describe("Stripe checkout and lifecycle", () => {
+  it('returns checkout and portal to authorised organisation billing without accepting another workspace or redirect',async()=>{
+    await withStore(async({sql,store})=>{
+      await store.upsertUser({id:'return-owner',login:'return-owner'});
+      await store.upsertUser({id:'return-other',login:'return-other'});
+      await ensureUserWorkspaces(sql,'return-owner');await ensureUserWorkspaces(sql,'return-other');
+      const workspace=(await listUserWorkspaces(sql,'return-owner'))[0];
+      const other=(await listUserWorkspaces(sql,'return-other'))[0];
+      const cookie=`ns_session=${signSession('sess',await store.createSession('return-owner'))}`;
+      const checkouts:Parameters<StripePort['createCheckoutSession']>[0][]=[];
+      const portals:Parameters<StripePort['createPortalSession']>[0][]=[];
+      const app=appFor(store,mockStripe({createCheckoutSession:async input=>{checkouts.push(input);return {id:'cs_return',url:'https://checkout.stripe.com/return'};},createPortalSession:async input=>{portals.push(input);return {url:'https://billing.stripe.com/return'};}}));
+      const post=(route:string,body:unknown)=>app.request(`/api/billing/${route}`,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify(body)});
+      const input={organizationId:workspace.organization_id,workspaceId:workspace.id,plan:'solo',interval:'month',returnUrl:'https://attacker.example/'};
+      for(const workspaceId of [other.id,'not-a-workspace',null])expect((await post('checkout',{...input,workspaceId})).status).toBe(403);
+      expect(checkouts).toHaveLength(0);
+      await sql.query("INSERT INTO product_workspace_members(workspace_id,user_id,role,access_source) VALUES($1,'return-owner','viewer','explicit')",[other.id]);
+      expect((await post('checkout',{...input,workspaceId:other.id})).status).toBe(403);
+      expect(checkouts).toHaveLength(0);
+      expect((await post('checkout',input)).status).toBe(200);
+      const assertReturn=(value:string,result:string,withWorkspace=true)=>{
+        const url=new URL(value);expect(url.origin).toBe(new URL(loadConfig(stripeConfig).appBaseUrl).origin);
+        expect(url.pathname).toBe('/watch/workspaces');
+        expect(Object.fromEntries(url.searchParams)).toEqual({workspaceTab:'billing',billingOrganization:workspace.organization_id,...(withWorkspace?{workspace:workspace.id}:{}),billing:result});
+      };
+      assertReturn(checkouts[0].successUrl,'ok');assertReturn(checkouts[0].cancelUrl,'canceled');
+      await sql.query("UPDATE personal_organization_billing SET stripe_customer_id='cus_return',stripe_subscription_id='sub_return',stripe_status='active' WHERE organization_id=$1",[workspace.organization_id]);
+      const publicState=await (await app.request(`/api/billing?organizationId=${workspace.organization_id}`,{headers:{cookie}})).json() as {billing:{subscribed:boolean}};
+      expect(publicState.billing.subscribed).toBe(false);
+      expect((await post('portal',{...input,workspaceId:other.id})).status).toBe(403);expect(portals).toHaveLength(0);
+      expect((await post('portal',input)).status).toBe(200);assertReturn(portals[0].returnUrl,'returned');
+      expect((await post('checkout',input)).status).toBe(200);assertReturn(portals[1].returnUrl,'returned');expect(checkouts).toHaveLength(1);
+      // Organisation ownership remains sufficient to manage billing without workspace access.
+      await sql.query("UPDATE product_workspace_members SET access_source='explicit' WHERE user_id='return-owner'");
+      await sql.query("INSERT INTO product_workspace_revocations(workspace_id,user_id) SELECT workspace_id,user_id FROM product_workspace_members WHERE user_id='return-owner'");
+      await sql.query("DELETE FROM product_workspace_members WHERE user_id='return-owner'");
+      expect((await post('portal',{organizationId:workspace.organization_id})).status).toBe(200);assertReturn(portals[2].returnUrl,'returned',false);
+      expect((await post('portal',input)).status).toBe(403);
+    });
+  });
+
   it('rolls back a webhook claim when entitlement persistence fails so the same event can retry',async()=>{
     await withStore(async({sql,store})=>{
       await store.upsertUser({id:'retry-personal',login:'retry-personal'});

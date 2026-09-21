@@ -31,3 +31,10 @@ data
 *.sw?
 .vercel
 .env*
+
+# Local design and browser acceptance artifacts
+/.claude/launch.json
+/.playwright-cli/
+/.playwright-mcp/
+/output/
+/gate-b-release-live.png

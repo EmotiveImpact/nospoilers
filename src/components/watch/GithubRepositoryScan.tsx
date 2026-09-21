@@ -59,6 +59,7 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
   const workspaceId=new URLSearchParams(search).get('workspace');if(workspaceId)params.set('workspace',workspaceId);
   const setup=new URLSearchParams(params);setup.set('configure','github');if(repo)setup.set('source',`repo-${repo.id}`);
   const alerts=new URLSearchParams(params);if(repo)alerts.set('source',`repo-${repo.id}`);
+  const releases=new URLSearchParams(params);releases.set('releaseView','connected');
   async function scan(){
     if(!repo||disabledReason||submitting.current||pendingRepositories.has(selected))return;
     submitting.current=true;setBusy(true);setError('');setNotice('');setProgressError('');setJobId(null);
@@ -89,6 +90,6 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
     {error?<div role="alert"><p>{error}</p>{!repos?<Button variant="outline" onClick={()=>{setError('');setRetry(value=>value+1);}}>Retry repositories</Button>:null}</div>:null}
     {notice?<p role="status">{notice}</p>:null}
     {progressError?<div role="alert"><p>{progressError}</p><Button variant="outline" onClick={()=>{setProgressError('');setProgressRetry(value=>value+1);}}>Check progress again</Button></div>:null}
-    <div className="scan-repository-links"><a href={`/watch/releases?${params}`} onClick={openWatchLink}>View releases and scan progress</a>{repo?<a href={`/watch/alerts?${alerts}`} onClick={openWatchLink}>View this repository’s alerts</a>:null}<a href={`/watch/sources?${setup}`} onClick={openWatchLink}>Repository setup and prerequisites</a></div>
+    <div className="scan-repository-links"><a href={`/watch/releases?${releases}`} onClick={openWatchLink}>View releases and scan progress</a>{repo?<a href={`/watch/alerts?${alerts}`} onClick={openWatchLink}>View this repository’s alerts</a>:null}<a href={`/watch/sources?${setup}`} onClick={openWatchLink}>Repository setup and prerequisites</a></div>
   </section>;
 }

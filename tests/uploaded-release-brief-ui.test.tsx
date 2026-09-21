@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import userEvent from '@testing-library/user-event';
 import {UploadedReleaseBrief} from '../src/components/watch/UploadedReleaseBrief';
@@ -21,8 +21,10 @@ describe('uploaded readiness evidence',()=>{
     }));
     render(<UploadedReleaseBrief {...props} upload={{...record,readiness:view.assessment}} search=""/>);
     fireEvent.click(screen.getByRole('tab',{name:'History'}));
-    await screen.findByRole('button',{name:'Refresh saved snapshot'});
+    const inspect=await screen.findByRole('button',{name:'Inspect review'});
     expect(screen.getAllByRole('heading',{name:'Passes recorded checks'})).toHaveLength(1);
+    fireEvent.click(inspect);
+    await screen.findByRole('button',{name:'Refresh saved snapshot'});
     unavailable=true;fireEvent.click(screen.getByRole('button',{name:'Refresh saved snapshot'}));
     await waitFor(()=>expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy());
     expect(screen.queryByRole('heading',{name:'Passes recorded checks'})).toBeNull();
@@ -47,7 +49,7 @@ describe('uploaded readiness evidence',()=>{
   it('shows the recorded artifact decision without asserting unperformed checks',()=>{
     render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1&uploadView=detail"/>);
     expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy();
-    expect(screen.getByText(/this upload does not establish them/)).toBeTruthy();
+    expect(screen.getByText(/Source identity, production delivery and release approval are separate checks/)).toBeTruthy();
     expect(screen.queryByText('Personal workspace')).toBeNull();
     expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();
   });
@@ -71,7 +73,7 @@ describe('uploaded readiness evidence',()=>{
   it('never treats unfinished evidence as a clean release',()=>{
     render(<UploadedReleaseBrief {...props} upload={{...record,status:'running',report_json:null}} search=""/>);
     expect(screen.getByRole('heading',{name:'Inspecting artifact'})).toBeTruthy();
-    expect(screen.getByText(/No completed artifact evidence/)).toBeTruthy();
+    expect(screen.getByText('Inspection not completed')).toBeTruthy();
     expect(screen.queryByRole('button',{name:/Signed scan record/})).toBeNull();
   });
 });
@@ -106,8 +108,60 @@ it('opens visible findings before focusing a review action from History',async()
  Element.prototype.scrollIntoView=vi.fn();
  render(<UploadedReleaseBrief {...props} upload={record} search="?upload=scan-1&uploadView=detail"/>);
  fireEvent.click(screen.getByRole('tab',{name:'History'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Inspect review'}));
  fireEvent.click(await screen.findByRole('button',{name:'Review recorded findings'}));
  expect(screen.getByRole('tab',{name:'Findings 2'}).getAttribute('aria-selected')).toBe('true');
  expect(screen.getByRole('heading',{name:'Findings 2'})).toBe(document.activeElement);
  expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();
+});
+
+it('keeps all recorded findings without a redundant category row for a maps-only artifact',()=>{
+  const map=record.report_json!.findings[0];
+  render(<UploadedReleaseBrief {...props} upload={{...record,report_json:{...record.report_json!,findings:[map,{...map,path:'vendor.js.map',title:'Vendor source map'}]}}} search="?workspace=workspace-1&upload=scan-1"/>);
+  expect(screen.queryByRole('tablist',{name:'Finding category'})).toBeNull();
+  expect(screen.getByRole('button',{name:/Vendor source map/})).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'Public source map'})).toBeTruthy();
+});
+
+it('keeps the four release sections available even when no signed receipt or history is recorded',()=>{
+  vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+  render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1"/>);
+  for(const name of ['Findings 2','Files','History','Proof'])expect(screen.getByRole('tab',{name})).toBeTruthy();
+  fireEvent.click(screen.getByRole('tab',{name:'Files'}));
+  expect(screen.getByText('No manifest is available for this result.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('tab',{name:'Proof'}));
+  expect(screen.getByRole('region',{name:'Release proof'})).toBeTruthy();
+  expect(screen.queryByRole('button',{name:'Signed scan record'})).toBeNull();
+  expect(screen.queryByRole('button',{name:/Publish/})).toBeNull();
+});
+
+
+it('keeps unverified identity, production and approval unknown even when a saved job finished',()=>{
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+ render(<UploadedReleaseBrief {...props} upload={record} search="?workspace=workspace-1&upload=scan-1"/>);
+ const states=screen.getByRole('group',{name:'Independent evidence states'});
+ for(const name of ['Artifact inspection','Source identity','Production delivery','Release approval']){
+  const status=within(states).getByRole('group',{name,exact:true});
+  expect(within(status).getByText('Unknown')).toBeTruthy();
+ }
+ expect(screen.getByRole('heading',{name:'Evidence is incomplete'})).toBeTruthy();
+ expect(within(states).queryByRole('button')).toBeNull();
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(within(states).getAllByText(/verified assessment is not available/)).toHaveLength(4);
+});
+
+
+it.each([
+ ['passed','Recorded pass'],['failed','Needs action'],['review','Review evidence'],
+ ['stale','Stale observation'],['unknown','Unknown'],['not-configured','Not observed'],
+] as const)('renders the production evidence state %s independently of the artifact result',(state,label)=>{
+ vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(()=>{})));
+ const snapshot=sample();snapshot.release.id=record.id;
+ const assessment=buildAssuranceView(snapshot,null,NOW,'uploaded-scan').assessment;
+ assessment.checks=assessment.checks.map(check=>check.id==='delivery'?{...check,state}:check);
+ render(<UploadedReleaseBrief {...props} upload={{...record,readiness:assessment}} search=""/>);
+ const tile=screen.getByRole('group',{name:'Production delivery',exact:true});
+ expect(within(tile).getByText(label)).toBeTruthy();
+ expect(within(tile).queryByRole('button')).toBeNull();
+ expect(screen.getByRole('heading',{name:'Passes recorded checks'})).toBeTruthy();
 });

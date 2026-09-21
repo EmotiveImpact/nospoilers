@@ -3,6 +3,7 @@ import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import type { ReactNode } from "react";
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/motion/select";
 
 type RetentionDays = 0 | 90 | 180 | 365;
 type RetentionState =
@@ -45,7 +46,7 @@ export function RetentionScreen({
       <div className="journey-settings-split">
         <div>
           {previewing ? <p>Preview cannot change live retention.</p> : ended ? <p>Subscribe to keep configurable retention.</p> : retention.status === "error" ? <p role="alert">{retention.message}</p> : !ready ? <WatchSkeleton variant="list" /> : <>
-            <div className="journey-setting-row"><div><h2>Operational history window</h2><p>How long alerts, jobs, receipts, revisions and audit rows stay visible in lists.</p></div><select aria-label="Operational history window" value={draft} disabled={!canChange || busy} onChange={event=>onDraft(Number(event.target.value) as RetentionDays)}>{WINDOWS.map(option=><option key={option.days} value={option.days}>{option.label}</option>)}</select></div>
+            <div className="journey-setting-row"><div><h2>Operational history window</h2><p>How long alerts, jobs, receipts, revisions and audit rows stay visible in lists.</p></div><Select value={String(draft)} disabled={!canChange||busy} onValueChange={value=>onDraft(Number(value) as RetentionDays)}><SelectTrigger aria-label="Operational history window" className="w-full sm:w-44"><SelectValue/></SelectTrigger><SelectContent>{WINDOWS.map(option=><SelectItem key={option.days} value={String(option.days)}>{option.label}</SelectItem>)}</SelectContent></Select></div>
             <div className="journey-setting-row"><div><h2>Saved evidence</h2><p>Changing the list window does not delete append-only evidence.</p></div><span>Retained</span></div>
             <div className="journey-setting-row"><div><h2>Current window</h2><p>Changes take effect only after confirmation.</p></div><span>{WINDOWS.find(option=>option.days===retention.days)?.label}</span></div>
             {canChange ? <div className="journey-savebar"><span>Review the effect before saving.</span><Button disabled={busy || draft===retention.days} onClick={onSave}>Review changes</Button></div> : <p className="mt-6 text-sm text-mute">An install admin has to change this window.</p>}

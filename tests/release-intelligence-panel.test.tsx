@@ -3,13 +3,13 @@ import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {ReleaseIntelligencePanel} from '../src/components/watch/ReleaseIntelligencePanel';
-vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptureControls:()=>null}));
-vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=>null}));
+vi.mock('../src/components/watch/AutomaticCaptureControls',()=>({AutomaticCaptureControls:()=> <p>Automatic capture controls</p>}));
+vi.mock('../src/components/watch/ProductionParityControls',()=>({ProductionParityControls:()=> <p>Production parity controls</p>}));
 vi.mock('../src/components/watch/ReleaseGateControls',()=>({ReleaseGateControls:({record}:{record:{id:string}})=><button type="button">Gate for {record.id}</button>}));
-vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseRemediationControls',()=>({ReleaseRemediationControls:({record}:{record:{id:string}})=> <p>Finding reviews for {record.id}</p>}));
 vi.mock('../src/components/watch/AgentAccessControls',()=>({AgentAccessControls:({snapshotId}:{snapshotId:string})=><button type="button">Grant agent for {snapshotId}</button>}));
-vi.mock('../src/components/watch/ReleaseExplanationControls',()=>({ReleaseExplanationControls:()=>null}));
-vi.mock('../src/components/watch/ReleaseOutcomeControls',()=>({ReleaseOutcomeControls:()=>null}));
+vi.mock('../src/components/watch/ReleaseExplanationControls',()=>({ReleaseExplanationControls:()=> <p>Optional explanation controls</p>}));
+vi.mock('../src/components/watch/ReleaseOutcomeControls',()=>({ReleaseOutcomeControls:()=> <p>Private monthly outcome controls</p>}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const record={kind:'upload' as const,id:'record'};
 const stream={id:'stream',workspace_id:'workspace',name:'Release product',artifact_role:'Package',channel:'stable',revision:0};
@@ -41,7 +41,7 @@ it('explains the hidden capabilities and opens setup with focus without creating
   await screen.findByText('Start a history for this product');
   fireEvent.click(screen.getByRole('button',{name:'Set up release history'}));
   const name=screen.getByLabelText('Name');expect(document.activeElement).toBe(name);
-  expect(name.closest('details')?.open).toBe(true);
+  expect(screen.getByRole('form',{name:'Create a release stream'}).contains(name)).toBe(true);
   expect(screen.getByText(/These are separate opt-ins/)).toBeTruthy();
   expect(fetch).toHaveBeenCalledTimes(1);
 });
@@ -119,11 +119,14 @@ it('identifies same-digest records distinctly and announces a keyboard-selected 
   expect(screen.getByRole('status').textContent).toContain('different historical record');
   const scope=screen.getByRole('status');
   expect(scope.getAttribute('aria-atomic')).toBe('true');
+  fireEvent.click(screen.getByRole('button',{name:'Release decisions'}));
   const gate=screen.getByRole('button',{name:'Gate for record'});
-  const agent=screen.getByRole('button',{name:'Grant agent for next'});
   expect(scope.compareDocumentPosition(gate)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('button',{name:'Gate for another-record',hidden:true})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Access & assistance'}));
+  const agent=screen.getByRole('button',{name:'Grant agent for next'});
   expect(scope.compareDocumentPosition(agent)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.queryByRole('button',{name:'Gate for another-record'})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Gate for record'})).toBeNull();
 });
 
 it.each(['selection','refresh'] as const)('removes prior scoped child actions during pending history %s',async(action)=>{
@@ -136,14 +139,52 @@ it.each(['selection','refresh'] as const)('removes prior scoped child actions du
   return Response.json({...detail,canAdminister:true,snapshots:[first,next],selected:first});
  }));
  render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
- await screen.findByRole('button',{name:'Grant agent for snapshot'});
+ await screen.findByText('Scoped history.');
+ fireEvent.click(screen.getByRole('button',{name:'Access & assistance'}));
+ expect(screen.getByRole('button',{name:'Grant agent for snapshot'})).toBeTruthy();
+ if(action==='selection')fireEvent.click(screen.getByRole('button',{name:'Comparison'}));
  const trigger=screen.getByRole('button',{name:action==='selection'?/Inspect upload next-record/:'Refresh history'});
  await waitFor(()=>expect((trigger as HTMLButtonElement).disabled).toBe(false));pending=true;fireEvent.click(trigger);
  await waitFor(()=>expect(finish).toBeTruthy());
- expect(screen.queryByRole('button',{name:/Grant agent for/})).toBeNull();
+ expect(screen.queryByRole('button',{name:/Grant agent for/,hidden:true})).toBeNull();
  expect(screen.getByLabelText('Refreshing release tools')).toBeTruthy();
  const selected=action==='selection'?next:first;
  finish!(Response.json({...detail,canAdminister:true,snapshots:[first,next],selected}));
- await screen.findByRole('button',{name:`Grant agent for ${selected.id}`});
+ await screen.findByRole('button',{name:`Grant agent for ${selected.id}`,hidden:true});
+ fireEvent.click(screen.getByRole('button',{name:'Access & assistance'}));
+ expect(screen.getByRole('button',{name:`Grant agent for ${selected.id}`})).toBeTruthy();
  if(action==='selection')expect(screen.queryByRole('button',{name:'Grant agent for snapshot'})).toBeNull();
+});
+
+
+it('keeps all scoped release tools reachable through task navigation without mutating evidence',async()=>{
+ const snapshot={id:'snapshot',record_kind:'upload',record_id:'record',scanned_at:'2026-09-09T00:00:00Z',digest:'a'.repeat(64),metrics:{files:1},excluded:false};
+ const fetcher=vi.fn(async(url:unknown,_init?:RequestInit)=>Response.json(isList(url)?list:{...detail,canAdminister:true,selected:snapshot,snapshots:[snapshot]}));vi.stubGlobal('fetch',fetcher);
+ render(<ReleaseIntelligencePanel workspaceId="workspace" record={record}/>);
+ await screen.findByText('Scoped history.');
+ const groups=[
+  ['Release decisions',['Gate for record']],
+  ['Finding reviews',['Finding reviews for record']],
+  ['Stream settings',['Automatic capture controls','Production parity controls','Private monthly outcome controls']],
+  ['Access & assistance',['Grant agent for snapshot','Optional explanation controls']],
+ ] as const;
+ for(const [name,contents] of groups){
+  fireEvent.click(screen.getByRole('button',{name}));
+  expect(screen.getByRole('button',{name}).getAttribute('aria-pressed')).toBe('true');
+  for(const text of contents)expect(screen.getByText(text).closest('[hidden]')).toBeNull();
+ }
+ fireEvent.click(screen.getByRole('button',{name:'Comparison'}));
+ expect(screen.getByRole('button',{name:/Inspect upload record/})).toBeTruthy();
+ expect(fetcher.mock.calls.every(([,init])=>!(init as RequestInit|undefined)?.method)).toBe(true);
+});
+
+
+it('keeps independently authorized release controls reachable when stream discovery fails',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error:'History is unavailable.'},{status:503})));
+ render(<ReleaseIntelligencePanel workspaceId="workspace" record={record} decisionControls={<button>Current release governance</button>} supportingReview={<button>Inspect independent evidence</button>}/>);
+ await screen.findByRole('alert');
+ expect(screen.getByRole('button',{name:'Current release governance'})).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Inspect independent evidence'})).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Gate for record',hidden:true})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Create stream and record release',hidden:true})).toBeNull();
 });

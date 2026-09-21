@@ -22,3 +22,39 @@
 
 /* Native option text must not impose an intrinsic minimum on a form track. */
 .ns-intelligence :is(select,textarea,input:not([type=checkbox]):not([type=radio])){min-width:0;width:100%;box-sizing:border-box}
+
+/* The history controls share the release-detail scale and surfaces. */
+.release-assurance-slot .ns-intelligence{margin-top:28px;padding:24px 0 0;border:0;border-top:1px solid #ffffff10;border-radius:0;background:transparent}
+.release-assurance-slot .ns-intelligence h2{font-size:18px;font-weight:550;letter-spacing:-.3px}
+.release-assurance-slot .ns-intelligence h3{font-size:14px}
+.release-assurance-slot .ns-intelligence p,.release-assurance-slot .ns-intelligence dd{font-size:12px;line-height:1.65}
+.release-assurance-slot .ns-intelligence__eyebrow{font-size:10px!important;letter-spacing:.12em}
+.release-assurance-slot .ns-intelligence__badge{font-size:10px;padding:4px 8px;border-radius:4px;border-color:#ffffff14}
+.release-assurance-slot .ns-intelligence :is(button,input,select,textarea){font-size:12px;border-color:#ffffff18;border-radius:6px;background:#09090b;min-height:36px;padding:8px 12px}
+.release-assurance-slot .ns-intelligence summary{font-size:12px}
+.release-assurance-slot .ns-intelligence__facts{gap:20px;margin:18px 0}
+.journey-history-tools{margin-top:0}.journey-history-tools>.release-assurance-slot{margin-top:0}
+
+/* Mock 43: one workspace for history, with a quiet rail for its five jobs. */
+.release-assurance-slot .ns-intelligence{margin-top:0;padding-top:0;border-top:0}
+.ns-intelligence__workspace{display:grid;grid-template-columns:190px minmax(0,1fr);gap:28px;margin-top:24px;border-top:1px solid #ffffff10;padding-top:24px}
+.ns-intelligence__toolnav{display:flex;flex-direction:column;gap:4px;align-self:start;min-width:0}
+.release-assurance-slot .ns-intelligence__toolnav button{display:flex;align-items:center;gap:10px;border:0;border-radius:6px;background:transparent;color:var(--color-mute);padding:11px 12px;text-align:left;font-size:12px;min-height:42px}
+.release-assurance-slot .ns-intelligence__toolnav button svg{flex-shrink:0}
+.release-assurance-slot .ns-intelligence__toolnav button[aria-pressed=true]{background:#171719;color:var(--color-snow)}
+.release-assurance-slot .ns-intelligence__toolnav button:hover:not([aria-pressed=true]){background:transparent;color:var(--color-snow)}
+.release-assurance-slot .ns-intelligence__toolnav p{font-size:11px;line-height:1.6;margin:15px 12px;color:var(--color-mute)}
+.ns-intelligence__toolcontent{min-width:0;border-left:1px solid #ffffff10;padding-left:28px}
+.ns-intelligence__toolcontent>section[hidden]{display:none!important}
+.ns-intelligence .ns-intelligence__toolcontent .ns-intelligence__toolgroup{margin:0;padding:0;border:0;border-radius:0;background:transparent}
+.ns-intelligence .ns-intelligence__toolcontent .ns-intelligence__toolgroup>h4{font-size:15px;letter-spacing:-.2px}
+.ns-intelligence .ns-intelligence__toolcontent .ns-intelligence__toolgroup>p{margin:8px 0 22px}
+.ns-intelligence__toolcontent .ns-intelligence__ci{border-top:1px solid #ffffff10;padding-top:18px;margin-top:20px}
+.ns-intelligence__toolcontent .ns-intelligence__ci code{background:#111113;border-radius:6px;padding:12px}
+.ns-intelligence__create{margin:20px 0;padding:20px;background:#111113;border-radius:7px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.ns-intelligence__create>p,.ns-intelligence__create>label:last-of-type{grid-column:1/-1}.ns-intelligence__create>button{justify-self:start;margin-top:10px}
+.ns-intelligence__new-stream{margin:4px 0 12px}.ns-intelligence__empty{padding:12px 0}
+.ns-intelligence__setup{border-bottom:1px solid #ffffff10;margin-bottom:24px;padding-bottom:24px}
+.ns-intelligence__history button{border-color:#ffffff10;background:#111113}
+@media(max-width:900px){.ns-intelligence__workspace{grid-template-columns:160px minmax(0,1fr);gap:18px}.ns-intelligence__toolcontent{padding-left:18px}}
+@media(max-width:680px){.ns-intelligence__workspace{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:16px}.ns-intelligence__toolnav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.ns-intelligence__toolnav>p{grid-column:1/-1}.ns-intelligence__toolcontent{border-left:0;padding-left:0}.ns-intelligence__create{grid-template-columns:minmax(0,1fr)}}

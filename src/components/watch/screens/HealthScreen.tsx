@@ -62,6 +62,8 @@ export function HealthScreen() {
     testError,
     testingInstallId,
   } = useWatchScreenContext();
+  const testRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{if(testRequest.current){testRequest.current.abort();testRequest.current=null;setTestingInstallId(null);}},[activeInstallId,route.view,setTestingInstallId]);
   const failureRef = useRef<HTMLParagraphElement>(null);
   const initiatingFocus = useRef<Element | null>(null);
   useEffect(() => {
@@ -74,6 +76,8 @@ export function HealthScreen() {
   const usage = fairUseStat(fairUse);
 
   async function testInstall(installId: number) {
+    if(previewing||testRequest.current)return;
+    const controller=new AbortController();testRequest.current=controller;
     initiatingFocus.current = document.activeElement;
     setTestError(null);
     setTestingInstallId(installId);
@@ -81,12 +85,14 @@ export function HealthScreen() {
       const response = await fetch(`/api/installations/${installId}/test`, {
         method: "POST",
         credentials: "include",
+        signal:controller.signal,
       });
       const body = (await response.json()) as {
         error?: string;
         inventedIncident?: boolean;
         test?: PermissionTest;
       };
+      if(controller.signal.aborted)return;
       if (!response.ok || !body.test || body.inventedIncident) {
         throw new Error(body.error ?? "Could not test this install.");
       }
@@ -110,9 +116,10 @@ export function HealthScreen() {
         };
       });
     } catch (error) {
-      setTestError(error instanceof Error ? error.message : "Could not test this install.");
+      if(!controller.signal.aborted)setTestError(error instanceof Error ? error.message : "Could not test this install.");
     } finally {
-      setTestingInstallId(null);
+      if(testRequest.current===controller)testRequest.current=null;
+      if(!controller.signal.aborted)setTestingInstallId(null);
     }
   }
 
@@ -123,7 +130,7 @@ export function HealthScreen() {
       {!previewing&&fairUse?.exhausted?<p className="journey-admin-notice text-danger">{FAIR_USE_EXHAUSTED}</p>:!previewing&&fairUse?.warning?<p className="journey-admin-notice">{FAIR_USE_WARNING}</p>:null}
       {previewing?<p className="journey-admin-notice">Preview cannot reach GitHub. No invented incident.</p>:visibleInstalls.length===0?<div className="watch-empty">Nothing on this install yet. Health fills in after the GitHub app can see a repo.</div>:<div className="journey-admin-table"><table aria-label="Connection health"><thead><tr><th>Connection</th><th>Access</th><th>Last event</th><th>Action</th></tr></thead><tbody>{visibleInstalls.map(install=>{
         const test=install.lastPermissionTest,permission=permissionStat(test),delivery=webhookStat(githubPaused,test);
-        return <tr key={install.id}><td><div className="journey-admin-entity"><span className="journey-admin-icon"><GitBranch size={18} aria-hidden="true"/></span><div><strong>GitHub · {install.account_login}</strong><small>Repository access</small></div></div></td><td><span className={permission.tone}>{githubPaused?'Suspended':!test?'Not tested':test.administrationGranted?'Review permissions':test.ok?'Available':'Check failed'}</span><small>{permission.note}</small>{test?<small>{test.detail}</small>:null}{test?.pendingAccepts&&test.pendingAccepts.length>0&&test.installUrl?<a href={test.installUrl} target="_blank" rel="noreferrer" className="journey-admin-link">Accept requested permissions</a>:null}</td><td>{test?.lastDelivery?<><span className={delivery.tone}>{test.lastDelivery.status}</span><small>{delivery.note}</small></>:<span>No delivery recorded</span>}{test?<small>Tested {new Date(test.testedAt).toLocaleString()}</small>:null}</td><td><Button type="button" size="sm" variant="outline" disabled={testingInstallId===install.id} onClick={()=>void testInstall(install.id)}>{testingInstallId===install.id?'Testing…':'Test install'}</Button></td></tr>;
+        return <tr key={install.id}><td><div className="journey-admin-entity"><span className="journey-admin-icon"><GitBranch size={18} aria-hidden="true"/></span><div><strong>GitHub · {install.account_login}</strong><small>Repository access</small></div></div></td><td><span className={permission.tone}>{githubPaused?'Suspended':!test?'Not tested':test.administrationGranted?'Review permissions':test.ok?'Available':'Check failed'}</span><small>{permission.note}</small>{test?<small>{test.detail}</small>:null}{test?.pendingAccepts&&test.pendingAccepts.length>0&&test.installUrl?<a href={test.installUrl} target="_blank" rel="noreferrer" className="journey-admin-link">Accept requested permissions</a>:null}</td><td>{test?.lastDelivery?<><span className={delivery.tone}>{test.lastDelivery.status}</span><small>{delivery.note}</small></>:<span>No delivery recorded</span>}{test?<small>Tested {new Date(test.testedAt).toLocaleString()}</small>:null}</td><td><Button type="button" size="sm" variant="outline" disabled={testingInstallId!=null} onClick={()=>void testInstall(install.id)}>{testingInstallId===install.id?'Testing…':'Test install'}</Button></td></tr>;
       })}</tbody></table></div>}
       {testError?<p ref={failureRef} tabIndex={-1} role="alert" className="journey-admin-notice text-danger">{testError}</p>:null}
       <section className="journey-admin-section"><h2>What these states mean</h2><div className="journey-admin-columns"><div><h3>Connected</h3><p>Access is configured. This does not mean a release has been inspected. Test install reports whether Members read (collaborator alerts) is available. It does not ask for Administration.</p></div><div><h3>Checked</h3><p>A recorded check exists. Open its result to see scope, findings and limitations. If Administration was granted, remove it: it should not be enabled. The optional permission request links to GitHub’s Accept page.</p></div></div></section>

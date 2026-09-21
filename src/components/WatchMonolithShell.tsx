@@ -1,4 +1,3 @@
-import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
 import './watch/design/journey-shell.css';
@@ -29,11 +28,11 @@ import {
   PackageSearch,
   PanelLeft,
   PanelLeftClose,
+  X,
   Scale,
   Search,
   ShieldCheck,
   Users,
-  X,
 } from "lucide-react";
 import {
   VIEW_TITLE,
@@ -190,9 +189,16 @@ export function WatchMonolithShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!navOpen || typeof window.matchMedia !== 'function') return;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) setNavOpen(false); };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, [navOpen]);
   const workspaceId=new URLSearchParams(search).get('workspace');
 
-  const [plansOpen, setPlansOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const routeContent = useRef<HTMLDivElement|null>(null);
   const previousView = useRef(route.view);
@@ -206,8 +212,7 @@ export function WatchMonolithShell({
   useEffect(() => {
     if (previousView.current === route.view || navOpen) return;
     previousView.current = route.view;
-    // Query-only changes retain the selected control. Dialogs own their focus.
-    if (plansOpen) return;
+    // Query-only changes retain the selected control.
     let observer:MutationObserver|undefined;
     const focusPage = () => {
       routeContent.current?.focus({preventScroll:true});
@@ -226,7 +231,7 @@ export function WatchMonolithShell({
       observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-modal']});
     });
     return () => { cancelAnimationFrame(frame); observer?.disconnect(); };
-  }, [route.view, navOpen, plansOpen]);
+  }, [route.view, navOpen]);
   const hrefFor = (view: WatchView, tab?: AlertTab) => {
     const params=new URLSearchParams(search);
     if(view==='workspaces')params.delete('workspaceTab');
@@ -264,7 +269,7 @@ export function WatchMonolithShell({
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>
       <div className={cn("watch-rail-head", opts.collapsed ? "px-1.5" : "px-3")}>
-        <div className={cn("flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
+        <div className={cn("watch-rail-brand flex items-center gap-2", opts.collapsed ? "justify-center" : "justify-between")}>
           {opts.collapsed && opts.showToggle ? (
             <button
               type="button"
@@ -304,6 +309,7 @@ export function WatchMonolithShell({
               <PanelLeftClose className="size-4" aria-hidden />
             </button>
           ) : null}
+          {!opts.showToggle?<button type="button" className="watch-rail-close" aria-label="Close watch navigation" onClick={closeNav}><X size={20} aria-hidden/></button>:null}
         </div>
         {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
@@ -403,9 +409,9 @@ export function WatchMonolithShell({
 
       <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>
         <a href={billingHref} onClick={event=>{go(event,billingHref);closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CreditCard className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Plan &amp; billing</span></a>
-        <a href="/docs" onClick={event=>go(event,'/docs')} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
+        <a href="/docs" onClick={event=>{go(event,'/docs');closeNav();}} className={cn('flex items-center gap-3 py-2 text-[13px] text-mute hover:text-snow',opts.collapsed?'justify-center':'px-3')}><CircleHelp className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Help &amp; guides</span></a>
         <AccountMenu as="div" className="relative mt-2">
-          <MenuButton aria-label={`Account menu for ${login}`} className={cn('flex w-full items-center rounded-md py-2 text-left text-[13px] text-snow hover:bg-white/[.04]',opts.collapsed?'justify-center':'gap-3 px-3')}>
+          <MenuButton aria-label={`Account menu for ${login}`} className={cn('flex w-full items-center rounded-md py-2 text-left text-[13px] text-snow hover:text-white',opts.collapsed?'justify-center':'gap-3 px-3')}>
             <span aria-hidden className="grid size-[19px] shrink-0 place-items-center rounded-full bg-white/10 text-[8px]">{login.slice(0,2).toUpperCase()}</span>
             <span className={cn('min-w-0 flex-1',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span>
             {!opts.collapsed?<ChevronUp className="size-3.5 shrink-0 text-dim" aria-hidden/>:null}
@@ -431,10 +437,10 @@ export function WatchMonolithShell({
         {rail({ collapsed, showToggle: true })}
       </aside>
 
-      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="relative z-40 lg:hidden">
+      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel className="watch-rail flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>
@@ -448,6 +454,8 @@ export function WatchMonolithShell({
             type="button"
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-md text-snow hover:bg-white/5 lg:hidden"
             onClick={() => setNavOpen(true)}
+            aria-expanded={navOpen}
+            aria-controls="watch-mobile-navigation"
           >
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
@@ -480,7 +488,7 @@ export function WatchMonolithShell({
             <span className="hidden sm:inline">New scan</span>
           </Button>
           {ended ? (
-            <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => setPlansOpen(true)}>
+            <Button type="button" size="sm" className="hidden sm:inline-flex" onClick={() => navigate(billingHref)}>
               See plans
             </Button>
           ) : null}
@@ -503,35 +511,10 @@ export function WatchMonolithShell({
             "[&_.watch-guidance]:hidden",
           )}
         >
-          {settingsActive ? <nav aria-label="Settings sections" className="watch-settings-navigation">{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav> : null}
-          {children}
+          {settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}
         </div>
         </div>
       </div>
-      <Dialog open={plansOpen} onClose={setPlansOpen} className="watch-design-surface relative z-50">
-        <QuietModalSurface>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-dim">Hosted coverage</p>
-                <DialogTitle className="mt-1 font-display text-xl text-snow">Keep the desk looking.</DialogTitle>
-              </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setPlansOpen(false)} aria-label="Close plans"><X className="size-4" aria-hidden /></Button>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-white/8 bg-panel p-4">
-                <p className="text-sm text-snow">Solo · $29</p>
-                <p className="mt-2 text-xs leading-relaxed text-mute">One admin, email destination, and hosted Watch coverage.</p>
-              </div>
-              <div className="rounded-lg border border-white/8 bg-panel p-4">
-                <p className="text-sm text-snow">Team · $99</p>
-                <p className="mt-2 text-xs leading-relaxed text-mute">Roles, timeline, audit, routes, release governance, and signing policy.</p>
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button type="button" onClick={() => navigate("/pricing")}>Compare plans</Button>
-            </div>
-          </QuietModalSurface>
-      </Dialog>
     </div>
   );
 }

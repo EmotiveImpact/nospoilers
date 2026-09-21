@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {it,expect,vi,afterEach} from 'vitest';
-import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {act,render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceTokens} from '../src/components/watch/WorkspaceTokens';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const token={id:1,name:'CI',token_prefix:'nsp_prefix',revoked_at:null,last_used_at:null};
@@ -106,4 +106,28 @@ it('starts with saved tokens and opens creation without minting a credential',as
  expect(screen.getByRole('textbox',{name:'Token name'})).toBeTruthy();
  expect(screen.getByRole('tab',{name:'Create token'}).getAttribute('aria-selected')).toBe('true');
  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('withholds stale management controls while rechecking credential authority',async()=>{
+ let reads=0,finish!:(value:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>{
+  if(init?.method)return Response.json({error:'Connection lost'},{status:503});
+  reads+=1;return reads===1?Response.json({tokens:[token],canManage:true,nextCursor:null}):new Promise<Response>(resolve=>{finish=resolve;});
+ }));
+ render(<WorkspaceTokens workspaceId="workspace"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Revoke CI'}));
+ fireEvent.change(screen.getByLabelText('Type CI to confirm'),{target:{value:'CI'}});
+ fireEvent.click(screen.getByRole('button',{name:'Confirm revocation'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Reload credentials'}));
+ expect(screen.queryByRole('button',{name:'Revoke CI'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Create token'})).toBeNull();
+ expect(screen.queryByRole('form',{name:'Revoke scan token'})).toBeNull();
+ await act(async()=>finish(Response.json({tokens:[token],canManage:false,nextCursor:null})));
+ expect(await screen.findByText('Only administrators of an active workspace can create or revoke tokens.')).toBeTruthy();
+});
+it('rejects incomplete credential lists rather than exposing unknown management authority',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({canManage:true})));
+ render(<WorkspaceTokens workspaceId="workspace"/>);
+ expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Credential history was incomplete'));
+ expect(screen.queryByRole('button',{name:'Create token'})).toBeNull();
 });

@@ -240,3 +240,107 @@ it('includes billing in workspace tabs and exposes administration only after Man
  expect(screen.getByRole('button',{name:'Review deletion'})).toBeTruthy();
  expect(screen.getByRole('button',{name:'Archive'})).toBeTruthy();
 });
+
+const clientOrganization={id:'o2',name:'Client account',role:'owner',workspace_limit:3,billing_available:true};
+const multiOrgRows=[workspace,{...workspace,id:'w2',name:'Client workspace',organization_id:'o2'}];
+const multiOrgs=[{...organizations[0],billing_available:true},clientOrganization];
+function multiOrgFetcher(){
+ return vi.fn(async(url:string,_init?:RequestInit)=>{
+  if(url.startsWith('/api/organizations/')){
+   const org=multiOrgs.find(row=>url.includes(`/${row.id}/`))!;
+   return Response.json({organization:org,members:[{user_id:`user-${org.id}`,login:`owner-${org.id}`,role:'owner'}],events:[]});
+  }
+  if(url.startsWith('/api/billing?'))return Response.json({stripe:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}});
+  return Response.json({workspaces:multiOrgRows,organizations:multiOrgs,invites:[]});
+ });
+}
+
+it('opens only the selected workspace organisation and changes its context explicitly',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w2&workspaceTab=organisation');
+ const fetcher=multiOrgFetcher();vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceManagement/>);
+ expect(await screen.findByRole('region',{name:'Client account organisation administration'})).toBeTruthy();
+ expect(screen.queryByRole('region',{name:'Account organisation administration'})).toBeNull();
+ expect(screen.getAllByRole('tablist')).toHaveLength(1);
+ await userEvent.click(screen.getByRole('combobox',{name:'Organisation'}));
+ await userEvent.click(screen.getByRole('option',{name:'Account',exact:true}));
+ expect(await screen.findByRole('region',{name:'Account organisation administration'})).toBeTruthy();
+ expect(screen.queryByRole('region',{name:'Client account organisation administration'})).toBeNull();
+ expect(fetcher.mock.calls.every(([,init])=>!init?.method)).toBe(true);
+});
+
+it('opens one billing context for the current workspace and carries an explicit organisation choice across tabs',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w2&workspaceTab=billing');
+ const fetcher=multiOrgFetcher();vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceManagement/>);
+ await screen.findByRole('region',{name:'Organisation billing'});
+ expect(screen.getAllByRole('region',{name:'Organisation billing'})).toHaveLength(1);
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o2')).toBe(true);
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o1')).toBe(false);
+ await userEvent.click(screen.getByRole('combobox',{name:'Organisation'}));
+ await userEvent.click(screen.getByRole('option',{name:'Account',exact:true}));
+ await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o1')).toBe(true));
+ await userEvent.click(screen.getByRole('tab',{name:'Organisation',exact:true}));
+ expect(await screen.findByRole('region',{name:'Account organisation administration'})).toBeTruthy();
+ await userEvent.click(screen.getByRole('button',{name:'Billing',exact:true}));
+ expect(screen.getByRole('tab',{name:'Plan & billing'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(screen.getAllByRole('region',{name:'Organisation billing'})).toHaveLength(1);
+ expect(fetcher.mock.calls.every(([,init])=>!init?.method)).toBe(true);
+});
+
+it('defaults workspace creation to the current client organisation rather than the first account',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w2&workspaceTab=create');
+ const fetcher=multiOrgFetcher();vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceManagement/>);
+ const choice=await screen.findByRole('combobox',{name:'Organisation'});
+ expect(choice.textContent).toContain('Client account');
+ expect(fetcher.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false);
+ fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Client staging'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create workspace'}));
+ await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces',expect.objectContaining({method:'POST',body:JSON.stringify({organizationId:'o2',name:'Client staging'})})));
+});
+
+it('does not substitute another owned organisation billing when the current client subscription is owner-managed',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w2&workspaceTab=billing');
+ const fetcher=vi.fn(async(url:string,_init?:RequestInit)=>url.startsWith('/api/billing?')?Response.json({stripe:false,billing:{plan:'trial',trialEndsAt:null,status:null,periodEnd:null,hasCustomer:false,subscribed:false}}):Response.json({workspaces:multiOrgRows,organizations:[multiOrgs[0],{...clientOrganization,billing_available:false}],invites:[]}));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+ await screen.findByRole('heading',{name:'Subscription managed by your organisation owner'});
+ expect(screen.queryByRole('region',{name:'Organisation billing'})).toBeNull();
+ expect(fetcher.mock.calls.some(([url])=>url.startsWith('/api/billing?'))).toBe(false);
+ const selector=screen.getByRole('combobox',{name:'Organisation'});
+ expect(selector.textContent).not.toContain('Account');
+ await userEvent.click(selector);
+ await userEvent.click(screen.getByRole('option',{name:'Account',exact:true}));
+ expect(await screen.findByRole('region',{name:'Organisation billing'})).toBeTruthy();
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o1')).toBe(true);
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o2')).toBe(false);
+ expect(fetcher.mock.calls.every(([,init])=>!init?.method)).toBe(true);
+});
+
+
+it('returns to an explicitly authorised billing organisation and never substitutes one for an invalid return',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w1&workspaceTab=billing&billingOrganization=o2&billing=returned');
+ const fetcher=multiOrgFetcher();vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceManagement/>);
+ await screen.findByRole('region',{name:'Organisation billing'});
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o2')).toBe(true);
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o1')).toBe(false);
+ await userEvent.click(screen.getByRole('combobox',{name:'Organisation'}));
+ await userEvent.click(screen.getByRole('option',{name:'Account',exact:true}));
+ await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=o1')).toBe(true));
+ act(()=>{window.history.replaceState({},'','/watch/workspaces?workspace=w1&workspaceTab=billing&billingOrganization=unavailable');window.dispatchEvent(new PopStateEvent('popstate'));});
+ expect(screen.queryByRole('region',{name:'Organisation billing'})).toBeNull();
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/billing?organizationId=unavailable')).toBe(false);
+});
+
+it('omits unrelated workspace context when opening another managed organisation billing',async()=>{
+ window.history.replaceState({},'','/watch/workspaces?workspace=w1&workspaceTab=billing&billingOrganization=o2');
+ const fetcher=vi.fn(async(url:string,init?:RequestInit)=>{
+  if(init?.method)return Response.json({error:'Portal unavailable.'},{status:502});
+  if(url.startsWith('/api/billing?'))return Response.json({stripe:true,billing:{plan:'team',trialEndsAt:null,status:'active',periodEnd:null,hasCustomer:true,subscribed:true}});
+  return Response.json({workspaces:[workspace],organizations:multiOrgs,invites:[]});
+ });vi.stubGlobal('fetch',fetcher);render(<WorkspaceManagement/>);
+ await userEvent.click(await screen.findByRole('button',{name:'Manage subscription'}));
+ expect(fetcher).toHaveBeenCalledWith('/api/billing/portal',expect.objectContaining({body:JSON.stringify({organizationId:'o2',plan:'solo',interval:'month'})}));
+});

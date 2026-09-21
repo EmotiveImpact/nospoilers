@@ -13,7 +13,7 @@
 .watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article) h2{font-family:var(--font-sans);font-size:16px;font-weight:500;line-height:1.5}
 .watch-desk :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-radius:5px;font-family:var(--font-sans);font-size:13px}
 .watch-desk :is(.uploaded-list button,.upload-finding-list>button){background:var(--color-panel);border-color:var(--color-line)}
-.watch-desk :is(.uploaded-list button,.upload-finding-list>button):is(:hover,[aria-pressed=true]){background:#ffffff05}
+.watch-desk :is(.uploaded-list button,.upload-finding-list>button)[aria-pressed=true]{background:#ffffff05}
 .watch-desk :is(.upload-evidence-panel h3,.workspace-cards h2,.workspace-create h2){font-family:var(--font-sans);font-weight:500}
 .watch-desk :is(.uploaded-findings>div,.uploaded-findings>details){border-color:var(--color-line)}
 .watch-desk .upload-evidence-panel{padding:24px}.watch-desk .upload-evidence-panel h3{font-size:23px}

@@ -16,7 +16,7 @@ export function WorkspaceCoverageEmpty({workspace}:{workspace:ProductWorkspace})
    <p>Connect the places you ship from. Each source keeps its own release evidence and monitoring history.</p>
   </div>
   <WorkspaceCoverageHealth workspaceId={workspace.id} search={window.location.search}/>
-  <div className="coverage-empty-window">
+  <div className="coverage-empty-window coverage-source-stack">
    <section className="coverage-empty-card" aria-labelledby="coverage-github-title">
 
     <h2 id="coverage-github-title">Connect GitHub</h2>

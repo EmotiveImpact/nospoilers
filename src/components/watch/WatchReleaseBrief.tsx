@@ -1,34 +1,22 @@
 import './design/release-journey.css';
-import {ReleaseDecisionPanel} from "./design/ReleaseDecisionPanel";
+import {ReleaseWorkspaceSummary} from "./ReleaseWorkspaceSummary";
+import "./connected-release-workspace.css";
 import { Button } from "@/components/ui/button";
 import {HostedReleaseEvidence} from './HostedReleaseEvidence';
+import {ReleasePassportDownload} from './ReleaseAssurancePanel';
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
-import { cn } from "@/lib/utils";
 import { buildReleaseBriefModel, releaseFamily } from "@/watch/release-brief";
-import type { ReleaseProofStep } from "@/watch/release-brief";
 import type { ReleaseRevision } from "@/watch/types";
 import {
-  AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
-  CircleDashed,
-  Clock3,
   Download,
   ExternalLink,
-  FileCheck2,
   GitCommitHorizontal,
   Link2,
-  ShieldCheck,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type {Assessment} from '@/assurance/types';
-
-function StepIcon({ tone }: { tone: ReleaseProofStep["tone"] }) {
-  if (tone === "clean") return <CheckCircle2 className="size-4" aria-hidden />;
-  if (tone === "blocked") return <AlertTriangle className="size-4" aria-hidden />;
-  if (tone === "waiting") return <Clock3 className="size-4" aria-hidden />;
-  return <CircleDashed className="size-4" aria-hidden />;
-}
+import type {ScanReport} from '@/scanner/types';
 
 function receiptStatusLabel(release: ReleaseRevision) {
   if (release.receiptStatus === "passed") return "Scan passed";
@@ -83,13 +71,14 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
     watchPath,
   } = useWatchScreenContext();
   const [section,setSection]=useState('findings');
+  const [recordedReport,setRecordedReport]=useState<{releaseId:number;report:ScanReport|null}|null>(null);
+  const onReport=useCallback((report:ScanReport|null)=>setRecordedReport({releaseId:release.id,report}),[release.id]);
+  const findingCount=recordedReport?.releaseId===release.id?recordedReport.report?.findings.length:undefined;
+  const revealSection=useCallback((next:string)=>{setSection(next==='controls'?'history':next);if(next==='controls')document.getElementById(`history-nav-release-${release.id}-decisions`)?.click();},[release.id]);
+  const revealFix=useCallback(()=>{setSection('history');document.getElementById(`history-nav-release-${release.id}-remediation`)?.click();},[release.id]);
   const [observed,setObserved]=useState<{record:ReleaseRevision;assessment:Assessment|null}|null>(null);
   const onAssessment=useCallback((assessment:Assessment|null)=>setObserved({record:release,assessment}),[release]);
   const brief = useMemo(() => buildReleaseBriefModel({...release,readiness:observed?.record===release?observed.assessment??undefined:release.readiness}), [release,observed]);
-  const [selectedStepKey, setSelectedStepKey] = useState<ReleaseProofStep["key"]>(
-    brief.steps.find((step) => step.tone === "blocked")?.key ?? brief.steps[0].key,
-  );
-  const selectedStep = brief.steps.find((step) => step.key === selectedStepKey) ?? brief.steps[0];
   const family = releaseFamily(release.coordinate);
   const history = releases.filter((row) => releaseFamily(row.coordinate) === family).slice(0, 5);
 
@@ -118,7 +107,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
   };
 
   return (
-    <section className="watch-release-brief journey-hosted-brief" aria-labelledby="release-brief-title">
+    <section className="watch-release-brief journey-hosted-brief release-workspace" aria-labelledby="release-brief-title">
       <button
         type="button"
         className="watch-release-back"
@@ -138,17 +127,19 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             {release.createdAt ? ` · ${new Date(release.createdAt).toLocaleString()}` : ""}
           </p>
         </div>
-        <Button onClick={()=>setSection('history')}>Verify a fix</Button>
+        <div className="connected-release-heading-actions"><Button variant="outline" onClick={downloadReceipt} disabled={downloadingReceiptId===release.receiptId}><Download className="size-4" aria-hidden/>{downloadingReceiptId===release.receiptId?'Saving…':'Receipt JSON'}</Button><Button onClick={revealFix}>Verify a fix</Button></div>
       </header>
 
       {receiptError ? <p className="watch-release-error">{receiptError}</p> : null}
       {deliveryError ? <p className="watch-release-error">{deliveryError}</p> : null}
 
-      <h2 className={`journey-result-status is-${brief.status}`}>{brief.title}</h2>
-      <div className="journey-result-metadata"><span>{receiptStatusLabel(release)}</span><span>{release.artifactBytes!=null?formatSealedBytes(release.artifactBytes):'Size not recorded'}</span><span>Production evidence is separate</span></div>
-      <div className="journey-release-tabs" role="tablist" aria-label="Release evidence sections" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>{['findings','files','history','proof','controls'].map(tab=><button role="tab" id={`release-${release.id}-${tab}`} aria-controls={`release-${release.id}-section`} aria-selected={section===tab} tabIndex={section===tab?0:-1} key={tab} onClick={()=>setSection(tab)}>{tab==='controls'?'Release controls':tab.charAt(0).toUpperCase()+tab.slice(1)}</button>)}</div>
+      <ReleaseWorkspaceSummary findingCount={findingCount} title={brief.title} detail={brief.detail} tone={brief.status}
+        scope="Artifact, source identity, delivery and approval are independent evidence. A saved scan alone does not establish release readiness."
+        states={brief.steps.map(step=>({key:step.key,label:step.key==='artifact'?'Artifact inspection':step.key==='identity'?'Source identity':step.key==='delivery'?'Production delivery':'Release approval',status:step.status==='Not configured'?(step.key==='identity'?'No attestation recorded':step.key==='delivery'?'Not observed':step.key==='governance'?'No decision recorded':step.status):step.status,detail:step.evidence,tone:step.tone}))}/>
+      <div className="journey-release-tabs" role="tablist" aria-label="Release evidence sections" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>{['findings','files','history','proof'].map(tab=><button role="tab" id={`release-${release.id}-${tab}`} aria-controls={`release-${release.id}-section`} aria-selected={section===tab} tabIndex={section===tab?0:-1} key={tab} onClick={()=>setSection(tab)}>{tab.charAt(0).toUpperCase()+tab.slice(1)}{tab==='findings'&&findingCount!==undefined?<span className="connected-tab-count">{findingCount}</span>:null}</button>)}</div>
       <div role="tabpanel" id={`release-${release.id}-section`} aria-labelledby={`release-${release.id}-${section}`}>
-      <div hidden={section!=='proof'}>        <Button
+      <div hidden={section!=='proof'}>
+<div className="connected-proof-grid"><div className="connected-receipt-facts"><h2>Signed scan record</h2><p>The original record binds the saved outcome to these exact bytes. A valid signature does not mean the artifact passed.</p><dl><div><dt>Receipt status</dt><dd>{receiptStatusLabel(release)}</dd></div><div><dt>Media type</dt><dd>{release.mediaType??'Not recorded'}</dd></div><div><dt>Sealed size</dt><dd>{release.artifactBytes!=null?formatSealedBytes(release.artifactBytes):'Not recorded'}</dd></div><div className="connected-full-fact"><dt>Artifact SHA-256</dt><dd><code>{release.artifactSha256}</code></dd></div></dl>        <Button
           type="button"
           variant="outline"
           onClick={downloadReceipt}
@@ -156,70 +147,46 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
         >
           <Download className="size-4" aria-hidden />
           {downloadingReceiptId === release.receiptId ? "Saving…" : "Receipt JSON"}
-        </Button>
-<div className="watch-release-decision-grid">
-        <ReleaseDecisionPanel tone={brief.status} icon={brief.blocked ? <AlertTriangle /> : brief.ready ? <ShieldCheck /> : <Clock3 />} kicker="Release decision" title={brief.title} description={brief.detail} summary={<div className="watch-release-score" aria-label={brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks} before-deployment evidence checks passed`:"No verified release assessment"}>
-            <FileCheck2 className="size-7" aria-hidden />
-            <strong>{brief.applicableChecks?`${brief.cleanChecks} of ${brief.applicableChecks}`:"—"}</strong>
-            <span>{brief.applicableChecks?"recorded checks passed":"assessment unavailable"}</span>
-          </div>}>
-            <Button
-              type="button"
-              onClick={() =>
-                document.getElementById(`release-proof-${selectedStep.key}`)?.focus()
-              }
-            >
-              {brief.blocked ? "Review blocking evidence" : "Review release proof"}
-            </Button>
-        </ReleaseDecisionPanel>
-
-        <aside className="watch-release-evidence-summary">
-          <div className="watch-release-card-title">
-            <span className="watch-kicker">Evidence</span>
-            <span className={cn("watch-release-state", `is-${brief.status}`)}>{releaseStatusLabel(release)}</span>
-          </div>
-          <dl>
-            <div><dt>Artifact digest</dt><dd>{release.artifactSha256.slice(0, 16)}…</dd></div>
-            <div><dt>Media type</dt><dd>{release.mediaType ?? "Not recorded"}</dd></div>
-            <div><dt>Sealed size</dt><dd>{release.artifactBytes != null ? formatSealedBytes(release.artifactBytes) : "Not recorded"}</dd></div>
-            <div><dt>Receipt status</dt><dd>{receiptStatusLabel(release)}</dd></div>
-          </dl>
-        </aside>
-      </div>
-
-      <section className="watch-release-proof" aria-labelledby="release-proof-heading">
-        <div className="watch-release-section-heading">
-          <div><span className="watch-kicker">Release proof</span><h2 id="release-proof-heading">Evidence and observations</h2></div>
-          <p>Select a check to inspect its real evidence.</p>
+        </Button><Button variant="outline" onClick={()=>{const current=new URLSearchParams(search);const next=new URLSearchParams({mode:'receipt'});for(const key of ['workspace','install']){const value=current.get(key);if(value)next.set(key,value);}navigate(`${watchPath('scan')}?${next}`);}}>Verify a downloaded record</Button><section className="connected-private-summary"><h3>Unsigned private summary</h3><p>An assurance passport summarizes the review. The original signed scan record remains the evidence of record.</p><ReleasePassportDownload kind="release" recordId={release.id}/></section></div>
+<div className="connected-public-proof">
+            <div className="watch-release-operation-card">
+              <ExternalLink className="size-5" aria-hidden />
+              <h3>Public verification</h3>
+              <p>{release.publicPage?.enabled ? `Published at ${release.publicPage.path}` : "Private · no active verification page for this receipt."}</p>
+              <p>Review the confirmation before publishing. Delivery matching is on demand, not scheduled verification.</p>
+              {canPublishVerify?<ContextButton
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => beginConfirm({ kind: release.publicPage?.enabled ? "release-unpublish" : "release-publish", id: release.id, expected: release.coordinate })}
+              >
+                {release.publicPage?.enabled ? "Unpublish verification" : "Publish verification"}
+              </ContextButton>:<p>Publishing controls are available to authorized workspace members.</p>}
+            </div>
+          </div></div>      </div><div hidden={section!=='history'}><section className="watch-release-history" aria-labelledby="release-history-heading">
+        <div className="watch-release-section-heading"><div><span className="watch-kicker">History</span><h2 id="release-history-heading">Recent source revisions</h2></div></div>
+        <div className="watch-release-history-table">
+          {history.map((row) => (
+            <button key={row.id} type="button" className={row.id === release.id ? "is-current" : undefined} onClick={() => navigate(watchHref(watchPath("releases"), search, { release: row.id }))}>
+              <span>{row.coordinate}</span><span>{row.sourceRevision ?? row.artifactSha256.slice(0, 12)}</span><span>{releaseStatusLabel(row)}</span><span>{new Date(row.createdAt).toLocaleDateString()}</span>
+            </button>
+          ))}
         </div>
-        <div className="watch-release-proof-layout">
-          <ol className="watch-release-proof-list">
-            {brief.steps.map((step, index) => (
-              <li key={step.key}>
-                <button
-                  id={`release-proof-${step.key}`}
-                  type="button"
-                  className={cn("watch-release-proof-row", selectedStep.key === step.key && "is-selected")}
-                  onClick={() => setSelectedStepKey(step.key)}
-                  aria-pressed={selectedStep.key === step.key}
-                >
-                  <span className="watch-release-proof-number">{index + 1}</span>
-                  <span className={cn("watch-release-proof-icon", `is-${step.tone}`)}><StepIcon tone={step.tone} /></span>
-                  <span className="watch-release-proof-copy"><strong>{step.label}</strong><small>{step.summary}</small></span>
-                  <span className={cn("watch-release-proof-status", `is-${step.tone}`)}>{step.status}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          <article className={cn("watch-release-proof-detail", `is-${selectedStep.tone}`)} aria-live="polite">
-            <span className="watch-kicker">{selectedStep.evidenceLabel}</span>
-            <h3>{selectedStep.label}: {selectedStep.status}</h3>
-            <p>{selectedStep.evidence}</p>
-            {selectedStep.key === "artifact" ? (
-              <div className="watch-release-proof-fact"><span>sha256</span><code>{release.artifactSha256}</code></div>
-            ) : null}
-            {selectedStep.key === "delivery" && (release.locations ?? []).length > 0 ? (
-              <ul className="watch-release-deliveries">
+      </section>
+      </div>        {confirmForm(
+          Boolean(
+            confirming &&
+              "id" in confirming &&
+              confirming.id === release.id &&
+              ["release-attest", "release-publish", "release-unpublish", "release-approve", "release-reject", "release-hold", "release-hold-release"].includes(confirming.kind),
+          ),
+        )}<HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search} activeSection={section} onReveal={revealSection} onReviewFix={revealFix} onAssessment={onAssessment} onReport={onReport} decisionControls={<section className="watch-release-operations" aria-labelledby="release-operations-heading">
+        <div className="watch-release-section-heading">
+          <div><span className="watch-kicker">Controls</span><h2 id="release-operations-heading">Release controls</h2></div>
+          <p>Actions remain scoped to this release.</p>
+        </div>
+        <div className="watch-release-operation-grid">
+          <section className="watch-release-operation-card"><h3>Production delivery</h3><p>{brief.steps.find(step=>step.key==='delivery')?.evidence}</p>{(release.locations??[]).length?(              <ul className="watch-release-deliveries">
                 {(release.locations ?? []).map((location) => (
                   <li key={location.id}>
                     <div><strong>{location.host}</strong><span>{location.lastStatus?.replace("_", " ") ?? "not checked"}</span></div>
@@ -252,18 +219,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
                     ) : null}
                   </li>
                 ))}
-              </ul>
-            ) : null}
-          </article>
-        </div>
-      </section>
-
-      </div><div hidden={section!=='controls'}><section className="watch-release-operations" aria-labelledby="release-operations-heading">
-        <div className="watch-release-section-heading">
-          <div><span className="watch-kicker">Controls</span><h2 id="release-operations-heading">Evidence and governance</h2></div>
-          <p>Actions remain scoped to this release.</p>
-        </div>
-        <div className="watch-release-operation-grid">
+              </ul>):<p>No production artifact URL is attached to this release.</p>}</section>
           {installAdmin ? (
             <form
               className="watch-release-operation-card"
@@ -294,6 +250,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
               <input
                 value={deliveryUrlByRelease[release.id] ?? ""}
                 onChange={(event) => setDeliveryUrlByRelease((current) => ({ ...current, [release.id]: event.target.value }))}
+                aria-label="Production artifact URL"
                 placeholder="https://cdn.example.com/app.tgz"
                 autoComplete="off"
                 spellCheck={false}
@@ -317,22 +274,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             ) : null}
           </div>
 
-          {canPublishVerify ? (
-            <div className="watch-release-operation-card">
-              <ExternalLink className="size-5" aria-hidden />
-              <h3>Public verification</h3>
-              <p>{release.publicPage?.enabled ? `Published at ${release.publicPage.path}` : "Publish a read-only verification page for this receipt."}</p>
-              <p>Solo may publish. Delivery matching is on demand, not scheduled CDN verification.</p>
-              <ContextButton
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => beginConfirm({ kind: release.publicPage?.enabled ? "release-unpublish" : "release-publish", id: release.id, expected: release.coordinate })}
-              >
-                {release.publicPage?.enabled ? "Unpublish verification" : "Publish verification"}
-              </ContextButton>
-            </div>
-          ) : null}
+
         </div>
 
         {canGovernReleases ? (
@@ -355,27 +297,8 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
             <p>Separation of duties means another admin must release an active legal hold.</p>
           </div>
         ) : null}
-        {confirmForm(
-          Boolean(
-            confirming &&
-              "id" in confirming &&
-              confirming.id === release.id &&
-              ["release-attest", "release-publish", "release-unpublish", "release-approve", "release-reject", "release-hold", "release-hold-release"].includes(confirming.kind),
-          ),
-        )}
-      </section>
 
-      </div><div hidden={section!=='history'}><section className="watch-release-history" aria-labelledby="release-history-heading">
-        <div className="watch-release-section-heading"><div><span className="watch-kicker">History</span><h2 id="release-history-heading">Recent revisions</h2></div></div>
-        <div className="watch-release-history-table">
-          {history.map((row) => (
-            <button key={row.id} type="button" className={row.id === release.id ? "is-current" : undefined} onClick={() => navigate(watchHref(watchPath("releases"), search, { release: row.id }))}>
-              <span>{row.coordinate}</span><span>{row.sourceRevision ?? row.artifactSha256.slice(0, 12)}</span><span>{releaseStatusLabel(row)}</span><span>{new Date(row.createdAt).toLocaleDateString()}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-      </div><HostedReleaseEvidence releaseId={release.id} receiptId={release.receiptId} search={search} activeSection={section} onReveal={setSection} onAssessment={onAssessment}/></div>
+      </section>}/></div>
     </section>
   );
 }

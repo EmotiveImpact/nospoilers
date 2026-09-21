@@ -165,6 +165,7 @@ export function AlertsScreen() {
                     })();
                   }}
                   onConnectSource={() => navigate(watchHref(watchPath("sources"), search))}
+                  onReviewReleases={() => navigate(watchHref(watchPath("releases"), search))}
                 />
               ) : null}
     </>

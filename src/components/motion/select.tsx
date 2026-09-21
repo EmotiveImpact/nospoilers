@@ -27,6 +27,7 @@ export function Select({ className, children, ...props }: SelectProps) {
 }
 
 export interface SelectTriggerProps {
+  id?: string;
   "aria-label"?: string;
   className?: string;
   children: ReactNode;

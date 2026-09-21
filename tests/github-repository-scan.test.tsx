@@ -52,7 +52,7 @@ it('uses clean scoped destinations and client navigation for ordinary recovery-l
  render(<GithubRepositoryScan installationId="7" search="?workspace=w&install=99&mode=receipt&upload=old&release=2&preview=3&configure=website&origin=https%3A%2F%2Fold.example&source=repo-44&sourceType=npm&tab=done" disabledReason={null}/>);
  await chooseRepository();
  const destinations=[
-  ['View releases and scan progress','/watch/releases',{install:'7',workspace:'w'}],
+  ['View releases and scan progress','/watch/releases',{install:'7',workspace:'w',releaseView:'connected'}],
   ['View this repository’s alerts','/watch/alerts',{install:'7',workspace:'w',source:'repo-12'}],
   ['Repository setup and prerequisites','/watch/sources',{install:'7',workspace:'w',configure:'github',source:'repo-12'}],
  ] as const;

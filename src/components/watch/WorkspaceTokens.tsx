@@ -28,6 +28,7 @@ function TokenScope({workspaceId}:{workspaceId:string}){
  useEffect(()=>{const request=new AbortController();
   void fetch(`${base}${before?`?before=${encodeURIComponent(before)}`:''}`,{signal:request.signal}).then(async response=>{
    const body=await response.json();if(!response.ok)throw new Error(body.error??'Could not load credentials.');
+   if(!Array.isArray(body.tokens)||typeof body.canManage!=='boolean'||!(body.nextCursor===null||typeof body.nextCursor==='string'))throw new Error('Credential history was incomplete. Reload before making changes.');
    if(!request.signal.aborted){setPage(body);setError('');}
   }).catch(e=>{if(!request.signal.aborted){setPage(null);setSecret('');setError(e.message);}});
   return()=>request.abort();
@@ -55,7 +56,7 @@ function TokenScope({workspaceId}:{workspaceId:string}){
  return <section className="token-page journey-access min-w-0 space-y-6 [overflow-wrap:anywhere]" aria-label="Workspace scan tokens">
   <header><WatchPageHeader kicker="Workspace settings" title="Connect your build pipeline." lede="Create credentials with a clear purpose and workspace scope." action={page?.canManage&&tab!=='create'?<Button disabled={busy||uncertain||!!secret} onClick={()=>{setTab('create');requestAnimationFrame(()=>tokenName.current?.focus());}}>Create token</Button>:undefined}/></header>
   <p className="text-sm text-mute">Up to five active tokens, shared with existing connection tokens. API scans use your workspace’s plan and scan allowance.</p>
-  {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload credentials</Button></div>:null}
+  {error?<div role="alert"><p>{error}</p><Button variant="outline" onClick={()=>{setPage(null);setSelected(null);setConfirm('');setSecret('');setError('');setRevision(n=>n+1);}}>Reload credentials</Button></div>:null}
   {notice?<p role="status">{notice}</p>:null}
   {uncertain?<div className="watch-card p-4 sm:p-5 space-y-3" role="status"><p>Creation was not confirmed. Reload credentials and check for the token before creating another. If it exists but you did not receive its secret, revoke it first.</p><Button variant="outline" disabled={busy||!page} onClick={()=>setUncertain(false)}>I’ve checked credential history</Button></div>:null}
   {secret?<div className="watch-card p-4 sm:p-5 space-y-3"><label className="block">New token — shown once<input aria-label="New token" className="block w-full rounded border border-white/15 bg-transparent p-3 font-mono" value={secret} readOnly autoComplete="off"/></label><Button variant="outline" onClick={()=>setSecret('')}>I’ve saved it</Button></div>:null}

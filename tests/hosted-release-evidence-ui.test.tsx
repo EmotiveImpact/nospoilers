@@ -52,8 +52,37 @@ it('shows only a genuinely retained manifest in the Files section',async()=>{
  expect(await screen.findByRole('cell',{name:'dist/app.js'})).toBeTruthy();
  expect(screen.getByRole('cell',{name:'123 bytes'})).toBeTruthy();
  expect(screen.queryByRole('region',{name:'Saved release findings'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Inspect dist/app.js'}));
+ const file=screen.getByRole('dialog',{name:'Recorded file metadata'});
+ expect(within(file).getByText('abc')).toBeTruthy();
+ expect(within(file).getByText('123 bytes')).toBeTruthy();
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({available:true,workspaceId:'workspace',report:{fileCount:1,findings:[]}})));
  view.rerender(<HostedReleaseEvidence releaseId={9} receiptId={18} search="?release=9" activeSection="files"/>);
  expect(await screen.findByText(/No file manifest was retained/)).toBeTruthy();
  expect(screen.queryByRole('cell',{name:'dist/app.js'})).toBeNull();
+ expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('keeps a single-category connected release focused on its complete findings list',async()=>{
+ const second={...finding,path:'vendor.map',title:'Vendor source map'};
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/exceptions')?{canRequest:false}:{available:true,workspaceId:'workspace',report:{findings:[finding,second]}})));
+ render(<HostedReleaseEvidence releaseId={8} receiptId={17} search="?release=8"/>);
+ await screen.findByText('Saved source map finding');
+ expect(screen.queryByRole('group',{name:'Finding category'})).toBeNull();
+ expect(screen.getByRole('button',{name:/Vendor source map/})).toBeTruthy();
+});
+
+it('filters mixed connected findings without changing the receipt or workspace scope',async()=>{
+ const secret={...finding,rule:'SEC-001',path:'config.json',title:'Embedded credential',detail:'Saved credential finding'};
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>Response.json(String(url).endsWith('/exceptions')?{canRequest:false}:{available:true,workspaceId:'workspace',report:{findings:[finding,secret]}})));
+ const search='?workspace=workspace&install=7&release=8&releaseFinding=0';
+ window.history.replaceState({},'',`/watch/releases${search}`);
+ const view=render(<HostedReleaseEvidence releaseId={8} receiptId={17} search={search}/>);
+ const categories=await screen.findByRole('group',{name:'Finding category'});
+ fireEvent.click(within(categories).getByRole('button',{name:/Secrets/}));
+ view.rerender(<HostedReleaseEvidence releaseId={8} receiptId={17} search={window.location.search}/>);
+ expect(screen.queryByRole('button',{name:/Exposed map/})).toBeNull();
+ expect(screen.getByRole('button',{name:/Embedded credential/})).toBeTruthy();
+ const params=new URLSearchParams(window.location.search);
+ expect(params.get('workspace')).toBe('workspace');expect(params.get('install')).toBe('7');expect(params.get('release')).toBe('8');
 });

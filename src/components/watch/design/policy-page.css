@@ -192,7 +192,6 @@
   overflow-wrap: anywhere;
 }
 
-.policy-exception-row:hover,
 .policy-exception-row[aria-pressed="true"] {
   background: rgb(255 255 255 / 3%);
 }

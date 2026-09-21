@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import {cleanup,render,screen,waitFor,fireEvent} from '@testing-library/react';
+import {act,cleanup,render,screen,waitFor,fireEvent,within} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {WatchMonolithShell} from '../src/components/WatchMonolithShell';
 import {parseWatchRoute} from '../src/watch/routes';
 vi.mock('../src/components/watch/WorkspaceSwitcher',()=>({WorkspaceSwitcher:()=>null}));
-afterEach(()=>{cleanup();vi.restoreAllMocks();});
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('keeps real artifact settings reachable during first proof without inert connection settings',()=>{
  render(<WatchMonolithShell route={parseWatchRoute('/watch','?workspace=example')} search="?workspace=example" ended={false} role="viewer" teamOnly={false} adminOnly={false} login="viewer" sourceCount={0} openAlertCount={0} waitingCount={0} mineCount={0} resolvedCount={0} setupDone={0} setupTotal={0} firstRun artifactOnly installations={[]} activeInstallId={null} onInstall={()=>{}} onOpenPalette={()=>{}}><p>First proof content</p></WatchMonolithShell>);
  expect(screen.getByRole('link',{name:'Settings'})).toHaveProperty('href',expect.stringContaining('/watch/workspaces?workspace=example'));
@@ -69,4 +69,36 @@ it('exposes sign out inside the account menu without signing out on open',async(
  fireEvent.click(screen.getByRole('button',{name:'Account menu for viewer'}));
  expect(await screen.findByRole('menuitem',{name:'Sign out'})).toBeTruthy();
  expect(screen.getByRole('menuitem',{name:'Workspace settings'})).toBeTruthy();
+});
+
+
+it('provides an explicit drawer close action and closes after help navigation',async()=>{
+ const original=location.pathname+location.search;
+ render(<Route path="/watch"/>);
+ const trigger=screen.getByRole('button',{name:'Open watch navigation'});
+ fireEvent.click(trigger);
+ let drawer=await screen.findByRole('dialog',{name:'Watch navigation'});
+ expect(within(drawer).getByRole('link',{name:'NoSpoilers'})).toBeTruthy();
+ fireEvent.click(within(drawer).getByRole('button',{name:'Close watch navigation'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:'Watch navigation'})).toBeNull());
+ fireEvent.click(trigger);
+ drawer=await screen.findByRole('dialog',{name:'Watch navigation'});
+ fireEvent.click(within(drawer).getByRole('link',{name:'Help & guides'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:'Watch navigation'})).toBeNull());
+ expect(location.pathname).toBe('/docs');
+ window.history.replaceState({},'',original);
+});
+
+
+it('closes the mobile drawer when resizing to desktop',async()=>{
+ let change=()=>{};
+ const media={matches:false,addEventListener:vi.fn((_event:string,handler:()=>void)=>{change=handler;}),removeEventListener:vi.fn()};
+ vi.stubGlobal('matchMedia',vi.fn((query:string)=>query==='(min-width: 1024px)'?media:{matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
+ render(<Route path="/watch"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Open watch navigation'}));
+ await screen.findByRole('dialog',{name:'Watch navigation'});
+ act(()=>{media.matches=true;change();});
+ await waitFor(()=>expect(screen.queryByRole('dialog',{name:'Watch navigation'})).toBeNull());
+ expect(media.removeEventListener).toHaveBeenCalled();
+ expect(screen.getByRole('button',{name:'Open watch navigation'}).getAttribute('aria-expanded')).toBe('false');
 });

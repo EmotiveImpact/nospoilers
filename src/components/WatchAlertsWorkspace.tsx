@@ -85,6 +85,7 @@ export function WatchAlertsWorkspace({
   onAction,
   onExport,
   onConnectSource = () => window.location.assign("/watch/sources"),
+  onReviewReleases,
   relatedReleases,
   workspaceId,
   counts,
@@ -126,6 +127,7 @@ export function WatchAlertsWorkspace({
   onAction: (action: "acknowledge" | "assign" | "resolve" | "reopen") => void;
   onExport: () => void;
   onConnectSource?: () => void;
+  onReviewReleases?: () => void;
   relatedReleases?: ReactNode;
   workspaceId?: string;
   counts?: {open:number;waiting:number;mine:number;done:number};
@@ -193,7 +195,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Review findings and checks that need a response. Sources without a published release stay in Coverage and retained history.</p></div>
+        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
         {!previewing ? (
           <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
             {exportLabel}
@@ -255,14 +257,24 @@ export function WatchAlertsWorkspace({
               <li>
                 <div className="watch-empty m-4">
                   <strong className="block text-sm font-medium text-snow">
-                    {hasSources ? "No actionable alerts match this view" : "The inbox starts after your first source"}
+                    {hasSources ? "No alerts need a response in this view" : "The inbox starts after your first source"}
                   </strong>
                   <p className="mt-1.5">
                     {hasSources
-                      ? "Findings and incomplete checks that need a response will appear here."
+                      ? "Saved release evidence can still need review in Releases. Generated findings and incomplete checks that need a response will appear here."
                       : "Connect and check a source before treating an empty inbox as a clear release."}
                   </p>
-                  {!hasSources ? (
+                  {hasSources && onReviewReleases ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-4"
+                      onClick={onReviewReleases}
+                    >
+                      Open Releases
+                    </Button>
+                  ) : !hasSources ? (
                     <Button
                       type="button"
                       size="sm"

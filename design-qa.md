@@ -1,5 +1,13 @@
 # Design QA — connected customer journey
 
+## 21 September 2026 — release-candidate Overview and Alerts
+
+- Actual signed-in local app reviewed on the preserved workspace at port 4347 after the production bundle was rebuilt.
+- Overview shows the real primary review, a **Release reviews** section with two saved records, explanatory routing to Releases and **0 alerts need response**. The wording no longer implies that every release finding is an alert.
+- Alerts uses the shared dark queue switcher for Open, In progress and Resolved. All three current counts are zero. The empty state explains that saved release evidence remains in Releases and missing-release coverage remains in Coverage/history, with an explicit Open Releases action.
+- Browser console review returned no warnings or errors on either page. No record, response, scan, subscription or provider state was mutated.
+- Native 200% zoom and audible screen-reader execution remain external acceptance items. The app compositor may clip capture edges, so this entry records inspected UI and browser state rather than a full-frame pixel certificate.
+
 > Correction, 16 September: the earlier review below did not establish faithful implementation of the approved journey. The owner rejected its Overview/Releases differences. Preserve these captures as historical evidence only; the current composition corrections and limits are recorded in BUILD-LOG. Do not treat the earlier “matches” wording as acceptance.
 
 Date: 2026-09-16
@@ -95,3 +103,31 @@ This report superseded the earlier premature homepage pass. That implementation 
 - In-app captures had inconsistent viewport sizing. Evidence above was captured using the available Playwright browser tools.
 
 Final result: passed.
+
+## 19 September — Mock 43 release-workspace implementation
+
+Reference: `public/mockup-review/2b/43-complete-release-workspace.html`. Implemented in the product components for both uploaded and connected releases, not in another design study.
+
+Actual signed-in upload: workspace `71a701c7-7d7a-9705-3426-4710762104d1`, upload `70fb03ba-071a-4a78-92a2-f059e3abe0ba`, on port4347. Verified all four tabs, the three real findings, manifest inspector, file-to-finding navigation, complete saved-review dialog, Proof preview/confirmation and Cancel. Dialog close returned focus to Inspect review. No live publishing or entitlement mutation. Current coverage is ended and this upload has no stream: no populated history or active scan is fabricated.
+
+Connected actual components were exercised in the existing isolated test harness on4351, including review/incomplete state, History failure with independent controls retained, and receipt verification navigation. Fixtures are internal QA only; the customer app retains real authentication and data. Five populated History groups, comparison paths, scopes and controls are additionally covered by rendered tests.
+
+Narrow-screen measurement earlier in this pass reported433px actual CSS viewport and433px document width, with release/Proof bounds20–413.33px; the requested390px override must not be represented as an actual390px result. Final desktop reported1440x1000 and document width1440, release bounds272–1392px. Browser compositor captures clip right/bottom regions, so full-frame pixel-perfect acceptance is not claimed. Normal viewport is restored at completion. No audible screen-reader or native200% zoom acceptance is claimed.
+
+
+## 19 September — settings and Coverage refinement
+Actual application changes: separated settings-route navigation from content tabs; contextual Workspace headings; removed expandable organisation wrapper/nested tabs; visible roles with compact aligned controls; Activity/Deletion review dialogs; scoped billing and recovery; one organisation at a time. Current workspace controls the default, and owner-managed billing does not show a different organisation without explicit selection.
+
+Actual signed-in review covered organisation/activity/billing, notification/policy/team layouts and scan/alert/release navigation. Coverage websites now use full width and labelled DNS/HTTP setup. At actual433CSSpx after a390px viewport override, document width433; organisation actions end413.33px, website verification ends388.23px and long codes wrap. Wide organisation content ends1382.22px within1422px viewport. Scope controls, no-hover fills and existing scan/release actions are retained. Normal viewport reset. Existing compositor clipping limits full-frame screenshot comparison. No live scan, purchase, permission or lifecycle mutation. This is not whole-product WCAG or hosted-operational acceptance.
+
+
+## 19 September — tablet/mobile sidebar correction
+The mobile navigation Dialog is portalled outside .watch-desk and was missing the desktop rail rules. Shared the rail/theme/workspace-switcher rules with its explicit watch-navigation-dialog scope. The logo now has a dedicated brand row and stable140x38 sizing with top/side spacing; the old generic header-div selector no longer offsets the workspace picker. Added44px close control, touch targets, safe-area padding, min-height0 navigation scrolling and nonshrinking account/billing/help footer. Help navigation closes the drawer. Resizing into the desktop breakpoint closes the hidden dialog so it cannot retain modal focus. Neutral icons and no row hover-fill remain.
+
+Final TypeScript/Vite build passed (WatchWorkspace-LPbG3xWm.js; existing chunk advisory). Eleven tests across artifact-shell-navigation and journey-settings-shell passed in2.07s, covering explicit close, Help close and desktop resize dismissal. Scoped lint0errors/two existing static-component warnings; diff check passed. Actual browser checked tablet853x1000 and phone433x666 CSS viewport (host zoom maps requested768x900/390x600): logo x19.98/y15,width140,height38; mobile rail width320, footer within viewport, phone nav scrollHeight383 inside306.79px. Account menu exposes sign out without mutation; Escape returns, desktop resize removes dialog, collapsed desktop rail remains60px. Original expanded state and normal viewport restored. Existing screenshot compositor clipping remains. No full-suite repeat or deployment for this bounded sidebar change.
+
+
+## 20 September — real local scan and settings acceptance
+Rebuilt actual app on4347: upload→worker→blocked result, corrected upload→passed result, receipt download→authentic verification, mismatched archive→explicit rejection. Recorded releases remain after graceful restart. Upload a new attempt opens Package or build with the same workspace. Four scan selection cards and release43 composition remain.
+
+Reviewed Retention, Audit, Scan API tokens, billing and mobile navigation. Billing explicitly shows active trial and unavailable payment-provider state, rather than a false payment success. At actual433CSSpx (requested390, host zoom), billing document width433 and measured controls did not overflow. Logo140x38 atapproximately20,15; neutral sidebar icons and quiet rows retained. Final browser warnings/errors empty. Normal viewport restored. Compositor clips capture right/bottom; whole-frame pixel-perfect and audible AT/native200% zoom are not claimed. Hosted provider paths remain separate acceptance work.

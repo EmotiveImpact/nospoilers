@@ -149,3 +149,30 @@ it('clears a staged artifact when its replacement is empty',async()=>{
  expect(screen.queryByRole('button',{name:'Scan this build'})).toBeNull();
  expect(uploadArtifact).not.toHaveBeenCalled();
 });
+
+it('submits and opens an upload in the rendered workspace rather than a stale browser URL',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({user:{login:'owner'},coverage:{status:'active',plan:'team'},installations:[{id:7,account_login:'connected',plan:'team',trialEndsAt:null,suspended:false}]})));
+ vi.mocked(uploadArtifact).mockResolvedValue(Response.json({queued:true,uploadId:'scoped-result',target:'artifact.tgz'}));
+ window.history.replaceState({},'', '/watch/scan?workspace=stale-browser&install=99&mode=package');
+ render(<ScanPage embedded search="?workspace=stale-query&install=7&mode=package" workspace={{id:'rendered',name:'Current',organization_id:'org',installation_id:7,archived_at:null,role:'owner',plan:'team',trial_ends_at:null}}/>);
+ const file=artifact();
+ fireEvent.change(await uploadInput(),{target:{files:[file]}});
+ fireEvent.click(await screen.findByRole('button',{name:'Scan this build'}));
+ await waitFor(()=>expect(uploadArtifact).toHaveBeenCalledWith(file,'7',expect.any(Function),expect.any(AbortSignal),'rendered'));
+ await waitFor(()=>expect(navigate).toHaveBeenCalledWith('/watch/releases?upload=scoped-result&install=7&workspace=rendered'));
+});
+it('claims staged evidence in the rendered workspace and preserves it in the result link',async()=>{
+ const fetcher=vi.fn(async(url:unknown)=>Response.json(String(url)==='/api/me'?{user:{login:'owner'},coverage:{status:'active',plan:'team'}}:{queued:true,uploadId:'scoped-claim',target:'artifact'}));
+ vi.stubGlobal('fetch',fetcher);
+ render(<ScanPage embedded search="?workspace=stale-query&reveal=1" workspace={{id:'rendered',name:'Current',organization_id:'org',installation_id:null,archived_at:null,role:'owner',plan:'team',trial_ends_at:null}}/>);
+ await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/scan/pending?workspaceId=rendered',expect.objectContaining({method:'POST'})));
+ await waitFor(()=>expect(navigate).toHaveBeenCalledWith('/watch/releases?upload=scoped-claim&workspace=rendered'));
+});
+
+it.each([[700,'700 B'],[2048,'2.0 KiB'],[1048576,'1.00 MiB']])('shows a readable size for a %i-byte staged build',async(size,label)=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({user:{login:'owner'},coverage:{status:'active',plan:'solo'}})));
+ render(<ScanPage embedded search="?workspace=chosen&mode=package"/>);
+ fireEvent.change(await uploadInput(),{target:{files:[new File([new Uint8Array(Number(size))],'build.tgz')]}});
+ expect(await screen.findByText(`${label} · ready to scan`)).toBeTruthy();
+ expect(uploadArtifact).not.toHaveBeenCalled();
+});

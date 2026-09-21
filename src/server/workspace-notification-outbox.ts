@@ -45,7 +45,7 @@ CREATE TRIGGER workspace_notification_job_identity BEFORE INSERT OR UPDATE ON wo
 export async function enqueueWorkspaceAlertNotifications(sql: SqlClient, workspaceId: string, alertId: number) {
   await sql.query(`INSERT INTO workspace_notification_jobs(id,workspace_id,destination_id,configuration_version,alert_id,purpose,request_key)
     SELECT gen_random_uuid(),d.workspace_id,d.id,d.configuration_version,a.id,'alert',$3
-    FROM notification_destinations d JOIN alerts a ON a.id=$2 AND a.workspace_id=d.workspace_id AND a.installation_id IS NULL
+    FROM notification_destinations d JOIN alerts a ON a.id=$2 AND a.workspace_id=d.workspace_id
     JOIN product_workspaces w ON w.id=d.workspace_id AND w.archived_at IS NULL
     WHERE d.workspace_id=$1 AND d.installation_id IS NULL AND d.kind IN ('slack','email')
     ON CONFLICT DO NOTHING`, [workspaceId, alertId, randomUUID()]);

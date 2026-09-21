@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import {cleanup,render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {act,cleanup,render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
 const nav=vi.hoisted(()=>vi.fn());
@@ -7,18 +7,28 @@ vi.mock('../src/nav',()=>({navigate:nav}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
 it('keeps a repository without a published release out of the actionable queue',async()=>{
  const alert={id:24,kind:'scan_latest_release',title:'No release on owner/repo',body:'No published release available.',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,source_origin_id:null,scan_attempt_id:null,acknowledged_at:null,resolved_at:null};
+ let resolveDetail!:(response:Response)=>void;
+ const detailResponse=new Promise<Response>(resolve=>{resolveDetail=resolve;});
  const fetcher=vi.fn(async(url:string)=>{
   if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
   if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
-  if(url.endsWith('/alerts/24'))return Response.json({alert,events:[]});
+  if(url.endsWith('/alerts/24'))return detailResponse;
   return Response.json({alerts:[],nextCursor:null,sourceCount:1,coverageHistoryCount:1,counts:{open:0,waiting:0,done:0,mine:0}});
  });vi.stubGlobal('fetch',fetcher);
  render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=24"/>);
- await screen.findByText('No actionable alerts match this view');
+ await screen.findByText('No alerts need a response in this view');
+ // The empty queue renders before its selected deep-link detail effect runs.
+ // Exercise the returned detail too; neither phase may promote a coverage
+ // reminder into an actionable alert.
+ await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.endsWith('/alerts/24'))).toBe(true));
+ await act(async()=>{resolveDetail(Response.json({alert,events:[]}));});
  expect(screen.queryByText('No release on owner/repo')).toBeNull();
- expect(screen.getByText('0 actionable alerts on this page · 1 coverage record remains in retained history')).toBeTruthy();
+ expect(screen.getByText('Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.')).toBeTruthy();
+ expect(screen.getByText('Saved release evidence can still need review in Releases. Generated findings and incomplete checks that need a response will appear here.')).toBeTruthy();
+ expect(screen.getByText('0 alerts requiring response on this page · 1 coverage record remains in retained history')).toBeTruthy();
  expect(screen.getByRole('tab',{name:/Open\s*0/})).toBeTruthy();
- expect(fetcher.mock.calls.some(([url])=>url.endsWith('/alerts/24'))).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Open Releases'}));
+ expect(nav).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace');
 });
 it('forwards source scope and excludes an unrelated detail URL with a workspace-preserving clear action',async()=>{
  const alert={id:9,kind:'repo_visibility',title:'Selected repository exposure',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:7,repo_id:9001,acknowledged_at:null,resolved_at:null};

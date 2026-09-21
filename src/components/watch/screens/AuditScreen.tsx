@@ -3,7 +3,7 @@ import { WatchSkeleton } from "@/components/WatchDataState";
 import { Button } from "@/components/ui/button";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { loadWatchJson, scopedWatchApi } from "@/watch/api";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/motion/select";
 import "../design/journey-administration.css";
 
@@ -22,7 +22,10 @@ type AuditState =
   | { status: "error"; message: string }
   | { status: "ready"; rows: AuditRow[] };
 
-export function AuditScreen({
+export function AuditScreen(props:{previewing:boolean;audit:AuditState;installationId:number|null}){
+  return <AuditScope key={`${props.installationId??'account'}:${props.previewing}:${props.audit.status}`} {...props}/>;
+}
+function AuditScope({
   previewing,
   audit,
   installationId,
@@ -32,13 +35,19 @@ export function AuditScreen({
   installationId: number | null;
 }) {
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting,setExporting]=useState(false);
+  const exportRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{exportRequest.current?.abort();exportRequest.current=null;},[]);
 
   async function exportAudit(): Promise<void> {
-    setExportError(null);
+    if(previewing||audit.status!=='ready'||exportRequest.current)return;
+    const controller=new AbortController();exportRequest.current=controller;setExporting(true);setExportError(null);
     try {
       const body = await loadWatchJson<{ exportedAt: string }>(
-        scopedWatchApi("/api/audit/export", installationId),
+        scopedWatchApi("/api/audit/export", installationId),{signal:controller.signal},
       );
+      if(controller.signal.aborted)return;
+      if(typeof body.exportedAt!=='string'||!Number.isFinite(Date.parse(body.exportedAt)))throw new Error('The audit export was incomplete. Please retry.');
       const blob = new Blob([JSON.stringify(body, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -47,8 +56,8 @@ export function AuditScreen({
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : "Could not export the audit log.");
-    }
+      if(!controller.signal.aborted)setExportError(error instanceof Error ? error.message : "Could not export the audit log.");
+    }finally{if(exportRequest.current===controller)exportRequest.current=null;if(!controller.signal.aborted)setExporting(false);}
   }
 
   const [filterNow]=useState(()=>Date.now());
@@ -69,10 +78,10 @@ export function AuditScreen({
             type="button"
             size="sm"
             variant="outline"
-            disabled={!canExport}
+            disabled={!canExport||exporting}
             onClick={() => void exportAudit()}
           >
-            Export audit JSON
+            {exporting?"Preparing export…":"Export audit JSON"}
           </Button>
         }
       />
