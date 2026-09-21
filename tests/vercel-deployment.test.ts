@@ -34,7 +34,7 @@ describe("Vercel web runtime", () => {
     const config = JSON.parse(await readFile("vercel.json", "utf8")) as {
       rewrites: Array<{ source: string; destination: string }>;
       functions: Record<string, { includeFiles?: string; maxDuration?: number }>;
-      crons: Array<{ path: string; schedule: string }>;
+      crons?: Array<{ path: string; schedule: string }>;
     };
 
     expect(config.rewrites).toEqual([
@@ -46,7 +46,9 @@ describe("Vercel web runtime", () => {
       maxDuration: 300,
     });
     expect(await readFile("api/index.mjs", "utf8")).toContain("../.vercel-runtime/index.js");
-    expect(config.crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 * * * *" }]);
+    // The persistent Railway worker owns recovery and visibility polling.
+    // Declaring a duplicate Vercel cron also blocks Hobby deployments.
+    expect(config.crons).toBeUndefined();
   });
 
   it("keeps processing queued jobs after the HTTP response via waitUntil", async () => {
