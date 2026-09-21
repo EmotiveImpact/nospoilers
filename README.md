@@ -34,14 +34,19 @@ The trigger token is stored only as a SHA-256 hash. Repeating the same provider/
 idempotent. Provider-specific Vercel, Netlify, and Cloudflare account integrations remain later
 convenience layers over this endpoint.
 
-**Is it all built?** Specified product code is in the repo. Customers still cannot pay, get email,
-or hit a production worker / `nospoilers.dev`. Read **[docs/STATUS.md](docs/STATUS.md)**.
+**Is it ready for public launch?** Not yet. The fresh Vercel domain, shared Neon data plane,
+Railway coordinator and isolated Vercel Sandbox path exist, and a live clean sandbox probe passed.
+Normal customer login is still GitHub-only until Neon Auth is enabled; the complete hosted
+sign-in-to-saved-result journey, remaining isolation checks, notification delivery and accessibility
+acceptance are still open. Stripe is deliberately deferred. Read **[docs/STATUS.md](docs/STATUS.md)**.
 
 | File | Job |
 | --- | --- |
 | [docs/STATUS.md](docs/STATUS.md) | Built vs live vs leftover vs ice |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What is left |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | Pricing and invariants |
+| [docs/AUTH-ENTERPRISE-AND-WORKERS.md](docs/AUTH-ENTERPRISE-AND-WORKERS.md) | Login, GitHub connections, enterprise SSO and scan workers |
+| [bugsandfixes.md](bugsandfixes.md) | Fixed defects and open launch issues |
 | [CHANGELOG.md](CHANGELOG.md) | What shipped |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | Live host facts |
 | [docs/expansion/FEATURE-INVENTORY.md](docs/expansion/FEATURE-INVENTORY.md) | Every discussed row |
@@ -67,6 +72,15 @@ the database and returns 503 if it cannot.
 - **Legal** — `/privacy`, `/terms`, `/retention`, `/disclosure`, `/support`, `/refunds`.
 
 Two logged-in states: **trial desk** (bot is thinking) and **unpaid locked scan** (drop zone stays, we do not unpack).
+
+### Authentication and enterprise access
+
+Core customer login will use Neon Managed Better Auth. GitHub remains a separately authorised
+source connector so one NoSpoilers account can work with different GitHub accounts and organisations.
+WorkOS is reserved for later enterprise SAML/OIDC SSO and SCIM; it will plug into the same stable
+user and organisation model rather than replace the database. Normal multi-provider login is not
+live yet because the fresh Neon Marketplace account still needs owner email verification and Auth
+endpoint setup. See [Authentication, enterprise access and scan workers](docs/AUTH-ENTERPRISE-AND-WORKERS.md).
 
 ### Internal Artifact Leads
 

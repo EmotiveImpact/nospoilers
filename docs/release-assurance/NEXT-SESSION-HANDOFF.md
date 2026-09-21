@@ -1,5 +1,21 @@
 # Current NoSpoilers continuation — 21 September 2026
 
+## 22 September — current main and identity/hosted continuation
+
+The release-assurance branch and PR #44 are integrated. Continue from current `main`; older branch,
+dirty-tree and undeployed-Railway instructions below are historical. Migration `123_product_identity`
+adds stable provider-neutral users and separate GitHub connector credentials. Internal owner access
+supports `ADMIN_USER_ID`. Neon Managed Better Auth is selected but not enabled pending owner email
+verification; WorkOS remains a later enterprise SSO/SCIM adapter. See
+`../AUTH-ENTERPRISE-AND-WORKERS.md` and `../../bugsandfixes.md`.
+
+Railway production and the fresh digest-pinned Vercel Sandbox path passed one live clean scan and
+the complete worker preflight. Remaining acceptance is the hosted account/workspace/GitHub/scan/result
+journey; live hostile-input, denied-egress, timeout and interruption cleanup; one real notification;
+GitHub Actions account recovery; and native accessibility checks. Stripe is owner-deferred. Final
+source regression: **1,660/1,660 tests across 271 files**, typecheck, frontend/API builds, lint with
+existing warnings and diff check.
+
 ## 21 September — curated release candidate
 
 The current release-candidate source is on `codex/release-assurance-spine-v1` over `f85fae1`; see the latest BUILD-LOG and `RC-ACCEPTANCE-2026-09-21.md` for the exact frozen-source result. Complete verification passed **1,643/1,643 tests in 269 files**, typecheck, frontend/API builds and lint with no errors/33 warnings. The local app on port 4347 is healthy. Final signed-in Overview and Alerts checks produced no browser warnings or errors.

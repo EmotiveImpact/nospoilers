@@ -1,5 +1,14 @@
 # Security readiness review
 
+Current note (22 September 2026): this review contains the dated findings and remediation history
+below. The latest architecture uses a shared Railway coordinator and a fresh digest-pinned Vercel
+Sandbox microVM for each untrusted scan; one live clean probe and production preflight passed.
+Migration `123_product_identity` separates trusted login identities from GitHub connectors. Gate A
+is still open for live hostile-input, denied-egress, timeout/interruption cleanup and the complete
+hosted customer journey. Read [Gate A implementation](GATE-A-IMPLEMENTATION.md),
+[Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md), and
+[Bugs and fixes](../bugsandfixes.md) before interpreting older findings.
+
 Billing prerequisite 087: job billing ownership is immutable; shared personal-payer concurrency no longer falls through an alternative SQL branch. Refunds consume a single durable reservation, and retries check the saved payer's current entitlement. Existing queued records are backfilled without a new usage charge. This does not change authentication, authorize tenant reassignment or complete the GitHub connection security model.
 
 Gate B continuation through migration 086: explicit workspace membership now protects source list/get reads and upload publication checks; revoked stale membership cannot grant proof sharing. Uploaded public proof uses a whitelisted immutable projection and hashed 256-bit capability, explicit admin publication, rate-limited anonymous reads and revocation. Personal billing rejects retired subscriptions and stale signed events; ambiguous ordering still needs provider reconciliation. Artifact policy is server-enforced and snapshotted before parsing. Deletion has an owner-scoped inventory and typed review consent only: no recent-auth/hold-aware purge execution exists yet. These are local implementation improvements, not a claim of complete security or enterprise readiness. See current Gate B tracker for test evidence.

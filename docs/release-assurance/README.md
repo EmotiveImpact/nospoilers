@@ -1,6 +1,8 @@
 # Release assurance
 
-Status: active implementation on draft PR #44. Integration review remains open. Not a launch declaration.
+Status: the release-assurance branch was integrated into `main`; provider and hosted acceptance remain
+open. This is not a launch declaration. Current login/enterprise/worker architecture is in
+[AUTH-ENTERPRISE-AND-WORKERS.md](../AUTH-ENTERPRISE-AND-WORKERS.md).
 
 ## Start here
 

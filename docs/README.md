@@ -7,6 +7,8 @@ Start at **[STATUS.md](STATUS.md)** — is it built, is it live, what is left.
 | [STATUS.md](STATUS.md) | Built vs live vs leftover vs ice |
 | [ROADMAP.md](ROADMAP.md) | Remaining work, in order |
 | [PRODUCT.md](PRODUCT.md) | What we sell, pricing, invariants |
+| [AUTH-ENTERPRISE-AND-WORKERS.md](AUTH-ENTERPRISE-AND-WORKERS.md) | Customer login, GitHub connections, enterprise SSO/SCIM and worker isolation |
+| [../bugsandfixes.md](../bugsandfixes.md) | Open launch issues and resolved defects |
 | [HANDOFF.md](HANDOFF.md) | Neon, GitHub install, don’ts |
 | [ACCESS-BOUNDARIES.md](ACCESS-BOUNDARIES.md) | Authorization |
 | [ELECTRON.md](ELECTRON.md) | Installer worker on ice |

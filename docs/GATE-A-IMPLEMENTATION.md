@@ -1,5 +1,9 @@
 # Gate A implementation checkpoint
 
+Current operational blockers are tracked in [Bugs and fixes](../bugsandfixes.md); the account,
+enterprise and worker model is summarised in
+[Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md).
+
 5 September 2026. Code implemented locally; **launch gate remains open** until deployment validation below. This is not a security certification. Preserve the approved product direction and existing mockups.
 
 ## Deployment decision

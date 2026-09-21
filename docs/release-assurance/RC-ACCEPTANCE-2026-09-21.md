@@ -1,5 +1,16 @@
 # NoSpoilers release-candidate acceptance — 21 September 2026
 
+## Post-candidate update — 22 September 2026
+
+Main now includes migration `123_product_identity`, separate GitHub connector credentials and stable
+`ADMIN_USER_ID` owner authorization. Neon Managed Better Auth is selected but not active; WorkOS is
+reserved for later enterprise SSO/SCIM. Railway production and the digest-pinned Vercel Sandbox path
+have passed a clean live scan and complete worker preflight. Final source verification passed
+**1,660/1,660 tests across 271 files**, typecheck, frontend/API builds, lint with existing warnings
+and diff check. The remaining acceptance list is maintained in [Bugs and fixes](../../bugsandfixes.md)
+and [Status](../STATUS.md). This update does not convert the original candidate record into a public
+production declaration.
+
 ## Candidate scope
 
 This record covers the curated source on `codex/release-assurance-spine-v1` over base commit `f85fae1`. It includes the current production UI/workflow implementation, local upload/receipt hardening, Overview/Alerts work ownership, connected-workspace notification outbox support and hosted-worker readiness safeguards. Local design studies, browser caches, screenshots and generated output are excluded.

@@ -1,0 +1,33 @@
+# Bugs, fixes and open launch issues
+
+This is the short operational defect register. Product status lives in [docs/STATUS.md](docs/STATUS.md), planned work in [docs/ROADMAP.md](docs/ROADMAP.md), and detailed verification in [docs/release-assurance/BUILD-LOG.md](docs/release-assurance/BUILD-LOG.md).
+
+## Open
+
+| Issue | Current state | Next action |
+| --- | --- | --- |
+| Normal customer login is still GitHub-only | Provider-neutral database foundation is complete; Neon Auth is selected but not active | Verify the new Neon account email, enable Managed Better Auth, configure trusted domains, then connect and test the sign-in UI |
+| Hosted customer journey is not accepted end to end | Shared Neon, Railway and Vercel Sandbox are configured; a clean sandbox probe passed | Prove sign-up/sign-in → workspace → GitHub connection → queued scan → saved result on the hosted domain |
+| Sandbox adversarial acceptance is incomplete | Isolation, credential exclusion, limits and mandatory stop are implemented | Run live hostile-input, denied-egress, timeout and worker-interruption cleanup checks |
+| GitHub Actions is externally blocked | The earlier run did not start because of the account payment/spending limit | Resolve the GitHub account block and rerun CI on the current commit |
+| Real notification delivery is not accepted | Delivery code and worker preflight exist | Configure one approved provider and verify one private, workspace-scoped notification |
+| Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
+| Stripe cannot take payment | Deliberately deferred by the owner | Configure sandbox prices, keys and webhook later; then test checkout, entitlement changes, cancellation and expiry |
+
+## Fixed on 21–22 September 2026
+
+| Problem | Fix | Evidence |
+| --- | --- | --- |
+| Product identity was coupled to a GitHub numeric ID | Added `product_auth_identities` keyed by trusted issuer/subject with stable internal user IDs | Provider-neutral identity and repeated-login tests |
+| GitHub OAuth credentials lived on the person record | Added separate `github_connector_accounts` storage and compatibility fallback | Signup and encrypted-token tests |
+| Disconnecting GitHub would sign every account type out of NoSpoilers | Provider-neutral sessions now survive connector revocation; legacy GitHub-only behavior remains | Signed webhook regression |
+| Internal owner access depended on a mutable GitHub login | Added stable `ADMIN_USER_ID`; token and transitional login methods remain | Owner/operator authorization regression |
+| An identity or GitHub account could be at risk of concurrent reassignment | Conflict-safe insert/update logic rejects a different owner | Conflict and concurrency-oriented store tests |
+| Vercel and Railway could have used different databases | Both were verified against the same fresh Neon project without logging credentials | Sanitised infrastructure comparison recorded in the build log |
+| Railway lacked a safe untrusted scanner boundary | Added a fresh digest-pinned Vercel Sandbox microVM per scan | Live clean scan and hosted worker preflight |
+| Vercel Hobby rejected the hourly cron | Removed the duplicate Vercel schedule; the persistent Railway worker owns recovery and polling | Fresh Vercel import no longer requires the paid cron frequency |
+| Migration-current test was pinned to migration 122 | Test now follows `CURRENT_SCHEMA_MIGRATION` | Final 1,660-test regression |
+
+## Reporting a new issue
+
+Record the affected route or command, exact state, expected behavior, actual behavior and whether data or permissions are involved. Do not include secrets, packed customer source or credential values in this file.

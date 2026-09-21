@@ -1,6 +1,10 @@
 # Access boundaries
 
-Latest checkpoint (5 September 2026): read [Gate A implementation](GATE-A-IMPLEMENTATION.md) before older status notes below. Queued browser/CI artifact processing, installation-ledger completion, viewer enforcement, staging budgets, pinned HTTPS and restricted parser invocation are now implemented. Migration marker is `070_immutable_upload_results`. Container runtime, production-like concurrency/recovery and private deployment verification remain required; no launch-readiness claim or deployment is implied. Preserve existing user changes and mockups.
+Latest checkpoint (22 September 2026): migration `123_product_identity` maps trusted provider
+issuer/subject pairs to stable users and stores GitHub credentials as connectors. Email never merges
+accounts. Internal owner access may bind to `ADMIN_USER_ID`; customer organisation roles never grant
+operator-tool access. Read [Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md)
+and [Status](STATUS.md). Older migration checkpoints below are historical.
 
 This file is the authorization source of truth for NoSpoilers. What exists vs what is live:
 [`docs/STATUS.md`](STATUS.md). This file describes **who may see or change** what exists.

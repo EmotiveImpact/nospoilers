@@ -1,5 +1,14 @@
 # NoSpoilers agent entry point
 
+Current checkpoint (22 September 2026): PR #44 was integrated and the active checkout is `main`.
+Read `docs/AUTH-ENTERPRISE-AND-WORKERS.md`, `bugsandfixes.md`, `docs/STATUS.md` and the latest
+`docs/release-assurance/BUILD-LOG.md` before acting. Migration `123_product_identity` separates
+product sign-in from GitHub connectors; Neon Managed Better Auth is selected but not active pending
+owner email verification. Railway plus a fresh Vercel Sandbox per scan has passed one live clean
+probe and production preflight; hostile-input/egress/interruption and the hosted customer journey
+remain open. The local branch contains verified identity/documentation work that may be ahead of remote main;
+do not mistake a local commit for deployment.
+
 Owner decision: use individual workspace invitations for agency/client collaboration (option A). Workspace owners/admins explicitly invite named people with existing roles; no agency-wide or email-domain access. Agency-organization delegation is deferred. CSV bulk invitations are a possible later feature, not required for the first usable app. Prioritize real sign-in and one end-to-end customer scan over expanding agency scope.
 
 Optional explanation contracts now exist in `release-explanations.ts` and `ra_010_release_explanations`, with a connected UI/API and no configured production provider. Read `docs/release-assurance/EXPLANATIONS.md`: aggregate-only data, config-bound consent, workspace budget reservations, cancellation and human review. This is not a live AI integration, root-cause investigation or release authority. Latest BUILD-LOG contains actual checks.
@@ -32,7 +41,7 @@ Before continuing this branch, read:
 12. `docs/release-assurance/BEHAVIOURAL-EXPERIMENTS.md`
 13. `docs/growth/OUTREACH-LIBRARY-v2.md`
 14. `docs/MONTH1.md`
-15. current draft PR #44 description, diff and checks
+15. current `main` diff/status, `bugsandfixes.md`, and any checks for the latest remote commit
 
 `BUSINESS-NORTH-STAR.md` is the durable commercial/product context from the originating strategy work: the £500k-MRR ambition, release-assurance category, retention thesis, release intelligence, behavioural-design approach, agent strategy, acquisition/lead-generator model, pricing constraints, buyer segments, metrics, falsification tests and next-build order. `RESEARCH-SNAPSHOT.md` preserves the dated competitor, market, outreach/legal, partner and ecosystem research. Future agents should not require the originating chat to understand why the product is being built this way.
 
@@ -56,7 +65,12 @@ Preserve the approved homepage, existing release/coverage flows, workspace autho
 
 Commercial direction remains Solo $29/month and Team $99/month USD with the shared five-day trial unless the owner explicitly changes it. The strategic £500k goal is GBP: same-number USD customer-count examples are not a GBP forecast. Larger-price scenarios in strategy documents are hypotheses, not current entitlements. Responsible disclosure remains separate from sales and nothing is auto-sent.
 
-Use the existing branch `codex/release-assurance-spine-v1` and draft PR #44. Do not push to `main`. The branch-specific Vercel deployment guard must remain until reviewed. Run the actual locked project checks before declaring integration complete. Native focused tests and injected authentication ports are not the full suite or production evidence.
+PR #44 and `codex/release-assurance-spine-v1` are historical integration references. Continue from
+the current checked-out `main` unless the owner explicitly requests an isolated branch/worktree.
+Never force-push or treat an unpushed local commit as deployed. Provider activation, deployment and
+external messages still require the corresponding owner authorization. Run the actual locked project
+checks before declaring integration complete. Native focused tests and injected authentication ports
+are not the full suite or production evidence.
 
 The original `SOURCE-HASHES.json` is a historical manifest for the companion checkpoint; subsequent runtime/panel changes are intentional. Regenerate commit-bound evidence after validation rather than reverting new work to match an old manifest.
 

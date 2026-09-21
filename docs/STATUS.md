@@ -1,12 +1,20 @@
 # Status
 
-Latest checkpoint (5 September 2026): read [Gate A implementation](GATE-A-IMPLEMENTATION.md) before older status notes below. Queued browser/CI artifact processing, installation-ledger completion, viewer enforcement, staging budgets, pinned HTTPS and restricted parser invocation are now implemented. Migration marker is `070_immutable_upload_results`. Container runtime, production-like concurrency/recovery and private deployment verification remain required; no launch-readiness claim or deployment is implied. Preserve existing user changes and mockups.
+Latest checkpoint (22 September 2026): the fresh Vercel project/domain, shared Neon database,
+Railway coordinator and Vercel Sandbox executor are configured. A live clean sandbox scan and the
+full production worker preflight passed. Migration `123_product_identity` separates product login
+identity from GitHub source credentials, and the final source regression passed **1,660/1,660 tests
+across 271 files**. Read [Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md)
+and [Bugs and fixes](../bugsandfixes.md) before older chronological notes.
 
-Updated 4 September 2026. This is the honest answer to “is everything built?”
+**The product is a strong private-beta candidate. It is not yet accepted for public production.**
 
-**No. The specified NoSpoilers product is in the repository. The commercial launch is not.**
-
-Specified Watch, scanner, GitHub loop, billing enforcement, Release Ledger, Package Identity, and the internal Disclosure Desk are implemented and tested. Customers still cannot pay, cannot receive email, and do not have a production worker or `nospoilers.dev`. A few GitHub events are coded but not proven on a second account. Electron installers, SBOM, Sigstore verification, and scheduled CDN checks stay on ice.
+Watch, the scanner, GitHub connection flows, billing enforcement, Release Ledger, release
+intelligence, Package Identity and the owner-only Disclosure Desk are implemented and tested.
+Normal customer login is still GitHub-only until the new Neon account email is verified and Managed
+Better Auth is connected. Stripe remains owner-deferred, real notification delivery is unaccepted,
+and the complete hosted sign-in → GitHub connection → isolated scan → saved result journey still
+needs proof. Remaining live sandbox adversarial checks and native accessibility checks are also open.
 
 The exhaustive row-by-row ledger is [`docs/expansion/FEATURE-INVENTORY.md`](expansion/FEATURE-INVENTORY.md). What to do next is [`docs/ROADMAP.md`](ROADMAP.md). How to run the repo is [`README.md`](../README.md).
 
@@ -17,6 +25,8 @@ The exhaustive row-by-row ledger is [`docs/expansion/FEATURE-INVENTORY.md`](expa
 | **This file** | Built vs live vs leftover vs ice |
 | [`docs/ROADMAP.md`](ROADMAP.md) | What is left, in order |
 | [`docs/PRODUCT.md`](PRODUCT.md) | What we sell, pricing, invariants |
+| [`docs/AUTH-ENTERPRISE-AND-WORKERS.md`](AUTH-ENTERPRISE-AND-WORKERS.md) | Login, GitHub connectors, enterprise SSO/SCIM and workers |
+| [`bugsandfixes.md`](../bugsandfixes.md) | Open launch issues and resolved defects |
 | [`CHANGELOG.md`](../CHANGELOG.md) | What shipped, dated |
 | [`docs/HANDOFF.md`](HANDOFF.md) | Live host facts for the next agent |
 | [`docs/ACCESS-BOUNDARIES.md`](ACCESS-BOUNDARIES.md) | Who may see or change what |
@@ -29,7 +39,7 @@ Older pause notes live in [`docs/PLATFORM-PAUSE.md`](PLATFORM-PAUSE.md) as a poi
 
 ## Customer product — built in this repo
 
-These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch`, `/watch?as=trial`, and `/watch?as=ended` all require a GitHub session and billing state comes only from the authenticated installation. Legacy `as` parameters are ignored. No preview tenant is rendered.
+These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch`, `/watch?as=trial`, and `/watch?as=ended` require a signed product session. Production login currently enters through GitHub OAuth; the provider-neutral identity foundation is present for Neon Auth. Billing state comes only from the authorised organisation/source. Legacy `as` parameters are ignored. No preview tenant is rendered.
 
 | Area | What is in |
 | --- | --- |
@@ -48,17 +58,22 @@ These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch
 
 Artifact Leads and Disclosure Desk at `/internal/prospects`. Public GitHub/npm discovery, verification, templates, do-not-contact, reports, destinations. **Nothing is mailed. Nothing is auto-sent to maintainers.** Customer sessions stay 401.
 
-## Wired in code, dark on this host
+## Hosted and provider state
 
 | Piece | Code | Live? |
 | --- | --- | --- |
 | Stripe Checkout, portal, lifecycle webhooks | Yes. 503 until keys and four price IDs | No. `/api/health` `stripe: false` |
 | Resend Watch email | Yes. Destinations save; send 503 without keys | No. `resend: false`. Inbox stays GitHub-login only. Desk `sent` stays false |
-| Vercel web/API | Yes | Temporary production alias exists |
-| Railway worker | `railway.toml` + `NOSPOILERS_ROLE=worker` | Account/environment not deployed |
-| `nospoilers.dev` | Documented | Not pointed |
+| Vercel web/API | Yes | Fresh project and production domains are configured; verify each deployment against its intended commit |
+| Neon Postgres | Yes | Vercel and Railway were verified against the same fresh Neon project |
+| Railway worker | `railway.toml` + hosted preflight | Configured; production preflight and one live clean Vercel Sandbox scan passed |
+| Vercel Sandbox | Fresh digest-pinned microVM per scan | Clean live probe passed; hostile-input/egress/interruption acceptance remains open |
+| `nospoilers.dev` | Vercel production domain | Valid configuration; final hosted customer journey remains unaccepted |
+| Neon Managed Better Auth | Provider-neutral database foundation is present | Not enabled; owner email verification and Auth endpoint setup remain |
+| WorkOS SSO/SCIM | Architecture documented | Not configured; later enterprise add-on only |
 
-Do not describe Stripe, email, or Railway as live because the UI or adapter exists.
+Do not describe Stripe, email, Neon Auth, WorkOS or the complete customer journey as live merely
+because their adapters or infrastructure foundations exist.
 
 ## Coded, not loop-proven on GitHub
 
@@ -77,7 +92,8 @@ Do not describe Stripe, email, or Railway as live because the UI or adapter exis
 - CycloneDX/SPDX SBOM attachment.
 - Sigstore / cosign / SLSA verification (adapters store presence only).
 - Scheduled registry/CDN delivery polling (on-demand verify is built).
-- SSO/SAML.
+- WorkOS enterprise SSO/SAML/OIDC and SCIM. The provider-neutral identity foundation is built;
+  configure the enterprise adapter only after explicit priority or customer demand.
 - Native Vercel / Netlify / Cloudflare account OAuth (generic deploy trigger is built).
 - Anonymized aggregate research from Artifact Leads.
 
@@ -100,12 +116,12 @@ Visual chrome is still being tightened against Linear comps in `/mockup-review/`
 
 ## Launch bar
 
-A public launch needs all of these. None of them are “write more product features.”
+1. Verify the fresh Neon account email, enable Managed Better Auth and prove customer sign-in and recovery.
+2. Prove the complete hosted sign-in → workspace → GitHub connection → worker scan → saved result journey.
+3. Complete live hostile-input, denied-egress, timeout and interruption cleanup checks for Vercel Sandbox.
+4. Configure and prove one approved notification path without exposing private evidence.
+5. Resolve the GitHub Actions account payment/spending-limit block and rerun CI.
+6. Complete native 200% zoom and audible screen-reader checks.
+7. Return to Stripe sandbox checkout and entitlement acceptance when the owner resumes billing work.
 
-1. Stripe keys and four price IDs (human approval).
-2. Resend keys and a from address (human approval). Do not mail disclosures.
-3. Deploy the Railway worker with the same `DATABASE_URL` and GitHub secrets.
-4. Point `nospoilers.dev` at Vercel. Cloudflare DNS is optional.
-5. Production GitHub App webhook URL on that domain.
-
-Until then: trial desk and Scan work; hosted coverage is real on the throwaway; nobody can be charged or emailed.
+Until then, the product is suitable for controlled private beta rather than an open public launch.

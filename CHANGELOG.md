@@ -5,6 +5,24 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Added the provider-neutral identity foundation in migration `123_product_identity`. Trusted
+  issuer/subject pairs map to stable NoSpoilers users without merging accounts by email.
+- Moved GitHub OAuth credentials into separate connector-account storage. Existing GitHub users
+  retain their IDs, workspaces and evidence; provider-neutral sessions survive GitHub connector
+  revocation.
+- Added stable `ADMIN_USER_ID` authorization for the private Artifact Leads and Disclosure Desk,
+  retaining `ADMIN_TOKEN` and transitional `ADMIN_GITHUB_LOGIN` access.
+- Selected Neon Managed Better Auth for ordinary customer login and documented WorkOS as a later
+  enterprise SSO/SCIM adapter. Neither provider is represented as live before its hosted flow passes.
+- Configured the hosted scan split as one trusted Railway coordinator plus a fresh, isolated Vercel
+  Sandbox microVM per untrusted scan. A live clean probe and worker preflight pass; remaining
+  hostile-input/egress/interruption checks stay open.
+- Verified that the fresh Vercel and Railway services point to the same Neon project without
+  retaining or printing the compared credentials.
+- Added [authentication and worker architecture](docs/AUTH-ENTERPRISE-AND-WORKERS.md) and the
+  [bugs and fixes register](bugsandfixes.md).
+- Final source verification for this increment: **1,660/1,660 tests across 271 files**, typecheck,
+  frontend/API builds, lint with the existing warnings and diff check.
 - Documentation map consolidated: `docs/STATUS.md` answers what is built vs live;
   `docs/ROADMAP.md` is only what is left; `docs/HANDOFF.md` is live host facts.
 

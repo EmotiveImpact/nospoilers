@@ -1,5 +1,10 @@
 # NoSpoilers production and enterprise readiness
 
+Current identity and runtime decisions are summarised in
+[Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md). Neon Auth is
+the selected ordinary-login provider; WorkOS remains a later SSO/SCIM adapter. A dedicated worker
+per company is not the default architecture.
+
 Reviewed 5 September 2026. Status: **build direction approved; launch gates open**.
 
 ## Read this first

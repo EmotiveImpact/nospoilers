@@ -1,5 +1,9 @@
 # Identity, workspaces and source connections
 
+For the short current explanation, start with
+[Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md). This file
+retains the detailed migration and decision history.
+
 Latest (123): the database now has a provider-neutral product identity boundary. `product_auth_identities` maps a trusted issuer/subject to the stable internal user, while `github_connector_accounts` holds GitHub connection metadata and encrypted OAuth credentials separately from the person record. Existing GitHub users keep their numeric internal IDs during migration; new providers receive UUID-backed users. Email and display-name strings are never used to merge identities, and an identity or GitHub account cannot be moved between users by an upsert race. Revoking a GitHub connector clears its token without ending a provider-neutral product session; the legacy GitHub-only session behavior remains during transition.
 
 Neon Managed Better Auth is the selected self-service identity provider for email/password and later social login. It is not yet active in the runtime: the fresh Marketplace Neon account still requires owner email verification before an Auth endpoint can be provisioned and tested. WorkOS is a later enterprise extension for SAML/OIDC SSO and Directory Sync/SCIM; it maps into the same internal user and organisation model rather than replacing the product database or core identity layer. GitHub remains a separately authorised source connector. Internal owner access can now be bound to `ADMIN_USER_ID`; the GitHub-login owner check remains only as a migration fallback.

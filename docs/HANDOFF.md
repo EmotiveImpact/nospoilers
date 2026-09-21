@@ -1,5 +1,24 @@
 # Next-agent handoff
 
+## Current handoff — 22 September 2026
+
+PR #44 was integrated and the active repository is on `main`. The provider-neutral identity
+foundation is committed at `11f4a3a`; current documentation records the resulting decisions. Start
+with [Status](STATUS.md), [Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md),
+[Bugs and fixes](../bugsandfixes.md), and the latest release-assurance build log. Do not resume the
+old branch/PR continuation instructions below; they are historical.
+
+Neon Managed Better Auth is selected for ordinary accounts but is not enabled because the fresh
+Marketplace Neon account still needs owner email verification. GitHub remains a separate source
+connector. WorkOS is a later enterprise SSO/SCIM adapter. Railway and a fresh digest-pinned Vercel
+Sandbox per scan have passed a live clean probe and production preflight. The hosted customer journey,
+live hostile-input/egress/interruption checks, real notification delivery, GitHub Actions account
+recovery and native accessibility acceptance remain open. Stripe remains owner-deferred.
+
+Final identity-source verification passed **1,660/1,660 tests across 271 files**, typecheck,
+frontend/API builds, lint with existing warnings and diff check. Do not call the product publicly
+production-ready from that result alone.
+
 ## Current handoff — 8 September
 
 **Gate B is complete.** This paragraph supersedes the earlier active-status checkpoint below. Final regression38375 passes986/198, build27665 passes, lint exits0 with warnings. No verification remains running. See the closure at the top of `GATE-B-COMPLETION-AUDIT.md` and the affirmative `GATE-B-FINAL-EVIDENCE-MATRIX.md`. Preserve all local changes; no new push/deployment was made. Next work belongs to separately agreed gates, not another rebuild of B0–B8.

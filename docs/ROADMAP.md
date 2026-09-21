@@ -2,25 +2,37 @@
 
 What is left. What is already in the repo is [`docs/STATUS.md`](STATUS.md). Pricing and invariants stay in [`docs/PRODUCT.md`](PRODUCT.md). Every discussed row is in [`docs/expansion/FEATURE-INVENTORY.md`](expansion/FEATURE-INVENTORY.md).
 
-There is no large unbuilt customer module sitting in the inventory. Remaining work is go-live, a few GitHub proofs, Watch chrome, and ice.
+There is no large unbuilt customer module sitting in the inventory. Remaining work is provider
+activation and hosted acceptance, not another redesign.
 
-## Now — Watch chrome
+## Now — activate ordinary customer login
 
-Live Watch is the 2B desk. Keep the canvas near-black (`#09090b`). Meaningful open/triage counts stay coral (`#ff8a80`). Do not invent tenant data.
+1. Verify the owner email for the fresh Neon Marketplace account.
+2. Enable Neon Managed Better Auth and record its Auth base URL.
+3. Configure production and local trusted domains/callbacks.
+4. Pin and mount the Neon server adapter behind the NoSpoilers origin.
+5. Add and prove sign-up, sign-in, sign-out, recovery and session handling.
+6. Preserve GitHub as a separate workspace connector; never merge users by email.
 
-Shot C (glow and rim on `.watch-stage` only) is the current visual spec: `/mockup-review/2b/21-stage-linear.html?shot=c`. That is presentation, not a missing API.
+The database and authorization foundation for this is complete. See
+[AUTH-ENTERPRISE-AND-WORKERS.md](AUTH-ENTERPRISE-AND-WORKERS.md).
 
-## Next — human-gated launch
+## Next — prove the hosted customer loop
 
-None of this is “implement Stripe.” The adapters exist.
+1. New customer creates a product account.
+2. Customer creates or selects a workspace.
+3. Customer authorises the correct GitHub account and installation for that workspace.
+4. A release scan queues on the shared Neon database.
+5. Railway dispatches it into a fresh Vercel Sandbox.
+6. The signed result, findings and evidence appear in Releases without cross-tenant leakage.
 
-1. Stripe Dashboard prices + runtime keys. Checkout stays 503 until they are set.
-2. Resend keys + from address. Do not mail Disclosure Desk or invites.
-3. Railway service from `railway.toml` (`npm run worker`) with the same Neon and GitHub secrets.
-4. Registrar DNS for `nospoilers.dev` → Vercel. Cloudflare is optional.
-5. Point the GitHub App webhook at the production origin.
+## Then — close launch acceptance
 
-Exit: a stranger can install, trial, pay, and get an email alert. `/api/health` reports `stripe: true` and `resend: true`.
+- Live hostile-input, denied-egress, timeout and interruption-cleanup tests for the sandbox.
+- One real, private notification delivery and retry/failure check.
+- GitHub Actions CI after the account payment/spending-limit block is resolved.
+- Native 200% zoom and audible screen-reader checks.
+- Stripe sandbox prices, keys, webhooks and entitlement lifecycle when the owner resumes billing.
 
 ## Then — optional proofs
 
@@ -42,7 +54,7 @@ Build only after paying demand or an explicit ask.
 | SBOM attach | CycloneDX / SPDX |
 | Sigstore / SLSA verify | Adapters already store presence |
 | Scheduled CDN verify | On-demand verify is built |
-| SSO / SAML | When a customer asks |
+| WorkOS SSO / SCIM | Provider-neutral foundation is ready; add only after an explicit enterprise requirement or priority |
 | Native Vercel / Netlify / Cloudflare OAuth | Generic `/api/v1/deploy` is built |
 | GitHub Marketplace listing | After ~100 installs; Stripe remains checkout |
 | Aggregate Artifact Leads research | After review |
