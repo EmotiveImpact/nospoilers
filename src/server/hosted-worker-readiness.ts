@@ -4,6 +4,7 @@ import path from 'node:path';
 import {databaseMode,githubAppConfigured,resendConfigured,type AppConfig} from './config.ts';
 import {isolatedScan} from './isolated-scanner.ts';
 import {MIN_SECRET_LENGTH,secretIsStrong} from './secrets.ts';
+import {vercelSandboxConfigurationProblems} from './vercel-sandbox-scanner.ts';
 
 const immutableImage=/^(?:sha256:[a-f0-9]{64}|[^\s@]+@sha256:[a-f0-9]{64})$/;
 
@@ -25,10 +26,13 @@ export function hostedWorkerReadinessProblems(config:AppConfig,env:NodeJS.Proces
  if(!secretIsStrong(explicitReceipt))problems.push(`RECEIPT_SECRET must be explicitly set to at least ${MIN_SECRET_LENGTH} characters.`);
  if(config.sessionSecret===config.githubWebhookSecret)problems.push('SESSION_SECRET must be distinct from GITHUB_WEBHOOK_SECRET.');
  if(explicitReceipt&&(explicitReceipt===config.sessionSecret||explicitReceipt===config.githubWebhookSecret))problems.push('RECEIPT_SECRET must be distinct from session and webhook secrets.');
- if(env.NOSPOILERS_SCANNER_MODE!=='container')problems.push('NOSPOILERS_SCANNER_MODE must be container.');
+ const scannerMode=env.NOSPOILERS_SCANNER_MODE?.trim().toLowerCase();
+ if(scannerMode!=='container'&&scannerMode!=='vercel-sandbox')problems.push('NOSPOILERS_SCANNER_MODE must be container or vercel-sandbox.');
  const scannerImage=env.NOSPOILERS_SCANNER_IMAGE?.trim()??'';
- if(!immutableImage.test(scannerImage))problems.push('NOSPOILERS_SCANNER_IMAGE must be an immutable sha256 image ID or digest reference.');
- if(env.DOCKER_HOST?.trim())problems.push('DOCKER_HOST must be unset so the scanner uses the worker-local default socket and local staged paths.');
+ if(scannerMode==='container'){
+  if(!immutableImage.test(scannerImage))problems.push('NOSPOILERS_SCANNER_IMAGE must be an immutable sha256 image ID or digest reference.');
+  if(env.DOCKER_HOST?.trim())problems.push('DOCKER_HOST must be unset so the scanner uses the worker-local default socket and local staged paths.');
+ } else if(scannerMode==='vercel-sandbox')problems.push(...vercelSandboxConfigurationProblems(env));
  if(env.NOSPOILERS_LOCAL_REVIEW==='1'||env.NOSPOILERS_INTERNAL_LOCAL_SCAN==='1')problems.push('Local review and local scan bypasses must be disabled.');
  const notificationProvider=env.NOSPOILERS_HOSTED_NOTIFICATION_PROVIDER?.trim().toLowerCase();
  if(notificationProvider==='resend') {
@@ -44,7 +48,7 @@ export async function probeWorkerLocalScanner():Promise<void> {
  try {
   await writeFile(path.join(directory,'package.json'),'{}\n',{mode:0o600});
   await writeFile(path.join(directory,'index.js'),'export const readiness = true;\n',{mode:0o600});
-  const report=await isolatedScan(directory,{requireContainer:true});
+  const report=await isolatedScan(directory,{requireIsolated:true});
   if(!report.ok||report.status!=='passed')throw new Error('Scanner probe did not return a clean result.');
  } finally {await rm(directory,{recursive:true,force:true});}
 }
@@ -56,5 +60,5 @@ export async function assertHostedWorkerReady(config:AppConfig,options:{
  const problems=hostedWorkerReadinessProblems(config,options.env);
  if(problems.length)throw new Error(`Hosted worker readiness failed:\n- ${problems.join('\n- ')}`);
  try {await (options.scanProbe??probeWorkerLocalScanner)();}
- catch(error) {throw new Error('Hosted worker readiness failed: the worker-local isolated scanner image or staged-path mount probe failed.',{cause:error});}
+ catch(error) {throw new Error('Hosted worker readiness failed: the configured isolated scanner could not complete the clean staging probe.',{cause:error});}
 }

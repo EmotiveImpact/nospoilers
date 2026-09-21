@@ -6,6 +6,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
 import type { ScanReport } from '../scanner/types.ts';
+import {runVercelSandboxScanner,type VercelSandboxFactory} from './vercel-sandbox-scanner.ts';
+
+export type ScannerMode='process'|'container'|'vercel-sandbox';
+
+export function configuredScannerMode(env:NodeJS.ProcessEnv=process.env):ScannerMode {
+ const configured=env.NOSPOILERS_SCANNER_MODE?.trim().toLowerCase();
+ if(configured==='container'||configured==='vercel-sandbox')return configured;
+ return 'process';
+}
 
 export function scannerCommand(target:string, mode:'process'|'container',name:string) {
   if(mode==='container') {
@@ -21,9 +30,16 @@ export function scannerCommand(target:string, mode:'process'|'container',name:st
   return {command:process.execPath,args:['--max-old-space-size=512','--import','tsx',fileURLToPath(new URL('./scanner-child.ts',import.meta.url)),target]};
 }
 
-export async function isolatedScan(target:string,options:{requireContainer?:boolean}={}):Promise<ScanReport> {
-  const mode=process.env.NOSPOILERS_SCANNER_MODE==='container'?'container':'process';
-  if((process.env.NODE_ENV==='production' || options.requireContainer) && mode!=='container')throw new Error('Production scans require the isolated container executor.');
+export async function isolatedScan(target:string,options:{
+ requireContainer?:boolean;
+ requireIsolated?:boolean;
+ sandboxFactory?:VercelSandboxFactory;
+ env?:NodeJS.ProcessEnv;
+}={}):Promise<ScanReport> {
+  const env=options.env??process.env;
+  const mode=configuredScannerMode(env);
+  if(options.requireContainer&&mode!=='container')throw new Error('This scan requires the isolated container executor.');
+  if((env.NODE_ENV==='production'||options.requireIsolated)&&mode==='process')throw new Error('Production scans require an isolated scanner executor.');
   const resolved=await realpath(target),name=`nospoilers-scan-${randomUUID()}`;
   const staging=await mkdtemp(path.join(tmpdir(),'nospoilers-parser-'));
   const input=path.join(staging,path.basename(resolved));
@@ -45,15 +61,17 @@ export async function isolatedScan(target:string,options:{requireContainer?:bool
     if(info.isDirectory())for(const child of await readdir(file))await makeReadable(path.join(file,child));
   }
   await makeReadable(input);
-  const spec=scannerCommand(input,mode,name);
-  const raw=await new Promise<string>((resolve,reject)=>{
+  const raw=mode==='vercel-sandbox'
+   ? await runVercelSandboxScanner(input,{env,factory:options.sandboxFactory})
+   : await new Promise<string>((resolve,reject)=>{
+    const spec=scannerCommand(input,mode,name);
     const child=spawn(spec.command,spec.args,{shell:false,stdio:['ignore','pipe','pipe'],
-      env:{PATH:process.env.PATH??'/usr/bin:/bin',NODE_ENV:'production',LANG:'C.UTF-8'}});
+      env:{PATH:env.PATH??'/usr/bin:/bin',NODE_ENV:'production',LANG:'C.UTF-8'}});
     let output='';let bytes=0;let failure:Error|undefined;const decoder=new StringDecoder('utf8');
     const stop=()=>{
       child.kill('SIGKILL');
       if(mode==='container'){
-        const cleanup=spawn('docker',['rm','-f',name],{stdio:'ignore',shell:false,env:{PATH:process.env.PATH??'/usr/bin:/bin'}});
+        const cleanup=spawn('docker',['rm','-f',name],{stdio:'ignore',shell:false,env:{PATH:env.PATH??'/usr/bin:/bin'}});
         cleanup.on('error',()=>undefined);
       }
     };
@@ -63,7 +81,7 @@ export async function isolatedScan(target:string,options:{requireContainer?:bool
     child.stderr.resume();
     child.on('error',error=>{clearTimeout(timer);reject(error);});
     child.on('close',code=>{clearTimeout(timer);if(failure||code!==0)reject(failure??new Error('Isolated scanner failed.'));else resolve(output+decoder.end());});
-  });
+   });
   const report=JSON.parse(raw) as ScanReport;
   if(!report || !Array.isArray(report.findings) || !Array.isArray(report.manifest) || typeof report.ok!=='boolean')throw new Error('Invalid scanner report.');
   if(report.status==='inconclusive')report.ok=false;

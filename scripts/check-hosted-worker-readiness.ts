@@ -8,7 +8,7 @@ try {
   ok:true,
   role:config.processRole,
   database:databaseMode(config.databaseUrl),
-  scanner:'worker-local-container',
+  scanner:process.env.NOSPOILERS_SCANNER_MODE==='vercel-sandbox'?'vercel-sandbox-microvm':'worker-local-container',
   notification:process.env.NOSPOILERS_HOSTED_NOTIFICATION_PROVIDER,
  })}\n`);
 } catch(error) {

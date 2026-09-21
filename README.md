@@ -97,15 +97,17 @@ behind by a crash; it is not the normal pickup path. Failed jobs retry with back
 attempts). Stale running locks are requeued. `POLL_INTERVAL_MS` is different—the hourly GitHub
 visibility backstop that catches a missed webhook.
 
-The intended hosted split is Vercel for web/API and a persistent Railway worker. The checked-in
-Railway command now runs `npm run worker:hosted`, which fails before queue processing unless the
-external Postgres, hosted GitHub App, explicit notification path, production secrets, immutable
-scanner image and an actual worker-local isolated scan all pass. A plain Railpack service does not
-establish the local container executor required by the current scanner. Do not replace that check
-with process mode or a remote `DOCKER_HOST`: the staged artifact must stay local to the executor.
-See [Gate A implementation](docs/GATE-A-IMPLEMENTATION.md) for the finite operator checklist and
-the current external blocker. Normal database queries use Neon’s pooled URL; the worker derives
-Neon’s direct endpoint for session-bound `LISTEN/NOTIFY`.
+The intended hosted split is Vercel for web/API, a persistent Railway worker and one ephemeral
+Vercel Sandbox microVM per untrusted scan. The checked-in Railway command runs
+`npm run worker:hosted`, which fails before queue processing unless external Postgres, hosted
+GitHub App credentials, an explicit notification path, strong production secrets, a digest-pinned
+Vercel Container Registry image and an actual clean sandbox scan all pass. Sandbox creation is
+project-scoped, nonpersistent and deny-all for network access; only the parser input enters the VM.
+Process mode remains local development only. The worker-local container mode remains available for
+operators that own a local daemon and mount namespace; remote `DOCKER_HOST` stays rejected.
+See [Gate A implementation](docs/GATE-A-IMPLEMENTATION.md) for the finite fresh-account setup and
+live acceptance checklist. Normal database queries use the configured external Postgres URL; Neon
+deployments derive the direct endpoint for session-bound `LISTEN/NOTIFY`.
 
 ```bash
 docker compose up -d

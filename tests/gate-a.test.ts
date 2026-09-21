@@ -82,7 +82,7 @@ describe('parser and egress boundaries',()=>{
   },15000);
   it('fails closed in production without a container and configures restricted execution',async()=>{
     vi.stubEnv('NODE_ENV','production');vi.stubEnv('NOSPOILERS_SCANNER_MODE','process');
-    await expect(isolatedScan('fixtures/clean.tgz')).rejects.toThrow('container');
+    await expect(isolatedScan('fixtures/clean.tgz')).rejects.toThrow('isolated scanner executor');
     const cmd=scannerCommand('/tmp/clean.tgz','container','nospoilers-scan-test');
     expect(cmd.args).toEqual(expect.arrayContaining(['--network=none','--read-only','--cap-drop=ALL','--memory=1g','--pids-limit=32']));
     expect(cmd.args.join(' ')).not.toContain('docker.sock');

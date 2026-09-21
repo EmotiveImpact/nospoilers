@@ -50,7 +50,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   });
   const runJobs = processRunsJobs(config.processRole);
   const worker = createWorker({
-    scan: target=>isolatedScan(target,{requireContainer:!['localhost','127.0.0.1','[::1]'].includes(new URL(config.appBaseUrl).hostname)}),
+    scan: target=>isolatedScan(target,{requireIsolated:!['localhost','127.0.0.1','[::1]'].includes(new URL(config.appBaseUrl).hostname)}),
     store,
     github,
     npm,

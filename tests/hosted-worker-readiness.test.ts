@@ -31,9 +31,18 @@ it('accepts a complete non-Stripe worker only after its local isolated scan prob
  expect(config.stripeSecretKey).toBe('');
 });
 
+it('accepts a digest-pinned Vercel Sandbox executor with explicit project credentials',()=>{
+ const {config,env}=ready();
+ expect(hostedWorkerReadinessProblems(config,{
+  ...env,NOSPOILERS_SCANNER_MODE:'vercel-sandbox',
+  NOSPOILERS_SCANNER_IMAGE:`nospoilers-scanner@sha256:${'b'.repeat(64)}`,
+  VERCEL_TOKEN:'sandbox-token',VERCEL_TEAM_ID:'team-id',VERCEL_PROJECT_ID:'project-id',
+ })).toEqual([]);
+});
+
 it('fails before probing when hosted identity, isolation, or delivery configuration is unsafe',async()=>{
  const {config,env}=ready();const scanProbe=vi.fn(async()=>undefined);
- const unsafe={...env,NODE_ENV:'test',NOSPOILERS_SCANNER_MODE:'process',NOSPOILERS_SCANNER_IMAGE:'nospoilers-scanner:latest',
+ const unsafe={...env,NODE_ENV:'test',NOSPOILERS_SCANNER_MODE:'container',NOSPOILERS_SCANNER_IMAGE:'nospoilers-scanner:latest',
   DOCKER_HOST:'tcp://daemon.example.test:2376',NOSPOILERS_HOSTED_NOTIFICATION_PROVIDER:'resend'};
  const unsafeConfig={...config,databaseUrl:'pglite://./data/nospoilers',appBaseUrl:'http://127.0.0.1:4347',processRole:'all' as const,
   resendApiKey:'',receiptSecret:config.sessionSecret};
@@ -41,13 +50,14 @@ it('fails before probing when hosted identity, isolation, or delivery configurat
  const problems=hostedWorkerReadinessProblems(unsafeConfig,unsafe).join('\n');
  expect(problems).toMatch(/PGlite/);expect(problems).toMatch(/HTTPS/);expect(problems).toMatch(/NOSPOILERS_ROLE/);
  expect(problems).toMatch(/immutable sha256/);expect(problems).toMatch(/DOCKER_HOST/);expect(problems).toMatch(/RESEND_API_KEY/);
+ expect(hostedWorkerReadinessProblems(config,{...env,NOSPOILERS_SCANNER_MODE:'process'}).join('\n')).toMatch(/container or vercel-sandbox/);
  expect(scanProbe).not.toHaveBeenCalled();
 });
 
 it('propagates a generic failure when the real executor cannot mount and scan worker-local staging',async()=>{
  const {config,env}=ready();const underlying=new Error('private daemon detail');
  await expect(assertHostedWorkerReady(config,{env,scanProbe:async()=>{throw underlying;}}))
-  .rejects.toMatchObject({message:expect.stringContaining('staged-path mount probe failed'),cause:underlying});
+  .rejects.toMatchObject({message:expect.stringContaining('clean staging probe'),cause:underlying});
 });
 
 it('allows the Slack path only when it is selected explicitly',()=>{
