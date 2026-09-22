@@ -340,12 +340,12 @@ export function WatchMonolithShell({
 
       <nav
         className={cn(
-          "watch-rail-nav flex flex-1 flex-col gap-[18px] overflow-auto",
+          "watch-rail-nav flex flex-1 flex-col gap-3 overflow-auto",
           opts.collapsed ? "px-1.5" : "px-3",
         )}
         aria-label="Watch desk"
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0">
           {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Work</p>}
           <NavLink
             href={hrefFor("overview")}
@@ -368,7 +368,7 @@ export function WatchMonolithShell({
           </NavLink>}
         </div>
 
-        <div className={cn("flex flex-col gap-0.5", !opts.collapsed && "border-t border-line pt-[17px]")}>
+        <div className={cn("flex flex-col gap-0", !opts.collapsed && "border-t border-line pt-[17px]")}>
           {opts.collapsed ? null : <p className="watch-kicker px-2.5 pb-1.5">Evidence</p>}
           {<NavLink
             href={hrefFor("sources")}
@@ -404,7 +404,7 @@ export function WatchMonolithShell({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0">
           <a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className={cn('watch-rail-link flex items-center rounded-[5px] py-[10px] text-[13px]',opts.collapsed?'justify-center':'gap-3 px-3',settingsActive?'text-snow':'text-mute hover:text-snow')} aria-current={settingsActive?'page':undefined}>
             <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
           </a>
@@ -444,7 +444,7 @@ export function WatchMonolithShell({
       <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel data-dropdown-boundary id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(17.5rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel data-dropdown-boundary id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(15.5rem,85vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>
