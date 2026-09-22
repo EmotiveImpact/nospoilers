@@ -434,7 +434,7 @@ export function WatchMonolithShell({
       <aside
         className={cn(
           "group/rail watch-rail watch-rail--desktop hidden h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
-          collapsed ? "watch-rail--collapsed w-[60px]" : "watch-rail--expanded w-[224px]",
+          collapsed ? "watch-rail--collapsed w-[60px]" : "watch-rail--expanded w-[200px]",
         )}
       >
         {rail({ collapsed, showToggle: true })}
@@ -443,7 +443,7 @@ export function WatchMonolithShell({
       <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(17.5rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>

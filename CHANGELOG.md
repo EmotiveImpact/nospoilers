@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Reduced the expanded desktop sidebar from 224px to 200px and the mobile drawer from 320px to 280px, with a smaller logo and tighter vertical spacing.
+
 - Alerts now groups the current page into Findings and Incomplete checks with counts, source-first rows and coloured issue summaries. Keyboard navigation follows the displayed order; empty groups stay hidden.
 
 - Added instant Coverage source search and searchable, keyboard-accessible repository pickers in Repository checks and New scan. Search preserves source totals and combines with Coverage filters.

@@ -24,17 +24,17 @@
 
 :is(.watch-desk,.watch-navigation-dialog) .watch-rail-head {
   flex: none;
-  padding-top: 20px;
+  padding-top: 16px;
   padding-bottom: 0;
 }
 
 :is(.watch-desk,.watch-navigation-dialog) .watch-rail-head > .watch-rail-brand {
   min-height: 38px;
-  margin: 0 8px 25px;
+  margin: 0 8px 20px;
 }
 
 :is(.watch-desk,.watch-navigation-dialog) .watch-rail-wordmark {
-  width: 140px;
+  width: 128px;
   height: 38px;
   object-fit: contain;
   object-position: left center;
@@ -42,7 +42,7 @@
 
 :is(.watch-desk,.watch-navigation-dialog) .workspace-switcher {
   margin-top: 0;
-  margin-bottom: 27px;
+  margin-bottom: 20px;
 }
 
 :is(.watch-desk,.watch-navigation-dialog) .workspace-switcher > .watch-kicker {
@@ -87,7 +87,7 @@
 }
 
 :is(.watch-desk,.watch-navigation-dialog) .watch-rail-link {
-  min-height: 40px;
+  min-height: 38px;
   margin: 1px 0;
   color: var(--journey-muted);
   white-space: nowrap;
