@@ -63,3 +63,12 @@ it('groups mixed alerts and navigates in displayed order without changing eviden
  expect(document.activeElement).toBe(rows[1]);
  expect(p.onAction).not.toHaveBeenCalled();
 });
+
+it('recovers the source from a legacy generated title when the API omits its repository field',()=>{
+ const p=props();
+ p.rows=[{...p.rows[0],title:'Sensitive path in EmotiveImpact/nospoilers',coordinate:'push_sensitive_path',rule:'push_sensitive_path'}];
+ render(<WatchAlertsWorkspace {...p}/>);
+ const row=screen.getByRole('button',{name:'EmotiveImpact/nospoilers. Sensitive path'});
+ expect(row.querySelector('strong')?.textContent).toBe('EmotiveImpact/nospoilers');
+ expect(row.querySelector('.alerts-journey-row-summary')?.textContent).toBe('Sensitive path');
+});

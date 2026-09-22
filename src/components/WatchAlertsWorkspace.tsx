@@ -16,15 +16,18 @@ import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 function alertQueueCopy(row: AlertListViewModel) {
-  const hasContext = row.coordinate && row.coordinate !== row.rule;
+  // Older retained alerts omit full_name but preserve the source in their generated title.
+  const legacySource = /^(Sensitive path|Spoilers|No release) (?:in|on) (\S+\/\S+(?: .+)?)$/.exec(row.title);
+  const context = row.coordinate && row.coordinate !== row.rule ? row.coordinate : legacySource?.[2];
+  const hasContext = !!context;
   let summary = row.title;
   if (hasContext) {
     for (const separator of [" in ", " on "]) {
-      const suffix = separator + row.coordinate;
+      const suffix = separator + context;
       if (summary.endsWith(suffix)) summary = summary.slice(0, -suffix.length);
     }
   }
-  return { title: hasContext ? row.coordinate : row.title, summary: hasContext ? summary : null };
+  return { title: context || row.title, summary: hasContext ? summary : null };
 }
 
 function alertQueueGroup(row: AlertListViewModel) {
