@@ -6,6 +6,8 @@ Coverage detail/navigation, GitHub connection and repository manager tests passe
 
 Production deployed `72e02f1`; its live bundle matched the tested build. Live verification then exposed an expired GitHub user credential: discovery returned GitHub 401 and previously left only a raw error. The API now returns a safe reauthentication code/message for missing or expired credentials; connection controls show an explicit same-account GitHub sign-in link. They do not redirect or change access automatically. Expanded verification passed **25/25 tests across 4 files**, TypeScript/frontend build, API build and diff check. Reauthorisation requires the account holder's valid GitHub authentication; this does not claim a newly connected repository.
 
+Final production `26e5f1f` was Ready in the current no-spoilers Vercel project; the live bundle SHA-256 matched the tested build. Verified the recovery link renewed the existing EmotiveImpact GitHub sign-in, then retried Connect source successfully to GitHub's installation settings for 158159401. GitHub now asks the owner for passkey/mobile/authenticator confirmation before editing access. No installation permissions were changed. The old Vercel account's separate deployment status was rate-limited; the current production project deployed successfully.
+
 ## 22 September 2026 — GitHub error and dependency audit
 
 Audited recent main CI, all seven open PRs, open issues and available security endpoints. Main CI was green; obsolete prototype failures were billing blocks or historical owner-discovery timeouts. PR #40's empty-coordinate bug is already fixed and regression-tested on main. See [the full audit](../github-error-audit-2026-09-22.md) for per-PR evidence and disabled security-scanning limitations.
