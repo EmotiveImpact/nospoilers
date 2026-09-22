@@ -16,18 +16,20 @@ import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 function alertQueueCopy(row: AlertListViewModel) {
-  const category = row.operational
-    ? "Check incomplete"
-    : row.severity === "critical"
-      ? "Critical finding"
-      : "Finding";
-  const context = row.coordinate !== row.rule && !row.title.includes(row.coordinate)
-    ? row.coordinate
-    : null;
-  return {
-    title: row.title,
-    summary: [category, context].filter(Boolean).join(" · "),
-  };
+  const hasContext = row.coordinate && row.coordinate !== row.rule;
+  let summary = row.title;
+  if (hasContext) {
+    for (const separator of [" in ", " on "]) {
+      const suffix = separator + row.coordinate;
+      if (summary.endsWith(suffix)) summary = summary.slice(0, -suffix.length);
+    }
+  }
+  return { title: hasContext ? row.coordinate : row.title, summary: hasContext ? summary : null };
+}
+
+function alertQueueGroup(row: AlertListViewModel) {
+  return row.queueKind === "coverage" ? "Coverage records" :
+    row.operational || row.queueKind === "incomplete-check" ? "Incomplete checks" : "Findings";
 }
 
 import type {KeyboardEvent,ReactNode} from 'react';
@@ -145,9 +147,13 @@ export function WatchAlertsWorkspace({
     mine: filterDeskAlerts(allAlerts, "mine", login, false, userId).length,
     done: filterDeskAlerts(allAlerts, "done", login).length,
   };
-  const selectedIndex = selected ? alerts.findIndex((alert) => alert.id === selected.id) : -1;
-  const previous = selectedIndex > 0 ? alerts[selectedIndex - 1] : null;
-  const next = selectedIndex >= 0 && selectedIndex < alerts.length - 1 ? alerts[selectedIndex + 1] : null;
+  const groups = ["Findings", "Incomplete checks", "Coverage records"].map(label => ({
+    label, rows: rows.filter(row => alertQueueGroup(row) === label),
+  })).filter(group => group.rows.length > 0);
+  const orderedRows = groups.flatMap(group => group.rows);
+  const selectedIndex = selected ? orderedRows.findIndex(row => row.id === selected.id) : -1;
+  const previous = selectedIndex > 0 ? orderedRows[selectedIndex - 1] : null;
+  const next = selectedIndex >= 0 && selectedIndex < orderedRows.length - 1 ? orderedRows[selectedIndex + 1] : null;
   const selectedRow = selected ? (selectedViewModel?.id===selected.id?selectedViewModel:rows.find((row) => row.id === selected.id)) : null;
   const listRef = useRef<HTMLOListElement>(null);
   const assignmentInputRef = useRef<HTMLSelectElement>(null);
@@ -289,7 +295,11 @@ export function WatchAlertsWorkspace({
                 </div>
               </li>
             ) : (
-              rows.map((row) => {
+              groups.flatMap(group => [
+                <li className="alerts-journey-group" key={group.label}>
+                  <h2>{group.label}<span aria-label={`${group.rows.length} on this page`}>{group.rows.length}</span></h2>
+                </li>,
+                ...group.rows.map((row) => {
                 const copy=alertQueueCopy(row);
                 return <li key={row.id}>
                   <button
@@ -304,10 +314,10 @@ export function WatchAlertsWorkspace({
                     onClick={() => onSelect(row.id)}
                   >
                     <strong className="alerts-journey-row-title line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
-                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block truncate text-xs",row.status === "resolved" ? "text-dim" : row.severity === "critical" ? "text-danger-text" : "text-mute")}>{copy.summary}</span>:null}
+                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-danger-text")}>{copy.summary}</span>:null}
                   </button>
                 </li>;
-              })
+              })])
             )}
           </ol>
         )}

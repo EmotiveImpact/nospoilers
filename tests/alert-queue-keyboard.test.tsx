@@ -35,9 +35,31 @@ it('labels an actionable incomplete check without exposing internal job labels',
  p.rows=[{...p.rows[0],title:'Latest release check could not finish',coordinate:'Acme/web',rule:'scan_latest_release',operational:true,queueKind:'incomplete-check',exposure:'Saved check'}];
  p.selected=p.alerts[0];
  render(<WatchAlertsWorkspace {...p}/>);
- const row=screen.getByRole('button',{name:'Latest release check could not finish. Check incomplete · Acme/web'});
+ const row=screen.getByRole('button',{name:'Acme/web. Latest release check could not finish'});
  expect(row.textContent).not.toContain('scan_latest_release');
  expect(row.textContent).not.toContain('Saved check');
  expect(screen.getByText(/opened this from a latest release check/)).toBeTruthy();
  expect(screen.getByRole('heading',{name:'Latest release check could not finish'})).toBeTruthy();
+});
+
+it('groups mixed alerts and navigates in displayed order without changing evidence',()=>{
+ vi.stubGlobal('matchMedia',vi.fn(()=>({matches:true})));Element.prototype.scrollIntoView=vi.fn();
+ const p=props();
+ p.rows=[
+ {...p.rows[0],coordinate:'Acme/web',title:'Latest check failed',operational:true,queueKind:'incomplete-check'},
+ {...p.rows[1],coordinate:'Acme/api',title:'Sensitive path in Acme/api',queueKind:'finding'},
+ ];
+ p.selected=p.alerts[1];
+ render(<WatchAlertsWorkspace {...p}/>);
+ const rows=Array.from(document.querySelectorAll<HTMLButtonElement>('[data-alert-id]'));
+ expect(rows.map(row=>row.dataset.alertId)).toEqual(['2','1']);
+ expect(screen.getByRole('heading',{name:/Findings1 on this page/})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:/Incomplete checks1 on this page/})).toBeTruthy();
+ expect(screen.queryByRole('heading',{name:/Coverage records/})).toBeNull();
+ expect(rows[0].querySelector('strong')?.textContent).toBe('Acme/api');
+ expect(rows[0].querySelector('.alerts-journey-row-summary')?.textContent).toBe('Sensitive path');
+ fireEvent.keyDown(rows[0],{key:'ArrowDown'});
+ expect(p.onSelect).toHaveBeenCalledWith(1);
+ expect(document.activeElement).toBe(rows[1]);
+ expect(p.onAction).not.toHaveBeenCalled();
 });

@@ -153,16 +153,28 @@
 }
 
 .alerts-journey .alerts-journey-shortcuts {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  padding: 0 12px 12px;
+  margin: 0;
+  color: var(--color-mute);
+  font-size: 11px;
+  line-height: 1.6;
+  border-color: var(--alerts-line);
 }
+
+.alerts-journey .alerts-journey-group h2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 16px 12px 8px;
+  color: var(--color-mute);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.alerts-journey .alerts-journey-group h2 span { font-variant-numeric: tabular-nums; }
+.alerts-journey .alerts-journey-rows > .alerts-journey-group { border: 0; }
 
 .alerts-journey .alerts-journey-rows {
   padding: 0;
@@ -197,6 +209,8 @@
 }
 
 .alerts-journey .alerts-journey-row-summary {
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 11px;
   line-height: 1.55;
 }
