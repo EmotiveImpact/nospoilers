@@ -41,7 +41,7 @@
 .watch-desk .scan-scope-note h3{font-size:13px;color:#f4f4f5;font-weight:550;margin-bottom:12px}
 .watch-desk .scan-scope-note ul{list-style:disc;padding-left:17px;margin-bottom:27px}.watch-desk .scan-scope-note li{margin:10px 0}
 .watch-desk .scan-scope-note p{margin:9px 0 20px}.watch-desk .scan-scope-note a{display:inline-flex;align-items:center;gap:7px;color:#cdced4}
-@media(max-width:800px){.watch-desk .scan-scope-note{border-left:0;border-top:1px solid #ffffff10;padding:23px 0 0}}
+@media(max-width:900px){.watch-desk .scan-scope-note{border-left:0;border-top:1px solid #ffffff10;padding:23px 0 0}}
 
 .watch-desk .scan-website-panel input,.watch-desk .scan-website-panel select{background:#090a0c;border:1px solid #ffffff10;border-radius:5px;min-height:38px;font-size:12px}
 .watch-desk .scan-repository-picker{margin-top:28px;padding-top:24px;border-top:1px solid #ffffff10}

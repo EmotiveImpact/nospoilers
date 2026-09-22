@@ -1,3 +1,7 @@
+## 22 September 2026 — matching scan guidance layout
+
+GitHub scan now uses the same launch layout and main-column styling as Package or build, avoiding website-specific aside padding and typography. Scope guidance stacks below both forms at the same 900px breakpoint. Local browser measurements matched exactly between modes: 270px panel width, 26px left padding, 12px copy with 19.8px line height, and identical x/y position at the tested desktop viewport. Existing scan prerequisites/submission tests passed 30/30; TypeScript/frontend build and diff check passed. No scan behavior changed.
+
 ## 22 September 2026 — consistent app dropdowns and quieter Alerts queue
 
 Replaced all 32 remaining native selects in src with AppSelect, using the existing Radix dependency and shared neutral-dark menu styles. Includes the package scan destination, GitHub source selector, notifications, team role, registry, website schedules, release streams/gates/remediation/parity, deletion scope, pricing connection and disclosure controls. Existing option values, disabled states, callbacks and required-field validation remain; no API or authorization changes. Lists over seven choices expose search with explicit popup/listbox semantics, empty results and keyboard navigation. The repository picker remains searchable. Remediation case selection still transfers focus after its control is unmounted, while deliberate user focus movement cancels that transfer.

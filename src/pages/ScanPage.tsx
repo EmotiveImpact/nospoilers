@@ -355,8 +355,8 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
       <div className="scan-mode-detail" role="tabpanel" id={`${modeId}-panel`} aria-labelledby={`${modeId}-${mode}`}>
       {mode!=='receipt'&&sessionError?<div role="alert" className="mt-5 space-y-3 rounded-lg border border-white/15 bg-panel p-4 text-sm text-mute"><p>{sessionError}</p><HeadlessButton type="button" className="min-h-11 underline underline-offset-4" onClick={()=>{setSessionError(null);setSessionRetry(value=>value+1)}}>Retry permissions check</HeadlessButton></div>:null}
       {mode === "github" ? (
-        <section className="scan-website-panel" aria-labelledby="github-connect-title">
-          <div>
+        <section className="scan-launch-layout" aria-labelledby="github-connect-title">
+          <section className="scan-launch-panel">
             <p className="text-[11px] uppercase tracking-[0.22em] text-dim">GitHub repository</p>
             <h2 id="github-connect-title" className="mt-3 font-display text-3xl text-snow">{session&&selectedInstall?"Check a connected release.":"Connect the repository behind your release."}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute">
@@ -382,7 +382,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                 <GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={lockReason} compact/>
               </section>
             ) : null}
-          </div>
+          </section>
           <aside className="scan-scope-note">
             <h3>What this checks</h3><ul className="scan-check-list"><li><span className="scan-check-icon"><FileText aria-hidden /></span><div><strong>Source maps and source files</strong><p>Checks for exposed source code and development files.</p></div></li><li><span className="scan-check-icon"><LockKeyhole aria-hidden /></span><div><strong>Credentials and sensitive files</strong><p>Checks for supported secret patterns and sensitive files.</p></div></li><li><span className="scan-check-icon"><ShieldCheck aria-hidden /></span><div><strong>The connection’s configured scan policy</strong><p>Applies the configured rules to this artifact.</p></div></li></ul>
             <h3>What this doesn’t prove</h3><p>A clean artifact scan does not verify your deployed website or guarantee the absence of every vulnerability.</p>
