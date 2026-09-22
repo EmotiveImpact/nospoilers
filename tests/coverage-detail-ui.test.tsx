@@ -11,7 +11,7 @@ it('clears repository configuration and selection when switching source tabs',()
  fireEvent.click(screen.getByRole('tab',{name:'GitHub 0'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=w1&install=7&sourceType=github');
  fireEvent.keyDown(screen.getByRole('tab',{name:'Websites 0'}),{key:'Home'});
- expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=w1&install=7&sourceType=all');
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=w1&install=7');
 });
 it('shows metadata and scan timestamps separately without inventing a missing scan',async()=>{
  const sources=buildSourceViewModels({repos:[],origins:[],maps:[],packages:[{id:1,package_name:'app',last_version:'1',last_sha256:null,last_checked_at:'2026-09-06T12:00:00Z',last_scanned_at:null,last_scan_status:null}]});
