@@ -5,6 +5,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- The signed-in sidebar logo now opens the current workspace Overview and closes mobile navigation instead of leaving the app for the public homepage.
 - Replaced the all-repository GitHub exposure block with a focused repository-management view and grouped check, CI and GitHub-response controls. Source tabs clear stale configuration and Manage checks retains the selected repository.
 - Keep workspace choices in the persistent app shell so collapsing the sidebar or reopening mobile navigation does not reload them. Workspace-change events and failed-refresh retry remain supported.
 - Fixed production alert links and recheck controls by normalizing PostgreSQL numeric IDs at the workspace API boundary. Linked details now wait for their response and offer retry on failure instead of flashing an unavailable message.

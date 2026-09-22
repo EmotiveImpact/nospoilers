@@ -290,8 +290,8 @@ export function WatchMonolithShell({
             </button>
           ) : (
             <a
-              href="/"
-              onClick={(event) => go(event, "/")}
+              href={hrefFor("overview")}
+              onClick={(event) => { go(event, hrefFor("overview")); closeNav(); }}
               className="flex min-w-0 flex-1 items-center text-snow hover:text-snow"
             >
               <img
