@@ -44,7 +44,7 @@ it('clears prior selection and progress when workspace identity changes',async()
  const view=render(<GithubRepositoryScan installationId="7" search="?workspace=first" disabledReason={null}/>);
  await chooseRepository();
  view.rerender(<GithubRepositoryScan installationId="7" search="?workspace=second" disabledReason={null}/>);
- await waitFor(()=>expect(screen.getByRole('combobox',{name:'Repository'}).hasAttribute('data-placeholder')).toBe(true));
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:'Repository'})).toHaveProperty('value',''));
 });
 
 it('uses clean scoped destinations and client navigation for ordinary recovery-link clicks',async()=>{

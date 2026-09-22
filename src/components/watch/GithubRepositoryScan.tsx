@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState,type MouseEvent} from 'react';
 import {Button} from '@/components/ui/button';
-import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/motion/select';
+import {RepositoryPicker} from './RepositoryPicker';
 import {WatchSkeleton} from '@/components/WatchDataState';
 import {navigate} from '@/nav';
 import type {Repo,TenantJob} from '@/watch/types';
@@ -83,7 +83,7 @@ function RepositoryScan({installationId,search,disabledReason}:Props){
   return <section className="scan-repository-picker" aria-label="Choose repository to scan">
     <div className="scan-repository-heading"><h3>Re-check a connected release</h3><p>Connected repositories are watched automatically. Choose one here only when you want to check its latest published release again now.</p></div>
     {repos===null&&!error?<WatchSkeleton variant="list"/>:null}
-    {repos?<>{repos.length?<><div className="scan-repository-controls"><div><span className="scan-field-label">Repository</span><Select value={selected||undefined} onValueChange={chooseRepository} disabled={busy}><SelectTrigger aria-label="Repository"><SelectValue placeholder="Choose a connected repository"/></SelectTrigger><SelectContent>{repos.map(row=><SelectItem key={row.id} value={String(row.id)}>{row.full_name}</SelectItem>)}</SelectContent></Select></div>
+    {repos?<>{repos.length?<><div className="scan-repository-controls"><div><span className="scan-field-label">Repository</span><RepositoryPicker repos={repos} value={selected} onChange={chooseRepository} disabled={busy}/></div>
       <Button disabled={!repo||!!disabledReason||busy||pendingRepositories.has(selected)} onClick={()=>void scan()}>{busy?'Queuing release check…':'Scan latest release'}</Button></div>
     </>:<p>No connected repositories are available. Add repository access to this GitHub installation first.</p>}</>:null}
     {disabledReason?<p className="text-sm text-mute">{disabledReason}</p>:null}

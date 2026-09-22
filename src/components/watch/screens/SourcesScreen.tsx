@@ -1,7 +1,7 @@
 import {navigate} from '@/nav';
 import {watchHref} from '@/watch/routes';
 import {ArrowLeft,GitBranch,PackageSearch,GitPullRequest,ShieldAlert} from 'lucide-react';
-import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/motion/select';
+import {RepositoryPicker} from '../RepositoryPicker';
 import {WatchPageHeader} from "../WatchPageHeader";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
@@ -50,10 +50,8 @@ export function SourcesScreen() {
                   <Button variant="ghost" size="sm" onClick={()=>navigate(watchHref('/watch/sources',search,{configure:null,source:null,sourceType:'github'}))}><ArrowLeft className="size-4" aria-hidden/>Back to Coverage</Button>
                   <div className="mt-6"><WatchPageHeader title="Repository checks." lede="Inspect a published release, set up CI, or manage repository exposure."/></div>
                   <label htmlFor="managed-repository" className="mb-2 block text-sm text-mute">Repository</label>
-                  <Select value={managedRepos[0]?String(managedRepos[0].id):''} onValueChange={id=>navigate(watchHref('/watch/sources',search,{source:`repo-${id}`,sourceType:'github',configure:'github'}))}>
-                    <SelectTrigger id="managed-repository" className="w-full"><SelectValue placeholder="Choose a repository"/></SelectTrigger>
-                    <SelectContent>{(deskRepos??[]).map(repo=><SelectItem key={repo.id} value={String(repo.id)}>{repo.full_name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <RepositoryPicker id="managed-repository" repos={deskRepos??[]} value={managedRepos[0]?String(managedRepos[0].id):''} onChange={id=>navigate(watchHref('/watch/sources',search,{source:`repo-${id}`,sourceType:'github',configure:'github'}))}/>
+
                   {managedRepos.length===0&&deskRepos.length>0?<p className="mt-6 text-sm text-mute">Choose the repository you want to manage. Each action applies only to that repository.</p>:null}
                   {previewing ? (
                     <p className="mt-3 text-sm leading-relaxed text-mute">

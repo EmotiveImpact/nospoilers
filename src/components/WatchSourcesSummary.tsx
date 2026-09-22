@@ -25,7 +25,7 @@ import {
 import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
 import { Dialog, DialogTitle } from "@headlessui/react";
-import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, ArrowUpRight, Activity } from "lucide-react";
+import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, ArrowUpRight, Activity, Search } from "lucide-react";
 import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
@@ -66,7 +66,10 @@ export function WatchSourcesSummary({
   onRetry: () => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const filteredSources = filterSourceViewModels(sources, filter, attention);
+  const [sourceSearch,setSourceSearch]=useState({scope:'',value:''});
+  const searchScope=`${new URLSearchParams(search).get('workspace')??''}:${new URLSearchParams(search).get('install')??''}`;
+  const query=sourceSearch.scope===searchScope?sourceSearch.value:'';
+  const filteredSources = filterSourceViewModels(sources, filter, attention).filter(source=>`${source.name} ${source.coordinate}`.toLowerCase().includes(query.trim().toLowerCase()));
   const selectedSource = sources.find((source) => source.key === selectedSourceKey) ?? null;
   const relatedRelease = selectedSource ? latestSourceRelease(selectedSource, releases) : null;
 
@@ -204,7 +207,10 @@ export function WatchSourcesSummary({
         })}
       </div>
       <div key={filter} className="watch-content-enter" id="coverage-source-panel" role="tabpanel" aria-labelledby={`coverage-tab-${filter}`}>
-        {sources.length > 0 ? <div className="coverage-attention-filter"><label><input type="checkbox" checked={attention} onChange={()=>navigate(watchHref(watchPath('sources'),search,{attention:!attention}))}/>Needs attention <span>{sources.filter(source=>source.attention==='critical'||source.attention==='warning').length}</span></label></div> : null}
+        {sources.length > 0 ? <div className="coverage-attention-filter">
+          <div className="coverage-source-search"><Search aria-hidden/><input type="search" aria-label="Search coverage sources" placeholder="Search repositories, packages or websites…" value={query} onChange={event=>setSourceSearch({scope:searchScope,value:event.target.value})}/>{query?<button type="button" aria-label="Clear source search" onClick={()=>setSourceSearch({scope:searchScope,value:''})}><X aria-hidden/></button>:null}</div>
+          {query.trim()?<span role="status">{filteredSources.length} {filteredSources.length===1?'match':'matches'}</span>:null}
+          <label><input type="checkbox" checked={attention} onChange={()=>navigate(watchHref(watchPath('sources'),search,{attention:!attention}))}/>Needs attention <span>{sources.filter(source=>source.attention==='critical'||source.attention==='warning').length}</span></label></div> : null}
         {sources.length === 0 ? <div className="coverage-journey-empty"><Box aria-hidden/><h2>Connect your first source</h2><p>Connect GitHub or add a website to keep release checks in one place.</p>{admin?<Button type="button" onClick={()=>setAdding(true)}>Connect source<Plus className="size-4" aria-hidden/></Button>:<p>A workspace administrator can connect a source.</p>}</div> : filteredSources.length===0 ? <p className="coverage-no-match">No coverage matches these filters.</p> : <div className="coverage-table-wrap"><table className="coverage-table"><thead><tr><th>Source</th><th>Connection</th><th>Latest check</th><th><span className="sr-only">Source actions</span></th></tr></thead><tbody>{filteredSources.map(source=>{
           const verificationNeeded=source.kind==='website'&&source.status==='verification required';
           const checkLabel=source.kind==='github'?(source.lastCheckedAt?(source.status==='private'?'Private repository':'Public repository'):'Not checked'):source.status==='passed'?(source.kind==='map'?'Check passed':'Policy passed'):source.status==='failed-policy'?'Needs review':source.status==='check needed'?'Not checked':source.status==='checked'?'Metadata checked':source.status==='verification required'?'Not scanned':source.status.replace(/_/g,' ');

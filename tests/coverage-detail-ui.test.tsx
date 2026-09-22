@@ -6,6 +6,23 @@ import {buildSourceViewModels} from '../src/watch/view-models';
 import {navigate} from '../src/nav';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it('searches source names without changing totals and clears the search for another workspace',()=>{
+ const sources=buildSourceViewModels({repos:[{id:7,full_name:'org/Website',private:true,last_checked_at:null},{id:8,full_name:'org/mobile',private:true,last_checked_at:null}],origins:[],maps:[],packages:[]});
+ const props={mode:'sources' as const,filter:'github' as const,search:'?workspace=w1',sources,setup:{done:0,total:5,steps:[],next:null},state:{status:'ready' as const},onRetry:()=>undefined};
+ const view=render(<WatchSourcesSummary {...props}/>);
+ const input=screen.getByRole('searchbox',{name:'Search coverage sources'});
+ fireEvent.change(input,{target:{value:' WEBSITE '}});
+ expect(screen.getByText('org/Website')).toBeTruthy();expect(screen.queryByText('org/mobile')).toBeNull();
+ expect(screen.getByRole('tab',{name:'GitHub 2'})).toBeTruthy();
+ expect(screen.getByRole('status').textContent).toBe('1 match');
+ fireEvent.change(input,{target:{value:'missing'}});
+ expect(screen.getByText('No coverage matches these filters.')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Clear source search'}));
+ expect(screen.getByText('org/mobile')).toBeTruthy();
+ fireEvent.change(input,{target:{value:'website'}});
+ view.rerender(<WatchSourcesSummary {...props} search="?workspace=w2"/>);
+ expect(input).toHaveProperty('value','');expect(screen.getByText('org/mobile')).toBeTruthy();
+});
 it('clears repository configuration and selection when switching source tabs',()=>{
  render(<WatchSourcesSummary mode="sources" filter="website" search="?workspace=w1&install=7&configure=github&source=repo-9&sourceType=website" sources={[]} setup={{done:0,total:5,steps:[],next:null}} state={{status:'ready'}} onRetry={()=>undefined}/>);
  fireEvent.click(screen.getByRole('tab',{name:'GitHub 0'}));

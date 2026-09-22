@@ -54,5 +54,5 @@ it('aborts old progress requests and ignores a late completion after workspace s
  view.rerender(<GithubRepositoryScan installationId="7" search="?workspace=second" disabledReason={null}/>);
  expect(signal?.aborted).toBe(true);await screen.findByRole('combobox',{name:'Repository'});
  await act(async()=>{finish(Response.json({jobs:[{id:9,installationId:7,kind:'scan_latest_release',status:'done'}]}));});
- expect(screen.queryByText(/Release check finished/)).toBeNull();expect(screen.getByRole('combobox',{name:'Repository'}).hasAttribute('data-placeholder')).toBe(true);
+ expect(screen.queryByText(/Release check finished/)).toBeNull();expect(screen.getByRole('combobox',{name:'Repository'})).toHaveProperty('value','');
 });

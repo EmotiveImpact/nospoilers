@@ -5,6 +5,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Added instant Coverage source search and searchable, keyboard-accessible repository pickers in Repository checks and New scan. Search preserves source totals and combines with Coverage filters.
 - Coverage website setup now respects the selected source tab; stale website, registry and map configuration cannot append unrelated controls beneath another source type. Website panels use the neutral dark surface.
 - The signed-in sidebar logo now opens the current workspace Overview and closes mobile navigation instead of leaving the app for the public homepage.
 - Replaced the all-repository GitHub exposure block with a focused repository-management view and grouped check, CI and GitHub-response controls. Source tabs clear stale configuration and Manage checks retains the selected repository.
