@@ -72,3 +72,16 @@ it('recovers the source from a legacy generated title when the API omits its rep
  expect(row.querySelector('strong')?.textContent).toBe('EmotiveImpact/nospoilers');
  expect(row.querySelector('.alerts-journey-row-summary')?.textContent).toBe('Sensitive path');
 });
+it('explains repository access events without exposure or credential-rotation claims',()=>{
+ const p=props();
+ p.alerts=[{...p.alerts[0],kind:'repos_added',title:'Another repository connected',body:'Added: org/app.'}];
+ p.rows=[{...p.rows[0],title:'Another repository connected',rule:'repos_added',coordinate:'org/app'}];p.selected=p.alerts[0];
+ render(<WatchAlertsWorkspace {...p}/>);
+ expect(screen.getByText('Event to review')).toBeTruthy();
+ expect(screen.getByText(/Connection is not evidence that their release artifacts have been scanned/)).toBeTruthy();
+ expect(screen.getByText('Not established')).toBeTruthy();
+ expect(screen.queryByText('Reachable for')).toBeNull();
+ expect(screen.queryByText('Rotation checklist · read-only')).toBeNull();
+ expect(screen.queryByText('Where')).toBeNull();
+ expect(screen.getByRole('button',{name:'Acknowledge'})).toBeTruthy();
+});

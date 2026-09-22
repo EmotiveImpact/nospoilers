@@ -37,3 +37,13 @@ it('keeps the brief available for manual copying if the clipboard fails',async()
  expect(await screen.findByText(/Clipboard unavailable/)).toBeTruthy();
  expect(screen.getByRole('textbox',{name:'Agent instructions'})).toHaveProperty('value',buildAlertFixBrief(alert));
 });
+it('shows the same rule-specific correction in the UI and copyable brief',()=>{
+ const record={...alert,kind:'release_scan',findings:[{rule:'SEC-003',path:'config.json'},{rule:'MAP-002',path:'app.map'}]};
+ render(<AlertFixBrief alert={record}/>);
+ expect(screen.getByText('Credential pattern detected')).toBeTruthy();
+ expect(screen.getByText('Original source embedded in a map')).toBeTruthy();
+ const brief=buildAlertFixBrief(record);
+ expect(brief).toContain('server-side secret storage');expect(brief).toContain('private storage');
+ expect(brief).toContain('config.json');expect(brief).toContain('app.map');
+ expect(brief).not.toContain('Sensitive-looking file changed');
+});

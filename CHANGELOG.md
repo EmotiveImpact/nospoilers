@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Added specific alert explanations for scanner rules and repository/package/delivery events, shared with the copyable AI fix brief; event-only alerts no longer imply artifact exposure or show an unrelated rotation checklist.
+
 - GitHub connection attempts with expired authorization now offer explicit sign-in recovery instead of exposing a raw provider error.
 
 - Fixed Coverage's Connect source chooser: GitHub opens the workspace connection flow; package, website and map setup clear stale selection and use the matching source tab.

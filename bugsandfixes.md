@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Most alerts used generic rebuild advice, including repository access events | Added evidence-scoped explanations and distinct fixes for 25 scanner rules and 41 event kinds; shared guidance with the copyable agent brief and corrected event-only detail labels | 51 focused explanation/UI/keyboard tests; see docs/ALERT-EXPLANATIONS.md and latest BUILD-LOG |
 | GitHub controls appeared below Websites and repeated every repository's actions | Dedicated single-repository management view with shared dark surfaces, repository selector, grouped controls and Back to Coverage; source tabs clear old configuration | Repository scope, tab cleanup, permission/confirmation and expired-state regressions; frontend build |
 | Workspace selector reloaded every time the sidebar reopened | Share workspace choices in the persistent signed-in shell across desktop and mobile rails; discard choices on identity change and failed refresh | 37 workspace/shell UI tests and TypeScript/frontend build passed |
 | Clicking an existing open alert showed unavailable; its next-step controls also failed | Normalize PostgreSQL BIGINT alert/source/event IDs into safe numeric API IDs; distinguish pending/failed detail requests from unavailable records | Live database confirmed alert 1 is open and IDs arrive as strings; all 43 alert tests across 24 files, frontend/API builds and diff check passed |

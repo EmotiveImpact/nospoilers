@@ -1,3 +1,4 @@
+import {explainAlert} from '@/watch/alert-guidance';
 import {asFindingList} from '@/watch/format';
 import {useState} from 'react';
 import {Dialog,DialogBackdrop,DialogPanel,DialogTitle} from '@headlessui/react';
@@ -5,26 +6,7 @@ import {Copy,X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import type {WatchAlertDetail} from '../WatchAlertsWorkspace';
 
-export function alertFixGuidance(alert:WatchAlertDetail,operational=false){
-  const paths=asFindingList(alert.findings).map(f=>f.path);
-  const pushPaths=alert.kind==='push_sensitive_path'?/^This push touched (.+?)\. NoSpoilers/.exec(alert.body)?.[1]:undefined;
-  return {
-    location:paths.length?paths.join('\n'):pushPaths,
-    meaning:alert.kind==='push_sensitive_path'
-      ? 'A push changed a file with a sensitive-looking name. Its contents and published release were not inspected by this check. An example file may contain only placeholders; this alert does not establish that credentials leaked.'
-      :operational?'This check did not complete. It does not establish that the release passed or that content was exposed.'
-      :paths.length?'The recorded check flagged the files below. Review the finding and its scope before deciding what must change.':'This is a repository activity warning. Review the recorded event; it is not by itself proof of exposed release contents.',
-    steps:alert.kind==='push_sensitive_path'
-      ? ['Inspect the changed file and diff locally. Check whether values are placeholders or real credentials; do not paste secret values into chat.',
-         'Keep safe example files if needed. If real credentials were exposed, revoke or rotate them and remove them from shipped files; deleting a value alone does not invalidate it.',
-         'Build the artifact customers receive and scan that exact package. Review the new result before resolving this alert.']
-      :operational?['Review the check failure and source access. Confirm a supported release artifact is available.',
-         'Correct the cause, rerun the supported check, and review its saved result. Do not resolve this as a passing scan.']
-      :['Review the affected files and recorded evidence in the repository or release.',
-         'Make the smallest appropriate change and rebuild the exact artifact customers receive.',
-         'Scan the rebuilt artifact and review the new evidence. Resolving this alert only records your response.'],
-  };
-}
+export const alertFixGuidance=explainAlert;
 
 export function buildAlertFixBrief(alert:WatchAlertDetail,operational=false){
  const guidance=alertFixGuidance(alert,operational);
@@ -35,6 +17,7 @@ export function buildAlertFixBrief(alert:WatchAlertDetail,operational=false){
   '\nRECORDED EVIDENCE (JSON)',
   JSON.stringify({alertId:alert.id,title:alert.title,kind:alert.kind,recordedAt:alert.created_at,repository:alert.full_name??null,affectedPaths:guidance.location??'Not recorded',findings:asFindingList(alert.findings).map(({rule,path,severity})=>({rule,path,severity}))},null,2),
   '\nWHAT THIS ESTABLISHES',guidance.meaning,
+  '\nFINDING-SPECIFIC GUIDANCE',...guidance.rules.map(rule=>JSON.stringify({rule:rule.rule,paths:rule.paths,meaning:rule.meaning,action:rule.action,verify:rule.verify})),
   '\nREQUESTED WORK',...guidance.steps.map((step,i)=>`${i+1}. ${step}`),
   'Explain the root cause only if supported by evidence. Show proposed changes, tests run, remaining uncertainty and exact rebuild/re-scan steps. Never claim the issue is fixed without fresh verification.',
  ].join('\n');
@@ -48,7 +31,8 @@ export function AlertFixBrief({alert,operational=false}:{alert:WatchAlertDetail;
  return <section className="alerts-journey-section mt-7" aria-label="Fix guidance">
   <h2 className="text-sm font-semibold text-snow">What this means</h2>
   <p className="mt-2 text-sm leading-relaxed text-mute">{guidance.meaning}</p>
-  {guidance.location?<div className="mt-4"><p className="watch-kicker">Affected file{alert.findings&&alert.findings.length>1?'s':''}</p><pre className="mt-2 whitespace-pre-wrap break-all text-xs text-snow">{guidance.location}</pre></div>:null}
+  {guidance.location&&!guidance.rules.length?<div className="mt-4"><p className="watch-kicker">Affected file{alert.findings&&alert.findings.length>1?'s':''}</p><pre className="mt-2 whitespace-pre-wrap break-all text-xs text-snow">{guidance.location}</pre></div>:null}
+  {guidance.rules.length?<div className="mt-5 space-y-3" aria-label="Finding explanations">{guidance.rules.map(rule=><details key={rule.rule} className="rounded-lg border border-white/10 p-4" open={guidance.rules.length===1}><summary className="cursor-pointer text-sm font-semibold text-snow">{rule.title} <span className="ml-2 font-mono text-xs text-mute">{rule.rule}</span></summary><p className="mt-3 text-sm leading-relaxed text-mute">{rule.meaning}</p>{rule.paths.length?<pre className="mt-3 whitespace-pre-wrap break-all text-xs text-snow">{rule.paths.join('\n')}</pre>:<p className="mt-3 text-xs text-mute">No affected path was recorded for this rule.</p>}<h4 className="mt-4 text-sm font-semibold">What to change</h4><p className="mt-2 text-sm leading-relaxed text-mute">{rule.action}</p><h4 className="mt-4 text-sm font-semibold">How to verify</h4><p className="mt-2 text-sm leading-relaxed text-mute">{rule.verify}</p></details>)}</div>:null}
   <h3 className="mt-5 text-sm font-semibold text-snow">What to do next</h3>
   <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-mute">{guidance.steps.map(step=><li key={step}>{step}</li>)}</ol>
   <Button variant="outline" className="mt-4" onClick={()=>{setCopyState('');setOpen(true);}}><Copy className="size-4" aria-hidden/>Prepare AI fix brief</Button>

@@ -1,3 +1,9 @@
+## 22 September 2026 — Specific alert explanations
+
+Added a shared deterministic guidance catalog for 25 scanner rules and 41 event kinds, with dedicated scan-family, custody, incomplete-check and sensitive-path guidance. Findings are grouped by rule with their own paths, correction and verification; unknown codes explicitly retain uncertainty. The copyable AI brief uses the same catalog without invoking any provider. Repository/package event-only detail no longer labels the event as a content finding, invents an exposure duration or shows an unrelated rotation checklist. The owner's live alert 29 is a repos_added event and now receives connection/access guidance rather than generic rebuild advice.
+
+Explanation, brief, queue/filter keyboard, workspace alert and accessibility regressions passed **51/51 across 6 files**. See [Alert explanations](../ALERT-EXPLANATIONS.md) for maintenance and evidence limits. No response, scanner, authorization or provider activation semantics changed.
+
 ## 22 September 2026 — Connect source opens the correct workflow
 
 The GitHub tile previously routed to existing repository checks instead of starting a connection. It now opens the existing workspace-scoped GitHub connection controls inside the chooser, preserving eligible-installation reuse, GitHub installation redirect, permission errors and retry. No connection or repository access is changed just by selecting the tile. Other tiles now set their matching source filter and clear stale source/attention selections, fixing hidden setup panels after switching source types.

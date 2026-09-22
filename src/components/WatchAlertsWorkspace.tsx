@@ -1,3 +1,5 @@
+import {kindExplanations} from '@/watch/alert-guidance';
+import {asFindingList} from '@/watch/format';
 import {AlertFixBrief} from './watch/AlertFixBrief';
 import { Button } from "@/components/ui/button";
 import {AlertMemberSelect} from './watch/AlertMemberSelect';
@@ -159,6 +161,7 @@ export function WatchAlertsWorkspace({
   const previous = selectedIndex > 0 ? orderedRows[selectedIndex - 1] : null;
   const next = selectedIndex >= 0 && selectedIndex < orderedRows.length - 1 ? orderedRows[selectedIndex + 1] : null;
   const selectedRow = selected ? (selectedViewModel?.id===selected.id?selectedViewModel:rows.find((row) => row.id === selected.id)) : null;
+  const selectedIsEvent=Boolean(selected&&Object.hasOwn(kindExplanations,selected.kind)&&asFindingList(selected.findings).length===0);
   const listRef = useRef<HTMLOListElement>(null);
   const assignmentInputRef = useRef<HTMLSelectElement>(null);
   const assignmentCloseRef = useRef<HTMLButtonElement>(null);
@@ -383,14 +386,14 @@ export function WatchAlertsWorkspace({
                 <div className="alerts-journey-detail-content mx-auto max-w-3xl">
                   <div className="alerts-journey-context flex flex-wrap gap-2">
                     <span className={selected.resolved_at ? "watch-pill watch-pill-ok" : selectedRow.operational || selectedRow.severity !== "critical" ? "watch-pill watch-pill-warn" : "watch-pill watch-pill-crit"}>
-                      {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : "Finding needs review"}
+                      {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : selectedIsEvent?"Event to review":"Finding needs review"}
                     </span>
                   </div>
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
                   <AlertFixBrief key={selected.id} alert={selected} operational={selectedRow.operational}/>
-                  {!selectedRow.operational && selected.kind!=='push_sensitive_path' ? <>
+                  {!selectedRow.operational && selected.kind!=='push_sensitive_path' && (!selectedIsEvent||selected.full_name) ? <>
                   <section className="alerts-journey-section mt-8">
                     <p className="watch-kicker">Where</p>
                     <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
@@ -421,11 +424,11 @@ export function WatchAlertsWorkspace({
                   {relatedReleases}
                   {!selectedRow.operational ? <>
                   <section className="alerts-journey-section mt-7">
-                    <p className="watch-kicker">{selectedRow.operational?'Check status':selected.kind==='push_sensitive_path'?'Recorded event':'Exposure'}</p>
+                    <p className="watch-kicker">{selectedRow.operational?'Check status':(selectedIsEvent||selected.kind==='push_sensitive_path')?'Recorded event':'Exposure'}</p>
                     <div className="alerts-journey-surface mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
                       <div>
-                        <p className="watch-kicker">{selectedRow.operational?'Result':selected.kind==='push_sensitive_path'?'Content exposure':'Reachable for'}</p>
-                        <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':selected.kind==='push_sensitive_path'?'Not established':selectedRow.exposure}</p>
+                        <p className="watch-kicker">{selectedRow.operational?'Result':(selectedIsEvent||selected.kind==='push_sensitive_path')?'Content exposure':'Reachable for'}</p>
+                        <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':(selectedIsEvent||selected.kind==='push_sensitive_path')?'Not established':selectedRow.exposure}</p>
                       </div>
                       <div>
                         <p className="watch-kicker">Opened</p>
@@ -436,7 +439,7 @@ export function WatchAlertsWorkspace({
 
                   </> : null}
 
-                  {!selectedRow.operational?<section className="alerts-journey-section mt-7">
+                  {!selectedRow.operational&&!selectedIsEvent?<section className="alerts-journey-section mt-7">
                     <p className="watch-kicker">Rotation checklist · read-only</p>
                     <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
                       {(selected.rotation_checklist ?? []).length ? (
@@ -450,7 +453,7 @@ export function WatchAlertsWorkspace({
                         <p className="py-3 text-xs text-dim">No checklist was attached to this alert.</p>
                       )}
                     </div>
-                  </section>:<p className="mt-7 text-sm text-mute">An incomplete check is not evidence of exposed content. Resolving this alert records your response; it does not establish a passing scan.</p>}
+                  </section>:selectedRow.operational?<p className="mt-7 text-sm text-mute">An incomplete check is not evidence of exposed content. Resolving this alert records your response; it does not establish a passing scan.</p>:null}
 
                   <section className="alerts-journey-section alerts-journey-activity mt-7 pb-10">
                     <p className="watch-kicker">Activity</p>
