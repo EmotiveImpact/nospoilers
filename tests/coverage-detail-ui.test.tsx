@@ -34,10 +34,24 @@ it('separates configured connections from actual checks and keeps selection scop
  expect(screen.getByText('Configured')).toBeTruthy();
  expect(screen.getByText('Private repository')).toBeTruthy();
  expect(screen.queryByText('Policy passed')).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Open repository'}));
+ fireEvent.click(screen.getByRole('button',{name:'View details'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&source=repo-7');
  fireEvent.keyDown(screen.getByRole('tab',{name:'All sources 1'}),{key:'ArrowRight'});
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&sourceType=github');
+});
+it.each(['2026-09-06T12:00:00Z',null])('opens the selected GitHub repository separately from its check settings (last check: %s)',lastCheckedAt=>{
+ const sources=buildSourceViewModels({repos:[{id:7,full_name:'org/app',private:true,last_checked_at:lastCheckedAt},{id:8,full_name:'org/another-app',private:false,last_checked_at:null}],origins:[],maps:[],packages:[]});
+ const props={mode:'sources' as const,admin:true,search:'?workspace=workspace-a&install=9&source=repo-7',sources,setup:{done:0,total:5,steps:[],next:null},state:{status:'ready' as const},onRetry:()=>undefined};
+ const view=render(<WatchSourcesSummary {...props} selectedSourceKey="repo-7"/>);
+ const detail=within(screen.getByRole('dialog'));
+ const link=detail.getByRole('link',{name:'Open repository'});
+ expect(link.getAttribute('href')).toBe('https://github.com/org/app');
+ expect(link.getAttribute('target')).toBe('_blank');
+ expect(link.getAttribute('rel')).toContain('noopener');
+ fireEvent.click(detail.getByRole('button',{name:'Manage checks'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&configure=github');
+ view.rerender(<WatchSourcesSummary {...props} selectedSourceKey="repo-8"/>);
+ expect(within(screen.getByRole('dialog')).getByRole('link',{name:'Open repository'}).getAttribute('href')).toBe('https://github.com/org/another-app');
 });
 it('shows verification required as connection preparation, not a passing scan',()=>{
  const sources=buildSourceViewModels({repos:[],origins:[{id:8,origin_url:'https://example.com',host:'example.com',last_sha256:null,last_checked_at:null,last_scan_status:null,verification:{verifiedAt:null}}],maps:[],packages:[]});

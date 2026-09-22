@@ -25,7 +25,7 @@ import {
 import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
 import { Dialog, DialogTitle } from "@headlessui/react";
-import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, Activity } from "lucide-react";
+import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, ArrowUpRight, Activity } from "lucide-react";
 import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
@@ -210,7 +210,7 @@ export function WatchSourcesSummary({
           const checkLabel=source.kind==='github'?(source.lastCheckedAt?(source.status==='private'?'Private repository':'Public repository'):'Not checked'):source.status==='passed'?(source.kind==='map'?'Check passed':'Policy passed'):source.status==='failed-policy'?'Needs review':source.status==='check needed'?'Not checked':source.status==='checked'?'Metadata checked':source.status==='verification required'?'Not scanned':source.status.replace(/_/g,' ');
           const checkTone=source.kind==='github'?'neutral':source.status==='passed'?'passed':['failed-policy','public map found'].includes(source.status)?'review':['error','inconclusive','failed'].includes(source.status)?'warn':'neutral';
           const recordedAt=source.kind==='npm'?source.lastScannedAt:source.lastCheckedAt;
-          return <tr key={source.key} className={selectedSourceKey===source.key?'is-selected':undefined}><td><button className="coverage-entity" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="coverage-icon">{source.kind==='github'?<GitBranch aria-hidden/>:source.kind==='npm'?<Package aria-hidden/>:source.kind==='website'?<Globe2 aria-hidden/>:<Map aria-hidden/>}</span><span><strong>{source.name}</strong><small>{source.kind==='github'?'GitHub · repository visibility':source.kind==='npm'?'Package registry':source.kind==='website'?'Production website':'Private map custody'}</small></span></button></td><td><span className={`coverage-status ${verificationNeeded?'warn':'neutral'}`}>{verificationNeeded?'Verify ownership':'Configured'}</span>{source.connectionLabel?<small>{source.connectionLabel}</small>:null}</td><td><span className={`coverage-status ${checkTone}`}>{checkLabel}</span>{recordedAt?<small>{new Date(recordedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small>:null}</td><td><Button type="button" size="sm" variant="outline" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}>{source.primaryAction}</Button></td></tr>;
+          return <tr key={source.key} className={selectedSourceKey===source.key?'is-selected':undefined}><td><button className="coverage-entity" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="coverage-icon">{source.kind==='github'?<GitBranch aria-hidden/>:source.kind==='npm'?<Package aria-hidden/>:source.kind==='website'?<Globe2 aria-hidden/>:<Map aria-hidden/>}</span><span><strong>{source.name}</strong><small>{source.kind==='github'?'GitHub · repository visibility':source.kind==='npm'?'Package registry':source.kind==='website'?'Production website':'Private map custody'}</small></span></button></td><td><span className={`coverage-status ${verificationNeeded?'warn':'neutral'}`}>{verificationNeeded?'Verify ownership':'Configured'}</span>{source.connectionLabel?<small>{source.connectionLabel}</small>:null}</td><td><span className={`coverage-status ${checkTone}`}>{checkLabel}</span>{recordedAt?<small>{new Date(recordedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small>:null}</td><td><Button type="button" size="sm" variant="outline" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}>View details</Button></td></tr>;
         })}</tbody></table></div>}
       </div>
       {sources.length>0?<section className="coverage-health"><h2>Connection health</h2><div className="coverage-health-notice"><Activity aria-hidden/><div><strong>{sources.some(source=>source.status==='verification required')?`${sources.filter(source=>source.status==='verification required').length} ${sources.filter(source=>source.status==='verification required').length===1?'website needs':'websites need'} verification`:sources.some(source=>source.monitoring?.freshness==='delayed')?'Some source checks are delayed':'Connection and scan evidence are separate'}</strong><p>{sources.some(source=>source.status==='verification required')?'Repository access alone does not establish ownership of a production domain.':sources.some(source=>source.monitoring?.freshness==='delayed')?'Open a source to review its latest recorded check and configured cadence.':'Configured sources are not a guarantee of current access or a passing release. Review the recorded check for its scope.'}</p></div><button className="coverage-health-link" onClick={()=>navigate(watchHref(watchPath('setup'),search))}>Review<ArrowRight aria-hidden/></button></div></section>:null}
@@ -267,8 +267,22 @@ export function WatchSourcesSummary({
                 </Button>
               </div>
               <div className="coverage-detail-actions mt-5 flex flex-wrap gap-2">
+                {selectedSource.kind === "github" ? (
+                  <Button
+                    as="a"
+                    href={`https://github.com/${selectedSource.coordinate.split('/').map(encodeURIComponent).join('/')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Open ${selectedSource.name} on GitHub (new tab)`}
+                  >
+                    <GitBranch className="size-4" aria-hidden />
+                    Open repository
+                    <ArrowUpRight className="size-4" aria-hidden />
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
+                  variant={selectedSource.kind === "github" ? "outline" : "default"}
                   onClick={() => {
                     navigate(
                       watchHref(watchPath("sources"), search, {
@@ -279,7 +293,7 @@ export function WatchSourcesSummary({
                   }}
                 >
                   <Box className="size-4" aria-hidden />
-                  {selectedSource.primaryAction}
+                  {selectedSource.kind === "github" ? "Manage checks" : selectedSource.primaryAction}
                 </Button>
                 {(selectedSource.kind === "npm" || selectedSource.kind === "github" || relatedRelease) ? (
                   <Button

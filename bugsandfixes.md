@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Coverage's Open repository only navigated to configuration, appearing to do nothing | The detail action is a real GitHub link for the selected repository; row selection is labelled View details, and Manage checks retains configuration access | Six Coverage detail tests, including checked/unchecked repositories and changed selection; TypeScript/frontend build |
 | Alerts footer squeezed the history explanation into a narrow column beside its buttons | Separate compact count/controls from the full-width history note; prevent footer shrinking and wrap rows at narrow widths | 12 alert UI/keyboard tests; TypeScript/frontend build |
 | Existing GitHub connection name was nearly black on its dark panel | Use the shared light `text-snow` foreground for the account name | Connection UI tests 4/4 and TypeScript/frontend build passed |
 | Product identity was coupled to a GitHub numeric ID | Added `product_auth_identities` keyed by trusted issuer/subject with stable internal user IDs | Provider-neutral identity and repeated-login tests |
