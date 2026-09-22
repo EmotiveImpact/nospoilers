@@ -458,7 +458,7 @@ export function WatchAlertsWorkspace({
                   <section className="alerts-journey-section alerts-journey-activity mt-7 pb-10">
                     <p className="watch-kicker">Activity</p>
                     <div className="alerts-journey-surface mt-2 rounded-lg border border-white/8 bg-panel px-4">
-                      <div className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute">
+                      <div className="flex items-center gap-3 border-b border-white/5 py-3 text-xs text-mute">
                         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">NS</span>
                         <p><span className="text-snow">NoSpoilers</span> opened this from {selectedRow.operational ? "a latest release check" : selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
                       </div>
@@ -467,7 +467,7 @@ export function WatchAlertsWorkspace({
                       ) : activityState.status === "error" ? (
                         <WatchSectionError className="my-3" message={activityState.message} onRetry={onRetryActivity} />
                       ) : events.map((event) => (
-                        <div key={event.id} className="flex gap-3 border-b border-white/5 py-3 text-xs text-mute last:border-b-0">
+                        <div key={event.id} className="flex items-center gap-3 border-b border-white/5 py-3 text-xs text-mute last:border-b-0">
                           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">{event.actor_login.slice(0, 2).toUpperCase()}</span>
                           <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}</p>
                         </div>
