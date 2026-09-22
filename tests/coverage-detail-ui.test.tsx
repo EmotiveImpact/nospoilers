@@ -6,6 +6,13 @@ import {buildSourceViewModels} from '../src/watch/view-models';
 import {navigate} from '../src/nav';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it('clears repository configuration and selection when switching source tabs',()=>{
+ render(<WatchSourcesSummary mode="sources" filter="website" search="?workspace=w1&install=7&configure=github&source=repo-9&sourceType=website" sources={[]} setup={{done:0,total:5,steps:[],next:null}} state={{status:'ready'}} onRetry={()=>undefined}/>);
+ fireEvent.click(screen.getByRole('tab',{name:'GitHub 0'}));
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=w1&install=7&sourceType=github');
+ fireEvent.keyDown(screen.getByRole('tab',{name:'Websites 0'}),{key:'Home'});
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=w1&install=7&sourceType=all');
+});
 it('shows metadata and scan timestamps separately without inventing a missing scan',async()=>{
  const sources=buildSourceViewModels({repos:[],origins:[],maps:[],packages:[{id:1,package_name:'app',last_version:'1',last_sha256:null,last_checked_at:'2026-09-06T12:00:00Z',last_scanned_at:null,last_scan_status:null}]});
  render(<WatchSourcesSummary mode="sources" search="?workspace=workspace-a" sources={sources} setup={{done:0,total:5,steps:[],next:null}} selectedSourceKey="npm-1" state={{status:'ready'}}/>);
@@ -49,7 +56,7 @@ it.each(['2026-09-06T12:00:00Z',null])('opens the selected GitHub repository sep
  expect(link.getAttribute('target')).toBeNull();
  expect(link.getAttribute('rel')).toContain('noopener');
  fireEvent.click(detail.getByRole('button',{name:'Manage checks'}));
- expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&configure=github');
+ expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&source=repo-7&sourceType=github&configure=github');
  view.rerender(<WatchSourcesSummary {...props} selectedSourceKey="repo-8"/>);
  expect(within(screen.getByRole('dialog')).getByRole('link',{name:'Open repository'}).getAttribute('href')).toBe('https://github.com/org/another-app');
 });

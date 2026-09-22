@@ -198,8 +198,8 @@ export function WatchSourcesSummary({
         {SOURCE_FILTERS.map((option,index) => {
           const count=option.value === "all" ? sources.length : sources.filter(source=>source.kind===option.value).length;
           return <button key={option.value} type="button" role="tab" id={`coverage-tab-${option.value}`} aria-selected={filter===option.value} aria-controls="coverage-source-panel" tabIndex={filter===option.value?0:-1}
-            onClick={()=>navigate(watchHref(watchPath('sources'),search,{sourceType:option.value}))}
-            onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?SOURCE_FILTERS.length-1:(index+(event.key==='ArrowRight'?1:SOURCE_FILTERS.length-1))%SOURCE_FILTERS.length;document.getElementById(`coverage-tab-${SOURCE_FILTERS[next].value}`)?.focus();navigate(watchHref(watchPath('sources'),search,{sourceType:SOURCE_FILTERS[next].value}));}}
+            onClick={()=>navigate(watchHref(watchPath('sources'),search,{sourceType:option.value,configure:null,source:null}))}
+            onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?SOURCE_FILTERS.length-1:(index+(event.key==='ArrowRight'?1:SOURCE_FILTERS.length-1))%SOURCE_FILTERS.length;document.getElementById(`coverage-tab-${SOURCE_FILTERS[next].value}`)?.focus();navigate(watchHref(watchPath('sources'),search,{sourceType:SOURCE_FILTERS[next].value,configure:null,source:null}));}}
           >{option.label}{" "}<span>{count}</span></button>;
         })}
       </div>
@@ -285,7 +285,8 @@ export function WatchSourcesSummary({
                   onClick={() => {
                     navigate(
                       watchHref(watchPath("sources"), search, {
-                        source: null,
+                        source: selectedSource.kind === 'github' ? selectedSource.key : null,
+                        sourceType: selectedSource.kind,
                         configure: configureForKind(selectedSource.kind),
                       }),
                     );

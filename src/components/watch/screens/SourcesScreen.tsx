@@ -1,3 +1,7 @@
+import {navigate} from '@/nav';
+import {watchHref} from '@/watch/routes';
+import {ArrowLeft,GitBranch,PackageSearch,GitPullRequest,ShieldAlert} from 'lucide-react';
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/motion/select';
 import {WatchPageHeader} from "../WatchPageHeader";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
@@ -8,7 +12,9 @@ import {SourceMonitoringControls} from '../SourceMonitoringControls';
 import {WorkspaceCoverageHealth,hasWorkspaceCoverageHealthFilter} from '../WorkspaceCoverageHealth';
 
 export function SourcesScreen() {
-  const { Button, CoverageLock, DELETE_PACK_ASSETS_COPY, DISABLE_WORKFLOW_COPY, GithubResponseResult, MAKE_PRIVATE_COPY, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, githubRunnersReachable, hostedOrigin, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, releases, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
+  const { Button, CoverageLock, GithubResponseResult, RemediationPrResult, SetupPrResult, SetupStatusResult, WatchSourcesSummary, adminOnly, beginConfirm, confirmBusy, confirmForm, confirming, deletePackAssetsConfirm, deskRepos, ended, githubByRepo, installAdmin, locked, makePrivateConfirm, parseWorkflowPath, previewing, probingSetupId, refreshSignedIn, releases, remediateByRepo, remediatingId, repos, retryDeskSection, route, scanError, scanningId, search, selectedInstallId, setGithubByRepo, setProbingSetupId, setRemediateByRepo, setRemediatingId, setScanError, setScanningId, setSetupByRepo, setSetupStatusByRepo, setSetuppingId, setWorkflowDraft, setup, setupByRepo, setupStatusByRepo, setuppingId, sourceRows, sourceSectionState, workflowDraft, workflowIsNoSpoilersScan } = useWatchScreenContext();
+  const manageGithub=sourceSectionState.status!=='error'&&route.sourceConfigure==='github'&&(!route.sourceFilter||['all','github'].includes(route.sourceFilter));
+  const managedRepos=(previewing||repos?.status==='ready')?(deskRepos??[]).filter(repo=>`repo-${repo.id}`===route.sourceKey):[];
   const healthWorkspace=new URLSearchParams(search).get('workspace');
   if(route.view==='sources'&&healthWorkspace&&hasWorkspaceCoverageHealthFilter(search))return <WorkspaceCoverageHealth workspaceId={healthWorkspace} search={search}/>;
   if(route.view==='sources'&&sourceSectionState.status==='loading')return <section aria-busy="true"><WatchPageHeader title="Know what’s being checked." lede="Connection, monitoring and latest result are separate states."/></section>;
@@ -16,15 +22,15 @@ export function SourcesScreen() {
     <>
       {route.view === "sources" && (
                 <section className="relative min-h-72">
-                  {new URLSearchParams(search).get('workspace')?<WorkspaceCoverageHealth workspaceId={new URLSearchParams(search).get('workspace')!} search={search}/>:null}
-                  {selectedInstallId?<DisconnectedRepositories key={selectedInstallId} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
-                  {selectedInstallId?<RetainedSources key={`retained-${selectedInstallId}`} installationId={selectedInstallId} search={search} refreshKey={JSON.stringify(sourceRows)}/>:null}
-                  {selectedInstallId?<SourceMonitoringControls key={`monitoring-${selectedInstallId}`} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
+                  {!manageGithub&&new URLSearchParams(search).get('workspace')?<WorkspaceCoverageHealth workspaceId={new URLSearchParams(search).get('workspace')!} search={search}/>:null}
+                  {!manageGithub&&selectedInstallId?<DisconnectedRepositories key={selectedInstallId} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
+                  {!manageGithub&&selectedInstallId?<RetainedSources key={`retained-${selectedInstallId}`} installationId={selectedInstallId} search={search} refreshKey={JSON.stringify(sourceRows)}/>:null}
+                  {!manageGithub&&selectedInstallId?<SourceMonitoringControls key={`monitoring-${selectedInstallId}`} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
                   {ended ? (
                     <CoverageLock variant="watch" title="Subscribe to keep watching." />
                   ) : null}
                   <div inert={ended} className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
-                  <WatchSourcesSummary
+                  {!manageGithub?<WatchSourcesSummary
                     mode="sources"
                     sources={sourceRows}
                     setup={setup}
@@ -36,55 +42,19 @@ export function SourcesScreen() {
                     releases={releases}
                     state={sourceSectionState}
                     onRetry={() => void retryDeskSection("sources")}
-                  />
+                  />:null}
                   {route.view === "sources" &&
-                  route.sourceConfigure === "github" &&
+                  manageGithub &&
                   (previewing || sourceSectionState.status === "ready") ? (
-                  <section id="watch-source-github" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-                  <h2 className="text-sm font-semibold text-snow">GitHub exposure</h2>
-                  <p className="mt-2 text-sm text-mute">
-                    Repository visibility, access relationships, and published Release assets.
-                  </p>
-                  <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                    Setup PR adds packed-artifact CI that scans each{" "}
-                    <code className="text-snow">package.tgz</code> or{" "}
-                    <code className="text-snow">dist/</code> pack that exists, not only a hardcoded
-                    package.tgz. The workflow vendors{" "}
-                    <code className="text-snow">.github/actions/nospoilers</code> and POSTs packed bytes
-                    to hosted scan. It needs a Watch token plus repository variable{" "}
-                    <code className="text-snow">NOSPOILERS_API_URL</code>
-                    {hostedOrigin ? (
-                      <>
-                        {" "}
-                        (currently <code className="text-snow">{hostedOrigin}</code>
-                        {githubRunnersReachable
-                          ? ", which GitHub-hosted runners can reach"
-                          : "; GitHub-hosted runners cannot reach loopback or HTTP"}
-                        )
-                      </>
-                    ) : null}
-                    . If none exist, that workflow
-                    fails closed. Remediation PR adds ignore
-                    rules, an empty .nospoilers.yml (no silent allowlist), bundler hints, and that CI
-                    workflow if it is missing. Both PRs need Contents write and Pull requests write. They
-                    commit the vendored Action; the workflow YAML stays copy-paste because the App does not
-                    request Workflows write. They
-                    are reviewable and never merged. They do not need Administration, and they do not make
-                    the repository private or delete a Release asset.             After you merge the setup PR, mark the
-                    NoSpoilers check required in branch protection if you want CI to block; the App does
-                    not change branch protection and cannot see whether a check is required. Setup status
-                    probes the vendored Action, the workflow YAML, and whether a NoSpoilers check ran.
-                    It never invents an alert. A GitHub Release is scanned when it
-                    is published, and again when pack assets are added or replaced. Scan latest release
-                    unpacks that repo’s current Release pack, not the git tree. The hourly poller does
-                    not download every latest release. Unpublishing or deleting
-                    a release is an alert only; gone assets are not downloaded.
-                  </p>
-                  <p className="watch-guidance mt-3 max-w-xl text-sm leading-relaxed text-mute">
-                    {MAKE_PRIVATE_COPY} {DELETE_PACK_ASSETS_COPY} {DISABLE_WORKFLOW_COPY} Setup and
-                    remediation PRs do not need Administration. A confirmed GitHub response is not a
-                    discovered incident.
-                  </p>
+                  <section id="watch-source-github" tabIndex={-1} className="coverage-repo-tools mx-auto w-full max-w-4xl px-4 py-6 text-snow sm:px-8 sm:py-8">
+                  <Button variant="ghost" size="sm" onClick={()=>navigate(watchHref('/watch/sources',search,{configure:null,source:null,sourceType:'github'}))}><ArrowLeft className="size-4" aria-hidden/>Back to Coverage</Button>
+                  <div className="mt-6"><WatchPageHeader title="Repository checks." lede="Inspect a published release, set up CI, or manage repository exposure."/></div>
+                  <label htmlFor="managed-repository" className="mb-2 block text-sm text-mute">Repository</label>
+                  <Select value={managedRepos[0]?String(managedRepos[0].id):''} onValueChange={id=>navigate(watchHref('/watch/sources',search,{source:`repo-${id}`,sourceType:'github',configure:'github'}))}>
+                    <SelectTrigger id="managed-repository" className="w-full"><SelectValue placeholder="Choose a repository"/></SelectTrigger>
+                    <SelectContent>{(deskRepos??[]).map(repo=><SelectItem key={repo.id} value={String(repo.id)}>{repo.full_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {managedRepos.length===0&&deskRepos.length>0?<p className="mt-6 text-sm text-mute">Choose the repository you want to manage. Each action applies only to that repository.</p>:null}
                   {previewing ? (
                     <p className="mt-3 text-sm leading-relaxed text-mute">
                       Preview cannot open GitHub PRs, probe setup files, or change GitHub visibility. No
@@ -95,21 +65,20 @@ export function SourcesScreen() {
                   {!previewing && repos.status === "error" && <p className="mt-6 text-sm text-danger">{repos.message}</p>}
                   {deskRepos.length === 0 && (previewing || repos.status === "ready") && (
                     <p className="mt-6 text-sm leading-relaxed text-mute">
-                      Nothing on this install yet. Install NoSpoilers on a private throwaway repo.
+                      No repositories are available for this GitHub connection. Review repository access in workspace settings.
                     </p>
                   )}
                   {deskRepos.length > 0 && (
-                    <ul className="mt-4 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel px-4">
-                      {deskRepos.map((repo) => (
+                    <ul className="mt-6">
+                      {managedRepos.map((repo) => (
                         <li key={repo.id} className="py-5">
                           <div className="flex flex-wrap items-baseline justify-between gap-2">
                             <a
                               href={repo.html_url}
-                              className="font-mono text-sm text-snow underline-offset-4 hover:underline"
-                              target="_blank"
+                              className="flex min-w-0 items-center gap-2 break-all text-base font-semibold text-snow underline-offset-4 hover:underline"
                               rel="noreferrer"
                             >
-                              {repo.full_name}
+                              <GitBranch className="size-4 shrink-0" aria-hidden/>{repo.full_name}
                             </a>
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">
                               {repo.private ? "private" : "public"}
@@ -119,7 +88,11 @@ export function SourcesScreen() {
                             Last check{" "}
                             {repo.last_checked_at ? new Date(repo.last_checked_at).toLocaleString() : "not yet"}
                           </p>
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-6 space-y-6">
+                          <section className="rounded-lg bg-[#101012] p-5" aria-label="Release check">
+                            <h3 className="flex items-center gap-2 text-base font-semibold"><PackageSearch className="size-4" aria-hidden/>Check a release</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-mute">Scan latest release unpacks this repository’s current Release pack, not the git tree. The hourly poller does not download every latest release.</p>
+                            <div className="mt-4 flex flex-wrap gap-3">
                             <Button
                               type="button"
                               size="sm"
@@ -148,6 +121,12 @@ export function SourcesScreen() {
                             >
                               {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
                             </Button>
+                            </div></section>
+                            <section className="rounded-lg bg-[#101012] p-5" aria-label="CI setup">
+                            <h3 className="flex items-center gap-2 text-base font-semibold"><GitPullRequest className="size-4" aria-hidden/>Set up release checks in CI</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-mute">Check the existing setup or open a pull request for review. Pull requests are never merged automatically; workflow and branch-protection setup may still be required.</p>
+                            <p className="mt-2 text-xs leading-relaxed text-dim">Setup status never invents an alert and cannot see whether a check is required. Setup and remediation PRs do not need Administration.</p>
+                            <div className="mt-4 flex flex-wrap gap-3">
                             <Button
                               type="button"
                               size="sm"
@@ -349,11 +328,17 @@ export function SourcesScreen() {
                             >
                               {remediatingId === repo.id ? "Opening…" : "Remediation PR"}
                             </Button>
+                            </> ) : null}
+                            </div></section>
+                            {previewing || installAdmin ? <section className="rounded-lg bg-[#101012] p-5" aria-label="Repository actions">
+                            <h3 className="flex items-center gap-2 text-base font-semibold"><ShieldAlert className="size-4" aria-hidden/>Repository actions</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-mute">These actions change GitHub. Making a repository private changes access; removing pack assets deletes published files. Each requires confirmation.</p>
+                            <div className="mt-4 flex flex-wrap gap-3">
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={previewing || locked || confirmBusy}
+                              disabled={repo.private || previewing || locked || confirmBusy}
                               onClick={() => {
                                 if (previewing) return;
                                 setGithubByRepo((current) => {
@@ -391,11 +376,9 @@ export function SourcesScreen() {
                             >
                               Remove pack assets
                             </Button>
-                            </>
-                            ) : null}
                           </div>
-                          {previewing || installAdmin ? (
-                            <div className="mt-3 max-w-xl">
+                            <div className="mt-5 border-t border-white/10 pt-5">
+                              <p className="mb-3 text-sm text-mute">Disable a release-publishing workflow by its path. The NoSpoilers scan workflow cannot be disabled here.</p>
                               <label className="block text-xs leading-relaxed text-dim">
                                 Workflow path
                                 <input
@@ -460,7 +443,8 @@ export function SourcesScreen() {
                                 Disable workflow
                               </Button>
                             </div>
-                          ) : null}
+                          </section> : null}
+                          </div>
                           {confirmForm(confirming?.kind === "make-private" && confirming.id === repo.id)}
                           {confirmForm(
                             confirming?.kind === "delete-pack-assets" && confirming.id === repo.id,

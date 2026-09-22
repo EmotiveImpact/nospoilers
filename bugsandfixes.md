@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| GitHub controls appeared below Websites and repeated every repository's actions | Dedicated single-repository management view with shared dark surfaces, repository selector, grouped controls and Back to Coverage; source tabs clear old configuration | Repository scope, tab cleanup, permission/confirmation and expired-state regressions; frontend build |
 | Workspace selector reloaded every time the sidebar reopened | Share workspace choices in the persistent signed-in shell across desktop and mobile rails; discard choices on identity change and failed refresh | 37 workspace/shell UI tests and TypeScript/frontend build passed |
 | Clicking an existing open alert showed unavailable; its next-step controls also failed | Normalize PostgreSQL BIGINT alert/source/event IDs into safe numeric API IDs; distinguish pending/failed detail requests from unavailable records | Live database confirmed alert 1 is open and IDs arrive as strings; all 43 alert tests across 24 files, frontend/API builds and diff check passed |
 | Coverage's Open repository only navigated to configuration, appearing to do nothing | The detail action is a real GitHub link for the selected repository; row selection is labelled View details, and Manage checks retains configuration access | Six Coverage detail tests, including checked/unchecked repositories and changed selection; TypeScript/frontend build |
