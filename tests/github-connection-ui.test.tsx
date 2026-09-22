@@ -40,3 +40,12 @@ it('offers a verified existing personal installation before opening GitHub',asyn
  expect(screen.getByText('Existing personal GitHub connection')).toBeTruthy();
  expect(screen.getByRole('button',{name:'Use a different GitHub account'})).toBeTruthy();
 });
+it('offers explicit GitHub sign-in recovery when connector credentials expire',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({error:'Your GitHub authorisation has expired.',code:'github_reauth_required'},{status:401}));vi.stubGlobal('fetch',fetcher);
+ render(<GithubWorkspaceConnect workspaceId="workspace"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Connect GitHub to this workspace'}));
+ const recovery=await screen.findByRole('link',{name:'Sign in to GitHub again'});
+ expect(recovery.getAttribute('href')).toBe('/api/auth/github');
+ expect(screen.getByText(/Use the same GitHub account/)).toBeTruthy();
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});

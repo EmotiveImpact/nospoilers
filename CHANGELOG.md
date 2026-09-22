@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- GitHub connection attempts with expired authorization now offer explicit sign-in recovery instead of exposing a raw provider error.
+
 - Fixed Coverage's Connect source chooser: GitHub opens the workspace connection flow; package, website and map setup clear stale selection and use the matching source tab.
 
 - Pinned transitive esbuild to patched 0.28.2 to remove GHSA-g7r4-m6w7-qqqr from the build dependency tree; dependency audit now reports zero vulnerabilities.

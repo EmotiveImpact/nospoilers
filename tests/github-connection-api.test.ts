@@ -53,3 +53,17 @@ it('offers and explicitly attaches an unbound personal installation without remo
   expect((await sql.query("SELECT detail->>'connectionMode' AS mode FROM product_workspace_events WHERE action='github_connected'")).rows).toEqual([{mode:'existing-personal'}]);
  }finally{await sql.close();}
 });
+it('turns expired provider credentials into safe actionable reauthentication feedback',async()=>{
+ const {GithubApiError}=await import('../src/server/github.ts');
+ const sql=await openSql('pglite://:memory:');try{
+  await migrate(sql);const store=createStore(sql,{tokenSecret:'secret'});await store.upsertUser({id:'person',login:'person',accessToken:'expired-provider-token'});
+  const session=await store.createSession('person'),cookie=`ns_session=${signSession('secret',session)}`;
+  const workspace=(await listUserWorkspaces(sql,'person'))[0].id;
+  const app=createApp({store,config:loadConfig({appBaseUrl:'http://localhost:4347',githubAppId:'1',githubPrivateKey:'configured',githubClientId:'client',githubClientSecret:'client-secret',githubAppSlug:'nospoilers',sessionSecret:'secret',githubWebhookSecret:'signature'}),github:{...stubGithub(),getUser:async()=>{throw new GithubApiError(401,'Raw provider diagnostic must stay private');}}});
+  const response=await app.request(`/api/workspaces/${workspace}/github`,{method:'POST',headers:{cookie}});
+  expect(response.status).toBe(401);
+  const body=await response.json() as {code:string;error:string};
+  expect(body.code).toBe('github_reauth_required');expect(body.error).toContain('Sign in to GitHub again');expect(body.error).not.toContain('Raw provider');
+  expect((await sql.query('SELECT * FROM installations')).rows).toHaveLength(0);
+ }finally{await sql.close();}
+});

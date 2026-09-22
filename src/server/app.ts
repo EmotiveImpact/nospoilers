@@ -2288,7 +2288,7 @@ export function createApp(deps: AppDeps): Hono {
     if(!githubAppConfigured(deps.config))return c.json({error:'GitHub App credentials are not configured on this server.'},503);
     const limited=await rateLimited(c,authLimiter,`github-connect:${user.userId}`,deps.config.authRateWindowMs,'Too many connection requests. Try again shortly.');if(limited)return limited;
     const sessionId=readSignedSession(deps.config.sessionSecret,getCookie(c,cookieName));if(!sessionId)return c.json({error:'Sign in again.'},401);
-    if(!await deps.store.getUserAccessToken(user.userId))return c.json({error:'Sign in with GitHub again to authorise this connection.'},401);
+    if(!await deps.store.getUserAccessToken(user.userId))return c.json({error:'Sign in with GitHub again to authorise this connection.',code:'github_reauth_required'},401);
     try{
       const intent=await createGithubConnectionIntent(deps.store.sql,sessionId,user.userId,c.req.param('workspaceId'));
       const existing=c.req.query('new')==='1'?[]:await connectablePersonalGithubInstallations({store:deps.store,github:deps.github,userId:user.userId});
@@ -2299,7 +2299,10 @@ export function createApp(deps: AppDeps): Hono {
       deleteCookie(c,'ns_github_existing_connection',{path:'/'});
       const url=new URL(`https://github.com/apps/${deps.config.githubAppSlug}/installations/new`);url.searchParams.set('state',intent.token);
       return c.json({url:url.toString(),expiresAt:intent.expiresAt});
-    }catch(error){return c.json({error:error instanceof Error?error.message:'Connection unavailable.'},errorStatus(error));}
+    }catch(error){
+      if(error instanceof GithubApiError&&error.status===401)return c.json({error:'Your GitHub authorisation has expired or been revoked. Sign in to GitHub again, then retry connecting the source.',code:'github_reauth_required'},401);
+      return c.json({error:error instanceof Error?error.message:'Connection unavailable.'},errorStatus(error));
+    }
   });
 
   app.post('/api/github/connection/existing',async c=>{
