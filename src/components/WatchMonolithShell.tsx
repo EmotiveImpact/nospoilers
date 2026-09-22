@@ -44,6 +44,7 @@ import {
 } from "@/watch/routes.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {WorkspaceSwitcher} from '@/components/watch/WorkspaceSwitcher';
+import {useWorkspaceChoices} from '@/components/watch/useWorkspaceChoices';
 
 function watchViewIcon(path: string) {
   return path === "/watch"
@@ -189,6 +190,8 @@ export function WatchMonolithShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  // The rails may unmount on collapse or dialog close; their data must not.
+  const workspaceChoices=useWorkspaceChoices(login);
   useEffect(() => {
     if (!navOpen || typeof window.matchMedia !== 'function') return;
     const desktop = window.matchMedia('(min-width: 1024px)');
@@ -311,7 +314,7 @@ export function WatchMonolithShell({
           ) : null}
           {!opts.showToggle?<button type="button" className="watch-rail-close" aria-label="Close watch navigation" onClick={closeNav}><X size={20} aria-hidden/></button>:null}
         </div>
-        {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId}/>}
+        {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId} choices={workspaceChoices}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
           <label className="mt-3 block">
             <span className="watch-kicker">GitHub source</span>
