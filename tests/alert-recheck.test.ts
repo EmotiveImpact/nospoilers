@@ -11,3 +11,13 @@ it('only resolves a matching persisted release-scan repository',async()=>{
   vi.mocked(store.getAlertForUser).mockResolvedValue(null);
   expect(await alertRecheckTarget(store,'stranger',1)).toBeNull();
 });
+
+it('offers scoped repository navigation for push warnings without inventing a repeatable scan',async()=>{
+ const store={getAlertForUser:vi.fn().mockResolvedValue({repo_id:4,installation_id:9,kind:'push_sensitive_path'}),getRepo:vi.fn().mockResolvedValue({id:4,installation_id:9})} as unknown as Store;
+ const target=await alertRecheckTarget(store,'user',1);
+ expect(target?.repoId).toBe(4);
+ expect(target?.endpoint).toBeNull();
+ expect(target?.detail).toContain('not an artifact scan');
+ vi.mocked(store.getRepo).mockResolvedValue({id:4,installation_id:10} as never);
+ expect((await alertRecheckTarget(store,'user',1))?.repoId).toBeNull();
+});

@@ -1,5 +1,11 @@
 ## 22 September 2026 — Coverage repository navigation
 
+## 22 September 2026 — Actionable alert verification links
+
+The unsupported recheck fallback previously reloaded the broad Coverage inventory without selecting a repository. It now opens package upload directly and offers Repository checks only for the persisted alert repo when its installation matches. No repository ID is inferred from title/body text, and unsupported events still cannot queue a scan directly. Internal link clicks preserve app navigation; modified-click behavior remains native. Copy explains that a push warning is not an artifact scan. Existing release-scan repeat actions remain unchanged.
+
+Verified **16/16 tests across 4 files**, including source scope mismatch, direct navigation, unsupported fallback, read-only/run refusal and existing alert/brief regressions. Frontend/typecheck, API build and diff check passed; existing Vite chunk advisory remains.
+
 ## 22 September 2026 — Repository tabs and alert fix handoff
 
 Repository management now has accessible Checks / CI setup / Repository actions tabs, with red active underlines, per-repository reset and the existing authorization/confirmation handlers. Results remain in the relevant panel. Alerts now provide deterministic investigation guidance and a reviewable clipboard brief for the customer's own agent. The brief includes only selected evidence fields and verification instructions, never invokes a provider or auto-fixes/resolves anything. Sensitive-path alerts extract their recorded paths from the existing generated message and explain that a filename warning does not prove exposed credentials; their exposure display now says Not established. General finding and incomplete-check fallback guidance does not invent root causes.

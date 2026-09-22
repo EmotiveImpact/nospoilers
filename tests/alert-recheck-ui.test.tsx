@@ -18,12 +18,12 @@ it('keeps viewer controls read-only',async()=>{
   expect((await screen.findByRole('button',{name:'Scan latest release'}) as HTMLButtonElement).disabled).toBe(true);
   expect(screen.getByText('Viewer access is read-only.')).toBeTruthy();
 });
-it('offers Coverage rather than pretending unsupported alerts can be rechecked',async()=>{
+it('offers an upload journey rather than pretending unsupported alerts can be rechecked',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({target:{...target,endpoint:null,label:null,detail:'No supported direct recheck.'}})}));
   render(<AlertRecheck alertId={2} installationId={9} workspaceId="scope" canRespond ended={false}/>);
   expect(await screen.findByText('No supported direct recheck.')).toBeTruthy();
   expect(screen.queryByRole('button')).toBeNull();
-  expect(screen.getByRole('link',{name:'Open Coverage'}).getAttribute('href')).toBe('/watch/sources?install=9&workspace=scope');
+  expect(screen.getByRole('link',{name:'Upload a build to scan'}).getAttribute('href')).toBe('/watch/scan?install=9&workspace=scope&mode=package');
 });
 it('shows the server refusal without claiming a queued scan',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({target})}).mockResolvedValueOnce({ok:false,json:async()=>({error:'Coverage ended.'})}));
@@ -31,4 +31,15 @@ it('shows the server refusal without claiming a queued scan',async()=>{
   fireEvent.click(await screen.findByRole('button',{name:'Scan latest release'}));
   expect((await screen.findByRole('alert')).textContent).toBe('Coverage ended.');
   expect(screen.queryByRole('link',{name:'View releases'})).toBeNull();
+});
+
+it('links directly to a verified repository and navigates without a full reload',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({target:{...target,repoId:4,endpoint:null}})}));
+ render(<AlertRecheck alertId={2} installationId={9} workspaceId="scope" canRespond ended={false}/>);
+ const link=await screen.findByRole('link',{name:'Repository checks'});
+ expect(link.getAttribute('href')).toBe('/watch/sources?install=9&workspace=scope&source=repo-4&sourceType=github&configure=github');
+ const push=vi.spyOn(window.history,'pushState').mockImplementation(()=>{});
+ fireEvent.click(link);
+ expect(push).toHaveBeenCalledWith({},'',link.getAttribute('href'));
+ push.mockRestore();
 });
