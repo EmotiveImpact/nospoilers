@@ -25,7 +25,8 @@ it('keeps a repository without a published release out of the actionable queue',
  expect(screen.queryByText('No release on owner/repo')).toBeNull();
  expect(screen.getByText('Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.')).toBeTruthy();
  expect(screen.getByText('Saved release evidence can still need review in Releases. Generated findings and incomplete checks that need a response will appear here.')).toBeTruthy();
- expect(screen.getByText('0 alerts requiring response on this page · 1 coverage record remains in retained history')).toBeTruthy();
+ expect(screen.getByText('0 alerts')).toBeTruthy();
+ expect(screen.getByText('1 coverage record in retained history.')).toBeTruthy();
  expect(screen.getByRole('tab',{name:/Open\s*0/})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Open Releases'}));
  expect(nav).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace');

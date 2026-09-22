@@ -1,3 +1,7 @@
+## 22 September 2026 — Alerts footer layout
+
+Replaced the long inline queue/history sentence beside pagination with a short count and grouped Newest/Older controls. The retained coverage-history count remains visible in a separate full-width note. The footer cannot shrink into the scrollable list, controls stay together, and its top row wraps on narrower layouts. Pagination hides on initial load/error and is disabled while a replacement page loads, preserving the previous queue until its response arrives. The four rendered/UI/keyboard files passed **12/12 tests** after the final test changes; `npm run build` passed TypeScript and Vite with the existing chunk advisory. No alert classification, export scope or response permissions changed.
+
 ## 22 September 2026 — GitHub connection label contrast
 
 The owner identified an unreadable account name in the production reconnect panel. The account label incorrectly used `text-ink` (`#09090b`) on the dark panel; it now uses the shared light `text-snow` foreground. Other `text-ink` uses remain appropriate for light buttons and coloured chart markers. No connection, permission or database behaviour changed. Existing connection UI tests passed **4/4** and `npm run build` passed TypeScript and Vite with the existing chunk-size advisory. This bounded visual fix does not require another full backend regression.

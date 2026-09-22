@@ -90,7 +90,16 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  counts={page?.counts} exportLabel="Export retained history"
   activityPagination={(eventBefore||detail?.nextEventsCursor)&&<nav aria-label="Alert activity pages" className="mt-3 flex gap-2"><Button variant="outline" size="sm" disabled={!eventBefore} onClick={()=>go({eventBefore:null})}>Latest activity</Button><Button variant="outline" size="sm" disabled={!detail?.nextEventsCursor||!detailReady} onClick={()=>go({eventBefore:detail?.nextEventsCursor??null})}>Older activity</Button></nav>}
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
-  pagination={<nav aria-label="Alert history pages" className="flex items-center justify-between gap-2 border-t border-white/8 p-3 text-xs"><span>{listed.length} {listed.length===1?'alert':'alerts'} requiring response on this page{page?.coverageHistoryCount?` · ${page.coverageHistoryCount} coverage ${page.coverageHistoryCount===1?'record remains':'records remain'} in retained history`:''}</span><Button size="sm" variant="outline" disabled={!before||state.status!=='ready'} onClick={()=>go({before:null,alert:null})}>Newest</Button><Button size="sm" variant="outline" disabled={!page?.nextCursor||state.status!=='ready'} onClick={()=>go({before:page?.nextCursor??null,alert:null})}>Older</Button></nav>}
+  pagination={state.status==='ready'?<nav aria-label="Alert history pages" className="alerts-journey-pagination">
+   <div className="alerts-journey-pagination-row">
+    <p className="alerts-journey-page-count">{listed.length} {listed.length===1?'alert':'alerts'}<span className="sr-only"> on this page</span></p>
+    <div className="alerts-journey-page-actions">
+     <Button size="sm" variant="outline" disabled={!before||queryPending} onClick={()=>go({before:null,alert:null})}>Newest</Button>
+     <Button size="sm" variant="outline" disabled={!page?.nextCursor||queryPending} onClick={()=>go({before:page?.nextCursor??null,alert:null})}>Older</Button>
+    </div>
+   </div>
+   {page?.coverageHistoryCount?<p className="alerts-journey-history-note">{page.coverageHistoryCount} coverage {page.coverageHistoryCount===1?'record':'records'} in retained history.</p>:null}
+  </nav>:null}
   rows={buildAlertListViewModels(listed,()=> 'Saved check')} selected={selected} events={detail?.alert.id===selectedId?detail.events:[]}
   previewing={false} canRespond={identity.canRespond&&detailReady} ended={false} busy={busy||queryPending} note={selected?notes[selected.id]??'':''} assignee={selected?assignees[selected.id]??'':''}
   error={error} exportError={exportError} state={state} activityState={activity.status==='error'||detail?.alert.id===selectedId?activity:{status:'loading'}} detailOpen={route.alertId!==null} tab={route.tab} assignedToMe={mine} teamOnly={false}

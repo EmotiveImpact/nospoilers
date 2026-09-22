@@ -51,6 +51,7 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  revoked=true;act(()=>refresh());
  await screen.findByText('error');
  expect(screen.queryByRole('heading',{name:'Website exposure'})).toBeNull();
+ expect(screen.queryByRole('navigation',{name:'Alert history pages'})).toBeNull();
  expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(true);
 });
 it('does not flash unavailable guidance while a selected alert is still loading',async()=>{
@@ -76,7 +77,7 @@ it('keeps the current queue visible until the next tab response arrives',async()
  const second={...first,id:10,title:'Second alert',acknowledged_at:'2026-09-06'};
  let requested=false;
  let finish:(value:Response)=>void=()=>{};
- const page=(alerts:unknown[])=>({alerts,nextCursor:null,sourceCount:1,counts:{open:1,waiting:1,done:0,mine:0}});
+ const page=(alerts:unknown[])=>({alerts,nextCursor:'8',sourceCount:1,counts:{open:1,waiting:1,done:0,mine:0}});
  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
   if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
   if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
@@ -86,9 +87,12 @@ it('keeps the current queue visible until the next tab response arrives',async()
  }));
  const view=render(<WorkspaceAlerts workspaceId="workspace" search="?tab=open"/>);
  await screen.findByRole('heading',{name:'First alert'});
+ expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(false);
  view.rerender(<WorkspaceAlerts workspaceId="workspace" search="?tab=waiting"/>);
  expect(screen.getByRole('heading',{name:'First alert'})).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(true);
  await waitFor(()=>expect(requested).toBe(true));
  await act(async()=>finish(Response.json(page([second]))));
  expect(await screen.findByRole('heading',{name:'Second alert'})).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(false);
 });

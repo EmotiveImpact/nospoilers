@@ -109,6 +109,49 @@
   background: transparent;
 }
 
+.alerts-journey .alerts-journey-pagination {
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 12px 0 16px;
+  border-top: 1px solid var(--alerts-line);
+}
+
+.alerts-journey .alerts-journey-pagination-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.alerts-journey .alerts-journey-page-count {
+  margin: 0;
+  color: var(--color-snow);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.alerts-journey .alerts-journey-page-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.alerts-journey .alerts-journey-page-actions button {
+  min-height: 32px;
+  padding-inline: 10px;
+}
+
+.alerts-journey .alerts-journey-history-note {
+  max-width: 48ch;
+  margin: 10px 0 0;
+  color: var(--color-mute);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .alerts-journey .alerts-journey-shortcuts {
   position: absolute;
   width: 1px;
