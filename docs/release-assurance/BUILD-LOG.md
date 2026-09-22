@@ -2,7 +2,7 @@
 
 Audited recent main CI, all seven open PRs, open issues and available security endpoints. Main CI was green; obsolete prototype failures were billing blocks or historical owner-discovery timeouts. PR #40's empty-coordinate bug is already fixed and regression-tested on main. See [the full audit](../github-error-audit-2026-09-22.md) for per-PR evidence and disabled security-scanning limitations.
 
-Fixed the one current npm advisory, GHSA-g7r4-m6w7-qqqr, by overriding transitive esbuild to 0.28.2. Lockfile changes are limited to esbuild and its platform binaries/deduplication. npm audit now reports zero vulnerabilities. TypeScript/frontend build, API build, diff check and all **1,697 tests across 276 files** passed (357.28 seconds). Lint exits successfully with 36 pre-existing warnings. Remote CI for this dependency update remains pending at this commit; no claim of a completed source/secret security audit is made.
+Fixed the one current npm advisory, GHSA-g7r4-m6w7-qqqr, by overriding transitive esbuild to 0.28.2. Lockfile changes are limited to esbuild and its platform binaries/deduplication. npm audit now reports zero vulnerabilities. TypeScript/frontend build, API build, diff check and all **1,697 tests across 276 files** passed (357.28 seconds). Lint exits successfully with 36 pre-existing warnings. [GitHub CI 35687041416](https://github.com/EmotiveImpact/nospoilers/actions/runs/35687041416) then completed **successfully** for `859cd7ee8a0ebe148c9dc1448adf23eedb93bd89`, including tests, build, fixture gate, clean/dirty Action checks and SARIF. No claim of a completed source/secret security audit is made.
 
 ## 22 September 2026 — Coverage repository navigation
 
