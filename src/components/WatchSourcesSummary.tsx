@@ -271,9 +271,8 @@ export function WatchSourcesSummary({
                   <Button
                     as="a"
                     href={`https://github.com/${selectedSource.coordinate.split('/').map(encodeURIComponent).join('/')}`}
-                    target="_blank"
                     rel="noopener noreferrer"
-                    title={`Open ${selectedSource.name} on GitHub (new tab)`}
+                    title={`Open ${selectedSource.name} on GitHub`}
                   >
                     <GitBranch className="size-4" aria-hidden />
                     Open repository

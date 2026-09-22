@@ -46,7 +46,7 @@ it.each(['2026-09-06T12:00:00Z',null])('opens the selected GitHub repository sep
  const detail=within(screen.getByRole('dialog'));
  const link=detail.getByRole('link',{name:'Open repository'});
  expect(link.getAttribute('href')).toBe('https://github.com/org/app');
- expect(link.getAttribute('target')).toBe('_blank');
+ expect(link.getAttribute('target')).toBeNull();
  expect(link.getAttribute('rel')).toContain('noopener');
  fireEvent.click(detail.getByRole('button',{name:'Manage checks'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=workspace-a&install=9&configure=github');

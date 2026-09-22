@@ -1,6 +1,6 @@
 ## 22 September 2026 — Coverage repository navigation
 
-The detail panel reused the Open repository label for a configuration navigation handler. GitHub details now contain a standard HTTPS anchor to the selected repository, with encoded owner/repository path segments, new-tab behaviour and `noopener noreferrer`. This works even before a first visibility check. Inventory buttons now say View details, matching their selection behaviour, and Manage checks preserves the existing configuration path. Six Coverage detail tests passed, including changing the selected repository and keeping settings distinct from the external link. TypeScript/frontend build and diff check passed; the existing Vite chunk advisory remains.
+The detail panel reused the Open repository label for a configuration navigation handler. GitHub details now contain a standard HTTPS anchor to the selected repository, with encoded owner/repository path segments and `noopener noreferrer`. Live verification found that the in-app browser did not open the initial new-tab link, so the link now uses ordinary current-tab navigation. This works even before a first visibility check. Inventory buttons now say View details, matching their selection behaviour, and Manage checks preserves the existing configuration path. Six Coverage detail tests passed, including changing the selected repository and keeping settings distinct from the external link. TypeScript/frontend build and diff check passed; the existing Vite chunk advisory remains.
 
 ## 22 September 2026 — Alerts footer layout
 
