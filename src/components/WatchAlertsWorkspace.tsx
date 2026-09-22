@@ -1,3 +1,4 @@
+import {AlertFixBrief} from './watch/AlertFixBrief';
 import { Button } from "@/components/ui/button";
 import {AlertMemberSelect} from './watch/AlertMemberSelect';
 import './watch/design/alerts-page.css';
@@ -388,7 +389,8 @@ export function WatchAlertsWorkspace({
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
-                  {!selectedRow.operational ? <>
+                  <AlertFixBrief key={selected.id} alert={selected} operational={selectedRow.operational}/>
+                  {!selectedRow.operational && selected.kind!=='push_sensitive_path' ? <>
                   <section className="alerts-journey-section mt-8">
                     <p className="watch-kicker">Where</p>
                     <div className="alerts-journey-surface mt-2 divide-y divide-white/5 rounded-lg border border-white/8 bg-panel">
@@ -419,11 +421,11 @@ export function WatchAlertsWorkspace({
                   {relatedReleases}
                   {!selectedRow.operational ? <>
                   <section className="alerts-journey-section mt-7">
-                    <p className="watch-kicker">{selectedRow.operational?'Check status':'Exposure'}</p>
+                    <p className="watch-kicker">{selectedRow.operational?'Check status':selected.kind==='push_sensitive_path'?'Recorded event':'Exposure'}</p>
                     <div className="alerts-journey-surface mt-2 grid gap-4 rounded-lg border border-white/8 bg-panel p-4 sm:grid-cols-2">
                       <div>
-                        <p className="watch-kicker">{selectedRow.operational?'Result':'Reachable for'}</p>
-                        <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':selectedRow.exposure}</p>
+                        <p className="watch-kicker">{selectedRow.operational?'Result':selected.kind==='push_sensitive_path'?'Content exposure':'Reachable for'}</p>
+                        <p className={selected.resolved_at||selectedRow.operational ? "mt-1 font-display text-2xl text-snow" : "mt-1 font-display text-2xl text-danger"}>{selectedRow.operational?'No scanned release':selected.kind==='push_sensitive_path'?'Not established':selectedRow.exposure}</p>
                       </div>
                       <div>
                         <p className="watch-kicker">Opened</p>

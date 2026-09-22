@@ -1,3 +1,4 @@
+import * as Tabs from '@radix-ui/react-tabs';
 import {navigate} from '@/nav';
 import {watchHref} from '@/watch/routes';
 import {ArrowLeft,GitBranch,PackageSearch,GitPullRequest,ShieldAlert} from 'lucide-react';
@@ -86,7 +87,13 @@ export function SourcesScreen() {
                             Last check{" "}
                             {repo.last_checked_at ? new Date(repo.last_checked_at).toLocaleString() : "not yet"}
                           </p>
-                          <div className="mt-6 space-y-6">
+                          <Tabs.Root key={repo.id} defaultValue="checks" className="mt-6">
+                          <Tabs.List aria-label="Repository management" className="repo-management-tabs">
+                            <Tabs.Trigger value="checks">Checks</Tabs.Trigger>
+                            <Tabs.Trigger value="setup">CI setup</Tabs.Trigger>
+                            {previewing || installAdmin ? <Tabs.Trigger value="actions">Repository actions</Tabs.Trigger> : null}
+                          </Tabs.List>
+                          <Tabs.Content value="checks" asChild>
                           <section className="rounded-lg bg-[#101012] p-5" aria-label="Release check">
                             <h3 className="flex items-center gap-2 text-base font-semibold"><PackageSearch className="size-4" aria-hidden/>Check a release</h3>
                             <p className="mt-2 text-sm leading-relaxed text-mute">Scan latest release unpacks this repository’s current Release pack, not the git tree. The hourly poller does not download every latest release.</p>
@@ -119,8 +126,8 @@ export function SourcesScreen() {
                             >
                               {scanningId === repo.id ? "Queuing…" : "Scan latest release"}
                             </Button>
-                            </div></section>
-                            <section className="rounded-lg bg-[#101012] p-5" aria-label="CI setup">
+                            </div>{scanError && <p role="alert" className="mt-4 text-sm text-danger">{scanError}</p>}</section></Tabs.Content>
+                            <Tabs.Content value="setup" asChild><section className="rounded-lg bg-[#101012] p-5" aria-label="CI setup">
                             <h3 className="flex items-center gap-2 text-base font-semibold"><GitPullRequest className="size-4" aria-hidden/>Set up release checks in CI</h3>
                             <p className="mt-2 text-sm leading-relaxed text-mute">Check the existing setup or open a pull request for review. Pull requests are never merged automatically; workflow and branch-protection setup may still be required.</p>
                             <p className="mt-2 text-xs leading-relaxed text-dim">Setup status never invents an alert and cannot see whether a check is required. Setup and remediation PRs do not need Administration.</p>
@@ -327,8 +334,12 @@ export function SourcesScreen() {
                               {remediatingId === repo.id ? "Opening…" : "Remediation PR"}
                             </Button>
                             </> ) : null}
-                            </div></section>
-                            {previewing || installAdmin ? <section className="rounded-lg bg-[#101012] p-5" aria-label="Repository actions">
+                            </div>
+                            {setupStatusByRepo[repo.id] ? <SetupStatusResult view={setupStatusByRepo[repo.id]!} /> : null}
+                            {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
+                            {remediateByRepo[repo.id] ? <RemediationPrResult view={remediateByRepo[repo.id]!} /> : null}
+                            </section></Tabs.Content>
+                            {previewing || installAdmin ? <Tabs.Content value="actions" asChild><section className="rounded-lg bg-[#101012] p-5" aria-label="Repository actions">
                             <h3 className="flex items-center gap-2 text-base font-semibold"><ShieldAlert className="size-4" aria-hidden/>Repository actions</h3>
                             <p className="mt-2 text-sm leading-relaxed text-mute">These actions change GitHub. Making a repository private changes access; removing pack assets deletes published files. Each requires confirmation.</p>
                             <div className="mt-4 flex flex-wrap gap-3">
@@ -441,8 +452,6 @@ export function SourcesScreen() {
                                 Disable workflow
                               </Button>
                             </div>
-                          </section> : null}
-                          </div>
                           {confirmForm(confirming?.kind === "make-private" && confirming.id === repo.id)}
                           {confirmForm(
                             confirming?.kind === "delete-pack-assets" && confirming.id === repo.id,
@@ -453,18 +462,13 @@ export function SourcesScreen() {
                           {githubByRepo[repo.id] ? (
                             <GithubResponseResult view={githubByRepo[repo.id]!} />
                           ) : null}
-                          {setupStatusByRepo[repo.id] ? (
-                            <SetupStatusResult view={setupStatusByRepo[repo.id]!} />
-                          ) : null}
-                          {setupByRepo[repo.id] ? <SetupPrResult view={setupByRepo[repo.id]!} /> : null}
-                          {remediateByRepo[repo.id] ? (
-                            <RemediationPrResult view={remediateByRepo[repo.id]!} />
-                          ) : null}
+                          </section></Tabs.Content> : null}
+                          </Tabs.Root>
                         </li>
                       ))}
                     </ul>
                   )}
-                  {scanError && <p className="mt-4 text-sm text-danger">{scanError}</p>}
+
                   </section>
                   ) : null}
                   </div>

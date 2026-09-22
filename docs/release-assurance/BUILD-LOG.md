@@ -1,5 +1,13 @@
 ## 22 September 2026 — Coverage repository navigation
 
+## 22 September 2026 — Repository tabs and alert fix handoff
+
+Repository management now has accessible Checks / CI setup / Repository actions tabs, with red active underlines, per-repository reset and the existing authorization/confirmation handlers. Results remain in the relevant panel. Alerts now provide deterministic investigation guidance and a reviewable clipboard brief for the customer's own agent. The brief includes only selected evidence fields and verification instructions, never invokes a provider or auto-fixes/resolves anything. Sensitive-path alerts extract their recorded paths from the existing generated message and explain that a filename warning does not prove exposed credentials; their exposure display now says Not established. General finding and incomplete-check fallback guidance does not invent root causes.
+
+Verification: **25/25 focused tests across 7 files**, including tab isolation/reset, preserved repository confirmations, existing alert navigation, brief review/copy and clipboard failure. TypeScript/Vite build and diff check passed with the existing chunk advisory. These UI checks do not prove a hosted customer scan or agent-performed remediation. The current production warning concerns .env.example; its contents were not inspected in this work.
+
+Remaining documented launch acceptance is still tracked in docs/STATUS.md: complete hosted customer scan journey, additional login integration, real notification delivery, adversarial/accessibility acceptance, and owner-deferred Stripe. Those operational items were not re-certified by this UI task.
+
 ## 22 September 2026 — Alert inbox grouping and row hierarchy
 
 Carried the approved mock's source-first alert rows and counted Findings / Incomplete checks sections into the production component. Existing queue classification drives grouping; retained coverage records remain outside the actionable workspace inbox. A defensive coverage group keeps legacy supplied records distinct. Counts apply to the current page, groups with no records are omitted, and J/K/arrows plus detail navigation follow the displayed group order. Legacy generated alerts without a separate repository field recover the source from the known title format. Issue summaries wrap rather than truncate; unresolved findings use the coral foreground and incomplete checks use amber, with resolved rows muted. No scanner outcome, response permissions, history retention or detail actions changed.

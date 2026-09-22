@@ -36,3 +36,9 @@
 @media(max-width:760px){.coverage-page .coverage-empty-window{grid-template-columns:1fr}.coverage-page .coverage-empty-card+.coverage-empty-card{border-top:1px solid #ffffff10!important;border-left:0!important}.coverage-page .coverage-empty-releases{align-items:flex-start;flex-direction:column}}
 
 .watch-desk .coverage-page{--color-panel:#111113}.watch-desk .coverage-page :is(.coverage-summary,.coverage-empty-window,.coverage-empty-releases,.coverage-health-notice){background:#111113}.watch-desk :is(.coverage-detail,.coverage-detail-panel){background:#111113}
+
+/* Focused repository tools share the app's red-underlined navigation. */
+.repo-management-tabs{display:flex;gap:22px;overflow-x:auto;border-bottom:1px solid #ffffff10;margin-bottom:20px}
+.repo-management-tabs>[role=tab]{flex-shrink:0;padding:12px 0;border:0;border-bottom:2px solid transparent;background:transparent;color:#a2a3ad;font-size:12px}
+.repo-management-tabs>[role=tab][data-state=active]{color:#f4f4f5;border-bottom-color:#e2453a}
+.repo-management-tabs>[role=tab]:focus-visible{outline:2px solid #f4f4f5;outline-offset:-2px}

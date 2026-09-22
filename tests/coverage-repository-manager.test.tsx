@@ -25,9 +25,11 @@ it('shows only the selected repository with grouped controls and preserved confi
  render(<SourcesScreen/>);
  expect(screen.queryByText('Coverage inventory')).toBeNull();
  expect(screen.getByRole('combobox',{name:'Repository'})).toBeTruthy();
- expect(screen.getByRole('region',{name:'Release check'})).toBeTruthy();
- expect(screen.getByRole('region',{name:'CI setup'})).toBeTruthy();
- const actions=within(screen.getByRole('region',{name:'Repository actions'}));
+ expect(screen.getByRole('tabpanel',{name:'Checks'})).toBeTruthy();
+ fireEvent.mouseDown(screen.getByRole('tab',{name:'CI setup'}),{button:0,ctrlKey:false});
+ expect(screen.getByRole('tabpanel',{name:'CI setup'})).toBeTruthy();
+ fireEvent.mouseDown(screen.getByRole('tab',{name:'Repository actions'}),{button:0,ctrlKey:false});
+ const actions=within(screen.getByRole('tabpanel',{name:'Repository actions'}));
  expect(actions.getByRole('button',{name:'Make private'})).toHaveProperty('disabled',true);
  fireEvent.click(actions.getByRole('button',{name:'Remove pack assets'}));
  expect(state.confirm).toHaveBeenCalledWith({kind:'delete-pack-assets',id:7,expected:'owner/app'});
@@ -42,7 +44,16 @@ it('requires explicit selection instead of rendering every repository',()=>{
 });
 it('keeps administration actions unavailable to non-administrators',()=>{
  state.admin=false;render(<SourcesScreen/>);
+ fireEvent.mouseDown(screen.getByRole('tab',{name:'CI setup'}),{button:0,ctrlKey:false});
  expect(screen.getByRole('button',{name:'Setup status'})).toBeTruthy();
  expect(screen.queryByRole('region',{name:'Repository actions'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Setup PR'})).toBeNull();
+});
+it('resets to Checks when choosing a different repository',()=>{
+ const view=render(<SourcesScreen/>);
+ fireEvent.mouseDown(screen.getByRole('tab',{name:'Repository actions'}),{button:0,ctrlKey:false});
+ expect(screen.getByRole('tab',{name:'Repository actions'}).getAttribute('aria-selected')).toBe('true');
+ state.source='repo-8';view.rerender(<SourcesScreen/>);
+ expect(screen.getByRole('tab',{name:'Checks'}).getAttribute('aria-selected')).toBe('true');
+ expect(screen.queryByRole('button',{name:'Remove pack assets'})).toBeNull();
 });
