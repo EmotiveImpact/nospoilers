@@ -1,3 +1,9 @@
+## 22 September 2026 — Connect source opens the correct workflow
+
+The GitHub tile previously routed to existing repository checks instead of starting a connection. It now opens the existing workspace-scoped GitHub connection controls inside the chooser, preserving eligible-installation reuse, GitHub installation redirect, permission errors and retry. No connection or repository access is changed just by selecting the tile. Other tiles now set their matching source filter and clear stale source/attention selections, fixing hidden setup panels after switching source types.
+
+Coverage detail/navigation, GitHub connection and repository manager tests passed **21/21 across 3 files**, including a real component-to-connection-endpoint test and cross-type stale URL regressions. Existing connection authorization remains server-enforced.
+
 ## 22 September 2026 — GitHub error and dependency audit
 
 Audited recent main CI, all seven open PRs, open issues and available security endpoints. Main CI was green; obsolete prototype failures were billing blocks or historical owner-discovery timeouts. PR #40's empty-coordinate bug is already fixed and regression-tested on main. See [the full audit](../github-error-audit-2026-09-22.md) for per-PR evidence and disabled security-scanning limitations.

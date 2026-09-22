@@ -1,3 +1,4 @@
+import {GithubWorkspaceConnect} from "./watch/GithubWorkspaceConnection";
 import {QuietSidePreview} from "./watch/design/QuietSidePreview";
 import {QuietModalSurface} from "./watch/design/QuietModalSurface";
 import "./watch/design/coverage-page.css";
@@ -66,6 +67,9 @@ export function WatchSourcesSummary({
   onRetry: () => void;
 }) {
   const [adding, setAdding] = useState(false);
+  const [addingGithub,setAddingGithub]=useState(false);
+  const workspaceId=new URLSearchParams(search).get("workspace");
+  const closeAdding=()=>{setAdding(false);setAddingGithub(false);};
   const [sourceSearch,setSourceSearch]=useState({scope:'',value:''});
   const searchScope=`${new URLSearchParams(search).get('workspace')??''}:${new URLSearchParams(search).get('install')??''}`;
   const query=sourceSearch.scope===searchScope?sourceSearch.value:'';
@@ -220,16 +224,20 @@ export function WatchSourcesSummary({
         })}</tbody></table></div>}
       </div>
       {sources.length>0?<section className="coverage-health"><h2>Connection health</h2><div className="coverage-health-notice"><Activity aria-hidden/><div><strong>{sources.some(source=>source.status==='verification required')?`${sources.filter(source=>source.status==='verification required').length} ${sources.filter(source=>source.status==='verification required').length===1?'website needs':'websites need'} verification`:sources.some(source=>source.monitoring?.freshness==='delayed')?'Some source checks are delayed':'Connection and scan evidence are separate'}</strong><p>{sources.some(source=>source.status==='verification required')?'Repository access alone does not establish ownership of a production domain.':sources.some(source=>source.monitoring?.freshness==='delayed')?'Open a source to review its latest recorded check and configured cadence.':'Configured sources are not a guarantee of current access or a passing release. Review the recorded check for its scope.'}</p></div><button className="coverage-health-link" onClick={()=>navigate(watchHref(watchPath('setup'),search))}>Review<ArrowRight aria-hidden/></button></div></section>:null}
-      <Dialog open={adding} onClose={setAdding} className="watch-design-surface relative z-50">
+      <Dialog open={adding} onClose={closeAdding} className="watch-design-surface relative z-50">
         <QuietModalSurface>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-dim">Add coverage</p>
-                <DialogTitle className="mt-1 font-display text-xl text-snow">Choose a monitored surface</DialogTitle>
+                <DialogTitle className="mt-1 font-display text-xl text-snow">{addingGithub?"Connect a GitHub repository":"Choose a monitored surface"}</DialogTitle>
               </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)} aria-label="Close add coverage"><X className="size-4" aria-hidden /></Button>
+              <Button type="button" size="sm" variant="ghost" onClick={closeAdding} aria-label="Close add coverage"><X className="size-4" aria-hidden /></Button>
             </div>
-            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {addingGithub?<div className="mt-5">
+              <p className="mb-5 text-sm leading-relaxed text-mute">Connect a GitHub account or reuse an eligible existing connection for this workspace. Repository access is managed on GitHub.</p>
+              {workspaceId?<GithubWorkspaceConnect workspaceId={workspaceId} disabledReason={admin?null:"Ask a workspace administrator to connect GitHub."}/>:<p role="alert">Select a workspace before connecting GitHub.</p>}
+              <Button variant="ghost" className="mt-4" onClick={()=>setAddingGithub(false)}>Back to source types</Button>
+            </div>:<div className="mt-5 grid gap-2 sm:grid-cols-2">
               {([
                 ["github", "GitHub repository", "Visibility, release assets, and packed CI"],
                 ["npm", "npm package", "The tarball and channels the registry serves"],
@@ -241,15 +249,16 @@ export function WatchSourcesSummary({
                   type="button"
                   className="min-h-24 rounded-lg border border-white/8 bg-panel p-4 text-left transition-colors duration-150 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-reduce:transition-none"
                   onClick={() => {
-                    setAdding(false);
-                    navigate(watchHref(watchPath("sources"), search, { configure }));
+                    if(configure==="github"){setAddingGithub(true);return;}
+                    closeAdding();
+                    navigate(watchHref(watchPath("sources"), search, { configure, sourceType:configure, source:null, attention:false }));
                   }}
                 >
                   <span className="text-sm text-snow">{label}</span>
                   <span className="mt-1 block text-xs leading-relaxed text-dim">{detail}</span>
                 </button>
               ))}
-            </div>
+            </div>}
           </QuietModalSurface>
       </Dialog>
     </div>

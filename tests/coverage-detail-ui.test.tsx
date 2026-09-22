@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import {render,screen,cleanup,within,fireEvent} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {render,screen,cleanup,within,fireEvent,waitFor} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {WatchSourcesSummary} from '../src/components/WatchSourcesSummary';
 import {buildSourceViewModels} from '../src/watch/view-models';
 import {navigate} from '../src/nav';
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
-afterEach(()=>{cleanup();vi.clearAllMocks();});
+afterEach(()=>{cleanup();vi.clearAllMocks();vi.unstubAllGlobals();});
 it('searches source names without changing totals and clears the search for another workspace',()=>{
  const sources=buildSourceViewModels({repos:[{id:7,full_name:'org/Website',private:true,last_checked_at:null},{id:8,full_name:'org/mobile',private:true,last_checked_at:null}],origins:[],maps:[],packages:[]});
  const props={mode:'sources' as const,filter:'github' as const,search:'?workspace=w1',sources,setup:{done:0,total:5,steps:[],next:null},state:{status:'ready' as const},onRetry:()=>undefined};
@@ -84,4 +85,33 @@ it('shows verification required as connection preparation, not a passing scan',(
  expect(screen.getByText('Not scanned')).toBeTruthy();
  expect(screen.getByText('1 website needs verification')).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Connect source'})).toBeNull();
+});
+
+it('starts the workspace GitHub connection flow from Connect source instead of repository checks',async()=>{
+ const request=vi.fn().mockResolvedValue({ok:false,json:async()=>({error:'GitHub is temporarily unavailable. Try again.'})});
+ vi.stubGlobal('fetch',request);
+ render(<WatchSourcesSummary mode="sources" admin filter="github" search="?workspace=workspace-a&install=9&sourceType=github&configure=map" sources={[]} setup={{done:0,total:5,steps:[],next:null}} state={{status:'ready'}} onRetry={()=>undefined}/>);
+ fireEvent.click(screen.getAllByRole('button',{name:/^Connect source/})[0]);
+ fireEvent.click(screen.getByRole('button',{name:/^GitHub repository/}));
+ expect(screen.getByRole('dialog',{name:'Connect a GitHub repository'})).toBeTruthy();
+ expect(navigate).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Connect GitHub to this workspace'}));
+ await waitFor(()=>expect(request).toHaveBeenCalledWith('/api/workspaces/workspace-a/github',{method:'POST'}));
+ expect(await screen.findByRole('alert')).toHaveProperty('textContent','GitHub is temporarily unavailable. Try again.');
+ await userEvent.click(screen.getByRole('button',{name:'Close add coverage'}));
+ await userEvent.click(screen.getAllByRole('button',{name:/^Connect source/})[0]);
+ expect(await screen.findByRole('dialog',{name:'Choose a monitored surface'})).toBeTruthy();
+});
+it.each([['npm package','npm'],['Production website','website'],['Map custody','map']])('opens %s setup with matching filters and no stale selection',(label,kind)=>{
+ render(<WatchSourcesSummary mode="sources" admin filter="github" search="?workspace=workspace-a&install=9&sourceType=github&configure=github&source=repo-7&attention=1" sources={[]} setup={{done:0,total:5,steps:[],next:null}} state={{status:'ready'}} onRetry={()=>undefined}/>);
+ fireEvent.click(screen.getAllByRole('button',{name:/^Connect source/})[0]);
+ fireEvent.click(screen.getByRole('button',{name:new RegExp('^'+label)}));
+ const destination=new URL(vi.mocked(navigate).mock.calls.at(-1)![0],'https://nospoilers.dev');
+ expect(destination.pathname).toBe('/watch/sources');
+ expect(destination.searchParams.get('workspace')).toBe('workspace-a');
+ expect(destination.searchParams.get('install')).toBe('9');
+ expect(destination.searchParams.get('sourceType')).toBe(kind);
+ expect(destination.searchParams.get('configure')).toBe(kind);
+ expect(destination.searchParams.has('source')).toBe(false);
+ expect(destination.searchParams.has('attention')).toBe(false);
 });
