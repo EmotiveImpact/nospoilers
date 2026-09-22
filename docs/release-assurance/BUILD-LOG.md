@@ -4,6 +4,8 @@ Added a shared deterministic guidance catalog for 25 scanner rules and 41 event 
 
 Explanation, brief, queue/filter keyboard, workspace alert and accessibility regressions passed **51/51 across 6 files**. See [Alert explanations](../ALERT-EXPLANATIONS.md) for maintenance and evidence limits. No response, scanner, authorization or provider activation semantics changed.
 
+TypeScript/frontend build and diff check passed. Production `7dcc2f8` served the exact tested bundle (SHA-256 `eb3ee305586a9de571a8e7e168d3c1e0c89a05f12f75a07e7f4ad0b5c49589ae`). Live alert 29 and its reviewable brief both showed the repository-access explanation and Coverage review steps. Full GitHub CI was still running when this live verification was recorded; the focused checks are not a full-suite claim.
+
 ## 22 September 2026 — Connect source opens the correct workflow
 
 The GitHub tile previously routed to existing repository checks instead of starting a connection. It now opens the existing workspace-scoped GitHub connection controls inside the chooser, preserving eligible-installation reuse, GitHub installation redirect, permission errors and retry. No connection or repository access is changed just by selecting the tile. Other tiles now set their matching source filter and clear stale source/attention selections, fixing hidden setup panels after switching source types.
