@@ -1,7 +1,7 @@
 .coverage-page .coverage-empty-window.coverage-source-stack{grid-template-columns:minmax(0,1fr)}
 .coverage-page .coverage-source-stack>.coverage-empty-card+.coverage-empty-card{border-left:0!important;border-top:1px solid var(--color-line)!important}
 .coverage-page .coverage-source-stack>.coverage-empty-card>p{max-width:72ch}
-.workspace-websites{min-width:0;color:var(--color-snow)}
+.workspace-websites{min-width:0;color:var(--color-snow);background:#101012}
 .workspace-websites :is(h3,p,label,li,code){overflow-wrap:anywhere}
 .workspace-websites :is(input,select){max-width:100%;min-width:0}
 .website-connect-form>label{flex-basis:24rem}

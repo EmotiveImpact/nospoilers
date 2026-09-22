@@ -22,6 +22,7 @@ export function RegistriesScreen() {
       {(route.view === "registries" ||
                 (route.view === "sources" &&
                   route.sourceConfigure === "npm" &&
+                  (!route.sourceFilter || route.sourceFilter === 'all' || route.sourceFilter === 'npm') &&
                   (previewing || sourceSectionState.status === "ready"))) && (
               <section className={`mt-4 min-w-0 [overflow-wrap:anywhere] ${ended && route.view!=="registries" ? "pointer-events-none select-none opacity-25" : ""}`}>
                 {route.view === "registries" ? (

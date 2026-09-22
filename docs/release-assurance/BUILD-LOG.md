@@ -1092,3 +1092,8 @@ Focused repository manager, detail, expired-state, setup-status and GitHub-respo
 ## 22 September 2026 — sidebar logo stays in the workspace
 
 Changed the shared desktop/mobile sidebar brand link to the same workspace-preserving Overview route as the navigation menu. Mobile navigation closes after activation. The public homepage logo is unchanged. Existing shell-navigation tests passed **8/8**, with TypeScript/frontend build and diff check passing.
+## 22 September 2026 — website setup respects Coverage tabs
+
+WorkspaceWebsiteSources previously mounted on every Coverage view regardless of the selected source type. It now mounts only on Websites or explicit website setup from All sources. Conflicting configuration URLs cannot override Packages, GitHub or Map custody. Existing registry and legacy production/map panels also check their selected source type. Workspace website panels use the neutral dark surface instead of the inherited blue-tinted section background. Website ownership verification, permissions and scan handlers are unchanged.
+
+Workspace website routing, Coverage detail and repository manager regressions passed **22/22 tests across 3 files**, including all source filters, stale configuration, explicit connection access and locked workspace access. TypeScript/frontend build and diff check passed. This is a presentation/routing fix, not new scan or provider acceptance.

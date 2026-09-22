@@ -97,6 +97,7 @@ export function SourcesProductionScreens() {
     <>
       {route.view === "sources" &&
                 route.sourceConfigure === "website" &&
+                (!route.sourceFilter || route.sourceFilter === 'all' || route.sourceFilter === 'website') &&
                 (previewing || sourceSectionState.status === "ready") && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 <section id="watch-source-web" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
@@ -365,6 +366,7 @@ export function SourcesProductionScreens() {
               )}
       {route.view === "sources" &&
                 route.sourceConfigure === "map" &&
+                (!route.sourceFilter || route.sourceFilter === 'all' || route.sourceFilter === 'map') &&
                 (previewing || sourceSectionState.status === "ready") && (
               <section className={`mt-4 ${ended ? "pointer-events-none select-none opacity-25" : ""}`}>
                 <section id="watch-source-map" tabIndex={-1} className="scroll-mt-20 rounded-lg border border-white/8 bg-panel p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/50">
