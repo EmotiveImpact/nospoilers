@@ -5,6 +5,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Corrected the existing GitHub connection's account name to use the app's light foreground on its dark panel.
 - Added secure reconnection for an existing unbound personal GitHub App installation. The live
   OAuth user must own the installation account, the destination requires organisation/workspace
   admin authority, and the atomic binder still rejects claimed installations and repository moves.

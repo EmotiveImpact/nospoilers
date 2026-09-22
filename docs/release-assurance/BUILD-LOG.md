@@ -1,3 +1,7 @@
+## 22 September 2026 — GitHub connection label contrast
+
+The owner identified an unreadable account name in the production reconnect panel. The account label incorrectly used `text-ink` (`#09090b`) on the dark panel; it now uses the shared light `text-snow` foreground. Other `text-ink` uses remain appropriate for light buttons and coloured chart markers. No connection, permission or database behaviour changed. Existing connection UI tests passed **4/4** and `npm run build` passed TypeScript and Vite with the existing chunk-size advisory. This bounded visual fix does not require another full backend regression.
+
 ## 22 September 2026 — production webhook repair and existing-installation reconnect
 
 The production GitHub App webhook secret had drifted from the fresh Vercel project: signed GitHub deliveries reached `www.nospoilers.dev` but returned 401 `Invalid signature`. Rotated one shared secret across the GitHub App, Vercel Production/Preview and Railway, redeployed both runtimes, and removed the temporary local secret. The replacement Vercel deployment is Ready on the production domain, Railway is Online, two subsequent GitHub push deliveries returned 200, and their HMAC-verified encrypted pending records are present in the shared Neon database. Payload contents and credentials were not copied into documentation.

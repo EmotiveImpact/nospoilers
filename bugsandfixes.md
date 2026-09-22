@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Existing GitHub connection name was nearly black on its dark panel | Use the shared light `text-snow` foreground for the account name | Connection UI tests 4/4 and TypeScript/frontend build passed |
 | Product identity was coupled to a GitHub numeric ID | Added `product_auth_identities` keyed by trusted issuer/subject with stable internal user IDs | Provider-neutral identity and repeated-login tests |
 | GitHub OAuth credentials lived on the person record | Added separate `github_connector_accounts` storage and compatibility fallback | Signup and encrypted-token tests |
 | Disconnecting GitHub would sign every account type out of NoSpoilers | Provider-neutral sessions now survive connector revocation; legacy GitHub-only behavior remains | Signed webhook regression |
