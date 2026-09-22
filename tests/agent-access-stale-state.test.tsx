@@ -37,3 +37,24 @@ it('discards the one-time credential after a later denied mutation and refresh',
   await waitFor(()=>expect(screen.queryByText('Workspace access revoked.')).toBeNull());
   expect(screen.queryByLabelText('New agent credential')).toBeNull();
 });
+
+it('hides stale grant actions until the post-create refresh completes',async()=>{
+ let refresh:((value:Response)=>void)|undefined;
+ let reads=0;
+ vi.stubGlobal('fetch',vi.fn(async(_url:unknown,init?:RequestInit)=>{
+  if(init?.method==='POST')return Response.json({token:secret});
+  if(++reads===1)return Response.json(view);
+  return new Promise<Response>(resolve=>{refresh=resolve;});
+ }));
+ render(<AgentAccessControls streamId="stream" snapshotId="snapshot"/>);
+ await screen.findByText(view.notice);
+ fireEvent.change(screen.getByLabelText('Agent name'),{target:{value:'Review agent'}});
+ fireEvent.click(screen.getByLabelText(/I authorize my chosen agent/));
+ fireEvent.click(screen.getByRole('button',{name:'Create short-lived agent access',hidden:true}));
+ await waitFor(()=>expect(refresh).toBeTypeOf('function'));
+ expect(screen.queryByRole('button',{name:'Revoke Review agent',hidden:true})).toBeNull();
+ expect(screen.queryByLabelText('New agent credential')).toBeNull();
+ refresh!(Response.json(view));
+ await screen.findByLabelText('New agent credential');
+ expect(screen.getByRole('button',{name:'Revoke Review agent',hidden:true})).toHaveProperty('disabled',false);
+});
