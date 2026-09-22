@@ -5,6 +5,30 @@ import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
 const nav=vi.hoisted(()=>vi.fn());
 vi.mock('../src/nav',()=>({navigate:nav}));
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();});
+it('waits for an off-page deep link and exposes a retry for failed detail loading',async()=>{
+ const alert={id:1,kind:'push_sensitive_path',title:'Sensitive path in owner/repo',body:'Evidence',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,acknowledged_at:null,resolved_at:null};
+ let resolveDetail!:(response:Response)=>void;
+ let detailResponse=new Promise<Response>(resolve=>{resolveDetail=resolve;});
+ const fetcher=vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.endsWith('/alerts/1'))return detailResponse;
+  return Response.json({alerts:[],nextCursor:null,sourceCount:1,coverageHistoryCount:0,counts:{open:1,waiting:0,done:0,mine:0}});
+ });vi.stubGlobal('fetch',fetcher);
+ render(<WorkspaceAlerts workspaceId="workspace" search="?workspace=workspace&alert=1"/>);
+ await screen.findByRole('status',{name:'Loading selected alert…'});
+ expect(screen.queryByText('Alert unavailable in this view.')).toBeNull();
+ await act(async()=>{resolveDetail(Response.json({error:'Alert could not be loaded. Try again.'},{status:503}));});
+ expect(await screen.findByText('Alert could not be loaded. Try again.')).toBeTruthy();
+ expect(screen.queryByText('Alert unavailable in this view.')).toBeNull();
+ detailResponse=new Promise<Response>(resolve=>{resolveDetail=resolve;});
+ fireEvent.click(screen.getByRole('button',{name:'Retry'}));
+ await screen.findByRole('status',{name:'Loading selected alert…'});
+ await act(async()=>{resolveDetail(Response.json({alert,events:[]}));});
+ expect(await screen.findByRole('heading',{name:alert.title})).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(false);
+ expect(screen.queryByText('Alert unavailable in this view.')).toBeNull();
+});
 it('keeps a repository without a published release out of the actionable queue',async()=>{
  const alert={id:24,kind:'scan_latest_release',title:'No release on owner/repo',body:'No published release available.',findings:[],created_at:'2026-09-06T00:00:00Z',installation_id:null,source_origin_id:null,scan_attempt_id:null,acknowledged_at:null,resolved_at:null};
  let resolveDetail!:(response:Response)=>void;

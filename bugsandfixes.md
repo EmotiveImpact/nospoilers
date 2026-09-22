@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Clicking an existing open alert showed unavailable; its next-step controls also failed | Normalize PostgreSQL BIGINT alert/source/event IDs into safe numeric API IDs; distinguish pending/failed detail requests from unavailable records | Live database confirmed alert 1 is open and IDs arrive as strings; all 43 alert tests across 24 files, frontend/API builds and diff check passed |
 | Coverage's Open repository only navigated to configuration, appearing to do nothing | The detail action is a real GitHub link for the selected repository; row selection is labelled View details, and Manage checks retains configuration access | Six Coverage detail tests, including checked/unchecked repositories and changed selection; TypeScript/frontend build |
 | Alerts footer squeezed the history explanation into a narrow column beside its buttons | Separate compact count/controls from the full-width history note; prevent footer shrinking and wrap rows at narrow widths | 12 alert UI/keyboard tests; TypeScript/frontend build |
 | Existing GitHub connection name was nearly black on its dark panel | Use the shared light `text-snow` foreground for the account name | Connection UI tests 4/4 and TypeScript/frontend build passed |

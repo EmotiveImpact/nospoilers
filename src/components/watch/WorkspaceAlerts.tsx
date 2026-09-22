@@ -36,6 +36,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const [identity,setIdentity]=useState({id:'',login:'',canRespond:false});
  const [sourceCount,setSourceCount]=useState(0);
  const [detail,setDetail]=useState<Detail|null>(null),[activity,setActivity]=useState<WatchSectionState>({status:'loading'});
+ const [detailResultId,setDetailResultId]=useState<number|null>(null);
  const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[exportError,setExportError]=useState<string|null>(null);
  const [notes,setNotes]=useState<Record<number,string>>({}),[assignees,setAssignees]=useState<Record<number,string>>({});
  const mutation=useRef<AbortController|null>(null);
@@ -70,8 +71,8 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  useEffect(()=>{if(selectedId===null)return;const request=new AbortController();
   const requestKey=`${selectedId}:${eventBefore??''}`;
   if(loadedDetailKey.current!==requestKey)setActivity({status:'loading'});
-  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){loadedDetailKey.current=requestKey;setDetail(isAlertQueueActionable(body.alert)?body:null);setActivity({status:'ready'});}})
-   .catch(e=>{if(!request.signal.aborted){loadedDetailKey.current=null;setDetail(null);setActivity({status:'error',message:e.message});}});
+  void json<Detail>(`${base}/${selectedId}${eventBefore?`?eventBefore=${encodeURIComponent(eventBefore)}`:''}`,request.signal).then(body=>{if(!request.signal.aborted){loadedDetailKey.current=requestKey;setDetailResultId(selectedId);setDetail(isAlertQueueActionable(body.alert)?body:null);setActivity({status:'ready'});}})
+   .catch(e=>{if(!request.signal.aborted){loadedDetailKey.current=null;setDetailResultId(selectedId);setDetail(null);setActivity({status:'error',message:e.message});}});
   return()=>request.abort();
  },[base,selectedId,revision,eventBefore]);
  const go=(updates:Record<string,string|null>)=>{const params=new URLSearchParams(search);if('alert' in updates||'tab' in updates||'mine' in updates)params.delete('eventBefore');for(const [key,value] of Object.entries(updates)){if(value===null)params.delete(key);else params.set(key,value);}navigate(`/watch/alerts?${params}`);};
@@ -90,6 +91,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  counts={page?.counts} exportLabel="Export retained history"
   activityPagination={(eventBefore||detail?.nextEventsCursor)&&<nav aria-label="Alert activity pages" className="mt-3 flex gap-2"><Button variant="outline" size="sm" disabled={!eventBefore} onClick={()=>go({eventBefore:null})}>Latest activity</Button><Button variant="outline" size="sm" disabled={!detail?.nextEventsCursor||!detailReady} onClick={()=>go({eventBefore:detail?.nextEventsCursor??null})}>Older activity</Button></nav>}
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
+  selectionState={selectedId===null?{status:'ready'}:detailResultId===selectedId?activity:{status:'loading'}}
   pagination={state.status==='ready'?<nav aria-label="Alert history pages" className="alerts-journey-pagination">
    <div className="alerts-journey-pagination-row">
     <p className="alerts-journey-page-count">{listed.length} {listed.length===1?'alert':'alerts'}<span className="sr-only"> on this page</span></p>

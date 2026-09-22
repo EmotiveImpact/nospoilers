@@ -5,6 +5,21 @@ function alertId(value:string){
  if(!/^[1-9]\d*$/.test(value)||!Number.isSafeInteger(Number(value)))throw Object.assign(new Error('Alert unavailable.'),{status:404});
  return Number(value);
 }
+// pg returns BIGINT columns as strings; PGlite returns numbers. The alert UI's
+// route and selection contract uses safe numeric IDs. Normalize only these ID
+// columns, keeping null source identities and UUIDs intact.
+function numericId(value:unknown):number{
+ if((typeof value!=='number'&&typeof value!=='string')||!/^\d+$/.test(String(value)))throw new Error('Invalid alert record identifier.');
+ const id=Number(value);
+ if(!Number.isSafeInteger(id)||id<=0)throw new Error('Invalid alert record identifier.');
+ return id;
+}
+function alertRecord<T extends Record<string,unknown>>(row:T){
+ return {...row,id:numericId(row.id),
+  installation_id:row.installation_id==null?null:numericId(row.installation_id),
+  repo_id:row.repo_id==null?null:numericId(row.repo_id),
+  source_origin_id:row.source_origin_id==null?null:numericId(row.source_origin_id)};
+}
 const projection=`id,installation_id,workspace_id,repo_id,source_origin_id,scan_attempt_id,kind,title,body,findings,
  created_at,acknowledged_at,acknowledged_by_login,assigned_to_user_id,assigned_to_login,resolved_at,resolved_by_login,resolution_note`;
 // Repositories without a published release remain immutable history and Coverage state.
@@ -119,16 +134,16 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
   (SELECT count(*) FROM watched_origins s WHERE s.workspace_id=$1 AND s.disconnected_at IS NULL AND (s.installation_id IS NULL OR EXISTS(SELECT 1 FROM installations i WHERE i.id=s.installation_id AND i.disconnected_at IS NULL))) +
   (SELECT count(*) FROM repos r JOIN product_workspace_installations c ON c.installation_id=r.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND r.disconnected_at IS NULL AND i.disconnected_at IS NULL) +
   (SELECT count(*) FROM watched_packages p JOIN product_workspace_installations c ON c.installation_id=p.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND i.disconnected_at IS NULL AND p.disconnected_at IS NULL) AS count`,[workspaceId]);
- return {alerts:rows.slice(0,50),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),coverageHistoryCount:Number(totals.coverage_history),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
+ return {alerts:rows.slice(0,50).map(alertRecord),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),coverageHistoryCount:Number(totals.coverage_history),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
 }
 
 export async function workspaceAlertDetail(sql:SqlClient,userId:string,workspaceId:string,id:string,before?:string){
  await workspaceEvidenceSettings(sql,userId,workspaceId);
  const key=alertId(id);
- const alert=(await sql.query(`SELECT ${projection} FROM alerts WHERE workspace_id=$1 AND id=$2`,[workspaceId,key])).rows[0];
+ const alert=(await sql.query<Record<string,unknown>>(`SELECT ${projection} FROM alerts WHERE workspace_id=$1 AND id=$2`,[workspaceId,key])).rows[0];
  if(!alert)throw Object.assign(new Error('Alert unavailable.'),{status:404});
  const cursor=before?alertId(before):null;
  if(cursor&&!(await sql.query('SELECT id FROM alert_events WHERE workspace_id=$1 AND alert_id=$2 AND id=$3',[workspaceId,key,cursor])).rows.length)throw Object.assign(new Error('Activity page unavailable.'),{status:404});
  const events=await sql.query<{id:number;actor_login:string;action:string;detail:string|null;created_at:string}>('SELECT id,actor_login,action,detail,created_at FROM alert_events WHERE workspace_id=$1 AND alert_id=$2 AND ($3::bigint IS NULL OR id<$3) ORDER BY id DESC LIMIT 51',[workspaceId,key,cursor]);
- return {alert,events:events.rows.slice(0,50).reverse(),nextEventsCursor:events.rows.length>50?String(events.rows[49].id):null};
+ return {alert:alertRecord(alert),events:events.rows.slice(0,50).reverse().map(event=>({...event,id:numericId(event.id)})),nextEventsCursor:events.rows.length>50?String(events.rows[49].id):null};
 }

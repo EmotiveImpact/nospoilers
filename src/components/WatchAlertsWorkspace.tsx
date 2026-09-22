@@ -59,6 +59,7 @@ export function WatchAlertsWorkspace({
   rows,
   selected,
   selectedViewModel,
+  selectionState,
   events,
   previewing,
   canRespond = false,
@@ -100,6 +101,7 @@ export function WatchAlertsWorkspace({
   rows: AlertListViewModel[];
   selected: WatchAlertDetail | null;
   selectedViewModel?: AlertListViewModel;
+  selectionState?: WatchSectionState;
   events: AlertActivityEvent[];
   previewing: boolean;
   canRespond?: boolean;
@@ -313,7 +315,14 @@ export function WatchAlertsWorkspace({
         </aside>
 
         <main className={cn("alerts-journey-detail min-h-0 lg:block", detailOpen ? "block" : "hidden")}>
-          {state.status === "loading" ? null : !selected || !selectedRow ? (
+          {state.status === "loading" ? null : (!selected || !selectedRow) && selectionState?.status === 'loading' ? (
+            <WatchSkeleton label="Loading selected alert…" />
+          ) : (!selected || !selectedRow) && selectionState?.status === 'error' ? (
+            <div className="px-5 py-4">
+              <WatchSectionError message={selectionState.message} onRetry={onRetryActivity} />
+              <Button className="mt-4" variant="outline" onClick={onBack}>Back to alerts</Button>
+            </div>
+          ) : !selected || !selectedRow ? (
             <div className="grid h-full place-items-center px-5 text-center">
               <div>
                 <p className="text-sm text-snow">

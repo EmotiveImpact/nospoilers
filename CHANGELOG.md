@@ -5,6 +5,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Fixed production alert links and recheck controls by normalizing PostgreSQL numeric IDs at the workspace API boundary. Linked details now wait for their response and offer retry on failure instead of flashing an unavailable message.
 - Fixed Coverage's Open repository action to open the selected repository on GitHub. Inventory rows now say View details, and check configuration remains a separate action.
 - Redesigned the Alerts footer with a compact count/pagination row and a separate readable retained-history note; pagination is unavailable during transitions or failed requests.
 - Corrected the existing GitHub connection's account name to use the app's light foreground on its dark panel.
