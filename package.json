@@ -37,6 +37,9 @@
     "url": "https://github.com/EmotiveImpact/nospoilers"
   },
   "license": "MIT",
+  "overrides": {
+    "esbuild": "0.28.2"
+  },
   "dependencies": {
     "@electron/asar": "^4.3.0",
     "@headlessui/react": "^2.2.10",

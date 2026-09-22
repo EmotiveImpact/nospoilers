@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Pinned transitive esbuild to patched 0.28.2 to remove GHSA-g7r4-m6w7-qqqr from the build dependency tree; dependency audit now reports zero vulnerabilities.
+
 - Fixed Alerts fix-brief rendering for digest metadata, retained remediation focus across removed selectors, and synchronized sidebar/loading regression tests with current behavior.
 
 - Replaced the generic Alerts “Open Coverage” fallback with Upload a build to scan and direct Repository checks navigation when a persisted, installation-matched repository is available.
