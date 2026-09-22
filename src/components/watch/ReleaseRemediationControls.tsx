@@ -21,8 +21,10 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
   useEffect(()=>{if(error&&focusFailure.current){errorTarget.current?.focus();focusFailure.current=false;}},[error]);
   const caseHeading=useRef<HTMLHeadingElement|null>(null),caseFocus=useRef<{control:HTMLElement;id:string}|null>(null);
   useEffect(()=>{
-    const moved=(event:FocusEvent)=>{if(caseFocus.current&&event.target!==caseFocus.current.control)caseFocus.current=null;};
-    document.addEventListener('focusin',moved);return()=>document.removeEventListener('focusin',moved);
+    const moved=(event:FocusEvent)=>{if(caseFocus.current&&event.target!==document.body&&event.target!==caseFocus.current.control)caseFocus.current=null;};
+    const clicked=(event:PointerEvent)=>{if(caseFocus.current&&event.target!==caseFocus.current.control)caseFocus.current=null;};
+    document.addEventListener('focusin',moved);document.addEventListener('pointerdown',clicked);
+    return()=>{document.removeEventListener('focusin',moved);document.removeEventListener('pointerdown',clicked);};
   },[]);
   useEffect(()=>{
     if(!error&&!view)return;

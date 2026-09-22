@@ -68,6 +68,8 @@ it('continues keyboard focus at the requested case after its selector is replace
  expect(screen.getByRole('status',{name:'Reading remediation evidence'})).toBeTruthy();
  expect(String(fetcher.mock.calls[1][0])).toContain('caseId=second-case');
  expect(String(fetcher.mock.calls[1][0])).toContain('recordId=upload');
+ // Removing a focused selector may emit focusin on body; this is not deliberate navigation.
+ fireEvent.focusIn(document.body);
  finish(Response.json({...multipleCases,selected:{...view.selected,...otherCase}}));
  const heading=await screen.findByRole('heading',{name:'Remediation case · secret'});
  await waitFor(()=>expect(document.activeElement).toBe(heading));

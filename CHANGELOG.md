@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Fixed Alerts fix-brief rendering for digest metadata, retained remediation focus across removed selectors, and synchronized sidebar/loading regression tests with current behavior.
+
 - Replaced the generic Alerts “Open Coverage” fallback with Upload a build to scan and direct Repository checks navigation when a persisted, installation-matched repository is available.
 
 - Repository management now uses Checks / CI setup / Repository actions tabs. Alerts explain sensitive-path warnings, display the recorded path, and offer a reviewable, copyable AI-agent investigation brief without invoking a provider.

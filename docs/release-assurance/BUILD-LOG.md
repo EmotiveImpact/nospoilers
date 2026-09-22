@@ -1,5 +1,11 @@
 ## 22 September 2026 — Coverage repository navigation
 
+## 22 September 2026 — CI regression repair
+
+Investigated GitHub runs 35683329320 and 35683875733. The sidebar architecture assertion still required the retired 224px width; it now checks the approved 200px width. The alert fix brief now uses the existing asFindingList normalizer so retained digest metadata cannot cause a map-is-not-a-function crash or enter the brief as raw metadata. Remediation case focus ignores incidental focusin on body after selector removal, while deliberate focus/pointer movement cancels the pending handoff. The mocked alert-detail loading test now waits for its request to start before completing it instead of racing a no-op callback.
+
+Focused verification: 35 tests / 5 files passed; frontend/typecheck and API build passed; all 45 scanner fixtures matched their expected clean/dirty/inconclusive exit codes. The ordinary sandbox blocked the tsx fixture IPC pipe; fixtures passed with local execution permission. Full local regression and the replacement GitHub run are being checked separately; this entry does not claim their completion.
+
 ## 22 September 2026 — Actionable alert verification links
 
 The unsupported recheck fallback previously reloaded the broad Coverage inventory without selecting a repository. It now opens package upload directly and offers Repository checks only for the persisted alert repo when its installation matches. No repository ID is inferred from title/body text, and unsupported events still cannot queue a scan directly. Internal link clicks preserve app navigation; modified-click behavior remains native. Copy explains that a push warning is not an artifact scan. Existing release-scan repeat actions remain unchanged.

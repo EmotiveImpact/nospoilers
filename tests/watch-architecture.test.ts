@@ -112,7 +112,7 @@ describe("Watch architecture boundaries", () => {
     expect(shell).toMatch(/aria-label=\{opts\.collapsed \? "Expand sidebar" : "Collapse sidebar"\}/);
     expect(shell).toMatch(/showToggle: true/);
     expect(shell).toMatch(/showToggle: false/);
-    expect(shell).toMatch(/w-\[224px\]/);
+    expect(shell).toMatch(/w-\[200px\]/);
     expect(shell).toMatch(/PanelLeftClose/);
   });
 
