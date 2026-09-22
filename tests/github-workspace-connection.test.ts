@@ -4,7 +4,7 @@ import {createStore,type Store} from '../src/server/store.ts';
 import {listUserWorkspaces,ensureUserWorkspaces,uploadWorkspaceScope} from '../src/server/workspaces.ts';
 import {createGithubConnectionIntent,inspectGithubConnectionIntent} from '../src/server/github-connection-intents.ts';
 import {stageUnboundGithubEvent} from '../src/server/github-pending-events.ts';
-import {connectGithubWorkspace} from '../src/server/github-workspace-connection.ts';
+import {connectGithubWorkspace,connectablePersonalGithubInstallations} from '../src/server/github-workspace-connection.ts';
 import {stubGithub} from '../src/server/stub-github.ts';
 import type {GithubPort} from '../src/server/github.ts';
 
@@ -72,4 +72,25 @@ it('rejects creation proof predating the connection intent',async()=>fixture(asy
  await stageUnboundGithubEvent(ctx.sql,'secret','installation','creation',{...ctx.payload,installation:old});
  await expect(connectGithubWorkspace({store:ctx.store,github:ctx.github,sessionId:ctx.session,userId:'owner',token:ctx.token,installationId:999,appId:'1',secret:'secret'})).rejects.toMatchObject({status:409});
  expect((await ctx.sql.query('SELECT * FROM installations')).rows).toHaveLength(0);
+}));
+it('reconnects an unbound personal installation owned by the current GitHub user',async()=>fixture(async ctx=>{
+ const result=await connectGithubWorkspace({store:ctx.store,github:ctx.github,sessionId:ctx.session,userId:'owner',token:ctx.token,installationId:999,appId:'1',secret:'secret',mode:'existing-personal'});
+ expect(result).toMatchObject({status:'connected',workspaceId:ctx.workspace,installationId:999,repositoryCount:1,queued:1});
+ expect((await ctx.sql.query('SELECT installation_id,workspace_id FROM product_workspace_installations')).rows).toEqual([{installation_id:999,workspace_id:ctx.workspace}]);
+}));
+it('does not treat access to an organisation installation as proof of ownership',async()=>fixture(async ctx=>{
+ ctx.github.getInstallation=async()=>({id:999,account:{id:77,login:'company',type:'Organization'},created_at:new Date().toISOString(),suspended_at:null});
+ await expect(connectGithubWorkspace({store:ctx.store,github:ctx.github,sessionId:ctx.session,userId:'owner',token:ctx.token,installationId:999,appId:'1',secret:'secret',mode:'existing-personal'})).rejects.toMatchObject({status:403});
+ expect((await ctx.sql.query('SELECT * FROM installations')).rows).toHaveLength(0);
+}));
+it('discovers only unbound active personal installations owned by the OAuth user',async()=>fixture(async ctx=>{
+ ctx.github.listUserInstallations=async()=>[999,1000,1001,1002];
+ ctx.github.getInstallation=async id=>id===999
+  ?{id,account:{id:77,login:'owner',type:'User'},suspended_at:null}
+  :id===1000?{id,account:{id:78,login:'someone-else',type:'User'},suspended_at:null}
+  :id===1001?{id,account:{id:77,login:'company',type:'Organization'},suspended_at:null}
+  :{id,account:{id:77,login:'owner',type:'User'},suspended_at:new Date().toISOString()};
+ expect(await connectablePersonalGithubInstallations({store:ctx.store,github:ctx.github,userId:'owner'})).toEqual([{installationId:999,accountLogin:'owner',accountType:'User'}]);
+ await ctx.store.upsertInstallation({id:999,accountId:77,accountLogin:'owner',accountType:'User'});
+ expect(await connectablePersonalGithubInstallations({store:ctx.store,github:ctx.github,userId:'owner'})).toEqual([]);
 }));

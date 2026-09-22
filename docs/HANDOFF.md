@@ -8,6 +8,12 @@ with [Status](STATUS.md), [Authentication, enterprise access and scan workers](A
 [Bugs and fixes](../bugsandfixes.md), and the latest release-assurance build log. Do not resume the
 old branch/PR continuation instructions below; they are historical.
 
+Production GitHub webhook signatures are repaired across GitHub, Vercel and Railway. Two subsequent
+push deliveries returned 200 and are staged in Neon. The current source adds secure reconnect for
+the still-active unbound personal `EmotiveImpact` installation; it has not yet been deployed or
+bound. Final verification passed **1,665/1,665 tests across 271 files** plus typecheck, frontend/API
+builds, lint and diff checks.
+
 Neon Managed Better Auth is selected for ordinary accounts but is not enabled because the fresh
 Marketplace Neon account still needs owner email verification. GitHub remains a separate source
 connector. WorkOS is a later enterprise SSO/SCIM adapter. Railway and a fresh digest-pinned Vercel
@@ -15,9 +21,7 @@ Sandbox per scan have passed a live clean probe and production preflight. The ho
 live hostile-input/egress/interruption checks, real notification delivery, GitHub Actions account
 recovery and native accessibility acceptance remain open. Stripe remains owner-deferred.
 
-Final identity-source verification passed **1,660/1,660 tests across 271 files**, typecheck,
-frontend/API builds, lint with existing warnings and diff check. Do not call the product publicly
-production-ready from that result alone.
+Do not call the product publicly production-ready from that result alone.
 
 ## Current handoff — 8 September
 

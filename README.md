@@ -35,7 +35,8 @@ idempotent. Provider-specific Vercel, Netlify, and Cloudflare account integratio
 convenience layers over this endpoint.
 
 **Is it ready for public launch?** Not yet. The fresh Vercel domain, shared Neon data plane,
-Railway coordinator and isolated Vercel Sandbox path exist, and a live clean sandbox probe passed.
+Railway coordinator and isolated Vercel Sandbox path exist. Production GitHub webhook delivery now
+returns 200, and live clean/fail-closed/denied-egress/timeout/cleanup Sandbox checks passed.
 Normal customer login is still GitHub-only until Neon Auth is enabled; the complete hosted
 sign-in-to-saved-result journey, remaining isolation checks, notification delivery and accessibility
 acceptance are still open. Stripe is deliberately deferred. Read **[docs/STATUS.md](docs/STATUS.md)**.

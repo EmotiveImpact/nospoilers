@@ -233,7 +233,7 @@ import { createStore, readSignedSession, signSession } from "./store.ts";
 import { enqueueFromWebhook } from "./webhooks.ts";
 import {stageUnboundGithubEvent} from './github-pending-events.ts';
 import {createGithubConnectionIntent,inspectGithubConnectionIntent} from './github-connection-intents.ts';
-import {connectGithubWorkspace} from './github-workspace-connection.ts';
+import {connectGithubWorkspace,connectablePersonalGithubInstallations} from './github-workspace-connection.ts';
 import {
   PRODUCT_IDENTITY_ISSUER_GITHUB,
   resolveTrustedProductIdentity,
@@ -2291,9 +2291,32 @@ export function createApp(deps: AppDeps): Hono {
     if(!await deps.store.getUserAccessToken(user.userId))return c.json({error:'Sign in with GitHub again to authorise this connection.'},401);
     try{
       const intent=await createGithubConnectionIntent(deps.store.sql,sessionId,user.userId,c.req.param('workspaceId'));
+      const existing=c.req.query('new')==='1'?[]:await connectablePersonalGithubInstallations({store:deps.store,github:deps.github,userId:user.userId});
+      if(existing.length){
+        setCookie(c,'ns_github_existing_connection',signSession(deps.config.sessionSecret,intent.token),cookieSettings(authOrigin(c.req.url,deps.config.appBaseUrl),600));
+        return c.json({status:'existing_available',installations:existing,expiresAt:intent.expiresAt});
+      }
+      deleteCookie(c,'ns_github_existing_connection',{path:'/'});
       const url=new URL(`https://github.com/apps/${deps.config.githubAppSlug}/installations/new`);url.searchParams.set('state',intent.token);
       return c.json({url:url.toString(),expiresAt:intent.expiresAt});
     }catch(error){return c.json({error:error instanceof Error?error.message:'Connection unavailable.'},errorStatus(error));}
+  });
+
+  app.post('/api/github/connection/existing',async c=>{
+    const user=await currentUser(c),sessionId=readSignedSession(deps.config.sessionSecret,getCookie(c,cookieName));
+    if(!user||!sessionId)return c.json({error:'Sign in again and restart the connection from your workspace.'},401);
+    if(!githubAppConfigured(deps.config))return c.json({error:'GitHub App credentials are not configured on this server.'},503);
+    const limited=await rateLimited(c,authLimiter,`github-existing:${user.userId}`,deps.config.authRateWindowMs,'Too many connection attempts. Try again shortly.');if(limited)return limited;
+    const token=readSignedSession(deps.config.sessionSecret,getCookie(c,'ns_github_existing_connection'));
+    if(!token)return c.json({error:'Connection request expired. Start again from your workspace.'},403);
+    const body=jsonObj(await c.req.json()),installationId=Number(body.installationId);
+    if(!Number.isSafeInteger(installationId)||installationId<=0)return c.json({error:'Choose a valid GitHub connection.'},400);
+    try{
+      const result=await connectGithubWorkspace({store:deps.store,github:deps.github,sessionId,userId:user.userId,token,installationId,appId:deps.config.githubAppId,secret:deps.config.sessionSecret,mode:'existing-personal'});
+      if(result.status!=='connected')return c.json({error:'Existing GitHub connection could not be verified.'},409);
+      deleteCookie(c,'ns_github_existing_connection',{path:'/'});deps.wakeWorker?.();
+      return c.json(result,200);
+    }catch(error){return c.json({error:error instanceof Error?error.message:'GitHub connection failed.'},errorStatus(error));}
   });
 
   app.post('/api/github/connection/complete',async c=>{

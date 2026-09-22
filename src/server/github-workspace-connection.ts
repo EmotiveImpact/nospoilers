@@ -8,8 +8,32 @@ import {enqueueFromWebhook} from './webhooks.ts';
 function fail(message:string,status=403):never{throw Object.assign(new Error(message),{status});}
 const object=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 
-/** Fresh installation binding only. Existing tenant ownership is never reassigned. */
-export async function connectGithubWorkspace(input:{store:Store;github:GithubPort;sessionId:string;userId:string;token:string;installationId:number;appId:string;secret:string}){
+export type ConnectableGithubInstallation={installationId:number;accountLogin:string;accountType:'User'};
+
+/** Discover only unbound personal installations whose GitHub account is the
+ * current OAuth user. Repository access alone is insufficient proof for an
+ * organisation installation, so those continue through GitHub's install flow. */
+export async function connectablePersonalGithubInstallations(input:{store:Store;github:GithubPort;userId:string}):Promise<ConnectableGithubInstallation[]>{
+ const accessToken=await input.store.getUserAccessToken(input.userId);
+ if(!accessToken)fail('Sign in with GitHub again before connecting a source.',401);
+ const actor=await input.github.getUser(accessToken);
+ const installationIds=await input.github.listUserInstallations(accessToken);
+ const rows:ConnectableGithubInstallation[]=[];
+ for(const installationId of installationIds){
+  if(!Number.isSafeInteger(installationId)||installationId<=0)continue;
+  if((await input.store.sql.query('SELECT 1 FROM installations WHERE id=$1',[installationId])).rows.length)continue;
+  const installation=await input.github.getInstallation(installationId);
+  const accountType=installation.account.type??'User';
+  if(installation.id===installationId&&!installation.suspended_at&&accountType==='User'&&installation.account.id===actor.id)
+   rows.push({installationId,accountLogin:installation.account.login,accountType:'User'});
+ }
+ return rows.sort((a,b)=>a.accountLogin.localeCompare(b.accountLogin)||a.installationId-b.installationId);
+}
+
+/** Bind either a newly created installation or an explicitly selected,
+ * unbound personal installation owned by the current GitHub OAuth user.
+ * Existing tenant ownership is never reassigned. */
+export async function connectGithubWorkspace(input:{store:Store;github:GithubPort;sessionId:string;userId:string;token:string;installationId:number;appId:string;secret:string;mode?:'new'|'existing-personal'}){
  const {store,github,sessionId,userId,token,installationId,secret}=input;
  if(!Number.isSafeInteger(installationId)||installationId<=0)fail('Invalid installation.',400);
  const intent=await inspectGithubConnectionIntent(store.sql,sessionId,userId,token);
@@ -23,14 +47,19 @@ export async function connectGithubWorkspace(input:{store:Store;github:GithubPor
  if((await store.sql.query('SELECT 1 FROM installations WHERE id=$1',[installationId])).rows.length)
   fail('This installation already belongs to a connection. Open its existing workspace; it cannot be moved here.',409);
  const events=await pendingGithubEvents(store.sql,secret,installationId);
- const proof=events.find(row=>row.event==='installation'&&row.payload.action==='created'&&String(object(row.payload.sender).id)===String(actor.id));
- if(!proof)return {status:'awaiting_webhook' as const,workspaceId:intent.workspaceId};
- const creation=object(proof.payload.installation);
- const created=Date.parse(String(creation.created_at));
- if(String(creation.app_id)!==input.appId||Number(creation.id)!==installationId||Number(object(creation.account).id)!==installation.account.id||
-    !Number.isFinite(created)||created<Date.parse(intent.createdAt)-2000||Date.parse(proof.receivedAt)<Date.parse(intent.createdAt)||
-    Date.parse(installation.created_at??'')!==created)
-  fail('A new installation authorised during this connection request is required. Existing installations keep their current ownership.',409);
+ if(input.mode==='existing-personal'){
+  if((installation.account.type??'User')!=='User'||installation.account.id!==actor.id)
+   fail('Only an unbound personal GitHub installation owned by the signed-in GitHub account can be reconnected.',403);
+ }else{
+  const proof=events.find(row=>row.event==='installation'&&row.payload.action==='created'&&String(object(row.payload.sender).id)===String(actor.id));
+  if(!proof)return {status:'awaiting_webhook' as const,workspaceId:intent.workspaceId};
+  const creation=object(proof.payload.installation);
+  const created=Date.parse(String(creation.created_at));
+  if(String(creation.app_id)!==input.appId||Number(creation.id)!==installationId||Number(object(creation.account).id)!==installation.account.id||
+     !Number.isFinite(created)||created<Date.parse(intent.createdAt)-2000||Date.parse(proof.receivedAt)<Date.parse(intent.createdAt)||
+     Date.parse(installation.created_at??'')!==created)
+   fail('A new installation authorised during this connection request is required. Existing installations keep their current ownership.',409);
+ }
  if(events.some(row=>row.event==='installation'&&['deleted','suspend'].includes(String(row.payload.action))))fail('The installation changed or was disabled. Start again.',409);
  if(!github.listInstallationRepositories)fail('GitHub repository listing is unavailable on this server.',503);
  const repositories=await github.listInstallationRepositories(installationId);
@@ -91,7 +120,7 @@ export async function connectGithubWorkspace(input:{store:Store;github:GithubPor
     if(job.inserted)queued++;
    }
   }
-  await tx.query(`INSERT INTO product_workspace_events(id,workspace_id,actor_user_id,action,detail) VALUES($1,$2,$3,'github_connected',$4::jsonb)`,[randomUUID(),target.workspaceId,userId,JSON.stringify({installationId,repositoryCount:repositories.length,queued})]);
+  await tx.query(`INSERT INTO product_workspace_events(id,workspace_id,actor_user_id,action,detail) VALUES($1,$2,$3,'github_connected',$4::jsonb)`,[randomUUID(),target.workspaceId,userId,JSON.stringify({installationId,repositoryCount:repositories.length,queued,connectionMode:input.mode==='existing-personal'?'existing-personal':'new'})]);
   return {status:'connected' as const,workspaceId:target.workspaceId,installationId,repositoryCount:repositories.length,queued};
  });
 }

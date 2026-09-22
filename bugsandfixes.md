@@ -7,8 +7,8 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Issue | Current state | Next action |
 | --- | --- | --- |
 | Normal customer login is still GitHub-only | Provider-neutral database foundation is complete; Neon Auth is selected but not active | Verify the new Neon account email, enable Managed Better Auth, configure trusted domains, then connect and test the sign-in UI |
-| Hosted customer journey is not accepted end to end | Shared Neon, Railway and Vercel Sandbox are configured; a clean sandbox probe passed | Prove sign-up/sign-in → workspace → GitHub connection → queued scan → saved result on the hosted domain |
-| Sandbox adversarial acceptance is incomplete | Isolation, credential exclusion, limits and mandatory stop are implemented | Run live hostile-input, denied-egress, timeout and worker-interruption cleanup checks |
+| Hosted customer journey is not accepted end to end | GitHub webhook transport is repaired and the secure existing-personal-installation reconnect is implemented | Deploy, attach installation 158159401 to the production workspace, then prove queued scan → saved result |
+| Sandbox adversarial acceptance is incomplete | Clean, fail-closed encrypted input, denied egress, timeout and stopped cleanup passed live | Complete special-file/oversize and worker-interruption cleanup acceptance |
 | GitHub Actions is externally blocked | The earlier run did not start because of the account payment/spending limit | Resolve the GitHub account block and rerun CI on the current commit |
 | Real notification delivery is not accepted | Delivery code and worker preflight exist | Configure one approved provider and verify one private, workspace-scoped notification |
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
@@ -27,6 +27,8 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Railway lacked a safe untrusted scanner boundary | Added a fresh digest-pinned Vercel Sandbox microVM per scan | Live clean scan and hosted worker preflight |
 | Vercel Hobby rejected the hourly cron | Removed the duplicate Vercel schedule; the persistent Railway worker owns recovery and polling | Fresh Vercel import no longer requires the paid cron frequency |
 | Migration-current test was pinned to migration 122 | Test now follows `CURRENT_SCHEMA_MIGRATION` | Final 1,660-test regression |
+| Production GitHub webhooks returned 401 | Rotated one shared secret across GitHub, Vercel and Railway and redeployed | Two subsequent push deliveries returned 200 and were staged in Neon |
+| Fresh Neon could not attach the still-active personal GitHub installation | Added owner-proved existing-personal reconnect with short-lived intent and atomic workspace binding | 15 focused tests and final 1,665-test regression |
 
 ## Reporting a new issue
 

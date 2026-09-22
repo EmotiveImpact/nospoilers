@@ -5,6 +5,13 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Added secure reconnection for an existing unbound personal GitHub App installation. The live
+  OAuth user must own the installation account, the destination requires organisation/workspace
+  admin authority, and the atomic binder still rejects claimed installations and repository moves.
+- Repaired the production GitHub webhook secret across GitHub, Vercel and Railway. Post-rotation
+  deliveries return 200 and are retained in the shared Neon pending-event inbox until binding.
+- Completed bounded live Vercel Sandbox checks for a clean archive, fail-closed encrypted input,
+  denied egress, timeout and stopped cleanup.
 - Added the provider-neutral identity foundation in migration `123_product_identity`. Trusted
   issuer/subject pairs map to stable NoSpoilers users without merging accounts by email.
 - Moved GitHub OAuth credentials into separate connector-account storage. Existing GitHub users
@@ -21,7 +28,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
   retaining or printing the compared credentials.
 - Added [authentication and worker architecture](docs/AUTH-ENTERPRISE-AND-WORKERS.md) and the
   [bugs and fixes register](bugsandfixes.md).
-- Final source verification for this increment: **1,660/1,660 tests across 271 files**, typecheck,
+- Final source verification for this increment: **1,665/1,665 tests across 271 files**, typecheck,
   frontend/API builds, lint with the existing warnings and diff check.
 - Documentation map consolidated: `docs/STATUS.md` answers what is built vs live;
   `docs/ROADMAP.md` is only what is left; `docs/HANDOFF.md` is live host facts.

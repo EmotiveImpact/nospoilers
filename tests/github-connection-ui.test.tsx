@@ -33,3 +33,10 @@ it('explains unavailable GitHub services and prevents a disabled start',async()=
  view.rerender(<GithubWorkspaceConnect workspaceId="workspace"/>);fireEvent.click(screen.getByRole('button'));
  expect((await screen.findByRole('alert')).textContent).toContain('not configured');
 });
+it('offers a verified existing personal installation before opening GitHub',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({status:'existing_available',installations:[{installationId:999,accountLogin:'EmotiveImpact',accountType:'User'}]}));vi.stubGlobal('fetch',fetcher);
+ render(<GithubWorkspaceConnect workspaceId="workspace"/>);fireEvent.click(screen.getByRole('button',{name:'Connect GitHub to this workspace'}));
+ expect(await screen.findByRole('button',{name:'Connect EmotiveImpact'})).toBeTruthy();
+ expect(screen.getByText('Existing personal GitHub connection')).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Use a different GitHub account'})).toBeTruthy();
+});

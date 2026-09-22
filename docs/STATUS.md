@@ -1,9 +1,10 @@
 # Status
 
 Latest checkpoint (22 September 2026): the fresh Vercel project/domain, shared Neon database,
-Railway coordinator and Vercel Sandbox executor are configured. A live clean sandbox scan and the
-full production worker preflight passed. Migration `123_product_identity` separates product login
-identity from GitHub source credentials, and the final source regression passed **1,660/1,660 tests
+Railway coordinator and Vercel Sandbox executor are configured. Production GitHub webhooks return
+200 after a shared-secret repair, and bounded live clean/fail-closed/egress/timeout/cleanup Sandbox
+checks passed. Migration `123_product_identity` separates product login identity from GitHub source
+credentials, and the final source regression passed **1,665/1,665 tests
 across 271 files**. Read [Authentication, enterprise access and scan workers](AUTH-ENTERPRISE-AND-WORKERS.md)
 and [Bugs and fixes](../bugsandfixes.md) before older chronological notes.
 
@@ -45,7 +46,7 @@ These exist as routes, APIs, workers, and tests. Watch is authenticated: `/watch
 | --- | --- |
 | Scanner / CLI / Action | Directories and packed artifacts (tgz, zip, asar, VSIX/CRX/XPI, wheel/sdist, JAR/WAR, NuGet, gem, Docker/OCI, APK/AAB/IPA, serverless zip). Nested unpack, never execute. JSON/SARIF. Fail-closed CI fixtures. |
 | Watch desk | 2B monolith: workspace-wide Overview plus source selection and an individual Release Readiness Brief for each persisted release. Package/source detail links resolve to the matching latest release when available. Alerts, Sources, Releases, Timeline, Setup, Notifications, Policy, Team, Retention, Audit, Health, Tokens, Registries remain on live APIs. |
-| GitHub coverage | OAuth, App install, HMAC webhooks, queue, worker, hourly visibility poller. Publicize, created-public, cheap `.env`/`.map` push, and fixture release scan are proven on the throwaway. |
+| GitHub coverage | OAuth, fresh App install and owner-proved existing-personal reconnect, HMAC webhooks, queue, worker and hourly visibility poller. Publicize, created-public, cheap `.env`/`.map` push, and fixture release scan are proven on the throwaway. |
 | npm / websites | Public and private registry watch, prerelease channels, unpublish fact. HTTPS origin crawl after ownership proof. Sentry/Bugsnag map custody. Provider-neutral `/api/v1/deploy`. |
 | Policy / receipts | `.nospoilers.yml`, allowlists, baselines, HMAC receipts, Release Diff, SIZE-003, hosted `POST /api/v1/scan`. |
 | Release Ledger | Append-only revisions with Mock 3-derived readiness detail, status-consistent proof steps, on-demand delivery verify, approve/reject/hold, public `/verify/:token`, attestation refresh (no Sigstore verify), signing policy. |
@@ -66,8 +67,8 @@ Artifact Leads and Disclosure Desk at `/internal/prospects`. Public GitHub/npm d
 | Resend Watch email | Yes. Destinations save; send 503 without keys | No. `resend: false`. Inbox stays GitHub-login only. Desk `sent` stays false |
 | Vercel web/API | Yes | Fresh project and production domains are configured; verify each deployment against its intended commit |
 | Neon Postgres | Yes | Vercel and Railway were verified against the same fresh Neon project |
-| Railway worker | `railway.toml` + hosted preflight | Configured; production preflight and one live clean Vercel Sandbox scan passed |
-| Vercel Sandbox | Fresh digest-pinned microVM per scan | Clean live probe passed; hostile-input/egress/interruption acceptance remains open |
+| Railway worker | `railway.toml` + hosted preflight | Configured, Online, and using the shared Neon database |
+| Vercel Sandbox | Fresh digest-pinned microVM per scan | Clean, encrypted fail-closed, denied-egress, timeout and stopped cleanup passed; special-file/oversize and worker-interruption checks remain |
 | `nospoilers.dev` | Vercel production domain | Valid configuration; final hosted customer journey remains unaccepted |
 | Neon Managed Better Auth | Provider-neutral database foundation is present | Not enabled; owner email verification and Auth endpoint setup remain |
 | WorkOS SSO/SCIM | Architecture documented | Not configured; later enterprise add-on only |
@@ -117,7 +118,7 @@ Visual chrome is still being tightened against Linear comps in `/mockup-review/`
 ## Launch bar
 
 1. Verify the fresh Neon account email, enable Managed Better Auth and prove customer sign-in and recovery.
-2. Prove the complete hosted sign-in → workspace → GitHub connection → worker scan → saved result journey.
+2. Deploy the existing-personal GitHub reconnect, bind the live installation, then prove worker scan → saved result.
 3. Complete live hostile-input, denied-egress, timeout and interruption cleanup checks for Vercel Sandbox.
 4. Configure and prove one approved notification path without exposing private evidence.
 5. Resolve the GitHub Actions account payment/spending-limit block and rerun CI.
