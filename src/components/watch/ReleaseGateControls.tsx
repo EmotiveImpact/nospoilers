@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useRef,useState} from 'react';
 import type {Ref} from '../../release-intelligence/model';
 import type {GatePolicy,GateResult} from '../../release-intelligence/gate';
@@ -50,9 +51,9 @@ function GateControls({streamId,record,refreshVersion}:Props){
     {view?<><p><strong>{view.policy.mode}</strong> · revision {view.policy.revision} · evidence within {view.policy.maxAgeHours} hours.</p><p>{view.notice}</p>
       {view.canAdminister&&record.kind==='release'?<ReleaseGateAccessControls key={`${streamId}:${record.id}`} streamId={streamId} record={record}/>:null}
       {view.canManage?<form onSubmit={e=>{e.preventDefault();void save({action:'configure',mode,maxAgeHours:hours,expectedRevision:view.policy.revision,reason,confirm,...(rollback?{rollbackFromRevision:Number(rollback)}:{})},'New gate policy revision saved. Existing decisions must be evaluated again.');}}>
-        <label>Gate mode<select value={mode} disabled={busy||Boolean(rollback)} onChange={e=>{setMode(e.target.value as GatePolicy['mode']);setConfirm(false);}}><option value="advisory">Advisory — record only</option><option value="warn">Warn — report issues without blocking</option><option value="enforce">Enforce — require ready evidence or explicit override</option></select></label>
+        <label>Gate mode<AppSelect label={`Gate mode`} value={mode} disabled={busy||Boolean(rollback)} onValueChange={(nextValue) => {setMode(nextValue as GatePolicy['mode']);setConfirm(false);}}><option value="advisory">Advisory — record only</option><option value="warn">Warn — report issues without blocking</option><option value="enforce">Enforce — require ready evidence or explicit override</option></AppSelect></label>
         <label>Maximum scan age (hours)<input required type="number" min={1} max={168} value={hours} disabled={busy||Boolean(rollback)} onChange={e=>{setHours(Number(e.target.value));setConfirm(false);}}/></label>
-        {view.policies.length?<label>Restore previous policy as a new revision<select value={rollback} disabled={busy} onChange={e=>{setRollback(e.target.value);setConfirm(false);}}><option value="">Use the settings above</option>{view.policies.map(p=><option key={p.revision} value={p.revision}>Revision {p.revision} · {p.mode} · {p.max_age_hours} hours</option>)}</select></label>:null}
+        {view.policies.length?<label>Restore previous policy as a new revision<AppSelect label={`Restore previous policy as a new revision`} value={rollback} disabled={busy} onValueChange={(nextValue) => {setRollback(nextValue);setConfirm(false);}}><option value="">Use the settings above</option>{view.policies.map(p=><option key={p.revision} value={p.revision}>Revision {p.revision} · {p.mode} · {p.max_age_hours} hours</option>)}</AppSelect></label>:null}
         <label>Policy change reason<textarea required minLength={8} maxLength={1000} value={reason} onChange={e=>{setReason(e.target.value);setConfirm(false);}}/></label>
         <label><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/> I confirm this change for this stream. It invalidates previously evaluated gate decisions.</label>
         <button type="submit" disabled={busy||!confirm}>Adopt policy revision</button>

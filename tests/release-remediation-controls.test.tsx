@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {ReleaseRemediationControls} from '../src/components/watch/ReleaseRemediationControls';
@@ -9,7 +12,7 @@ it('keeps reviewed-change and rebuilt-artifact confirmations separate',async()=>
   render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[{id:'rebuilt',scanned_at:new Date().toISOString(),digest:'b'.repeat(64),record_kind:'upload',record_id:'rebuilt'} as never]}/>);
   await screen.findByText('Scoped remediation only.');
   fireEvent.change(screen.getByLabelText('Remediation note (no secrets)'),{target:{value:'Verify the rebuilt artifact after review.'}});
-  fireEvent.change(screen.getByLabelText('Rebuilt artifact'),{target:{value:'rebuilt'}});
+  await selectOption(screen.getByLabelText('Rebuilt artifact'),/upload:rebuilt/);
   fireEvent.click(screen.getByLabelText(/I reviewed this change/));
   const verify=screen.getByRole('button',{name:'Verify selected rebuild',hidden:true});expect((verify as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByLabelText(/I confirm this rebuilt artifact/));fireEvent.click(verify);
@@ -55,15 +58,15 @@ it('explains why the selected release has no new investigation action',async()=>
 });
 const otherCase={id:'second-case',finding:'secret',revision:1,original_snapshot:'second-original'};
 const multipleCases={...view,cases:[...view.cases,otherCase]};
-function selectOtherCase(){
+async function selectOtherCase(){
  const selector=screen.getByLabelText('Remediation case');selector.focus();
- fireEvent.change(selector,{target:{value:otherCase.id}});
+ await selectOption(selector,'secret · second-c');
 }
 it('continues keyboard focus at the requested case after its selector is replaced',async()=>{
  let finish!:(response:Response)=>void;
  const fetcher=vi.fn().mockResolvedValueOnce(Response.json(multipleCases)).mockImplementationOnce(()=>new Promise<Response>(resolve=>{finish=resolve;}));vi.stubGlobal('fetch',fetcher);
  render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
- await screen.findByText(view.notice);selectOtherCase();
+ await screen.findByText(view.notice);await selectOtherCase();
  expect(screen.queryByLabelText('Remediation case')).toBeNull();
  expect(screen.getByRole('status',{name:'Reading remediation evidence'})).toBeTruthy();
  expect(String(fetcher.mock.calls[1][0])).toContain('caseId=second-case');
@@ -73,12 +76,12 @@ it('continues keyboard focus at the requested case after its selector is replace
  finish(Response.json({...multipleCases,selected:{...view.selected,...otherCase}}));
  const heading=await screen.findByRole('heading',{name:'Remediation case · secret'});
  await waitFor(()=>expect(document.activeElement).toBe(heading));
- expect((screen.getByLabelText('Remediation case') as HTMLSelectElement).value).toBe(otherCase.id);
+ expect(screen.getByLabelText('Remediation case').textContent).toContain('secret · second-c');
 });
 it('continues keyboard focus at the error when loading the selected case fails',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(multipleCases)).mockResolvedValueOnce(Response.json({error:'Case access was removed.'},{status:403})));
  render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/>);
- await screen.findByText(view.notice);selectOtherCase();
+ await screen.findByText(view.notice);await selectOtherCase();
  const error=await screen.findByRole('alert');await waitFor(()=>expect(document.activeElement).toBe(error));
  expect(screen.queryByLabelText('Remediation case')).toBeNull();
 });
@@ -86,7 +89,7 @@ it('keeps deliberate outside focus when the selected case finishes loading',asyn
  let finish!:(response:Response)=>void;
  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(multipleCases)).mockImplementationOnce(()=>new Promise<Response>(resolve=>{finish=resolve;})));
  render(<><button>Elsewhere</button><ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/></>);
- await screen.findByText(view.notice);selectOtherCase();const outside=screen.getByRole('button',{name:'Elsewhere'});outside.focus();
+ await screen.findByText(view.notice);await selectOtherCase();const outside=screen.getByRole('button',{name:'Elsewhere'});outside.focus();
  finish(Response.json({...multipleCases,selected:{...view.selected,...otherCase}}));
  await screen.findByRole('heading',{name:'Remediation case · secret'});expect(document.activeElement).toBe(outside);
 });
@@ -94,7 +97,7 @@ it('abandons pending case focus and data when the record scope changes',async()=
  let finish!:(response:Response)=>void;let signal:AbortSignal|undefined;
  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(multipleCases)).mockImplementationOnce((_url:unknown,init:RequestInit)=>{signal=init.signal as AbortSignal;return new Promise<Response>(resolve=>{finish=resolve;});}).mockResolvedValueOnce(Response.json({...view,notice:'New record context.'})));
  const component=render(<><button>Elsewhere</button><ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'upload'}} snapshots={[]}/></>);
- await screen.findByText(view.notice);selectOtherCase();const outside=screen.getByRole('button',{name:'Elsewhere'});outside.focus();
+ await screen.findByText(view.notice);await selectOtherCase();const outside=screen.getByRole('button',{name:'Elsewhere'});outside.focus();
  component.rerender(<><button>Elsewhere</button><ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={{kind:'upload',id:'new-upload'}} snapshots={[]}/></>);
  await screen.findByText('New record context.');expect(signal?.aborted).toBe(true);
  finish(Response.json({...multipleCases,selected:{...view.selected,...otherCase}}));

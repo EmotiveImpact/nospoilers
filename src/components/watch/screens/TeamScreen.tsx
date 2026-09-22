@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { useRef } from "react";
@@ -77,17 +78,15 @@ export function TeamScreen() {
                         </label>
                         <label>
                           <span className="text-xs uppercase tracking-[0.16em] text-dim">Role</span>
-                          <select
+                          <AppSelect label={`Role`}
                             value={inviteRole}
-                            onChange={(event) =>
-                              setInviteRole(event.target.value === "admin" ? "admin" : event.target.value === "viewer" ? "viewer" : "member")
-                            }
+                            onValueChange={(nextValue) => setInviteRole(nextValue === "admin" ? "admin" : nextValue === "viewer" ? "viewer" : "member")}
                             className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                           >
                             <option value="member">member</option>
                             <option value="viewer">viewer (read-only)</option>
                             <option value="admin">admin</option>
-                          </select>
+                          </AppSelect>
                         </label>
                         <Button type="submit" size="sm" disabled={confirmBusy || !inviteLogin.trim()}>
                           Invite

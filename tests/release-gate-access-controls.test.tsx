@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
 import {ReleaseGateAccessControls} from '../src/components/watch/ReleaseGateAccessControls';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const view={tokens:[{id:7,name:'Build CI',token_prefix:'ns_prefix'}],grants:[],eligible:true,canEnable:true,canDisable:true,notice:'Exact connected asset only.'};
 const grant={token_id:7,revision:2,enabled:true,expired:false,name:'Build CI',selector:'github:qa/app#app.tgz',expires_at:'2026-12-01T00:00:00Z',revoked_at:null};
-function prepareGrant(){
+async function prepareGrant(){
  (screen.getByText('Connected-source CI access').closest('details') as HTMLDetailsElement).open=true;
  fireEvent.change(screen.getByLabelText('CI access change reason'),{target:{value:'Allow only this exact asset selection.'}});
- fireEvent.change(screen.getByLabelText('Existing workspace token'),{target:{value:'7'}});
+ await selectOption(screen.getByLabelText('Existing workspace token'),'Build CI · ns_prefix');
  fireEvent.click(screen.getByRole('checkbox'));
  return screen.getByRole('button',{name:'Grant or renew CI access'});
 }
@@ -17,7 +20,7 @@ it('requires confirmation and names an existing token without creating or exposi
   render(<ReleaseGateAccessControls streamId="stream" record={{kind:'release',id:'1'}}/>);
   await screen.findByText('Exact connected asset only.');
   fireEvent.change(screen.getByLabelText('CI access change reason'),{target:{value:'Allow only the selected build to use gate checks.'}});
-  fireEvent.change(screen.getByLabelText('Existing workspace token'),{target:{value:'7'}});
+  await selectOption(screen.getByLabelText('Existing workspace token'),'Build CI · ns_prefix');
   const button=screen.getByRole('button',{name:'Grant or renew CI access',hidden:true});expect((button as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole('checkbox',{hidden:true}));fireEvent.click(button);
   await waitFor(()=>expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(true));
@@ -44,7 +47,7 @@ it.each(['forbidden grant','conflicting revoke','network failure'] as const)('cl
  }));
  render(<ReleaseGateAccessControls streamId="stream" record={{kind:'release',id:'1'}}/>);
  await screen.findByText(view.notice);
- const create=prepareGrant();
+ const create=await prepareGrant();
  const action=failure==='conflicting revoke'?screen.getByRole('button',{name:'Revoke CI access for Build CI'}):create;
  action.focus();fireEvent.click(action);
  const error=await screen.findByRole('alert');
@@ -54,7 +57,7 @@ it.each(['forbidden grant','conflicting revoke','network failure'] as const)('cl
  fireEvent.click(screen.getByRole('button',{name:'Refresh CI access'}));
  await screen.findByText(view.notice);
  expect(reads).toBe(2);
- expect((screen.getByLabelText('Existing workspace token') as HTMLSelectElement).value).toBe('');
+ expect(screen.getByLabelText('Existing workspace token').textContent).toContain('Choose a CI token');
  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
  expect((screen.getByRole('button',{name:'Grant or renew CI access'}) as HTMLButtonElement).disabled).toBe(true);
 });
@@ -62,7 +65,7 @@ it('hides prior controls during refresh and respects newly read revocation-only 
  let finish!:(response:Response)=>void;
  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(view)).mockImplementationOnce(()=>new Promise<Response>(resolve=>{finish=resolve;})));
  render(<ReleaseGateAccessControls streamId="stream" record={{kind:'release',id:'1'}}/>);
- await screen.findByText(view.notice);prepareGrant();
+ await screen.findByText(view.notice);await prepareGrant();
  const refresh=screen.getByRole('button',{name:'Refresh CI access'});refresh.focus();fireEvent.click(refresh);
  expect(screen.getByRole('status',{name:'Reading explicit CI grants'})).toBeTruthy();
  expect(screen.queryByLabelText('Existing workspace token')).toBeNull();
@@ -87,7 +90,7 @@ it('does not steal deliberately moved focus after a failed mutation',async()=>{
  let fail!:(reason:Error)=>void;
  vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json(view)).mockImplementationOnce(()=>new Promise<Response>((_resolve,reject)=>{fail=reject;})));
  render(<><button>Elsewhere</button><ReleaseGateAccessControls streamId="stream" record={{kind:'release',id:'1'}}/></>);
- await screen.findByText(view.notice);const action=prepareGrant();action.focus();fireEvent.click(action);
+ await screen.findByText(view.notice);const action=await prepareGrant();action.focus();fireEvent.click(action);
  const elsewhere=screen.getByRole('button',{name:'Elsewhere'});elsewhere.focus();fail(new Error('Connection lost.'));
  await screen.findByRole('alert');expect(document.activeElement).toBe(elsewhere);
 });

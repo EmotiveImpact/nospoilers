@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Scan destination and older settings/release controls used inconsistent native dropdowns | Replaced all 32 with a shared dark picker, searchable for longer lists; preserved values, disabled choices, required validation and remediation focus recovery | 1,741-test regression plus 33 focused tests after browser focus hardening; frontend/API builds and local browser interaction verification |
 | Most alerts used generic rebuild advice, including repository access events | Added evidence-scoped explanations and distinct fixes for 25 scanner rules and 41 event kinds; shared guidance with the copyable agent brief and corrected event-only detail labels | 51 focused explanation/UI/keyboard tests; see docs/ALERT-EXPLANATIONS.md and latest BUILD-LOG |
 | GitHub controls appeared below Websites and repeated every repository's actions | Dedicated single-repository management view with shared dark surfaces, repository selector, grouped controls and Back to Coverage; source tabs clear old configuration | Repository scope, tab cleanup, permission/confirmation and expired-state regressions; frontend build |
 | Workspace selector reloaded every time the sidebar reopened | Share workspace choices in the persistent signed-in shell across desktop and mobile rails; discard choices on identity change and failed refresh | 37 workspace/shell UI tests and TypeScript/frontend build passed |

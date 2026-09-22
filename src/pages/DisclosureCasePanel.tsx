@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import { Field, Input, Label, Textarea } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -712,9 +713,9 @@ export function DisclosureCasePanel({
                 <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                   Finding category
                 </Label>
-                <select
+                <AppSelect label={`Finding category`}
                   value={findingCategory}
-                  onChange={(event) => setFindingCategory(event.target.value as FindingCategory)}
+                  onValueChange={(nextValue) => setFindingCategory(nextValue as FindingCategory)}
                   className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                 >
                   {FINDING_CATEGORY_OPTIONS.map((option) => (
@@ -722,7 +723,7 @@ export function DisclosureCasePanel({
                       {option.label}
                     </option>
                   ))}
-                </select>
+                </AppSelect>
               </Field>
               <Button
                 type="button"
@@ -793,9 +794,9 @@ export function DisclosureCasePanel({
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                     Vendor channel
                   </Label>
-                  <select
+                  <AppSelect label={`Vendor channel`}
                     value={vendorChannel}
-                    onChange={(event) => setVendorChannel(event.target.value as VendorChannel | "")}
+                    onValueChange={(nextValue) => setVendorChannel(nextValue as VendorChannel | "")}
                     className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                   >
                     <option value="">unset</option>
@@ -803,17 +804,15 @@ export function DisclosureCasePanel({
                     <option value="form">form</option>
                     <option value="security_txt">security.txt</option>
                     <option value="platform">platform advisory</option>
-                  </select>
+                  </AppSelect>
                 </Field>
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                     Draft template
                   </Label>
-                  <select
+                  <AppSelect label={`Draft template`}
                     value={templateId === "" ? "" : String(templateId)}
-                    onChange={(event) =>
-                      setTemplateId(event.target.value === "" ? "" : Number(event.target.value))
-                    }
+                    onValueChange={(nextValue) => setTemplateId(nextValue === "" ? "" : Number(nextValue))}
                     className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                   >
                     <option value="">built-in draft</option>
@@ -822,7 +821,7 @@ export function DisclosureCasePanel({
                         {template.name}
                       </option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </Field>
               </div>
               <Button
@@ -926,11 +925,9 @@ export function DisclosureCasePanel({
                     <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                       File redacted case
                     </Label>
-                    <select
+                    <AppSelect label={`File redacted case`}
                       value={notifyId}
-                      onChange={(event) =>
-                        setNotifyId(event.target.value ? Number(event.target.value) : "")
-                      }
+                      onValueChange={(nextValue) => setNotifyId(nextValue ? Number(nextValue) : "")}
                       className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                     >
                       <option value="">Choose destination</option>
@@ -941,7 +938,7 @@ export function DisclosureCasePanel({
                             : `webhook ${destination.host}`}
                         </option>
                       ))}
-                    </select>
+                    </AppSelect>
                   </Field>
                   <Field>
                     <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
@@ -977,9 +974,9 @@ export function DisclosureCasePanel({
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                     Vendor reply channel
                   </Label>
-                  <select
+                  <AppSelect label={`Vendor reply channel`}
                     value={replyChannel}
-                    onChange={(event) => setReplyChannel(event.target.value as VendorReplyChannel)}
+                    onValueChange={(nextValue) => setReplyChannel(nextValue as VendorReplyChannel)}
                     className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                   >
                     <option value="security_email">security email</option>
@@ -987,7 +984,7 @@ export function DisclosureCasePanel({
                     <option value="security_txt">security.txt</option>
                     <option value="platform">platform</option>
                     <option value="other">other</option>
-                  </select>
+                  </AppSelect>
                 </Field>
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
@@ -1082,16 +1079,16 @@ export function DisclosureCasePanel({
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">
                     Conversion
                   </Label>
-                  <select
+                  <AppSelect label={`Conversion`}
                     value={conversion}
-                    onChange={(event) => setConversion(event.target.value as DisclosureConversion)}
+                    onValueChange={(nextValue) => setConversion(nextValue as DisclosureConversion)}
                     className="mt-2 h-10 w-full rounded-md border border-white/15 bg-transparent px-3 text-sm text-snow outline-none"
                   >
                     <option value="none">none</option>
                     <option value="trial">trial</option>
                     <option value="paid">paid</option>
                     <option value="declined">declined</option>
-                  </select>
+                  </AppSelect>
                 </Field>
                 <Field>
                   <Label className="text-[11px] uppercase tracking-[0.2em] text-dim">

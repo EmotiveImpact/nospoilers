@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useId,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
 import type {Ref,Snapshot} from '../../release-intelligence/model';
@@ -83,14 +84,14 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
       <section className="mt-6 border-t border-white/8 pt-5" aria-labelledby="remediation-step-finding">
         <p className="ns-intelligence__eyebrow">Step 1</p>
         <h4 id="remediation-step-finding" className="mt-1 text-base font-medium text-snow">Original finding</h4>
-        {view.cases.length?<label>Remediation case<select disabled={busy} value={current?.id??''} onChange={e=>{caseFocus.current=document.activeElement===e.currentTarget?{control:e.currentTarget,id:e.target.value}:null;setError('');setSelected(e.target.value);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</select></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
+        {view.cases.length?<label>Remediation case<AppSelect label={`Remediation case`} disabled={busy} value={current?.id??''} onValueChange={(nextValue, control) => {caseFocus.current={control,id:nextValue};setError('');setSelected(nextValue);setView(null);resetConfirmation();}}>{view.cases.map(c=><option key={c.id} value={c.id}>{c.finding} · {c.id.slice(0,8)}</option>)}</AppSelect></label>:<p>No tracked remediation in this stream. Start from a recorded finding; a passing scan does not invent one.</p>}
         {current?<><h5 ref={caseHeading} tabIndex={-1} className="mt-4 text-sm font-medium text-snow">Remediation case · {current.finding}</h5><p><strong>Original finding</strong> <code>{current.finding}</code></p>
           <p role="status">{current.unavailable?'Linked evidence is unavailable; no current resolution is inferred.':current.observation?current.observation.reason:review?'Reviewed change recorded. Rebuild and check fresh signed evidence next.':'Investigation open. Record a reviewed change before checking a rebuild.'}</p>
           {current.observation?<><p>{current.observation.scope}</p><p>Other recorded findings in this rebuild: {current.observation.otherFindings}. This observation does not approve the release.</p></>:null}
           {view.canWrite?<div className="ns-intelligence__actions justify-start"><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('investigate')}>Add investigation note</button><button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save('reopen')}>Reopen investigation</button></div>:null}
         </>:null}
         {view.canWrite&&!!view.current?.findings.length?<form className="mt-4" onSubmit={e=>{e.preventDefault();void save('start');}}>
-          <label>Original signed finding<select required value={finding} onChange={e=>setFinding(e.target.value)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
+          <label>Original signed finding<AppSelect label={`Original signed finding`} required value={finding} onValueChange={(nextValue) => setFinding(nextValue)}><option value="">Choose the finding to investigate</option>{view.current.findings.map(f=><option key={f} value={f}>{f}</option>)}</AppSelect></label>
           {reason.trim().length<8?requiredNote:null}
           <button type="submit" disabled={busy||!finding||reason.trim().length<8}>Start investigation</button>
         </form>:null}
@@ -117,7 +118,7 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
         <h4 id="remediation-step-rebuild" className="mt-1 text-base font-medium text-snow">Check a rebuilt artifact</h4>
         {!current?<p>Select an investigation first. A clean build cannot create or replace an original finding.</p>:!review?<p>Record the reviewed change before connecting a rebuilt artifact to this case.</p>:<>
           <p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
-          {view.canWrite?<form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<select required value={candidate} onChange={e=>{setCandidate(e.target.value);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</select></label>
+          {view.canWrite?<form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<AppSelect label={`Rebuilt artifact`} required value={candidate} onValueChange={(nextValue) => {setCandidate(nextValue);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</AppSelect></label>
             <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
             <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
             {reason.trim().length<8?requiredNote:null}

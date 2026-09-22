@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
 import type {Ref} from '../../release-intelligence/model';
@@ -50,7 +51,7 @@ function GateAccessScope({streamId,record}:Props){
     {!view&&!error?<WatchSkeleton variant="list" label="Reading explicit CI grants"/>:null}
     {view?<><p>{view.notice}</p><label>CI access change reason<textarea value={reason} minLength={8} maxLength={1000} onChange={e=>{setReason(e.target.value);setConfirm(false);}}/></label>
       {view.canEnable&&view.eligible?<form onSubmit={e=>{e.preventDefault();void save(Number(token),Number(view.grants.find(g=>Number(g.token_id)===Number(token))?.revision??0),true);}}>
-        <label>Existing workspace token<select required value={token} onChange={e=>{setToken(e.target.value);setConfirm(false);}}><option value="">Choose a CI token</option>{view.tokens.map(t=><option key={t.id} value={t.id}>{t.name} · {t.token_prefix}</option>)}</select></label>
+        <label>Existing workspace token<AppSelect label={`Existing workspace token`} required value={token} onValueChange={(nextValue) => {setToken(nextValue);setConfirm(false);}}><option value="">Choose a CI token</option>{view.tokens.map(t=><option key={t.id} value={t.id}>{t.name} · {t.token_prefix}</option>)}</AppSelect></label>
         {!view.tokens.length?<p>Create a workspace scan token in Scan API Tokens first. No token secret is shown or created here.</p>:null}
         <label>Access duration (days)<input type="number" min={1} max={90} required value={days} onChange={e=>{setDays(Number(e.target.value));setConfirm(false);}}/></label>
         <label><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/> Grant this token gate-only access to this exact connected asset selection.</label>

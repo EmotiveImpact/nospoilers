@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import {WatchSkeleton} from '@/components/WatchDataState';
 import {useEffect,useId,useRef,useState} from 'react';
 type Mapping={path:string;servedPath:string;representation:'identity'|'transformed'};
@@ -49,7 +50,7 @@ function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refres
         event.preventDefault();const date=new Date(deployedAt);if(!Number.isFinite(date.getTime())){setError('Choose the declared deployment time.');return;}
         void mutate({requestKey:crypto.randomUUID(),expectedBaselineRevision:view.baselineRevision,originId:Number(originId),deploymentId:deployment,deployedAt:date.toISOString(),mappings,confirm:confirmed});
       }}>
-        <label>Production website<select required value={originId} onChange={e=>{setOriginId(e.target.value);setConfirmed(false);}}><option value="">Choose an eligible workspace website</option>{view.origins.map(o=><option key={o.id} value={o.id} disabled={o.eligible!==true}>{o.origin_url} · {originStatus[o.eligibility]??'Eligibility unavailable — refresh'}</option>)}</select></label>
+        <label>Production website<AppSelect label={`Production website`} required value={originId} onValueChange={(nextValue) => {setOriginId(nextValue);setConfirmed(false);}}><option value="">Choose an eligible workspace website</option>{view.origins.map(o=><option key={o.id} value={o.id} disabled={o.eligible!==true}>{o.origin_url} · {originStatus[o.eligibility]??'Eligibility unavailable — refresh'}</option>)}</AppSelect></label>
         {!view.origins.some(o=>o.eligible===true)?<p>No website is currently eligible. Use Coverage to reconnect, resume or verify ownership, then refresh these observations. No observation has been started.</p>:null}
         <label>Declared deployment ID<input required maxLength={120} value={deployment} onChange={e=>{setDeployment(e.target.value);setConfirmed(false);}} placeholder="Your deploy ID or release reference"/></label>
         <label>Declared deployment time (your local time)<input required type="datetime-local" value={deployedAt} onChange={e=>{setDeployedAt(e.target.value);setConfirmed(false);}}/></label>
@@ -58,7 +59,7 @@ function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refres
         {mappings.map((mapping,index)=><fieldset key={index}><legend>File {index+1}</legend>
           <label>Approved file<input required list={manifestListId} value={mapping.path} placeholder="Exact approved manifest path" onChange={e=>change(index,{path:e.target.value})}/></label>
           <label>Exact public path<input required placeholder="/assets/app.js" value={mapping.servedPath} onChange={e=>change(index,{servedPath:e.target.value})}/></label>
-          <label>Served representation<select value={mapping.representation} onChange={e=>change(index,{representation:e.target.value as Mapping['representation']})}><option value="identity">Unchanged file bytes</option><option value="transformed">Transformed by hosting/CDN — cannot compare exactly</option></select></label>
+          <label>Served representation<AppSelect label={`Served representation`} value={mapping.representation} onValueChange={(nextValue) => change(index,{representation:nextValue as Mapping['representation']})}><option value="identity">Unchanged file bytes</option><option value="transformed">Transformed by hosting/CDN — cannot compare exactly</option></AppSelect></label>
           <button type="button" onClick={()=>{setMappings(rows=>rows.filter((_,i)=>i!==index));setConfirmed(false);}}>Remove file {index+1}</button>
         </fieldset>)}
         <button type="button" disabled={mappings.length>=40} onClick={()=>{setMappings(rows=>[...rows,{path:'',servedPath:'',representation:'identity'}]);setConfirmed(false);}}>Add file mapping</button>

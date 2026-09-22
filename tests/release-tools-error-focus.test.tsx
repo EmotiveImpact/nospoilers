@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {ReleaseGateControls} from '../src/components/watch/ReleaseGateControls';
@@ -31,7 +34,7 @@ it('keeps keyboard recovery within remediation after a denied investigation',asy
   render(<ReleaseRemediationControls streamId="stream" workspaceId="workspace" record={record} snapshots={[]}/>);
   await screen.findByText('Remediation loaded.');
   fireEvent.change(screen.getByLabelText('Remediation note (no secrets)'),{target:{value:'Investigate signed finding.'}});
-  fireEvent.change(screen.getByLabelText('Original signed finding'),{target:{value:'MAP-001'}});
+  await selectOption(screen.getByLabelText('Original signed finding'),'MAP-001');
   await checkFocus(screen.getByRole('button',{name:'Start investigation',hidden:true}));
 });
 it('keeps keyboard recovery within agent access and announces a denied revocation',async()=>{

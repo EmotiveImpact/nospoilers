@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
@@ -405,9 +406,9 @@ export function RegistriesScreen() {
                     </label>
                     <label className="min-w-0 sm:w-56">
                       <span className="text-xs uppercase tracking-[0.16em] text-dim">Registry</span>
-                      <select
+                      <AppSelect label={`Registry`}
                         value={watchRegistryOrigin}
-                        onChange={(event) => setWatchRegistryOrigin(event.target.value)}
+                        onValueChange={(nextValue) => setWatchRegistryOrigin(nextValue)}
                         disabled={locked}
                         className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                       >
@@ -417,7 +418,7 @@ export function RegistriesScreen() {
                             {registry.host}
                           </option>
                         ))}
-                      </select>
+                      </AppSelect>
                     </label>
                     <Button type="submit" disabled={locked || watchingPackage || !packageName.trim()}>
                       {watchingPackage ? "Connecting…" : "Watch package"}
@@ -486,9 +487,9 @@ export function RegistriesScreen() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                       <label className="min-w-0 sm:w-56">
                         <span className="text-xs uppercase tracking-[0.16em] text-dim">Registry</span>
-                        <select
+                        <AppSelect label={`Registry`}
                           value={watchRegistryOrigin}
-                          onChange={(event) => setWatchRegistryOrigin(event.target.value)}
+                          onValueChange={(nextValue) => setWatchRegistryOrigin(nextValue)}
                           disabled={locked}
                           className="mt-2 h-11 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                         >
@@ -498,7 +499,7 @@ export function RegistriesScreen() {
                               {registry.host}
                             </option>
                           ))}
-                        </select>
+                        </AppSelect>
                       </label>
                       <Button type="submit" disabled={locked || importingPackages || !importNames.trim()}>
                         {importingPackages ? "Importing…" : "Import protections"}

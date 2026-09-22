@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {cleanup,render,screen,fireEvent} from '@testing-library/react';
 import {it,expect,vi,afterEach} from 'vitest';
 import {WorkspaceDeletionRequest} from '../src/components/watch/WorkspaceDeletionRequest';
@@ -22,11 +25,11 @@ it('does not accept consent when the impact inventory is unavailable',async()=>{
  expect(screen.getByRole('checkbox')).toHaveProperty('disabled',true);
  expect(screen.getByRole('button',{name:'Request deletion review'})).toHaveProperty('disabled',true);
 });
-it('resets authorisation when scope or organisation changes',()=>{
+it('resets authorisation when scope or organisation changes',async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({requests:[]}))));
  render(<WorkspaceDeletionRequest organizationId="org" workspaceId="workspace"/>);
  fireEvent.change(screen.getByLabelText('Deletion confirmation'),{target:{value:'DELETE HISTORY workspace'}});fireEvent.click(screen.getByRole('checkbox'));
- fireEvent.change(screen.getByLabelText('Request scope'),{target:{value:'organization_closure'}});
+ await selectOption(screen.getByLabelText('Request scope'),'Close this organisation and delete its history');
  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
  expect((screen.getByLabelText('Deletion confirmation') as HTMLInputElement).value).toBe('');
  expect(screen.getByText('CLOSE AND DELETE org')).toBeTruthy();

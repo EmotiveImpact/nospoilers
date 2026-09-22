@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
 import './watch/design/journey-shell.css';
@@ -318,10 +319,10 @@ export function WatchMonolithShell({
         {opts.collapsed ? null : installations.length > 1 ? (
           <label className="mt-3 block">
             <span className="watch-kicker">GitHub source</span>
-            <select
+            <AppSelect label={`GitHub source`}
               value={activeInstallId ?? ""}
-              onChange={(event) => {
-                const id = Number(event.target.value);
+              onValueChange={(nextValue) => {
+                const id = Number(nextValue);
                 if (Number.isFinite(id) && id > 0) onInstall(id);
               }}
               className="mt-1 h-9 w-full rounded-md border border-line bg-inset px-2 text-[13px] text-snow outline-none focus:border-line-strong"
@@ -332,7 +333,7 @@ export function WatchMonolithShell({
                   {row.disconnectedAt ? " (disconnected)" : row.suspended ? " (suspended)" : ""}
                 </option>
               ))}
-            </select>
+            </AppSelect>
           </label>
         ) : null}
       </div>
@@ -443,7 +444,7 @@ export function WatchMonolithShell({
       <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
-          <DialogPanel id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(17.5rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
+          <DialogPanel data-dropdown-boundary id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(17.5rem,88vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">
             <DialogTitle className="sr-only">Watch navigation</DialogTitle>
             {rail({ collapsed: false, showToggle: false })}
           </DialogPanel>

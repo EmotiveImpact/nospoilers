@@ -163,7 +163,7 @@ export function WatchAlertsWorkspace({
   const selectedRow = selected ? (selectedViewModel?.id===selected.id?selectedViewModel:rows.find((row) => row.id === selected.id)) : null;
   const selectedIsEvent=Boolean(selected&&Object.hasOwn(kindExplanations,selected.kind)&&asFindingList(selected.findings).length===0);
   const listRef = useRef<HTMLOListElement>(null);
-  const assignmentInputRef = useRef<HTMLSelectElement>(null);
+  const assignmentInputRef = useRef<HTMLButtonElement>(null);
   const assignmentCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -260,7 +260,6 @@ export function WatchAlertsWorkspace({
       </div>
       <div key={tab} className={cn("alerts-journey-inbox watch-content-enter grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
         <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
-          <p className="alerts-journey-shortcuts border-b border-white/8 px-4 py-2 text-xs text-mute">J / K moves through the queue. Arrow keys work while the list is focused.</p>
           {exportError ? <p className="border-b border-white/8 px-4 py-2 text-xs text-danger">{exportError}</p> : null}
           {state.status === "loading" ? (
             <WatchSkeleton variant="list" className="min-h-0 flex-1 overflow-hidden" />
@@ -329,6 +328,10 @@ export function WatchAlertsWorkspace({
           </ol>
         )}
         {pagination}
+          <details className="px-4 pb-3 text-xs text-mute">
+            <summary className="cursor-pointer py-2 focus-visible:outline focus-visible:outline-white/50">Keyboard shortcuts</summary>
+            <p className="pb-2">J / K moves through the queue. Arrow keys work while the list is focused.</p>
+          </details>
         </aside>
 
         <main className={cn("alerts-journey-detail min-h-0 lg:block", detailOpen ? "block" : "hidden")}>

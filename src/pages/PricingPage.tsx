@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import { Button } from "@/components/ui/button"
 import { navigate } from "@/nav.ts"
 import { useEffect, useState } from "react"
@@ -92,9 +93,9 @@ export function PricingPage() {
         {canceled ? <p role="status" className="nsw-note">Checkout cancelled. Coverage is unchanged.</p> : null}
         {adminInstalls.length > 1 ? <label className="nsw-field">
           GitHub connection for the existing checkout flow
-          <select value={selected?.id ?? ""} onChange={event => setInstallId(Number(event.target.value))}>
+          <AppSelect label={`GitHub connection for the existing checkout flow`} value={selected?.id ?? ""} onValueChange={(nextValue) => setInstallId(Number(nextValue))}>
             {adminInstalls.map(row => <option key={row.id} value={row.id}>{row.account_login}</option>)}
-          </select>
+          </AppSelect>
         </label> : null}
         <div className="nsw-price-grid">
           {([{ key: 'solo', name: 'Solo', monthly: 29, yearly: 290, description: 'For an individual release workflow.' }, { key: 'team', name: 'Team', monthly: 99, yearly: 990, description: 'For collaborative release review and response.' }] as const).map(plan => <article className="nsw-price-plan" key={plan.key}>

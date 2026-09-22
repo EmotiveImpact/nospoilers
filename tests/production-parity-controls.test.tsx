@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import userEvent from '@testing-library/user-event';
 import {cleanup,fireEvent,render,waitFor,screen} from '@testing-library/react';
 import {afterEach,expect,it,vi} from 'vitest';
@@ -21,7 +24,7 @@ it('sends explicit reference, deployment and file mapping only after confirmatio
   const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
   fireEvent.click(view.getByText('Approved build → production'));
   await view.findByRole('button',{name:'Add file mapping'});
-  fireEvent.change(view.getByLabelText('Production website'),{target:{value:'12'}});
+  await selectOption(view.getByLabelText('Production website'),/https:\/\/owned.example\//);
   fireEvent.change(view.getByLabelText('Declared deployment ID'),{target:{value:'deploy-42'}});
   fireEvent.change(view.getByLabelText('Declared deployment time (your local time)'),{target:{value:'2026-09-09T01:00'}});
   fireEvent.click(view.getByRole('button',{name:'Add file mapping'}));
@@ -53,8 +56,11 @@ it('labels ineligible websites with recovery steps and prevents observation',asy
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response({...base,origins:[{id:12,origin_url:'https://owned.example/',eligible:false,eligibility:'verification_expired'}]})));
   const view=render(<ProductionParityControls streamId="stream" refreshVersion={0}/>);
   await view.findByText(/No website is currently eligible/);
-  const option=view.getByRole('option',{name:/Renew ownership verification/,hidden:true}) as HTMLOptionElement;
-  expect(option.disabled).toBe(true);
+  fireEvent.click(view.getByText('Approved build → production'));
+  await userEvent.click(view.getByLabelText('Production website'));
+  const option=screen.getByRole('option',{name:/Renew ownership verification/});
+  expect(option.getAttribute('aria-disabled')).toBe('true');
+  await userEvent.keyboard('{Escape}');
   expect((view.getByRole('button',{name:'Observe production',hidden:true}) as HTMLButtonElement).disabled).toBe(true);
 });
 

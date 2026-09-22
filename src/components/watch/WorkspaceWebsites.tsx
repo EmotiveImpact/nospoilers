@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import './workspace-websites.css';
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
@@ -94,7 +95,7 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
 function WebsiteSchedule({origin,disabled,onSave}:{origin:Origin;disabled:boolean;onSave:(hours:number)=>void}){
  const [hours,setHours]=useState(origin.schedule_hours??0);
  return <form className="website-schedule mt-3 flex flex-wrap items-end gap-3" onSubmit={event=>{event.preventDefault();onSave(hours);}}>
-  <label className="text-sm">Check schedule for {origin.host}<select className="mt-2 block rounded border border-white/15 bg-surface p-2" value={hours} disabled={disabled} onChange={event=>setHours(Number(event.target.value))}><option value={0}>Manual only</option><option value={6}>Every 6 hours</option><option value={24}>Daily</option></select></label>
+  <label className="text-sm">Check schedule for {origin.host}<AppSelect label={`Check schedule for ${origin.host}`} className="mt-2 block rounded border border-white/15 bg-surface p-2" value={hours} disabled={disabled} onValueChange={(nextValue) => setHours(Number(nextValue))}><option value={0}>Manual only</option><option value={6}>Every 6 hours</option><option value={24}>Daily</option></AppSelect></label>
   <Button type="submit" variant="outline" disabled={disabled}>Save schedule</Button>
  </form>;
 }

@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {render,screen,cleanup,fireEvent,waitFor,act} from '@testing-library/react';
 import {afterEach,it,expect,vi} from 'vitest';
 import {WorkspaceWebsites} from '../src/components/watch/WorkspaceWebsites';
@@ -62,7 +65,7 @@ it('saves an explicit schedule without enabling it on mount',async()=>{
  render(<WorkspaceWebsites workspaceId="workspace"/>);
  const select=await screen.findByRole('combobox',{name:'Check schedule for example.com'});
  expect(fetch.mock.calls.every(([,options])=>!options?.method)).toBe(true);
- fireEvent.change(select,{target:{value:'24'}});fireEvent.click(screen.getByRole('button',{name:'Save schedule'}));
+ await selectOption(select,'Daily');fireEvent.click(screen.getByRole('button',{name:'Save schedule'}));
  await waitFor(()=>expect(fetch).toHaveBeenCalledWith('/api/workspaces/workspace/origins/1/schedule',expect.objectContaining({method:'POST',body:'{"hours":24}'})));
 });
 it('shows the ownership challenge and only checks it after an explicit action',async()=>{

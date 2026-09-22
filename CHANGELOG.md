@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Standardized all 32 remaining native app dropdowns on the shared dark menu: searchable long lists, keyboard selection, disabled options and required validation. Moved Alerts keyboard help into the queue footer and centred activity avatars with their text.
+
 - Added specific alert explanations for scanner rules and repository/package/delivery events, shared with the copyable AI fix brief; event-only alerts no longer imply artifact exposure or show an unrelated rotation checklist.
 
 - GitHub connection attempts with expired authorization now offer explicit sign-in recovery instead of exposing a raw provider error.

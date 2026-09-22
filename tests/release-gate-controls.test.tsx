@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import {selectOption} from './helpers/select-option';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor,cleanup,act} from '@testing-library/react';
 import {ReleaseGateControls} from '../src/components/watch/ReleaseGateControls';
@@ -9,7 +12,7 @@ it('requires confirmation and sends expected policy revision without activating 
   render(<ReleaseGateControls streamId="stream" record={{kind:'upload',id:'record'}} refreshVersion={0}/>);
   await screen.findByText('Explicit CI integration required.');
   const button=screen.getByRole('button',{name:'Adopt policy revision',hidden:true});expect((button as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(screen.getByLabelText('Gate mode'),{target:{value:'enforce'}});
+  await selectOption(screen.getByLabelText('Gate mode'),/Enforce/);
   fireEvent.change(screen.getByLabelText('Policy change reason'),{target:{value:'Require the current release evidence.'}});
   fireEvent.click(screen.getByRole('checkbox',{hidden:true}));fireEvent.click(button);
   await waitFor(()=>expect(fetch.mock.calls.some(([,init])=>init?.method==='POST')).toBe(true));

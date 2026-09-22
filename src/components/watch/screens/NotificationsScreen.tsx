@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { useState } from "react";
@@ -597,9 +598,9 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                         <div className="grid gap-3 sm:grid-cols-2">
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Destination</span>
-                            <select
+                            <AppSelect label={`Destination`}
                               value={routeDestinationId || String(destinations[0]?.id ?? "")}
-                              onChange={(event) => setRouteDestinationId(event.target.value)}
+                              onValueChange={(nextValue) => setRouteDestinationId(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               {destinations.map((destination) => (
@@ -607,27 +608,25 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {destinationKindLabel(destination.kind)} · {destination.host}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Minimum severity</span>
-                            <select
+                            <AppSelect label={`Minimum severity`}
                               value={routeMinSeverity}
-                              onChange={(event) =>
-                                setRouteMinSeverity(event.target.value as "all" | "warn" | "critical")
-                              }
+                              onValueChange={(nextValue) => setRouteMinSeverity(nextValue as "all" | "warn" | "critical")}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="all">All severities</option>
                               <option value="warn">Warn and critical</option>
                               <option value="critical">Critical only</option>
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Repository</span>
-                            <select
+                            <AppSelect label={`Repository`}
                               value={routeRepo}
-                              onChange={(event) => setRouteRepo(event.target.value)}
+                              onValueChange={(nextValue) => setRouteRepo(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="">Any repository</option>
@@ -636,13 +635,13 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {repo.full_name}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Package</span>
-                            <select
+                            <AppSelect label={`Package`}
                               value={routePackage}
-                              onChange={(event) => setRoutePackage(event.target.value)}
+                              onValueChange={(nextValue) => setRoutePackage(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="">Any package</option>
@@ -651,15 +650,15 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {pkg.package_name}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0 sm:col-span-2">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">
                               Assign teammate
                             </span>
-                            <select
+                            <AppSelect label={`Assign teammate`}
                               value={routeTeam}
-                              onChange={(event) => setRouteTeam(event.target.value)}
+                              onValueChange={(nextValue) => setRouteTeam(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="">No auto-assign</option>
@@ -668,7 +667,7 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {member.login}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                         </div>
                         <Button type="submit" size="sm" disabled={savingRoute}>
@@ -720,23 +719,21 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                         <div className="grid gap-3 sm:grid-cols-3">
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Severity</span>
-                            <select
+                            <AppSelect label={`Severity`}
                               value={routeTestSeverity}
-                              onChange={(event) =>
-                                setRouteTestSeverity(event.target.value as "info" | "warn" | "critical")
-                              }
+                              onValueChange={(nextValue) => setRouteTestSeverity(nextValue as "info" | "warn" | "critical")}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="critical">Critical</option>
                               <option value="warn">Warn</option>
                               <option value="info">Info</option>
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Repository</span>
-                            <select
+                            <AppSelect label={`Repository`}
                               value={routeTestRepo}
-                              onChange={(event) => setRouteTestRepo(event.target.value)}
+                              onValueChange={(nextValue) => setRouteTestRepo(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="">Any</option>
@@ -745,13 +742,13 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {repo.full_name}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                           <label className="min-w-0">
                             <span className="text-xs uppercase tracking-[0.16em] text-dim">Package</span>
-                            <select
+                            <AppSelect label={`Package`}
                               value={routeTestPackage}
-                              onChange={(event) => setRouteTestPackage(event.target.value)}
+                              onValueChange={(nextValue) => setRouteTestPackage(nextValue)}
                               className="mt-1 h-10 w-full rounded-md border border-white/15 bg-ink px-3 text-sm text-snow outline-none focus:border-white/40"
                             >
                               <option value="">Any</option>
@@ -760,7 +757,7 @@ export function NotificationsScreen({embedded=false}:{embedded?:boolean}={}) {
                                   {pkg.package_name}
                                 </option>
                               ))}
-                            </select>
+                            </AppSelect>
                           </label>
                         </div>
                         <Button type="submit" size="sm" variant="outline" disabled={testingRoute}>

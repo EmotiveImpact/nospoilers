@@ -1,3 +1,12 @@
+## 22 September 2026 — consistent app dropdowns and quieter Alerts queue
+
+Replaced all 32 remaining native selects in src with AppSelect, using the existing Radix dependency and shared neutral-dark menu styles. Includes the package scan destination, GitHub source selector, notifications, team role, registry, website schedules, release streams/gates/remediation/parity, deletion scope, pricing connection and disclosure controls. Existing option values, disabled states, callbacks and required-field validation remain; no API or authorization changes. Lists over seven choices expose search with explicit popup/listbox semantics, empty results and keyboard navigation. The repository picker remains searchable. Remediation case selection still transfers focus after its control is unmounted, while deliberate user focus movement cancels that transfer.
+
+Moved Alerts keyboard instructions to a collapsed footer disclosure. The prior activity-avatar alignment fix is also on main. No scan, policy, invitation, notification or deletion was executed during visual verification.
+
+Full regression passed **1,741 tests across 278 files** (`NOSPOILERS_INTERNAL_LOCAL_SCAN=1 npm test`). Browser component verification then exposed a Radix fallback-focus interruption when filtering out the selected option; corrected that fallback to retain search focus. After this final adjustment, **33 tests across 5 files** passed, including shared picker search/keyboard/required validation/disabled controls, assignment, parity, remediation and real Headless dialog nesting (selection, focus, Escape ordering). Menus stay inside the dialog panel, and Enter in search cannot submit the enclosing form. TypeScript/frontend build, API build, lint (existing warnings) and diff check passed. Native browser verification confirmed the dark popup, full uninterrupted search text and ArrowDown/Enter selection with focus returned to the trigger. Temporary local component harness files were removed. The local signed-in scan route was also checked; its product-workspace variant correctly has a fixed destination. Production verification follows the main push; this entry does not alone claim deployment or wider launch readiness.
+
+
 ## 22 September 2026 — Specific alert explanations
 
 Added a shared deterministic guidance catalog for 25 scanner rules and 41 event kinds, with dedicated scan-family, custody, incomplete-check and sensitive-path guidance. Findings are grouped by rule with their own paths, correction and verification; unknown codes explicitly retain uncertainty. The copyable AI brief uses the same catalog without invoking any provider. Repository/package event-only detail no longer labels the event as a content finding, invents an exposure duration or shows an unrelated rotation checklist. The owner's live alert 29 is a repos_added event and now receives connection/access guidance rather than generic rebuild advice.
@@ -5,6 +14,7 @@ Added a shared deterministic guidance catalog for 25 scanner rules and 41 event 
 Explanation, brief, queue/filter keyboard, workspace alert and accessibility regressions passed **51/51 across 6 files**. See [Alert explanations](../ALERT-EXPLANATIONS.md) for maintenance and evidence limits. No response, scanner, authorization or provider activation semantics changed.
 
 TypeScript/frontend build and diff check passed. Production `7dcc2f8` served the exact tested bundle (SHA-256 `eb3ee305586a9de571a8e7e168d3c1e0c89a05f12f75a07e7f4ad0b5c49589ae`). Live alert 29 and its reviewable brief both showed the repository-access explanation and Coverage review steps. Full GitHub CI was still running when this live verification was recorded; the focused checks are not a full-suite claim.
+
 
 ## 22 September 2026 — Connect source opens the correct workflow
 

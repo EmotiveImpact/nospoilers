@@ -170,3 +170,36 @@
     transition: none;
   }
 }
+
+/* One neutral-dark picker treatment across Watch, including older form controls. */
+.ns-app-select.ns-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 6px;
+  background: #090a0c;
+  color: #f4f4f5;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+}
+.ns-app-select.ns-select-trigger:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 50%);
+  outline-offset: 2px;
+}
+.ns-app-select.ns-select-trigger:disabled { opacity: .5; cursor: not-allowed; }
+.ns-app-select-content {
+  z-index: 100;
+  width: var(--radix-select-trigger-width);
+  max-width: min(var(--radix-select-trigger-width), var(--radix-select-content-available-width));
+}
+.ns-app-select-search { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid rgb(255 255 255 / 8%); color: #a1a1aa; }
+.ns-app-select-search input { width: 100%; min-width: 0; border: 0; background: transparent; color: #f4f4f5; outline: none; font: inherit; }

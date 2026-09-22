@@ -1,3 +1,4 @@
+import { AppSelect } from "@/components/ui/app-select";
 import {EvidenceTypePicker,type EvidenceType} from '@/components/watch/EvidenceTypePicker';
 import { Button as HeadlessButton, Description, Field, Label, Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react"
 import { Badge } from "@/components/ui/badge"
@@ -397,15 +398,15 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
               <p className="text-[11px] uppercase tracking-[0.22em] text-dim">Package or build</p>
               <h2 id="package-scan-title" className="mt-3 font-display text-2xl text-snow">Drop the exact artifact you plan to release.</h2>
               {productWorkspace?<p className="mt-5 text-sm text-mute">Saving in <strong className="text-snow">{productWorkspace.name}</strong></p>:session ? <label className="mt-5 block text-sm text-mute">Save this release in
-                <select className="mt-2 block w-full rounded-lg border border-white/15 bg-black p-3 text-snow" value={selectedInstall ?? ''} onChange={event => {
+                <AppSelect label={`Save this release in`} className="mt-2 block w-full rounded-lg border border-white/15 bg-black p-3 text-snow" value={selectedInstall ?? ''} onValueChange={(nextValue) => {
                   const params = new URLSearchParams(search)
-                  if (event.target.value) params.set('install', event.target.value)
+                  if (nextValue) params.set('install', nextValue)
                   else params.delete('install')
                   navigate(`${embedded ? '/watch/scan' : '/scan'}?${params}`)
                 }}>
                   <option value="">Personal workspace</option>
                   {session.installations?.map(item => <option key={item.id} value={item.id}>{item.account_login}{item.suspended ? ' · suspended' : ''}</option>)}
-                </select>
+                </AppSelect>
               </label> : null}
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute">
                 Choose the packaged build your customers receive. Review the selected file before starting your scan.
