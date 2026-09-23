@@ -14,6 +14,12 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
 | Stripe cannot take payment | Deliberately deferred by the owner | Configure sandbox prices, keys and webhook later; then test checkout, entitlement changes, cancellation and expiry |
 
+## Fixed on 23 September 2026
+
+| Problem | Fix | Evidence |
+| --- | --- | --- |
+| Timeline was a tall, repetitive log and its missing-release records would lead to unavailable Alerts detail | Added compact rows, source/event search, a per-day expandable group that retains each check, and repository-scoped Coverage links using the persisted repository ID | Timeline UI/API, coverage and accessibility focused tests; frontend/API builds |
+
 ## Fixed on 21–22 September 2026
 
 | Problem | Fix | Evidence |

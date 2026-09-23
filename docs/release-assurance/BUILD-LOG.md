@@ -1,3 +1,9 @@
+## 23 September 2026 — Timeline activity redesign
+
+Implemented the approved Timeline study in the authenticated product: compact day-grouped rows, distinct event icons, source/event search and clearer actions. Multiple retained `scan_latest_release`/“No release on” records on the same day become one expandable group; each returned record remains available. The timeline API now includes the recorded repository ID so those checks open their exact source in Coverage. Other actionable alerts, responses and linked deliveries continue to open their exact alert. Grouping and search operate on the returned retained window; they do not create, delete or reclassify evidence.
+
+Verification: the final focused Timeline UI/API, workspace alert pagination, Coverage detail, accessibility and architecture run passed **33/33 across six files**. Final TypeScript/frontend and API builds, affected-file lint and diff checks passed. The Timeline API still limits results to 200 retained entries; search applies to that returned window rather than every retained record.
+
 ## 22 September 2026 — matching scan guidance layout
 
 GitHub scan now uses the same launch layout and main-column styling as Package or build, avoiding website-specific aside padding and typography. Scope guidance stacks below both forms at the same 900px breakpoint. Local browser measurements matched exactly between modes: 270px panel width, 26px left padding, 12px copy with 19.8px line height, and identical x/y position at the tested desktop viewport. Existing scan prerequisites/submission tests passed 30/30; TypeScript/frontend build and diff check passed. No scan behavior changed.

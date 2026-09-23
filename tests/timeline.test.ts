@@ -151,6 +151,7 @@ describe("90-day timeline", () => {
           title: string | null;
           action: string | null;
           fullName: string | null;
+          repoId: number | null;
           inventedIncident: boolean | null;
         }[];
       };
@@ -167,6 +168,7 @@ describe("90-day timeline", () => {
         true,
       );
       expect(body.entries.some((row) => row.fullName === "octo/throwaway")).toBe(true);
+      expect(body.entries.some((row) => row.type === "alert" && row.repoId === 99)).toBe(true);
       expect(body.entries.some((row) => row.title?.includes("old flipped"))).toBe(false);
     } finally {
       await sql.close();

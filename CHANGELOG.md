@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Reworked Timeline into compact, searchable daily activity. Repeated missing-release checks collapse by day, retain each underlying record, and open the exact repository in Coverage; alert and response rows retain their exact alert links.
+
 - Aligned GitHub scan guidance with Package or build by sharing the launch layout and matching the responsive stacking breakpoint.
 
 - Standardized all 32 remaining native app dropdowns on the shared dark menu: searchable long lists, keyboard selection, disabled options and required validation. Moved Alerts keyboard help into the queue footer and centred activity avatars with their text.

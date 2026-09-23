@@ -1,31 +1,56 @@
 .watch-desk .timeline-page{max-width:1120px;margin-top:8px}
 .watch-desk .timeline-page>.watch-between{margin-bottom:10px}
 .watch-desk .timeline-page>.watch-guidance{max-width:720px;margin-top:0;font-size:12px;line-height:1.75;color:#898c96}
-.watch-desk .timeline-summary{display:flex;gap:24px;margin-top:22px;padding:15px 0;border-block:1px solid #ffffff10}
-.watch-desk .timeline-summary .watch-kv{display:flex;align-items:baseline;gap:9px;padding-right:24px;border-right:1px solid #ffffff10;font-size:11px}
-.watch-desk .timeline-summary .watch-kv:last-child{border:0}
-.watch-desk .timeline-summary .watch-kv span:first-child{color:#898c96}
-.watch-desk .timeline-filter-tabs{display:flex;gap:24px;margin:26px 0 0;border-bottom:1px solid #ffffff10;overflow:auto}
-.watch-desk .timeline-filter-tabs button{flex:0 0 auto;padding:11px 1px;border-bottom:2px solid transparent;color:#898c96;font-size:12px}
-.watch-desk .timeline-filter-tabs button:hover{color:#d8d8dd}
-.watch-desk .timeline-filter-tabs button[aria-selected=true]{border-color:#e4e4e7;color:#f4f4f5}
-.watch-desk .timeline-chart-disclosure{margin-top:20px;border:0;border-bottom:1px solid #ffffff10;border-radius:0;background:transparent}
-.watch-desk .timeline-chart-disclosure>summary{padding:13px 0}
-.watch-desk .timeline-feed{margin-top:31px}
-.watch-desk .timeline-feed>header{display:flex;align-items:baseline;justify-content:space-between;gap:18px}
-.watch-desk .timeline-feed>header h2{font-size:15px;font-weight:550}
-.watch-desk .timeline-feed>header p{color:#898c96;font-size:11px}
-.watch-desk .timeline-events{margin-top:15px;border:0;border-radius:0;background:transparent;padding:0}
-.watch-desk .timeline-event{display:grid;grid-template-columns:70px 30px minmax(0,1fr) auto;gap:14px;align-items:start;padding:19px 0;border-bottom:1px solid #ffffff10}
-.watch-desk .timeline-event>time{padding-top:2px;color:#898c96;font-size:11px}
-.watch-desk .timeline-event-icon{display:grid;width:26px;height:26px;place-items:center;color:#898c96}
-.watch-desk .timeline-event-icon svg{width:16px;height:16px}
-.watch-desk .timeline-event strong{display:block;color:#f4f4f5;font-size:13px;font-weight:500;overflow-wrap:anywhere}
-.watch-desk .timeline-event p{margin-top:4px;color:#898c96;font-size:11px;overflow-wrap:anywhere}
-.watch-desk .timeline-event-link{display:inline-flex;align-items:center;gap:7px;padding:4px 1px;color:#cdced4;font-size:11px}
-.watch-desk .timeline-event-link:hover{color:#f4f4f5}
+.watch-desk .timeline-filter-tabs{display:flex;gap:27px;margin:29px 0 0;border-bottom:1px solid #ffffff19;overflow:auto}
+.watch-desk .timeline-filter-tabs button{flex:0 0 auto;padding:11px 1px 13px;border-bottom:2px solid transparent;color:#9999a3;font-size:13px;white-space:nowrap}
+.watch-desk .timeline-filter-tabs button:hover{color:#f4f4f5}
+.watch-desk .timeline-filter-tabs button[aria-selected=true]{border-color:#f14c58;color:#f4f4f5}
+.watch-desk .timeline-feed{margin-top:23px}
+.watch-desk .timeline-feed-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:7px}
+.watch-desk .timeline-feed-header h2{font-size:14px;font-weight:620;color:#f4f4f5}
+.watch-desk .timeline-feed-header p{margin-top:5px;font-size:12px;color:#8f8f99}
+.watch-desk .timeline-search{display:flex;align-items:center;gap:10px;width:min(300px,45%);height:38px;padding:0 12px;border:1px solid #ffffff20;border-radius:7px;background:#141415;color:#8f8f99}
+.watch-desk .timeline-search svg{width:16px;height:16px;flex:none}
+.watch-desk .timeline-search input{min-width:0;width:100%;background:transparent;border:0;outline:0;color:#f4f4f5;font-size:12px}
+.watch-desk .timeline-search input::placeholder{color:#85858e}
+.watch-desk .timeline-search:focus-within{border-color:#a9a9b0}
+.watch-desk .timeline-days,.watch-desk .timeline-events,.watch-desk .timeline-check-children{list-style:none;margin:0;padding:0}
+.watch-desk .timeline-date{padding:18px 0 9px;margin:0;color:#f0f0f2;font-size:14px;font-weight:600}
+.watch-desk .timeline-day+.timeline-day{margin-top:9px}
+.watch-desk .timeline-event{display:grid;grid-template-columns:50px 28px minmax(0,1fr) auto;gap:15px;align-items:center;min-height:69px;padding:9px 0;border-bottom:1px solid #ffffff13}
+.watch-desk .timeline-event>time{color:#92929c;font-size:11px;font-variant-numeric:tabular-nums}
+.watch-desk .timeline-event-icon{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;background:#ffffff09;color:#a6a6b0}
+.watch-desk .timeline-event-icon svg{width:15px;height:15px}
+.watch-desk .timeline-event-finding .timeline-event-icon{color:#ff9b99;background:#ff71641a}
+.watch-desk .timeline-event-response .timeline-event-icon{color:#a1d9b3;background:#63c38815}
+.watch-desk .timeline-event-incomplete .timeline-event-icon{color:#e6ba7f;background:#d79e5015}
+.watch-desk .timeline-event-delivery .timeline-event-icon{color:#9bbbe6;background:#7ca8e515}
+.watch-desk .timeline-event-copy{min-width:0}
+.watch-desk .timeline-event-copy strong{display:block;color:#f3f3f4;font-size:13px;font-weight:570;line-height:1.35;overflow-wrap:anywhere}
+.watch-desk .timeline-event-copy p{margin-top:5px;color:#92929c;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.watch-desk .timeline-event-link{display:inline-flex;align-items:center;gap:7px;padding:9px 0 9px 12px;color:#c6c6ce;font-size:11px;white-space:nowrap}
+.watch-desk .timeline-event-link:hover{color:#fff;text-decoration:underline;text-underline-offset:3px}
 .watch-desk .timeline-event-link svg{width:13px;height:13px}
-.watch-desk .timeline-event-unlinked{padding-top:4px;color:#6f727c;font-size:10px}
-@media(max-width:600px){.watch-desk .timeline-summary{gap:14px}.watch-desk .timeline-summary .watch-kv{padding-right:14px}.watch-desk .timeline-filter-tabs{gap:18px}.watch-desk .timeline-event{grid-template-columns:42px 24px minmax(0,1fr);gap:9px}.watch-desk .timeline-event-icon{width:22px;height:22px}.watch-desk .timeline-event-link,.watch-desk .timeline-event-unlinked{grid-column:3;justify-self:start}.watch-desk .timeline-feed>header{align-items:flex-start;flex-direction:column;gap:4px}}
-
-.watch-desk .timeline-date{font-size:15px;font-weight:550;margin:25px 0 3px}.watch-desk .timeline-page>.watch-between{margin-bottom:28px}.watch-desk .timeline-feed>header{font-size:11px;color:#898c96}.watch-desk .timeline-feed>header h2{font-size:12px;color:#898c96}
+.watch-desk .timeline-event-unlinked{color:#85858f;font-size:11px}
+.watch-desk .timeline-check-group{margin:0 -14px;padding:0 14px;background:#181817;border-bottom:1px solid #ffffff1c}
+.watch-desk .timeline-event-group{border-bottom:0}
+.watch-desk .timeline-event-group strong{color:#f1e5d4}
+.watch-desk .timeline-group-toggle{color:#ecc292}
+.watch-desk .timeline-group-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
+.watch-desk .timeline-check-count{display:inline-block;margin-left:7px;padding:3px 6px;border-radius:4px;background:#bd7c2d20;color:#d8b481;font-size:10px;font-weight:500;vertical-align:middle;white-space:nowrap}
+.watch-desk .timeline-check-children{padding:3px 0 10px}
+.watch-desk .timeline-event-child{min-height:50px;margin-left:65px;grid-template-columns:minmax(0,1fr) auto;gap:12px}
+.watch-desk .timeline-event-child>time,.watch-desk .timeline-event-child>.timeline-event-icon{display:none}
+.watch-desk .timeline-event-child:last-child{border-bottom:0}
+.watch-desk .timeline-event-child .timeline-event-copy strong{font-size:12px;font-weight:500}
+.watch-desk .timeline-event-child .timeline-event-copy p{margin-top:2px}
+@media(max-width:600px){
+ .watch-desk .timeline-filter-tabs{gap:19px}
+ .watch-desk .timeline-feed-header{align-items:stretch;flex-direction:column;gap:15px}
+ .watch-desk .timeline-search{width:100%}
+ .watch-desk .timeline-event{grid-template-columns:39px 24px minmax(0,1fr);gap:9px;padding:11px 0}
+ .watch-desk .timeline-event-link,.watch-desk .timeline-event-unlinked{grid-column:3;justify-self:start;padding:2px 0 0}
+ .watch-desk .timeline-check-group{margin:0 -8px;padding:0 8px}
+ .watch-desk .timeline-event-child{margin-left:33px;grid-template-columns:minmax(0,1fr);gap:0}
+ .watch-desk .timeline-event-child .timeline-event-copy,.watch-desk .timeline-event-child .timeline-event-link{grid-column:1}
+}

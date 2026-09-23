@@ -186,6 +186,7 @@ export type TimelineEntry = {
   at: string;
   type: "alert" | "alert_event" | "delivery";
   alertId: number | null;
+  repoId?: number | null;
   kind: string | null;
   title: string | null;
   fullName: string | null;

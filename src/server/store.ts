@@ -287,6 +287,7 @@ export type TimelineEntry = {
   at: string;
   type: "alert" | "alert_event" | "delivery";
   alertId: number | null;
+  repoId: number | null;
   kind: string | null;
   title: string | null;
   fullName: string | null;
@@ -7194,6 +7195,7 @@ export function createStore(
         at: string | Date;
         type: "alert" | "alert_event" | "delivery";
         alert_id: unknown;
+        repo_id: unknown;
         kind: string | null;
         title: string | null;
         full_name: string | null;
@@ -7206,6 +7208,7 @@ export function createStore(
            SELECT a.created_at AS at,
                   'alert'::text AS type,
                   a.id AS alert_id,
+                  a.repo_id,
                   a.kind,
                   a.title,
                   r.full_name,
@@ -7223,6 +7226,7 @@ export function createStore(
            SELECT e.created_at AS at,
                   'alert_event'::text AS type,
                   e.alert_id,
+                  a.repo_id,
                   a.kind,
                   a.title,
                   r.full_name,
@@ -7241,6 +7245,7 @@ export function createStore(
            SELECT d.created_at AS at,
                   'delivery'::text AS type,
                   d.alert_id,
+                  NULL::bigint AS repo_id,
                   d.kind,
                   NULL::text AS title,
                   NULL::text AS full_name,
@@ -7262,6 +7267,7 @@ export function createStore(
         at: iso(row.at) ?? new Date().toISOString(),
         type: row.type,
         alertId: row.alert_id === null || row.alert_id === undefined ? null : num(row.alert_id),
+        repoId: row.repo_id === null || row.repo_id === undefined ? null : num(row.repo_id),
         kind: row.kind,
         title: row.title,
         fullName: row.full_name,

@@ -2639,6 +2639,7 @@ export function createApp(deps: AppDeps): Hono {
         at: row.at,
         type: row.type,
         alertId: row.alertId,
+        repoId: row.repoId,
         kind: row.kind,
         title: row.title,
         fullName: row.fullName,
