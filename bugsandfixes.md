@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Timeline event text looked disconnected from its rows | Removed superseded shared Timeline styles that overrode the redesign with 22px vertical padding and obsolete markers; reduced row height and made supporting text easier to read | Live computed style showed 22px padding and 83px rows before the fix; focused Timeline tests, frontend build and diff check passed |
 | Timeline was a tall, repetitive log and its missing-release records would lead to unavailable Alerts detail | Added compact rows, source/event search, a per-day expandable group that retains each check, and repository-scoped Coverage links using the persisted repository ID | Timeline UI/API, coverage and accessibility focused tests; frontend/API builds |
 
 ## Fixed on 21–22 September 2026

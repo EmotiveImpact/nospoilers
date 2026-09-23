@@ -1,3 +1,7 @@
+## 23 September 2026 — Timeline spacing correction
+
+The live Timeline still rendered 83px event rows: obsolete `page-layouts.css` selectors overrode the new row padding with 22px on each side and inserted legacy dot markers. Removed those unused Timeline rules so `timeline-page.css` owns the layout, reduced the row minimum to 62px and increased the muted supporting text from 11px to 12px. This changes presentation only; event grouping, links and retained data are unchanged. Focused Timeline tests passed 4/4 across two files, TypeScript/frontend build and diff check passed. Live deployment verification follows the push.
+
 ## 23 September 2026 — Timeline activity redesign
 
 Implemented the approved Timeline study in the authenticated product: compact day-grouped rows, distinct event icons, source/event search and clearer actions. Multiple retained `scan_latest_release`/“No release on” records on the same day become one expandable group; each returned record remains available. The timeline API now includes the recorded repository ID so those checks open their exact source in Coverage. Other actionable alerts, responses and linked deliveries continue to open their exact alert. Grouping and search operate on the returned retained window; they do not create, delete or reclassify evidence.
