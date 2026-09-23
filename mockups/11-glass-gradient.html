@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Direction 11 — Glassmorphism gradient
+  Rationale: a deep-space gradient with frosted glass panels makes the desk feel like
+  a calm instrument panel from the future — severity glows (rose for critical, amber
+  for warn, mint for pass) so it is scannable in under two seconds. Body text stays
+  AA-legible by keeping glass tint low and falling back to a solid panel color when
+  backdrop-filter is unavailable. Neon cyan→magenta is reserved for brand and the
+  primary action, never for severity.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>NoSpoilers mockup — 11 Glassmorphism gradient</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#0f0c29; --bg-2:#302b63; --bg-3:#24243e;
+    --text:#f4f4f8; --muted:#b8b8cc; --dim:#9a9ab2;
+    --cyan:#22d3ee; --magenta:#e879f9;
+    --crit:#fb7185; --warn:#fbbf24; --pass:#34d399;
+    --card:rgba(255,255,255,.06);
+    --card-2:rgba(255,255,255,.045);
+    --brd:rgba(255,255,255,.12);
+    --brd-soft:rgba(255,255,255,.08);
+    --ink-on-neon:#14112b;
+    --display:"Space Grotesk","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;color:var(--text);
+    font-family:var(--body);font-size:15.5px;line-height:1.6;
+    background:linear-gradient(155deg,var(--bg-1) 0%,var(--bg-2) 48%,var(--bg-3) 100%) fixed;
+    background-color:var(--bg-3);
+    min-height:100vh;padding-bottom:130px;
+  }
+  ::selection{background:var(--magenta);color:var(--ink-on-neon)}
+  a{color:inherit}
+  code{font-family:var(--mono);font-size:.86em}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+  /* ---------- ambient orbs (give the glass something to blur) ---------- */
+  .orb{position:fixed;border-radius:50%;filter:blur(90px);z-index:0;pointer-events:none;opacity:.5}
+  .orb-a{width:440px;height:440px;background:#22d3ee;top:-140px;left:-100px;opacity:.28}
+  .orb-b{width:520px;height:520px;background:#e879f9;top:26%;right:-180px;opacity:.22}
+  .orb-c{width:420px;height:420px;background:#7c3aed;bottom:-140px;left:32%;opacity:.3}
+  @keyframes drift-a{from{transform:translate(0,0)}to{transform:translate(40px,30px)}}
+  @keyframes drift-b{from{transform:translate(0,0)}to{transform:translate(-50px,40px)}}
+  .orb-a{animation:drift-a 16s ease-in-out infinite alternate}
+  .orb-b{animation:drift-b 20s ease-in-out infinite alternate}
+
+  /* ---------- glass primitives ---------- */
+  .glass{
+    background:var(--card);
+    border:1px solid var(--brd);
+    border-radius:20px;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px rgba(2,0,20,.35);
+  }
+  .glass-in{
+    background:var(--card-2);
+    border:1px solid var(--brd-soft);
+    border-radius:14px;
+  }
+  @supports not (backdrop-filter:blur(1px)){
+    .glass,.mockup-switcher{background:rgba(32,27,63,.94)}
+  }
+  @supports not (-webkit-backdrop-filter:blur(1px)){
+    .glass,.mockup-switcher{background:rgba(32,27,63,.94)}
+  }
+
+  .grad-text{
+    background:linear-gradient(92deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+  }
+  .micro{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:9px;cursor:pointer;text-decoration:none;
+    font-family:var(--body);font-weight:600;font-size:13.5px;
+    border-radius:12px;padding:11px 18px;border:1px solid var(--brd);
+    background:rgba(255,255,255,.06);color:var(--text);
+    transition:border-color .15s ease,background .15s ease,box-shadow .15s ease,transform .15s ease;
+  }
+  .btn:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1)}
+  .btn-neon{
+    background:linear-gradient(92deg,var(--cyan),var(--magenta));
+    color:var(--ink-on-neon);border:0;font-weight:700;
+    box-shadow:0 8px 26px rgba(232,121,249,.28);
+  }
+  .btn-neon:hover{background:linear-gradient(92deg,var(--cyan),var(--magenta));box-shadow:0 10px 32px rgba(34,211,238,.4);transform:translateY(-1px)}
+  .btn-sm{padding:8px 13px;font-size:12px;border-radius:10px}
+  .btn svg{flex:none}
+
+  /* ---------- severity ---------- */
+  .sev{
+    display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+    font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    padding:4px 10px;border-radius:999px;border:1px solid;
+  }
+  .sev svg{width:11px;height:11px;flex:none}
+  .sev-critical{color:var(--crit);border-color:rgba(251,113,133,.45);background:rgba(251,113,133,.1);box-shadow:0 0 14px rgba(251,113,133,.22)}
+  .sev-warn{color:var(--warn);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.09)}
+  .sev-pass{color:var(--pass);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.09)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .dot-pass{background:var(--pass);box-shadow:0 0 10px rgba(52,211,153,.7)}
+  .dot-crit{background:var(--crit);box-shadow:0 0 10px rgba(251,113,133,.8)}
+
+  /* ---------- chrome ---------- */
+  .chrome{position:relative;z-index:1;padding:16px 0 0}
+  .chrome-inner{
+    display:flex;align-items:center;gap:26px;flex-wrap:wrap;
+    padding:14px 22px;border-radius:16px;
+  }
+  .wordmark{
+    font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em;
+    text-decoration:none;display:inline-flex;align-items:center;gap:10px;
+  }
+  .wordmark::before{
+    content:"";width:12px;height:12px;border-radius:4px;
+    background:linear-gradient(135deg,var(--cyan),var(--magenta));
+    box-shadow:0 0 12px rgba(34,211,238,.6);
+  }
+  .chrome-nav{display:flex;gap:20px;flex-wrap:wrap}
+  .chrome-nav a{
+    text-decoration:none;font-size:13px;font-weight:500;color:var(--muted);
+    transition:color .15s ease;
+  }
+  .chrome-nav a:hover{color:var(--text)}
+  .chrome-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .account{
+    display:inline-flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;
+  }
+  .account::before{
+    content:"";width:22px;height:22px;border-radius:50%;
+    background:linear-gradient(135deg,var(--cyan),var(--magenta));
+    border:1px solid rgba(255,255,255,.35);
+  }
+
+  /* ---------- landing: hero ---------- */
+  .hero{padding:76px 0 54px}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:12px;margin:0 0 24px;
+    font-size:11.5px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:var(--cyan);
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--cyan)}
+  h1{
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(2.4rem,5.8vw,4.3rem);line-height:1.04;letter-spacing:-.025em;
+    margin:0 0 26px;max-width:17ch;
+  }
+  .sub{max-width:62ch;font-size:16.5px;color:var(--muted);margin:0 0 32px}
+  .cta-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 24px}
+  .cta-primary{padding:14px 24px;font-size:14.5px}
+  .price{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .note{
+    margin:0;max-width:62ch;font-size:13.5px;color:var(--muted);
+    border-left:2px solid var(--cyan);padding:4px 0 4px 14px;
+  }
+
+  /* ---------- landing: preview ---------- */
+  .preview-card{padding:10px;margin:8px 0 0}
+  .preview-link{
+    display:block;text-decoration:none;color:inherit;border-radius:14px;
+    background:rgba(15,12,41,.45);border:1px solid var(--brd-soft);
+    padding:22px;transition:border-color .15s ease;
+  }
+  .preview-link:hover{border-color:rgba(255,255,255,.28)}
+  .mini{font-size:13px}
+  .mini-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .mini-title{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em}
+  .mini-badge{
+    display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);
+    border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.08);
+    padding:4px 11px;border-radius:999px;
+  }
+  .mini-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  .mini-stat{padding:12px 14px}
+  .mini-stat b{font-family:var(--display);font-weight:700;font-size:24px;display:block;line-height:1.1}
+  .mini-stat .rose{color:var(--crit);text-shadow:0 0 16px rgba(251,113,133,.5)}
+  .mini-stat span{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .mini-row{
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;
+    border-top:1px solid var(--brd-soft);padding:10px 2px;
+  }
+  .mini-row .m{color:var(--muted);font-size:12.5px}
+  .mini-row .danger{color:var(--crit);font-weight:600}
+  .preview-cap{
+    text-align:center;color:var(--muted);font-size:13.5px;padding:16px 0 10px;margin:0;
+  }
+  .preview-cap .go{color:var(--cyan);font-weight:600}
+
+  /* ---------- landing: features ---------- */
+  .features{padding:56px 0 8px}
+  .features ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .features li{padding:26px 24px}
+  .f-num{
+    display:block;font-family:var(--display);font-weight:700;font-size:40px;line-height:1;
+    margin-bottom:16px;
+    background:linear-gradient(92deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+  }
+  .features h3{margin:0 0 10px;font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .features p{margin:0;color:var(--muted);font-size:14px}
+  .features code{color:var(--cyan);font-size:.84em}
+
+  /* ---------- landing: flags ---------- */
+  .flags{padding:48px 0 8px}
+  .flags-card{padding:26px 26px 20px}
+  .flags-head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px}
+  .flags-head h2{margin:0;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .flags-head::after{content:"";flex:1;height:1px;background:var(--brd-soft)}
+  .flag-list{
+    list-style:none;margin:0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;
+  }
+  .flag-list li{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 14px;border-radius:12px;
+    background:var(--card-2);border:1px solid var(--brd-soft);
+  }
+  .flag-id{font-size:13px;color:var(--text)}
+  .flag-id code{color:var(--cyan);font-weight:700;margin-right:8px}
+  .flag-list .sev{margin-left:auto}
+
+  /* ---------- landing: footer ---------- */
+  .site-footer{padding:56px 0 12px}
+  .foot-inner{padding:24px 26px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .foot-links{display:flex;gap:20px;flex-wrap:wrap}
+  .foot-links a{font-size:12.5px;color:var(--muted);text-decoration:none;font-weight:500}
+  .foot-links a:hover{color:var(--text)}
+  .colophon{margin:0 0 0 auto;font-family:var(--display);font-weight:600;font-size:14px}
+
+  /* ---------- watch desk: header ---------- */
+  .desk-head{padding:44px 0 26px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+  .desk-eyebrow{
+    display:inline-flex;align-items:center;gap:12px;margin:0 0 12px;
+    font-size:11px;letter-spacing:.3em;text-transform:uppercase;font-weight:600;color:var(--cyan);
+  }
+  .desk-eyebrow::before{content:"";width:22px;height:1px;background:var(--cyan)}
+  .desk-account{
+    font-family:var(--display);font-weight:700;letter-spacing:-.02em;
+    font-size:clamp(28px,4vw,40px);margin:0;line-height:1.1;
+  }
+  .desk-side{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .cov-badge{
+    display:none;align-items:center;gap:9px;
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid;
+  }
+  .cov-badge::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+  .cov-trial{color:var(--cyan);border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08)}
+  .cov-trial::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .cov-active{color:var(--pass);border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.08)}
+  .cov-active::before{background:var(--pass);box-shadow:0 0 8px var(--pass)}
+  .cov-ended{color:var(--crit);border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1);box-shadow:0 0 18px rgba(251,113,133,.25)}
+  .cov-ended::before{background:var(--crit);box-shadow:0 0 8px var(--crit)}
+  body[data-coverage="trial"] .cov-trial{display:inline-flex}
+  body[data-coverage="active"] .cov-active{display:inline-flex}
+  body[data-coverage="ended"] .cov-ended{display:inline-flex}
+  .cov-note{display:none;margin:0;font-size:13px;color:var(--muted)}
+  body[data-coverage="trial"] .cov-note-trial{display:block}
+  body[data-coverage="ended"] .cov-note-ended{display:block}
+
+  /* ---------- watch desk: subscribe (ended) ---------- */
+  .subscribe{
+    display:none;margin:0 0 26px;padding:1px;border-radius:20px;
+    background:linear-gradient(92deg,var(--cyan),var(--magenta));
+    box-shadow:0 12px 44px rgba(232,121,249,.3);
+  }
+  body[data-coverage="ended"] .subscribe{display:block}
+  .subscribe-in{
+    border-radius:19px;background:rgba(18,14,42,.92);
+    padding:26px 28px;display:flex;align-items:center;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;
+  }
+  .subscribe-copy{margin:0;color:var(--muted);font-size:14px;max-width:40ch}
+  .subscribe-copy strong{display:block;color:var(--text);font-family:var(--display);font-size:17px;margin-bottom:4px}
+  .subscribe .btn-neon{font-size:14.5px;padding:14px 22px}
+
+  /* ---------- watch desk: muted when ended ---------- */
+  .desk{transition:opacity .2s ease,filter .2s ease}
+  body[data-coverage="ended"] .desk{opacity:.45;filter:saturate(.5)}
+
+  /* ---------- watch desk: stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{padding:18px 20px}
+  .stat b{font-family:var(--display);font-weight:700;font-size:32px;display:block;line-height:1.1}
+  .stat span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .stat-alert b{color:var(--crit);text-shadow:0 0 18px rgba(251,113,133,.55)}
+
+  /* ---------- watch desk: sections ---------- */
+  .desk-section{margin-top:18px;padding:24px 26px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+  .sec-head h3{
+    margin:0;font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;
+  }
+  .sec-head::after{content:"";flex:1;height:1px;background:var(--brd-soft)}
+
+  .row{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:13px 2px;border-bottom:1px solid var(--brd-soft);
+  }
+  .row:last-child{border-bottom:0}
+  .row-name{font-weight:600;font-size:15px}
+  .row-meta{margin-left:auto;color:var(--muted);font-size:13px}
+  .tag{
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    border:1px solid var(--brd);color:var(--muted);padding:3px 10px;border-radius:999px;
+  }
+  .tag-danger{border-color:rgba(251,113,133,.5);color:var(--crit)}
+  .row-danger{
+    background:rgba(251,113,133,.06);border:1px solid rgba(251,113,133,.28);
+    border-radius:12px;padding:13px 14px;margin:6px 0;
+    box-shadow:0 0 24px rgba(251,113,133,.12);
+  }
+  .row-meta-danger{color:var(--crit);font-weight:600}
+
+  /* ---------- watch desk: alerts ---------- */
+  .alert{padding:22px 22px;margin-bottom:16px;position:relative;overflow:hidden}
+  .alert:last-child{margin-bottom:0}
+  .alert::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:var(--crit);box-shadow:0 0 14px rgba(251,113,133,.6);
+  }
+  .kicker{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+  }
+  .k-kind{color:var(--text);font-weight:700}
+  .k-state-open{display:inline-flex;align-items:center;gap:7px;color:var(--crit);font-weight:700}
+  .k-state-open::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--crit);box-shadow:0 0 8px var(--crit)}
+  .k-state-res{display:none;align-items:center;gap:7px;color:var(--pass);font-weight:700}
+  .k-state-res::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pass);box-shadow:0 0 8px var(--pass)}
+  body[data-coverage="active"] .alert-public .k-state-open{display:none}
+  body[data-coverage="active"] .alert-public .k-state-res{display:inline-flex}
+  body[data-coverage="active"] .alert-public{opacity:.66}
+  body[data-coverage="active"] .alert-public::before{background:var(--pass);box-shadow:0 0 14px rgba(52,211,153,.5)}
+  .alert h4{font-family:var(--display);font-weight:600;font-size:17.5px;margin:0 0 6px;letter-spacing:-.01em}
+  .alert-body{margin:0;color:var(--muted);font-size:13.5px}
+
+  .findings{margin:16px 0 0;border-top:1px solid var(--brd-soft)}
+  .finding{
+    display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;
+    padding:11px 2px;border-bottom:1px solid var(--brd-soft);
+  }
+  .finding:last-child{border-bottom:0}
+  .f-code{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--cyan)}
+  .f-path{font-family:var(--mono);font-size:12.5px;color:var(--text)}
+  .f-note{display:block;font-family:var(--body);font-size:12px;color:var(--dim);margin-top:2px}
+
+  .rotation{margin-top:18px}
+  .rotation h5{
+    margin:0 0 10px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;
+  }
+  .rotation ul{list-style:none;margin:0;padding:0}
+  .rotation li{display:flex;gap:12px;align-items:center;padding:6px 0;font-size:13.5px;color:var(--text)}
+  .rotation li::before{
+    content:"";width:12px;height:12px;flex:none;border-radius:4px;
+    border:1px solid rgba(34,211,238,.55);background:rgba(34,211,238,.08);
+  }
+
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+  /* ---------- watch desk: data lines ---------- */
+  .line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px}
+  .line .mono{font-family:var(--mono);font-size:13.5px}
+  .line .name{font-weight:600}
+  .line .dim{color:var(--muted);font-size:13px}
+  .line .right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .watch-form{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .watch-form input{
+    flex:1;min-width:220px;font-family:var(--mono);font-size:13px;color:var(--text);
+    padding:11px 14px;border-radius:12px;border:1px solid var(--brd);
+    background:rgba(255,255,255,.05);
+  }
+  .watch-form input::placeholder{color:var(--dim)}
+  .watch-form input:focus{border-color:var(--cyan);outline:none;box-shadow:0 0 0 3px rgba(34,211,238,.18)}
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher{
+    position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;
+    display:flex;align-items:center;gap:4px;
+    background:rgba(20,16,44,.55);border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-radius:999px;padding:5px;box-shadow:0 10px 34px rgba(2,0,20,.5);
+  }
+  .mockup-switcher button{
+    font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.08em;
+    border:0;background:transparent;color:var(--muted);
+    padding:8px 15px;border-radius:999px;cursor:pointer;
+    transition:background .15s ease,color .15s ease;
+  }
+  .mockup-switcher button:hover{color:var(--text)}
+  .mockup-switcher [data-view].is-active{
+    background:linear-gradient(92deg,var(--cyan),var(--magenta));color:var(--ink-on-neon);
+  }
+  .mockup-switcher [data-cov].is-active{background:rgba(255,255,255,.16);color:var(--text)}
+  .switcher-div{width:1px;align-self:stretch;background:rgba(255,255,255,.14);margin:4px 4px}
+  .switcher-cov{display:flex;gap:4px}
+  body[data-view="landing"] .switcher-cov,
+  body[data-view="landing"] .switcher-div{display:none}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .features ol{grid-template-columns:1fr}
+    .desk-head{grid-template-columns:1fr;align-items:start}
+    .desk-side{align-items:flex-start}
+    .finding{grid-template-columns:84px 1fr;grid-auto-flow:row}
+    .finding .sev{grid-column:2;justify-self:start}
+  }
+  @media (max-width:640px){
+    body{font-size:14.5px}
+    .stats{grid-template-columns:1fr 1fr}
+    .mini-stats{grid-template-columns:1fr 1fr}
+    .row-meta{margin-left:0;width:100%}
+    .chrome-right{margin-left:0}
+    .desk-section{padding:20px 18px}
+    .line .right{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{transition:none!important;animation:none!important}
+    .orb-a,.orb-b{animation:none}
+  }
+</style>
+</head>
+<body data-coverage="trial" data-view="landing">
+
+<div class="orb orb-a" aria-hidden="true"></div>
+<div class="orb orb-b" aria-hidden="true"></div>
+<div class="orb orb-c" aria-hidden="true"></div>
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="chrome">
+    <div class="wrap">
+      <div class="glass chrome-inner">
+        <a class="wordmark" href="#">NoSpoilers</a>
+        <nav class="chrome-nav" aria-label="Product">
+          <a href="#">Product</a>
+          <a href="#">Watch</a>
+          <a href="#">Scan</a>
+          <a href="#">Pricing</a>
+          <a href="#">Docs</a>
+        </nav>
+        <div class="chrome-right">
+          <a class="btn btn-sm" href="#">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            Sign in with GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">No spoilers in production</p>
+      <h1>We watch GitHub. <span class="grad-text">We read the pack they download.</span></h1>
+      <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+      <div class="cta-row">
+        <a class="btn btn-neon cta-primary" href="#">Start 14-day trial</a>
+        <a class="btn" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Sign in with GitHub
+        </a>
+        <span class="price">Solo $29 · Team $99</span>
+      </div>
+      <p class="note">Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="glass preview-card">
+      <a class="preview-link" href="#" data-goto="watch" aria-label="Open the watch desk screen">
+        <div class="mini">
+          <div class="mini-top">
+            <span class="mini-title">Watch desk — emotive-impact</span>
+            <span class="mini-badge">Trial · 11 days left</span>
+          </div>
+          <div class="mini-stats">
+            <div class="mini-stat glass-in"><b>2</b><span>repositories</span></div>
+            <div class="mini-stat glass-in"><b class="rose">1</b><span>open alert</span></div>
+            <div class="mini-stat glass-in"><b>1</b><span>npm package</span></div>
+            <div class="mini-stat glass-in"><b>1</b><span>website</span></div>
+          </div>
+          <div class="mini-row"><span>emotive-impact/desktop</span><span class="m">Private · Checked 2 min ago</span></div>
+          <div class="mini-row"><span>emotive-impact/old-cli</span><span class="m danger">Public · Went public 9:14 AM</span></div>
+          <div class="mini-row"><span>@emotive/desktop@2.4.1</span><span class="m danger">failed policy · critical</span></div>
+        </div>
+      </a>
+      <p class="preview-cap">The logged-in desk during trial. <span class="go">Click through.</span></p>
+    </div>
+  </div>
+
+  <section class="features">
+    <div class="wrap">
+      <ol>
+        <li class="glass">
+          <span class="f-num">01</span>
+          <h3>Watch GitHub</h3>
+          <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+        </li>
+        <li class="glass">
+          <span class="f-num">02</span>
+          <h3>Read the pack</h3>
+          <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+        </li>
+        <li class="glass">
+          <span class="f-num">03</span>
+          <h3>Fail closed in CI</h3>
+          <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="flags" aria-labelledby="flags-h">
+    <div class="wrap">
+      <div class="glass flags-card">
+        <div class="flags-head"><h2 id="flags-h">What we flag</h2></div>
+        <ul class="flag-list">
+          <li><span class="flag-id"><code>MAP-001</code>Source map in pack</span><span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span></li>
+          <li><span class="flag-id"><code>SEC-001</code>.env file</span><span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span></li>
+          <li><span class="flag-id"><code>SEC-003</code>Cloud credential</span><span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span></li>
+          <li><span class="flag-id"><code>GIT-001</code>.git packed in</span><span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span></li>
+          <li><span class="flag-id"><code>DB-001</code>Database dump</span><span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span></li>
+          <li><span class="flag-id"><code>SRC-001</code>Raw TypeScript source</span><span class="sev sev-warn"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.4 14.2 13.4H1.8L8 2.4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7v2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg>warn</span></li>
+          <li><span class="flag-id"><code>NET-001</code>Private-network URL</span><span class="sev sev-warn"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.4 14.2 13.4H1.8L8 2.4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7v2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg>warn</span></li>
+          <li><span class="flag-id"><code>SIZE-002</code>Payload over 50 MB</span><span class="sev sev-warn"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.4 14.2 13.4H1.8L8 2.4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7v2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg>warn</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="glass foot-inner">
+        <nav class="foot-links" aria-label="Legal">
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+          <a href="#">Retention</a>
+          <a href="#">Disclosure</a>
+          <a href="#">Support</a>
+          <a href="#">Refunds</a>
+        </nav>
+        <p class="colophon">No spoilers in production.</p>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="chrome">
+    <div class="wrap">
+      <div class="glass chrome-inner">
+        <a class="wordmark" href="#">NoSpoilers</a>
+        <nav class="chrome-nav" aria-label="Product">
+          <a href="#">Product</a>
+          <a href="#">Watch</a>
+          <a href="#">Scan</a>
+          <a href="#">Pricing</a>
+          <a href="#">Docs</a>
+        </nav>
+        <div class="chrome-right">
+          <span class="account">emotive-impact</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <header class="desk-head">
+      <div>
+        <p class="desk-eyebrow">Watch desk</p>
+        <h2 class="desk-account">emotive-impact</h2>
+      </div>
+      <div class="desk-side">
+        <span class="cov-badge cov-trial">Trial · 11 days left</span>
+        <span class="cov-badge cov-active">Team · Active</span>
+        <span class="cov-badge cov-ended">Coverage ended</span>
+        <p class="cov-note cov-note-trial">Full coverage. No card yet.</p>
+        <p class="cov-note cov-note-ended">The bot is quiet until you subscribe.</p>
+        <a class="btn" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Install on GitHub
+        </a>
+      </div>
+    </header>
+
+    <div class="subscribe">
+      <div class="subscribe-in">
+        <p class="subscribe-copy"><strong>Coverage ended</strong>The bot is quiet until you subscribe.</p>
+        <a class="btn btn-neon" href="#">Subscribe — Solo $29 · Team $99</a>
+      </div>
+    </div>
+
+    <div class="desk">
+      <section class="stats" aria-label="Coverage summary">
+        <div class="stat glass"><b>2</b><span>repositories</span></div>
+        <div class="stat glass stat-alert"><b>1</b><span>open alert</span></div>
+        <div class="stat glass"><b>1</b><span>npm package</span></div>
+        <div class="stat glass"><b>1</b><span>website</span></div>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-repos">
+        <div class="sec-head"><h3 id="s-repos">Repositories</h3></div>
+        <div class="row">
+          <span class="dot dot-pass" aria-hidden="true"></span>
+          <span class="row-name">emotive-impact/desktop</span>
+          <span class="tag">Private</span>
+          <span class="row-meta">Checked 2 min ago</span>
+        </div>
+        <div class="row row-danger">
+          <span class="dot dot-crit" aria-hidden="true"></span>
+          <span class="row-name">emotive-impact/old-cli</span>
+          <span class="tag tag-danger">Public</span>
+          <span class="row-meta row-meta-danger">Went public 9:14 AM</span>
+        </div>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-alerts">
+        <div class="sec-head"><h3 id="s-alerts">Alerts</h3></div>
+
+        <article class="alert glass-in alert-public">
+          <p class="kicker">
+            <span class="k-kind">Went public</span><span aria-hidden="true">·</span><span>9:14 AM</span><span aria-hidden="true">·</span>
+            <span class="k-state-open">open</span>
+            <span class="k-state-res">resolved by maya · exposed 4 min</span>
+          </p>
+          <h4>emotive-impact/old-cli flipped to public</h4>
+          <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+          <div class="actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-sm" type="button">Resolve</button>
+          </div>
+        </article>
+
+        <article class="alert glass-in">
+          <p class="kicker">
+            <span class="k-kind">npm pack</span><span aria-hidden="true">·</span><span>8:57 AM</span><span aria-hidden="true">·</span>
+            <span class="k-state-open">open</span>
+          </p>
+          <h4>@emotive/desktop@2.4.1 failed policy</h4>
+          <div class="findings">
+            <div class="finding">
+              <span class="f-code">MAP-002</span>
+              <span><span class="f-path">dist/cli.js.map</span><span class="f-note">Source map embeds original source</span></span>
+              <span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span>
+            </div>
+            <div class="finding">
+              <span class="f-code">SEC-001</span>
+              <span><span class="f-path">.env</span><span class="f-note">.env file in the pack</span></span>
+              <span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span>
+            </div>
+            <div class="finding">
+              <span class="f-code">SRC-001</span>
+              <span><span class="f-path">src/auth.ts</span><span class="f-note">Raw TypeScript source</span></span>
+              <span class="sev sev-warn"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.4 14.2 13.4H1.8L8 2.4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7v2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".8" fill="currentColor"/></svg>warn</span>
+            </div>
+          </div>
+          <div class="rotation">
+            <h5>Rotation checklist</h5>
+            <ul>
+              <li>Rotate the npm token</li>
+              <li>Purge the CDN cache</li>
+              <li>Publish 2.4.2 and deprecate 2.4.1</li>
+            </ul>
+          </div>
+          <div class="actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-sm" type="button">Resolve</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-npm">
+        <div class="sec-head"><h3 id="s-npm">npm packages</h3></div>
+        <div class="line">
+          <span class="mono name">@emotive/desktop</span>
+          <span class="dim">registry.npmjs.org</span>
+          <span class="mono">latest 2.4.1</span>
+          <span class="right">
+            <span class="dim">Last scan:</span>
+            <span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>failed policy</span>
+            <button class="btn btn-sm" type="button">Scan latest</button>
+          </span>
+        </div>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-sites">
+        <div class="sec-head"><h3 id="s-sites">Production websites</h3></div>
+        <div class="line">
+          <span class="mono name">https://app.emotive.dev</span>
+          <span class="right">
+            <span class="dim">Last crawl:</span>
+            <span class="sev sev-pass"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.5"/><path d="m5.2 8.1 1.9 1.9 3.7-3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>clean</span>
+          </span>
+        </div>
+        <form class="watch-form" action="#" method="get">
+          <input type="url" placeholder="https://…" aria-label="Website URL to watch">
+          <button class="btn" type="submit">Watch website</button>
+        </form>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-custody">
+        <div class="sec-head"><h3 id="s-custody">Map custody</h3></div>
+        <div class="line">
+          <span class="mono name">Sentry → emotive/desktop</span>
+          <span class="right">
+            <span class="dim">Last check:</span>
+            <span class="sev sev-pass"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.5"/><path d="m5.2 8.1 1.9 1.9 3.7-3.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>ok</span>
+          </span>
+        </div>
+      </section>
+
+      <section class="glass desk-section" aria-labelledby="s-notify">
+        <div class="sec-head"><h3 id="s-notify">Notifications</h3></div>
+        <div class="line">
+          <span class="name">Slack #security</span>
+          <span class="right">
+            <span class="dim">minimum severity</span>
+            <span class="sev sev-critical"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.8 14.8 14H1.2L8 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.8" r=".9" fill="currentColor"/></svg>critical</span>
+          </span>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+  <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  <span class="switcher-div" aria-hidden="true"></span>
+  <span class="switcher-cov" role="group" aria-label="Coverage state">
+    <button type="button" data-cov="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-cov="active" aria-pressed="false">Active</button>
+    <button type="button" data-cov="ended" aria-pressed="false">Ended</button>
+  </span>
+</nav>
+
+<script>
+(function () {
+  var body = document.body;
+  var screens = Array.prototype.slice.call(document.querySelectorAll('main[data-screen]'));
+  var viewBtns = Array.prototype.slice.call(document.querySelectorAll('.mockup-switcher [data-view]'));
+  var covBtns = Array.prototype.slice.call(document.querySelectorAll('.mockup-switcher [data-cov]'));
+
+  function setView(name) {
+    screens.forEach(function (m) { m.hidden = m.getAttribute('data-screen') !== name; });
+    body.setAttribute('data-view', name);
+    viewBtns.forEach(function (b) {
+      var on = b.getAttribute('data-view') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(name) {
+    body.setAttribute('data-coverage', name);
+    covBtns.forEach(function (b) {
+      var on = b.getAttribute('data-cov') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  viewBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setView(b.getAttribute('data-view')); });
+  });
+  covBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setCoverage(b.getAttribute('data-cov')); });
+  });
+  Array.prototype.slice.call(document.querySelectorAll('[data-goto]')).forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      setView(el.getAttribute('data-goto'));
+    });
+  });
+
+  setView('landing');
+  setCoverage('trial');
+})();
+</script>
+</body>
+</html>

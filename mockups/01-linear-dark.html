@@ -1,0 +1,936 @@
+<!--
+  Direction 01 — Linear-style dark
+  Rationale: This is the current design grown up — a dense, keyboard-first dark UI that feels
+  professional and calm under pressure. One indigo accent carries all interaction, severity is
+  signaled with tinted chips that pair icon + label (never color alone), and 1px borders with
+  subtle inner shadows keep the desk quiet so a red alert reads in under two seconds.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 01 Linear-style dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --panel: #101012;
+    --panel-2: #141417;
+    --border: #232326;
+    --border-strong: #323238;
+    --text: #e4e4e7;
+    --muted: #8a8a93;
+    --dim: #7f7f88;
+    --accent: #5e6ad2;
+    --accent-hover: #6c78dd;
+    --accent-soft: rgba(94, 106, 210, .14);
+    --critical: #eb5757;
+    --critical-soft: rgba(235, 87, 87, .12);
+    --warn: #f2c94c;
+    --warn-soft: rgba(242, 201, 76, .10);
+    --pass: #4cb782;
+    --pass-soft: rgba(76, 183, 130, .12);
+    --radius: 8px;
+    --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: -.006em;
+  }
+  ::selection { background: rgba(94, 106, 210, .35); color: #fff; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  code, kbd { font-family: var(--mono); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  .wrap { max-width: 1064px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- chrome ---------- */
+  .site-header {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(10, 10, 11, .82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-header .bar {
+    max-width: 1064px; margin: 0 auto; padding: 0 24px;
+    min-height: 54px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  }
+  .wordmark {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: 14px; letter-spacing: -.01em;
+  }
+  .wordmark svg { color: var(--accent); }
+  .site-nav { display: flex; align-items: center; gap: 4px; margin-left: 8px; }
+  .site-nav a {
+    font-size: 13px; color: var(--muted); padding: 5px 9px; border-radius: 6px;
+    transition: color .12s ease, background .12s ease;
+  }
+  .site-nav a:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .command-hint {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: var(--panel);
+    border-radius: 6px; padding: 4px 8px 4px 10px;
+    color: var(--dim); font-size: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+    transition: border-color .12s ease;
+  }
+  .command-hint:hover { border-color: var(--border-strong); color: var(--muted); }
+  .command-hint kbd {
+    font-size: 10.5px; color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  }
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px 3px 4px;
+    background: var(--panel);
+  }
+  .account-chip .avatar {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #9aa4f0);
+    color: #fff; font-size: 9.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+    letter-spacing: .02em;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 500; letter-spacing: -.006em;
+    border-radius: 6px; padding: 7px 13px;
+    border: 1px solid transparent;
+    transition: background .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease;
+    white-space: nowrap;
+  }
+  .btn svg { flex: none; }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 1px 2px rgba(0, 0, 0, .5);
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost {
+    background: var(--panel); border-color: var(--border); color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+  }
+  .btn-ghost:hover { border-color: var(--border-strong); background: var(--panel-2); }
+  .btn-sm { font-size: 12px; padding: 5px 10px; }
+
+  /* ---------- landing hero ---------- */
+  .hero { position: relative; text-align: center; padding: 92px 24px 30px; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(640px 300px at 50% -90px, rgba(94, 106, 210, .16), transparent 70%);
+  }
+  .hero > * { position: relative; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px;
+  }
+  .eyebrow::before {
+    content: ""; width: 6px; height: 6px; border-radius: 2px; background: var(--accent);
+    box-shadow: 0 0 12px rgba(94, 106, 210, .8);
+  }
+  .hero h1 {
+    margin: 0 auto; max-width: 780px;
+    font-size: clamp(34px, 5.4vw, 56px); font-weight: 600;
+    letter-spacing: -.035em; line-height: 1.06;
+  }
+  .hero .sub {
+    margin: 20px auto 0; max-width: 640px;
+    color: var(--muted); font-size: 15px; line-height: 1.65; letter-spacing: -.008em;
+  }
+  .cta-row {
+    margin-top: 30px; display: flex; align-items: center; justify-content: center;
+    gap: 10px; flex-wrap: wrap;
+  }
+  .price-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted); padding: 7px 10px; border-radius: 6px;
+    transition: color .12s ease;
+  }
+  .price-link:hover { color: var(--text); }
+  .price-link svg { transition: transform .12s ease; }
+  .price-link:hover svg { transform: translateX(2px); }
+  .trial-note {
+    margin: 22px auto 0; max-width: 560px;
+    color: var(--dim); font-size: 12.5px; line-height: 1.6;
+    display: flex; align-items: flex-start; justify-content: center; gap: 8px; text-align: left;
+  }
+  .trial-note svg { flex: none; margin-top: 2px; }
+
+  /* ---------- landing product preview ---------- */
+  .preview { padding: 44px 24px 8px; }
+  .preview figure { margin: 0 auto; max-width: 860px; }
+  .preview-button {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .3), 0 24px 60px -24px rgba(0, 0, 0, .7),
+      inset 0 1px 0 rgba(255, 255, 255, .04);
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .preview-button:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+  .preview figcaption {
+    margin-top: 14px; text-align: center; color: var(--dim); font-size: 12.5px;
+  }
+
+  /* mini watch desk (static, simplified) */
+  .mini { font-size: 10px; color: var(--text); }
+  .mini-chrome {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--panel-2);
+  }
+  .mini-chrome .dot-logo {
+    width: 9px; height: 9px; border-radius: 3px; background: var(--accent);
+  }
+  .mini-chrome .word { font-weight: 600; font-size: 10px; }
+  .mini-chrome .kbd {
+    margin-left: auto; font-family: var(--mono); font-size: 8.5px; color: var(--dim);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  }
+  .mini-chrome .face { width: 12px; height: 12px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #9aa4f0); }
+  .mini-body { padding: 14px 16px 16px; display: grid; gap: 10px; }
+  .mini-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mini-eyebrow { display: block; font-size: 7.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .mini-account { display: block; font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; }
+  .mini-badge {
+    margin-left: auto; font-size: 8.5px; font-weight: 600;
+    color: #aab2f5; background: var(--accent-soft);
+    border: 1px solid rgba(94, 106, 210, .35); border-radius: 999px; padding: 2px 8px;
+  }
+  .mini-install {
+    font-size: 8.5px; font-weight: 500; color: #fff; background: var(--accent);
+    border-radius: 4px; padding: 3px 8px;
+  }
+  .mini-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .mini-stats span {
+    padding: 7px 10px; font-size: 8px; color: var(--muted);
+    border-right: 1px solid var(--border); display: grid; gap: 1px;
+  }
+  .mini-stats span:last-child { border-right: 0; }
+  .mini-stats b { font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .mini-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 10px; }
+  .mini-panel { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; display: grid; gap: 6px; align-content: start; }
+  .mini-panel-title { font-size: 8px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .mini-row { display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 3px 0; }
+  .mini-row em { font-style: normal; margin-left: auto; color: var(--dim); font-size: 8px; }
+  .mini-row .dot { width: 5px; height: 5px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--pass); }
+  .dot.bad { background: var(--critical); box-shadow: 0 0 8px rgba(235, 87, 87, .7); }
+  .mini-row.danger { color: var(--critical); }
+  .mini-alert { border: 1px solid var(--border); border-left: 2px solid var(--critical); border-radius: 6px; padding: 7px 9px; display: grid; gap: 4px; }
+  .mini-alert-meta { font-size: 7.5px; color: var(--dim); font-family: var(--mono); }
+  .mini-alert-title { font-size: 9.5px; font-weight: 600; }
+  .mini-finding { display: flex; align-items: center; gap: 6px; font-size: 8px; color: var(--muted); }
+  .mini-finding code { font-size: 8px; color: var(--text); }
+  .mini-sev { font-style: normal; margin-left: auto; font-size: 7.5px; font-weight: 600; border-radius: 3px; padding: 0 5px; }
+  .mini-sev.crit { color: var(--critical); background: var(--critical-soft); }
+  .mini-sev.warn { color: var(--warn); background: var(--warn-soft); }
+
+  /* ---------- landing features ---------- */
+  .features { padding: 72px 24px 0; }
+  .features ol {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px;
+  }
+  .features li { border-top: 1px solid var(--border); padding-top: 18px; }
+  .features .num { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+  .features h3 { margin: 10px 0 7px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .features p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.62; }
+  .features p code { font-size: 12px; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+  /* ---------- what we flag ---------- */
+  .flags { padding: 72px 24px 0; }
+  .flags h2, .section-title { margin: 0 0 16px; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
+  .flag-list {
+    list-style: none; margin: 0; padding: 0;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .flag-list li {
+    display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 14px;
+    padding: 9px 16px; border-bottom: 1px solid var(--border);
+    transition: background .12s ease;
+  }
+  .flag-list li:last-child { border-bottom: 0; }
+  .flag-list li:hover { background: var(--panel-2); }
+  .flag-list code { font-size: 12px; color: var(--text); }
+  .flag-name { font-size: 13px; color: var(--muted); }
+
+  /* severity chips — icon + label, never color alone */
+  .sev {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em;
+    border-radius: 999px; padding: 2px 9px 2px 7px; white-space: nowrap;
+  }
+  .sev svg { flex: none; }
+  .sev-critical { color: var(--critical); background: var(--critical-soft); box-shadow: inset 0 0 0 1px rgba(235, 87, 87, .28); }
+  .sev-warn { color: var(--warn); background: var(--warn-soft); box-shadow: inset 0 0 0 1px rgba(242, 201, 76, .26); }
+  .sev-pass { color: var(--pass); background: var(--pass-soft); box-shadow: inset 0 0 0 1px rgba(76, 183, 130, .28); }
+
+  /* ---------- landing footer ---------- */
+  .site-footer {
+    margin-top: 80px; border-top: 1px solid var(--border);
+    padding: 26px 24px 110px;
+  }
+  .site-footer .wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 0; }
+  .site-footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+  .site-footer a { font-size: 12.5px; color: var(--muted); transition: color .12s ease; }
+  .site-footer a:hover { color: var(--text); }
+  .site-footer .tagline { margin: 0 0 0 auto; font-size: 12.5px; color: var(--dim); }
+
+  /* ---------- watch desk ---------- */
+  .desk { padding: 28px 24px 120px; }
+  .desk-header { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+  .desk-header .eyebrow { margin: 0 0 6px; }
+  .desk-header .eyebrow::before { display: none; }
+  .desk-account { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+  .coverage-line { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .coverage-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 11px;
+  }
+  .coverage-badge.is-trial {
+    color: #aab2f5; background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px rgba(94, 106, 210, .4);
+  }
+  .coverage-badge.is-active { color: var(--pass); background: var(--pass-soft); box-shadow: inset 0 0 0 1px rgba(76, 183, 130, .35); display: none; }
+  .coverage-badge.is-ended { color: var(--muted); background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px var(--border-strong); display: none; }
+  .coverage-note { display: none; font-size: 12.5px; color: var(--muted); margin: 0; }
+  .desk-header .btn { margin-left: auto; }
+
+  body[data-coverage="active"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="active"] .coverage-badge.is-active { display: inline-flex; }
+  body[data-coverage="ended"] .coverage-badge.is-trial { display: none; }
+  body[data-coverage="ended"] .coverage-badge.is-ended { display: inline-flex; }
+  body[data-coverage="trial"] .coverage-note.note-trial { display: inline; }
+  body[data-coverage="ended"] .coverage-note.note-ended { display: inline; }
+
+  .subscribe-banner {
+    display: none; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin-top: 20px; padding: 16px 20px;
+    background: linear-gradient(180deg, rgba(94, 106, 210, .16), rgba(94, 106, 210, .07));
+    border: 1px solid rgba(94, 106, 210, .45); border-radius: 10px;
+    box-shadow: 0 0 40px -12px rgba(94, 106, 210, .35);
+  }
+  .subscribe-banner p { margin: 0; font-size: 13.5px; color: var(--text); display: flex; align-items: center; gap: 9px; }
+  .subscribe-banner p svg { color: var(--accent-hover); flex: none; }
+  body[data-coverage="ended"] .subscribe-banner { display: flex; }
+
+  .desk-content { transition: opacity .25s ease, filter .25s ease; }
+  body[data-coverage="ended"] .desk-content { opacity: .38; filter: saturate(.3); }
+
+  .stat-row {
+    list-style: none; margin: 22px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden;
+  }
+  .stat-row li { padding: 14px 18px; border-right: 1px solid var(--border); display: grid; gap: 2px; }
+  .stat-row li:last-child { border-right: 0; }
+  .stat-row strong { font-size: 22px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .stat-row span { font-size: 12px; color: var(--muted); }
+
+  .desk-grid { margin-top: 12px; display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+  .panel {
+    grid-column: span 12;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 15px 18px 17px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+  }
+  .panel-repos { grid-column: span 5; }
+  .panel-alerts { grid-column: span 7; }
+  .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 6; }
+  .panel > h2 {
+    margin: 0 0 6px; font-size: 12px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .panel > h2 svg { color: var(--dim); }
+
+  .repo-list { list-style: none; margin: 4px 0 0; padding: 0; }
+  .repo-list li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 6px; border-bottom: 1px solid var(--border); border-radius: 4px;
+    transition: background .12s ease;
+  }
+  .repo-list li:last-child { border-bottom: 0; }
+  .repo-list li:hover { background: var(--panel-2); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .status-dot.ok { background: var(--pass); box-shadow: 0 0 8px rgba(76, 183, 130, .5); }
+  .status-dot.bad { background: var(--critical); box-shadow: 0 0 8px rgba(235, 87, 87, .6); }
+  .repo-name { font-size: 13px; font-weight: 500; font-family: var(--mono); letter-spacing: -.01em; }
+  .chip {
+    font-size: 10.5px; font-weight: 500; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px;
+  }
+  .chip-critical { color: var(--critical); border-color: rgba(235, 87, 87, .4); background: var(--critical-soft); }
+  .repo-meta { margin-left: auto; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .repo-meta.danger-text { color: var(--critical); font-weight: 500; }
+
+  /* alerts */
+  .alert {
+    margin-top: 10px; border: 1px solid var(--border); border-left: 2px solid var(--critical);
+    border-radius: 8px; padding: 13px 16px 14px; background: var(--panel);
+    transition: border-color .2s ease, opacity .2s ease;
+  }
+  .alert-meta {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 11px; color: var(--dim); font-family: var(--mono); letter-spacing: 0;
+  }
+  .alert-state { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font); font-weight: 600; border-radius: 999px; padding: 1px 8px; font-size: 10.5px; letter-spacing: .02em; }
+  .alert-state.state-open { color: var(--critical); background: var(--critical-soft); }
+  .alert-state.state-resolved { color: var(--pass); background: var(--pass-soft); display: none; }
+  body[data-coverage="active"] .alert-public { border-left-color: var(--pass); }
+  body[data-coverage="active"] .alert-public .alert-title { color: var(--muted); }
+  body[data-coverage="active"] .alert-public .state-open { display: none; }
+  body[data-coverage="active"] .alert-public .state-resolved { display: inline-flex; }
+  .alert-title { margin: 7px 0 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+  .alert-body { margin: 5px 0 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+  .findings { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 12.5px; }
+  .findings th {
+    text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--dim); padding: 5px 10px 5px 0; border-bottom: 1px solid var(--border);
+  }
+  .findings td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .findings tr:last-child td { border-bottom: 0; }
+  .findings td:last-child { color: var(--muted); padding-right: 0; }
+  .findings code { font-size: 11.5px; color: var(--text); }
+  .findings th:nth-child(3), .findings td:nth-child(3) { width: 96px; }
+
+  .checklist {
+    margin-top: 12px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px 12px;
+  }
+  .checklist-title { margin: 0 0 7px; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .checklist label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13px; color: var(--text); padding: 3px 0; cursor: pointer;
+  }
+  .checklist input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; flex: none; }
+  .checklist input[type="checkbox"]:checked + span { color: var(--dim); text-decoration: line-through; }
+
+  .alert-actions { margin-top: 13px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* small panels */
+  .kv { display: grid; gap: 8px; margin-top: 8px; font-size: 13px; }
+  .kv .row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .kv code { font-size: 12px; }
+  .kv .label { color: var(--dim); font-size: 12px; }
+  .mono-link { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  .panel .btn { margin-top: 12px; }
+  .watch-form { margin-top: 12px; display: flex; gap: 8px; }
+  .watch-form input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px; color: var(--text);
+    background: #0c0c0e; border: 1px solid var(--border); border-radius: 6px; padding: 6px 11px;
+  }
+  .watch-form input::placeholder { color: var(--dim); }
+  .watch-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+  .watch-form .btn { margin-top: 0; }
+
+  /* ---------- mockup switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(16, 16, 18, .88);
+    border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .55);
+  }
+  .switcher-group { display: flex; align-items: center; gap: 2px; }
+  .switcher-group + .switcher-group { border-left: 1px solid var(--border); padding-left: 4px; }
+  .mockup-switcher button {
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    border-radius: 999px; padding: 5px 12px;
+    transition: color .12s ease, background .12s ease;
+  }
+  .mockup-switcher button:hover { color: var(--text); }
+  .mockup-switcher button[aria-pressed="true"] { background: rgba(255, 255, 255, .09); color: var(--text); }
+  .mockup-switcher button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .panel-repos, .panel-alerts { grid-column: span 12; }
+    .features ol { grid-template-columns: 1fr; gap: 26px; }
+    .mini-cols { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .site-header .bar { padding: 10px 16px; row-gap: 8px; }
+    .site-nav { order: 3; width: 100%; margin-left: 0; overflow-x: auto; padding-bottom: 2px; }
+    .command-hint span.label { display: none; }
+    .hero { padding: 64px 18px 20px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-row li:nth-child(2) { border-right: 0; }
+    .stat-row li:nth-child(1), .stat-row li:nth-child(2) { border-bottom: 1px solid var(--border); }
+    .panel-npm, .panel-sites, .panel-custody, .panel-notifications { grid-column: span 12; }
+    .desk { padding: 20px 16px 120px; }
+    .desk-header .btn { margin-left: 0; }
+    .flag-list li { grid-template-columns: 78px 1fr auto; gap: 10px; padding: 9px 12px; }
+    .findings th:nth-child(4), .findings td:nth-child(4) { display: none; }
+    .watch-form { flex-direction: column; }
+    .subscribe-banner { align-items: stretch; }
+    .subscribe-banner .btn { justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="4" stroke="currentColor" stroke-width="1.6"/><path d="M5 8.2 7.2 10.4 11 5.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <button class="command-hint" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <span class="label">Search or command</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <a class="btn btn-ghost btn-sm" href="#">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Sign in with GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <p class="eyebrow">No spoilers in production</p>
+    <h1 id="hero-title">We watch GitHub. We read the pack they download.</h1>
+    <p class="sub">Secret scanners read git. That missed Claude Code’s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private → public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#">Start 14-day trial</a>
+      <a class="btn btn-ghost" href="#">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Sign in with GitHub
+      </a>
+      <a class="price-link" href="#">Solo $29 · Team $99
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </a>
+    </div>
+    <p class="trial-note">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+      <span>Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</span>
+    </p>
+  </section>
+
+  <section class="preview" aria-label="Product preview">
+    <figure>
+      <button class="preview-button" type="button" data-open-watch aria-label="Open the watch desk screen">
+        <span class="mini" aria-hidden="true">
+          <span class="mini-chrome">
+            <span class="dot-logo"></span>
+            <span class="word">NoSpoilers</span>
+            <span class="kbd">⌘K</span>
+            <span class="face"></span>
+          </span>
+          <span class="mini-body">
+            <span class="mini-head">
+              <span>
+                <span class="mini-eyebrow">Watch desk</span>
+                <span class="mini-account">emotive-impact</span>
+              </span>
+              <span class="mini-badge">Trial · 11 days left</span>
+              <span class="mini-install">Install on GitHub</span>
+            </span>
+            <span class="mini-stats">
+              <span><b>2</b> repositories</span>
+              <span><b>1</b> open alert</span>
+              <span><b>1</b> npm package</span>
+              <span><b>1</b> website</span>
+            </span>
+            <span class="mini-cols">
+              <span class="mini-panel">
+                <span class="mini-panel-title">Repositories</span>
+                <span class="mini-row"><i class="dot ok"></i>emotive-impact/desktop<em>Private</em></span>
+                <span class="mini-row danger"><i class="dot bad"></i>emotive-impact/old-cli<em>Public</em></span>
+              </span>
+              <span class="mini-panel">
+                <span class="mini-panel-title">Alerts</span>
+                <span class="mini-alert">
+                  <span class="mini-alert-meta">npm pack · 8:57 AM · open</span>
+                  <span class="mini-alert-title">@emotive/desktop@2.4.1 failed policy</span>
+                  <span class="mini-finding"><code>MAP-002</code> dist/cli.js.map <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SEC-001</code> .env <i class="mini-sev crit">critical</i></span>
+                  <span class="mini-finding"><code>SRC-001</code> src/auth.ts <i class="mini-sev warn">warn</i></span>
+                </span>
+              </span>
+            </span>
+          </span>
+        </span>
+      </button>
+      <figcaption>The logged-in desk during trial. Click through.</figcaption>
+    </figure>
+  </section>
+
+  <section class="features wrap" aria-label="How it works">
+    <ol>
+      <li>
+        <span class="num">01</span>
+        <h3>Watch GitHub</h3>
+        <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+      </li>
+      <li>
+        <span class="num">02</span>
+        <h3>Read the pack</h3>
+        <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+      </li>
+      <li>
+        <span class="num">03</span>
+        <h3>Fail closed in CI</h3>
+        <p><code>npx nospoilers scan ./package.tgz</code> for the build you remember to wire. The hosted app is for the release you forget.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="flags wrap" aria-labelledby="flags-title">
+    <h2 id="flags-title">What we flag</h2>
+    <ul class="flag-list">
+      <li><code>MAP-001</code><span class="flag-name">Source map in pack</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SEC-001</code><span class="flag-name">.env file</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SEC-003</code><span class="flag-name">Cloud credential</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>GIT-001</code><span class="flag-name">.git packed in</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>DB-001</code><span class="flag-name">Database dump</span><span class="sev sev-critical"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></li>
+      <li><code>SRC-001</code><span class="flag-name">Raw TypeScript source</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>NET-001</code><span class="flag-name">Private-network URL</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+      <li><code>SIZE-002</code><span class="flag-name">Payload over 50 MB</span><span class="sev sev-warn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></li>
+    </ul>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <nav aria-label="Legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Retention</a>
+        <a href="#">Disclosure</a>
+        <a href="#">Support</a>
+        <a href="#">Refunds</a>
+      </nav>
+      <p class="tagline">No spoilers in production.</p>
+    </div>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="site-header">
+    <div class="bar">
+      <a class="wordmark" href="#" aria-label="NoSpoilers home">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="4" stroke="currentColor" stroke-width="1.6"/><path d="M5 8.2 7.2 10.4 11 5.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        NoSpoilers
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#">Product</a>
+        <a href="#" aria-current="page">Watch</a>
+        <a href="#">Scan</a>
+        <a href="#">Pricing</a>
+        <a href="#">Docs</a>
+      </nav>
+      <div class="header-right">
+        <button class="command-hint" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <span class="label">Search or command</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <span class="account-chip"><span class="avatar" aria-hidden="true">ei</span>emotive-impact</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="desk wrap">
+    <header class="desk-header">
+      <div>
+        <p class="eyebrow">Watch desk</p>
+        <h1 class="desk-account">emotive-impact</h1>
+        <div class="coverage-line">
+          <span class="coverage-badge is-trial">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Trial · 11 days left
+          </span>
+          <span class="coverage-badge is-active">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            Team · Active
+          </span>
+          <span class="coverage-badge is-ended">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+            Coverage ended
+          </span>
+          <p class="coverage-note note-trial">Full coverage. No card yet.</p>
+          <p class="coverage-note note-ended">The bot is quiet until you subscribe.</p>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="#">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Install on GitHub
+      </a>
+    </header>
+
+    <div class="subscribe-banner">
+      <p>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9.5v5"/><path d="M14 9.5v5"/></svg>
+        The bot is quiet until you subscribe.
+      </p>
+      <a class="btn btn-primary" href="#">Subscribe — Solo $29 · Team $99</a>
+    </div>
+
+    <div class="desk-content">
+      <ul class="stat-row" aria-label="Coverage summary">
+        <li><strong>2</strong> <span>repositories</span></li>
+        <li><strong>1</strong> <span>open alert</span></li>
+        <li><strong>1</strong> <span>npm package</span></li>
+        <li><strong>1</strong> <span>website</span></li>
+      </ul>
+
+      <div class="desk-grid">
+        <section class="panel panel-repos" aria-labelledby="h-repos">
+          <h2 id="h-repos">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z"/></svg>
+            Repositories
+          </h2>
+          <ul class="repo-list">
+            <li>
+              <span class="status-dot ok" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/desktop</span>
+              <span class="chip">Private</span>
+              <span class="repo-meta">Checked 2 min ago</span>
+            </li>
+            <li>
+              <span class="status-dot bad" aria-hidden="true"></span>
+              <span class="repo-name">emotive-impact/old-cli</span>
+              <span class="chip chip-critical">Public</span>
+              <span class="repo-meta danger-text">Went public 9:14 AM</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel panel-alerts" aria-labelledby="h-alerts">
+          <h2 id="h-alerts">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            Alerts
+          </h2>
+
+          <article class="alert alert-public">
+            <header class="alert-meta">
+              <span>Went public</span><span aria-hidden="true">·</span><time>9:14 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+              <span class="alert-state state-resolved">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                resolved by maya · exposed 4 min
+              </span>
+            </header>
+            <h3 class="alert-title">emotive-impact/old-cli flipped to public</h3>
+            <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+            <div class="alert-actions">
+              <button class="btn btn-ghost btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-ghost btn-sm" type="button">Assign</button>
+              <button class="btn btn-ghost btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+
+          <article class="alert alert-pack">
+            <header class="alert-meta">
+              <span>npm pack</span><span aria-hidden="true">·</span><time>8:57 AM</time><span aria-hidden="true">·</span>
+              <span class="alert-state state-open">open</span>
+            </header>
+            <h3 class="alert-title">@emotive/desktop@2.4.1 failed policy</h3>
+            <table class="findings">
+              <thead>
+                <tr><th scope="col">Rule</th><th scope="col">Path</th><th scope="col">Severity</th><th scope="col">Detail</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>MAP-002</code></td>
+                  <td><code>dist/cli.js.map</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></td>
+                  <td>Source map embeds original source</td>
+                </tr>
+                <tr>
+                  <td><code>SEC-001</code></td>
+                  <td><code>.env</code></td>
+                  <td><span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span></td>
+                  <td>.env file in the pack</td>
+                </tr>
+                <tr>
+                  <td><code>SRC-001</code></td>
+                  <td><code>src/auth.ts</code></td>
+                  <td><span class="sev sev-warn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>warn</span></td>
+                  <td>Raw TypeScript source</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="checklist">
+              <p class="checklist-title">Rotation checklist</p>
+              <label><input type="checkbox"> <span>Rotate the npm token</span></label>
+              <label><input type="checkbox"> <span>Purge the CDN cache</span></label>
+              <label><input type="checkbox"> <span>Publish 2.4.2 and deprecate 2.4.1</span></label>
+            </div>
+            <div class="alert-actions">
+              <button class="btn btn-ghost btn-sm" type="button">Acknowledge</button>
+              <button class="btn btn-ghost btn-sm" type="button">Assign</button>
+              <button class="btn btn-ghost btn-sm" type="button">Resolve</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel panel-npm" aria-labelledby="h-npm">
+          <h2 id="h-npm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            npm packages
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>@emotive/desktop</code>
+              <span class="label">registry.npmjs.org</span>
+              <span class="chip">latest 2.4.1</span>
+            </div>
+            <div class="row">
+              <span class="label">Last scan:</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>failed policy</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button">Scan latest</button>
+        </section>
+
+        <section class="panel panel-sites" aria-labelledby="h-sites">
+          <h2 id="h-sites">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/></svg>
+            Production websites
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <span class="mono-link">https://app.emotive.dev</span>
+            </div>
+            <div class="row">
+              <span class="label">Last crawl:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>clean</span>
+            </div>
+          </div>
+          <form class="watch-form" action="#" onsubmit="return false">
+            <input type="url" placeholder="https://…" aria-label="Website URL to watch">
+            <button class="btn btn-ghost btn-sm" type="submit">Watch website</button>
+          </form>
+        </section>
+
+        <section class="panel panel-custody" aria-labelledby="h-custody">
+          <h2 id="h-custody">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+            Map custody
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Sentry → emotive/desktop</code>
+            </div>
+            <div class="row">
+              <span class="label">Last check:</span>
+              <span class="sev sev-pass"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>ok</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-notifications" aria-labelledby="h-notify">
+          <h2 id="h-notify">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/></svg>
+            Notifications
+          </h2>
+          <div class="kv">
+            <div class="row">
+              <code>Slack #security</code>
+            </div>
+            <div class="row">
+              <span class="label">minimum severity</span>
+              <span class="sev sev-critical"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9L7.9 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>critical</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <div class="switcher-group switcher-states" role="group" aria-label="Coverage state" hidden>
+    <button type="button" data-coverage-set="trial" aria-pressed="true">Trial</button>
+    <button type="button" data-coverage-set="active" aria-pressed="false">Active</button>
+    <button type="button" data-coverage-set="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var screens = {
+    landing: document.querySelector('main[data-screen="landing"]'),
+    watch: document.querySelector('main[data-screen="watch"]')
+  };
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll('[data-view]'));
+  var stateButtons = Array.prototype.slice.call(document.querySelectorAll('[data-coverage-set]'));
+  var stateGroup = document.querySelector('.switcher-states');
+
+  function setView(name) {
+    screens.landing.hidden = name !== 'landing';
+    screens.watch.hidden = name !== 'watch';
+    stateGroup.hidden = name !== 'watch';
+    viewButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.view === name));
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(value) {
+    document.body.dataset.coverage = value;
+    stateButtons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.coverageSet === value));
+    });
+  }
+
+  viewButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setView(btn.dataset.view); });
+  });
+  stateButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { setCoverage(btn.dataset.coverageSet); });
+  });
+
+  var preview = document.querySelector('[data-open-watch]');
+  if (preview) {
+    preview.addEventListener('click', function () { setView('watch'); });
+  }
+})();
+</script>
+</body>
+</html>

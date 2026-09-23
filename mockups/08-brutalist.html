@@ -1,0 +1,896 @@
+<!--
+  Direction 08 — Brutalist
+  Rationale: raw blocks, 3px black borders, and hard shadows make severity physically unmissable —
+  a red block with a label reads in well under two seconds. Huge Archivo Black headings and
+  uppercase microtype give the anxious developer a loud, confident answer instead of a quiet
+  maybe. Nothing is rounded and nothing hides: the grid, the borders, and the state of every
+  system are always on the page.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoSpoilers mockup — 08 Brutalist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #000;
+    --paper: #fff;
+    --muted: #3f3f3f;
+    --faint: #6b6b6b;
+    --crit: #ff2b2b;
+    --crit-ink: #b30000;
+    --warn: #ffd500;
+    --warn-ink: #7a6300;
+    --pass: #00a651;
+    --pass-ink: #007a3d;
+    --display: "Archivo Black", "Arial Black", "Helvetica Neue", Arial, sans-serif;
+    --body: "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --bw: 3px;
+    --shadow: 4px 4px 0 #000;
+    --shadow-lg: 8px 8px 0 #000;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-bottom: 110px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--warn); color: #000; }
+  a { color: var(--ink); }
+  h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+  ul, ol { padding: 0; list-style: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  input { font: inherit; }
+  .mono { font-family: var(--mono); }
+  .up { text-transform: uppercase; letter-spacing: .12em; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px;
+    clip: rect(0 0 0 0); clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+  }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  .icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: square; stroke-linejoin: miter; }
+
+  /* ---------- shared brutal bits ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    background: var(--paper); color: var(--ink);
+    border: var(--bw) solid var(--ink); box-shadow: var(--shadow);
+    font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 12px 18px; text-decoration: none; white-space: nowrap;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-loud { background: var(--warn); color: var(--ink); }
+  .btn-sm { padding: 8px 12px; font-size: 11px; box-shadow: 3px 3px 0 #000; }
+  .btn-sm:hover { box-shadow: 5px 5px 0 #000; }
+  .btn-sm:active { box-shadow: 1px 1px 0 #000; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 2px solid var(--ink);
+    font-weight: 800; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 9px; white-space: nowrap; line-height: 1.4;
+  }
+  .tag .icon { width: 12px; height: 12px; }
+  .tag-crit { background: var(--crit); color: #000; }
+  .tag-warn { background: var(--warn); color: #000; }
+  .tag-pass { background: var(--pass); color: #000; }
+  .tag-plain { background: var(--paper); color: var(--ink); }
+  .tag-black { background: var(--ink); color: var(--paper); }
+
+  .sq { width: 10px; height: 10px; flex: 0 0 auto; display: inline-block; border: 2px solid var(--ink); }
+  .sq-crit { background: var(--crit); }
+  .sq-warn { background: var(--warn); }
+  .sq-pass { background: var(--pass); }
+
+  /* ---------- chrome ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 22px; height: 64px;
+    background: var(--paper); border-bottom: var(--bw) solid var(--ink);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--display); font-size: 19px; letter-spacing: .01em;
+    color: var(--ink); text-decoration: none; text-transform: uppercase;
+  }
+  .brand-mark {
+    width: 30px; height: 30px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--paper); border: var(--bw) solid var(--ink);
+  }
+  .brand-mark .icon { width: 16px; height: 16px; }
+  .topnav { display: flex; gap: 2px; margin-left: 6px; }
+  .topnav a {
+    font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink); text-decoration: none; padding: 7px 10px; border: 2px solid transparent;
+  }
+  .topnav a:hover { border-color: var(--ink); background: var(--warn); }
+  .top-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: 3px 3px 0 #000;
+    font-family: var(--mono); font-size: 12.5px; font-weight: 700; padding: 6px 12px 6px 7px;
+  }
+  .account-avatar {
+    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--paper);
+  }
+  .account-avatar .icon { width: 14px; height: 14px; }
+
+  /* ---------- landing ---------- */
+  .ticker {
+    background: var(--ink); color: var(--paper);
+    font-family: var(--display); font-size: 12px; letter-spacing: .3em; text-transform: uppercase;
+    text-align: center; padding: 9px 12px; white-space: nowrap; overflow: hidden;
+  }
+  .hero {
+    border-bottom: var(--bw) solid var(--ink);
+    background:
+      linear-gradient(rgba(0, 0, 0, .055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, .055) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .hero-inner {
+    max-width: 1180px; margin: 0 auto; padding: 72px 24px 64px;
+    display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 48px; align-items: center;
+  }
+  .eyebrow-block {
+    display: inline-block; background: var(--ink); color: var(--paper);
+    font-weight: 800; font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    padding: 7px 14px; margin-bottom: 22px; box-shadow: var(--shadow);
+  }
+  .hero h1 {
+    font-family: var(--display); font-weight: 900;
+    font-size: clamp(38px, 5.6vw, 72px); line-height: .98; letter-spacing: -.01em;
+    text-transform: uppercase; margin-bottom: 24px;
+  }
+  .hero-sub {
+    background: var(--paper); border: var(--bw) solid var(--ink); box-shadow: var(--shadow);
+    padding: 16px 18px; font-size: 15px; font-weight: 500; max-width: 62ch; margin-bottom: 26px;
+  }
+  .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .cta-row .btn { font-size: 14px; padding: 15px 22px; }
+  .cta-price { font-family: var(--mono); font-weight: 700; font-size: 13px; border-bottom: 3px solid var(--ink); padding-bottom: 2px; }
+  .hero-note {
+    border: var(--bw) dashed var(--ink); padding: 13px 16px;
+    font-size: 13px; font-weight: 600; max-width: 62ch; background: var(--paper);
+  }
+
+  .preview { display: block; width: 100%; text-align: left; }
+  .preview-frame {
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: var(--shadow-lg);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .preview:hover .preview-frame { transform: translate(-3px, -3px); box-shadow: 11px 11px 0 #000; }
+  .mini-bar {
+    display: flex; align-items: center; gap: 7px;
+    border-bottom: var(--bw) solid var(--ink); padding: 9px 12px; background: var(--paper);
+  }
+  .mini-bar i { width: 11px; height: 11px; border: 2px solid var(--ink); }
+  .mini-bar i:nth-child(1) { background: var(--crit); }
+  .mini-bar i:nth-child(2) { background: var(--warn); }
+  .mini-bar i:nth-child(3) { background: var(--pass); }
+  .mini-url {
+    margin-left: 8px; font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    border: 2px solid var(--ink); padding: 2px 9px;
+  }
+  .mini-body { display: grid; grid-template-columns: 46px 1fr; min-height: 250px; }
+  .mini-side { border-right: var(--bw) solid var(--ink); background: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 0; }
+  .mini-side i { width: 18px; height: 18px; background: var(--paper); }
+  .mini-side i.on { background: var(--warn); }
+  .mini-main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .mini-stats i { height: 34px; border: 2px solid var(--ink); background: var(--paper); position: relative; }
+  .mini-stats i::after { content: ""; position: absolute; left: 6px; right: 38%; top: 7px; bottom: 7px; background: var(--ink); }
+  .mini-stats i.hot { background: var(--crit); }
+  .mini-stats i.hot::after { background: var(--ink); }
+  .mini-row { display: flex; align-items: center; gap: 9px; border: 2px solid var(--ink); padding: 8px 10px; background: var(--paper); }
+  .mini-row .bar { height: 8px; background: var(--ink); }
+  .mini-row .w55 { width: 55%; } .mini-row .w42 { width: 42%; } .mini-row .w48 { width: 48%; }
+  .mini-row .tagbox { margin-left: auto; width: 34px; height: 13px; border: 2px solid var(--ink); background: var(--pass); }
+  .mini-row .tagbox.crit { background: var(--crit); }
+  .mini-row .tagbox.warn { background: var(--warn); }
+  .preview-cap {
+    display: block; text-align: center; margin-top: 14px;
+    font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .preview:hover .preview-cap { color: var(--ink); }
+
+  .features {
+    max-width: 1180px; margin: 0 auto; padding: 56px 24px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+  }
+  .feature {
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: var(--shadow);
+    padding: 24px; transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .feature:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+  .feature .num {
+    font-family: var(--display); font-size: 44px; line-height: 1; display: block; margin-bottom: 14px;
+  }
+  .feature:nth-child(1) .num { color: var(--ink); }
+  .feature h2 { font-family: var(--display); font-size: 19px; text-transform: uppercase; letter-spacing: .01em; margin-bottom: 10px; }
+  .feature p { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .feature .inline-code {
+    font-family: var(--mono); font-size: .88em; font-weight: 700; color: var(--ink);
+    background: var(--warn); border: 2px solid var(--ink); padding: 1px 6px; white-space: nowrap;
+  }
+
+  .flags { max-width: 1180px; margin: 0 auto; padding: 0 24px 64px; }
+  .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .section-head h2 { font-family: var(--display); font-size: 26px; text-transform: uppercase; }
+  .section-head .hint { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); }
+  .flag-grid { border: var(--bw) solid var(--ink); box-shadow: var(--shadow-lg); background: var(--paper); }
+  .flag-grid li {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 13px 18px; border-bottom: 2px solid var(--ink);
+  }
+  .flag-grid li:nth-child(even) { background: #f4f4f4; }
+  .flag-grid li:last-child { border-bottom: 0; }
+  .flag-code {
+    font-family: var(--mono); font-weight: 700; font-size: 12px;
+    border: 2px solid var(--ink); padding: 2px 8px; background: var(--paper); flex: 0 0 auto;
+  }
+  .flag-name { font-weight: 700; font-size: 14px; }
+  .flag-grid .tag { margin-left: auto; }
+
+  .site-footer {
+    border-top: var(--bw) solid var(--ink); background: var(--ink); color: var(--paper);
+    padding: 26px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+  }
+  .site-footer nav { display: flex; flex-wrap: wrap; gap: 4px; }
+  .site-footer a {
+    color: var(--paper); font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    text-decoration: none; padding: 6px 10px; border: 2px solid transparent;
+  }
+  .site-footer a:hover { border-color: var(--paper); background: var(--crit); color: #000; }
+  .site-footer .tagline { margin-left: auto; font-family: var(--display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+
+  /* ---------- watch desk ---------- */
+  .desk { max-width: 1180px; margin: 0 auto; padding: 34px 24px 48px; display: flex; flex-direction: column; gap: 24px; }
+  .desk-head {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 22px;
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: var(--shadow-lg);
+    padding: 20px 22px;
+  }
+  .desk-head .eyebrow-block { margin-bottom: 10px; box-shadow: none; }
+  .desk-head h1 { font-family: var(--display); font-size: clamp(26px, 3.4vw, 40px); text-transform: uppercase; line-height: 1; }
+  .desk-head-right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .cov-note { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--muted); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: var(--bw) solid var(--ink); box-shadow: 3px 3px 0 #000;
+    font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 8px 14px; white-space: nowrap;
+  }
+  .badge-warn { background: var(--warn); color: #000; }
+  .badge-pass { background: var(--pass); color: #000; }
+  .badge-ended { background: var(--crit); color: #000; }
+
+  .ended-banner {
+    display: none;
+    align-items: center; gap: 18px; flex-wrap: wrap;
+    border: var(--bw) solid var(--ink); background: var(--warn); box-shadow: var(--shadow-lg);
+    padding: 20px 22px;
+  }
+  body[data-coverage="ended"] .ended-banner { display: flex; }
+  .ended-banner .eb-icon {
+    width: 44px; height: 44px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--warn); border: var(--bw) solid var(--ink);
+  }
+  .ended-banner .eb-icon .icon { width: 22px; height: 22px; }
+  .ended-banner h2 { font-family: var(--display); font-size: 22px; text-transform: uppercase; }
+  .ended-banner p { font-weight: 700; font-size: 13.5px; }
+  .ended-banner .btn { margin-left: auto; }
+
+  .desk-body { display: flex; flex-direction: column; gap: 24px; transition: opacity .2s ease, filter .2s ease; }
+  body[data-coverage="ended"] .desk-body { opacity: .45; filter: grayscale(1); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .stat {
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: var(--shadow);
+    padding: 16px 18px; transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .stat:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+  .stat-top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .stat-label { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .stat-value { font-family: var(--display); font-size: 46px; line-height: 1; }
+  .stat-hot { background: var(--crit); }
+  .stat-hot .stat-label, .stat-hot .stat-value { color: #000; }
+
+  .panel { border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: var(--shadow-lg); }
+  .panel-head {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: var(--bw) solid var(--ink); padding: 13px 18px; background: var(--paper);
+  }
+  .panel-head h2 { font-family: var(--display); font-size: 17px; text-transform: uppercase; letter-spacing: .01em; }
+  .panel-meta { margin-left: auto; font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--muted); }
+  .panel-body { padding: 16px 18px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th {
+    text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+    padding: 10px 16px; border-bottom: var(--bw) solid var(--ink); background: var(--paper);
+  }
+  td { padding: 13px 16px; border-bottom: 2px solid var(--ink); vertical-align: middle; font-weight: 500; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: #f0f0f0; }
+  tr.row-danger { background: #ffe9e9; }
+  tr.row-danger:hover { background: #ffdede; }
+  tr.row-danger td:first-child { border-left: 8px solid var(--crit); }
+  .cell-status { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .cell-repo { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+  .cell-time { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; font-weight: 700; }
+  .cell-time.danger { color: var(--crit-ink); }
+
+  .alert { border-bottom: var(--bw) solid var(--ink); padding: 18px; transition: opacity .2s ease; }
+  .alert:last-child { border-bottom: 0; }
+  .alert-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 10px; }
+  .alert-head h3 { font-family: var(--display); font-size: 16.5px; letter-spacing: 0; }
+  .alert-meta { margin-left: auto; display: inline-flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); }
+  .alert-body { color: var(--muted); font-size: 13.5px; font-weight: 500; max-width: 74ch; }
+  .alert-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  body[data-coverage="active"] .alert-went-public { opacity: .62; }
+  body[data-coverage="active"] .alert-went-public .alert-actions { display: none; }
+
+  .findings { margin-top: 14px; border: var(--bw) solid var(--ink); }
+  .findings table { font-size: 13px; }
+  .findings th { border-bottom: 2px solid var(--ink); }
+  .findings td, .findings th { padding: 9px 13px; }
+  .findings .path { font-family: var(--mono); font-weight: 700; font-size: 12.5px; }
+  .findings .detail { color: var(--muted); font-weight: 500; }
+
+  .checklist { margin-top: 14px; }
+  .checklist h4 { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 9px; }
+  .checklist li { display: flex; align-items: center; gap: 11px; padding: 6px 0; font-weight: 700; font-size: 13.5px; }
+  .checkbox {
+    width: 17px; height: 17px; flex: 0 0 auto;
+    border: var(--bw) solid var(--ink); background: var(--paper);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .panel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  .rowline { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; }
+  .rowline + .rowline { margin-top: 13px; padding-top: 13px; border-top: 2px solid var(--ink); }
+  .ic-chip {
+    width: 38px; height: 38px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: 3px 3px 0 #000;
+  }
+  .ic-chip .icon { width: 18px; height: 18px; }
+  .row-title { font-family: var(--mono); font-weight: 700; font-size: 13.5px; }
+  .row-sub { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .row-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .labeled-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); }
+
+  .watch-form { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .watch-form input {
+    flex: 1 1 180px; min-width: 0;
+    border: var(--bw) solid var(--ink); background: var(--paper);
+    font-family: var(--mono); font-size: 12.5px; font-weight: 700; padding: 9px 12px;
+  }
+  .watch-form input::placeholder { color: var(--faint); }
+  .watch-form input:focus-visible { outline: none; box-shadow: 4px 4px 0 #000; }
+
+  .custody-flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .custody-node {
+    font-family: var(--mono); font-weight: 700; font-size: 12.5px;
+    border: var(--bw) solid var(--ink); background: var(--paper); box-shadow: 3px 3px 0 #000; padding: 7px 13px;
+  }
+  .custody-arrow { font-family: var(--mono); font-weight: 700; font-size: 16px; }
+
+  /* coverage state visibility — kept after component display rules so .cov wins at equal specificity */
+  .cov { display: none; }
+  body[data-coverage="trial"] .cov-trial { display: inline-flex; }
+  body[data-coverage="active"] .cov-active { display: inline-flex; }
+  body[data-coverage="ended"] .cov-ended { display: inline-flex; }
+  body[data-coverage="trial"] p.cov-trial,
+  body[data-coverage="active"] p.cov-active,
+  body[data-coverage="ended"] p.cov-ended { display: block; }
+
+  /* ---------- switcher ---------- */
+  .mockup-switcher {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    z-index: 50; display: flex; align-items: center; gap: 8px;
+    background: var(--paper); border: var(--bw) solid var(--ink); box-shadow: var(--shadow);
+    padding: 6px; max-width: calc(100vw - 20px); overflow-x: auto;
+  }
+  .switcher-group { display: flex; gap: 4px; }
+  .switcher-sep { width: 3px; align-self: stretch; background: var(--ink); flex: 0 0 auto; }
+  .switcher-btn {
+    font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    padding: 8px 13px; border: 2px solid transparent; white-space: nowrap;
+    transition: background .1s ease, color .1s ease;
+  }
+  .switcher-btn:hover { border-color: var(--ink); }
+  .switcher-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 940px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 40px; padding: 52px 20px 48px; }
+    .features { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .panel-grid { grid-template-columns: 1fr; }
+    .topnav { display: none; }
+  }
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-value { font-size: 34px; }
+    .desk { padding: 22px 14px 36px; }
+    .desk-head-right { margin-left: 0; }
+    .topbar { padding: 0 14px; gap: 12px; }
+    .account-chip .account-name { display: none; }
+    .ended-banner .btn { margin-left: 0; width: 100%; }
+    .cta-row .btn { width: 100%; }
+    .cta-price { width: 100%; text-align: center; border-bottom: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .btn:hover, .btn:active, .feature:hover, .stat:hover, .preview:hover .preview-frame { transform: none; }
+  }
+</style>
+</head>
+<body data-coverage="trial">
+
+<!-- ==================== LANDING ==================== -->
+<main data-screen="landing">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="NoSpoilers home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </span>
+      NoSpoilers
+    </a>
+    <nav class="topnav" aria-label="Product">
+      <a href="#features">Product</a>
+      <a href="#preview">Watch</a>
+      <a href="#flags">Scan</a>
+      <a href="#cta">Pricing</a>
+      <a href="#footer">Docs</a>
+    </nav>
+    <div class="top-right">
+      <button class="btn btn-sm" type="button" data-view="watch">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Sign in with GitHub
+      </button>
+    </div>
+  </header>
+
+  <p class="ticker" aria-hidden="true">No spoilers in production &nbsp;&middot;&nbsp; No spoilers in production &nbsp;&middot;&nbsp; No spoilers in production &nbsp;&middot;&nbsp; No spoilers in production</p>
+
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="hero-inner" id="top">
+      <div>
+        <p class="eyebrow-block">No spoilers in production</p>
+        <h1 id="hero-h">We watch GitHub. We read the pack they download.</h1>
+        <p class="hero-sub">Secret scanners read git. That missed Claude Code&rsquo;s cli.js.map on npm and maps inside a public installer. NoSpoilers is a GitHub App: private &rarr; public, then the tarball, zip, or asar. You pay for coverage on our servers, not a scan counter.</p>
+        <div class="cta-row" id="cta">
+          <button class="btn btn-loud" type="button" data-view="watch" data-set-coverage="trial">Start 14-day trial</button>
+          <button class="btn" type="button" data-view="watch">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Sign in with GitHub
+          </button>
+          <span class="cta-price">Solo $29 &middot; Team $99</span>
+        </div>
+        <p class="hero-note">Trial is full coverage. When it ends unpaid, we stop jobs and alerts. The CLI on your laptop is a bonus. We do not pretend we can DRM it.</p>
+      </div>
+
+      <div id="preview">
+        <button class="preview" type="button" data-view="watch" aria-label="Open the watch desk screen">
+          <span class="preview-frame" aria-hidden="true">
+            <span class="mini-bar"><i></i><i></i><i></i><span class="mini-url">app.nospoilers.dev/desk</span></span>
+            <span class="mini-body">
+              <span class="mini-side"><i class="on"></i><i></i><i></i><i></i><i></i></span>
+              <span class="mini-main">
+                <span class="mini-stats"><i></i><i class="hot"></i><i></i><i></i></span>
+                <span class="mini-row"><span class="sq sq-pass"></span><span class="bar w55"></span><span class="tagbox"></span></span>
+                <span class="mini-row"><span class="sq sq-crit"></span><span class="bar w42"></span><span class="tagbox crit"></span></span>
+                <span class="mini-row"><span class="sq sq-warn"></span><span class="bar w48"></span><span class="tagbox warn"></span></span>
+                <span class="mini-row"><span class="sq sq-pass"></span><span class="bar w55"></span><span class="tagbox"></span></span>
+              </span>
+            </span>
+          </span>
+          <span class="preview-cap">The logged-in desk during trial. Click through.</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features" aria-label="How it works">
+    <article class="feature">
+      <span class="num" aria-hidden="true">01</span>
+      <h2>Watch GitHub</h2>
+      <p>Publicize, created public, transfer, collaborator, fork. The doorbell answers in under a second. You cannot pirate that.</p>
+    </article>
+    <article class="feature">
+      <span class="num" aria-hidden="true">02</span>
+      <h2>Read the pack</h2>
+      <p>Hosted unpack of npm tgz, zip, Electron asar. Included on the plan, fair use, no scan credits. We do not keep the bytes.</p>
+    </article>
+    <article class="feature">
+      <span class="num" aria-hidden="true">03</span>
+      <h2>Fail closed in CI</h2>
+      <p><span class="inline-code">npx nospoilers scan ./package.tgz</span> for the build you remember to wire. The hosted app is for the release you forget.</p>
+    </article>
+  </section>
+
+  <section class="flags" id="flags" aria-labelledby="flags-h">
+    <div class="section-head">
+      <h2 id="flags-h">What we flag</h2>
+      <span class="hint">8 policies &middot; 5 critical &middot; 3 warn</span>
+    </div>
+    <ul class="flag-grid">
+      <li><span class="flag-code">MAP-001</span><span class="flag-name">Source map in pack</span><span class="tag tag-crit"><span class="sq" style="background:#000;border-color:#000"></span>critical</span></li>
+      <li><span class="flag-code">SEC-001</span><span class="flag-name">.env file</span><span class="tag tag-crit"><span class="sq" style="background:#000;border-color:#000"></span>critical</span></li>
+      <li><span class="flag-code">SEC-003</span><span class="flag-name">Cloud credential</span><span class="tag tag-crit"><span class="sq" style="background:#000;border-color:#000"></span>critical</span></li>
+      <li><span class="flag-code">GIT-001</span><span class="flag-name">.git packed in</span><span class="tag tag-crit"><span class="sq" style="background:#000;border-color:#000"></span>critical</span></li>
+      <li><span class="flag-code">DB-001</span><span class="flag-name">Database dump</span><span class="tag tag-crit"><span class="sq" style="background:#000;border-color:#000"></span>critical</span></li>
+      <li><span class="flag-code">SRC-001</span><span class="flag-name">Raw TypeScript source</span><span class="tag tag-warn"><span class="sq" style="background:#000;border-color:#000"></span>warn</span></li>
+      <li><span class="flag-code">NET-001</span><span class="flag-name">Private-network URL</span><span class="tag tag-warn"><span class="sq" style="background:#000;border-color:#000"></span>warn</span></li>
+      <li><span class="flag-code">SIZE-002</span><span class="flag-name">Payload over 50 MB</span><span class="tag tag-warn"><span class="sq" style="background:#000;border-color:#000"></span>warn</span></li>
+    </ul>
+  </section>
+
+  <footer class="site-footer" id="footer">
+    <nav aria-label="Legal">
+      <a href="#footer">Privacy</a>
+      <a href="#footer">Terms</a>
+      <a href="#footer">Retention</a>
+      <a href="#footer">Disclosure</a>
+      <a href="#footer">Support</a>
+      <a href="#footer">Refunds</a>
+    </nav>
+    <p class="tagline">No spoilers in production.</p>
+  </footer>
+</main>
+
+<!-- ==================== WATCH DESK ==================== -->
+<main data-screen="watch" hidden>
+  <header class="topbar">
+    <button class="brand" type="button" data-view="landing" aria-label="Back to landing">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </span>
+      NoSpoilers
+    </button>
+    <nav class="topnav" aria-label="Product">
+      <a href="#coverage">Product</a>
+      <a href="#overview">Watch</a>
+      <a href="#alerts">Scan</a>
+      <a href="#coverage">Pricing</a>
+      <a href="#notifications">Docs</a>
+    </nav>
+    <div class="top-right">
+      <span class="account-chip">
+        <span class="account-avatar" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span class="account-name">emotive-impact</span>
+      </span>
+    </div>
+  </header>
+
+  <div class="desk">
+    <header class="desk-head" id="coverage">
+      <div>
+        <p class="eyebrow-block">Watch desk</p>
+        <h1>emotive-impact</h1>
+      </div>
+      <div class="desk-head-right">
+        <span class="badge badge-warn cov cov-trial"><span class="sq" style="background:#000;border-color:#000"></span>Trial &middot; 11 days left</span>
+        <span class="badge badge-pass cov cov-active"><span class="sq" style="background:#000;border-color:#000"></span>Team &middot; Active</span>
+        <span class="badge badge-ended cov cov-ended"><span class="sq" style="background:#000;border-color:#000"></span>Coverage ended</span>
+        <p class="cov-note cov cov-trial">Full coverage. No card yet.</p>
+        <p class="cov-note cov cov-ended">The bot is quiet until you subscribe.</p>
+        <button class="btn btn-primary btn-sm" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Install on GitHub
+        </button>
+      </div>
+    </header>
+
+    <div class="ended-banner" role="status">
+      <span class="eb-icon" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </span>
+      <div>
+        <h2>Coverage ended</h2>
+        <p>The bot is quiet until you subscribe.</p>
+      </div>
+      <button class="btn btn-primary" type="button" data-set-coverage="active">Subscribe &mdash; Solo $29 &middot; Team $99</button>
+    </div>
+
+    <div class="desk-body">
+      <section class="stats" id="overview" aria-label="Coverage at a glance">
+        <div class="stat">
+          <div class="stat-top"><span class="sq sq-pass"></span><p class="stat-label">repositories</p></div>
+          <p class="stat-value">2</p>
+        </div>
+        <div class="stat stat-hot">
+          <div class="stat-top"><span class="sq" style="background:#000;border-color:#000"></span><p class="stat-label">open alert</p></div>
+          <p class="stat-value">1</p>
+        </div>
+        <div class="stat">
+          <div class="stat-top"><span class="sq sq-warn"></span><p class="stat-label">npm package</p></div>
+          <p class="stat-value">1</p>
+        </div>
+        <div class="stat">
+          <div class="stat-top"><span class="sq sq-pass"></span><p class="stat-label">website</p></div>
+          <p class="stat-value">1</p>
+        </div>
+      </section>
+
+      <section class="panel" id="repositories" aria-labelledby="repositories-h">
+        <header class="panel-head">
+          <h2 id="repositories-h">Repositories</h2>
+          <span class="panel-meta">2 connected</span>
+        </header>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th scope="col">Status</th><th scope="col">Repository</th><th scope="col">Visibility</th><th scope="col">Last check</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="cell-status"><span class="sq sq-pass"></span>Watching</span></td>
+                <td><span class="cell-repo">emotive-impact/desktop</span></td>
+                <td><span class="tag tag-plain"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Private</span></td>
+                <td><span class="cell-time">Checked 2 min ago</span></td>
+              </tr>
+              <tr class="row-danger">
+                <td><span class="cell-status"><span class="sq sq-crit"></span>Attention</span></td>
+                <td><span class="cell-repo">emotive-impact/old-cli</span></td>
+                <td><span class="tag tag-crit"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Public</span></td>
+                <td><span class="cell-time danger">Went public 9:14 AM</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="alerts" aria-labelledby="alerts-h">
+        <header class="panel-head">
+          <h2 id="alerts-h">Alerts</h2>
+          <span class="panel-meta">newest first</span>
+        </header>
+
+        <article class="alert alert-went-public">
+          <header class="alert-head">
+            <span class="tag tag-black">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+              Went public
+            </span>
+            <h3>emotive-impact/old-cli flipped to public</h3>
+            <span class="alert-meta">
+              <time>9:14 AM</time>
+              <span class="tag tag-crit cov cov-trial">open</span>
+              <span class="tag tag-crit cov cov-ended">open</span>
+              <span class="tag tag-pass cov cov-active">resolved by maya &middot; exposed 4 min</span>
+            </span>
+          </header>
+          <p class="alert-body">Visibility job finished in 400ms. No pack attached to this event.</p>
+          <footer class="alert-actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-primary btn-sm" type="button">Resolve</button>
+          </footer>
+        </article>
+
+        <article class="alert">
+          <header class="alert-head">
+            <span class="tag tag-black">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+              npm pack
+            </span>
+            <h3>@emotive/desktop@2.4.1 failed policy</h3>
+            <span class="alert-meta">
+              <time>8:57 AM</time>
+              <span class="tag tag-crit">open</span>
+            </span>
+          </header>
+          <div class="findings">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th scope="col">Finding</th><th scope="col">Path</th><th scope="col">Severity</th><th scope="col">Detail</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="flag-code">MAP-002</span></td>
+                    <td><span class="path">dist/cli.js.map</span></td>
+                    <td><span class="tag tag-crit">critical</span></td>
+                    <td><span class="detail">Source map embeds original source</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="flag-code">SEC-001</span></td>
+                    <td><span class="path">.env</span></td>
+                    <td><span class="tag tag-crit">critical</span></td>
+                    <td><span class="detail">.env file in the pack</span></td>
+                  </tr>
+                  <tr>
+                    <td><span class="flag-code">SRC-001</span></td>
+                    <td><span class="path">src/auth.ts</span></td>
+                    <td><span class="tag tag-warn">warn</span></td>
+                    <td><span class="detail">Raw TypeScript source</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="checklist">
+            <h4>Rotation checklist</h4>
+            <ul>
+              <li><span class="checkbox" aria-hidden="true"></span>Rotate the npm token</li>
+              <li><span class="checkbox" aria-hidden="true"></span>Purge the CDN cache</li>
+              <li><span class="checkbox" aria-hidden="true"></span>Publish 2.4.2 and deprecate 2.4.1</li>
+            </ul>
+          </div>
+          <footer class="alert-actions">
+            <button class="btn btn-sm" type="button">Acknowledge</button>
+            <button class="btn btn-sm" type="button">Assign</button>
+            <button class="btn btn-primary btn-sm" type="button">Resolve</button>
+          </footer>
+        </article>
+      </section>
+
+      <div class="panel-grid">
+        <section class="panel" id="npm" aria-labelledby="npm-h">
+          <header class="panel-head">
+            <h2 id="npm-h">npm packages</h2>
+            <span class="panel-meta">1 watched</span>
+          </header>
+          <div class="panel-body">
+            <div class="rowline">
+              <span class="ic-chip" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+              </span>
+              <div>
+                <p class="row-title">@emotive/desktop</p>
+                <p class="row-sub">registry.npmjs.org &middot; latest 2.4.1</p>
+              </div>
+              <div class="row-actions">
+                <span class="labeled-tag">Last scan: <span class="tag tag-crit">failed policy</span></span>
+                <button class="btn btn-sm" type="button">Scan latest</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="websites" aria-labelledby="websites-h">
+          <header class="panel-head">
+            <h2 id="websites-h">Production websites</h2>
+            <span class="panel-meta">1 watched</span>
+          </header>
+          <div class="panel-body">
+            <div class="rowline">
+              <span class="ic-chip" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </span>
+              <div>
+                <p class="row-title">https://app.emotive.dev</p>
+                <p class="row-sub">Last crawl: <span class="tag tag-pass">clean</span></p>
+              </div>
+            </div>
+            <div class="watch-form">
+              <label class="sr-only" for="site-url-08">Website URL</label>
+              <input id="site-url-08" type="url" placeholder="https://&hellip;" autocomplete="off">
+              <button class="btn btn-primary btn-sm" type="button">Watch website</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="custody" aria-labelledby="custody-h">
+          <header class="panel-head">
+            <h2 id="custody-h">Map custody</h2>
+            <span class="panel-meta">source maps</span>
+          </header>
+          <div class="panel-body">
+            <div class="custody-flow">
+              <span class="custody-node">Sentry</span>
+              <span class="custody-arrow" aria-hidden="true">&rarr;</span>
+              <span class="custody-node">emotive/desktop</span>
+            </div>
+            <div class="rowline">
+              <span class="labeled-tag">Last check: <span class="tag tag-pass">ok</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="notifications" aria-labelledby="notifications-h">
+          <header class="panel-head">
+            <h2 id="notifications-h">Notifications</h2>
+            <span class="panel-meta">1 channel</span>
+          </header>
+          <div class="panel-body">
+            <div class="rowline">
+              <span class="ic-chip" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </span>
+              <div>
+                <p class="row-title">Slack #security</p>
+                <p class="row-sub">minimum severity <span class="tag tag-crit">critical</span></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ==================== MOCKUP SWITCHER ==================== -->
+<nav class="mockup-switcher" aria-label="Mockup controls">
+  <div class="switcher-group" role="group" aria-label="Screen">
+    <button class="switcher-btn" type="button" data-view="landing" aria-pressed="true">Landing</button>
+    <button class="switcher-btn" type="button" data-view="watch" aria-pressed="false">Watch desk</button>
+  </div>
+  <span class="switcher-sep" id="switcher-sep" hidden></span>
+  <div class="switcher-group" role="group" aria-label="Coverage state" id="switcher-states" hidden>
+    <button class="switcher-btn" type="button" data-set-coverage="trial" aria-pressed="true">Trial</button>
+    <button class="switcher-btn" type="button" data-set-coverage="active" aria-pressed="false">Active</button>
+    <button class="switcher-btn" type="button" data-set-coverage="ended" aria-pressed="false">Ended</button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  "use strict";
+  var screens = Array.prototype.slice.call(document.querySelectorAll("main[data-screen]"));
+  var viewButtons = Array.prototype.slice.call(document.querySelectorAll("[data-view]"));
+  var stateButtons = Array.prototype.slice.call(document.querySelectorAll("[data-set-coverage]"));
+  var stateGroup = document.getElementById("switcher-states");
+  var stateSep = document.getElementById("switcher-sep");
+
+  function showScreen(name) {
+    screens.forEach(function (s) { s.hidden = s.getAttribute("data-screen") !== name; });
+    viewButtons.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === name));
+    });
+    var onWatch = name === "watch";
+    if (stateGroup) stateGroup.hidden = !onWatch;
+    if (stateSep) stateSep.hidden = !onWatch;
+    window.scrollTo(0, 0);
+  }
+
+  function setCoverage(value) {
+    document.body.dataset.coverage = value;
+    stateButtons.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-set-coverage") === value));
+    });
+  }
+
+  viewButtons.forEach(function (b) {
+    b.addEventListener("click", function () { showScreen(b.getAttribute("data-view")); });
+  });
+  stateButtons.forEach(function (b) {
+    b.addEventListener("click", function () { setCoverage(b.getAttribute("data-set-coverage")); });
+  });
+
+  setCoverage(document.body.dataset.coverage || "trial");
+  showScreen("landing");
+})();
+</script>
+</body>
+</html>
