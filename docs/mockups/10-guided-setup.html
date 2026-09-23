@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>10 · Guided setup — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .body {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 34px 22px 90px;
+      }
+
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        margin: 22px 0 28px;
+      }
+      .ring {
+        --p: 50;
+        width: 46px;
+        height: 46px;
+        border-radius: 999px;
+        flex: none;
+        background: conic-gradient(var(--snow) calc(var(--p) * 1%), rgba(255, 255, 255, 0.09) 0);
+        display: grid;
+        place-items: center;
+      }
+      .ring span {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        background: var(--panel);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--snow);
+      }
+
+      .stepcard {
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .stepcard.done {
+        background: transparent;
+      }
+      .stepcard.active {
+        border-color: var(--line-strong);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03);
+      }
+      .stephead {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 15px 18px;
+        cursor: pointer;
+      }
+      .mark {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+        flex: none;
+      }
+      .mark.done {
+        background: rgba(63, 185, 80, 0.14);
+        border-color: rgba(63, 185, 80, 0.4);
+        color: #7ee08a;
+      }
+      .mark.now {
+        background: var(--snow);
+        border-color: var(--snow);
+        color: var(--ink);
+      }
+      .stepbody {
+        padding: 0 18px 18px 56px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+
+      .option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--inset);
+        margin-bottom: 8px;
+        cursor: pointer;
+      }
+      .option:hover {
+        border-color: var(--line-strong);
+      }
+      .glyph {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 13px;
+        color: var(--mute);
+        flex: none;
+      }
+
+      .laterlist {
+        margin-top: 34px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+      }
+      .later {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .later:last-child {
+        border-bottom: 0;
+      }
+      .later strong {
+        color: var(--mute);
+        font-weight: 500;
+      }
+
+      .live {
+        margin-top: 30px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+      }
+      .live-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--inset);
+        border-bottom: 1px solid var(--line);
+      }
+      .live-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .live-row:last-child {
+        border-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <div class="grow"></div>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <span class="pill s-trial">Trial · day 3 of 14</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · day 1 of 14</span>
+        <button class="btn sm ghost">Skip setup</button>
+      </header>
+
+      <div class="body">
+        <span class="kicker">Getting covered</span>
+        <h1 class="has-data hide-ended" style="margin-top: 9px">
+          You are watching GitHub. Two gaps left.
+        </h1>
+        <h1 class="s-ended" style="margin-top: 9px">Your setup is intact. It is just paused.</h1>
+        <h1 class="s-empty" style="margin-top: 9px">Five leak paths. None covered yet.</h1>
+        <p class="muted has-data hide-ended" style="margin-top: 10px; max-width: 60ch">
+          The desk only shows what you have connected. Nothing you have not set up is on this page,
+          so it never becomes a wall of empty panels.
+        </p>
+        <p class="muted s-empty" style="margin-top: 10px; max-width: 60ch">
+          Start with the first one. Each step you finish adds a section to the desk — and until you
+          finish it, that section does not exist rather than sitting there empty.
+        </p>
+
+        <div class="progress has-data hide-ended">
+          <div class="ring" style="--p: 60"><span>3/5</span></div>
+          <div class="grow">
+            <strong class="small">3 of 5 leak paths covered</strong>
+            <p class="tiny dim" style="margin-top: 4px">
+              Repo visibility, release assets, and CI gate are live. Registry tarballs and your
+              production origin are not.
+            </p>
+          </div>
+          <button class="btn sm">Finish setup</button>
+        </div>
+
+        <div class="progress s-empty">
+          <div class="ring" style="--p: 0"><span>0/5</span></div>
+          <div class="grow">
+            <strong class="small">Nothing connected yet</strong>
+            <p class="tiny dim" style="margin-top: 4px">
+              Step 1 takes about a minute and needs no token.
+            </p>
+          </div>
+          <button class="btn sm">Start</button>
+        </div>
+
+        <div
+          class="progress s-ended"
+          style="border-color: rgba(226, 69, 58, 0.32); background: rgba(226, 69, 58, 0.05)"
+        >
+          <div class="ring" style="--p: 60; background: conic-gradient(var(--danger) 60%, rgba(255,255,255,0.09) 0)">
+            <span>3/5</span>
+          </div>
+          <div class="grow">
+            <strong class="small">Coverage ended — the three you finished are paused</strong>
+            <p class="tiny dim" style="margin-top: 4px">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Your
+              setup is kept exactly as it is and restarts the moment you subscribe.
+            </p>
+          </div>
+          <button class="btn sm">See plans</button>
+        </div>
+
+        <div class="stepcard done has-data">
+          <div class="stephead">
+            <span class="mark done">✓</span>
+            <div class="grow">
+              <strong class="small">Watch GitHub visibility</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                6 repos · webhook delivering · last event 1 d ago
+              </p>
+            </div>
+            <button class="btn sm ghost">Manage</button>
+          </div>
+        </div>
+
+        <div class="stepcard active s-empty">
+          <div class="stephead">
+            <span class="mark now">1</span>
+            <div class="grow">
+              <strong class="small">Watch GitHub visibility</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                Private going public, created public, transferred, forked, collaborator added. The
+                doorbell answers in under a second.
+              </p>
+            </div>
+          </div>
+          <div class="stepbody">
+            <div class="option">
+              <span class="glyph">⌥</span>
+              <div class="grow">
+                <strong class="small">Install the GitHub App</strong>
+                <p class="tiny dim" style="margin-top: 2px">
+                  Pick one private throwaway repo first. Read-only Metadata is the only required
+                  permission.
+                </p>
+              </div>
+              <span class="btn sm">Install</span>
+            </div>
+            <p class="tiny dim" style="margin-top: 10px">
+              Steps 2 to 5 unlock as soon as this one is done. Nothing below is shown until it has
+              something to say.
+            </p>
+          </div>
+        </div>
+
+        <div class="stepcard done has-data">
+          <div class="stephead">
+            <span class="mark done">✓</span>
+            <div class="grow">
+              <strong class="small">Read GitHub release assets</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                Hosted unpack on · 31 receipts sealed
+              </p>
+            </div>
+            <button class="btn sm ghost">Manage</button>
+          </div>
+        </div>
+
+        <div class="stepcard done has-data">
+          <div class="stephead">
+            <span class="mark done">✓</span>
+            <div class="grow">
+              <strong class="small">Fail CI before the pack ships</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                <code class="path">nospoilers.yml</code> merged on 5 of 6 repos
+              </p>
+            </div>
+            <button class="btn sm ghost admin-only">Open PR on relay-worker</button>
+            <span class="tiny dim s-member">admin opens PRs</span>
+          </div>
+        </div>
+
+        <div class="stepcard active has-data">
+          <div class="stephead">
+            <span class="mark now">4</span>
+            <div class="grow">
+              <strong class="small">Watch what the registry actually serves</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                The clean release asset and the published tarball are not always the same file.
+                This is the gap that shipped Claude Code’s map.
+              </p>
+            </div>
+          </div>
+          <div class="stepbody">
+            <div class="option">
+              <span class="glyph">▣</span>
+              <div class="grow">
+                <strong class="small">npm package</strong>
+                <p class="tiny dim" style="margin-top: 2px">
+                  Public packages need nothing but the name. Private registries take a token.
+                </p>
+              </div>
+              <span class="btn sm">Connect</span>
+            </div>
+            <div class="row gap8" style="margin-top: 12px">
+              <input class="field" placeholder="Package name, e.g. nospoilers" />
+              <select class="field" style="width: 190px">
+                <option>registry.npmjs.org</option>
+                <option>+ add a private registry</option>
+              </select>
+              <button class="btn sm">Watch</button>
+            </div>
+            <p class="tiny dim" style="margin-top: 10px">
+              We suggest <code class="path">nospoilers</code> and
+              <code class="path">acme-ui</code> — both name-match a repo you already watch.
+            </p>
+          </div>
+        </div>
+
+        <div class="stepcard has-data">
+          <div class="stephead">
+            <span class="mark">5</span>
+            <div class="grow">
+              <strong class="small">Crawl your production origin</strong>
+              <p class="tiny dim" style="margin-top: 3px">
+                Same-origin JS, CSS, and maps, plus a bounded probe for exposed files.
+              </p>
+            </div>
+            <button class="btn sm outline">Add origin</button>
+          </div>
+        </div>
+
+        <div class="laterlist">
+          <span class="kicker">Available when you need it</span>
+          <p class="small dim" style="margin: 8px 0 14px; max-width: 58ch">
+            None of this is on the desk until you turn it on. Each one appears as its own section
+            only after it has something to report.
+          </p>
+          <div class="later team-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">✉</span>
+            <strong class="grow">Send alerts to Slack, Jira, or a SIEM webhook</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later s-solo">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">✉</span>
+            <strong class="grow">Send alerts to Slack, Jira, or a SIEM webhook</strong>
+            <span class="pill">Team</span>
+            <button class="btn sm ghost">Compare plans</button>
+          </div>
+          <div class="later team-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◷</span>
+            <strong class="grow">Keep an install timeline and an exportable audit log</strong>
+            <button class="btn sm ghost">Set up</button>
+          </div>
+          <div class="later s-solo">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◷</span>
+            <strong class="grow">Keep an install timeline and an exportable audit log</strong>
+            <span class="pill">Team</span>
+            <button class="btn sm ghost">Compare plans</button>
+          </div>
+          <div class="later">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⎔</span>
+            <strong class="grow">Verify maps really reached Sentry or Bugsnag</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later admin-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">◍</span>
+            <strong class="grow">Mint a Scan API token for another CI system</strong>
+            <button class="btn sm ghost">Set up</button>
+          </div>
+          <div class="later admin-only">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">▤</span>
+            <strong class="grow">Save a private registry token</strong>
+            <button class="btn sm ghost">Set up</button>
+          </div>
+          <div class="later">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⚖</span>
+            <strong class="grow">Write policy exceptions with an expiry</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">⧗</span>
+            <strong class="grow">Choose how long list data stays visible</strong>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <div class="later">
+            <span class="glyph" style="width: 24px; height: 24px; font-size: 11px">☗</span>
+            <strong class="grow">Invite teammates and set roles</strong>
+            <span class="pill">Team plan</span>
+            <button class="btn sm ghost admin-only">Set up</button>
+            <span class="tiny dim s-member">admin</span>
+          </div>
+          <p class="tiny dim s-member" style="margin-top: 14px">
+            Six of these are admin-only, so they are listed without a Set up button rather than
+            hidden — you can see what your install has, and who to ask.
+          </p>
+        </div>
+
+        <div class="live has-data">
+          <div class="live-head">
+            <span class="dot crit pulse"></span>
+            <strong class="small">Live from what you already connected</strong>
+            <div class="grow"></div>
+            <a href="#" class="tiny dim">Open the desk →</a>
+          </div>
+          <div class="live-row">
+            <span class="pill crit">MAP-002</span>
+            <span class="grow"
+              ><code class="path">nospoilers@0.4.2</code> ships original source</span
+            >
+            <span class="tiny dim">41 m</span>
+          </div>
+          <div class="live-row">
+            <span class="pill warn">DOC-001</span>
+            <span class="grow"
+              >Internal docs in <code class="path">EmotiveImpact/desk</code> v2.1.0</span
+            >
+            <span class="tiny dim">3 h</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>10</b> Guided setup
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>05 · Verdict first — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .wrapc {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 52px 22px 90px;
+      }
+
+      .hero {
+        text-align: center;
+      }
+      .halo {
+        width: 88px;
+        height: 88px;
+        margin: 0 auto;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 34px;
+        color: #ff8a80;
+        background: radial-gradient(circle, rgba(226, 69, 58, 0.22), transparent 68%);
+        border: 1px solid rgba(226, 69, 58, 0.36);
+      }
+      .hero h1 {
+        margin-top: 22px;
+        font-size: 38px;
+        line-height: 1.1;
+      }
+
+      .todo {
+        margin-top: 34px;
+      }
+      .todo-item {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 17px 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        margin-bottom: 10px;
+      }
+      .todo-item.crit {
+        border-color: rgba(226, 69, 58, 0.32);
+      }
+      .num {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--mute);
+        flex: none;
+        margin-top: 2px;
+      }
+
+      .quiet-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 44px 0 10px;
+      }
+      .quiet-head::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+
+      details.fold {
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--panel);
+        margin-bottom: 8px;
+      }
+      details.fold > summary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 17px;
+        cursor: pointer;
+        list-style: none;
+        font-size: 13.5px;
+        color: var(--mute);
+      }
+      details.fold > summary::-webkit-details-marker {
+        display: none;
+      }
+      details.fold > summary:hover {
+        color: var(--snow);
+      }
+      details.fold > summary .caret {
+        margin-left: auto;
+        color: var(--dim);
+        font-size: 11px;
+        transition: transform 0.15s ease;
+      }
+      details.fold[open] > summary .caret {
+        transform: rotate(90deg);
+      }
+      details.fold[open] > summary {
+        border-bottom: 1px solid var(--line);
+        color: var(--snow);
+      }
+      .fold-body {
+        padding: 16px 17px 18px;
+      }
+      .kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .kv:last-child {
+        border-bottom: 0;
+      }
+      .summary-val {
+        color: var(--dim);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <div class="grow"></div>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm ghost">Settings</button>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="wrapc">
+        <div class="hero">
+          <div class="halo has-data s-trial">!</div>
+          <div class="halo has-data s-solo">!</div>
+          <div class="halo has-data s-member">!</div>
+          <div class="halo s-ended" style="color: var(--danger)">✕</div>
+          <div class="halo s-empty" style="color: var(--mute); border-color: var(--line-strong); background: none">
+            ○
+          </div>
+
+          <h1 class="has-data s-trial">Two things are exposed right now.</h1>
+          <h1 class="has-data s-solo">Two things are exposed right now.</h1>
+          <h1 class="has-data s-member">Two things are exposed right now.</h1>
+          <h1 class="s-ended">We stopped looking six days ago.</h1>
+          <h1 class="s-empty">Nothing is being watched yet.</h1>
+
+          <p class="muted has-data s-trial" style="margin-top: 12px">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes.
+          </p>
+          <p class="muted has-data s-solo" style="margin-top: 12px">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes. On Solo both problems stay on this page: nothing routes to Slack or Jira,
+            and there is no install timeline or audit log behind them.
+          </p>
+          <p class="muted has-data s-member" style="margin-top: 12px">
+            Everything else — 6 repos, 3 packages, 2 origins — is clean and checked within the last
+            4 minutes.
+          </p>
+          <p class="muted s-ended" style="margin-top: 12px">
+            Trial ended, so we stopped new jobs and scans. The two problems below were real when we
+            last looked, and we cannot tell you whether anything has changed since.
+          </p>
+          <p class="muted s-empty" style="margin-top: 12px">
+            Install NoSpoilers on one private repo and this sentence starts telling you the truth
+            about your releases.
+          </p>
+
+          <div class="row gap8 s-ended" style="justify-content: center; margin-top: 20px">
+            <button class="btn">See plans</button>
+            <button class="btn outline">Locked scan</button>
+          </div>
+          <div class="row gap8 s-empty" style="justify-content: center; margin-top: 20px">
+            <button class="btn">Install on GitHub</button>
+            <button class="btn outline">Scan a pack by hand</button>
+          </div>
+        </div>
+
+        <div class="todo has-data">
+          <div class="todo-item crit">
+            <span class="num">1</span>
+            <div class="grow">
+              <div class="row gap8 wrap">
+                <strong class="snow">Ship 0.4.3 without the map, then deprecate 0.4.2.</strong>
+                <span class="pill crit">critical</span>
+              </div>
+              <p class="small muted" style="margin-top: 6px">
+                <code class="path">dist/cli.js.map</code> in
+                <code class="path">nospoilers@0.4.2</code> embeds original source and is still the
+                <code>latest</code> tag on npm. Exposed 41 minutes.
+              </p>
+              <div class="row gap8 wrap" style="margin-top: 12px">
+                <button class="btn sm">Show me how</button>
+                <button class="btn sm outline">See the 3 findings</button>
+                <button class="btn sm ghost admin-only">Not a problem — allow this path</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="todo-item">
+            <span class="num">2</span>
+            <div class="grow">
+              <div class="row gap8 wrap">
+                <strong class="snow">Decide whether internal docs belong in the desk release.</strong>
+                <span class="pill warn">warn</span>
+              </div>
+              <p class="small muted" style="margin-top: 6px">
+                <code class="path">EmotiveImpact/desk</code> v2.1.0 packs
+                <code class="path">docs/internal/ROADMAP.md</code> and 2 similar paths.
+              </p>
+              <div class="row gap8 wrap" style="margin-top: 12px">
+                <button class="btn sm outline admin-only">Open remediation PR</button>
+                <button class="btn sm ghost admin-only">
+                  Allow <code>docs/internal/**</code>
+                </button>
+                <span class="small dim s-member"
+                  >Both fixes here write to the repo or to policy, so an admin has to do them. You
+                  can still resolve this with a note.</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quiet-head">
+          <span class="kicker has-data">Quiet and working</span>
+          <span class="kicker s-empty">Available once you connect something</span>
+        </div>
+
+        <details class="fold">
+          <summary>
+            <span class="dot ok"></span> GitHub watch
+            <span class="summary-val">6 repos · all private · last event 1 d ago</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <div class="kv">
+              <span class="path">EmotiveImpact/nospoilers</span
+              ><span class="summary-val">private · checked 1 m ago</span>
+            </div>
+            <div class="kv">
+              <span class="path">EmotiveImpact/desk</span
+              ><span class="summary-val">private · checked 1 m ago</span>
+            </div>
+            <div class="kv">
+              <span class="path">EmotiveImpact/relay-worker</span
+              ><span class="summary-val">private · no CI gate</span>
+            </div>
+            <div class="row gap8" style="margin-top: 14px">
+              <button class="btn sm outline">Manage on GitHub</button>
+              <button class="btn sm ghost">Scan latest releases</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold" open>
+          <summary>
+            <span class="dot ok"></span> Packs read
+            <span class="summary-val">48 in 30 days · 4 failed policy</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <div class="kv">
+              <span>Sealed releases with receipts</span><span class="summary-val">31</span>
+            </div>
+            <div class="kv"><span>Inconclusive (limit hit)</span><span class="summary-val">1</span></div>
+            <div class="kv"><span>Average unpack time</span><span class="summary-val">6.2 s</span></div>
+            <p class="tiny dim" style="margin-top: 12px">
+              We never keep the bytes. Only paths, rule ids, hashes, and receipts.
+            </p>
+          </div>
+        </details>
+
+        <details class="fold s-solo">
+          <summary>
+            <span class="dot"></span> Delivery
+            <span class="summary-val">On Team</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <p class="small muted">
+              Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend. Alerts
+              still open here in the desk — they just do not leave it.
+            </p>
+            <button class="btn sm" style="margin-top: 12px">Compare Solo and Team</button>
+          </div>
+        </details>
+
+        <details class="fold team-only">
+          <summary>
+            <span class="dot ok"></span> Delivery
+            <span class="summary-val">Slack + Jira · last delivery 41 m ago, ok</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <div class="kv"><span>Slack · hooks.slack.com</span><span class="summary-val">ok</span></div>
+            <div class="kv">
+              <span>Jira · emotiveimpact.atlassian.net · SEC</span
+              ><span class="summary-val">ok</span>
+            </div>
+            <div class="kv">
+              <span>Routes</span><span class="summary-val">critical → #sec-alerts, warn → Jira</span>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>
+            <span class="dot ok"></span> Access and retention
+            <span class="summary-val">4 members · 2 admins · 180-day window</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <div class="kv"><span>@ryan</span><span class="summary-val">admin</span></div>
+            <div class="kv"><span>@dana</span><span class="summary-val">admin</span></div>
+            <div class="kv"><span>@sam</span><span class="summary-val">member</span></div>
+            <div class="kv">
+              <span>List retention</span><span class="summary-val">180 days</span>
+            </div>
+            <div class="row gap8 admin-only" style="margin-top: 13px">
+              <button class="btn sm outline">Change window</button>
+              <button class="btn sm outline">Manage roles</button>
+            </div>
+            <p class="tiny dim s-member" style="margin-top: 13px">
+              An install admin has to change this window. The first GitHub user to connect an
+              install is admin; later users become members.
+            </p>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>
+            <span class="dot ok"></span> Policy
+            <span class="summary-val">2 active exceptions · baseline approved 6 d ago</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <div class="kv">
+              <span><code>SRC-001</code> on <code class="path">**/*.d.ts</code></span
+              ><span class="summary-val">expires 2027-12-01</span>
+            </div>
+            <div class="kv">
+              <span><code>SIZE-001</code> on <code class="path">assets/model.bin</code></span
+              ><span class="summary-val">expires 2026-06-30</span>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>
+            <span class="dot"></span> Advanced
+            <span class="summary-val team-only"
+              >Scan API tokens, registries, install health, audit log</span
+            >
+            <span class="summary-val s-solo">Scan API tokens, registries, install health</span>
+            <span class="caret">›</span>
+          </summary>
+          <div class="fold-body">
+            <p class="small muted">
+              Rarely-touched machinery lives here so the desk stays about exposure, not
+              configuration.
+            </p>
+            <div class="row gap8 wrap" style="margin-top: 12px">
+              <button class="btn sm outline admin-only">Scan API tokens</button>
+              <button class="btn sm outline admin-only">Private registries</button>
+              <button class="btn sm outline">Install health</button>
+              <button class="btn sm outline team-only">Audit log</button>
+            </div>
+            <p class="tiny dim s-solo" style="margin-top: 12px">
+              Subscribe to Team to keep the audit log.
+            </p>
+            <p class="tiny dim s-member" style="margin-top: 12px">
+              Scan API tokens and private registries are admin-only.
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>05</b> Verdict first
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

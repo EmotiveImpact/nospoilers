@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1G · First session — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+    <link rel="stylesheet" href="click.css" />
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <input type="radio" name="scene" id="sc-1" class="sceneset" checked />
+    <input type="radio" name="scene" id="sc-2" class="sceneset" />
+    <input type="radio" name="scene" id="sc-3" class="sceneset" />
+    <input type="radio" name="scene" id="sc-4" class="sceneset" />
+    <input type="radio" name="scene" id="sc-5" class="sceneset" />
+    <input type="radio" name="scene" id="sc-6" class="sceneset" />
+
+    <input type="checkbox" id="repo-ns" class="actset" checked />
+    <input type="checkbox" id="repo-desk" class="actset" checked />
+    <input type="checkbox" id="repo-relay" class="actset" />
+
+    <div class="app shell">
+      <aside class="side">
+        <div class="side-head">
+          <span class="logo">NoSpoilers</span>
+          <button class="installer">
+            <span class="av"></span>
+            <span class="grow col">
+              <span class="small snow truncate">EmotiveImpact</span>
+              <span class="tiny dim">you just connected the app</span>
+            </span>
+          </button>
+        </div>
+        <nav class="nav scroll">
+          <div class="nav-group">
+            <a href="#" aria-current="page"><span class="ico">◉</span> Overview</a>
+            <a href="#"><span class="ico">▲</span> Alerts
+              <span class="count">0</span>
+              <span class="count crit" style="display: none">1</span>
+            </a>
+            <a href="#"><span class="ico">⌸</span> Sources</a>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Settings</span>
+            <a href="#"><span class="ico">✉</span> Notifications</a>
+            <a href="#"><span class="ico">☗</span> Team &amp; roles</a>
+            <a href="#"><span class="ico">✱</span> Install health</a>
+          </div>
+        </nav>
+        <div class="side-foot">
+          <div class="row gap12">
+            <div class="ring sm" style="--p: 0"><span>0/5</span></div>
+            <div class="grow">
+              <span class="tiny snow">Nothing covered yet</span>
+              <p class="tiny dim" style="margin-top: 2px">Trial · 14 days left</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <span class="small snow">First session</span>
+          <div class="grow"></div>
+          <span class="pill ok"><span class="dot ok"></span> Trial · 14 days left</span>
+          <span class="av round"></span>
+        </header>
+
+        <div class="walk">
+          <span class="tiny dim">Walk this through:</span>
+          <label for="sc-1">1 Empty</label>
+          <label for="sc-2">2 Pick repos</label>
+          <label for="sc-3">3 Scanning</label>
+          <label for="sc-4">4 First clean</label>
+          <label for="sc-5">5 Watch npm</label>
+          <label for="sc-6">6 Leak lands</label>
+          <span class="tiny dim" style="margin-left: auto">In the product these advance on real jobs. Here you click.</span>
+        </div>
+
+        <!-- 1: empty -->
+        <div class="scene scene-1 body narrow">
+          <div class="card card-pad s-ended" style="margin-bottom: 18px; border-color: rgba(226, 69, 58, 0.32)">
+            <span class="kicker bad">Hosted coverage is off</span>
+            <p class="small muted" style="margin-top: 8px">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. You can
+              still walk this setup — it just will not run until you subscribe.
+            </p>
+          </div>
+          <div class="gate s-member" style="margin-bottom: 18px">
+            <span class="tagword">Member</span>
+            <span>An install admin has to connect the first repo. You can watch the walk-through; you cannot finish step 1.</span>
+          </div>
+          <span class="kicker">Overview</span>
+          <h1 style="margin-top: 10px">Nothing is being watched yet.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 60ch">
+            Install on one private repo and this sentence starts telling you the truth about your
+            releases. Step 1 takes about a minute and needs no token.
+          </p>
+          <div class="row gap8" style="margin-top: 18px">
+            <label for="sc-2" class="btn">Install on GitHub</label>
+            <label for="sc-5" class="btn outline">Or watch a public npm package</label>
+          </div>
+          <div class="card" style="margin-top: 28px">
+            <div class="empty" style="padding: 36px 24px">
+              <strong>No sources yet.</strong>
+              A private throwaway repo or a public package name is enough to start.
+            </div>
+          </div>
+          <div class="laterlist">
+            <p class="tiny dim" style="margin-bottom: 8px">Available when you need it — not empty panels</p>
+            <div class="later"><strong>Notifications</strong><span>Slack, Jira, SIEM — on Team</span></div>
+            <div class="later"><strong>Policy</strong><span>Exceptions with a reason and an expiry</span></div>
+            <div class="later"><strong>Retention</strong><span>An install admin has to change this window</span></div>
+          </div>
+        </div>
+
+        <!-- 2: pick repos -->
+        <div class="scene scene-2 body narrow">
+          <span class="kicker">GitHub</span>
+          <h1 style="margin-top: 10px">Which private repos should we watch?</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 60ch">
+            Visibility changes and release assets. Public repos can wait — the interesting leak is
+            the private one that flips.
+          </p>
+          <div class="card" style="margin-top: 20px">
+            <label class="option" for="repo-ns">
+              <input type="checkbox" checked disabled />
+              <span class="glyph">⌥</span>
+              <span class="grow">
+                <strong class="path">EmotiveImpact/nospoilers</strong>
+                <p class="tiny dim">private · suggested, name-matches the org</p>
+              </span>
+            </label>
+            <label class="option" for="repo-desk">
+              <input type="checkbox" checked disabled />
+              <span class="glyph">⌥</span>
+              <span class="grow">
+                <strong class="path">EmotiveImpact/desk</strong>
+                <p class="tiny dim">private · ships release assets</p>
+              </span>
+            </label>
+            <label class="option" for="repo-relay">
+              <input type="checkbox" />
+              <span class="glyph">⌥</span>
+              <span class="grow">
+                <strong class="path">EmotiveImpact/relay-worker</strong>
+                <p class="tiny dim">private · no releases yet</p>
+              </span>
+            </label>
+          </div>
+          <div class="row gap8" style="margin-top: 16px">
+            <label for="sc-3" class="btn">Watch selected</label>
+            <label for="sc-1" class="btn ghost">Back</label>
+          </div>
+        </div>
+
+        <!-- 3: scanning / loading — the state the first ten skipped -->
+        <div class="scene scene-3 body narrow">
+          <span class="kicker">First check</span>
+          <h1 style="margin-top: 10px">Reading the two repos.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 60ch">
+            Webhook is wired. We unpack the latest release asset when there is one, and we watch
+            visibility either way. This screen is a loading state — the first ten mockups never
+            showed one.
+          </p>
+          <div class="live" style="margin-top: 22px">
+            <div class="live-head">
+              <span class="dot info pulse"></span>
+              <strong class="small">Job queue</strong>
+              <span class="tiny dim">2 running</span>
+            </div>
+            <div class="live-row">
+              <span class="skel" style="width: 8px; height: 8px; border-radius: 999px"></span>
+              <span class="grow">EmotiveImpact/nospoilers · visibility + latest asset</span>
+              <span class="tiny dim">6.1 s</span>
+            </div>
+            <div class="live-row">
+              <span class="skel" style="width: 8px; height: 8px; border-radius: 999px"></span>
+              <span class="grow">EmotiveImpact/desk · visibility + v2.1.0.zip</span>
+              <span class="tiny dim">queued</span>
+            </div>
+          </div>
+          <div class="card card-pad" style="margin-top: 14px">
+            <div class="skel" style="height: 14px; width: 40%; margin-bottom: 10px"></div>
+            <div class="skel" style="height: 10px; width: 88%; margin-bottom: 8px"></div>
+            <div class="skel" style="height: 10px; width: 70%"></div>
+          </div>
+          <div class="row gap8" style="margin-top: 18px">
+            <label for="sc-4" class="btn">Checks finished →</label>
+            <span class="tiny dim">The real desk advances when the job returns. Nothing is invented while it runs.</span>
+          </div>
+        </div>
+
+        <!-- 4: first clean -->
+        <div class="scene scene-4 body narrow">
+          <span class="kicker">Overview</span>
+          <h1 style="margin-top: 10px">Everything we can see is clean.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 60ch">
+            2 repos, checked just now. Two leak paths still open: we are not watching what npm
+            actually serves, and we are not crawling a production origin.
+          </p>
+          <div class="progress" style="margin: 20px 0">
+            <div class="ring" style="--p: 40"><span>2/5</span></div>
+            <div class="grow">
+              <strong class="small">Repo visibility and release assets are live</strong>
+              <p class="tiny dim" style="margin-top: 4px">CI gate, registry tarballs, and your origin are not.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="srccard">
+              <span class="glyph">⌥</span>
+              <div>
+                <strong class="path">EmotiveImpact/nospoilers</strong>
+                <div class="meta"><span>private</span><span>checked 12 s ago</span></div>
+              </div>
+              <span class="pill ok"><span class="dot ok"></span> Clean</span>
+            </div>
+            <div class="srccard">
+              <span class="glyph">⌥</span>
+              <div>
+                <strong class="path">EmotiveImpact/desk</strong>
+                <div class="meta"><span>private</span><span>v2.1.0.zip · sha256 4b02…e71</span></div>
+              </div>
+              <span class="pill ok"><span class="dot ok"></span> Clean</span>
+            </div>
+          </div>
+          <div class="stepcard active" style="margin-top: 16px">
+            <div class="stephead">
+              <span class="mark now">3</span>
+              <div class="grow">
+                <strong class="small">Watch what the registry actually serves</strong>
+                <p class="tiny dim">The clean release asset and the published tarball are not always the same file. This is the gap that shipped Claude Code’s map.</p>
+              </div>
+              <label for="sc-5" class="btn sm">Connect npm</label>
+            </div>
+          </div>
+          <label for="sc-3" class="btn ghost" style="margin-top: 12px">Back</label>
+        </div>
+
+        <!-- 5: watch npm -->
+        <div class="scene scene-5 body narrow">
+          <span class="kicker">Add a source</span>
+          <h1 style="margin-top: 10px">Watch a package name.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 60ch">
+            We suggest <code class="path">nospoilers</code> — it name-matches a repo you already
+            watch. Public registry, no token.
+          </p>
+          <div class="card card-pad" style="margin-top: 20px">
+            <div class="row gap8 wrap">
+              <input class="field" value="nospoilers" style="max-width: 240px" />
+              <select class="field" style="width: 200px">
+                <option>registry.npmjs.org</option>
+                <option>+ add a private registry</option>
+              </select>
+            </div>
+            <p class="tiny dim" style="margin-top: 10px">latest will be fetched and unpacked. Paths and rule ids only — never credential values.</p>
+            <div class="row gap8" style="margin-top: 16px">
+              <label for="sc-6" class="btn">Watch nospoilers</label>
+              <label for="sc-4" class="btn ghost">Back</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6: leak lands -->
+        <div class="scene scene-6 body">
+          <span class="kicker">Overview</span>
+          <h1 style="margin-top: 10px">One thing is exposed right now.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 64ch">
+            The tarball npm serves for <code class="path">nospoilers@0.4.2</code> is not the clean
+            GitHub asset. Detected in 38 seconds.
+          </p>
+          <div class="stats" style="margin-top: 20px">
+            <div class="stat"><span class="kicker">Open alerts</span><div class="n bad">1</div><span class="tiny dim">MAP-002 critical</span></div>
+            <div class="stat"><span class="kicker">Exposed now</span><div class="n bad">41s</div><span class="tiny dim">just landed</span></div>
+            <div class="stat"><span class="kicker">Sources</span><div class="n">3</div><span class="tiny dim">2 repos · 1 pack</span></div>
+            <div class="stat"><span class="kicker">Queue</span><div class="n">0</div><span class="tiny dim">idle</span></div>
+          </div>
+          <div class="verdict" style="margin-top: 20px">
+            <span class="mark">!</span>
+            <div class="grow">
+              <h2>A source map with original source is on the latest tag.</h2>
+              <p class="muted" style="margin-top: 7px; max-width: 62ch">
+                <code class="path">dist/cli.js.map</code> embeds <code>sourcesContent</code>. Anyone
+                who runs <code>npm pack nospoilers</code> can reconstruct the pre-build TypeScript.
+              </p>
+              <div class="row gap8 wrap" style="margin-top: 13px">
+                <a href="1h-clear-incident.html" class="btn sm">Clear this incident →</a>
+                <a href="1f-click-desk.html" class="btn sm outline">Open the full desk</a>
+              </div>
+            </div>
+            <span class="pill crit">MAP-002</span>
+          </div>
+          <div class="live" style="margin-top: 18px">
+            <div class="live-head"><span class="dot crit pulse"></span><strong class="small">What just happened</strong></div>
+            <div class="live-row"><span class="tiny dim" style="width: 52px">now</span><span>Alert opened · MAP-002 · nospoilers@0.4.2</span></div>
+            <div class="live-row"><span class="tiny dim" style="width: 52px">38s</span><span>Registry check finished · sha256 9f31…c0a</span></div>
+            <div class="live-row"><span class="tiny dim" style="width: 52px">0s</span><span>You clicked Watch on nospoilers</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>1G</b> First session
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="1f-click-desk.html">1F desk</a>
+      <a href="1h-clear-incident.html">1H incident</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

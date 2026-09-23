@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>07 · Desk / Settings split — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 54px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      .modeswitch {
+        display: inline-flex;
+        padding: 3px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--inset);
+        margin-left: 10px;
+      }
+      .modeswitch a {
+        padding: 5px 13px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        color: var(--dim);
+      }
+      .modeswitch a[aria-current="page"] {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--snow);
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 226px 1fr;
+        max-width: 1160px;
+        margin: 0 auto;
+        min-height: calc(100svh - 54px);
+      }
+      .snav {
+        border-right: 1px solid var(--line);
+        padding: 24px 0 40px;
+        position: sticky;
+        top: 54px;
+        align-self: start;
+      }
+      .snav-group {
+        margin-bottom: 20px;
+      }
+      .snav-group > .kicker {
+        display: block;
+        padding: 0 20px 7px;
+      }
+      .snav a {
+        display: block;
+        padding: 7px 20px;
+        font-size: 13px;
+        color: var(--mute);
+        border-left: 2px solid transparent;
+      }
+      .snav a:hover {
+        color: var(--snow);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .snav a[aria-current="page"] {
+        color: var(--snow);
+        border-left-color: var(--snow);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .content {
+        padding: 30px 34px 80px;
+        max-width: 760px;
+      }
+
+      .setrow {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 30px;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .setrow:last-child {
+        border-bottom: 0;
+      }
+      .setrow > .lbl > h3 {
+        margin-bottom: 6px;
+      }
+
+      .dest {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--inset);
+        margin-bottom: 8px;
+      }
+      .dest .glyph {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 12px;
+        color: var(--mute);
+        flex: none;
+      }
+
+      .routerow {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--mute);
+        flex-wrap: wrap;
+      }
+      .routerow:last-of-type {
+        border-bottom: 0;
+      }
+      .arrow {
+        color: var(--dim);
+      }
+
+      .savebar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 26px;
+        padding: 13px 16px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--r);
+        background: rgba(14, 14, 17, 0.95);
+        backdrop-filter: blur(8px);
+      }
+
+      .adminnote {
+        display: flex;
+        gap: 10px;
+        padding: 11px 14px;
+        border-radius: var(--r);
+        border: 1px solid var(--line);
+        background: var(--inset);
+        font-size: 12.5px;
+        color: var(--mute);
+        margin-bottom: 22px;
+      }
+
+      @media (max-width: 860px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+        .snav {
+          position: static;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .setrow {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <nav class="modeswitch">
+          <a href="#">Desk</a>
+          <a href="#" aria-current="page">Settings</a>
+        </nav>
+        <div class="grow"></div>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <span class="pill admin-only">admin</span>
+        <span class="pill s-member">member</span>
+        <button class="btn sm ghost">Back to desk</button>
+      </header>
+
+      <div class="shell">
+        <aside class="snav">
+          <div class="snav-group">
+            <span class="kicker">Install</span>
+            <a href="#">General</a>
+            <a href="#">Team &amp; roles</a>
+            <a href="#">Retention</a>
+            <a href="#" class="team-only">Audit log</a>
+            <a href="#" class="team-only">Install timeline</a>
+            <a href="#">Install health</a>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Detection</span>
+            <a href="#">Policy &amp; allowlist</a>
+            <a href="#">Baseline approvals</a>
+            <a href="#" class="admin-only">Private registries</a>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Delivery</span>
+            <a href="#" aria-current="page">Notifications</a>
+            <a href="#" class="admin-only">Scan API tokens</a>
+            <a href="#" class="team-only">Webhooks &amp; SIEM</a>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Billing</span>
+            <a href="#">Plan &amp; invoices</a>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="between" style="margin-bottom: 6px">
+            <h1>Notifications</h1>
+            <button class="btn sm outline">Send a test alert</button>
+          </div>
+          <p class="muted" style="margin-bottom: 24px; max-width: 60ch">
+            Where an alert goes after we open it. Destinations are the connection. Routes decide
+            which alerts reach which destination.
+          </p>
+
+          <div class="adminnote admin-only">
+            <span class="dim">☗</span>
+            <span
+              >You are an <strong class="snow">admin</strong> on this install, so you can change
+              these. Members see the same page read-only rather than an empty one.</span
+            >
+          </div>
+
+          <div class="adminnote s-member" style="border-color: var(--line-strong)">
+            <span class="dim">☗</span>
+            <span
+              >You are a <strong class="snow">member</strong>, so this page is read-only. The first
+              GitHub user to connect an install is admin; later users become members. Ask
+              <code>@ryan</code> or <code>@dana</code> to change a destination or a route.</span
+            >
+          </div>
+
+          <div
+            class="adminnote s-solo"
+            style="border-color: rgba(217, 154, 43, 0.35); background: rgba(217, 154, 43, 0.06)"
+          >
+            <span class="warnc">◆</span>
+            <span
+              >Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend. Alerts
+              still open on the desk — this page is where they would learn to leave it.
+              <a href="#" class="snow">Compare Solo and Team →</a></span
+            >
+          </div>
+
+          <div
+            class="adminnote s-ended"
+            style="border-color: rgba(226, 69, 58, 0.35); background: rgba(226, 69, 58, 0.06)"
+          >
+            <span class="bad">✕</span>
+            <span
+              >Coverage ended. Destinations stay saved and readable, but nothing is delivered
+              because no new jobs run. <a href="#" class="snow">See plans →</a></span
+            >
+          </div>
+
+          <div class="setrow">
+            <div class="lbl">
+              <h3>Destinations</h3>
+              <p class="small dim has-data">Two connected. Each is tested when you save it.</p>
+              <p class="small dim s-empty">None connected yet.</p>
+            </div>
+            <div>
+              <p class="small dim s-empty" style="margin-bottom: 12px">
+                No destinations yet. Alerts stay in the desk inbox until you add one.
+              </p>
+              <div class="dest has-data">
+                <span class="glyph">◈</span>
+                <div class="grow">
+                  <div class="row gap8">
+                    <strong class="small">Slack</strong>
+                    <span class="pill ok"><span class="dot ok"></span> ok</span>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    hooks.slack.com · last delivery 41 min ago
+                  </p>
+                </div>
+                <button class="btn sm ghost">Test</button>
+                <button class="btn sm ghost danger">Remove</button>
+              </div>
+
+              <div class="dest has-data">
+                <span class="glyph">◇</span>
+                <div class="grow">
+                  <div class="row gap8">
+                    <strong class="small">Jira</strong>
+                    <span class="pill ok"><span class="dot ok"></span> ok</span>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    emotiveimpact.atlassian.net · project SEC
+                  </p>
+                </div>
+                <button class="btn sm ghost">Test</button>
+                <button class="btn sm ghost danger admin-only">Remove</button>
+              </div>
+
+              <div class="row gap8 admin-only" style="margin-top: 12px">
+                <button class="btn sm outline">+ Slack</button>
+                <button class="btn sm outline">+ Jira</button>
+                <button class="btn sm outline">+ SIEM webhook</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setrow">
+            <div class="lbl">
+              <h3>Routes</h3>
+              <p class="small dim">
+                First match wins, read top to bottom. Anything unmatched stays in the desk inbox
+                only.
+              </p>
+            </div>
+            <div>
+              <p class="small dim s-empty" style="margin-bottom: 12px">
+                No routes yet. Destinations without a route still receive every Watch alert.
+              </p>
+              <div class="routerow has-data">
+                <span class="pill crit">critical</span>
+                <span class="arrow">→</span>
+                <span class="snow">Slack</span>
+                <code class="path">#sec-alerts</code>
+                <span class="grow"></span>
+                <button class="btn sm ghost danger admin-only">Remove</button>
+              </div>
+              <div class="routerow has-data">
+                <span class="pill warn">warn</span>
+                <span class="dim">on</span>
+                <code class="path">EmotiveImpact/desk</code>
+                <span class="arrow">→</span>
+                <span class="snow">Jira</span>
+                <span class="dim">assign @dana</span>
+                <span class="grow"></span>
+                <button class="btn sm ghost danger admin-only">Remove</button>
+              </div>
+
+              <div class="row gap8 wrap admin-only" style="margin-top: 14px">
+                <select class="field" style="width: 118px">
+                  <option>critical</option>
+                  <option>warn</option>
+                  <option>any</option>
+                </select>
+                <select class="field" style="width: 168px">
+                  <option>any source</option>
+                  <option>EmotiveImpact/nospoilers</option>
+                  <option>npm · nospoilers</option>
+                </select>
+                <span class="arrow">→</span>
+                <select class="field" style="width: 118px">
+                  <option>Slack</option>
+                  <option>Jira</option>
+                </select>
+                <button class="btn sm">Add route</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setrow">
+            <div class="lbl">
+              <h3>Quiet hours</h3>
+              <p class="small dim">
+                Critical always pages. Warnings can wait for the morning.
+              </p>
+            </div>
+            <div>
+              <label class="row gap8 small muted" style="margin-bottom: 10px">
+                <input type="checkbox" checked /> Hold <strong class="snow">warn</strong> deliveries
+                between
+              </label>
+              <div class="row gap8 admin-only">
+                <input class="field" value="19:00" style="width: 92px" />
+                <span class="dim">and</span>
+                <input class="field" value="08:00" style="width: 92px" />
+                <select class="field" style="width: 168px">
+                  <option>America/Chicago</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="setrow">
+            <div class="lbl">
+              <h3>Recent deliveries</h3>
+              <p class="small dim">Last 8. Failures retry with backoff.</p>
+            </div>
+            <div>
+              <p class="small dim s-empty">No delivery yet.</p>
+              <div class="routerow has-data">
+                <span class="dot ok"></span><span class="snow">Slack</span
+                ><span class="dim">MAP-002 · nospoilers@0.4.2</span
+                ><span class="grow"></span><span class="tiny dim">09:14</span>
+              </div>
+              <div class="routerow has-data">
+                <span class="dot ok"></span><span class="snow">Jira</span
+                ><span class="dim">DOC-001 · desk v2.1.0 → SEC-418</span
+                ><span class="grow"></span><span class="tiny dim">06:02</span>
+              </div>
+              <div class="routerow has-data">
+                <span class="dot warn"></span><span class="snow">Slack</span
+                ><span class="dim">retry 1 of 5 · 429 from hooks.slack.com</span
+                ><span class="grow"></span><span class="tiny dim">yesterday</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="savebar admin-only">
+            <span class="dot warn"></span>
+            <span class="small muted">Quiet hours changed</span>
+            <div class="grow"></div>
+            <button class="btn sm ghost">Discard</button>
+            <button class="btn sm">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>07</b> Desk / Settings split
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

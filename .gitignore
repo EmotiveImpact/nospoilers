@@ -12,6 +12,7 @@ dist
 dist-ssr
 .vercel-runtime
 *.local
+.wrangler
 agent-tools
 data
 .env

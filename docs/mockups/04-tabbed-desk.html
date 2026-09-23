@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>04 · Tabbed desk — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .statusstrip {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border-bottom: 1px solid var(--line);
+        background: var(--inset);
+      }
+      .sit {
+        flex: 1;
+        padding: 11px 20px;
+        border-right: 1px solid var(--line);
+      }
+      .sit:last-child {
+        border-right: 0;
+      }
+      .sit .v {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 3px;
+        font-size: 14px;
+        color: var(--snow);
+      }
+
+      .tabbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        gap: 2px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(9, 9, 11, 0.9);
+        backdrop-filter: blur(10px);
+        overflow-x: auto;
+      }
+      .tabbar a {
+        position: relative;
+        padding: 14px 14px 12px;
+        font-size: 13.5px;
+        color: var(--dim);
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .tabbar a:hover {
+        color: var(--snow);
+      }
+      .tabbar a[aria-current="page"] {
+        color: var(--snow);
+      }
+      .tabbar a[aria-current="page"]::after {
+        content: "";
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: -1px;
+        height: 2px;
+        background: var(--snow);
+        border-radius: 2px;
+      }
+      .tabbar .b {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        color: var(--mute);
+      }
+      .tabbar .b.crit {
+        background: rgba(226, 69, 58, 0.18);
+        color: #ff8a80;
+      }
+
+      .body {
+        max-width: 1060px;
+        margin: 0 auto;
+        padding: 26px 24px 70px;
+      }
+
+      .subtabs {
+        display: flex;
+        gap: 7px;
+        margin: 16px 0 18px;
+        flex-wrap: wrap;
+      }
+
+      .srccard {
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 15px 17px;
+        border-bottom: 1px solid var(--line);
+      }
+      .srccard:last-child {
+        border-bottom: 0;
+      }
+      .srccard:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .glyph {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        background: var(--inset);
+        font-size: 14px;
+        color: var(--mute);
+      }
+      .meta {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+
+      .addrow {
+        display: flex;
+        gap: 9px;
+        padding: 14px 17px;
+        border-top: 1px dashed var(--line-strong);
+        background: rgba(255, 255, 255, 0.012);
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .lockedgroup {
+        opacity: 0.45;
+      }
+
+      @media (max-width: 820px) {
+        .statusstrip {
+          flex-wrap: wrap;
+        }
+        .sit {
+          flex: 1 1 50%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <select class="field" style="width: 190px; margin-left: 8px">
+          <option>EmotiveImpact (Team)</option>
+          <option>ryan-personal (Solo)</option>
+        </select>
+        <div class="grow"></div>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm outline">Install on GitHub</button>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="statusstrip">
+        <div class="sit">
+          <span class="kicker">Coverage</span>
+          <div class="v s-trial"><span class="dot ok"></span> Watching · full trial</div>
+          <div class="v s-solo"><span class="dot ok"></span> Watching · Solo</div>
+          <div class="v s-member"><span class="dot ok"></span> Watching · Team</div>
+          <div class="v s-ended"><span class="dot crit"></span> Stopped · unpaid</div>
+          <div class="v s-empty"><span class="dot"></span> Nothing connected</div>
+        </div>
+        <div class="sit">
+          <span class="kicker">Open alerts</span>
+          <div class="v has-data"><span class="dot crit pulse"></span> 1 critical, 1 warn</div>
+          <div class="v s-empty"><span class="dot"></span> None</div>
+        </div>
+        <div class="sit">
+          <span class="kicker">Queue</span>
+          <div class="v has-data s-trial"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-solo"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-member"><span class="dot"></span> Idle · 0 waiting</div>
+          <div class="v has-data s-ended"><span class="dot crit"></span> Stopped</div>
+          <div class="v s-empty"><span class="dot"></span> Idle</div>
+        </div>
+        <div class="sit">
+          <span class="kicker">Last pack read</span>
+          <div class="v has-data s-trial"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-solo"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-member"><span class="dot ok"></span> 4 min ago</div>
+          <div class="v has-data s-ended"><span class="dot"></span> 6 days ago</div>
+          <div class="v s-empty"><span class="dot"></span> Never</div>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <a href="#">Overview</a>
+        <a href="#">Alerts <span class="b crit has-data">2</span></a>
+        <a href="#" aria-current="page">Sources <span class="b has-data">12</span></a>
+        <a href="#">Releases</a>
+        <a href="#">Policy</a>
+        <a href="#" class="team-only">Notifications</a>
+        <a href="#" class="team-only">Team &amp; audit</a>
+        <a href="#">Install health</a>
+        <a href="#" class="admin-only">Tokens &amp; registries</a>
+      </nav>
+
+      <div class="body">
+        <div class="between">
+          <div>
+            <h1>Sources</h1>
+            <p class="muted" style="margin-top: 8px; max-width: 62ch">
+              Everything NoSpoilers watches, in one list. A repo, an npm package, a production
+              origin, and a map-upload destination all behave the same way here: connect it, we
+              check it, it reports into the same alert inbox.
+            </p>
+          </div>
+          <button class="btn">+ Add a source</button>
+        </div>
+
+        <div class="subtabs has-data">
+          <span class="chip on">All <span class="dim">12</span></span>
+          <span class="chip">GitHub repos <span class="dim">6</span></span>
+          <span class="chip">npm packages <span class="dim">3</span></span>
+          <span class="chip">Websites <span class="dim">2</span></span>
+          <span class="chip">Map custody <span class="dim">1</span></span>
+          <span class="chip" style="margin-left: auto"
+            >Needs attention <span class="bad">2</span></span
+          >
+        </div>
+
+        <div class="card s-empty" style="margin-top: 18px">
+          <div class="empty" style="padding: 40px 24px">
+            <strong>No sources yet.</strong>
+            Nothing on this install yet. Install NoSpoilers on a private throwaway repo, or connect
+            a public npm package by name — neither needs a token.
+          </div>
+          <div class="addrow" style="justify-content: center">
+            <button class="btn sm">GitHub repos</button>
+            <button class="btn sm outline">npm package</button>
+            <button class="btn sm outline">Website origin</button>
+            <button class="btn sm outline">Sentry / Bugsnag</button>
+          </div>
+        </div>
+
+        <div class="card has-data lockable">
+          <div class="lockveil">
+            <span class="kicker">Hosted coverage is off</span>
+            <h2>Subscribe to keep watching.</h2>
+            <p class="small muted" style="max-width: 52ch">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Repos
+              stay listed. Existing alerts can still be acknowledged and resolved. The CLI on your
+              machine still runs.
+            </p>
+            <div class="row gap8" style="margin-top: 4px">
+              <button class="btn sm">See plans</button>
+              <button class="btn sm outline">Locked scan</button>
+            </div>
+          </div>
+          <div class="srccard">
+            <span class="glyph">⌥</span>
+            <div>
+              <div class="row gap8 wrap">
+                <strong class="path">EmotiveImpact/nospoilers</strong>
+                <span class="pill">private</span>
+              </div>
+              <div class="meta">
+                <span>GitHub repository</span><span>Checked 1 min ago</span
+                ><span>Release gate active</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <span class="pill ok"><span class="dot ok"></span> Clean</span>
+              <button class="btn sm outline">Scan latest release</button>
+              <button class="btn sm ghost">⋯</button>
+            </div>
+          </div>
+
+          <div class="srccard">
+            <span class="glyph">▣</span>
+            <div>
+              <div class="row gap8 wrap">
+                <strong class="path">nospoilers</strong>
+                <span class="pill crit">MAP-002</span>
+              </div>
+              <div class="meta">
+                <span>npm · registry.npmjs.org</span><span>latest 0.4.2</span
+                ><span>sha256 9f31…c0a</span><span>Checked 41 min ago</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <span class="pill crit"><span class="dot crit"></span> 1 critical</span>
+              <button class="btn sm">Open alert</button>
+              <button class="btn sm ghost">⋯</button>
+            </div>
+          </div>
+
+          <div class="srccard">
+            <span class="glyph">⌥</span>
+            <div>
+              <div class="row gap8 wrap">
+                <strong class="path">EmotiveImpact/relay-worker</strong>
+                <span class="pill">private</span>
+              </div>
+              <div class="meta">
+                <span>GitHub repository</span><span>No CI gate wired</span
+                ><span>Checked 4 min ago</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <span class="pill info">Setup incomplete</span>
+              <button class="btn sm outline">Open setup PR</button>
+              <button class="btn sm ghost">⋯</button>
+            </div>
+          </div>
+
+          <div class="srccard">
+            <span class="glyph">⬡</span>
+            <div>
+              <div class="row gap8 wrap">
+                <strong class="path">https://app.emotiveimpact.com</strong>
+              </div>
+              <div class="meta">
+                <span>Production origin</span><span>Same-origin JS/CSS/maps</span
+                ><span>Checked 2 h ago</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <span class="pill ok"><span class="dot ok"></span> Clean</span>
+              <button class="btn sm outline">Check now</button>
+              <button class="btn sm ghost">⋯</button>
+            </div>
+          </div>
+
+          <div class="srccard">
+            <span class="glyph">⎔</span>
+            <div>
+              <div class="row gap8 wrap">
+                <strong class="path">sentry.io · emotiveimpact/desk</strong>
+              </div>
+              <div class="meta">
+                <span>Map custody</span><span>Maps uploaded for 2.1.0</span
+                ><span>Checked 6 h ago</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <span class="pill ok"><span class="dot ok"></span> Verified</span>
+              <button class="btn sm outline">Check now</button>
+              <button class="btn sm ghost">⋯</button>
+            </div>
+          </div>
+
+          <div class="addrow admin-only">
+            <span class="small dim">Add:</span>
+            <button class="btn sm outline">GitHub repos</button>
+            <button class="btn sm outline">npm package</button>
+            <button class="btn sm outline">Website origin</button>
+            <button class="btn sm outline">Sentry / Bugsnag</button>
+            <span class="tiny dim" style="margin-left: auto"
+              >Private registries and tokens live in Tokens &amp; registries</span
+            >
+          </div>
+        </div>
+
+        <div class="gate s-solo has-data" style="margin-top: 20px">
+          <span class="tagword">Solo</span>
+          <span
+            >Notifications and Team &amp; audit are not in the tab bar on Solo — routing to Slack,
+            SIEM, and Jira, the install timeline, the audit log, and lookalike-name signals are all
+            Team. Watching and pack reads are unchanged.
+            <a href="#" class="snow">Compare Solo and Team →</a></span
+          >
+        </div>
+
+        <div class="gate s-member has-data" style="margin-top: 20px">
+          <span class="tagword">Member</span>
+          <span
+            >Tokens &amp; registries is admin-only, and the add-a-source row is hidden rather than
+            shown failing. Every tab you can see is fully readable, and you can still scan a latest
+            release and triage alerts.</span
+          >
+        </div>
+
+        <div class="between has-data" style="margin-top: 26px">
+          <p class="small dim">
+            Nine tabs hold all fifteen of today's panels. Releases and Policy absorb the allowlist,
+            baseline, and receipt sections; Install health keeps the permission test and job queue.
+          </p>
+          <a href="#" class="small snow">Compare Solo and Team →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>04</b> Tabbed desk
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

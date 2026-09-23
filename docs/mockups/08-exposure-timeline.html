@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>08 · Exposure timeline — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 54px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      .body {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 26px 22px 70px;
+      }
+
+      .headline {
+        display: flex;
+        gap: 34px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 26px;
+      }
+      .big {
+        font-family: var(--display);
+        font-size: 44px;
+        letter-spacing: -0.035em;
+        line-height: 1;
+      }
+
+      .gantt {
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .gantt-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .lane {
+        display: grid;
+        grid-template-columns: 210px 1fr;
+        border-bottom: 1px solid var(--line);
+      }
+      .lane:last-child {
+        border-bottom: 0;
+      }
+      .lane-label {
+        padding: 13px 16px;
+        border-right: 1px solid var(--line);
+        min-width: 0;
+      }
+      .track {
+        position: relative;
+        height: 100%;
+        min-height: 54px;
+        background-image: repeating-linear-gradient(
+          to right,
+          var(--line) 0 1px,
+          transparent 1px 12.5%
+        );
+      }
+      .span {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 20px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .span.ok {
+        background: rgba(63, 185, 80, 0.16);
+        border: 1px solid rgba(63, 185, 80, 0.34);
+        color: #7ee08a;
+      }
+      .span.crit {
+        background: rgba(226, 69, 58, 0.24);
+        border: 1px solid rgba(226, 69, 58, 0.55);
+        color: #ffb3ab;
+      }
+      .span.warn {
+        background: rgba(217, 154, 43, 0.18);
+        border: 1px solid rgba(217, 154, 43, 0.42);
+        color: #e8bf6d;
+      }
+      .tick {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .tick::after {
+        content: "now";
+        position: absolute;
+        top: -17px;
+        right: 3px;
+        font-size: 10px;
+        color: var(--mute);
+      }
+      .ruler {
+        display: grid;
+        grid-template-columns: 210px 1fr;
+        border-bottom: 1px solid var(--line);
+        background: var(--inset);
+      }
+      .ruler .r {
+        display: flex;
+        font-size: 10px;
+        color: var(--dim);
+      }
+      .ruler .r span {
+        flex: 1;
+        padding: 6px 0 6px 6px;
+        border-left: 1px solid var(--line);
+      }
+
+      .incident {
+        margin-top: 26px;
+        display: grid;
+        grid-template-columns: 1fr 290px;
+        gap: 20px;
+        align-items: start;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 72px 20px 1fr;
+        gap: 12px;
+        padding: 12px 0;
+      }
+      .step .when {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+        text-align: right;
+        padding-top: 2px;
+      }
+      .rail {
+        position: relative;
+        display: flex;
+        justify-content: center;
+      }
+      .rail::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: -12px;
+        width: 1px;
+        background: var(--line);
+      }
+      .step:last-child .rail::before {
+        display: none;
+      }
+      .rail i {
+        position: relative;
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--line-strong);
+        margin-top: 6px;
+      }
+      .rail i.crit {
+        background: var(--danger);
+      }
+      .rail i.ok {
+        background: var(--ok);
+      }
+      .rail i.info {
+        background: var(--info);
+      }
+
+      .mttr {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        margin-bottom: 12px;
+      }
+      .mttr .n {
+        font-family: var(--display);
+        font-size: 28px;
+        letter-spacing: -0.03em;
+        margin-top: 4px;
+      }
+
+      @media (max-width: 900px) {
+        .incident {
+          grid-template-columns: 1fr;
+        }
+        .lane,
+        .ruler {
+          grid-template-columns: 140px 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <div class="grow"></div>
+        <div class="row gap8">
+          <span class="chip">24 h</span>
+          <span class="chip on">7 d</span>
+          <span class="chip">30 d</span>
+        </div>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="body">
+        <div class="card card-pad s-empty" style="margin-bottom: 26px">
+          <h1>No exposure to plot yet.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 62ch">
+            This chart is the product's whole argument, and it needs one connected source to say
+            anything. Install on a repo and the first bar appears the moment something is reachable
+            that should not be.
+          </p>
+          <div class="row gap8" style="margin-top: 14px">
+            <button class="btn sm">Install on GitHub</button>
+            <button class="btn sm outline">Watch an npm package</button>
+          </div>
+        </div>
+
+        <div
+          class="card card-pad s-ended"
+          style="margin-bottom: 26px; border-color: rgba(226, 69, 58, 0.32)"
+        >
+          <span class="kicker bad">Hosted coverage is off</span>
+          <h1 style="margin-top: 8px">The clock is not running.</h1>
+          <p class="muted" style="margin-top: 10px; max-width: 62ch">
+            Trial ended, so we stopped new jobs and scans. The bars below stop six days ago. The
+            open incident is still open as far as we know — we just are not checking any more.
+          </p>
+          <div class="row gap8" style="margin-top: 14px">
+            <button class="btn sm">See plans</button>
+            <button class="btn sm outline">Download timeline CSV</button>
+          </div>
+        </div>
+
+        <div class="headline has-data hide-ended">
+          <div>
+            <span class="kicker">Time exposed, last 7 days</span>
+            <div class="big bad" style="margin-top: 8px">41m</div>
+            <p class="small dim" style="margin-top: 6px">open right now</p>
+          </div>
+          <div>
+            <span class="kicker">Median detect</span>
+            <div class="big" style="margin-top: 8px">38s</div>
+            <p class="small dim" style="margin-top: 6px">webhook to alert</p>
+          </div>
+          <div>
+            <span class="kicker">Closed this week</span>
+            <div class="big okc" style="margin-top: 8px">4</div>
+            <p class="small dim" style="margin-top: 6px">median 22 min to resolve</p>
+          </div>
+          <div class="grow"></div>
+          <p class="small muted" style="max-width: 34ch">
+            The desk is organised by <strong class="snow">when something was reachable</strong>,
+            because that is the number you have to report.
+          </p>
+        </div>
+
+        <div class="gantt has-data">
+          <div class="gantt-head">
+            <strong class="small">Exposure by source</strong>
+            <span class="pill crit">1 open</span>
+            <div class="grow"></div>
+            <span class="tiny dim">Bars show the window a leak was publicly reachable</span>
+          </div>
+
+          <div class="ruler">
+            <div style="padding: 6px 16px" class="tiny dim">Source</div>
+            <div class="r">
+              <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Mon</span
+              ><span>Tue</span><span>Wed</span><span>Today</span>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">
+              <div class="row gap8">
+                <span class="dot crit pulse"></span
+                ><strong class="small truncate">npm · nospoilers</strong>
+              </div>
+              <p class="tiny dim" style="margin-top: 4px">registry.npmjs.org</p>
+            </div>
+            <div class="track">
+              <div class="span crit" style="left: 80%; right: 2.5%">MAP-002 · open</div>
+              <div class="tick" style="left: 97.5%"></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">
+              <div class="row gap8">
+                <span class="dot warn"></span
+                ><strong class="small truncate">EmotiveImpact/desk</strong>
+              </div>
+              <p class="tiny dim" style="margin-top: 4px">release asset v2.1.0</p>
+            </div>
+            <div class="track">
+              <div class="span warn" style="left: 82%; width: 15.5%">DOC-001 · 3 h</div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">
+              <div class="row gap8">
+                <span class="dot ok"></span
+                ><strong class="small truncate">EmotiveImpact/relay-worker</strong>
+              </div>
+              <p class="tiny dim" style="margin-top: 4px">repository visibility</p>
+            </div>
+            <div class="track">
+              <div class="span ok" style="left: 69%; width: 5.5%">4 m</div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">
+              <div class="row gap8">
+                <span class="dot ok"></span
+                ><strong class="small truncate">app.emotiveimpact.com</strong>
+              </div>
+              <p class="tiny dim" style="margin-top: 4px">production origin</p>
+            </div>
+            <div class="track"></div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">
+              <div class="row gap8">
+                <span class="dot ok"></span><strong class="small truncate">npm · acme-ui</strong>
+              </div>
+              <p class="tiny dim" style="margin-top: 4px">registry.npmjs.org</p>
+            </div>
+            <div class="track"></div>
+          </div>
+        </div>
+
+        <div class="gate s-solo has-data" style="margin-top: 20px">
+          <span class="tagword">Solo</span>
+          <span
+            >The 30-day window and the exportable install timeline are on Team. Solo keeps 7 days
+            of exposure history, which still answers “how long was it out there” for the incident
+            in front of you. <a href="#" class="snow">Compare Solo and Team →</a></span
+          >
+        </div>
+
+        <div class="incident has-data">
+          <div class="card card-pad">
+            <div class="between">
+              <div class="row gap8 wrap">
+                <span class="pill crit">open</span>
+                <strong>nospoilers@0.4.2 · MAP-002</strong>
+              </div>
+              <span class="tiny dim hide-ended">exposure clock running</span>
+              <span class="tiny bad s-ended">clock stopped when coverage did</span>
+            </div>
+
+            <div style="margin-top: 16px">
+              <div class="step">
+                <span class="when">09:13:22</span>
+                <span class="rail"><i class="info"></i></span>
+                <div>
+                  <strong class="small snow">Version 0.4.2 appeared on the registry</strong>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    Detected by the watched-package check, 12 s after publish
+                  </p>
+                </div>
+              </div>
+              <div class="step">
+                <span class="when">09:14:00</span>
+                <span class="rail"><i class="crit"></i></span>
+                <div>
+                  <strong class="small snow">Tarball unpacked · 3 findings</strong>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    MAP-002 <code class="path">dist/cli.js.map</code>, MAP-001
+                    <code class="path">dist/index.js.map</code>, MAP-003
+                    <code class="path">dist/index.js</code>
+                  </p>
+                </div>
+              </div>
+              <div class="step">
+                <span class="when">09:14:03</span>
+                <span class="rail"><i class="info"></i></span>
+                <div>
+                  <strong class="small snow">Routed to Slack #sec-alerts</strong>
+                  <p class="tiny dim" style="margin-top: 3px">Delivered, 210 ms</p>
+                </div>
+              </div>
+              <div class="step">
+                <span class="when">now</span>
+                <span class="rail"><i></i></span>
+                <div>
+                  <strong class="small">Waiting on you</strong>
+                  <p class="tiny dim" style="margin-top: 3px">
+                    The clock stops when 0.4.2 is deprecated or the alert is resolved with a note.
+                  </p>
+                  <div class="row gap8 wrap" style="margin-top: 11px">
+                    <button class="btn sm">Resolve with note</button>
+                    <button class="btn sm outline">Acknowledge</button>
+                    <button class="btn sm ghost team-only">Assign</button>
+                  </div>
+                  <p class="tiny dim s-member" style="margin-top: 10px">
+                    Members resolve and acknowledge. Reassigning across the team is an admin
+                    action.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside>
+            <div class="mttr">
+              <span class="kicker">This incident</span>
+              <div class="n bad">41m 08s</div>
+              <p class="tiny dim hide-ended" style="margin-top: 5px">
+                Reachable by anyone with npm
+              </p>
+              <p class="tiny bad s-ended" style="margin-top: 5px">
+                Last measured 6 days ago. Still reachable, as far as we know.
+              </p>
+              <hr class="hr" style="margin: 13px 0" />
+              <div class="between small muted">
+                <span>Detected in</span><span class="snow mono">38 s</span>
+              </div>
+              <div class="between small muted" style="margin-top: 7px">
+                <span>Notified in</span><span class="snow mono">41 s</span>
+              </div>
+              <div class="between small muted" style="margin-top: 7px">
+                <span>Acknowledged</span><span class="dim mono">—</span>
+              </div>
+            </div>
+
+            <div class="mttr">
+              <span class="kicker">Export</span>
+              <p class="small muted" style="margin-top: 8px">
+                Exposure windows and receipts, for the incident write-up nobody enjoys.
+              </p>
+              <div class="col gap8" style="margin-top: 12px">
+                <button class="btn sm outline team-only">Download timeline CSV</button>
+                <button class="btn sm outline admin-only team-only">Export audit log</button>
+                <button class="btn sm outline">Download signed receipts</button>
+              </div>
+              <p class="tiny dim s-solo" style="margin-top: 11px">
+                The exportable timeline and audit log are on Team. Receipts download on any plan.
+              </p>
+              <p class="tiny dim s-member" style="margin-top: 11px">
+                Exporting the audit log is an admin action. Timeline and receipts are yours.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>08</b> Exposure timeline
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

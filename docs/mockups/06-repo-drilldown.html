@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>06 · Repo drill-down — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 54px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      .crumbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .crumbs .sep {
+        opacity: 0.5;
+      }
+      .crumbs .cur {
+        color: var(--snow);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: var(--r-sm);
+        border: 1px solid var(--line);
+        background: var(--inset);
+        color: var(--mute);
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .switch:hover {
+        border-color: var(--line-strong);
+      }
+
+      .hero {
+        border-bottom: 1px solid var(--line);
+        padding: 26px 22px 0;
+      }
+      .hero-in {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      .objnav {
+        display: flex;
+        gap: 2px;
+        margin-top: 22px;
+      }
+      .objnav a {
+        position: relative;
+        padding: 10px 13px;
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .objnav a[aria-current="page"] {
+        color: var(--snow);
+      }
+      .objnav a[aria-current="page"]::after {
+        content: "";
+        position: absolute;
+        left: 11px;
+        right: 11px;
+        bottom: -1px;
+        height: 2px;
+        background: var(--snow);
+      }
+      .objnav a:hover {
+        color: var(--snow);
+      }
+
+      .body {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 24px 22px 70px;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 22px;
+        align-items: start;
+      }
+
+      .sec {
+        margin-bottom: 24px;
+      }
+      .sec > h2 {
+        margin-bottom: 11px;
+      }
+
+      .rel {
+        display: grid;
+        grid-template-columns: 92px 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 13px 15px;
+        border-bottom: 1px solid var(--line);
+      }
+      .rel:last-child {
+        border-bottom: 0;
+      }
+      .rel:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .side-card {
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--panel);
+        margin-bottom: 12px;
+      }
+      .side-card .kv {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 0;
+        font-size: 12.5px;
+        color: var(--mute);
+        border-bottom: 1px solid var(--line);
+      }
+      .side-card .kv:last-child {
+        border-bottom: 0;
+      }
+
+      .linked {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .linked:last-child {
+        border-bottom: 0;
+      }
+
+      .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 34px;
+        margin-top: 10px;
+      }
+      .spark i {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 1px;
+      }
+      .spark i.bad {
+        background: var(--danger);
+      }
+      .spark i.warn {
+        background: var(--warn);
+      }
+
+      @media (max-width: 900px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <div class="crumbs" style="margin-left: 10px">
+          <a href="#">Sources</a><span class="sep">/</span
+          ><a href="#">EmotiveImpact</a><span class="sep">/</span
+          ><span class="cur">nospoilers</span>
+          <button class="switch">switch ⌄</button>
+        </div>
+        <div class="grow"></div>
+        <span class="pill has-data"><span class="dot crit pulse"></span> 1 open alert</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="hero">
+        <div class="hero-in">
+          <div class="between">
+            <div>
+              <span class="kicker">GitHub repository · watched since Mar 4</span>
+              <h1 style="margin-top: 9px" class="path">EmotiveImpact/nospoilers</h1>
+              <div class="row gap8 wrap" style="margin-top: 12px">
+                <span class="pill ok"><span class="dot ok"></span> private</span>
+                <span class="pill has-data">6 releases sealed</span>
+                <span class="pill has-data">CI gate wired</span>
+                <span class="pill crit has-data"
+                  ><span class="dot crit"></span> npm pack exposed</span
+                >
+                <span class="pill s-ended"><span class="dot crit"></span> not being checked</span>
+                <span class="pill s-empty">nothing scanned yet</span>
+              </div>
+            </div>
+            <div class="row gap8">
+              <button class="btn sm outline">Open on GitHub</button>
+              <button class="btn sm has-data s-trial">Scan latest release</button>
+              <button class="btn sm has-data s-solo">Scan latest release</button>
+              <button class="btn sm has-data s-member">Scan latest release</button>
+              <button class="btn sm disabled s-ended">Scan latest release</button>
+              <button class="btn sm s-empty">Scan latest release</button>
+            </div>
+          </div>
+
+          <nav class="objnav">
+            <a href="#" aria-current="page">Overview</a>
+            <a href="#">Releases <span class="dim has-data">6</span></a>
+            <a href="#">Findings <span class="dim has-data">3</span></a>
+            <a href="#">Linked packs <span class="dim has-data">2</span></a>
+            <a href="#">Policy</a>
+            <a href="#" class="team-only">Activity</a>
+          </nav>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="grid2">
+          <div>
+            <section class="sec s-empty">
+              <div class="card card-pad">
+                <h2>This repo has not shipped a release yet.</h2>
+                <p class="small muted" style="margin-top: 8px">
+                  We are watching its visibility already. The rest of this page — releases, linked
+                  packs, findings, receipts — fills in the first time a release asset or a published
+                  tarball appears.
+                </p>
+                <div class="row gap8" style="margin-top: 13px">
+                  <button class="btn sm">Scan latest release</button>
+                  <button class="btn sm outline admin-only">Open setup PR for the CI gate</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec has-data">
+              <div
+                class="card card-pad"
+                style="border-color: rgba(226, 69, 58, 0.3); background: linear-gradient(90deg, rgba(226,69,58,0.07), transparent 44%), var(--panel)"
+              >
+                <div class="row gap8 wrap">
+                  <span class="pill crit">MAP-002 critical</span>
+                  <span class="tiny dim">opened 41 minutes ago</span>
+                </div>
+                <h2 style="margin-top: 10px">
+                  The npm pack for this repo ships original source.
+                </h2>
+                <p class="small muted" style="margin-top: 7px">
+                  <code class="path">nospoilers@0.4.2</code> was published from tag
+                  <code>v0.4.2</code> (<code class="mono">sha 4c1e8ab</code>). The GitHub release
+                  asset was clean — the registry tarball is not. That gap is why this page shows
+                  both.
+                </p>
+                <div class="row gap8 wrap" style="margin-top: 13px">
+                  <button class="btn sm">Open alert</button>
+                  <button class="btn sm outline">Compare release asset vs npm tarball</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec has-data">
+              <h2>Releases</h2>
+              <div class="card lockable">
+                <div class="lockveil">
+                  <span class="kicker">Hosted coverage is off</span>
+                  <h2>Subscribe to keep reading packs.</h2>
+                  <p class="small muted" style="max-width: 48ch">
+                    Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active.
+                    Receipts you already have stay downloadable.
+                  </p>
+                  <div class="row gap8" style="margin-top: 4px">
+                    <button class="btn sm">See plans</button>
+                    <button class="btn sm outline">Download existing receipts</button>
+                  </div>
+                </div>
+                <div class="rel">
+                  <span class="mono small snow">v0.4.2</span>
+                  <div>
+                    <div class="row gap8 wrap">
+                      <span class="pill crit">npm pack failed policy</span>
+                      <span class="pill ok">GitHub asset clean</span>
+                    </div>
+                    <p class="tiny dim" style="margin-top: 5px">
+                      Sealed 41 min ago · sha256 9f31…c0a · channel latest
+                    </p>
+                  </div>
+                  <button class="btn sm ghost">Receipt</button>
+                </div>
+                <div class="rel">
+                  <span class="mono small snow">v0.4.1</span>
+                  <div>
+                    <div class="row gap8 wrap"><span class="pill ok">clean</span></div>
+                    <p class="tiny dim" style="margin-top: 5px">
+                      Sealed 6 d ago · sha256 1ad0…77f · 1,204 files
+                    </p>
+                  </div>
+                  <button class="btn sm ghost">Receipt</button>
+                </div>
+                <div class="rel">
+                  <span class="mono small snow">v0.4.0</span>
+                  <div>
+                    <div class="row gap8 wrap">
+                      <span class="pill warn">SIZE-003 payload jump</span>
+                    </div>
+                    <p class="tiny dim" style="margin-top: 5px">
+                      Sealed 13 d ago · 2.4× larger than v0.3.9 · baseline approved by @dana
+                    </p>
+                  </div>
+                  <button class="btn sm ghost">Receipt</button>
+                </div>
+                <div class="rel">
+                  <span class="mono small snow">v0.3.9</span>
+                  <div>
+                    <div class="row gap8 wrap"><span class="pill ok">clean</span></div>
+                    <p class="tiny dim" style="margin-top: 5px">Sealed 21 d ago · sha256 be40…19c</p>
+                  </div>
+                  <button class="btn sm ghost">Receipt</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <h2>Repo-scoped policy</h2>
+              <div class="card card-pad">
+                <p class="small muted">
+                  Exceptions written here apply to this repository only. They still expire, still
+                  need a reason, and still never suppress a different rule.
+                </p>
+                <div class="linked has-data" style="margin-top: 12px">
+                  <span class="rulecode">SRC-001</span>
+                  <span class="path grow">**/*.d.ts</span>
+                  <span class="tiny dim">Published TypeScript types · expires 2027-12-01</span>
+                  <button class="btn sm ghost danger admin-only">Revoke</button>
+                </div>
+                <p class="small dim s-empty" style="margin-top: 12px">
+                  No exceptions on this repository.
+                </p>
+                <div class="row gap8 admin-only" style="margin-top: 14px">
+                  <input
+                    class="field"
+                    placeholder="Rule (e.g. SIZE-001)"
+                    style="max-width: 150px"
+                  />
+                  <input class="field" placeholder="Path glob" style="max-width: 190px" />
+                  <input class="field" placeholder="Reason" />
+                  <button class="btn sm">Allow</button>
+                </div>
+                <div class="gate s-member" style="margin-top: 14px">
+                  <span class="tagword">Member</span>
+                  <span
+                    >Exceptions are admin writes, so the form is not shown. You can read every
+                    active exception, its reason, who wrote it, and when it expires.</span
+                  >
+                </div>
+              </div>
+            </section>
+
+            <div class="gate s-solo" style="margin-top: 20px">
+              <span class="tagword">Solo</span>
+              <span
+                >This repo's Activity tab is on Team — that is the install timeline and audit log.
+                Watch, releases, findings, receipts, and policy are all included on Solo.</span
+              >
+            </div>
+          </div>
+
+          <aside>
+            <div class="side-card">
+              <span class="kicker">Watch state</span>
+              <div style="margin-top: 9px">
+                <div class="kv"><span>Visibility</span><span class="snow">private</span></div>
+                <div class="kv"><span>Last checked</span><span>1 minute ago</span></div>
+                <div class="kv"><span>Webhook</span><span class="okc">delivering</span></div>
+                <div class="kv"><span>CI gate</span><span class="okc">nospoilers.yml</span></div>
+                <div class="kv"><span>Fork count</span><span>0</span></div>
+              </div>
+            </div>
+
+            <div class="side-card">
+              <span class="kicker">Linked artifacts</span>
+              <div style="margin-top: 6px">
+                <div class="linked">
+                  <span class="dot crit"></span>
+                  <span class="grow path">npm · nospoilers</span>
+                  <span class="tiny dim">0.4.2</span>
+                </div>
+                <div class="linked">
+                  <span class="dot ok"></span>
+                  <span class="grow path">sentry · desk</span>
+                  <span class="tiny dim">maps ok</span>
+                </div>
+              </div>
+              <button class="btn sm outline" style="margin-top: 12px; width: 100%">
+                Link another artifact
+              </button>
+            </div>
+
+            <div class="side-card">
+              <span class="kicker">Findings, last 12 releases</span>
+              <div class="spark">
+                <i style="height: 20%"></i><i style="height: 12%"></i><i style="height: 34%"></i
+                ><i class="warn" style="height: 58%"></i><i style="height: 22%"></i
+                ><i style="height: 15%"></i><i style="height: 26%"></i><i style="height: 12%"></i
+                ><i class="warn" style="height: 44%"></i><i style="height: 18%"></i
+                ><i style="height: 10%"></i><i class="bad" style="height: 82%"></i>
+              </div>
+              <p class="tiny dim" style="margin-top: 9px">
+                One critical in 12. Two size-jump warnings, both approved.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>06</b> Repo drill-down
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>02 · Command stream — NoSpoilers watch desk</title>
+<link rel="stylesheet" href="mockup.css" />
+    <style>
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 56px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(9, 9, 11, 0.82);
+        backdrop-filter: blur(10px);
+      }
+      .wrapc {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 30px 22px 90px;
+      }
+
+      .filters {
+        position: sticky;
+        top: 56px;
+        z-index: 9;
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        padding: 14px 0;
+        background: linear-gradient(var(--ink) 72%, transparent);
+      }
+
+      .stream {
+        position: relative;
+        padding-left: 26px;
+      }
+      .stream::before {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: 8px;
+        bottom: 30px;
+        width: 1px;
+        background: var(--line);
+      }
+
+      .daymark {
+        position: relative;
+        margin: 26px 0 12px;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+      .daymark:first-child {
+        margin-top: 0;
+      }
+      .daymark::before {
+        content: "";
+        position: absolute;
+        left: -26px;
+        top: 5px;
+        width: 15px;
+        height: 1px;
+        background: var(--line);
+      }
+
+      .ev {
+        position: relative;
+        padding: 13px 15px;
+        margin-bottom: 9px;
+        border-radius: var(--r);
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .ev::before {
+        content: "";
+        position: absolute;
+        left: -23px;
+        top: 19px;
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--dim);
+        border: 2px solid var(--ink);
+        box-sizing: content-box;
+      }
+      .ev.crit::before {
+        background: var(--danger);
+      }
+      .ev.warn::before {
+        background: var(--warn);
+      }
+      .ev.ok::before {
+        background: var(--ok);
+      }
+      .ev.quiet {
+        background: transparent;
+        border-color: transparent;
+        padding: 7px 15px;
+      }
+      .ev.crit {
+        border-color: rgba(226, 69, 58, 0.34);
+        background:
+          linear-gradient(90deg, rgba(226, 69, 58, 0.08), transparent 42%), var(--panel);
+      }
+
+      .ev-actions {
+        display: flex;
+        gap: 7px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+
+      /* command palette — toggled by the checkbox at the top of <body>, no script needed */
+      .pal-toggle {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .scrim,
+      .palette {
+        display: none;
+      }
+      .pal-toggle:checked ~ .scrim {
+        display: block;
+      }
+      .pal-toggle:checked ~ .palette {
+        display: block;
+      }
+      .scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: rgba(4, 4, 5, 0.55);
+        backdrop-filter: blur(2px);
+      }
+      .palette {
+        position: fixed;
+        z-index: 41;
+        top: 14vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(600px, calc(100vw - 32px));
+        border-radius: var(--r-lg);
+        border: 1px solid var(--line-strong);
+        background: #0e0e11;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+        overflow: hidden;
+      }
+      .palette input {
+        width: 100%;
+        height: 52px;
+        padding: 0 18px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: transparent;
+        color: var(--snow);
+        font-family: var(--sans);
+        font-size: 15px;
+      }
+      .palette input:focus {
+        outline: none;
+      }
+      .pgroup {
+        padding: 9px 0 4px;
+      }
+      .pgroup > .kicker {
+        padding: 0 18px 6px;
+        display: block;
+      }
+      .pitem {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 9px 18px;
+        font-size: 13px;
+        color: var(--mute);
+        cursor: pointer;
+      }
+      .pitem:hover,
+      .pitem.on {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--snow);
+      }
+      .pitem .ico {
+        width: 16px;
+        text-align: center;
+        opacity: 0.7;
+      }
+      .pfoot {
+        display: flex;
+        gap: 16px;
+        padding: 10px 18px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--dim);
+      }
+    </style>
+  </head>
+  <body>
+    <input type="checkbox" id="pal" class="pal-toggle" aria-label="Show the command palette" />
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+    <div class="app">
+      <header class="topbar">
+        <span class="logo">NoSpoilers</span>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <div class="grow"></div>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <label class="btn sm outline" for="pal">⌘K</label>
+        <button class="btn sm">Subscribe</button>
+      </header>
+
+      <div class="wrapc">
+        <div class="between">
+          <div>
+            <span class="kicker">Everything, newest first</span>
+            <h1 style="margin-top: 8px">The desk is a stream.</h1>
+            <p class="muted" style="margin-top: 8px; max-width: 56ch">
+              One feed of what changed. Repos, packs, deliveries, policy edits. Anything you
+              configure lives behind <span class="kbd">⌘K</span> — the page never becomes a
+              settings wall.
+            </p>
+            <p class="small dim" style="margin-top: 10px">
+              <label
+                for="pal"
+                style="cursor: pointer; color: var(--snow); border-bottom: 1px solid var(--line-strong)"
+                >Open the palette</label
+              >
+              to see what it hides.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="card card-pad s-ended"
+          style="margin-top: 20px; border-color: rgba(226, 69, 58, 0.32)"
+        >
+          <span class="kicker bad">Hosted coverage is off</span>
+          <h2 style="margin-top: 8px">The stream stopped 6 days ago.</h2>
+          <p class="small muted" style="margin-top: 7px; max-width: 62ch">
+            Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Everything
+            below still reads, and alerts already open can still be acknowledged and resolved. The
+            CLI on your machine does not stop.
+          </p>
+          <div class="row gap8" style="margin-top: 13px">
+            <button class="btn sm">See plans</button>
+            <button class="btn sm outline">Locked scan</button>
+          </div>
+        </div>
+
+        <div class="card card-pad s-empty" style="margin-top: 20px">
+          <h2>Nothing on this install yet.</h2>
+          <p class="small muted" style="margin-top: 7px; max-width: 62ch">
+            The stream fills itself. Install NoSpoilers on a private throwaway repo, flip it public,
+            and the first entry lands in about a minute.
+          </p>
+          <div class="row gap8" style="margin-top: 13px">
+            <button class="btn sm">Install on GitHub</button>
+            <label class="btn sm outline" for="pal">Or run a command</label>
+          </div>
+        </div>
+
+        <div class="filters has-data">
+          <span class="chip on">All</span>
+          <span class="chip">Needs you <span class="bad">2</span></span>
+          <span class="chip">Critical</span>
+          <span class="chip">Packs</span>
+          <span class="chip">GitHub</span>
+          <span class="chip">Deliveries</span>
+          <span class="chip">Policy</span>
+          <span class="chip" style="margin-left: auto">⌕ Filter…</span>
+        </div>
+
+        <div class="stream has-data">
+          <p class="daymark">Today</p>
+
+          <article class="ev crit">
+            <div class="between">
+              <div class="row gap8 wrap">
+                <span class="pill crit">MAP-002 critical</span>
+                <span class="tiny dim">09:14 · 41 min exposed</span>
+              </div>
+              <span class="tiny dim">npm</span>
+            </div>
+            <h3 style="margin-top: 9px">Published pack embeds original source</h3>
+            <p class="small muted" style="margin-top: 6px">
+              <code class="path">nospoilers@0.4.2</code> →
+              <code class="path">dist/cli.js.map</code> carries
+              <code>sourcesContent</code>. Still tagged <code>latest</code>.
+            </p>
+            <div class="inset" style="margin-top: 11px; padding: 11px 13px">
+              <span class="kicker">Rotation checklist</span>
+              <div class="col gap8" style="margin-top: 9px">
+                <label class="row gap8 small muted"
+                  ><input type="checkbox" /> Unpublish or deprecate 0.4.2</label
+                >
+                <label class="row gap8 small muted"
+                  ><input type="checkbox" /> Ship 0.4.3 built with
+                  <code>hidden-source-map</code></label
+                >
+                <label class="row gap8 small muted"
+                  ><input type="checkbox" /> Confirm no credential appears in the map sources</label
+                >
+              </div>
+            </div>
+            <div class="ev-actions">
+              <button class="btn sm">Acknowledge</button>
+              <button class="btn sm outline team-only">Assign</button>
+              <button class="btn sm ghost">Open full report</button>
+              <button class="btn sm ghost admin-only">Mute this rule for this path</button>
+            </div>
+            <p class="tiny dim s-member" style="margin-top: 9px">
+              Muting a rule writes policy, so it is admin-only. Ask @ryan or @dana.
+            </p>
+          </article>
+
+          <article class="ev warn">
+            <div class="between">
+              <div class="row gap8 wrap">
+                <span class="pill warn">DOC-001 warn</span>
+                <span class="tiny dim">06:02</span>
+              </div>
+              <span class="tiny dim">github release</span>
+            </div>
+            <h3 style="margin-top: 9px">Internal docs inside a release asset</h3>
+            <p class="small muted" style="margin-top: 6px">
+              <code class="path">EmotiveImpact/desk</code> v2.1.0 —
+              <code class="path">docs/internal/ROADMAP.md</code>, plus 2 more paths.
+            </p>
+            <div class="ev-actions">
+              <button class="btn sm outline">Acknowledge</button>
+              <button class="btn sm ghost">Allow this path</button>
+            </div>
+          </article>
+
+          <div class="ev quiet">
+            <div class="row gap8 wrap small muted">
+              <span class="dot ok"></span>
+              <span class="snow">Release sealed</span>
+              <code class="path">EmotiveImpact/nospoilers</code> v0.4.2 receipt
+              <code>sha256:9f31…c0a</code>
+              <span class="tiny dim" style="margin-left: auto">09:15</span>
+            </div>
+          </div>
+
+          <div class="ev quiet">
+            <div class="row gap8 wrap small muted">
+              <span class="dot info"></span>
+              <span class="snow">Slack delivered</span> route
+              <code>critical → #sec-alerts</code>
+              <span class="tiny dim" style="margin-left: auto">09:14</span>
+            </div>
+          </div>
+
+          <div class="ev quiet">
+            <div class="row gap8 wrap small muted">
+              <span class="dot"></span>
+              <span class="snow">Scanned</span>
+              <code class="path">acme-ui@3.8.1</code> — clean, 1,204 files, 6.2 s
+              <span class="tiny dim" style="margin-left: auto">04:40</span>
+            </div>
+          </div>
+
+          <p class="daymark">Yesterday</p>
+
+          <article class="ev ok">
+            <div class="between">
+              <div class="row gap8 wrap">
+                <span class="pill ok">resolved</span>
+                <span class="tiny dim">17:20</span>
+              </div>
+              <span class="tiny dim">github</span>
+            </div>
+            <h3 style="margin-top: 9px">Repository went public, then private again</h3>
+            <p class="small muted" style="margin-top: 6px">
+              <code class="path">EmotiveImpact/relay-worker</code> was public for 4 minutes.
+              Resolved by <code>@ryan</code> — “fat-fingered the visibility toggle”.
+            </p>
+          </article>
+
+          <div class="ev quiet">
+            <div class="row gap8 wrap small muted">
+              <span class="dot"></span>
+              <span class="snow">Policy edited</span> allow
+              <code>SRC-001</code> on <code class="path">**/*.d.ts</code> until 2027-12-01
+              <span class="tiny dim" style="margin-left: auto">11:08</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <label class="scrim" for="pal" aria-label="Close the command palette"></label>
+    <div class="palette">
+      <input value="scan" aria-label="Command" />
+      <div class="pgroup">
+        <span class="kicker">Actions</span>
+        <div class="pitem on">
+          <span class="ico">▶</span> Scan latest release…<span class="grow"></span
+          ><span class="kbd">↵</span>
+        </div>
+        <div class="pitem"><span class="ico">⇪</span> Scan a pack from my machine</div>
+        <div class="pitem admin-only"><span class="ico">◍</span> Mint a Scan API token for CI</div>
+        <div class="pitem"><span class="ico">▣</span> Watch an npm package…</div>
+      </div>
+      <div class="pgroup">
+        <span class="kicker">Go to</span>
+        <div class="pitem"><span class="ico">✱</span> Install health &amp; job queue</div>
+        <div class="pitem"><span class="ico">⚖</span> Allowlist and baseline</div>
+        <div class="pitem team-only"><span class="ico">✉</span> Notification routes</div>
+        <div class="pitem team-only"><span class="ico">◷</span> Install timeline</div>
+        <div class="pitem team-only"><span class="ico">⎙</span> Audit log</div>
+        <div class="pitem"><span class="ico">⧗</span> Retention window</div>
+        <div class="pitem"><span class="ico">☗</span> Team &amp; roles</div>
+        <div class="pitem"><span class="ico">⬡</span> Production websites</div>
+        <div class="pitem"><span class="ico">⎔</span> Map custody</div>
+        <div class="pitem admin-only"><span class="ico">▤</span> Private registries</div>
+      </div>
+      <div class="pgroup s-solo" style="padding: 0 18px 10px">
+        <p class="tiny dim">
+          Timeline, audit log, and routing are on Team, so they are not offered here. Everything
+          else is included on Solo.
+        </p>
+      </div>
+      <div class="pgroup s-member" style="padding: 0 18px 10px">
+        <p class="tiny dim">
+          Admin-only commands are hidden rather than shown failing. You keep every read and every
+          triage action.
+        </p>
+      </div>
+      <div class="pfoot">
+        <span><span class="kbd">↑↓</span> navigate</span>
+        <span><span class="kbd">↵</span> run</span>
+        <label for="pal" style="cursor: pointer"><span class="kbd">esc</span> close</label>
+        <span style="margin-left: auto">Every setting is reachable here</span>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>02</b> Command stream
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

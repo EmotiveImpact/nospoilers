@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1I · Desk / Settings split — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+    <link rel="stylesheet" href="click.css" />
+    <style>
+      .app-top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 54px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      .set-body {
+        padding: 30px 34px 80px;
+        max-width: 760px;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <input type="radio" name="mode" id="m-desk" class="modeset" checked />
+    <input type="radio" name="mode" id="m-settings" class="modeset" />
+
+    <input type="radio" name="sview" id="sv-notify" class="viewset" checked />
+    <input type="radio" name="sview" id="sv-policy" class="viewset" />
+    <input type="radio" name="sview" id="sv-team" class="viewset" />
+    <input type="radio" name="sview" id="sv-retention" class="viewset" />
+    <input type="radio" name="sview" id="sv-audit" class="viewset" />
+    <input type="radio" name="sview" id="sv-health" class="viewset" />
+    <input type="radio" name="sview" id="sv-tokens" class="viewset" />
+    <input type="radio" name="sview" id="sv-registries" class="viewset" />
+
+    <input type="radio" name="view" id="v-overview" class="viewset" checked />
+    <input type="radio" name="view" id="v-alerts" class="viewset" />
+    <input type="radio" name="view" id="v-sources" class="viewset" />
+
+    <input type="radio" name="alert" id="a-map" class="alertset" checked />
+    <input type="radio" name="alert" id="a-doc" class="alertset" />
+
+    <input type="checkbox" id="ack-map" class="actset" />
+    <input type="checkbox" id="res-map" class="actset" />
+
+    <div class="app">
+      <header class="app-top">
+        <span class="logo">NoSpoilers</span>
+        <nav class="modeswitch">
+          <label for="m-desk">Desk</label>
+          <label for="m-settings">Settings</label>
+        </nav>
+        <div class="grow"></div>
+        <span class="pill"><span class="dot ok"></span> EmotiveImpact</span>
+        <span class="pill s-trial">Trial · 11 days left</span>
+        <span class="pill s-solo">Solo</span>
+        <span class="pill s-member">Team · member</span>
+        <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+        <span class="pill s-empty">Trial · 14 days left</span>
+        <span class="pill admin-only">admin</span>
+        <span class="pill s-member">member</span>
+      </header>
+
+      <div class="click-hint">
+        <span class="added">07 split · click through</span>
+        Desk is only work. Settings is a second app — eight pages, label-left rows, one save bar.
+        Flip the switch.
+      </div>
+
+      <!-- DESK -->
+      <div class="mode-desk shell">
+        <aside class="side">
+          <div class="side-head">
+            <span class="kicker">Desk</span>
+            <p class="tiny dim" style="margin-top: 6px">Work only. Configuration left this surface.</p>
+          </div>
+          <nav class="nav scroll">
+            <div class="nav-group">
+              <label for="v-overview"><span class="ico">◉</span> Overview</label>
+              <label for="v-alerts"
+                ><span class="ico">▲</span> Alerts
+                <span class="count crit has-data hide-map-res">2</span>
+                <span class="count crit has-data show-map-res">1</span></label
+              >
+              <label for="v-sources"><span class="ico">⌸</span> Sources <span class="count has-data">12</span></label>
+            </div>
+          </nav>
+          <div class="side-foot">
+            <label for="m-settings" class="btn sm outline" style="width: 100%">Open settings</label>
+          </div>
+        </aside>
+        <div class="main">
+          <div class="view view-overview body">
+            <h1 class="has-data hide-ended hide-map-res">Two things are exposed right now.</h1>
+            <h1 class="has-data hide-ended show-map-res">One warn is still open.</h1>
+            <h1 class="s-ended">We stopped looking six days ago.</h1>
+            <h1 class="s-empty">Nothing is being watched yet.</h1>
+            <p class="muted has-data hide-ended" style="margin-top: 10px; max-width: 62ch">
+              Retention, Slack, tokens, and the allowlist are in Settings — they do not share
+              visual weight with this sentence.
+            </p>
+            <p class="muted s-ended" style="margin-top: 10px; max-width: 62ch">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Open
+              alerts can still be resolved.
+            </p>
+            <p class="muted s-empty" style="margin-top: 10px; max-width: 62ch">
+              Install on one private repo. Settings stays empty until there is an install to configure.
+            </p>
+            <div class="verdict has-data hide-map-res" style="margin-top: 20px">
+              <span class="mark">!</span>
+              <div class="grow">
+                <h2>A source map with original source shipped 41 minutes ago.</h2>
+                <p class="muted" style="margin-top: 7px">
+                  <code class="path">nospoilers@0.4.2</code> · <code class="path">dist/cli.js.map</code>
+                </p>
+                <div class="row gap8 wrap" style="margin-top: 12px">
+                  <label for="v-alerts" class="btn sm">Open alert</label>
+                  <label for="ack-map" class="btn sm outline hide-map-ack">Acknowledge</label>
+                  <span class="pill ok show-map-ack">Acknowledged</span>
+                </div>
+              </div>
+              <span class="pill crit">MAP-002</span>
+            </div>
+            <div class="card card-pad has-data show-map-res" style="margin-top: 20px">
+              <span class="pill ok">resolved</span>
+              <h2 style="margin-top: 10px">MAP-002 is closed.</h2>
+              <p class="small muted" style="margin-top: 6px">DOC-001 is still a warn on desk 2.1.0.</p>
+            </div>
+          </div>
+
+          <div class="view view-alerts">
+            <div class="panes" style="min-height: 60vh">
+              <section class="pane">
+                <div class="pane-head"><strong class="small">Needs triage</strong></div>
+                <div class="pane-body scroll">
+                  <label class="item aitem-map hide-map-res" for="a-map">
+                    <div class="row gap8">
+                      <span class="dot crit pulse"></span>
+                      <strong class="grow truncate">Original source in published pack</strong>
+                    </div>
+                    <div class="sub">MAP-002 · 41m</div>
+                  </label>
+                  <label class="item aitem-doc" for="a-doc">
+                    <div class="row gap8">
+                      <span class="dot warn"></span>
+                      <strong class="grow truncate">Internal docs in release asset</strong>
+                    </div>
+                    <div class="sub">DOC-001 · 3h</div>
+                  </label>
+                  <p class="empty show-map-res">MAP-002 left this list.</p>
+                </div>
+              </section>
+              <section class="pane">
+                <div class="actionbar abar abar-map has-data">
+                  <label for="ack-map" class="btn sm hide-map-ack">Acknowledge</label>
+                  <span class="btn sm disabled show-map-ack">Acknowledged</span>
+                  <label for="res-map" class="btn sm outline hide-map-res">Resolve</label>
+                  <span class="btn sm outline disabled show-map-res">Resolved</span>
+                </div>
+                <div class="pane-body scroll">
+                  <div class="detail adetail adetail-map">
+                    <div class="row gap8 wrap">
+                      <span class="pill crit hide-map-res">critical</span>
+                      <span class="pill ok show-map-res">resolved</span>
+                      <span class="pill">MAP-002</span>
+                    </div>
+                    <h2 style="margin-top: 10px">dist/cli.js.map embeds original source</h2>
+                    <p class="small muted" style="margin-top: 8px; max-width: 56ch">
+                      The latest tarball for nospoilers@0.4.2 contains sourcesContent. Acknowledge
+                      and resolve from this bar — configuration is the other switch.
+                    </p>
+                  </div>
+                  <div class="detail adetail adetail-doc">
+                    <div class="row gap8 wrap">
+                      <span class="pill warn">warn</span>
+                      <span class="pill">DOC-001</span>
+                    </div>
+                    <h2 style="margin-top: 10px">Internal docs in desk 2.1.0</h2>
+                    <p class="small muted" style="margin-top: 8px">docs/internal/ROADMAP.md and 2 similar paths.</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="view view-sources body">
+            <h1>Sources</h1>
+            <p class="muted" style="margin-top: 8px">The desk still lists what we watch. Adding a private registry is Settings.</p>
+            <div class="card has-data" style="margin-top: 16px">
+              <div class="srccard">
+                <span class="glyph">▣</span>
+                <div>
+                  <strong class="path">nospoilers</strong>
+                  <div class="meta"><span>npm · 0.4.2</span></div>
+                </div>
+                <label for="v-alerts" class="btn sm hide-map-res">Open alert</label>
+                <span class="pill ok show-map-res">resolved</span>
+              </div>
+              <div class="srccard">
+                <span class="glyph">⌥</span>
+                <div>
+                  <strong class="path">EmotiveImpact/nospoilers</strong>
+                  <div class="meta"><span>GitHub · private</span></div>
+                </div>
+                <span class="pill ok">Clean</span>
+              </div>
+            </div>
+            <div class="card s-empty" style="margin-top: 16px">
+              <div class="empty"><strong>No sources yet.</strong> Install on a private throwaway repo.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="mode-settings set-shell">
+        <aside class="snav">
+          <div class="snav-group">
+            <span class="kicker">Delivery</span>
+            <label for="sv-notify">Notifications</label>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Access</span>
+            <label for="sv-team">Team &amp; roles</label>
+            <label for="sv-policy">Policy &amp; allowlist</label>
+            <label for="sv-retention">Retention</label>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Evidence</span>
+            <label for="sv-audit" class="team-only">Audit log</label>
+            <label for="sv-health">Install health</label>
+          </div>
+          <div class="snav-group">
+            <span class="kicker">Admin</span>
+            <label for="sv-tokens" class="admin-only">Scan API tokens</label>
+            <label for="sv-registries" class="admin-only">Private registries</label>
+          </div>
+        </aside>
+        <div class="set-body">
+          <div class="sv sv-notify">
+            <h1>Notifications</h1>
+            <p class="muted" style="margin-top: 8px; max-width: 58ch">
+              Destinations and routes. First match wins. Anything unmatched stays in the desk inbox.
+            </p>
+            <div class="gate s-member" style="margin-top: 16px">
+              <span class="tagword">Member</span>
+              <span>This page is read-only for you. Ask @ryan or @dana to change a destination or a route.</span>
+            </div>
+            <div class="gate s-solo" style="margin-top: 16px">
+              <span class="tagword">Solo</span>
+              <span>Slack, SIEM, and Jira tickets are on Team. Email for Solo waits on Resend.</span>
+            </div>
+            <div class="setrow team-only">
+              <div class="lbl">
+                <h3>Destinations</h3>
+                <p class="small dim">Each is tested when you save it.</p>
+              </div>
+              <div>
+                <div class="dest has-data">
+                  <span class="glyph" style="width: 28px; height: 28px">◈</span>
+                  <div class="grow">
+                    <strong class="small">Slack</strong>
+                    <p class="tiny dim">hooks.slack.com · last delivery 41 min ago</p>
+                  </div>
+                  <span class="btn sm ghost">Test</span>
+                </div>
+                <div class="dest has-data">
+                  <span class="glyph" style="width: 28px; height: 28px">◇</span>
+                  <div class="grow">
+                    <strong class="small">Jira</strong>
+                    <p class="tiny dim">emotiveimpact.atlassian.net · SEC</p>
+                  </div>
+                  <span class="btn sm ghost">Test</span>
+                </div>
+                <p class="small dim s-empty">No Slack, SIEM, or Jira destination saved on this install.</p>
+              </div>
+            </div>
+            <div class="setrow team-only">
+              <div class="lbl">
+                <h3>Routes</h3>
+                <p class="small dim">First match wins, read top to bottom.</p>
+              </div>
+              <div>
+                <p class="small dim s-empty">No routes yet. Destinations without a route still receive every Watch alert.</p>
+                <div class="routerow has-data">
+                  <span class="pill crit">critical</span><span class="dim">→</span><span class="snow">Slack</span>
+                  <code class="path">#sec-alerts</code>
+                </div>
+                <div class="routerow has-data">
+                  <span class="pill warn">warn</span><span class="dim">on desk →</span><span class="snow">Jira</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sv sv-policy">
+            <h1>Policy &amp; allowlist</h1>
+            <div class="setrow">
+              <div class="lbl">
+                <h3>Active exceptions</h3>
+                <p class="small dim">Reason and expiry, scoped to a source.</p>
+              </div>
+              <div>
+                <div class="kv"><span class="path">SRC-001</span><span class="summary-val">desk · 12 Oct</span></div>
+                <div class="kv"><span class="path">SIZE-001</span><span class="summary-val">acme-ui · 1 Nov</span></div>
+                <p class="tiny dim s-member" style="margin-top: 10px">Writing a policy exception is admin-only.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sv sv-team">
+            <h1>Team &amp; roles</h1>
+            <p class="muted" style="margin-top: 8px">The first GitHub user to connect this install is admin. Later users become members.</p>
+            <div class="gate s-solo" style="margin-top: 14px">
+              <span class="tagword">Solo</span>
+              <span>Subscribe to Team to keep managing roles.</span>
+            </div>
+            <div class="card has-data" style="margin-top: 16px">
+              <div class="srccard"><span class="av round"></span><div><strong class="small">@ryan</strong><p class="tiny dim">connected the install</p></div><span class="pill">admin</span></div>
+              <div class="srccard"><span class="av round"></span><div><strong class="small">@dana</strong></div><span class="pill">admin</span></div>
+              <div class="srccard"><span class="av round"></span><div><strong class="small">@lee</strong></div><span class="pill">member</span></div>
+            </div>
+            <p class="tiny dim" style="margin-top: 12px">Email invite is not built.</p>
+          </div>
+
+          <div class="sv sv-retention">
+            <h1>Retention</h1>
+            <div class="setrow">
+              <div class="lbl">
+                <h3>List retention</h3>
+                <p class="small dim">Alerts, receipts, and the timeline.</p>
+              </div>
+              <div>
+                <select class="field admin-only" style="max-width: 200px">
+                  <option>90 days</option>
+                  <option selected>180 days</option>
+                  <option>365 days</option>
+                </select>
+                <p class="small dim s-member" style="margin-top: 10px">An install admin has to change this window.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sv sv-audit">
+            <h1>Audit log</h1>
+            <div class="gate s-solo" style="margin-top: 14px">
+              <span class="tagword">Solo</span>
+              <span>Subscribe to Team to keep the audit log.</span>
+            </div>
+            <div class="card has-data team-only" style="margin-top: 16px">
+              <div class="kv"><span>Registry check nospoilers@0.4.2</span><span class="summary-val">09:14</span></div>
+              <div class="kv"><span>Slack delivered #sec-alerts</span><span class="summary-val">09:14</span></div>
+              <div class="kv"><span>@dana resolved relay-worker public</span><span class="summary-val">yesterday</span></div>
+            </div>
+          </div>
+
+          <div class="sv sv-health">
+            <h1>Install health</h1>
+            <div class="stats has-data" style="margin-top: 16px; grid-template-columns: repeat(3, 1fr)">
+              <div class="stat"><span class="kicker">Webhook</span><div class="n okc" style="font-size: 20px">ok</div></div>
+              <div class="stat"><span class="kicker">Permissions</span><div class="n okc" style="font-size: 20px">pass</div></div>
+              <div class="stat"><span class="kicker">Queue</span><div class="n">0</div></div>
+            </div>
+          </div>
+
+          <div class="sv sv-tokens">
+            <h1>Scan API tokens</h1>
+            <div class="card card-pad has-data" style="margin-top: 16px">
+              <div class="kv"><span class="mono">nsp_live_7f3a…c21</span><span class="summary-val">last used 2 m ago</span></div>
+              <span class="btn sm outline admin-only" style="margin-top: 12px">Create token</span>
+            </div>
+          </div>
+
+          <div class="sv sv-registries">
+            <h1>Private registries</h1>
+            <div class="card card-pad" style="margin-top: 16px">
+              <p class="small dim">No private registry saved. Public npm still works from the desk Sources list.</p>
+              <div class="row gap8 admin-only" style="margin-top: 12px">
+                <input class="field" placeholder="registry.example.com" />
+                <span class="btn sm">Add registry</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="savebar admin-only">
+            <span class="small dim">One sticky save — not fourteen panels each with their own button.</span>
+            <div class="grow"></div>
+            <label for="m-desk" class="btn sm ghost">Back to desk</label>
+            <span class="btn sm">Save changes</span>
+          </div>
+          <p class="tiny dim s-member" style="margin-top: 16px">Readable by members. Changing any of it is admin-only.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>1I</b> Desk / Settings
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="1f-click-desk.html">1F desk</a>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>

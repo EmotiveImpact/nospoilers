@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1B · Console + charts — NoSpoilers watch desk</title>
+    <link rel="stylesheet" href="mockup.css" />
+    <link rel="stylesheet" href="console.css" />
+  </head>
+  <body>
+    <input type="radio" name="preset" id="p-trial" class="stateset" checked />
+    <input type="radio" name="preset" id="p-solo" class="stateset" />
+    <input type="radio" name="preset" id="p-member" class="stateset" />
+    <input type="radio" name="preset" id="p-ended" class="stateset" />
+    <input type="radio" name="preset" id="p-empty" class="stateset" />
+
+    <div class="app shell">
+      <aside class="side">
+        <div class="side-head">
+          <span class="logo">NoSpoilers</span>
+          <button class="installer">
+            <span class="av"></span>
+            <span class="grow col">
+              <span class="small snow truncate">EmotiveImpact</span>
+              <span class="tiny dim has-data">Team · 6 repos</span>
+              <span class="tiny dim s-empty">nothing connected</span>
+            </span>
+            <span class="dim tiny">⌄</span>
+          </button>
+        </div>
+
+        <nav class="nav scroll">
+          <div class="nav-group">
+            <a href="#" aria-current="page"><span class="ico">◉</span> Overview</a>
+            <a href="#"
+              ><span class="ico">▲</span> Alerts <span class="count crit has-data">2</span></a
+            >
+            <a href="#" class="team-only"><span class="ico">◷</span> Exposure timeline</a>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Watched</span>
+            <a href="#"><span class="ico">⌥</span> Repositories <span class="count has-data">6</span></a>
+            <a href="#"><span class="ico">▣</span> npm packages <span class="count has-data">3</span></a>
+            <a href="#"><span class="ico">⬡</span> Websites <span class="count has-data">2</span></a>
+            <a href="#"><span class="ico">⎔</span> Map custody <span class="count has-data">1</span></a>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Evidence</span>
+            <a href="#"><span class="ico">✓</span> Releases</a>
+            <a href="#" class="team-only"><span class="ico">⎙</span> Audit log</a>
+          </div>
+          <div class="nav-group">
+            <span class="kicker">Settings</span>
+            <a href="#"><span class="ico">✉</span> Notifications</a>
+            <a href="#"><span class="ico">⚖</span> Policy &amp; allowlist</a>
+            <a href="#" class="admin-only"><span class="ico">◍</span> Scan API tokens</a>
+            <a href="#"><span class="ico">☗</span> Team &amp; roles</a>
+            <a href="#"><span class="ico">⧗</span> Retention</a>
+            <a href="#"><span class="ico">✱</span> Install health</a>
+          </div>
+        </nav>
+
+        <div class="side-foot">
+          <div class="between">
+            <span class="tiny dim s-trial">Trial · 11 days left</span>
+            <span class="tiny dim s-solo">Solo</span>
+            <span class="tiny dim s-member">Team · member</span>
+            <span class="tiny bad s-ended">Coverage ended</span>
+            <span class="tiny dim s-empty">Trial · 14 days left</span>
+            <a href="#" class="tiny snow">Subscribe</a>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <button class="search">
+            <span>⌕</span><span class="grow">Search repos, packages, alerts…</span>
+            <span class="kbd">⌘K</span>
+          </button>
+          <div class="grow"></div>
+          <div class="row gap8 has-data">
+            <span class="chip">24 h</span>
+            <span class="chip on">7 d</span>
+            <span class="chip team-only">30 d</span>
+          </div>
+          <span class="pill crit s-ended"><span class="dot crit"></span> Coverage ended</span>
+          <span class="av round"></span>
+        </header>
+
+        <div class="body">
+          <div class="between" style="margin-bottom: 16px">
+            <div>
+              <div class="row gap8 wrap">
+                <span class="kicker">Overview</span>
+                <span class="added">tiles from 09</span>
+                <span class="added">gantt from 08</span>
+              </div>
+              <h1 class="has-data hide-ended" style="margin-top: 8px">
+                One critical, everything else steady.
+              </h1>
+              <h1 class="s-ended" style="margin-top: 8px">Stale since Thursday.</h1>
+              <h1 class="s-empty" style="margin-top: 8px">Nothing to chart yet.</h1>
+            </div>
+            <div class="row gap8">
+              <button class="btn sm outline has-data team-only">Export CSV</button>
+              <button class="btn sm has-data">Scan latest release</button>
+              <button class="btn sm s-empty">Install on GitHub</button>
+            </div>
+          </div>
+
+          <div class="card card-pad s-ended" style="border-color: rgba(226, 69, 58, 0.32); margin-bottom: 18px">
+            <span class="kicker bad">Hosted coverage is off</span>
+            <p class="small muted" style="margin-top: 7px; max-width: 66ch">
+              Trial ended. We stop new jobs and scans until Solo $29 or Team $99 is active. Every
+              number below is frozen at the last check, six days ago.
+            </p>
+            <div class="row gap8" style="margin-top: 12px">
+              <button class="btn sm">See plans</button>
+              <button class="btn sm outline">Download receipts</button>
+            </div>
+          </div>
+
+          <div class="card card-pad s-empty">
+            <h2>Charts need one connected source.</h2>
+            <p class="small muted" style="margin-top: 8px; max-width: 62ch">
+              Install on a repo or watch a public npm package by name. The tiles and the exposure
+              bars fill themselves in from the first check.
+            </p>
+            <div class="row gap8" style="margin-top: 13px">
+              <button class="btn sm">Install on GitHub</button>
+              <button class="btn sm outline">Watch an npm package</button>
+            </div>
+          </div>
+
+          <!-- 09: the overview is tiles, sized by how much they matter -->
+          <div class="bento has-data">
+            <a class="tile alarm w4" href="#">
+              <div class="row gap8 wrap">
+                <span class="pill crit">MAP-002 critical</span>
+                <span class="tiny dim">41 minutes exposed</span>
+              </div>
+              <h2 style="margin-top: 11px">
+                <code class="path" style="font-size: 18px">nospoilers@0.4.2</code> ships original
+                source
+              </h2>
+              <p class="small muted" style="margin-top: 7px; max-width: 54ch">
+                <code class="path">dist/cli.js.map</code> carries <code>sourcesContent</code> and is
+                still the <code>latest</code> tag. Two more map findings in the same pack.
+              </p>
+              <div class="row gap8" style="margin-top: auto; padding-top: 13px">
+                <span class="btn sm">Open rotation checklist</span>
+                <span class="btn sm outline">Acknowledge</span>
+              </div>
+            </a>
+
+            <a class="tile w2" href="#">
+              <span class="kicker">Coverage</span>
+              <div class="row gap12" style="margin-top: 14px">
+                <div class="donut"><span>92%</span></div>
+                <div class="col gap4 small muted">
+                  <span class="row gap8"><i class="dot ok"></i> 11 clean</span>
+                  <span class="row gap8"><i class="dot warn"></i> 1 warn</span>
+                  <span class="row gap8"><i class="dot crit"></i> 1 critical</span>
+                </div>
+              </div>
+              <span class="foot">6 repos · 3 packages · 2 origins · 1 custody</span>
+            </a>
+
+            <a class="tile w2" href="#">
+              <span class="kicker">Time exposed, 7 days</span>
+              <div class="n bad">41m</div>
+              <span class="foot">open right now · median detect 38 s</span>
+            </a>
+
+            <a class="tile w2" href="#">
+              <span class="kicker">Closed this week</span>
+              <div class="n okc">4</div>
+              <span class="foot">median 22 min to resolve</span>
+            </a>
+
+            <a class="tile w2" href="#">
+              <span class="kicker">Queue</span>
+              <div class="n">0</div>
+              <span class="foot">Idle · 48 jobs in 30 d · 0 failed</span>
+            </a>
+
+            <a class="tile w3" href="#">
+              <span class="kicker">Packs read, 30 days</span>
+              <div class="spark">
+                <i style="height: 22%"></i><i style="height: 40%"></i><i style="height: 16%"></i
+                ><i class="warn" style="height: 62%"></i><i style="height: 28%"></i
+                ><i style="height: 35%"></i><i style="height: 20%"></i><i style="height: 48%"></i
+                ><i style="height: 30%"></i><i class="warn" style="height: 55%"></i
+                ><i style="height: 24%"></i><i style="height: 38%"></i><i style="height: 18%"></i
+                ><i style="height: 44%"></i><i class="bad" style="height: 88%"></i>
+              </div>
+              <span class="foot">48 packs · 4 failed policy · median 6.2 s</span>
+            </a>
+
+            <a class="tile w3" href="#">
+              <span class="kicker">Latest sealed releases</span>
+              <div style="margin-top: 9px">
+                <div class="mini">
+                  <span class="dot crit"></span>
+                  <span class="grow path">nospoilers 0.4.2</span>
+                  <span class="tiny dim">9f31…c0a</span>
+                </div>
+                <div class="mini">
+                  <span class="dot ok"></span>
+                  <span class="grow path">desk 2.1.0</span>
+                  <span class="tiny dim">4b02…e71</span>
+                </div>
+                <div class="mini">
+                  <span class="dot ok"></span>
+                  <span class="grow path">acme-ui 3.8.1</span>
+                  <span class="tiny dim">7c5d…20a</span>
+                </div>
+              </div>
+              <span class="foot">31 receipts available to download</span>
+            </a>
+          </div>
+
+          <!-- 08: how long each thing was actually reachable -->
+          <section class="sec has-data">
+            <div class="sec-head">
+              <h2>Exposure by source</h2>
+              <span class="added">from 08</span>
+            </div>
+
+            <div class="gantt">
+              <div class="gantt-head">
+                <span class="pill crit">1 open</span>
+                <div class="grow"></div>
+                <span class="tiny dim">Bars show the window a leak was publicly reachable</span>
+              </div>
+
+              <div class="ruler">
+                <div style="padding: 6px 16px" class="tiny dim">Source</div>
+                <div class="r">
+                  <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Mon</span
+                  ><span>Tue</span><span>Wed</span><span>Today</span>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-label">
+                  <div class="row gap8">
+                    <span class="dot crit pulse"></span
+                    ><strong class="small truncate">npm · nospoilers</strong>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 4px">registry.npmjs.org</p>
+                </div>
+                <div class="track">
+                  <div class="span crit" style="left: 80%; right: 2.5%">MAP-002 · open</div>
+                  <div class="tick" style="left: 97.5%"></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-label">
+                  <div class="row gap8">
+                    <span class="dot warn"></span
+                    ><strong class="small truncate">EmotiveImpact/desk</strong>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 4px">release asset v2.1.0</p>
+                </div>
+                <div class="track">
+                  <div class="span warn" style="left: 82%; width: 15.5%">DOC-001 · 3 h</div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-label">
+                  <div class="row gap8">
+                    <span class="dot ok"></span
+                    ><strong class="small truncate">relay-worker</strong>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 4px">repository visibility</p>
+                </div>
+                <div class="track">
+                  <div class="span ok" style="left: 69%; width: 5.5%">4 m</div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-label">
+                  <div class="row gap8">
+                    <span class="dot ok"></span
+                    ><strong class="small truncate">app.emotiveimpact.com</strong>
+                  </div>
+                  <p class="tiny dim" style="margin-top: 4px">production origin</p>
+                </div>
+                <div class="track"></div>
+              </div>
+            </div>
+
+            <div class="gate s-solo" style="margin-top: 12px">
+              <span class="tagword">Solo</span>
+              <span
+                >Solo keeps 7 days of exposure history and no CSV export. That still answers “how
+                long was it out there” for the incident in front of you.
+                <a href="#" class="snow">Compare plans →</a></span
+              >
+            </div>
+          </section>
+
+          <!-- 08: the incident spine, inline under the chart -->
+          <section class="sec has-data">
+            <div class="sec-head">
+              <h2>Open incident</h2>
+              <span class="added">spine from 08</span>
+            </div>
+            <div class="card card-pad">
+              <div class="between">
+                <div class="row gap8 wrap">
+                  <span class="pill crit">open</span>
+                  <strong>nospoilers@0.4.2 · MAP-002</strong>
+                </div>
+                <span class="tiny dim hide-ended">exposure clock running</span>
+                <span class="tiny bad s-ended">clock stopped when coverage did</span>
+              </div>
+
+              <div style="margin-top: 14px">
+                <div class="step">
+                  <span class="when">09:13:22</span>
+                  <span class="rail"><i class="info"></i></span>
+                  <div>
+                    <strong class="small snow">0.4.2 appeared on the registry</strong>
+                    <p class="tiny dim" style="margin-top: 3px">12 s after publish</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <span class="when">09:14:00</span>
+                  <span class="rail"><i class="crit"></i></span>
+                  <div>
+                    <strong class="small snow">Tarball unpacked · 3 findings</strong>
+                    <p class="tiny dim" style="margin-top: 3px">
+                      MAP-002 <code class="path">dist/cli.js.map</code>, MAP-001
+                      <code class="path">dist/index.js.map</code>, MAP-003
+                      <code class="path">dist/index.js</code>
+                    </p>
+                  </div>
+                </div>
+                <div class="step team-only">
+                  <span class="when">09:14:03</span>
+                  <span class="rail"><i class="info"></i></span>
+                  <div>
+                    <strong class="small snow">Routed to Slack #sec-alerts</strong>
+                    <p class="tiny dim" style="margin-top: 3px">Delivered, 210 ms</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <span class="when">now</span>
+                  <span class="rail"><i></i></span>
+                  <div>
+                    <strong class="small">Waiting on you</strong>
+                    <div class="row gap8 wrap" style="margin-top: 10px">
+                      <button class="btn sm">Resolve with note</button>
+                      <button class="btn sm outline">Acknowledge</button>
+                      <button class="btn sm ghost team-only">Assign</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock-bar">
+      <b>1B</b> Console + charts
+      <span class="sep"></span>
+      <label for="p-trial">Trial admin</label>
+      <label for="p-solo">Solo</label>
+      <label for="p-member">Member</label>
+      <label for="p-ended">Ended</label>
+      <label for="p-empty">Empty</label>
+      <span class="sep"></span>
+      <a href="index.html">gallery ↗</a>
+    </div>
+  </body>
+</html>
