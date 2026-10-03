@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Overview’s Review alert button included an unwanted arrow | Show the alert action as text only, preserving its selected-alert destination | 29 Overview UI tests, TypeScript/frontend build and diff check passed; live confirmation follows publication |
 | Selected New scan cards had a second line above their bottom border | Removed the decorative 2px stripe and native button edge, retaining the existing 1px red outline for every evidence type | Live styles identified the duplicate pseudo-element; 30 scan tests, TypeScript/frontend build and diff check passed |
 | Team invitation role picker sat above the account field and send button | Moved role guidance below the control row and matched the picker height to the 40px input/button; selected-role help remains associated with the picker | 13 Team UI tests, TypeScript/frontend build, lint and diff check passed; live 1280px controls align at 40px height, role explanations update and 390px layout has no document overflow |
 | Related text and controls appeared disconnected across Watch screens | Removed stacked empty-state padding and reduced heading, prose, form and section gaps; shared page intros now have one owning style | 121 focused tests across 13 files, 52 follow-up tests, frontend/TypeScript build and affected-file lint; real deployed desktop/mobile checks recorded in BUILD-LOG |

@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Removed the arrow from Overview’s Review alert button.
+
 - Removed the duplicate bottom stripe from selected New scan cards, keeping a single red outline.
 
 - Aligned the Team invitation account field, role picker and send button; moved the selected role explanation below the row while retaining its accessible association.
