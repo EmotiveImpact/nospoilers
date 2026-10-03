@@ -1,6 +1,13 @@
 # Status
 
-Latest checkpoint (22 September 2026): the fresh Vercel project/domain, shared Neon database,
+UI checkpoint (3 October 2026): the Watch spacing pass is deployed on `d6a505f`, with verified
+production JS/CSS matching the final local build. It tightens related content across the main screens,
+keeps expired Coverage recovery visible, aligns mobile controls and makes Alerts readable in short
+windows. Initial full CI passed 1,748 tests; follow-up UI checks and desktop/mobile/reflow evidence
+are recorded in [BUILD-LOG](release-assurance/BUILD-LOG.md). Native zoom and screen-reader acceptance
+remain open. This does not change scan admission, billing or public-launch status.
+
+Hosted checkpoint (22 September 2026): the fresh Vercel project/domain, shared Neon database,
 Railway coordinator and Vercel Sandbox executor are configured. Production GitHub webhooks return
 200 after a shared-secret repair, and bounded live clean/fail-closed/egress/timeout/cleanup Sandbox
 checks passed. Migration `123_product_identity` separates product login identity from GitHub source
