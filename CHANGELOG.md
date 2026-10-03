@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Bundled Inter locally for Watch text, forms, mobile navigation and popup menus, preserving monospace evidence and the approved marketing typography. Added licensed Cal Sans assets for a separate local design comparison.
+
 - Aligned the expanded desktop sidebar's collapse control with the workspace picker's right edge.
 
 - Fixed expired-coverage and Overview plan actions to open the current workspace's Plan & billing tab inside Watch. Sidebar, top-bar and search billing actions now share the same scoped destination.

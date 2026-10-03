@@ -1,3 +1,11 @@
+## 3 October 2026 — Consistent self-hosted Watch typography
+
+Watch declared Inter but the entry page only loaded Manrope/Outfit. Bundled the official unmodified Inter 4.1 variable upright/italic WOFF2 files, verified against release Git blob hashes, and shipped its OFL licence. A `NoSpoilers UI` family alias and `--font-ui` token keep the approved marketing typography separate. Watch headings, text, scan panels, mobile drawer and portalled picker/repository/account menus share the UI family; evidence monospace styles remain. Cal Sans Text UI is a separate licensed prototype asset excluded from production, with no runtime preference or default change.
+
+Existing focused shell/navigation/picker/scan checks passed **29/29 across seven files**. Typecheck, frontend bundle (configLoader=runner, copyPublicDir=false), affected TSX lint and diff check passed; lint retains two existing shell warnings. Bundled fonts have content-hashed asset names. This is not a full regression or native zoom/screen-reader acceptance.
+
+Created a local Inter/Cal Sans comparison for Alerts, Coverage and Team settings. Automatic approval review rejected a localhost server containing authenticated page snapshots; the safer comparison strips names, scope identifiers, links, dates and counts, disables app actions and exposes no customer API. Original snapshots were deleted. Native Inter/Cal Sans switching and side-by-side Settings views work. Coverage retains its expired-access notice; no customer mutation or entitlement bypass occurred. Production acceptance follows the main push. See docs/UI-TYPOGRAPHY.md and font provenance READMEs.
+
 ## 3 October 2026 — Sidebar collapse control alignment
 
 At the owner's 1164×924 production viewport, the expanded desktop collapse target ended at x179 while the workspace picker ended at x187. Removed that 8px inset through the expanded control's right margin, preserving its 32×32 target, focus/hover visibility and collapse action. Collapsed-logo and mobile close controls are unchanged.

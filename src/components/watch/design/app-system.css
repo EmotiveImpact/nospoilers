@@ -1,8 +1,8 @@
 /* Approved Overview visual language. Scoped to Watch, including its portals. */
 .watch-desk,.watch-rail,.watch-design-surface{
  --color-panel:#121416;--color-inset:#0c0d0f;--color-line:#ffffff10;--color-line-strong:#ffffff20;
- --color-dim:#898c96;--color-review:#ff8a80;--font-display:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
- --font-sans:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+ --color-dim:#898c96;--color-review:#ff8a80;--font-display:var(--font-ui);
+ --font-sans:var(--font-ui);
  font-family:var(--font-sans);-webkit-font-smoothing:antialiased;
 }
 .watch-desk .watch-page-title{font-family:var(--font-sans);font-size:34px;line-height:1.2;letter-spacing:-1.1px;font-weight:550}

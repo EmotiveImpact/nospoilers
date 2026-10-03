@@ -215,7 +215,7 @@ code {
 }
 
 .watch-desk, .watch-rail {
-  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-ui);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }

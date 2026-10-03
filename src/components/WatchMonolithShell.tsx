@@ -419,7 +419,7 @@ export function WatchMonolithShell({
             <span className={cn('min-w-0 flex-1',opts.collapsed&&'sr-only')}><span className="block truncate">{login}</span><span className="block text-[11px] text-dim">{role??'Workspace member'}</span></span>
             {!opts.collapsed?<ChevronUp className="size-3.5 shrink-0 text-dim" aria-hidden/>:null}
           </MenuButton>
-          <MenuItems anchor="top start" className="z-50 min-w-48 rounded-md border border-white/10 bg-[#090a0c] p-1 text-[13px] text-[#f4f4f5] shadow-xl outline-none [--anchor-gap:8px]">
+          <MenuItems anchor="top start" className="watch-design-surface z-50 min-w-48 rounded-md border border-white/10 bg-[#090a0c] p-1 text-[13px] text-[#f4f4f5] shadow-xl outline-none [--anchor-gap:8px]">
             <MenuItem><a href={hrefFor('workspaces')} onClick={event=>{go(event,hrefFor('workspaces'));closeNav();}} className="flex items-center gap-3 rounded px-3 py-2 data-focus:bg-white/[.07]"><Settings className="size-4" aria-hidden/>Workspace settings</a></MenuItem>
             <MenuItem><button type="button" onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded px-3 py-2 text-left data-focus:bg-white/[.07]"><LogOut className="size-4" aria-hidden/>Sign out</button></MenuItem>
           </MenuItems>

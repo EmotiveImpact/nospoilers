@@ -1,5 +1,9 @@
 # Status
 
+Typography increment (3 October 2026): Watch now bundles its chosen Inter font and shares it with
+portalled menus. Cal Sans remains a local comparison. [Typography](UI-TYPOGRAPHY.md) describes the
+font contract, licence/provenance and scope; live verification is recorded in BUILD-LOG.
+
 Sidebar alignment increment (3 October 2026, deployed b6ceaed): expanded desktop collapse control moved 8px right
 to the workspace picker's edge. Compact and mobile navigation are unchanged; verification is in BUILD-LOG.
 
