@@ -1,5 +1,9 @@
 # Status
 
+Alerts layout increment (3 October 2026): export and Assigned to me share one action row on phones;
+the shortcut-help disclosure is removed at all sizes while keyboard navigation remains supported.
+Focused queue/filter checks passed; native deployment evidence is recorded in BUILD-LOG.
+
 Typography increment (3 October 2026): Watch now bundles its chosen Inter font and shares it with
 portalled menus. Cal Sans remains a local comparison. [Typography](UI-TYPOGRAPHY.md) describes the
 font contract, licence/provenance and scope; live verification is recorded in BUILD-LOG.

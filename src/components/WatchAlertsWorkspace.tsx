@@ -210,11 +210,20 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
-        {!previewing ? (
-          <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onExport}>
-            {exportLabel}
-          </Button>
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
+        {!previewing || onAssignedToMe ? (
+          <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
+            {!previewing ? (
+              <Button type="button" size="sm" variant="outline" onClick={onExport}>
+                {exportLabel}
+              </Button>
+            ) : null}
+            {onAssignedToMe ? (
+              <Button type="button" size="sm" variant="outline" className="aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>
+                Assigned to me
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       <div className="alert-queue-toolbar alerts-journey-toolbar flex shrink-0 flex-wrap items-center justify-between gap-3 px-5 md:px-8">
@@ -256,7 +265,6 @@ export function WatchAlertsWorkspace({
           </button>
         ))}
       </div></div>
-      {onAssignedToMe ? <Button type="button" size="sm" variant="outline" className="min-h-11 aria-pressed:bg-white/10 aria-pressed:text-snow" aria-pressed={assignedToMe || tab==='mine'} onClick={onAssignedToMe}>Assigned to me</Button> : null}
       </div>
       <div key={tab} className={cn("alerts-journey-inbox watch-content-enter grid min-h-0 flex-1",rows.length===0&&state.status!=="loading"&&state.status!=="error"&&!detailOpen&&"is-empty")}>
         <aside className={cn("alerts-journey-list min-h-0 flex-col border-b border-white/8 lg:flex lg:border-b-0 lg:border-r", detailOpen ? "hidden" : "flex")}>
@@ -328,10 +336,6 @@ export function WatchAlertsWorkspace({
           </ol>
         )}
         {pagination}
-          <details className="px-4 pb-3 text-xs text-mute">
-            <summary className="cursor-pointer py-2 focus-visible:outline focus-visible:outline-white/50">Keyboard shortcuts</summary>
-            <p className="pb-2">J / K moves through the queue. Arrow keys work while the list is focused.</p>
-          </details>
         </aside>
 
         <main className={cn("alerts-journey-detail min-h-0 lg:block", detailOpen ? "block" : "hidden")}>

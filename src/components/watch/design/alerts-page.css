@@ -83,18 +83,8 @@
   background: #ffffff0a;
 }
 
-.alerts-journey .alerts-journey-toolbar > button {
+.alerts-journey .alerts-journey-header-actions > button {
   min-height: 32px;
-  margin-left: auto;
-  border-color: transparent;
-  color: var(--color-mute);
-  font-size: 11px;
-}
-
-.alerts-journey .alerts-journey-toolbar > button:hover,
-.alerts-journey .alerts-journey-toolbar > button[aria-pressed="true"] {
-  background: transparent;
-  color: var(--color-snow);
 }
 
 .alerts-journey .alerts-journey-inbox {
@@ -150,15 +140,6 @@
   color: var(--color-mute);
   font-size: 12px;
   line-height: 1.6;
-}
-
-.alerts-journey .alerts-journey-shortcuts {
-  padding: 0 12px 12px;
-  margin: 0;
-  color: var(--color-mute);
-  font-size: 11px;
-  line-height: 1.6;
-  border-color: var(--alerts-line);
 }
 
 .alerts-journey .alerts-journey-group h2 {
@@ -330,7 +311,12 @@
   .alerts-journey .alerts-journey-header {
     align-items: flex-start;
     flex-wrap: wrap;
+    gap: 14px;
     margin-bottom: 18px;
+  }
+
+  .alerts-journey .alerts-journey-header > div {
+    flex-basis: 100%;
   }
 
   .alerts-journey .alerts-journey-header .watch-page-title {
@@ -341,10 +327,6 @@
     font-size: 12px;
   }
 
-  .alerts-journey .alerts-journey-header > button {
-    margin-left: 0;
-  }
-
   .alerts-journey .alerts-journey-toolbar {
     gap: 10px;
   }
@@ -352,10 +334,6 @@
   .alerts-journey .alerts-journey-tabs {
     width: 100%;
     gap: 20px;
-  }
-
-  .alerts-journey .alerts-journey-toolbar > button {
-    margin: 0 0 8px;
   }
 
   .alerts-journey .alerts-journey-detail-content > h1 {
