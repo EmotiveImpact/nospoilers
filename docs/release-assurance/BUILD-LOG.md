@@ -4,7 +4,11 @@ Replaced the search panel's trigger-origin scale/translation spring with a fixed
 
 Search still uses the current workspace records already loaded by the existing controller and shows at most 24 query matches. This is not a new server-side archive search. Independent artifact workspaces remain page-only; existing route/permission filtering and workspace/installation scope are preserved. No records, providers or entitlements are changed.
 
-Bounded verification: **53/53 tests across five files** passed for matching/ranking, artifact isolation, routes, combobox navigation, query clearing/reset, focus return and reduced motion. TypeScript/frontend build, affected-file oxlint and diff check passed. Final local entry is `index-DEnm4RnI.js`; authenticated production desktop/mobile verification follows publication.
+Bounded verification: **53/53 tests across five files** passed for matching/ranking, artifact isolation, routes, combobox navigation, query clearing/reset, focus return and reduced motion. TypeScript/frontend build, affected-file oxlint and diff check passed. The initial tested entry was `index-DEnm4RnI.js`.
+
+Production `ddbadff` served the exact tested entry. Live search computed transform:none at 1280×720 and 390×844. Real repository names match in either word order; the exact EmotiveImpact/indigo source ranks above related alerts in distinct groups. Repositories finds Coverage; billing opens the workspace's Plan & billing tab with both workspace and installation preserved. Clear retains input focus; Escape and the close button return focus to the search trigger. The mobile panel is 358px wide with 16px margins and document width 390px; End scrolls its final action fully into view. A final copy polish shortens the connected search placeholder so it fits beside the mobile clear/close controls. No scan, alert, invitation, billing or provider mutation occurred.
+
+TypeScript/frontend build, affected-file lint and diff check passed again after that placeholder-only polish; its tested entry is `index-B_WFYMj7.js`.
 
 ## 3 October 2026 — Text-only Overview alert action
 

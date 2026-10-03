@@ -107,7 +107,7 @@ function OpenCommandPalette({
                 setActiveIndex(0);
               }}
               onKeyDown={onInputKeyDown}
-              placeholder={artifactOnly?'Search workspace pages…':'Search pages, alerts, sources, releases…'}
+              placeholder={artifactOnly?'Search workspace pages…':'Search pages and records…'}
               className="h-14 w-full border-b border-white/8 bg-transparent pl-11 pr-24 text-sm text-snow outline-none placeholder:text-dim"
             />
             <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
