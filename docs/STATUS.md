@@ -1,5 +1,10 @@
 # Status
 
+Alerts copy-feedback increment (3 October 2026, deployed 9f4261f): the fix-brief button shows a copy icon
+and Copied after a successful write, without a separate success paragraph. Reopening resets it;
+clipboard failures retain manual-copy guidance. The 38 focused tests, build and live dialog checks
+are recorded in BUILD-LOG. Brief contents, alert response state and release authority are unchanged.
+
 Alerts layout increment (3 October 2026, deployed 23ae742): export and Assigned to me share one action row on phones;
 the shortcut-help disclosure is removed at all sizes while keyboard navigation remains supported.
 Focused queue/filter checks passed; live mobile/desktop alignment, filter behavior and scope preservation

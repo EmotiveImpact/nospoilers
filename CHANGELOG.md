@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Alerts fix-brief copying now shows a copy icon and changes the button to Copied after success, without adding text beneath it. Clipboard failures retain manual-copy guidance.
+
 - Grouped Alerts export and assignment-filter actions in one row, including on phones. Removed the visible keyboard-help disclosure while retaining queue and tab keyboard navigation.
 
 - Selected and self-hosted Cal Sans Text UI for Watch after the owner’s comparison. Documented shared type, spacing, panels and control sizes, aligned the main screens and all Watch-owned dialogs, and preserved monospace evidence and public marketing typography. The earlier Inter assets remain available for local comparison.
