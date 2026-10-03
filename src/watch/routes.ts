@@ -123,7 +123,8 @@ export function watchHref(
   if(path!=="/watch/scan")params.delete('mode');
   if(path!=="/watch/sources")for(const key of ['configure','origin'])params.delete(key);
   if(path!=="/watch/sources")params.delete('coverageHealth');
-  if(path!=="/watch/alerts"&&params.has('pageSize')){params.delete('before');params.delete('pageSize');}
+  if(path!=="/watch/alerts"&&['pageSize','tab','alert','mine'].some(key=>params.has(key))){params.delete('before');params.delete('pageSize');}
+  if(path!=="/watch/alerts"&&path!=="/watch/releases")params.delete('before');
   if(path!=="/watch/releases"&&params.has('hostedDecision')){params.delete('hostedDecision');params.delete('before');}
   if(path!=="/watch/releases")for(const key of ['release','releaseFinding','preview','upload','uploadView','uploadFinding','uploadTab','uploadStatus','uploadCursor','uploadBefore','uploadPageSize','uploadQuery','uploadTrail'])params.delete(key);
   if(path!=="/watch/alerts")for(const key of ['alert','tab','mine'])params.delete(key);

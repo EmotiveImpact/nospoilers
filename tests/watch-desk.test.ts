@@ -37,6 +37,15 @@ it('keeps alert pagination out of other screens and connected release cursors',(
   expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
  }
 });
+
+it('drops a default-size alert cursor when switching to Releases',()=>{
+ const search='?workspace=team&install=7&tab=open&before=37';
+ expect(watchHref('/watch/alerts',search)).toBe('/watch/alerts'+search);
+ expect(watchHref('/watch/releases',search)).toBe('/watch/releases?workspace=team&install=7');
+ const releaseSearch='?workspace=team&install=7&before=66';
+ expect(watchHref('/watch/releases',releaseSearch)).toBe('/watch/releases'+releaseSearch);
+ expect(watchHref('/watch/sources',releaseSearch)).toBe('/watch/sources?workspace=team&install=7');
+});
 import { deskVerdict, filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";
 import {
