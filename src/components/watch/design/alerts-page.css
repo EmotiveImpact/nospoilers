@@ -10,7 +10,7 @@
 .alerts-journey .alerts-journey-header {
   padding: 0;
   border: 0;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .alerts-journey .alerts-journey-header .watch-page-title {
@@ -100,7 +100,7 @@
 .alerts-journey .alerts-journey-inbox {
   grid-template-columns: 270px minmax(0, 1fr);
   min-height: 0;
-  padding-top: 28px;
+  padding-top: 20px;
 }
 
 .alerts-journey .alerts-journey-list {
@@ -255,7 +255,7 @@
 
 .alerts-journey .alerts-journey-detail-content > h1 {
   max-width: 680px;
-  margin-top: 22px;
+  margin-top: 12px;
   font-size: 25px;
   font-weight: 550;
   letter-spacing: -.45px;
@@ -264,13 +264,14 @@
 
 .alerts-journey .alerts-journey-detail-content > h1 + p {
   max-width: 640px;
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: 13px;
-  line-height: 1.75;
+  line-height: 1.6;
 }
 
 .alerts-journey .alerts-journey-section {
-  padding-top: 22px;
+  margin-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--alerts-line);
 }
 
@@ -289,7 +290,7 @@
 }
 
 .alerts-journey .alerts-journey-activity {
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .alerts-journey .alerts-journey-activity textarea {
@@ -363,13 +364,13 @@
 }
 
 /* Override the earlier shared card-toolbar skin at its own specificity. */
-.watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-header{padding:0;margin-bottom:24px}
+.watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-header{padding:0;margin-bottom:20px}
 .watch-desk [data-watch-page=alerts] .alerts-journey .alerts-journey-toolbar{padding:0;background:transparent}
 .watch-desk .alerts-journey .alerts-journey-toolbar .alerts-journey-tabs{padding:4px;gap:6px;border:1px solid var(--alerts-line);border-radius:7px;background:#ffffff02}
 .watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab{padding:0 12px;min-height:36px;border-radius:5px;background:transparent}
 .watch-desk .alerts-journey .alerts-journey-tabs .alerts-journey-tab[aria-selected=true]{background:#202022;color:#f4f4f5}
 
-.alerts-journey [aria-label="Recheck source"]{padding:22px 0 0;margin-top:28px;border:0;border-top:1px solid var(--alerts-line);border-radius:0}
+.alerts-journey [aria-label="Recheck source"]{padding:16px 0 0;margin-top:20px;border:0;border-top:1px solid var(--alerts-line);border-radius:0}
 .alerts-journey [aria-label="Recheck source"]>.watch-kicker{font-size:14px;font-weight:550;letter-spacing:0;text-transform:none;color:var(--color-snow)}
 .alerts-journey .alerts-journey-context .watch-pill::before{content:"•";margin-right:6px}
 

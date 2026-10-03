@@ -14,6 +14,13 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
 | Stripe cannot take payment | Deliberately deferred by the owner | Configure sandbox prices, keys and webhook later; then test checkout, entitlement changes, cancellation and expiry |
 
+## Fixed on 3 October 2026
+
+| Problem | Fix | Evidence |
+| --- | --- | --- |
+| Related text and controls appeared disconnected across Watch screens | Removed stacked empty-state padding and reduced heading, prose, form and section gaps; shared page intros now have one owning style | 121 focused tests across 13 files, frontend/TypeScript build and affected-file lint; deployed responsive verification follows |
+| Expired Coverage appeared blank above a long blurred repository inventory | Anchor the access notice near the top of the overlay and keep it visible while scrolling; covered controls remain inert | Real CoverageLock is exercised in the expired-state UI tests, including available subscription/navigation actions |
+
 ## Fixed on 23 September 2026
 
 | Problem | Fix | Evidence |

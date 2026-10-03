@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Tightened related text and section spacing across Overview, Alerts, Coverage, Releases, New scan and Settings. Expired Coverage now keeps its access message near the top instead of centring it below the viewport in a long repository list.
+
 - Tightened Timeline event spacing by removing an obsolete shared rule that added 22px of padding above and below every row; increased secondary text readability and removed stray legacy timeline markers.
 
 - Reworked Timeline into compact, searchable daily activity. Repeated missing-release checks collapse by day, retain each underlying record, and open the exact repository in Coverage; alert and response rows retain their exact alert links.

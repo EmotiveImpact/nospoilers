@@ -324,7 +324,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
 
       {showPrerequisite ? (
         <>
-        <button type="button" className="mt-4 inline-flex items-center gap-2 text-sm text-mute hover:text-snow" onClick={()=>setDismissedPrerequisite(null)}><LockKeyhole className="size-4" aria-hidden/>View scan access</button>
+        <button type="button" className="scan-access-trigger mt-4 inline-flex items-center gap-2 text-sm text-mute hover:text-snow" onClick={()=>setDismissedPrerequisite(null)}><LockKeyhole className="size-4" aria-hidden/>View scan access</button>
         <Dialog open={dismissedPrerequisite !== prerequisiteKey} onClose={()=>setDismissedPrerequisite(prerequisiteKey)} className="relative z-50">
           <DialogBackdrop className="fixed inset-0 bg-black/70 backdrop-blur-sm"/>
           <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-5">

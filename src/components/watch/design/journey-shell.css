@@ -245,7 +245,6 @@
 /* Shared type and alignment for the approved journey shell. */
 :is(.watch-desk,.watch-navigation-dialog) .watch-rail-link[aria-current=page] svg{color:currentColor;opacity:1}
 .watch-desk .watch-page-title{margin:0;font-size:34px;line-height:1.18;font-weight:550;letter-spacing:-1.1px}
-.watch-desk .watch-page-lede{margin-top:10px;font-size:14px;line-height:1.65}
 .watch-desk :is(.settings-tab,.alerts-journey-tab,.journey-tab,.watch-settings-navigation a){font-size:12px;font-weight:500}
 .watch-desk .settings-tab-panel[data-state=active]{animation:watch-settings-reveal 140ms ease-out}
 @keyframes watch-settings-reveal{from{opacity:.88}to{opacity:1}}

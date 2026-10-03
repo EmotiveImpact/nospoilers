@@ -6,8 +6,8 @@
  font-family:var(--font-sans);-webkit-font-smoothing:antialiased;
 }
 .watch-desk .watch-page-title{font-family:var(--font-sans);font-size:34px;line-height:1.2;letter-spacing:-1.1px;font-weight:550}
-.watch-desk .watch-page-lede{font-size:13px;line-height:1.7;max-width:680px;margin-top:12px}
-.watch-desk .watch-between{margin-bottom:26px}
+.watch-desk .watch-page-lede{font-size:14px;line-height:1.6;max-width:680px;margin-top:8px}
+.watch-desk .watch-between{margin-bottom:20px}
 .watch-desk :is(.watch-card,.watch-stat,.watch-stepcard,.watch-progress,.workspace-create,.workspace-cards>article,.watch-release-operation-card){border-radius:7px;background:var(--color-panel);border-color:var(--color-line)}
 .watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article){padding:24px}
 .watch-desk :is(.watch-card,.workspace-create,.workspace-cards>article) h2{font-family:var(--font-sans);font-size:16px;font-weight:500;line-height:1.5}
@@ -30,7 +30,7 @@
 .watch-search-panel input:focus-visible{outline:none;box-shadow:none}.watch-search-panel:focus-within{border-color:#ffffff30}
 @media(max-width:600px){.watch-desk h1{font-size:30px}}
 .watch-desk .watch-stage :is(.watch-release-heading,.watch-between,.workspace-gate) h1{font-family:var(--font-sans);font-size:34px;font-weight:550;line-height:1.2;letter-spacing:-1.1px}
-.watch-desk .watch-stage .watch-release-heading p{font-size:13px;line-height:1.7}
+.watch-desk .watch-stage .watch-release-heading p{font-size:13px;line-height:1.6}
 @media(max-width:600px){.watch-desk .watch-stage :is(.watch-release-heading,.watch-between,.workspace-gate) h1{font-size:30px}}
 
 /* Error labels must retain normal-text contrast on raised and tinted panels. */

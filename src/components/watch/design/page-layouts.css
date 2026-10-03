@@ -30,7 +30,7 @@
 [data-watch-page=releases] .upload-preview h3{font-size:22px;line-height:1.4;overflow-wrap:anywhere}
 [data-watch-page=releases] .upload-preview>p:not(.watch-kicker){font-size:13px;line-height:1.7}
 [data-watch-page=releases] .upload-preview dl{border-top:1px solid var(--color-line);border-bottom:1px solid var(--color-line);padding-block:16px}
-[data-watch-page=releases] .upload-history-toolbar{padding-block:10px;border-bottom:1px solid var(--color-line);font-size:11px}
+[data-watch-page=releases] .upload-history-toolbar{margin-block:8px;padding-block:8px;border-bottom:1px solid var(--color-line);font-size:11px}
 [data-watch-page=health] .watch-kv,[data-watch-page=audit] .watch-kv{padding-block:16px;border-color:#ffffff0d}
 [data-watch-page=setup] .watch-stepcard{padding:20px;margin-top:12px}
 [data-watch-page=retention] .watch-stat{padding:22px;min-height:110px}

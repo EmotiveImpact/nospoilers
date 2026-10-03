@@ -1,3 +1,11 @@
+## 3 October 2026 — Watch spacing polish
+
+Reduced excessive gaps across Overview empty cards, Alerts detail sections, Coverage tabs/table rows, Releases collection controls and evidence prose, New scan and Settings. Shared page descriptions now sit 8px below the heading with 1.6 line height; removed the duplicate journey-shell rule that previously overrode that spacing. Existing click targets, handlers, selected states and evidence remain unchanged.
+
+Live inspection also found expired Coverage's access notice centred thousands of pixels below the viewport in a 97-repository list. CoverageLock now uses a top-anchored sticky content region over the same overlay. Existing covered controls remain inert. The expiry regression now renders the real lock and checks its named access region and available navigation rather than substituting a mock button.
+
+Bounded verification: **121 tests across 13 files** passed (Overview, expired Coverage, repository detail, scan prerequisites/navigation, release collection/scope, Alerts, Settings/retention/notifications and architecture). TypeScript/frontend build and diff check passed. Affected-file lint passed with three existing ScanPage warnings. Checks used the bundled Node 24.19.0 runtime; no dependency versions were changed. Local product sign-in had expired, so no synthetic review workspace was created. Authenticated deployed desktop/mobile and native zoom acceptance follows the main push; this entry alone is not a deployment or public-launch claim.
+
 ## 23 September 2026 — Timeline spacing correction
 
 The live Timeline still rendered 83px event rows: obsolete `page-layouts.css` selectors overrode the new row padding with 22px on each side and inserted legacy dot markers. Removed those unused Timeline rules so `timeline-page.css` owns the layout, reduced the row minimum to 62px and increased the muted supporting text from 11px to 12px. This changes presentation only; event grouping, links and retained data are unchanged. Focused Timeline tests passed 4/4 across two files, TypeScript/frontend build and diff check passed. Live deployment verification follows the push.
