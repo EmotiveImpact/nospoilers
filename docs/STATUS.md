@@ -3,9 +3,10 @@
 UI increment (3 October 2026): shared default-10 result pagination with 30/60 choices is implemented
 across search, Coverage, Releases, Alerts, Notifications, Timeline and longer Team/audit/token/retained
 lists. Cursor APIs honor actual requested sizes; uploaded-build search filters the full authorized
-history. Initial runtime a3fe482 is deployed and authenticated paging was verified on Notifications,
-Alerts and global search at desktop/mobile widths. The latest [BUILD-LOG](release-assurance/BUILD-LOG.md)
-records affected checks, history window limits, the local ENOSPC boundary and final polish/CI evidence.
+history. Final runtime d51e1e4 is deployed and authenticated paging was verified on Notifications,
+Alerts and global search at desktop/mobile widths. The main implementation passed 1,817 tests in CI;
+the last menu/navigation polish passed focused checks and its full CI is still running. The latest
+[BUILD-LOG](release-assurance/BUILD-LOG.md) records history limits, local ENOSPC and live evidence.
 
 UI checkpoint (3 October 2026): the Watch spacing pass is deployed on `d6a505f`, with verified
 production JS/CSS matching the final local build. It tightens related content across the main screens,
