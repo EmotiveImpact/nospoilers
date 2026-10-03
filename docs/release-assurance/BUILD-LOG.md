@@ -4,6 +4,8 @@ At the owner's 1164×924 production viewport, the expanded desktop collapse targ
 
 Existing shell/navigation regressions passed **15/15 tests across four files**; typecheck, frontend bundle (configLoader=runner, copyPublicDir=false) and diff check passed. Live deployment/alignment acceptance follows the main push. This bounded presentation change does not alter workspace scope, access, billing or scanner behavior.
 
+Runtime **b6ceaed** is deployed successfully. Production entry index-DwkgLGIO.js matches the tested bundle. At 1164×924, both expanded collapse target and workspace picker end at x187, with no document overflow. Collapse produces the existing 60px rail and 32×32 expand control; reopening restores the aligned target and loaded workspace choices. Keyboard focus reveals the control. A production screenshot was saved; no customer record was changed. Full CI was not awaited for this one-class change.
+
 ## 3 October 2026 — Keep plan actions inside the app
 
 Reproduced the owner's report on production: See plans inside the expired Coverage notice navigated to /pricing, while the Watch top bar and sidebar already opened workspace billing. Added one scoped watchBillingHref helper and reused it in the access notice, Overview/Bento plan actions, sidebar/top bar and search. Coverage/connection notices now receive the current search explicitly; their New scan/Watch desk links also preserve tenant scope. Stale alert/release details, cursors and setup intent are cleared by the existing route rules. Visitor marketing links and explicitly public price comparisons remain available; no payment provider, price, subscription, authorization or entitlement behavior changes.

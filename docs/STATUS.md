@@ -1,6 +1,6 @@
 # Status
 
-Sidebar alignment increment (3 October 2026): expanded desktop collapse control moved 8px right
+Sidebar alignment increment (3 October 2026, deployed b6ceaed): expanded desktop collapse control moved 8px right
 to the workspace picker's edge. Compact and mobile navigation are unchanged; verification is in BUILD-LOG.
 
 Billing navigation increment (3 October 2026, deployed d3af6ab): expired-coverage and Overview plan actions now share
