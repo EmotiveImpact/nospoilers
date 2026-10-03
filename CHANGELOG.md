@@ -7,7 +7,7 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 - Grouped Alerts export and assignment-filter actions in one row, including on phones. Removed the visible keyboard-help disclosure while retaining queue and tab keyboard navigation.
 
-- Bundled Inter locally for Watch text, forms, mobile navigation and popup menus, preserving monospace evidence and the approved marketing typography. Added licensed Cal Sans assets for a separate local design comparison.
+- Selected and self-hosted Cal Sans Text UI for Watch after the owner’s comparison. Documented shared type, spacing, panels and control sizes, aligned the main screens and all Watch-owned dialogs, and preserved monospace evidence and public marketing typography. The earlier Inter assets remain available for local comparison.
 
 - Aligned the expanded desktop sidebar's collapse control with the workspace picker's right edge.
 

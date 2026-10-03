@@ -7,7 +7,7 @@
 [data-watch-page=releases] .watch-release-list-arrow{grid-column:3;grid-row:1}
 .scan-policy-page .policy-choice{border:0;padding:0 0 22px;margin:0;border-bottom:1px solid var(--color-line)}
 .scan-policy-page .policy-choice+ .policy-choice{padding-top:8px}
-.scan-policy-page .policy-choice p{padding-left:28px;font-size:12px;line-height:1.8;max-width:680px}
+.scan-policy-page .policy-choice p{padding-left:28px;font-size:12px;line-height:var(--watch-body-line,1.6);max-width:68ch;}
 [data-watch-page]:not([data-watch-page=alerts])>section{max-width:1120px;margin-inline:auto}
 [data-watch-page=policy]>section,[data-watch-page=retention]>section,[data-watch-page=registries]>section{max-width:960px}
 [data-watch-page=alerts] .alerts-designed>[class*="shrink-0"]{padding-block:20px}
@@ -21,14 +21,14 @@
 @media(max-width:600px){.alerts-designed .alert-queue-tabs{gap:6px}.alerts-designed .alert-queue-tabs [role=tab]{padding-inline:10px}}
 .alerts-designed aside{background:var(--color-panel)}.alerts-designed aside>p{font-size:10px;color:var(--color-dim);line-height:1.7}
 .alerts-designed [role=tablist]+button{font-size:11px}
-[data-watch-page=releases] .uploaded-heading h2{font-size:18px;font-weight:500}
+[data-watch-page=releases] .uploaded-heading h2{font-size:var(--watch-section-title-size,16px);font-weight:500}
 [data-watch-page=releases] .uploaded-layout{gap:18px;grid-template-columns:minmax(240px,.7fr) minmax(0,1.3fr)}
 [data-watch-page=releases] .upload-row-title strong{font-size:13px;font-weight:500;line-height:1.6}
 [data-watch-page=releases] .uploaded-list button>span:nth-child(2){font-size:12px}
 [data-watch-page=releases] .uploaded-list small{font-size:10px;line-height:1.7}
 [data-watch-page=releases] .upload-preview{padding:24px;gap:14px}
 [data-watch-page=releases] .upload-preview h3{font-size:22px;line-height:1.4;overflow-wrap:anywhere}
-[data-watch-page=releases] .upload-preview>p:not(.watch-kicker){font-size:13px;line-height:1.7}
+[data-watch-page=releases] .upload-preview>p:not(.watch-kicker){font-size:13px;line-height:var(--watch-body-line,1.6);max-width:68ch;}
 [data-watch-page=releases] .upload-preview dl{border-top:1px solid var(--color-line);border-bottom:1px solid var(--color-line);padding-block:16px}
 [data-watch-page=releases] .upload-history-toolbar{margin-block:8px;padding-block:8px;border-bottom:1px solid var(--color-line);font-size:11px}
 [data-watch-page=health] .watch-kv,[data-watch-page=audit] .watch-kv{padding-block:16px;border-color:#ffffff0d}
@@ -36,5 +36,5 @@
 [data-watch-page=retention] .watch-stat{padding:22px;min-height:110px}
 [data-watch-page=retention] .watch-stat[aria-pressed=true]{border-color:#ffffff50;background:#1a1b1e}
 [data-watch-page=registries] form,[data-watch-page=policy] form{max-width:760px}
-[data-watch-page=scan] .watch-card{border-radius:7px}
+[data-watch-page=scan] .watch-card{border-radius:var(--watch-panel-radius,8px);}
 @media(max-width:760px){[data-watch-page=releases] .uploaded-layout{grid-template-columns:1fr}[data-watch-page=releases] .upload-preview{padding:20px}}

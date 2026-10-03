@@ -14,7 +14,7 @@ export function TypeToConfirm(props: {
   onSubmit: () => void;
 }) {
   return (
-    <Dialog open onClose={props.busy ? () => undefined : props.onCancel} className="relative z-50">
+    <Dialog open onClose={props.busy ? () => undefined : props.onCancel} className="watch-design-surface relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
       <div className="fixed inset-0 grid place-items-center overflow-y-auto px-4 py-8">
       <DialogPanel

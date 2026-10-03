@@ -1,35 +1,35 @@
 # Watch typography
 
-Watch's chosen interface family remains Inter. It previously named Inter without loading it,
-so appearance could depend on the customer's installed fonts. Inter 4.1 is now served with the
-app as content-hashed WOFF2 assets, including upright and italic variable weights 100–900.
-`font-display: swap` keeps text visible while downloading.
+Owner-selected direction, 3 October 2026: **Cal Sans Text UI** is the Watch interface family.
+The approved comparison's rounded, compact type now applies to headings, text, forms, mobile
+navigation and app-owned menus/dialogs. `UI-DESIGN-LANGUAGE.md` defines its shared geometry and roles.
 
-`src/ui-fonts.css` defines the private CSS family alias `NoSpoilers UI` and the shared `--font-ui`
-stack. Watch headings, text, forms, mobile navigation, account/repository menus and shared dropdown
-surfaces use it. The alias avoids changing marketing selectors which name Inter; marketing's
-existing Manrope/Outfit and system-fallback choices remain separate. Evidence paths, hashes and
-code retain their existing monospace styles. No font preference or additional customer setting
-is introduced.
+`src/ui-fonts.css` defines the private `NoSpoilers UI` alias and `--font-ui` stack. The original
+154,200-byte variable WOFF2 is self-hosted as a content-hashed build asset. The verified wght axis
+supports 400–700; italic uses the same file's ital axis. Default GEOM 25, YTAS 1520 and SHRP 0 match the
+comparison. `font-display:swap` keeps text visible while downloading. No external font service or
+customer font preference is introduced.
 
-The unmodified official Inter release files and SHA-256 provenance are documented in
-`src/assets/fonts/README.md`. Copyright and SIL Open Font License 1.1 are shipped at
-`/assets/fonts/OFL-Inter.txt` from `public/assets/fonts/OFL-Inter.txt`. No third-party font package
-or external font request is added for Watch.
+The alias keeps marketing's existing Manrope/Outfit choices separate. Standalone public `/scan`
+retains that boundary; embedded `/watch/scan` and its own portal receive Watch scope. Evidence paths,
+hashes, code and the AI fix brief retain their monospace type. Portal roots own
+`.watch-design-surface`; inheriting the body alone would use the marketing family.
 
-## Cal Sans comparison
+Official pinned source, SHA-256, axes and copyright are documented in `src/assets/fonts/README.md`.
+The unmodified font's original SIL Open Font License 1.1 ships at `/assets/fonts/OFL-CalSans.txt`.
+The earlier Inter 4.1 assets/provenance remain available for comparison; the app no longer imports them.
 
-Cal Sans Text UI is an optional design candidate, not the selected production font. Its verified,
-licensed asset lives under the prototype gallery in `public/mockup-review/fonts`; that gallery
-is excluded from production builds. The original font and licence remain unmodified.
+## Redacted comparison
 
-A local comparison at `http://127.0.0.1:4351/` provides Inter/Cal Sans, side-by-side and phone
-views for Alerts, Coverage and Team settings. It uses redacted layout snapshots with app actions
+The temporary comparison at `http://127.0.0.1:4351/` provides Inter/Cal Sans, side-by-side and phone
+views for Alerts, Coverage and Team settings. It uses redacted actual layout snapshots with app actions
 inactive, no customer API access and names, scope identifiers, dates and counts removed. Coverage
-retains the access notice; it does not bypass entitlements. The temporary server and redacted
-layouts are under `/tmp/nospoilers-font-study`, outside the repository. Original authenticated
-snapshots were deleted after automatic approval review rejected serving private customer content.
-The comparison is a typography specimen, not a synthetic customer workspace or functional journey.
+retains the access notice; it does not bypass entitlements. The server and redacted layouts live under
+`/tmp/nospoilers-font-study`, outside the repository. Original authenticated snapshots were deleted
+after automatic approval review rejected serving private customer content.
 
-The current design decision is to keep Inter as the app default while the owner evaluates Cal Sans.
-Native browser/deployment evidence is in the latest release-assurance build log.
+The prototype gallery's licensed font copy remains local and excluded from production. The app
+imports its independently placed original font under `src/assets/fonts`. The comparison is a type
+specimen, not a synthetic customer workspace or functional journey.
+
+Actual source checks, deployment and native browser evidence are recorded in the latest BUILD-LOG.

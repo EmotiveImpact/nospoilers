@@ -440,7 +440,7 @@ export function WatchMonolithShell({
         {rail({ collapsed, showToggle: true })}
       </aside>
 
-      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-navigation-dialog relative z-40 lg:hidden">
+      <Dialog data-watch-navigation="true" open={navOpen} onClose={setNavOpen} className="watch-design-surface watch-navigation-dialog relative z-40 lg:hidden">
         <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
         <div className="fixed inset-0 flex">
           <DialogPanel data-dropdown-boundary id="watch-mobile-navigation" className="watch-rail watch-rail--mobile flex h-full w-[min(15.5rem,85vw)] flex-col overflow-hidden border-r border-line bg-canvas shadow-2xl transition duration-150 data-closed:-translate-x-full motion-reduce:transition-none">

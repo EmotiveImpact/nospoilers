@@ -30,7 +30,7 @@
 .release-assurance-slot .ns-intelligence p,.release-assurance-slot .ns-intelligence dd{font-size:12px;line-height:1.65}
 .release-assurance-slot .ns-intelligence__eyebrow{font-size:10px!important;letter-spacing:.12em}
 .release-assurance-slot .ns-intelligence__badge{font-size:10px;padding:4px 8px;border-radius:4px;border-color:#ffffff14}
-.release-assurance-slot .ns-intelligence :is(button,input,select,textarea){font-size:12px;border-color:#ffffff18;border-radius:6px;background:#09090b;min-height:36px;padding:8px 12px}
+.release-assurance-slot .ns-intelligence :is(button,input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:12px;border-color:#ffffff18;border-radius:6px;background:#09090b;min-height:36px;padding:8px 12px}
 .release-assurance-slot .ns-intelligence summary{font-size:12px}
 .release-assurance-slot .ns-intelligence__facts{gap:20px;margin:18px 0}
 .journey-history-tools{margin-top:0}.journey-history-tools>.release-assurance-slot{margin-top:0}
@@ -58,3 +58,8 @@
 .ns-intelligence__history button{border-color:#ffffff10;background:#111113}
 @media(max-width:900px){.ns-intelligence__workspace{grid-template-columns:160px minmax(0,1fr);gap:18px}.ns-intelligence__toolcontent{padding-left:18px}}
 @media(max-width:680px){.ns-intelligence__workspace{grid-template-columns:minmax(0,1fr);gap:18px;padding-top:16px}.ns-intelligence__toolnav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.ns-intelligence__toolnav>p{grid-column:1/-1}.ns-intelligence__toolcontent{border-left:0;padding-left:0}.ns-intelligence__create{grid-template-columns:minmax(0,1fr)}}
+
+/* Watch embeddings use the shared control and surface geometry. */
+:is(.watch-desk,.watch-design-surface) .release-assurance-slot .ns-intelligence h2{font-size:var(--watch-section-title-size,16px)}
+:is(.watch-desk,.watch-design-surface) .release-assurance-slot .ns-intelligence :is(button,input:not([type=checkbox]):not([type=radio]),select,textarea){border-radius:var(--watch-control-radius,6px);min-height:var(--watch-control-height,40px)}
+:is(.watch-desk,.watch-design-surface) .ns-intelligence :is(.ns-intelligence__toolgroup,.ns-intelligence__create){border-radius:var(--watch-panel-radius,8px)}

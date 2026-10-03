@@ -5,9 +5,11 @@ the shortcut-help disclosure is removed at all sizes while keyboard navigation r
 Focused queue/filter checks passed; live mobile/desktop alignment, filter behavior and scope preservation
 are verified in BUILD-LOG.
 
-Typography increment (3 October 2026): Watch now bundles its chosen Inter font and shares it with
-portalled menus. Cal Sans remains a local comparison. [Typography](UI-TYPOGRAPHY.md) describes the
-font contract, licence/provenance and scope; live verification is recorded in BUILD-LOG.
+Design-language increment (3 October 2026): the owner selected Cal Sans Text UI for Watch. Shared
+type, spacing, panels, controls and popup scope are implemented across the main screens.
+[Design language](UI-DESIGN-LANGUAGE.md) and [typography](UI-TYPOGRAPHY.md) define the contract,
+licence and boundaries. Current checks and deployment evidence are recorded in BUILD-LOG; this
+changes presentation and does not declare public-launch readiness.
 
 Sidebar alignment increment (3 October 2026, deployed b6ceaed): expanded desktop collapse control moved 8px right
 to the workspace picker's edge. Compact and mobile navigation are unchanged; verification is in BUILD-LOG.

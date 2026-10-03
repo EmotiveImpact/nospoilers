@@ -1,18 +1,19 @@
-/* Inter 4.1, copyright The Inter Project Authors. SIL OFL 1.1:
-   /assets/fonts/OFL-Inter.txt. Alias keeps the approved marketing typography separate. */
+/* Cal Sans Text UI, copyright 2025 Mark Davis, commissioned by Cal.com. SIL OFL 1.1:
+   /assets/fonts/OFL-CalSans.txt. Alias keeps marketing typography separate. */
 @font-face {
   font-family: "NoSpoilers UI";
-  src: url("./assets/fonts/InterVariable.woff2") format("woff2");
+  src: url("./assets/fonts/CalSansTextUI.woff2") format("woff2");
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400 700;
   font-display: swap;
 }
 
 @font-face {
   font-family: "NoSpoilers UI";
-  src: url("./assets/fonts/InterVariable-Italic.woff2") format("woff2");
+  src: url("./assets/fonts/CalSansTextUI.woff2") format("woff2");
   font-style: italic;
-  font-weight: 100 900;
+  font-weight: 400 700;
+  font-variation-settings: "ital" 1;
   font-display: swap;
 }
 

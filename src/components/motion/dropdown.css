@@ -13,10 +13,10 @@
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  min-height: 36px;
+  min-height: var(--watch-control-height, 40px);
   padding: 7px 11px;
   border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 6px;
+  border-radius: var(--watch-control-radius, 6px);
   background: #090a0c;
   color: #f4f4f5;
   font: inherit;
@@ -70,12 +70,12 @@
   z-index: 80;
   box-sizing: border-box;
   border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 6px;
+  border-radius: var(--watch-control-radius, 6px);
   background: #090a0c;
   color: #f4f4f5;
   box-shadow: 0 12px 36px rgb(0 0 0 / 35%), 0 2px 6px rgb(0 0 0 / 20%);
   font-family: var(--font-ui, inherit);
-  font-size: 13px;
+  font-size: var(--watch-body-size, 13px);
   line-height: 20px;
   --ns-dropdown-enter-y: -3px;
 }
@@ -179,13 +179,13 @@
   gap: 12px;
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: var(--watch-control-height, 40px);
   padding: 8px 12px;
   border: 1px solid rgb(255 255 255 / 15%);
-  border-radius: 6px;
+  border-radius: var(--watch-control-radius, 6px);
   background: #090a0c;
   color: #f4f4f5;
-  font-size: 14px;
+  font-size: var(--watch-body-size, 13px);
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;

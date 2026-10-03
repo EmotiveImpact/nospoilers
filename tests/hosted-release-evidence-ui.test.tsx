@@ -54,6 +54,9 @@ it('shows only a genuinely retained manifest in the Files section',async()=>{
  expect(screen.queryByRole('region',{name:'Saved release findings'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Inspect dist/app.js'}));
  const file=screen.getByRole('dialog',{name:'Recorded file metadata'});
+ expect(file.closest('.watch-design-surface')).not.toBeNull();
+ expect(within(file).getByText('dist/app.js').tagName).toBe('CODE');
+ expect(within(file).getByText('abc').tagName).toBe('CODE');
  expect(within(file).getByText('abc')).toBeTruthy();
  expect(within(file).getByText('123 bytes')).toBeTruthy();
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({available:true,workspaceId:'workspace',report:{fileCount:1,findings:[]}})));

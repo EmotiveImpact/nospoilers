@@ -46,6 +46,8 @@ acceptance are still open. Stripe is deliberately deferred. Read **[docs/STATUS.
 | [docs/STATUS.md](docs/STATUS.md) | Built vs live vs leftover vs ice |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What is left |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | Pricing and invariants |
+| [docs/UI-DESIGN-LANGUAGE.md](docs/UI-DESIGN-LANGUAGE.md) | Shared Watch typography, spacing, controls, panels and states |
+| [docs/UI-TYPOGRAPHY.md](docs/UI-TYPOGRAPHY.md) | Selected Cal Sans font, licence and app scope |
 | [docs/AUTH-ENTERPRISE-AND-WORKERS.md](docs/AUTH-ENTERPRISE-AND-WORKERS.md) | Login, GitHub connections, enterprise SSO and scan workers |
 | [bugsandfixes.md](bugsandfixes.md) | Fixed defects and open launch issues |
 | [CHANGELOG.md](CHANGELOG.md) | What shipped |

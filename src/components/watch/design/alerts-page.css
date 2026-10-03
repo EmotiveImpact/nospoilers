@@ -1,9 +1,9 @@
 /* Alerts follows the approved 36-journey inbox: quiet rows, clear evidence, one response path. */
-.alerts-journey {
+.alerts-journey{
   --alerts-panel: #121416;
   --alerts-line: #ffffff10;
   --alerts-hover: #ffffff04;
-  padding: 38px 40px 0;
+  padding:var(--watch-alert-padding,39px 40px 0);
   background: transparent;
 }
 
@@ -13,16 +13,10 @@
   margin-bottom: 20px;
 }
 
-.alerts-journey .alerts-journey-header .watch-page-title {
-  font-size: 34px;
-  font-weight: 550;
-  letter-spacing: -1.1px;
-}
-
-.alerts-journey .alerts-journey-header p {
+.alerts-journey .alerts-journey-header p{
   max-width: 650px;
   font-size: 14px;
-  line-height: 1.65;
+  line-height:var(--watch-body-line,1.6);
 }
 
 .alerts-journey .alerts-journey-toolbar {
@@ -83,8 +77,8 @@
   background: #ffffff0a;
 }
 
-.alerts-journey .alerts-journey-header-actions > button {
-  min-height: 32px;
+.alerts-journey .alerts-journey-header-actions > button{
+  min-height:var(--watch-compact-control-height,32px);
 }
 
 .alerts-journey .alerts-journey-inbox {
@@ -129,8 +123,8 @@
   margin-left: auto;
 }
 
-.alerts-journey .alerts-journey-page-actions button {
-  min-height: 32px;
+.alerts-journey .alerts-journey-page-actions button{
+  min-height:var(--watch-compact-control-height,32px);
   padding-inline: 10px;
 }
 
@@ -165,10 +159,10 @@
   border-bottom: 1px solid var(--alerts-line);
 }
 
-.alerts-journey .alerts-journey-row {
+.alerts-journey .alerts-journey-row{
   display: block;
   border: 0;
-  border-radius: 5px;
+  border-radius:var(--watch-control-radius,6px);
   background: transparent;
   transition: background-color 150ms ease;
 }
@@ -280,10 +274,6 @@
 }
 
 @media (max-width: 1023px) {
-  .alerts-journey {
-    padding: 28px 24px 0;
-  }
-
   .alerts-journey .alerts-journey-inbox {
     grid-template-columns: minmax(0, 1fr);
     padding-top: 20px;
@@ -304,10 +294,6 @@
 }
 
 @media (max-width: 640px) {
-  .alerts-journey {
-    padding: 24px 18px 0;
-  }
-
   .alerts-journey .alerts-journey-header {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -319,12 +305,8 @@
     flex-basis: 100%;
   }
 
-  .alerts-journey .alerts-journey-header .watch-page-title {
-    font-size: 28px;
-  }
-
   .alerts-journey .alerts-journey-header p {
-    font-size: 12px;
+    font-size: var(--watch-body-size,13px);
   }
 
   .alerts-journey .alerts-journey-toolbar {

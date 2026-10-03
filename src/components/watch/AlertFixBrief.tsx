@@ -37,7 +37,7 @@ export function AlertFixBrief({alert,operational=false}:{alert:WatchAlertDetail;
   <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-mute">{guidance.steps.map(step=><li key={step}>{step}</li>)}</ol>
   <Button variant="outline" className="mt-4" onClick={()=>{setCopyState('');setOpen(true);}}><Copy className="size-4" aria-hidden/>Prepare AI fix brief</Button>
   <p className="mt-2 text-xs text-dim">Review and copy instructions for your own coding agent. Nothing is sent automatically.</p>
-  <Dialog open={open} onClose={()=>setOpen(false)} className="relative z-50">
+  <Dialog open={open} onClose={()=>setOpen(false)} className="watch-design-surface relative z-50">
    <DialogBackdrop className="fixed inset-0 bg-black/70"/>
    <div className="fixed inset-0 overflow-y-auto p-4"><DialogPanel className="mx-auto my-8 w-full max-w-2xl rounded-xl border border-white/15 bg-[#101012] p-5 text-snow">
     <div className="flex items-center justify-between gap-4"><DialogTitle className="text-lg font-semibold">Fix brief for your AI agent</DialogTitle><Button variant="ghost" size="sm" aria-label="Close fix brief" onClick={()=>setOpen(false)}><X className="size-4"/></Button></div>

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {afterEach,expect,it,vi} from 'vitest';
 import {ScanPage} from '../src/pages/ScanPage';
 import {navigate} from '../src/nav';
@@ -9,6 +10,26 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();window.history
 const scope='?workspace=chosen&install=7&upload=old&release=2&preview=3&configure=github&tab=done';
 const workspace=(overrides:Partial<ProductWorkspace>={}):ProductWorkspace=>({id:'chosen',name:'Customer',organization_id:'org',installation_id:7,archived_at:null,role:'admin',plan:null,trial_ends_at:'2020-01-01',...overrides});
 const me={user:{login:'owner'},coverage:{status:'active',plan:'solo'},installations:[{id:7,account_login:'Customer',trialEndsAt:'2020-01-01',plan:null,suspended:false,role:'admin'}]};
+it.each([true,false])('preserves the %s embedded scan access boundary when its dialog portals outside the page',async embedded=>{
+ const fetcher=vi.fn(async()=>Response.json(me));vi.stubGlobal('fetch',fetcher);
+ const {container}=render(<ScanPage embedded={embedded} search={scope} workspace={workspace()}/>);
+ const dialog=await screen.findByRole('dialog',{name:'Coverage has ended'});
+ // The portal cannot inherit the app surface from the page that opened it.
+ expect(container.contains(dialog)).toBe(false);
+ expect(dialog.classList.contains('watch-design-surface')).toBe(embedded);
+ expect(within(dialog).getByRole('link',{name:'View saved releases'}).getAttribute('href')).toBe('/watch/releases?workspace=chosen&install=7');
+ await userEvent.click(within(dialog).getByRole('button',{name:'Close scan access'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ const trigger=screen.getByRole('button',{name:'View scan access'});
+ await userEvent.click(trigger);
+ const reopened=await screen.findByRole('dialog',{name:'Coverage has ended'});
+ expect(reopened.classList.contains('watch-design-surface')).toBe(embedded);
+ await userEvent.keyboard('{Escape}');
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ await waitFor(()=>expect(document.activeElement).toBe(trigger));
+ expect(screen.queryByRole('button',{name:'Scan latest release'})).toBeNull();
+ expect(fetcher.mock.calls.every(call=>String(call[0])==='/api/me')).toBe(true);
+});
 it('offers scoped saved evidence and recovery while expired coverage blocks every new scan mode',async()=>{
  const fetcher=vi.fn(async(_url:unknown)=>Response.json(me));vi.stubGlobal('fetch',fetcher);
  render(<ScanPage embedded search={scope} workspace={workspace()}/>);

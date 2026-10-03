@@ -1,11 +1,11 @@
 /* Mock 43: one release workspace, real evidence in four focused sections. */
 .release-workspace{--release-panel:#111113;--release-line:#ffffff10;--release-muted:#92929e;max-width:1160px;margin-inline:auto;min-width:0}
 .release-workspace .watch-release-heading{margin:16px 0 0;align-items:center;gap:20px}
-.release-workspace .watch-release-heading h1{font-size:32px!important;line-height:1.2;letter-spacing:-.7px;font-weight:500;overflow-wrap:anywhere}
-.release-workspace .watch-release-heading p{font-size:12px!important;color:var(--release-muted);margin:8px 0 0}
+.release-workspace .watch-release-heading h1{font-size:var(--watch-page-title-size,34px);line-height:1.2;letter-spacing:-1.1px;font-weight:550;overflow-wrap:anywhere}
+.release-workspace .watch-release-heading p{font-size:var(--watch-body-size,13px);color:var(--release-muted);margin:8px 0 0;line-height:var(--watch-body-line,1.6);}
 .release-workspace .watch-release-heading button{flex:none}
 .release-workspace .journey-result-metadata{margin:12px 0 0;gap:16px;font-size:11px}
-.release-workspace-decision{margin:20px 0 12px;padding:20px 24px;background:var(--release-panel);border-radius:7px;display:flex;align-items:center;justify-content:space-between;gap:25px}
+.release-workspace-decision{margin:20px 0 12px;padding:20px 24px;background:var(--release-panel);border-radius:var(--watch-panel-radius,8px);display:flex;align-items:center;justify-content:space-between;gap:25px}
 .release-workspace-decision.is-blocked{background:radial-gradient(ellipse at 0 0,#e2453a16,transparent 65%),var(--release-panel)}
 .release-workspace-decision.is-review{background:radial-gradient(ellipse at 0 0,#d99a2b12,transparent 65%),var(--release-panel)}
 .release-workspace-decision.is-ready{background:radial-gradient(ellipse at 0 0,#58c77b0b,transparent 65%),var(--release-panel)}
@@ -44,11 +44,11 @@
 .release-workspace .release-finding-kind.is-critical{color:#ff9b99}
 .release-workspace .journey-finding-explanation{gap:24px;margin-top:20px}
 .release-workspace .journey-finding-explanation h4{font-size:12px;font-weight:600}
-.release-workspace .journey-finding-explanation p{font-size:12px;line-height:1.6}
+.release-workspace .journey-finding-explanation p{font-size:var(--watch-body-size,13px);line-height:var(--watch-body-line,1.6);}
 .release-workspace .upload-next-step{margin-top:23px;padding:19px 0 0;background:none;border:0;border-top:1px solid var(--release-line)}
 .release-workspace .upload-next-step>p{font-size:11px}
 .release-workspace .upload-evidence-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;border:0;padding:0;background:none}
-.release-workspace .upload-evidence-tabs button{border:1px solid var(--release-line);border-radius:5px;padding:5px 10px;background:none;font-size:11px;min-height:30px}
+.release-workspace .upload-evidence-tabs button{border:1px solid var(--release-line);border-radius:var(--watch-control-radius,6px);padding:5px 10px;background:none;font-size:11px;min-height:var(--watch-compact-control-height,32px);}
 .release-workspace .upload-evidence-tabs button[aria-selected=true]{background:var(--release-panel);color:#f4f4f5;box-shadow:none;border-color:#ffffff20}
 .release-workspace .release-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
 .release-workspace .release-section-heading h2{font-size:20px;font-weight:500;margin:0}
@@ -99,5 +99,5 @@
 .release-workspace-dialog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
 .release-workspace :focus-visible,.release-workspace-dialog :focus-visible{outline:2px solid #d99a2b;outline-offset:3px}
 @media(max-width:1050px){.release-workspace .upload-evidence-grid{grid-template-columns:230px minmax(0,1fr)}.release-workspace .journey-finding-explanation{grid-template-columns:1fr;gap:16px}}
-@media(max-width:760px){.release-workspace .watch-release-heading{align-items:flex-start;flex-wrap:wrap}.release-workspace .watch-release-heading h1{font-size:27px!important}.release-workspace-decision{align-items:flex-start;padding:20px;flex-wrap:wrap;gap:12px}.release-workspace-states{grid-template-columns:repeat(2,minmax(0,1fr))}.release-workspace-states .release-evidence-state:nth-child(2){border-right:0}.release-workspace-states .release-evidence-state:nth-child(n+3){border-top:1px solid var(--release-line)}.release-workspace-states .release-evidence-state:nth-child(3){padding-left:0}.release-workspace .upload-evidence-grid,.release-workspace .journey-proof{grid-template-columns:1fr}.release-workspace .upload-finding-list{padding:0 0 15px;border:0;border-bottom:1px solid var(--release-line)}.release-workspace .upload-evidence-panel{padding:20px 0 0}.release-workspace .journey-proof>.proof-sharing{padding:24px 0 0;border:0;border-top:1px solid var(--release-line)}.release-workspace .journey-release-tabs{gap:22px}.release-workspace .journey-artifact-identity dl{grid-template-columns:1fr 1fr}.release-workspace .release-section-heading{flex-wrap:wrap}}
+@media(max-width:760px){.release-workspace .watch-release-heading{align-items:flex-start;flex-wrap:wrap}.release-workspace-decision{align-items:flex-start;padding:20px;flex-wrap:wrap;gap:12px;border-radius:var(--watch-panel-radius,8px);}.release-workspace-states{grid-template-columns:repeat(2,minmax(0,1fr))}.release-workspace-states .release-evidence-state:nth-child(2){border-right:0}.release-workspace-states .release-evidence-state:nth-child(n+3){border-top:1px solid var(--release-line)}.release-workspace-states .release-evidence-state:nth-child(3){padding-left:0}.release-workspace .upload-evidence-grid,.release-workspace .journey-proof{grid-template-columns:1fr}.release-workspace .upload-finding-list{padding:0 0 15px;border:0;border-bottom:1px solid var(--release-line)}.release-workspace .upload-evidence-panel{padding:20px 0 0}.release-workspace .journey-proof>.proof-sharing{padding:24px 0 0;border:0;border-top:1px solid var(--release-line)}.release-workspace .journey-release-tabs{gap:22px}.release-workspace .journey-artifact-identity dl{grid-template-columns:1fr 1fr}.release-workspace .release-section-heading{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.release-workspace *{animation:none!important;transition:none!important}}
