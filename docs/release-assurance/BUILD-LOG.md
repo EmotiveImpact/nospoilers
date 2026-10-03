@@ -2,7 +2,7 @@
 
 The live invitation role picker ended 23.5px above the account input and send button because its description participated in the bottom-aligned control row. Moved the dynamic role explanation beneath the whole row, identified it with the selected role and linked it to the picker through aria-describedby. The invitation picker now matches the 40px input/button height. Role options, server authorization and invitation submission are unchanged.
 
-Bounded verification: all **13 Team UI tests** passed; TypeScript/frontend build, affected-file lint and diff check passed. Deployed desktop/mobile alignment verification follows the main push. No invitation was sent or access changed during inspection.
+Bounded verification: all **13 Team UI tests** passed; TypeScript/frontend build, affected-file lint and diff check passed. Production runtime `ee4c83c` now serves the exact built entry (`index-CwHrEB1g.js`) and Watch CSS (`WatchWorkspace-Ba1dtIJd.css`). At 1280px all three invitation controls share y=597.703px and height=40px; the helper starts 7px below the row and remains associated through aria-describedby. Viewer, Member and Admin selections update their explanations without sending an invitation. At 390px all three controls stack at the full 350px content width, with document width equal to viewport width and the helper readable below the button. No invitation was sent or access changed during inspection.
 
 ## 3 October 2026 — Watch spacing polish
 
