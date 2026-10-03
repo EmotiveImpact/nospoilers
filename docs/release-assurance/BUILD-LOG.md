@@ -1,8 +1,10 @@
 ## 3 October 2026 — Single selected scan-card border
 
-Live New scan inspection found a generated 2px red stripe over the existing 1px bottom border of selected evidence cards. Removed that decorative pseudo-element; the red card outline, selected background, focus treatment, evidence-type switching and scanner controls remain. This shared rule applies to GitHub, package, website and proof cards.
+Live New scan inspection found a generated 2px red stripe over the existing 1px bottom border of selected evidence cards. Removed that decorative pseudo-element and the native button appearance, which live desktop screenshots exposed as a second inner edge; the red card outline, selected background, focus treatment, evidence-type switching and scanner controls remain. This shared rule applies to GitHub, package, website and proof cards.
 
-Bounded verification: **30/30 tests across two files** passed for scan prerequisites and submission/navigation; TypeScript/frontend build and diff check passed. Production `59fdcfb` serves the matching tested entry (`index-CrsLhLfi.js`). Live desktop and 390px mobile inspection show a single 1px selected red border, no generated stripe and no inset shadow; all four cards have no generated after-element. Mobile document width equals the 390px viewport. No scan or connection was started.
+Bounded verification: **30/30 tests across two files** passed for scan prerequisites and submission/navigation; TypeScript/frontend build and diff check passed. Initial production `59fdcfb` serves the matching tested entry (`index-CrsLhLfi.js`). Live desktop and 390px mobile inspection show a single 1px selected red border, no generated stripe and no inset shadow; all four cards have no generated after-element. Mobile document width equals the 390px viewport. No scan or connection was started.
+
+Final visual inspection found native appearance was still button despite the CSS border and shadow reset. Scan cards now explicitly use appearance:none while retaining their existing focus styles and tab semantics. A fresh frontend build passed; final deployed visual verification follows this correction.
 
 ## 3 October 2026 — Team invitation row alignment
 
