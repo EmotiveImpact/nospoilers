@@ -25,9 +25,14 @@ export function buildAlertFixBrief(alert:WatchAlertDetail,operational=false){
 
 export function AlertFixBrief({alert,operational=false}:{alert:WatchAlertDetail;operational?:boolean}){
  const [open,setOpen]=useState(false);
- const [copyState,setCopyState]=useState('');
+ const [copyState,setCopyState]=useState<'idle'|'copied'|'error'>('idle');
  const guidance=alertFixGuidance(alert,operational);
  const brief=buildAlertFixBrief(alert,operational);
+ async function copyBrief(){
+  setCopyState('idle');
+  try{await navigator.clipboard.writeText(brief);setCopyState('copied');}
+  catch{setCopyState('error');}
+ }
  return <section className="alerts-journey-section mt-7" aria-label="Fix guidance">
   <h2 className="text-sm font-semibold text-snow">What this means</h2>
   <p className="mt-2 text-sm leading-relaxed text-mute">{guidance.meaning}</p>
@@ -35,7 +40,7 @@ export function AlertFixBrief({alert,operational=false}:{alert:WatchAlertDetail;
   {guidance.rules.length?<div className="mt-5 space-y-3" aria-label="Finding explanations">{guidance.rules.map(rule=><details key={rule.rule} className="rounded-lg border border-white/10 p-4" open={guidance.rules.length===1}><summary className="cursor-pointer text-sm font-semibold text-snow">{rule.title} <span className="ml-2 font-mono text-xs text-mute">{rule.rule}</span></summary><p className="mt-3 text-sm leading-relaxed text-mute">{rule.meaning}</p>{rule.paths.length?<pre className="mt-3 whitespace-pre-wrap break-all text-xs text-snow">{rule.paths.join('\n')}</pre>:<p className="mt-3 text-xs text-mute">No affected path was recorded for this rule.</p>}<h4 className="mt-4 text-sm font-semibold">What to change</h4><p className="mt-2 text-sm leading-relaxed text-mute">{rule.action}</p><h4 className="mt-4 text-sm font-semibold">How to verify</h4><p className="mt-2 text-sm leading-relaxed text-mute">{rule.verify}</p></details>)}</div>:null}
   <h3 className="mt-5 text-sm font-semibold text-snow">What to do next</h3>
   <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-mute">{guidance.steps.map(step=><li key={step}>{step}</li>)}</ol>
-  <Button variant="outline" className="mt-4" onClick={()=>{setCopyState('');setOpen(true);}}><Copy className="size-4" aria-hidden/>Prepare AI fix brief</Button>
+  <Button variant="outline" className="mt-4" onClick={()=>{setCopyState('idle');setOpen(true);}}><Copy className="size-4" aria-hidden/>Prepare AI fix brief</Button>
   <p className="mt-2 text-xs text-dim">Review and copy instructions for your own coding agent. Nothing is sent automatically.</p>
   <Dialog open={open} onClose={()=>setOpen(false)} className="watch-design-surface relative z-50">
    <DialogBackdrop className="fixed inset-0 bg-black/70"/>
@@ -44,8 +49,8 @@ export function AlertFixBrief({alert,operational=false}:{alert:WatchAlertDetail;
     <p className="mt-2 text-sm text-mute">Review before sharing. This includes repository and file names, recorded findings and suggested verification steps.</p>
     <label className="mt-4 block text-xs text-mute" htmlFor="alert-agent-brief">Agent instructions</label>
     <textarea id="alert-agent-brief" readOnly value={brief} className="mt-2 h-80 w-full rounded border border-white/15 bg-[#090a0c] p-3 font-mono text-xs leading-relaxed text-snow"/>
-    <Button className="mt-4" onClick={()=>{void navigator.clipboard.writeText(brief).then(()=>setCopyState('Copied. Paste this into your coding agent.')).catch(()=>setCopyState('Clipboard unavailable. Select the instructions above and copy them manually.'));}}>Copy brief</Button>
-    <p role="status" className="mt-2 text-sm text-mute">{copyState}</p>
+    <Button className="mt-4 min-w-28" onClick={()=>{void copyBrief();}}><Copy className="size-4" aria-hidden/><span aria-live="polite" aria-atomic="true">{copyState==='copied'?'Copied':'Copy brief'}</span></Button>
+    {copyState==='error'?<p role="status" className="mt-2 text-sm text-mute">Clipboard unavailable. Select the instructions above and copy them manually.</p>:null}
    </DialogPanel></div>
   </Dialog>
  </section>;

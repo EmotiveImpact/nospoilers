@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {cleanup,render,screen,fireEvent} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {afterEach,expect,it,vi} from 'vitest';
 import {AlertFixBrief,buildAlertFixBrief} from '../src/components/watch/AlertFixBrief';
 const alert={id:1,kind:'push_sensitive_path',title:'Sensitive path in owner/app',body:'This push touched .env.example. NoSpoilers did not unpack the git tree.',findings:null,created_at:'2026-09-22T03:00:00Z'};
@@ -12,16 +13,23 @@ it('explains a filename warning without claiming credentials were exposed',()=>{
  expect(buildAlertFixBrief(alert)).toContain('Never claim the issue is fixed without fresh verification');
 });
 it('requires reviewing the brief and copies the actual instructions without making requests',async()=>{
+ const user=userEvent.setup();
  const copy=vi.fn().mockResolvedValue(undefined);
  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:copy}});
  render(<AlertFixBrief alert={alert}/>);
  expect(copy).not.toHaveBeenCalled();
- fireEvent.click(screen.getByRole('button',{name:'Prepare AI fix brief'}));
+ await user.click(screen.getByRole('button',{name:'Prepare AI fix brief'}));
  expect(screen.getByRole('dialog')).toBeTruthy();
  expect(screen.getByRole('textbox',{name:'Agent instructions'})).toHaveProperty('value',buildAlertFixBrief(alert));
- fireEvent.click(screen.getByRole('button',{name:'Copy brief',exact:true}));
- expect(await screen.findByText(/Copied. Paste/)).toBeTruthy();
+ await user.click(screen.getByRole('button',{name:'Copy brief',exact:true}));
+ const copied=await screen.findByRole('button',{name:'Copied',exact:true});
+ expect(copied.querySelector('svg')).toBeTruthy();
+ expect(screen.queryByRole('status')).toBeNull();
+ expect(screen.queryByText(/Copied. Paste/)).toBeNull();
  expect(copy).toHaveBeenCalledWith(buildAlertFixBrief(alert));
+ await user.click(screen.getByRole('button',{name:'Close fix brief'}));
+ await user.click(screen.getByRole('button',{name:'Prepare AI fix brief'}));
+ expect(await screen.findByRole('button',{name:'Copy brief',exact:true})).toBeTruthy();
 });
 it('keeps incomplete checks and unknown paths honest',()=>{
  const brief=buildAlertFixBrief({...alert,kind:'scan_latest_release',body:'Unavailable',title:'Check failed'},true);
@@ -35,7 +43,17 @@ it('keeps the brief available for manual copying if the clipboard fails',async()
  fireEvent.click(screen.getByRole('button',{name:'Prepare AI fix brief'}));
  fireEvent.click(screen.getByRole('button',{name:'Copy brief',exact:true}));
  expect(await screen.findByText(/Clipboard unavailable/)).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Copy brief',exact:true})).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Copied',exact:true})).toBeNull();
  expect(screen.getByRole('textbox',{name:'Agent instructions'})).toHaveProperty('value',buildAlertFixBrief(alert));
+});
+it('offers manual copying when the clipboard API is unavailable',async()=>{
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined});
+ render(<AlertFixBrief alert={alert}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Prepare AI fix brief'}));
+ fireEvent.click(screen.getByRole('button',{name:'Copy brief',exact:true}));
+ expect(await screen.findByRole('status')).toHaveProperty('textContent','Clipboard unavailable. Select the instructions above and copy them manually.');
+ expect(screen.queryByRole('button',{name:'Copied',exact:true})).toBeNull();
 });
 it('shows the same rule-specific correction in the UI and copyable brief',()=>{
  const record={...alert,kind:'release_scan',findings:[{rule:'SEC-003',path:'config.json'},{rule:'MAP-002',path:'app.map'}]};
