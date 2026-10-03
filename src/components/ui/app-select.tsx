@@ -24,6 +24,7 @@ type Props = {
   children: ReactNode;
   label: string;
   className?: string;
+  contentClassName?: string;
   disabled?: boolean;
   required?: boolean;
   id?: string;
@@ -31,7 +32,7 @@ type Props = {
 };
 
 /** Shared app picker. Native option data preserves existing values and disabled choices. */
-export function AppSelect({value, onValueChange, children, label, className, disabled, required, id, ref}: Props) {
+export function AppSelect({value, onValueChange, children, label, className, contentClassName, disabled, required, id, ref}: Props) {
   const trigger = useRef<HTMLButtonElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
   const searchInput = useRef<HTMLInputElement | null>(null);
@@ -69,7 +70,7 @@ export function AppSelect({value, onValueChange, children, label, className, dis
           // the search field when its fallback would focus the popup itself.
           if (searchable && event.target === event.currentTarget) searchInput.current?.focus();
         }}
-        className="ns-dropdown-surface ns-select-content ns-app-select-content">
+        className={cn('ns-dropdown-surface ns-select-content ns-app-select-content', contentClassName)}>
         {searchable ? <div className="ns-app-select-search">
           <Search size={15} aria-hidden />
           <input ref={searchInput} aria-label={`Search ${label.toLocaleLowerCase()}`} placeholder="Search options…" value={query}

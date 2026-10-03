@@ -22,7 +22,7 @@ export function ListPagination({ label, pageSize, onPageSizeChange, page, count,
     : count ? `${page * pageSize + 1}–${page * pageSize + count} of ${total} ${label.toLowerCase()}` : `0 ${label.toLowerCase()}`;
   return <nav className="watch-list-pagination" aria-label={`${label} pagination`}>
     <p className="watch-pagination-count" aria-live="polite">{range}</p>
-    <div className="watch-pagination-size"><span aria-hidden>Per page</span><AppSelect label={`${label} per page`} value={pageSize} disabled={disabled} onValueChange={value => onPageSizeChange(Number(value) as PageSize)}>
+    <div className="watch-pagination-size"><span aria-hidden>Per page</span><AppSelect label={`${label} per page`} contentClassName="watch-pagination-select-content" value={pageSize} disabled={disabled} onValueChange={value => onPageSizeChange(Number(value) as PageSize)}>
       {PAGE_SIZES.map(size => <option key={size} value={size}>{size}</option>)}
     </AppSelect></div>
     <div className="watch-pagination-actions"><Button type="button" size="sm" variant="outline" disabled={disabled || !hasPrevious} onClick={onPrevious}>Previous</Button><Button type="button" size="sm" variant="outline" disabled={disabled || !hasNext} onClick={onNext}>Next</Button></div>

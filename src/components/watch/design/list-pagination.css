@@ -4,6 +4,7 @@
 .watch-pagination-size{white-space:nowrap;font-size:11px}
 .watch-pagination-size .ns-app-select.ns-select-trigger{width:68px;min-width:68px;min-height:36px;height:36px;padding-inline:8px;gap:6px;font-size:12px}
 .watch-pagination-actions button{min-height:36px}
+.watch-pagination-select-content{min-width:88px}
 .watch-search-panel .watch-list-pagination{margin-top:0;padding:10px 16px}
 .alerts-journey-pagination .watch-list-pagination{margin:0;padding:0;border:0;gap:8px}
 .alerts-journey-pagination .watch-pagination-count{flex-basis:100%}
