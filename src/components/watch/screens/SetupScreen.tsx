@@ -7,7 +7,7 @@ export function SetupScreen() {
   if(new URLSearchParams(search).get('githubReturn')==='1')return <GithubConnectionReturn/>;
   return (
     <section className="relative min-h-72">
-      {ended ? <CoverageLock variant="watch" title="Subscribe to keep watching." /> : null}
+      {ended ? <CoverageLock search={search} variant="watch" title="Subscribe to keep watching." /> : null}
       <div inert={ended} className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
         <WatchSourcesSummary
           mode="setup"

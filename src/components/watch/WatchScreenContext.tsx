@@ -55,7 +55,7 @@ export type WatchScreenContext = {
   AvatarFallback: ({ className, ...props }: import("react").ComponentProps<"span">) => import("react").JSX.Element;
   AvatarImage: ({ className, alt, ...props }: import("react").ComponentProps<"img">) => import("react").JSX.Element;
   Button: <T extends import("react").ElementType = "button">({ as, className, variant, size, ...props }: { as?: T | undefined; className?: string; } & import("class-variance-authority").VariantProps<(props?: ({ variant?: "default" | "outline" | "ghost" | "danger" | null | undefined; size?: "default" | "sm" | "lg" | null | undefined; } & import("class-variance-authority/types").ClassProp) | undefined) => string> & Omit<import("react").PropsWithoutRef<import("react").ComponentProps<T>>, "className" | "as">) => import("react").JSX.Element;
-  CoverageLock: ({ title, variant, children, }: { title: string; variant?: "scan" | "watch"; children?: import("react").ReactNode; }) => import("react").JSX.Element;
+  CoverageLock: ({ title, search, variant, children, }: { title: string; search: string; variant?: "scan" | "watch"; children?: import("react").ReactNode; }) => import("react").JSX.Element;
   DELETE_PACK_ASSETS_COPY: string;
   DISABLE_WORKFLOW_COPY: string;
   FAIR_USE_EXHAUSTED: string;

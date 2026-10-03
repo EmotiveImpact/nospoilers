@@ -1,13 +1,16 @@
 import { Button } from "@/components/ui/button"
 import { navigate } from "@/nav.ts"
+import { watchBillingHref, watchHref, watchPath } from "@/watch/routes.ts"
 import type { ReactNode } from "react"
 
 export function CoverageLock({
   title,
+  search,
   variant = "scan",
   children,
 }: {
   title: string
+  search: string
   variant?: "scan" | "watch"
   children?: ReactNode
 }) {
@@ -25,15 +28,15 @@ export function CoverageLock({
         </p>
         {children}
         <div className="mt-1 flex flex-wrap gap-2">
-          <Button type="button" onClick={() => navigate("/pricing")}>
+          <Button type="button" onClick={() => navigate(watchBillingHref(search))}>
             See plans
           </Button>
           {variant === "scan" ? (
-            <Button type="button" variant="outline" onClick={() => navigate("/watch")}>
+            <Button type="button" variant="outline" onClick={() => navigate(watchHref(watchPath('overview'), search))}>
               Watch desk
             </Button>
           ) : (
-            <Button type="button" variant="outline" onClick={() => navigate("/watch/scan")}>
+            <Button type="button" variant="outline" onClick={() => navigate(watchHref(watchPath('scan'), search))}>
               New scan
             </Button>
           )}

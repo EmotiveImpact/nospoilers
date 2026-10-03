@@ -170,6 +170,12 @@ export function watchHref(
   return query ? `${path}?${query}` : path;
 }
 
+export function watchBillingHref(search: string): string {
+  const params = paramsOf(search);
+  params.set('workspaceTab', 'billing');
+  return watchHref(watchPath('workspaces'), params.toString());
+}
+
 export function isWatchDeskPath(path: string): boolean {
   return path === "/watch" || path.startsWith("/watch/");
 }

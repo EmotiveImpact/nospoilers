@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Fixed expired-coverage and Overview plan actions to open the current workspace's Plan & billing tab inside Watch. Sidebar, top-bar and search billing actions now share the same scoped destination.
+
 - Added shared 10 / 30 / 60 results-per-page controls to search, Coverage, Releases, Alerts, notification delivery history, Timeline, retained sources, Team, audit history and scan-token history. Release history searches all authorized saved records before paging; filters and size changes return to the first page, and Previous returns to the visited page.
 
 - Replaced search's movement from the top-right trigger with a short fade in place. Added clearer page/record categories, common page-name aliases, exact-name ranking, multiword matching, clear/close controls and scoped Plan & billing navigation.

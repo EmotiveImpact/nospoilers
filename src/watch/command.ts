@@ -1,4 +1,4 @@
-import { VIEW_TITLE, type WatchView, watchHref, watchPath } from "./routes.ts";
+import { VIEW_TITLE, type WatchView, watchBillingHref, watchHref, watchPath } from "./routes.ts";
 
 const PAGES: WatchView[] = [
   "overview", "alerts", "sources", "releases", "timeline", "setup", "notifications",
@@ -83,9 +83,7 @@ export function buildPaletteItems(input: {
     keywords: PAGE_KEYWORDS[view],
     href: watchHref(watchPath(view), input.search),
   }));
-  const billingSearch = new URLSearchParams(input.search);
-  billingSearch.set("workspaceTab", "billing");
-  pageItems.push({id:"page-billing",group:"Pages",label:"Plan & billing",keywords:"subscription pricing payment trial invoices",href:watchHref(watchPath("workspaces"),billingSearch.toString())});
+  pageItems.push({id:"page-billing",group:"Pages",label:"Plan & billing",keywords:"subscription pricing payment trial invoices",href:watchBillingHref(input.search)});
   const entityItems: PaletteItem[] = input.artifactOnly?[]:[
     ...input.alerts.map((row) => ({
       id: `alert-${row.id}`, group: "Alerts" as const, label: row.title, detail: "Alert",

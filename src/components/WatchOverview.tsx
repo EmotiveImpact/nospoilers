@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { WatchBentoBoard } from "@/components/watch/WatchBentoBoard.tsx";
 import { FirstProofOrUploads } from "@/components/watch/FirstProofOrUploads";
 import { navigate } from "@/nav.ts";
-import { watchHref, watchPath } from "@/watch/routes.ts";
+import { watchBillingHref, watchHref, watchPath } from "@/watch/routes.ts";
 import { deskVerdict, type DeskAlert } from "@/watch/verdict.ts";
 import type { WatchSetupViewModel, WatchSourceViewModel } from "@/watch/view-models.ts";
 import { ArrowRight, GitBranch, Globe2, Map, Package } from "lucide-react";
@@ -102,7 +102,7 @@ export function WatchOverview({
         </div>
         <div className="flex flex-wrap gap-2">
           {verdict.tone === "ended" ? (
-            <Button type="button" onClick={() => navigate("/pricing")}>
+            <Button type="button" onClick={() => navigate(watchBillingHref(search))}>
               See plans
             </Button>
           ) : null}
@@ -145,7 +145,7 @@ export function WatchOverview({
       </section>
 
       <section className="relative mt-10">
-        {ended ? <CoverageLock variant="watch" title="Subscribe to keep watching." /> : null}
+        {ended ? <CoverageLock search={search} variant="watch" title="Subscribe to keep watching." /> : null}
         <div className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-xs uppercase tracking-[0.22em] text-dim">Sources</h2>

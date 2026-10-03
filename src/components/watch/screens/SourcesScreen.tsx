@@ -28,7 +28,7 @@ export function SourcesScreen() {
                   {!manageGithub&&selectedInstallId?<RetainedSources key={`retained-${selectedInstallId}`} installationId={selectedInstallId} search={search} refreshKey={JSON.stringify(sourceRows)}/>:null}
                   {!manageGithub&&selectedInstallId?<SourceMonitoringControls key={`monitoring-${selectedInstallId}`} installationId={selectedInstallId} refreshKey={JSON.stringify(sourceRows)}/>:null}
                   {ended ? (
-                    <CoverageLock variant="watch" title="Subscribe to keep watching." />
+                    <CoverageLock search={search} variant="watch" title="Subscribe to keep watching." />
                   ) : null}
                   <div inert={ended} className={ended ? "pointer-events-none select-none opacity-25" : undefined}>
                   {!manageGithub?<WatchSourcesSummary

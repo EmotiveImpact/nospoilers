@@ -6,10 +6,11 @@ import {SetupScreen} from '../src/components/watch/screens/SetupScreen';
 import {SourcesScreen} from '../src/components/watch/screens/SourcesScreen';
 const state=vi.hoisted(()=>({ended:true,view:'setup'}));
 vi.mock('../src/nav',()=>({navigate:vi.fn()}));
+vi.mock('../src/components/watch/WorkspaceCoverageHealth',()=>({WorkspaceCoverageHealth:()=>null,hasWorkspaceCoverageHealthFilter:()=>false}));
 vi.mock('../src/components/watch/useWatchScreenContext',async()=>{
  const {CoverageLock}=await import('../src/components/CoverageLock');
  return {useWatchScreenContext:()=>({
- ended:state.ended,route:{view:state.view},search:'',sourceRows:[],
+ ended:state.ended,route:{view:state.view},search:'?workspace=team&install=7&tab=open&before=37&pageSize=60&upload=old&uploadView=detail',sourceRows:[],
  sourceSectionState:{status:'ready'},
  CoverageLock,
  WatchSourcesSummary:()=> <button>Configure source</button>,
@@ -22,9 +23,9 @@ for(const [name,Component] of [['setup',SetupScreen],['sources',SourcesScreen]] 
   expect(screen.getByRole('button',{name:'See plans'}).closest('[inert]')).toBeNull();
   expect(screen.getByRole('region',{name:'Coverage access'})).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'See plans'}));
-  expect(navigate).toHaveBeenLastCalledWith('/pricing');
+  expect(navigate).toHaveBeenLastCalledWith('/watch/workspaces?workspace=team&install=7&workspaceTab=billing');
   fireEvent.click(screen.getByRole('button',{name:'New scan'}));
-  expect(navigate).toHaveBeenLastCalledWith('/watch/scan');
+  expect(navigate).toHaveBeenLastCalledWith('/watch/scan?workspace=team&install=7');
   state.ended=false;view.rerender(<Component/>);
   expect(screen.getByRole('button',{name:'Configure source'}).closest('[inert]')).toBeNull();
   expect(screen.queryByRole('button',{name:'See plans'})).toBeNull();

@@ -1,3 +1,11 @@
+## 3 October 2026 — Keep plan actions inside the app
+
+Reproduced the owner's report on production: See plans inside the expired Coverage notice navigated to /pricing, while the Watch top bar and sidebar already opened workspace billing. Added one scoped watchBillingHref helper and reused it in the access notice, Overview/Bento plan actions, sidebar/top bar and search. Coverage/connection notices now receive the current search explicitly; their New scan/Watch desk links also preserve tenant scope. Stale alert/release details, cursors and setup intent are cleared by the existing route rules. Visitor marketing links and explicitly public price comparisons remain available; no payment provider, price, subscription, authorization or entitlement behavior changes.
+
+Focused verification passed **80/80 tests across six files**: expired access/inert controls, shell navigation, route scope, search, scan prerequisites and workspace billing controls. Final typecheck, frontend bundle (configLoader=runner, copyPublicDir=false) and diff checks passed. Affected-file lint exited successfully with two existing WatchMonolithShell static-component warnings. Production deployment verification follows the main push; this implementation entry alone does not claim deployment or Stripe readiness. Existing untracked Timeline mocks are preserved.
+
+The preceding pagination runtime d51e1e4's full CI [37090968979](https://github.com/EmotiveImpact/nospoilers/actions/runs/37090968979) has since succeeded; the earlier running-status entry below is historical.
+
 ## 3 October 2026 — Configurable result pagination
 
 Added one shared pagination control with a default of 10 and explicit 10 / 30 / 60 choices. It uses the existing dark AppSelect, named list-specific controls, live range/page announcements and responsive wrapping. Coverage, global-search matches, Timeline, retained sources, Team members/invitations/activity and audit lists filter before slicing; changing size or scope/filter resets the page, and shrinking loaded lists clamp the current page without resurrecting an old position later.

@@ -3,7 +3,7 @@ import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext"
 import { cn } from "@/lib/utils";
 import { navigate } from "@/nav.ts";
 import { formatAgo, formatExposure, kindLabel, leadFinding, shortDigest } from "@/watch/format.ts";
-import { watchHref, watchPath } from "@/watch/routes.ts";
+import { watchBillingHref, watchHref, watchPath } from "@/watch/routes.ts";
 import { newestOpenAlert, type DeskAlert, type DeskVerdict } from "@/watch/verdict.ts";
 import {
   alertSeverity,
@@ -90,12 +90,12 @@ function HeroTile({
   }
   if (ended) {
     return (
-      <Tile span="watch-w4" label="See plans" alarm onOpen={() => navigate("/pricing")}>
+      <Tile span="watch-w4" label="See plans" alarm onOpen={() => navigate(watchBillingHref(search))}>
         <span className="watch-kicker text-danger">Hosted coverage is off</span>
         <h2 className="mt-3 font-display text-[19px] tracking-tight text-snow">{verdict.title}</h2>
         <p className="watch-small mt-[7px] max-w-[56ch] text-mute">{verdict.detail}</p>
         <div className="mt-auto flex flex-wrap gap-2 pt-3.5">
-          <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
+          <Button type="button" size="sm" onClick={() => navigate(watchBillingHref(search))}>
             See plans
           </Button>
           <Button type="button" size="sm" variant="outline" disabled>
@@ -414,7 +414,7 @@ export function WatchBentoBoard({
       </Tile>
 
       {solo ? (
-        <Tile span="watch-w2" label="Compare plans" dashed onOpen={() => navigate("/pricing")}>
+        <Tile span="watch-w2" label="Compare plans" dashed onOpen={() => navigate(watchBillingHref(search))}>
           <span className="watch-kicker">Delivery</span>
           <p className="watch-small mt-3 text-mute">Slack, SIEM, and Jira tickets are on Team.</p>
           <span className="watch-tile-foot">Compare plans</span>
@@ -455,7 +455,7 @@ export function WatchBentoBoard({
       </Tile>
 
       {solo || !teamOnly ? (
-        <Tile span="watch-w2" label="Compare plans" dashed onOpen={() => navigate("/pricing")}>
+        <Tile span="watch-w2" label="Compare plans" dashed onOpen={() => navigate(watchBillingHref(search))}>
           <span className="watch-kicker">Team & audit</span>
           <p className="watch-small mt-3 text-mute">
             Roles, the install timeline, and the audit log are on Team.
@@ -482,7 +482,7 @@ export function WatchBentoBoard({
       )}
 
       {trial ? (
-        <Tile span="watch-w6" label="Compare plans" banner onOpen={() => navigate("/pricing")}>
+        <Tile span="watch-w6" label="Compare plans" banner onOpen={() => navigate(watchBillingHref(search))}>
           <div className="flex flex-wrap items-center gap-3">
             <i className="watch-dot watch-dot-info" />
             <strong className="watch-small min-w-0 flex-1 text-snow">
@@ -490,7 +490,7 @@ export function WatchBentoBoard({
               {(deskCoverage?.daysLeft ?? 0) === 1 ? "" : "s"}. Solo $29 keeps GitHub watch and pack
               reads for one person; Team $99 adds routing, roles, audit, and lookalike signals.
             </strong>
-            <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
+            <Button type="button" size="sm" onClick={() => navigate(watchBillingHref(search))}>
               Compare plans
             </Button>
           </div>
@@ -498,14 +498,14 @@ export function WatchBentoBoard({
       ) : null}
 
       {solo ? (
-        <Tile span="watch-w6" label="Compare plans" banner onOpen={() => navigate("/pricing")}>
+        <Tile span="watch-w6" label="Compare plans" banner onOpen={() => navigate(watchBillingHref(search))}>
           <div className="flex flex-wrap items-center gap-3">
             <i className="watch-dot watch-dot-info" />
             <strong className="watch-small min-w-0 flex-1 text-snow">
               On Solo, delivery and team tiles stay as upgrade prompts rather than disappearing — so
               the shape of the page does not change when you upgrade.
             </strong>
-            <Button type="button" size="sm" onClick={() => navigate("/pricing")}>
+            <Button type="button" size="sm" onClick={() => navigate(watchBillingHref(search))}>
               Compare plans
             </Button>
           </div>

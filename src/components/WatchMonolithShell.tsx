@@ -40,6 +40,7 @@ import {
   type AlertTab,
   type WatchRoute,
   type WatchView,
+  watchBillingHref,
   watchHref,
   watchPath,
 } from "@/watch/routes.ts";
@@ -266,9 +267,7 @@ export function WatchMonolithShell({
     ...(artifactOnly||adminOnly?[{view:'tokens' as const,label:'Scan API tokens'}]:[]),
     ...(!artifactOnly&&adminOnly?[{view:'registries' as const,label:'Private registries'}]:[]),
   ];
-  const billingParams = new URLSearchParams(search);
-  billingParams.set('workspaceTab','billing');
-  const billingHref = watchHref('/watch/workspaces', billingParams.toString());
+  const billingHref = watchBillingHref(search);
 
   const rail = (opts: { collapsed: boolean; showToggle: boolean }) => (
     <>

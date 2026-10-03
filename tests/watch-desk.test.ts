@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { asFindingList, leadFinding } from "../src/watch/format.ts";
-import { parseWatchRoute, watchHref, watchPath } from "../src/watch/routes.ts";
+import { parseWatchRoute, watchBillingHref, watchHref, watchPath } from "../src/watch/routes.ts";
 
+
+it('opens billing in the current workspace without carrying old page controls',()=>{
+ expect(watchBillingHref('?workspace=team&install=7&workspaceTab=organisation&tab=open&before=37&pageSize=60&upload=old&uploadView=detail&configure=github')).toBe('/watch/workspaces?workspace=team&install=7&workspaceTab=billing');
+ expect(watchBillingHref('?workspace=artifact&mode=package')).toBe('/watch/workspaces?workspace=artifact&workspaceTab=billing');
+});
 
 it('keeps the workspace settings tab local while preserving tenant scope on navigation',()=>{
  const search='?workspace=team&install=7&workspaceTab=create';
