@@ -1,5 +1,16 @@
 # Next-agent handoff
 
+## Latest design handoff — 3 October 2026
+
+Cal Sans Text UI is owner-selected and deployed in Watch on `b6ca8e5`. Continue from
+[UI design language](UI-DESIGN-LANGUAGE.md), [typography](UI-TYPOGRAPHY.md), Status and the latest
+release-assurance BUILD-LOG. Shared tokens govern type, spacing, controls and panels; all Watch dialog
+roots carry app scope. Preserve marketing, monospace evidence and standalone Scan boundaries.
+Full CI passed 1,821 tests across 287 files; real desktop/mobile, dialogs, paging and font/licence
+hashes are verified. Native zoom/screen-reader and provider/product launch gates remain separate.
+Do not turn the inactive redacted font comparison into a customer workspace or bypass expired access.
+The earlier identity/launch handoff below is historical; current Status and BUILD-LOG take precedence.
+
 ## Current handoff — 22 September 2026
 
 PR #44 was integrated and the active repository is on `main`. The provider-neutral identity
