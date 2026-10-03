@@ -18,6 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
+| Team invitation role picker sat above the account field and send button | Moved role guidance below the control row and matched the picker height to the 40px input/button; selected-role help remains associated with the picker | 13 Team UI tests, TypeScript/frontend build, affected-file lint and diff check passed; deployed visual verification follows the push |
 | Related text and controls appeared disconnected across Watch screens | Removed stacked empty-state padding and reduced heading, prose, form and section gaps; shared page intros now have one owning style | 121 focused tests across 13 files, 52 follow-up tests, frontend/TypeScript build and affected-file lint; real deployed desktop/mobile checks recorded in BUILD-LOG |
 | Alerts became unreadable when a short viewport left only 49px for its body | At heights up to 600px, scroll the complete page instead of squeezing the detail under its header | Live 640×400 check reached the explanation and bottom response controls; native zoom remains separate |
 | Expired Coverage appeared blank above a long blurred repository inventory | Anchor the access notice near the top of the overlay and keep it visible while scrolling; covered controls remain inert | Real CoverageLock is exercised in the expired-state UI tests, including available subscription/navigation actions |

@@ -1,3 +1,9 @@
+## 3 October 2026 — Team invitation row alignment
+
+The live invitation role picker ended 23.5px above the account input and send button because its description participated in the bottom-aligned control row. Moved the dynamic role explanation beneath the whole row, identified it with the selected role and linked it to the picker through aria-describedby. The invitation picker now matches the 40px input/button height. Role options, server authorization and invitation submission are unchanged.
+
+Bounded verification: all **13 Team UI tests** passed; TypeScript/frontend build, affected-file lint and diff check passed. Deployed desktop/mobile alignment verification follows the main push. No invitation was sent or access changed during inspection.
+
 ## 3 October 2026 — Watch spacing polish
 
 Reduced excessive gaps across Overview empty cards, Alerts detail sections, Coverage tabs/table rows, Releases collection controls and evidence prose, New scan and Settings. Shared page descriptions now sit 8px below the heading with 1.6 line height; removed the duplicate journey-shell rule that previously overrode that spacing. Existing click targets, handlers, selected states and evidence remain unchanged.
