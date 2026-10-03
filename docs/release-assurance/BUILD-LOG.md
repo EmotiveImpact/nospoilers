@@ -1,3 +1,9 @@
+## 3 October 2026 — Single selected scan-card border
+
+Live New scan inspection found a generated 2px red stripe over the existing 1px bottom border of selected evidence cards. Removed that decorative pseudo-element; the red card outline, selected background, focus treatment, evidence-type switching and scanner controls remain. This shared rule applies to GitHub, package, website and proof cards.
+
+Bounded verification: **30/30 tests across two files** passed for scan prerequisites and submission/navigation; TypeScript/frontend build and diff check passed. Deployed visual verification follows the main push.
+
 ## 3 October 2026 — Team invitation row alignment
 
 The live invitation role picker ended 23.5px above the account input and send button because its description participated in the bottom-aligned control row. Moved the dynamic role explanation beneath the whole row, identified it with the selected role and linked it to the picker through aria-describedby. The invitation picker now matches the 40px input/button height. Role options, server authorization and invitation submission are unchanged.

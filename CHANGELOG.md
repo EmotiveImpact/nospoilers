@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Removed the duplicate bottom stripe from selected New scan cards, keeping a single red outline.
+
 - Aligned the Team invitation account field, role picker and send button; moved the selected role explanation below the row while retaining its accessible association.
 
 - Tightened related text and section spacing across Overview, Alerts, Coverage, Releases, New scan and Settings. Expired Coverage now keeps its access message near the top instead of centring it below the viewport in a long repository list.
