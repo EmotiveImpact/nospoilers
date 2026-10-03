@@ -384,3 +384,35 @@
 .alerts-journey .alerts-journey-inbox.is-empty .alerts-journey-list{border:0;padding:0}
 .alerts-journey .alerts-journey-inbox.is-empty .alerts-journey-detail{display:none}
 .alerts-journey .alerts-journey-inbox.is-empty .watch-empty{max-width:540px;margin:28px 0;padding:0;border:0;background:transparent}
+
+/* At high zoom or in a short window, scroll the page instead of trapping
+   alert detail beneath a header that consumes almost the entire viewport. */
+@media (max-height: 600px) {
+  .watch-desk .watch-route-content[data-watch-page="alerts"] {
+    overflow-y: auto;
+  }
+
+  .watch-desk .alerts-journey {
+    height: auto;
+    min-height: 100%;
+    padding-bottom: 24px;
+  }
+
+  .alerts-journey .alerts-journey-inbox {
+    flex: none;
+    align-items: start;
+  }
+
+  .alerts-journey .alerts-journey-rows {
+    max-height: 65dvh;
+  }
+
+  .alerts-journey .alerts-journey-detail > div {
+    height: auto;
+  }
+
+  .alerts-journey .alerts-journey-detail-scroll {
+    flex: none;
+    overflow: visible;
+  }
+}
