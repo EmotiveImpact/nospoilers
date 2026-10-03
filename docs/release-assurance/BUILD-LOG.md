@@ -4,6 +4,8 @@ Grouped Export retained history and Assigned to me in one header action group, w
 
 Existing alert-queue-keyboard and alert-filters-keyboard checks passed **7/7 tests across two files**. Typecheck, frontend bundle (configLoader=runner, copyPublicDir=false), affected TSX lint and diff check passed. This is a bounded presentation change; live mobile/desktop acceptance follows publication. The original Timeline mocks remain untouched.
 
+Runtime **23ae742** is deployed successfully on Vercel and Railway. Production entry index-B5UCaNz-.js matches the final local bundle. At 390×844, export and assignment controls share y=210.42px and remain within the 390px document. At 1280×900 they also align, with no document overflow. Neither layout contains the shortcut disclosure. The live assignment filter clears and restores mine=1 without changing the In progress tab or workspace/installation scope; the original view was restored. No alert response, export, invitation, notification or scan was performed. Screenshots were saved for both sizes. Full CI/native zoom/screen-reader acceptance is not claimed for this UI increment.
+
 ## 3 October 2026 — Consistent self-hosted Watch typography
 
 Watch declared Inter but the entry page only loaded Manrope/Outfit. Bundled the official unmodified Inter 4.1 variable upright/italic WOFF2 files, verified against release Git blob hashes, and shipped its OFL licence. A `NoSpoilers UI` family alias and `--font-ui` token keep the approved marketing typography separate. Watch headings, text, scan panels, mobile drawer and portalled picker/repository/account menus share the UI family; evidence monospace styles remain. Cal Sans Text UI is a separate licensed prototype asset excluded from production, with no runtime preference or default change.
@@ -13,6 +15,8 @@ Existing focused shell/navigation/picker/scan checks passed **29/29 across seven
 Created a local Inter/Cal Sans comparison for Alerts, Coverage and Team settings. Automatic approval review rejected a localhost server containing authenticated page snapshots; the safer comparison strips names, scope identifiers, links, dates and counts, disables app actions and exposes no customer API. Original snapshots were deleted. Native Inter/Cal Sans switching and side-by-side Settings views work. Coverage retains its expired-access notice; no customer mutation or entitlement bypass occurred. Production acceptance follows the main push. See docs/UI-TYPOGRAPHY.md and font provenance READMEs.
 
 Runtime **d0854a0** is pushed and Vercel/Railway deployment statuses are successful. Production Alerts computes the NoSpoilers UI family. Both content-hashed font assets return 200 with WOFF2 magic and SHA-256 hashes matching the bundled originals; the shipped 4,380-byte OFL licence also returns 200. Production's entry is index-CrQMtuL3.js; content-hashed JS differs from the local frontend-only build, so entry-name equality is not claimed. This proves shipped assets and CSS wiring, not native font-loading API, 200% zoom or screen-reader acceptance.
+
+Native 390px verification also confirms NoSpoilers UI in the mobile navigation dialog and its portalled workspace menu (256px wide at x12). Opening and dismissing the menu preserves the existing loaded workspace and route. The subsequent Alerts runtime 23ae742 keeps the same font assets; its deployed entry matches the final frontend bundle. Cal Sans remains the separate redacted comparison, with no default change or customer font setting.
 
 ## 3 October 2026 — Sidebar collapse control alignment
 
