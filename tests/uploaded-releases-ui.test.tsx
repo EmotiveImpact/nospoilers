@@ -41,7 +41,7 @@ describe('uploaded release workspace flow',()=>{
     render(<UploadedReleases installationId={7} search="?install=7&upload=failed&uploadStatus=passed"/>);
     expect(await screen.findByRole('heading',{name:'failed.zip'})).toBeTruthy();
     expect(screen.getByRole('status').textContent).toContain('outside the selected status filter');
-    expect(screen.getByText('No results match this status. Change the filter to see other releases.')).toBeTruthy();
+    expect(screen.getByText('No results match this status or search. Change the filter to see other releases.')).toBeTruthy();
   });
   it('routes website retry to coverage instead of asking for an artifact upload',async()=>{
     vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[{...upload('website',7),workspace_id:'team',source_origin_id:4,target:'https://example.com/'}]})));
@@ -61,7 +61,7 @@ describe('uploaded release workspace flow',()=>{
   it('navigates older history with a scoped URL and clears the previous selection',async()=>{
     vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('first',7)],nextCursor:'cursor'})));
     render(<UploadedReleases installationId={7} search="?workspace=team&install=7&upload=first"/>);
-    fireEvent.click(await screen.findByRole('button',{name:'Older releases'}));
+    fireEvent.click(await screen.findByRole('button',{name:'Next',exact:true}));
     const query=new URLSearchParams(window.location.search);
     expect(query.get('workspace')).toBe('team');expect(query.get('install')).toBe('7');expect(query.get('uploadBefore')).toBe('cursor');expect(query.has('upload')).toBe(false);
   });
@@ -69,8 +69,8 @@ describe('uploaded release workspace flow',()=>{
     const fetcher=vi.fn(()=>json({uploads:[upload('old',7)],nextCursor:null}));vi.stubGlobal('fetch',fetcher);
     render(<UploadedReleases installationId={7} search="?install=7&uploadBefore=cursor&uploadStatus=attention"/>);
     await screen.findByRole('button',{name:/old.zip/});
-    expect(fetcher).toHaveBeenCalledWith('/api/uploads?installationId=7&before=cursor&status=attention&collection=attempts',expect.anything());
-    fireEvent.click(screen.getByRole('button',{name:'Newest releases'}));expect(new URLSearchParams(window.location.search).has('uploadBefore')).toBe(false);
+    expect(fetcher).toHaveBeenCalledWith('/api/uploads?installationId=7&before=cursor&status=attention&collection=attempts&pageSize=10',expect.anything());
+    fireEvent.click(screen.getByRole('button',{name:'Previous',exact:true}));expect(new URLSearchParams(window.location.search).has('uploadBefore')).toBe(false);
   });
   it('distinguishes an unavailable deep link from a first-time empty workspace',async()=>{
     vi.stubGlobal('fetch',vi.fn((url:string)=>url.startsWith('/api/uploads/')?Promise.resolve(new Response('{}',{status:404})):json({uploads:[]})));
@@ -124,7 +124,7 @@ it('keeps completed builds separate from unfinished attempts and filters visible
  vi.stubGlobal('fetch',vi.fn(()=>json({uploads:[upload('failed',7),{...upload('complete',7),status:'done',report_json:{ok:true,status:'passed',fileCount:2,findings:[]}}]})));
  const view=render(<UploadedReleases installationId={7} search="?install=7" collection="uploads"/>);
  await screen.findByRole('button',{name:/complete.zip/});expect(screen.queryByRole('button',{name:/failed.zip/})).toBeNull();
- fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:'absent'}});expect(screen.queryByRole('button',{name:/complete.zip/})).toBeNull();
+ fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:'absent'}});view.rerender(<UploadedReleases installationId={7} search={window.location.search} collection="uploads"/>);await waitFor(()=>expect(screen.queryByRole('button',{name:/complete.zip/})).toBeNull());
  fireEvent.change(screen.getByRole('searchbox',{name:'Find a build'}),{target:{value:''}});
  view.rerender(<UploadedReleases installationId={7} search="?install=7" collection="attempts"/>);
  expect(await screen.findByRole('button',{name:/failed.zip/})).toBeTruthy();

@@ -27,7 +27,7 @@ it('uses the hosted decision API filter and opens the exact release, not an uplo
  const request=vi.fn(async(_input:unknown)=>new Response(JSON.stringify({releases:[{id:32,coordinate:'npm:example@1',receiptStatus:'passed',mismatch:false,createdAt:'2026-09-08T12:00:00Z'}]})));vi.stubGlobal('fetch',request);
  render(<HostedDecisionList search="?workspace=w&install=9&hostedDecision=passed"/>);
  fireEvent.click(await screen.findByRole('button',{name:/npm:example@1/}));
- expect(request.mock.calls[0][0]).toBe('/api/releases?installationId=9&hostedDecision=passed&workspace=w');
+ expect(request.mock.calls[0][0]).toBe('/api/releases?installationId=9&hostedDecision=passed&workspace=w&pageSize=10');
  expect(navigate).toHaveBeenCalledWith('/watch/releases?workspace=w&install=9&release=32');
 });
 it('uses a focused monitoring result screen rather than appending unrelated inventory',async()=>{

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { parsePageSize } from '../watch/pagination.ts';
 import { assessSavedRelease, assessSavedUpload } from './release-assessment.ts';
 import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
@@ -2241,7 +2242,7 @@ export function createApp(deps: AppDeps): Hono {
     if(workspaceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId))return c.json({error:'Invalid workspace.'},400);
     if(workspaceId && !(await listUserWorkspaces(deps.store.sql,user.userId)).some(workspace=>workspace.id===workspaceId))return c.json({error:'Workspace unavailable.'},404);
     try{
-      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status'),collection:c.req.query('collection')});
+      const page=await deps.store.listUploadedScanPage(user.userId,installationId,workspaceId,{before:c.req.query('before'),status:c.req.query('status'),collection:c.req.query('collection'),pageSize:c.req.query('pageSize'),query:c.req.query('q')});
       const now=Date.now();c.header('Cache-Control','no-store');
       return c.json({...page,uploads:page.uploads.map(upload=>({...upload,readiness:assessSavedUpload(upload,deps.config.receiptSecret,now)}))});
     }
@@ -2432,7 +2433,7 @@ export function createApp(deps: AppDeps): Hono {
   }
   app.get('/api/workspace-invitations',c=>workspaceAction(c,async userId=>({invites:await pendingWorkspaceInvites(deps.store.sql,userId)})));
   app.get('/api/workspaces/:id/evidence-settings',c=>workspaceAction(c,userId=>workspaceEvidenceSettings(deps.store.sql,userId,c.req.param('id'),c.req.query('before'))));
-  app.get('/api/workspaces/:id/notifications',c=>workspaceAction(c,async userId=>({...await workspaceNotifications(deps.store.sql,userId,c.req.param('id'),c.req.query('before')),providers:{email:resendConfigured(deps.config),slack:!!deps.config.sessionSecret},independentDeliveryEnabled:true})));
+  app.get('/api/workspaces/:id/notifications',c=>workspaceAction(c,async userId=>({...await workspaceNotifications(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),c.req.query('pageSize')),providers:{email:resendConfigured(deps.config),slack:!!deps.config.sessionSecret},independentDeliveryEnabled:true})));
   app.post('/api/workspaces/:id/notifications',c=>workspaceAction(c,async userId=>{
     const body=jsonObj(await c.req.json().catch(()=>null));
     return {...await saveWorkspaceNotification(deps.store.sql,userId,c.req.param('id'),body.kind,body.value,deps.config.sessionSecret),deliveryStatus:'not_tested'};
@@ -2447,7 +2448,7 @@ export function createApp(deps: AppDeps): Hono {
     deps.wakeWorker?.();
     return result;
   }));
-  app.get('/api/workspaces/:id/tokens',c=>workspaceAction(c,userId=>listWorkspaceTokens(deps.store.sql,userId,c.req.param('id'),c.req.query('before'))));
+  app.get('/api/workspaces/:id/tokens',c=>workspaceAction(c,userId=>listWorkspaceTokens(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),c.req.query('pageSize'))));
   app.post('/api/workspaces/:id/tokens',c=>workspaceAction(c,async userId=>{
     const body=jsonObj(await c.req.json().catch(()=>null));
     return mintWorkspaceToken(deps.store.sql,userId,c.req.param('id'),body.name);
@@ -2458,7 +2459,7 @@ export function createApp(deps: AppDeps): Hono {
   }));
   app.get('/api/workspaces/:id/overview',c=>workspaceAction(c,userId=>workspaceOverview(deps.store.sql,userId,c.req.param('id'),deps.config.pollIntervalMs)));
   app.get('/api/workspaces/:id/alert-counts',c=>workspaceAction(c,userId=>workspaceAlertCounts(deps.store.sql,userId,c.req.param('id'))));
-  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1',source:c.req.query('source')})));
+  app.get('/api/workspaces/:id/alerts',c=>workspaceAction(c,userId=>listWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('before'),{status:c.req.query('status'),mine:c.req.query('mine')==='1',source:c.req.query('source'),pageSize:c.req.query('pageSize')})));
   app.get('/api/workspaces/:id/alerts-export',c=>workspaceAction(c,userId=>exportWorkspaceAlerts(deps.store.sql,userId,c.req.param('id'),c.req.query('source'))));
   app.get('/api/workspaces/:id/alerts/:alertId',c=>workspaceAction(c,userId=>workspaceAlertDetail(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'),c.req.query('eventBefore'))));
   app.get('/api/workspaces/:id/alerts/:alertId/assignees',c=>workspaceAction(c,userId=>workspaceAlertAssignees(deps.store.sql,userId,c.req.param('id'),c.req.param('alertId'))));
@@ -5347,12 +5348,14 @@ export function createApp(deps: AppDeps): Hono {
   app.get("/api/releases", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const paginated = c.req.query('pageSize') !== undefined;
+    const pageSize = parsePageSize(c.req.query('pageSize'), 50);
     if(c.req.query('hostedDecision')&&!queryInstallationId(c))return c.json({error:'Choose a connection for release decisions.'},400);
     if(c.req.query('hostedDecision')&&!['all','passed','attention'].includes(c.req.query('hostedDecision')!))return c.json({error:'Unknown release decision filter.'},400);
     if(c.req.query('before')&&(!Number.isSafeInteger(Number(c.req.query('before')))||Number(c.req.query('before'))<=0))return c.json({error:'Invalid release cursor.'},400);
     if(c.req.query('hostedDecision')&&!c.req.query('workspace'))return c.json({error:'Choose a workspace for release decisions.'},400);
     let hostedContext: {workspaceName:string;connectionName:string}|undefined;
-    if(c.req.query('hostedDecision')){
+    if(c.req.query('hostedDecision') || paginated && c.req.query('workspace')){
       try{
         const access=await workspaceEvidenceSettings(deps.store.sql,user.userId,c.req.query('workspace')!);
         const connection=(await deps.store.sql.query<{account_login:string}>(`SELECT i.account_login FROM product_workspace_installations wi JOIN installations i ON i.id=wi.installation_id WHERE wi.workspace_id::text=$1 AND wi.installation_id=$2`,[c.req.query('workspace'),queryInstallationId(c)])).rows[0];
@@ -5360,12 +5363,18 @@ export function createApp(deps: AppDeps): Hono {
         hostedContext={workspaceName:access.workspace.name,connectionName:connection.account_login};
       }catch{return c.json({error:'Workspace is unavailable.'},404);}
     }
-    const releases = await deps.store.listReleaseRevisionsForUser(user.userId, {
+    if(paginated && c.req.query('before')){
+      const cursor = await deps.store.getReleaseRevisionForUser(Number(c.req.query('before')),user.userId);
+      if(!cursor || queryInstallationId(c) && cursor.installation_id !== queryInstallationId(c))return c.json({error:'This release page is unavailable. Return to the first page.'},404);
+    }
+    const releaseRows = await deps.store.listReleaseRevisionsForUser(user.userId, {
+      limit: paginated ? pageSize + 1 : undefined,
       installationId: queryInstallationId(c),
       hostedDecision: ['all','passed','attention'].includes(c.req.query('hostedDecision')??'') ? c.req.query('hostedDecision') as 'all'|'passed'|'attention' : undefined,
       before: /^\d+$/.test(c.req.query('before')??'') ? Number(c.req.query('before')) : undefined,
-      workspaceId:c.req.query('hostedDecision')?c.req.query('workspace'):undefined,
+      workspaceId:c.req.query('hostedDecision') || paginated ? c.req.query('workspace'):undefined,
     });
+    const releases = paginated ? releaseRows.slice(0, pageSize) : releaseRows;
     const revisionIds = releases.map((row) => row.id);
     const locations = await deps.store.listDeliveryLocationsForRevisions(revisionIds);
     const approvals = latestByRevision(await deps.store.listReleaseApprovalsForRevisions(revisionIds));
@@ -5397,6 +5406,7 @@ export function createApp(deps: AppDeps): Hono {
     c.header('Cache-Control', 'no-store');
     return c.json({
       ...(hostedContext?{context:hostedContext}:{}),
+      ...(paginated ? {nextCursor:releaseRows.length>pageSize?String(releases.at(-1)!.id):null} : {}),
       releases: releases.map((row) => {
         const release = publicRelease(
           row,

@@ -9,6 +9,8 @@ import {useEffect,useLayoutEffect,useRef,useState,useId,type ReactNode} from 're
 import {Button} from '@/components/ui/button';
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/motion/select';
 import {notificationFailureMessage,notificationTestLabel} from '@/watch/notification-status';
+import {ListPagination} from './ListPagination';
+import type {PageSize} from '@/watch/pagination';
 
 type Destination={id:number;kind:string;host:string;independent:boolean;last_delivery_status:string|null;test_status:string|null};
 type Page={destinations:Destination[];deliveries:{id:number;kind:string;status:string;created_at:string;error_code?:string|null}[];nextCursor:string|null;canManage:boolean;providers:{email:boolean;slack:boolean}};
@@ -22,7 +24,9 @@ function NotificationScope({workspaceId,connectionSettings}:{workspaceId:string;
  const disconnectInput=useRef<HTMLInputElement>(null);
  const disconnectTriggerId=(id:number)=>`${composeButtonId}-disconnect-${id}`;
  const base=`/api/workspaces/${encodeURIComponent(workspaceId)}/notifications`;
- const [page,setPage]=useState<Page|null>(null),[before,setBefore]=useState<string|null>(null),[revision,setRevision]=useState(0);
+ const [page,setPage]=useState<Page|null>(null),[revision,setRevision]=useState(0);
+ const [pagination,setPagination]=useState<{pageSize:PageSize;cursors:(string|null)[]}>({pageSize:10,cursors:[null]});
+ const before=pagination.cursors.at(-1)??null;
  const [kind,setKind]=useState<'email'|'slack'>('email'),[value,setValue]=useState('');
  const [disconnect,setDisconnect]=useState<{selected:Destination|null;confirm:string}>({selected:null,confirm:''});
  const {selected,confirm}=disconnect;
@@ -35,7 +39,8 @@ function NotificationScope({workspaceId,connectionSettings}:{workspaceId:string;
   const request=new AbortController();let timer:ReturnType<typeof setTimeout>;
   async function refresh(){
    try{
-    const response=await fetch(base+(before?`?before=${encodeURIComponent(before)}`:''),{signal:request.signal});
+    const query=new URLSearchParams({pageSize:String(pagination.pageSize)});if(before)query.set('before',before);
+    const response=await fetch(`${base}?${query}`,{signal:request.signal});
     const data=await response.json();if(!response.ok){if(!request.signal.aborted&&(response.status===401||response.status===403)){setValue('');setComposing(false);testKeys.current.clear();}throw new Error(data.error??'Could not load notifications.');}
     if(!request.signal.aborted){setPage(data);setLoadError('');
      setDisconnect(current=>!data.canManage||(current.selected&&!data.destinations.some((d:Destination)=>d.independent&&d.id===current.selected?.id&&d.host===current.selected.host))?{selected:null,confirm:''}:current);
@@ -45,7 +50,7 @@ function NotificationScope({workspaceId,connectionSettings}:{workspaceId:string;
    finally{if(!request.signal.aborted)timer=setTimeout(()=>void refresh(),5000);}
   }
   void refresh();return()=>{request.abort();clearTimeout(timer);};
- },[base,before,revision]);
+ },[base,before,pagination.pageSize,revision]);
  useLayoutEffect(()=>{if(selected)disconnectInput.current?.focus();},[selected]);
  async function act(action:'save'|'test'|'disconnect',destination?:Destination){
   if(mutation.current||!page?.canManage)return;
@@ -82,7 +87,7 @@ function NotificationScope({workspaceId,connectionSettings}:{workspaceId:string;
   </>:null}
   {selected&&page?.canManage&&page.destinations.some(d=>d.independent&&d.id===selected.id&&d.host===selected.host)?<form className="notification-editor settings-surface" onSubmit={e=>{e.preventDefault();void act('disconnect',selected);}}><h3>Disconnect {selected.host}</h3><p className="settings-note">Disconnecting removes credentials and pending notifications, not delivery history.</p><label>Type {selected.host} to disconnect<input ref={disconnectInput} disabled={busy} autoComplete="off" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><div className="notification-actions"><Button type="submit" disabled={busy||!page?.canManage||confirm!==selected.host}>Confirm disconnect</Button><Button variant="ghost" disabled={busy} onClick={()=>{document.getElementById(disconnectTriggerId(selected.id))?.focus();setSelected(null);setConfirm('');}}>Cancel</Button></div></form>:null}
  </>;
- const history=<section aria-label="Delivery history"><p className="notification-scope-note">Provider acceptance is recorded as sent; it does not confirm that someone read the message.</p>{page?<><div className="notification-table-wrap"><table className="notification-journey-table"><thead><tr><th scope="col">Event</th><th scope="col">Recorded</th><th scope="col">Delivery</th></tr></thead><tbody>{page.deliveries.map(d=><tr key={d.id}><td><div className="notification-entity"><span className="notification-symbol"><History size={18} aria-hidden/></span><strong>{d.kind}</strong></div>{d.status==='failed'?<p>{notificationFailureMessage(d.error_code)}</p>:null}</td><td><time dateTime={d.created_at}>{new Date(d.created_at).toLocaleString()}</time></td><td><span className={`notification-delivery-state is-${d.status}`}>{d.status}</span></td></tr>)}</tbody></table></div>{!page.deliveries.length?<div className="notification-empty"><History size={22} aria-hidden/><h3>No delivery attempts on this page.</h3><p>Delivery attempts appear here after a notification is queued.</p></div>:null}{before||page.nextCursor?<nav className="notification-actions mt-5" aria-label="Delivery history pages"><Button variant="outline" disabled={busy||!before} onClick={()=>{setPage(null);setBefore(null);}}>Newest</Button><Button variant="outline" disabled={busy||!page.nextCursor} onClick={()=>{setPage(null);setBefore(page.nextCursor);}}>Older</Button></nav>:null}</>:null}</section>;
+ const history=<section aria-label="Delivery history"><p className="notification-scope-note">Provider acceptance is recorded as sent; it does not confirm that someone read the message.</p>{page?<><div className="notification-table-wrap"><table className="notification-journey-table"><thead><tr><th scope="col">Event</th><th scope="col">Recorded</th><th scope="col">Delivery</th></tr></thead><tbody>{page.deliveries.map(d=><tr key={d.id}><td><div className="notification-entity"><span className="notification-symbol"><History size={18} aria-hidden/></span><strong>{d.kind}</strong></div>{d.status==='failed'?<p>{notificationFailureMessage(d.error_code)}</p>:null}</td><td><time dateTime={d.created_at}>{new Date(d.created_at).toLocaleString()}</time></td><td><span className={`notification-delivery-state is-${d.status}`}>{d.status}</span></td></tr>)}</tbody></table></div>{!page.deliveries.length?<div className="notification-empty"><History size={22} aria-hidden/><h3>No delivery attempts on this page.</h3><p>Delivery attempts appear here after a notification is queued.</p></div>:null}<ListPagination label="Delivery attempts" pageSize={pagination.pageSize} page={pagination.cursors.length-1} count={page.deliveries.length} hasPrevious={before!==null} hasNext={page.nextCursor!==null} disabled={busy} onPageSizeChange={pageSize=>{setPage(null);setPagination({pageSize,cursors:[null]});}} onPrevious={()=>{setPage(null);setPagination(current=>({...current,cursors:current.cursors.slice(0,-1)}));}} onNext={()=>{if(!page.nextCursor)return;setPage(null);setPagination(current=>({...current,cursors:[...current.cursors,page.nextCursor]}));}}/></>:null}</section>;
  return <section className="notification-page notification-settings" aria-label="Workspace notifications">
   <WatchPageHeader title="Keep the right people informed." lede="Choose a destination, then check delivery—not just configuration." action={tab==='destinations'&&page?.canManage?<Button id={composeButtonId} disabled={busy} onClick={()=>setComposing(value=>!value)} aria-expanded={composing} aria-controls="notification-compose">{composing?'Close editor':'Add destination'}</Button>:undefined}/>
   {loadError?<div role="alert" className="settings-note mt-5">{loadError}<Button variant="outline" onClick={()=>setRevision(n=>n+1)}>Reload notifications</Button></div>:!page?<WatchSkeleton variant="list" className="mt-4" />:null}

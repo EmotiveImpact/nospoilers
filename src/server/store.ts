@@ -7755,7 +7755,8 @@ export function createStore(
            AND ($4::text IS NULL OR NOT EXISTS(SELECT 1 FROM uploaded_scans u WHERE u.revision_id=rr.id))
            AND ($4::text IS NULL OR $4='all' OR ($4='passed' AND sr.status='passed' AND NOT rr.mismatch)
              OR ($4='attention' AND (sr.status<>'passed' OR rr.mismatch)))
-           AND ($5::bigint IS NULL OR rr.id<$5)
+           AND ($5::bigint IS NULL OR ($4::text IS NOT NULL AND rr.id<$5)
+             OR ($4::text IS NULL AND (rr.created_at,rr.id)<(SELECT cursor.created_at,cursor.id FROM release_revisions cursor WHERE cursor.id=$5)))
            AND ($6::text IS NULL OR EXISTS(SELECT 1 FROM product_workspace_installations wi WHERE wi.installation_id=rr.installation_id AND wi.workspace_id::text=$6))
            AND (
              row_within_retention(rr.installation_id, rr.created_at)

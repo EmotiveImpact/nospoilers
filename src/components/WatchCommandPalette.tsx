@@ -3,6 +3,8 @@ import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/re
 import { ArrowRight, Bell, Box, FileCheck2, PanelTop, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "@/nav.ts";
+import { ListPagination } from '@/components/watch/ListPagination';
+import type { PageSize } from '@/watch/pagination';
 import {
   buildPaletteItems,
   nextPaletteIndex,
@@ -39,6 +41,7 @@ function OpenCommandPalette({
   const reduceMotion = useReducedMotion();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxId = useId();
   const items = useMemo(
@@ -46,6 +49,9 @@ function OpenCommandPalette({
     [adminOnly, artifactOnly, alerts, query, releases, search, sources, teamOnly],
   );
   const active = items[activeIndex] ?? items[0] ?? null;
+  const page = Math.floor((items[activeIndex] ? activeIndex : 0) / pageSize);
+  const offset = page * pageSize;
+  const visibleItems = items.slice(offset, offset + pageSize);
   const activeOptionRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (open) activeOptionRef.current?.scrollIntoView?.({ block: "nearest" });
@@ -121,7 +127,8 @@ function OpenCommandPalette({
                 <p className="text-sm text-snow">No results</p>
                 <p className="mt-1 text-xs text-dim">{artifactOnly?'Try Releases, Team, Retention or Billing.':'Try another name, or search the full list on Coverage or Releases.'}</p>
               </div>
-            ) : items.map((item, index) => {
+            ) : visibleItems.map((item, localIndex) => {
+              const index = offset + localIndex;
               const Icon = item.detail === "Alert"
                 ? Bell
                 : item.detail === "Release"
@@ -129,7 +136,7 @@ function OpenCommandPalette({
                   : item.detail === "Source"
                     ? Box
                     : item.group === "Pages" ? PanelTop : ArrowRight;
-              const showGroup = index === 0 || items[index - 1]?.group !== item.group;
+              const showGroup = localIndex === 0 || items[index - 1]?.group !== item.group;
               return (
                 <div key={item.id}>
                   {showGroup ? (
@@ -141,6 +148,7 @@ function OpenCommandPalette({
                     ref={active?.id === item.id ? activeOptionRef : undefined}
                     id={`${listboxId}-${item.id}`}
                     role="option"
+                    aria-label={item.detail ? `${item.label}, ${item.detail}` : item.label}
                     aria-selected={active?.id === item.id}
                     type="button"
                     tabIndex={-1}
@@ -156,7 +164,8 @@ function OpenCommandPalette({
               );
             })}
           </div>
-          <div className="watch-search-help"><span role="status">{query.trim()?`${items.length} ${items.length===1?'match':'matches'} shown`:'Quick navigation'}</span><span>↑ ↓ Navigate · Enter Open</span></div>
+          <div className="watch-search-help"><span role="status">{query.trim()?items.length>pageSize?`${items.length} matches`:`${items.length} ${items.length===1?'match':'matches'} shown`:'Quick navigation'}</span><span>↑ ↓ Navigate · Enter Open</span></div>
+          {items.length > 10 ? <ListPagination label="Search results" pageSize={pageSize} onPageSizeChange={size=>{setPageSize(size);setActiveIndex(0);}} page={page} count={visibleItems.length} total={items.length} hasPrevious={page>0} hasNext={offset+pageSize<items.length} onPrevious={()=>setActiveIndex(offset-pageSize)} onNext={()=>setActiveIndex(offset+pageSize)}/> : null}
         </motion.div>
         </DialogPanel>
       </div>

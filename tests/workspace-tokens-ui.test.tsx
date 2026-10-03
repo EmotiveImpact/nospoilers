@@ -2,6 +2,9 @@
 import {it,expect,vi,afterEach} from 'vitest';
 import {act,render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
 import {WorkspaceTokens} from '../src/components/watch/WorkspaceTokens';
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const token={id:1,name:'CI',token_prefix:'nsp_prefix',revoked_at:null,last_used_at:null};
 it('clears token controls after access rejection and reloads current authority',async()=>{
@@ -57,7 +60,7 @@ it('creates once, reveals the secret transiently and clears it on workspace chan
  view.rerender(<WorkspaceTokens workspaceId="second"/>);
  expect(screen.queryByLabelText('New token')).toBeNull();
  await screen.findByLabelText('Token name');
- expect(fetcher.mock.calls.some(([url])=>url==='/api/workspaces/second/tokens')).toBe(true);
+ expect(fetcher.mock.calls.some(([url])=>url==='/api/workspaces/second/tokens?pageSize=10')).toBe(true);
 });
 it('requires exact confirmation and retains history after revocation',async()=>{
  let revoked=false;
@@ -130,4 +133,47 @@ it('rejects incomplete credential lists rather than exposing unknown management 
  render(<WorkspaceTokens workspaceId="workspace"/>);
  expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Credential history was incomplete'));
  expect(screen.queryByRole('button',{name:'Create token'})).toBeNull();
+});
+
+it('goes back one token page and resets history when the page size changes',async()=>{
+ const fetcher=vi.fn(async(url:string)=>{
+  const before=new URL(url,'https://example.test').searchParams.get('before');
+  return Response.json({tokens:[{...token,id:before==='20'?30:before==='10'?20:10}],canManage:true,nextCursor:before==='20'?null:before==='10'?'20':'10'});
+ });vi.stubGlobal('fetch',fetcher);
+ const view=render(<WorkspaceTokens workspaceId="one"/>);
+ await screen.findByText('Page 1 · 1 token');
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ await screen.findByText('Page 2 · 1 token');
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ await screen.findByText('Page 3 · 1 token');
+ await userEvent.click(screen.getByRole('button',{name:'Previous'}));
+ await screen.findByText('Page 2 · 1 token');
+ expect(String(fetcher.mock.lastCall?.[0])).toBe('/api/workspaces/one/tokens?pageSize=10&before=10');
+ await userEvent.click(screen.getByRole('combobox',{name:'Tokens per page'}));
+ await userEvent.click(screen.getByRole('option',{name:'60',exact:true}));
+ await screen.findByText('Page 1 · 1 token');
+ expect(String(fetcher.mock.lastCall?.[0])).toBe('/api/workspaces/one/tokens?pageSize=60');
+ expect(screen.getByRole('button',{name:'Previous'})).toHaveProperty('disabled',true);
+ view.rerender(<WorkspaceTokens workspaceId="two"/>);
+ await screen.findByText('Page 1 · 1 token');
+ expect(String(fetcher.mock.lastCall?.[0])).toBe('/api/workspaces/two/tokens?pageSize=10');
+});
+
+it('clears a revealed token and revocation confirmation before changing page size',async()=>{
+ const fetcher=vi.fn(async(_url:unknown,init?:RequestInit)=>Response.json(init?.method==='POST'?{token:'nsp_secret_only_once'}:{tokens:[token],canManage:true,nextCursor:null}));
+ vi.stubGlobal('fetch',fetcher);render(<WorkspaceTokens workspaceId="one"/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Create token'}));
+ fireEvent.change(screen.getByLabelText('Token name'),{target:{value:'CI'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create token'}));
+ await screen.findByLabelText('New token');
+ await userEvent.click(screen.getByRole('combobox',{name:'Tokens per page'}));
+ await userEvent.click(screen.getByRole('option',{name:'30',exact:true}));
+ expect(screen.queryByLabelText('New token')).toBeNull();
+ fireEvent.click(await screen.findByRole('button',{name:'Revoke CI'}));
+ fireEvent.change(screen.getByLabelText('Type CI to confirm'),{target:{value:'CI'}});
+ await userEvent.click(screen.getByRole('combobox',{name:'Tokens per page'}));
+ await userEvent.click(screen.getByRole('option',{name:'60',exact:true}));
+ expect(screen.queryByRole('form',{name:'Revoke scan token'})).toBeNull();
+ expect(fetcher.mock.calls.filter(([,init])=>init?.method==='POST')).toHaveLength(1);
+ expect(fetcher.mock.calls.some(([,init])=>init?.method==='DELETE')).toBe(false);
 });

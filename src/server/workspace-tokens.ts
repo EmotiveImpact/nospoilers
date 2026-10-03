@@ -3,6 +3,7 @@ import {workspaceEvidenceSettings} from './workspace-evidence-settings.ts';
 import {randomUUID} from 'node:crypto';
 import {mintScanToken,validateScanTokenName,MAX_SCAN_TOKENS,hashScanToken,hashesMatch,isScanToken} from './scan-api.ts';
 import {uploadWorkspaceScope} from './workspaces.ts';
+import {parsePageSize} from '../watch/pagination.ts';
 
 export async function authenticateWorkspaceToken(sql:SqlClient,token:string){
  if(!isScanToken(token))return null;
@@ -57,13 +58,14 @@ export async function revokeWorkspaceToken(sql:SqlClient,userId:string,workspace
 }
 
 /** Only non-secret metadata is returned, scoped by immutable credential ownership. */
-export async function listWorkspaceTokens(sql:SqlClient,userId:string,workspaceId:string,before?:string){
+export async function listWorkspaceTokens(sql:SqlClient,userId:string,workspaceId:string,before?:string,pageSize?:unknown){
  const access=await workspaceEvidenceSettings(sql,userId,workspaceId);
+ const limit=parsePageSize(pageSize,50);
  if(before&&(!/^[1-9]\d*$/.test(before)||!Number.isSafeInteger(Number(before))))throw Object.assign(new Error('Invalid token history cursor.'),{status:400});
  if(before&&!(await sql.query('SELECT id FROM scan_api_tokens WHERE id=$1 AND workspace_id=$2',[before,workspaceId])).rows.length)throw Object.assign(new Error('Token history page unavailable.'),{status:404});
  const {rows}=await sql.query<{id:number;name:string;token_prefix:string;installation_id:number|null;created_by_login:string;created_at:string;last_used_at:string|null;revoked_at:string|null}>(`
   SELECT id,name,token_prefix,installation_id,created_by_login,created_at,last_used_at,revoked_at
   FROM scan_api_tokens WHERE workspace_id=$1 AND ($2::bigint IS NULL OR id<$2)
-  ORDER BY id DESC LIMIT 51`,[workspaceId,before??null]);
- return {tokens:rows.slice(0,50),nextCursor:rows.length>50?String(rows[49].id):null,canManage:!access.workspace.archived_at&&['owner','admin'].includes(access.workspace.role)};
+  ORDER BY id DESC LIMIT $3`,[workspaceId,before??null,limit+1]);
+ return {tokens:rows.slice(0,limit),nextCursor:rows.length>limit?String(rows[limit-1].id):null,canManage:!access.workspace.archived_at&&['owner','admin'].includes(access.workspace.role)};
 }

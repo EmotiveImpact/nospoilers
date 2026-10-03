@@ -5,6 +5,7 @@ import {parseSlackWebhook,slackPlanDeniedFromBilling} from './slack.ts';
 import {parseEmailAddress,emailPlanDeniedFromBilling} from './email.ts';
 import {encryptSecret} from './secret-box.ts';
 import {randomUUID} from 'node:crypto';
+import {parsePageSize} from '../watch/pagination.ts';
 
 export async function requestWorkspaceNotificationTest(sql:SqlClient,userId:string,workspaceId:string,id:string,requestKey:unknown,providers:{slack:boolean;email:boolean}){
  const fail=(message:string,status:number):never=>{throw Object.assign(new Error(message),{status});};
@@ -83,8 +84,9 @@ export async function saveWorkspaceNotification(sql:SqlClient,userId:string,work
  });
 }
 
-export async function workspaceNotifications(sql:SqlClient,userId:string,workspaceId:string,before?:string){
+export async function workspaceNotifications(sql:SqlClient,userId:string,workspaceId:string,before?:string,pageSize?:unknown){
  const access=await workspaceEvidenceSettings(sql,userId,workspaceId);
+ const limit=parsePageSize(pageSize,50);
  if(before&&(!/^[1-9]\d*$/.test(before)||!Number.isSafeInteger(Number(before))))throw Object.assign(new Error('Invalid delivery history cursor.'),{status:400});
  if(before&&!(await sql.query('SELECT id FROM notification_deliveries WHERE id=$1 AND workspace_id=$2',[before,workspaceId])).rows.length)throw Object.assign(new Error('Delivery history unavailable.'),{status:404});
  const [destinations,deliveries]=await Promise.all([
@@ -93,7 +95,7 @@ export async function workspaceNotifications(sql:SqlClient,userId:string,workspa
    FROM notification_destinations d WHERE d.workspace_id=$1 ORDER BY d.kind,d.id`,[workspaceId]),
   sql.query<{id:number;destination_id:number|null;alert_id:number|null;kind:string;status:string;created_at:string;error_code:string|null}>(`SELECT id,destination_id,alert_id,kind,status,created_at,
    CASE WHEN status='sent' THEN NULL WHEN error IN ('configuration','credentials','rejected','temporary') THEN error ELSE 'unknown' END AS error_code
-   FROM notification_deliveries WHERE workspace_id=$1 AND ($2::bigint IS NULL OR id<$2) ORDER BY id DESC LIMIT 51`,[workspaceId,before??null]),
+   FROM notification_deliveries WHERE workspace_id=$1 AND ($2::bigint IS NULL OR id<$2) ORDER BY id DESC LIMIT $3`,[workspaceId,before??null,limit+1]),
  ]);
- return {destinations:destinations.rows,deliveries:deliveries.rows.slice(0,50),nextCursor:deliveries.rows.length>50?String(deliveries.rows[49].id):null,canManage:!access.workspace.archived_at&&['owner','admin'].includes(access.workspace.role)};
+ return {destinations:destinations.rows,deliveries:deliveries.rows.slice(0,limit),nextCursor:deliveries.rows.length>limit?String(deliveries.rows[limit-1].id):null,canManage:!access.workspace.archived_at&&['owner','admin'].includes(access.workspace.role)};
 }

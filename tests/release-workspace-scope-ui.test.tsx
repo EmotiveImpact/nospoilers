@@ -6,6 +6,7 @@ import {Button} from '../src/components/ui/button';
 import {ReleasesScreen} from '../src/components/watch/screens/ReleasesScreen';
 const state=vi.hoisted(()=>({search:'',activeInstallId:7,route:{view:'releases'},releases:[]} as Record<string,any>));
 vi.mock('../src/components/watch/useWatchScreenContext',()=>({useWatchScreenContext:()=>state}));
+vi.mock('../src/nav',()=>({navigate:(href:string)=>state.navigate(href)}));
 vi.mock('../src/components/watch/UploadedReleases',()=>({UploadedReleases:({installationId}:{installationId:number|null})=><p>Saved scope: {installationId??'workspace'}</p>}));
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 it('does not hide an independent website attempt behind the selected GitHub ledger',()=>{

@@ -135,5 +135,5 @@ export function buildPaletteItems(input: {
     .sort((a, b) => a.score - b.score))
     .filter(group => group.length)
     .sort((a, b) => a[0].score - b[0].score);
-  return groups.flatMap(group => group.map(result => result.item)).slice(0, 24);
+  return groups.flatMap(group => group.map(result => result.item));
 }

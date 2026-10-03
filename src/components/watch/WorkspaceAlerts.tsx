@@ -11,6 +11,8 @@ import {AlertRelatedReleases} from './AlertRelatedReleases';
 import {AlertRecheck} from './AlertRecheck';
 import {WebsiteAlertRecheck} from './WebsiteAlertRecheck';
 import {Button} from '@/components/ui/button';
+import {ListPagination} from './ListPagination';
+import {parsePageSize,type PageSize} from '@/watch/pagination';
 
 type WorkspaceAlert=Alert&{installation_id:number|null;scan_attempt_id:string|null;source_origin_id:number|null};
 type Detail={alert:WorkspaceAlert;events:AlertEvent[];nextEventsCursor?:string|null};
@@ -26,10 +28,16 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
  const requestedRoute=parseWatchRoute('/watch/alerts',search);
  const requestedMine=new URLSearchParams(search).get('mine')==='1';
  const route={...requestedRoute,tab:parseWatchRoute('/watch/alerts',loadedSearch).tab},mine=new URLSearchParams(loadedSearch).get('mine')==='1';
- const queryKey=(value:string)=>{const p=new URLSearchParams(value);return [parseWatchRoute('/watch/alerts',value).tab,p.get('mine')??'',p.get('before')??'',p.get('source')??''].join(':');};
+ const queryKey=(value:string)=>{const p=new URLSearchParams(value);return [parseWatchRoute('/watch/alerts',value).tab,p.get('mine')??'',p.get('before')??'',p.get('source')??'',parsePageSize(p.get('pageSize'))].join(':');};
  const queryPending=queryKey(search)!==queryKey(loadedSearch);
  const before=new URLSearchParams(search).get('before');
  const source=new URLSearchParams(search).get('source');
+ const pageSize=parsePageSize(new URLSearchParams(search).get('pageSize')) as PageSize;
+ const paginationKey=[requestedRoute.tab,requestedMine,source??'',pageSize].join(':');
+ const [cursorTrail,setCursorTrail]=useState<{key:string;cursors:(string|null)[]}>({key:paginationKey,cursors:before?[null,before]:[null]});
+ const knownCursors=cursorTrail.key===paginationKey?cursorTrail.cursors:[null];
+ const cursors=knownCursors.includes(before)?knownCursors:before?[null,before]:[null];
+ const pageIndex=cursors.indexOf(before);
  const eventBefore=new URLSearchParams(search).get('eventBefore');
  const [page,setPage]=useState<{nextCursor:string|null;coverageHistoryCount:number;counts:{open:number;waiting:number;mine:number;done:number}}|null>(null);
  const [alerts,setAlerts]=useState<WorkspaceAlert[]>([]),[state,setState]=useState<WatchSectionState>({status:'loading'});
@@ -49,15 +57,15 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
     json<{workspace:{role:string;archived_at:string|null}}>(`/api/workspaces/${workspaceId}/evidence-settings`,request.signal),
     json<{user:{id:string;login:string}}>('/api/me',request.signal),
    ]);
-   const query=new URLSearchParams({status:requestedRoute.tab,mine:requestedMine?'1':'0'});if(before)query.set('before',before);if(source)query.set('source',source);
+   const query=new URLSearchParams({status:requestedRoute.tab,mine:requestedMine?'1':'0',pageSize:String(pageSize)});if(before)query.set('before',before);if(source)query.set('source',source);
    const result=await json<{alerts:WorkspaceAlert[];nextCursor:string|null;sourceCount:number;coverageHistoryCount:number;counts:{open:number;waiting:number;mine:number;done:number}}>(`${base}?${query}`,request.signal);
    if(request.signal.aborted)return;
    setIdentity({...me.user,canRespond:!settings.workspace.archived_at&&['owner','admin','member'].includes(settings.workspace.role)});
-   const loadedParams=new URLSearchParams({tab:requestedRoute.tab});if(requestedMine)loadedParams.set('mine','1');if(before)loadedParams.set('before',before);if(source)loadedParams.set('source',source);
+   const loadedParams=new URLSearchParams({tab:requestedRoute.tab,pageSize:String(pageSize)});if(requestedMine)loadedParams.set('mine','1');if(before)loadedParams.set('before',before);if(source)loadedParams.set('source',source);
    setLoadedSearch(`?${loadedParams}`);setPage(result);setSourceCount(result.sourceCount);setAlerts(result.alerts);setState({status:'ready'});
   })().catch(e=>{if(!request.signal.aborted){setAlerts([]);setDetail(null);setIdentity({id:'',login:'',canRespond:false});setState({status:'error',message:e.message});}});
   return()=>request.abort();
- },[workspaceId,base,revision,requestedRoute.tab,requestedMine,before,source]);
+ },[workspaceId,base,revision,requestedRoute.tab,requestedMine,before,source,pageSize]);
  const actionableAlerts=alerts.filter(isAlertQueueActionable);
  const excludedAlerts=alerts.filter(alert=>!isAlertQueueActionable(alert));
  const listed=filterDeskAlerts(actionableAlerts,route.tab,identity.login,mine,identity.id) as WorkspaceAlert[];
@@ -92,16 +100,10 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   activityPagination={(eventBefore||detail?.nextEventsCursor)&&<nav aria-label="Alert activity pages" className="mt-3 flex gap-2"><Button variant="outline" size="sm" disabled={!eventBefore} onClick={()=>go({eventBefore:null})}>Latest activity</Button><Button variant="outline" size="sm" disabled={!detail?.nextEventsCursor||!detailReady} onClick={()=>go({eventBefore:detail?.nextEventsCursor??null})}>Older activity</Button></nav>}
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
   selectionState={selectedId===null?{status:'ready'}:detailResultId===selectedId?activity:{status:'loading'}}
-  pagination={state.status==='ready'?<nav aria-label="Alert history pages" className="alerts-journey-pagination">
-   <div className="alerts-journey-pagination-row">
-    <p className="alerts-journey-page-count">{listed.length} {listed.length===1?'alert':'alerts'}<span className="sr-only"> on this page</span></p>
-    <div className="alerts-journey-page-actions">
-     <Button size="sm" variant="outline" disabled={!before||queryPending} onClick={()=>go({before:null,alert:null})}>Newest</Button>
-     <Button size="sm" variant="outline" disabled={!page?.nextCursor||queryPending} onClick={()=>go({before:page?.nextCursor??null,alert:null})}>Older</Button>
-    </div>
-   </div>
+  pagination={state.status==='ready'?<div className="alerts-journey-pagination">
+   <ListPagination label="Alerts" pageSize={pageSize} page={pageIndex} count={listed.length} hasPrevious={before!==null} hasNext={page?.nextCursor!=null} disabled={queryPending||busy} onPageSizeChange={size=>{setCursorTrail({key:paginationKey,cursors:[null]});go({pageSize:String(size),before:null,alert:null,eventBefore:null});}} onPrevious={()=>go({before:cursors[Math.max(0,pageIndex-1)],alert:null})} onNext={()=>{if(!page?.nextCursor)return;setCursorTrail({key:paginationKey,cursors:[...cursors.slice(0,pageIndex+1),page.nextCursor]});go({before:page.nextCursor,alert:null});}}/>
    {page?.coverageHistoryCount?<p className="alerts-journey-history-note">{page.coverageHistoryCount} coverage {page.coverageHistoryCount===1?'record':'records'} in retained history.</p>:null}
-  </nav>:null}
+  </div>:null}
   rows={buildAlertListViewModels(listed,()=> 'Saved check')} selected={selected} events={detail?.alert.id===selectedId?detail.events:[]}
   previewing={false} canRespond={identity.canRespond&&detailReady} ended={false} busy={busy||queryPending} note={selected?notes[selected.id]??'':''} assignee={selected?assignees[selected.id]??'':''}
   error={error} exportError={exportError} state={state} activityState={activity.status==='error'||detail?.alert.id===selectedId?activity:{status:'loading'}} detailOpen={route.alertId!==null} tab={route.tab} assignedToMe={mine} teamOnly={false}

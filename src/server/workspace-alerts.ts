@@ -1,5 +1,6 @@
 import type {SqlClient} from './sql.ts';
 import {workspaceEvidenceSettings} from './workspace-evidence-settings.ts';
+import {parsePageSize} from '../watch/pagination.ts';
 
 function alertId(value:string){
  if(!/^[1-9]\d*$/.test(value)||!Number.isSafeInteger(Number(value)))throw Object.assign(new Error('Alert unavailable.'),{status:404});
@@ -104,8 +105,9 @@ export async function respondToWorkspaceAlert(sql:SqlClient,userId:string,worksp
 }
 
 /** Workspace identity is authoritative; null installations remain null. */
-export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceId:string,before?:string,filter:{status?:string;mine?:boolean;source?:string}={}){
+export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceId:string,before?:string,filter:{status?:string;mine?:boolean;source?:string;pageSize?:unknown}={}){
  await workspaceEvidenceSettings(sql,userId,workspaceId);
+ const limit=parsePageSize(filter.pageSize,50);
  const status=filter.status??'all';
  if(!['all','open','waiting','done','mine'].includes(status))throw Object.assign(new Error('Unknown alert status.'),{status:400});
  const source=filter.source;
@@ -122,7 +124,7 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
  AND ($3='all' OR $3='open' AND resolved_at IS NULL AND acknowledged_at IS NULL
   OR $3='waiting' AND resolved_at IS NULL AND acknowledged_at IS NOT NULL
   OR $3='done' AND resolved_at IS NOT NULL OR $3='mine' AND resolved_at IS NULL AND assigned_to_user_id=$5)
- ORDER BY id DESC LIMIT 51`,[workspaceId,cursor,status,filter.mine??false,userId,sourceType,sourceId]);
+ ORDER BY id DESC LIMIT $8`,[workspaceId,cursor,status,filter.mine??false,userId,sourceType,sourceId,limit+1]);
  const totals=(await sql.query<{open:string;waiting:string;done:string;mine:string;coverage_history:string}>(`SELECT
  count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NULL) AS open,
  count(*) FILTER(WHERE ${ACTIONABLE_ALERT_SQL} AND resolved_at IS NULL AND acknowledged_at IS NOT NULL) AS waiting,
@@ -134,7 +136,7 @@ export async function listWorkspaceAlerts(sql:SqlClient,userId:string,workspaceI
   (SELECT count(*) FROM watched_origins s WHERE s.workspace_id=$1 AND s.disconnected_at IS NULL AND (s.installation_id IS NULL OR EXISTS(SELECT 1 FROM installations i WHERE i.id=s.installation_id AND i.disconnected_at IS NULL))) +
   (SELECT count(*) FROM repos r JOIN product_workspace_installations c ON c.installation_id=r.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND r.disconnected_at IS NULL AND i.disconnected_at IS NULL) +
   (SELECT count(*) FROM watched_packages p JOIN product_workspace_installations c ON c.installation_id=p.installation_id JOIN installations i ON i.id=c.installation_id WHERE c.workspace_id=$1 AND i.disconnected_at IS NULL AND p.disconnected_at IS NULL) AS count`,[workspaceId]);
- return {alerts:rows.slice(0,50).map(alertRecord),nextCursor:rows.length>50?String(rows[49].id):null,sourceCount:Number(sources.rows[0].count),coverageHistoryCount:Number(totals.coverage_history),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
+ return {alerts:rows.slice(0,limit).map(alertRecord),nextCursor:rows.length>limit?String(rows[limit-1].id):null,sourceCount:Number(sources.rows[0].count),coverageHistoryCount:Number(totals.coverage_history),counts:{open:Number(totals.open),waiting:Number(totals.waiting),done:Number(totals.done),mine:Number(totals.mine)}};
 }
 
 export async function workspaceAlertDetail(sql:SqlClient,userId:string,workspaceId:string,id:string,before?:string){

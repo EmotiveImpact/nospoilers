@@ -6,6 +6,8 @@ import { loadWatchJson, scopedWatchApi } from "@/watch/api";
 import { useEffect, useRef, useState } from "react";
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/components/motion/select";
 import "../design/journey-administration.css";
+import { ListPagination } from '../ListPagination';
+import { useListPagination } from '../useListPagination';
 
 type AuditRow = {
   id: number;
@@ -66,6 +68,8 @@ function AuditScope({
   const rows=audit.status==='ready'?audit.rows:[];
   const actions=Array.from(new Set(rows.map(row=>row.action))).sort();
   const filtered=rows.filter(row=>(current.action==='all'||row.action===current.action)&&(current.days==='all'||Date.parse(row.at)>=filterNow-Number(current.days)*86400000));
+  const pagination=useListPagination(filtered.length,`${installationId}:${current.action}:${current.days}`);
+  const visible=filtered.slice(pagination.offset,pagination.offset+pagination.pageSize);
   const canExport = !previewing && audit.status === "ready";
 
   return (
@@ -111,7 +115,7 @@ function AuditScope({
       ) : audit.rows.length === 0 ? (
         <QuietEmptyState title="No admin writes recorded on this install yet."><p>Administrative changes will appear here when they are recorded. Scan findings remain in Releases.</p></QuietEmptyState>
       ) : (
-        <><div className="journey-admin-table"><table aria-label="Administrative changes"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Scope</th></tr></thead><tbody>{filtered.map(row=><tr key={row.id}><td><time dateTime={row.at}>{new Date(row.at).toLocaleString()}</time></td><td>{row.actorLogin}</td><td><strong>{row.action.replaceAll('_',' ')}</strong><small>{row.summary}</small></td><td>{installationId?`Installation ${installationId}`:'Current account'}</td></tr>)}</tbody></table></div>{filtered.length===0?<div className="watch-empty">No loaded events match these filters.</div>:null}<p className="journey-admin-note">Filters apply to loaded events. Export includes the available audit history for this scope. Secret values are excluded from the audit record.</p></>
+        <><div className="journey-admin-table"><table aria-label="Administrative changes"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Scope</th></tr></thead><tbody>{visible.map(row=><tr key={row.id}><td><time dateTime={row.at}>{new Date(row.at).toLocaleString()}</time></td><td>{row.actorLogin}</td><td><strong>{row.action.replaceAll('_',' ')}</strong><small>{row.summary}</small></td><td>{installationId?`Installation ${installationId}`:'Current account'}</td></tr>)}</tbody></table></div>{filtered.length>10?<ListPagination label="Loaded events" pageSize={pagination.pageSize} onPageSizeChange={pagination.onPageSizeChange} page={pagination.page} count={visible.length} total={filtered.length} hasPrevious={pagination.page>0} hasNext={pagination.page<pagination.pageCount-1} onPrevious={()=>pagination.onPageChange(pagination.page-1)} onNext={()=>pagination.onPageChange(pagination.page+1)}/>:null}{filtered.length===0?<div className="watch-empty">No loaded events match these filters.</div>:null}<p className="journey-admin-note">Filters apply to up to 500 loaded events within retention. Export includes the available audit history for this scope. Secret values are excluded from the audit record.</p></>
       )}
     </section>
   );

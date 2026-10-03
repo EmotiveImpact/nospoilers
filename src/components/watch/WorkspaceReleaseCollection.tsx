@@ -15,7 +15,7 @@ export function WorkspaceReleaseCollection({search,installationId,defaultCollect
  if(params.get('uploadView')==='detail')return <UploadedReleases search={search} installationId={installationId}/>;
  function choose(value:'uploads'|'attempts'){
   const next=new URLSearchParams(search);next.set('releaseView',value);
-  for(const key of ['upload','uploadView','uploadBefore','uploadFinding','uploadTab','uploadStatus','release','preview'])next.delete(key);
+  for(const key of ['upload','uploadView','uploadBefore','uploadTrail','uploadFinding','uploadTab','uploadStatus','release','preview'])next.delete(key);
   navigate(`/watch/releases?${next}`);
  }
  return <section className="watch-release-index" aria-label="Releases"><WatchPageHeader title="Releases" lede="Choose a saved release, understand its decision, then open the complete evidence brief." action={canScan?<Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>:undefined}/>

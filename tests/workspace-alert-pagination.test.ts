@@ -16,6 +16,21 @@ it('filters before paging and returns whole-workspace counts without leaking for
   const second=await listWorkspaceAlerts(sql,'owner',workspace,first.nextCursor!,{status:'open',mine:true});
   expect(second.alerts).toHaveLength(10);expect(second.nextCursor).toBeNull();
   expect(new Set([...first.alerts,...second.alerts].map(row=>row.id)).size).toBe(60);
+  for(const pageSize of [10,30,60]){
+   let cursor:string|undefined;
+   const ids:number[]=[];
+   do{
+    const selected=await listWorkspaceAlerts(sql,'owner',workspace,cursor,{status:'open',mine:true,pageSize});
+    expect(selected.alerts.length).toBeLessThanOrEqual(pageSize);
+    expect(selected.counts).toEqual(first.counts);
+    ids.push(...selected.alerts.map(row=>row.id));
+    cursor=selected.nextCursor??undefined;
+   }while(cursor);
+   expect(ids).toHaveLength(60);expect(new Set(ids).size).toBe(60);
+   expect(ids).toEqual([...ids].sort((a,b)=>b-a));
+  }
+  expect((await listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'open',pageSize:'30'})).alerts).toHaveLength(30);
+  expect((await listWorkspaceAlerts(sql,'owner',workspace,undefined,{status:'open',pageSize:'unbounded'})).alerts).toHaveLength(50);
   expect([...first.alerts,...second.alerts].some(row=>row.title==='No release on owner/empty')).toBe(false);
   expect(first.coverageHistoryCount).toBe(1);
   expect(await workspaceAlertCounts(sql,'owner',workspace)).toEqual({open:120,waiting:0,done:0,mine:60});

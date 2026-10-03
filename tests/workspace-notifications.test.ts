@@ -19,6 +19,20 @@ it('scopes notification metadata and pages delivery history without credentials 
   const last=await workspaceNotifications(sql,'owner',workspace.id,first.nextCursor!);
   expect(last.deliveries).toHaveLength(11);expect(last.nextCursor).toBeNull();
   expect(new Set([...first.deliveries,...last.deliveries].map(d=>d.id)).size).toBe(61);
+  for(const pageSize of [10,30,60]){
+   let cursor:string|undefined;
+   const ids:number[]=[];
+   do{
+    const selected=await workspaceNotifications(sql,'owner',workspace.id,cursor,pageSize);
+    expect(selected.deliveries.length).toBeLessThanOrEqual(pageSize);
+    ids.push(...selected.deliveries.map(d=>Number(d.id)));
+    cursor=selected.nextCursor??undefined;
+   }while(cursor);
+   expect(ids).toHaveLength(61);expect(new Set(ids).size).toBe(61);
+   expect(ids).toEqual([...ids].sort((a,b)=>b-a));
+  }
+  expect((await workspaceNotifications(sql,'owner',workspace.id,undefined,'30')).deliveries).toHaveLength(30);
+  expect((await workspaceNotifications(sql,'owner',workspace.id,undefined,'unbounded')).deliveries).toHaveLength(50);
   await expect(workspaceNotifications(sql,'owner',workspace.id,String(foreign))).rejects.toMatchObject({status:404});
   await expect(workspaceNotifications(sql,'stranger',workspace.id)).rejects.toMatchObject({status:404});
   await sql.query('UPDATE product_workspaces SET archived_at=now() WHERE id=$1',[workspace.id]);

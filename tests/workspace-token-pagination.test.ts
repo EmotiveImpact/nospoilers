@@ -18,6 +18,20 @@ it('pages retained credentials without exposing a foreign workspace or skipping 
   expect([first.tokens.length,second.tokens.length,third.tokens.length]).toEqual([50,50,21]);
   expect(third.nextCursor).toBeNull();
   expect(new Set([...first.tokens,...second.tokens,...third.tokens].map(t=>t.id)).size).toBe(121);
+  for(const pageSize of [10,30,60]){
+   let cursor:string|undefined;
+   const ids:number[]=[];
+   do{
+    const selected=await listWorkspaceTokens(sql,'owner',workspace.id,cursor,pageSize);
+    expect(selected.tokens.length).toBeLessThanOrEqual(pageSize);
+    ids.push(...selected.tokens.map(t=>Number(t.id)));
+    cursor=selected.nextCursor??undefined;
+   }while(cursor);
+   expect(ids).toHaveLength(121);expect(new Set(ids).size).toBe(121);
+   expect(ids).toEqual([...ids].sort((a,b)=>b-a));
+  }
+  expect((await listWorkspaceTokens(sql,'owner',workspace.id,undefined,'30')).tokens).toHaveLength(30);
+  expect((await listWorkspaceTokens(sql,'owner',workspace.id,undefined,'unbounded')).tokens).toHaveLength(50);
   expect(first.tokens.some(t=>t.name==='Foreign')).toBe(false);
   await expect(listWorkspaceTokens(sql,'owner',workspace.id,String(foreign.id))).rejects.toMatchObject({status:404});
   await expect(listWorkspaceTokens(sql,'owner',workspace.id,'invalid')).rejects.toMatchObject({status:400});

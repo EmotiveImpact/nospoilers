@@ -8,6 +8,7 @@ import type { SignedReceipt } from '../receipt.ts';
 import type { ReleaseChannel } from './release-ledger.ts';
 import {uploadWorkspaceScope} from './workspaces.ts';
 import {refundJobReservation} from './job-billing.ts';
+import {parsePageSize} from '../watch/pagination.ts';
 
 export type UploadMeta = { coordinate?:string; channel?:ReleaseChannel; sourceRevision?:string|null; ciRunUrl?:string|null };
 
@@ -110,12 +111,14 @@ export function createUploadStore(sql: SqlClient) {
     async listUploadedScans(userId:string,installationId?:number,workspaceId?:string):Promise<UploadedScan[]> {
       return (await this.listUploadedScanPage(userId,installationId,workspaceId)).uploads;
     },
-    async listUploadedScanPage(userId:string,installationId?:number,workspaceId?:string,options:{before?:string;status?:string;collection?:string}={}):Promise<{uploads:UploadedScan[];nextCursor:string|null}> {
+    async listUploadedScanPage(userId:string,installationId?:number,workspaceId?:string,options:{before?:string;status?:string;collection?:string;pageSize?:unknown;query?:string}={}):Promise<{uploads:UploadedScan[];nextCursor:string|null}> {
       const status=options.status??'all';
       const collection=options.collection??'all';
-      if(!['all','active','attention','passed'].includes(status)||!['all','uploads','attempts'].includes(collection)||options.before!==undefined&&(!options.before||options.before.length>128))throw Object.assign(new Error('Invalid release history filter.'),{status:400});
+      const pageSize=parsePageSize(options.pageSize,50);
+      const query=options.query?.trim()??'';
+      if(query.length>200||!['all','active','attention','passed'].includes(status)||!['all','uploads','attempts'].includes(collection)||options.before!==undefined&&(!options.before||options.before.length>128))throw Object.assign(new Error('Invalid release history filter.'),{status:400});
       const scope='AND ($2::bigint IS NULL OR s.installation_id=$2) AND ($3::uuid IS NULL OR s.workspace_id=$3)';
-      const params=[userId,installationId??null,workspaceId??null,options.before??null,status,collection];
+      const params=[userId,installationId??null,workspaceId??null,options.before??null,status,collection,query,pageSize+1];
       if(options.before&&!(await sql.query(`SELECT s.id FROM uploaded_scans s WHERE ${access} ${scope} AND s.id=$4`,params.slice(0,4))).rows.length)
         throw Object.assign(new Error('This history page is unavailable. Return to the newest releases.'),{status:404});
       const passed="(s.status='done' AND s.report_json->'ok'='true'::jsonb AND (s.report_json->>'status' IS NULL OR s.report_json->>'status'='passed'))";
@@ -124,9 +127,10 @@ export function createUploadStore(sql: SqlClient) {
         AND ($6='all' OR $6='uploads' AND s.status='done' OR $6='attempts' AND s.status<>'done')
         AND ($5='all' OR $5='active' AND s.status IN ('queued','running') OR $5='passed' AND ${passed}
           OR $5='attention' AND (s.status='failed' OR s.status='done' AND NOT COALESCE(${passed},false)))
-        ORDER BY s.created_at DESC,s.id DESC LIMIT 51`,params);
-      const uploads=rows.slice(0,50).map(row=>({...row,installation_id:row.installation_id==null?null:Number(row.installation_id)}));
-      return {uploads,nextCursor:rows.length>50?uploads[uploads.length-1].id:null};
+        AND ($7='' OR strpos(lower(s.target),lower($7))>0)
+        ORDER BY s.created_at DESC,s.id DESC LIMIT $8`,params);
+      const uploads=rows.slice(0,pageSize).map(row=>({...row,installation_id:row.installation_id==null?null:Number(row.installation_id)}));
+      return {uploads,nextCursor:rows.length>pageSize?uploads[uploads.length-1].id:null};
     },
     async getUploadedScan(userId:string,id:string):Promise<UploadedScan|null> {
       const {rows}=await sql.query<UploadedScan>(`SELECT ${fields} FROM uploaded_scans s WHERE ${access} AND s.id=$2`,[userId,id]);

@@ -2,6 +2,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TimelineScreen } from "../src/components/watch/screens/TimelineScreen";
+import { radixUiTestSupport } from './helpers/radix-ui';
+import { selectOption } from './helpers/select-option';
+
+radixUiTestSupport();
 
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("../src/nav", () => ({ navigate }));
@@ -116,4 +120,76 @@ it("groups repeated incomplete checks by day while preserving every exact alert 
   expect(screen.queryByText("2 checks")).toBeNull();
   fireEvent.change(screen.getByRole("searchbox", { name: "Search source or event" }), { target: { value: "not-a-source" } });
   expect(screen.getByText("No activity matches this search and tab.")).toBeTruthy();
+});
+
+const timelineProps = {
+  previewing: false,
+  alerts: [],
+  alertState: { status: 'ready' as const },
+  search: '?workspace=one&install=7',
+  onRetryTimeline: () => undefined,
+  onRetryAlerts: () => undefined,
+};
+function activity(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...entries[0],
+    alertId: index + 1,
+    title: `Review item ${index + 1}`,
+    fullName: `org/item-${index + 1}`,
+  }));
+}
+
+it('paginates retained activity with 10, 30 and 60 events and clamps after its window shrinks', async () => {
+  const view = render(<TimelineScreen {...timelineProps} timeline={{ status: 'ready', entries: activity(65), days: 90 }} />);
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(10);
+  expect(screen.queryByText('Review item 11')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('Review item 11')).toBeTruthy();
+  await selectOption(screen.getByRole('combobox', { name: 'Timeline activity per page' }), '30');
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(30);
+  expect(screen.getByText('Review item 1')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('Review item 31')).toBeTruthy();
+  await selectOption(screen.getByRole('combobox', { name: 'Timeline activity per page' }), '60');
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(60);
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(5);
+  view.rerender(<TimelineScreen {...timelineProps} timeline={{ status: 'ready', entries: activity(35), days: 90 }} />);
+  expect(screen.getByText('Review item 1')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(35);
+  expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', true);
+});
+
+it('filters and searches all returned events before pagination and resets when tab or installation changes', () => {
+  const retained = [...activity(24), ...activity(12).map((entry, index) => ({ ...entry, type: 'alert_event' as const, action: `response_${index + 1}`, fullName: `org/response-${index + 1}` }))];
+  const view = render(<TimelineScreen {...timelineProps} timeline={{ status: 'ready', entries: retained, days: 90 }} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search source or event' }), { target: { value: 'org/item-24' } });
+  expect(screen.getByText('Review item 24')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: 'Open alert' })).toHaveLength(1);
+  expect(screen.queryByRole('combobox')).toBeNull();
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search source or event' }), { target: { value: '' } });
+  expect(screen.getByText('Review item 1')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Responses' }));
+  expect(screen.getByText('response 1')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: 'Open response' })).toHaveLength(10);
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('response 11')).toBeTruthy();
+  view.rerender(<TimelineScreen {...timelineProps} search="?workspace=one&install=8" timeline={{ status: 'ready', entries: retained, days: 90 }} />);
+  expect(screen.getByText('response 1')).toBeTruthy();
+});
+
+it('keeps repeated-check groups scoped to each page and preserves exact source links', () => {
+  const checks = activity(24).map((entry, index) => ({ ...entry, title: `No release on org/item-${index + 1}`, kind: 'scan_latest_release', repoId: 300 + index + 1 }));
+  render(<TimelineScreen {...timelineProps} timeline={{ status: 'ready', entries: checks, days: 90 }} />);
+  expect(screen.getByText('10 checks')).toBeTruthy();
+  expect(screen.getByText(/Across connected repositories on this page/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.getByText('4 checks')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Show checks' }));
+  expect(screen.getAllByRole('button', { name: 'Open source' })).toHaveLength(4);
+  fireEvent.click(screen.getAllByRole('button', { name: 'Open source' })[3]);
+  expect(navigate).toHaveBeenLastCalledWith('/watch/sources?workspace=one&install=7&sourceType=github&configure=github&source=repo-324');
 });

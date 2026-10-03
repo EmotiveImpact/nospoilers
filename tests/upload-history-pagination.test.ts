@@ -26,3 +26,30 @@ it('pages the whole scoped history deterministically and filters before paging',
     await expect(store.listUploadedScanPage('owner',undefined,workspace.id,{status:'invalid'})).rejects.toMatchObject({status:400});
   }finally{await sql.close();}
 });
+
+it('loads 10, 30 or 60 matching builds across the whole authorised history without a false final cursor',async()=>{
+ const sql=await openSql('pglite://:memory:');try{
+  await migrate(sql);const store=createStore(sql);await store.upsertUser({id:'owner',login:'owner'});await store.createSession('owner');
+  const [workspace]=await listUserWorkspaces(sql,'owner');
+  const other=await createWorkspace(sql,'owner',workspace.organization_id,'Other');
+  await sql.query(`INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status,created_at)
+   SELECT 'scan-'||lpad(n::text,3,'0'),'owner',$1,
+    CASE WHEN n<=60 THEN 'Needle Only60 build-'||n||'.zip' WHEN n<=75 THEN 'Needle build-'||n||'.zip' ELSE 'Other build-'||n||'.zip' END,
+    'hash','failed',now()-interval '1 day' FROM generate_series(1,120) n`,[workspace.id]);
+  await sql.query("INSERT INTO uploaded_scans(id,user_id,workspace_id,target,artifact_sha256,status) VALUES('foreign','owner',$1,'Needle foreign.zip','hash','failed')",[other.id]);
+  for(const pageSize of [10,30,60]){
+   let before:string|undefined;const ids:string[]=[];
+   do{
+    const page=await store.listUploadedScanPage('owner',undefined,workspace.id,{pageSize,query:' nEeDlE ',before});
+    expect(page.uploads.length).toBeLessThanOrEqual(pageSize);
+    expect(page.uploads.every(row=>row.target.startsWith('Needle'))).toBe(true);
+    ids.push(...page.uploads.map(row=>row.id));before=page.nextCursor??undefined;
+   }while(before);
+   expect(ids).toHaveLength(75);expect(new Set(ids).size).toBe(75);expect(ids).not.toContain('foreign');
+  }
+  const exactly=await store.listUploadedScanPage('owner',undefined,workspace.id,{pageSize:60,query:'Only60'});
+  expect(exactly.uploads).toHaveLength(60);expect(exactly.nextCursor).toBeNull();
+  await expect(store.listUploadedScanPage('owner',undefined,workspace.id,{pageSize:10,before:'foreign'})).rejects.toMatchObject({status:404});
+  await expect(store.listUploadedScanPage('owner',undefined,workspace.id,{query:'x'.repeat(201)})).rejects.toMatchObject({status:400});
+ }finally{await sql.close();}
+});

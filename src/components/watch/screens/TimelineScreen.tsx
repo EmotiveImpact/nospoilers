@@ -3,6 +3,8 @@ import {
   type WatchSectionState,
 } from "@/components/WatchDataState";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
+import { ListPagination } from "@/components/watch/ListPagination";
+import { useListPagination } from "@/components/watch/useListPagination";
 import type { DeskAlert } from "@/watch/verdict";
 import { navigate } from "@/nav";
 import { AlertTriangle, Bell, ChevronDown, ExternalLink, GitBranch, Globe2, History, Search, Send } from "lucide-react";
@@ -138,14 +140,17 @@ export function TimelineScreen({
       return !needle || entryMatches(entry, needle);
     });
   }, [filter, query, ready, timeline]);
+  const scope = new URLSearchParams(search);
+  const pagination = useListPagination(filteredEntries.length, JSON.stringify([scope.get("workspace"), scope.get("install"), ready ? timeline.days : null, filter, query.trim().toLocaleLowerCase()]));
+  const pageEntries = useMemo(() => filteredEntries.slice(pagination.offset, pagination.offset + pagination.pageSize), [filteredEntries, pagination.offset, pagination.pageSize]);
   const days = useMemo(() => {
     const grouped = new Map<string, TimelineEntry[]>();
-    for (const entry of filteredEntries) {
+    for (const entry of pageEntries) {
       const day = localDayKey(entry.at);
       grouped.set(day, [...(grouped.get(day) ?? []), entry]);
     }
     return [...grouped].map(([day, entries]) => ({ day, entries }));
-  }, [filteredEntries]);
+  }, [pageEntries]);
   const openEntry = (entry: TimelineEntry) => {
     const params = new URLSearchParams(search);
     if (isMissingReleaseRecord(entry)) {
@@ -283,7 +288,7 @@ export function TimelineScreen({
                             <div className="timeline-event timeline-event-incomplete timeline-event-group">
                               <time dateTime={entry.at}>{new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
                               <span className="timeline-event-icon" aria-hidden><AlertTriangle /></span>
-                              <div className="timeline-event-copy"><strong>No published release to inspect <span className="timeline-check-count">{incomplete.length} checks</span></strong><p>Across connected repositories · no published artifact was inspected by these checks</p></div>
+                              <div className="timeline-event-copy"><strong>No published release to inspect <span className="timeline-check-count">{incomplete.length} checks</span></strong><p>Across connected repositories{filteredEntries.length > 10 ? " on this page" : ""} · no published artifact was inspected by these checks</p></div>
                               <button type="button" className="timeline-event-link timeline-group-toggle" aria-expanded={expanded} aria-controls={groupId} onClick={() => toggleDay(day)}>{expanded ? "Hide checks" : "Show checks"}<ChevronDown aria-hidden /></button>
                             </div>
                             <ul id={groupId} className="timeline-check-children" hidden={!expanded}>{expanded ? incomplete.map((check, childIndex) => renderEntry(check, `${day}-check-${childIndex}`, true)) : null}</ul>
@@ -296,6 +301,8 @@ export function TimelineScreen({
               })}
             </ul>
           )}
+          {filteredEntries.length > 10 ? <ListPagination label="Timeline activity" pageSize={pagination.pageSize} onPageSizeChange={pagination.onPageSizeChange} page={pagination.page} count={pageEntries.length} total={filteredEntries.length} hasPrevious={pagination.page > 0} hasNext={pagination.page + 1 < pagination.pageCount} onPrevious={() => pagination.onPageChange(pagination.page - 1)} onNext={() => pagination.onPageChange(pagination.page + 1)} /> : null}
+          <p className="mt-3 text-xs text-mute">Latest 200 events within retention.</p>
         </section>
       )}
       </div>

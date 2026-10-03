@@ -104,14 +104,60 @@ it('keeps delivery pagination inside the selected workspace and visible history 
  const fetcher=vi.fn(async(url:string)=>Response.json({...page,nextCursor:url.includes('before=')?null:'older'}));vi.stubGlobal('fetch',fetcher);
  render(<WorkspaceNotifications workspaceId="one"/>);
  await screen.findByRole('button',{name:'Add destination'});
- expect(screen.queryByRole('button',{name:'Older'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Next'})).toBeNull();
  await userEvent.click(screen.getByRole('tab',{name:'Delivery history'}));
- await userEvent.click(screen.getByRole('button',{name:'Older'}));
- await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces/one/notifications?before=older',expect.anything()));
- await waitFor(()=>expect(screen.getByRole('button',{name:'Newest'})).toHaveProperty('disabled',false));
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ await waitFor(()=>expect(fetcher).toHaveBeenCalledWith('/api/workspaces/one/notifications?pageSize=10&before=older',expect.anything()));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Previous'})).toHaveProperty('disabled',false));
  expect(screen.getByRole('tab',{name:'Delivery history'}).getAttribute('aria-selected')).toBe('true');
- await userEvent.click(screen.getByRole('button',{name:'Newest'}));
- await waitFor(()=>expect(screen.getByRole('button',{name:'Newest'})).toHaveProperty('disabled',true));
+ await userEvent.click(screen.getByRole('button',{name:'Previous'}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Previous'})).toHaveProperty('disabled',true));
+});
+
+it('moves one delivery page back and resets to the first page when its size changes',async()=>{
+ const fetcher=vi.fn(async(url:string)=>{
+  const query=new URL(url,'https://example.test').searchParams;
+  const before=query.get('before');
+  return Response.json({...page,deliveries:[{id:before==='older-two'?30:before==='older-one'?20:10,kind:'email',status:'sent',created_at:'2026-10-03T00:00:00Z'}],nextCursor:before==='older-two'?null:before==='older-one'?'older-two':'older-one'});
+ });vi.stubGlobal('fetch',fetcher);
+ const view=render(<WorkspaceNotifications workspaceId="one"/>);
+ await screen.findByRole('button',{name:'Add destination'});
+ await userEvent.click(screen.getByRole('tab',{name:'Delivery history'}));
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ await screen.findByText('Page 2 · 1 delivery attempt');
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ await screen.findByText('Page 3 · 1 delivery attempt');
+ await userEvent.click(screen.getByRole('button',{name:'Previous'}));
+ await screen.findByText('Page 2 · 1 delivery attempt');
+ expect(String(fetcher.mock.lastCall?.[0])).toContain('before=older-one');
+ await userEvent.click(screen.getByRole('combobox',{name:'Delivery attempts per page'}));
+ await userEvent.click(screen.getByRole('option',{name:'30',exact:true}));
+ await screen.findByText('Page 1 · 1 delivery attempt');
+ expect(String(fetcher.mock.lastCall?.[0])).toBe('/api/workspaces/one/notifications?pageSize=30');
+ expect(screen.getByRole('button',{name:'Previous'})).toHaveProperty('disabled',true);
+ view.rerender(<WorkspaceNotifications workspaceId="two"/>);
+ await screen.findByRole('button',{name:'Add destination'});
+ expect(String(fetcher.mock.lastCall?.[0])).toBe('/api/workspaces/two/notifications?pageSize=10');
+});
+
+it('ignores an older delivery page response after changing the page size',async()=>{
+ let finish!:(response:Response)=>void;
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  if(url.includes('before=older'))return new Promise<Response>(resolve=>{finish=resolve;});
+  return Response.json({...page,nextCursor:'older'});
+ }));
+ render(<WorkspaceNotifications workspaceId="one"/>);
+ await screen.findByRole('button',{name:'Add destination'});
+ await userEvent.click(screen.getByRole('tab',{name:'Delivery history'}));
+ await userEvent.click(screen.getByRole('button',{name:'Next'}));
+ // The pending page hides its controls and can only be replaced by a new scope.
+ expect(screen.queryByRole('combobox',{name:'Delivery attempts per page'})).toBeNull();
+ cleanup();render(<WorkspaceNotifications workspaceId="two"/>);
+ await screen.findByRole('button',{name:'Add destination'});
+ await userEvent.click(screen.getByRole('tab',{name:'Delivery history'}));
+ await act(async()=>finish(Response.json({...page,deliveries:[{id:999,kind:'foreign',status:'sent',created_at:'2026-10-03T00:00:00Z'}]})));
+ expect(screen.queryByText('foreign')).toBeNull();
+ expect(screen.getByText('Page 1 · 0 delivery attempts')).toBeTruthy();
 });
 
 it('closes the destination editor on Cancel and returns focus without submitting',async()=>{

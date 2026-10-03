@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import {afterEach,it,expect,vi} from 'vitest';
+import userEvent from '@testing-library/user-event';
+import {radixUiTestSupport} from './helpers/radix-ui';
+radixUiTestSupport();
 import {cleanup,render,screen,fireEvent,waitFor,act} from '@testing-library/react';
 import {WorkspaceAlerts} from '../src/components/watch/WorkspaceAlerts';
 const nav=vi.hoisted(()=>vi.fn());
@@ -42,7 +45,7 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  expect((await screen.findByRole('link',{name:'Open the saved website check'})).getAttribute('href')).toContain('upload=attempt');
  expect(fetch.mock.calls.filter(([url])=>url.includes('/alerts?'))).toHaveLength(1);
  expect(fetch.mock.calls.some(([url])=>url.includes('status=open&mine=0'))).toBe(true);
- fireEvent.click(screen.getByRole('button',{name:'Older'}));
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
  expect(nav).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&before=2');nav.mockClear();
  fireEvent.click(screen.getByRole('button',{name:'Acknowledge'}));
  await waitFor(()=>expect(nav).toHaveBeenCalled());
@@ -51,7 +54,7 @@ it('loads workspace alerts and sends responses without installation-era endpoint
  revoked=true;act(()=>refresh());
  await screen.findByText('error');
  expect(screen.queryByRole('heading',{name:'Website exposure'})).toBeNull();
- expect(screen.queryByRole('navigation',{name:'Alert history pages'})).toBeNull();
+ expect(screen.queryByRole('navigation',{name:'Alerts pagination'})).toBeNull();
  expect((screen.getByRole('button',{name:'Acknowledge'}) as HTMLButtonElement).disabled).toBe(true);
 });
 it('does not flash unavailable guidance while a selected alert is still loading',async()=>{
@@ -88,12 +91,60 @@ it('keeps the current queue visible until the next tab response arrives',async()
  }));
  const view=render(<WorkspaceAlerts workspaceId="workspace" search="?tab=open"/>);
  await screen.findByRole('heading',{name:'First alert'});
- expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(false);
+ expect((screen.getByRole('button',{name:'Next'}) as HTMLButtonElement).disabled).toBe(false);
  view.rerender(<WorkspaceAlerts workspaceId="workspace" search="?tab=waiting"/>);
  expect(screen.getByRole('heading',{name:'First alert'})).toBeTruthy();
- expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Next'}) as HTMLButtonElement).disabled).toBe(true);
  await waitFor(()=>expect(requested).toBe(true));
  await act(async()=>finish!(Response.json(page([second]))));
  expect(await screen.findByRole('heading',{name:'Second alert'})).toBeTruthy();
- expect((screen.getByRole('button',{name:'Older'}) as HTMLButtonElement).disabled).toBe(false);
+ expect((screen.getByRole('button',{name:'Next'}) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('pages alerts at the selected size and goes back one page without losing workspace or source scope',async()=>{
+ const fetcher=vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  const cursor=new URL(url,'https://example.test').searchParams.get('before');
+  return Response.json({alerts:[],nextCursor:cursor==='200'?null:cursor==='100'?'200':'100',sourceCount:1,counts:{open:30,waiting:0,done:0,mine:0}});
+ });vi.stubGlobal('fetch',fetcher);
+ const view=render(<WorkspaceAlerts workspaceId="one" search="?workspace=one&install=7&source=repo-9001"/>);
+ await screen.findByText('ready');
+ expect(fetcher.mock.calls.some(([url])=>url.includes('pageSize=10')&&url.includes('source=repo-9001'))).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
+ view.rerender(<WorkspaceAlerts workspaceId="one" search={String(nav.mock.lastCall?.[0]).split('?')[1]}/>);
+ await screen.findByText('Page 2 · 0 alerts');
+ fireEvent.click(screen.getByRole('button',{name:'Next'}));
+ view.rerender(<WorkspaceAlerts workspaceId="one" search={String(nav.mock.lastCall?.[0]).split('?')[1]}/>);
+ await screen.findByText('Page 3 · 0 alerts');
+ fireEvent.click(screen.getByRole('button',{name:'Previous'}));
+ expect(nav.mock.lastCall?.[0]).toBe('/watch/alerts?workspace=one&install=7&source=repo-9001&before=100');
+ view.rerender(<WorkspaceAlerts workspaceId="one" search={String(nav.mock.lastCall?.[0]).split('?')[1]}/>);
+ await screen.findByText('Page 2 · 0 alerts');
+ await userEvent.click(screen.getByRole('combobox',{name:'Alerts per page'}));
+ await userEvent.click(screen.getByRole('option',{name:'60',exact:true}));
+ expect(nav.mock.lastCall?.[0]).toBe('/watch/alerts?workspace=one&install=7&source=repo-9001&pageSize=60');
+ view.rerender(<WorkspaceAlerts workspaceId="one" search={String(nav.mock.lastCall?.[0]).split('?')[1]}/>);
+ await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.includes('pageSize=60')&&!url.includes('before='))).toBe(true));
+ expect(screen.getByRole('button',{name:'Previous'})).toHaveProperty('disabled',true);
+ view.rerender(<WorkspaceAlerts workspaceId="two" search="?workspace=two"/>);
+ await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.startsWith('/api/workspaces/two/alerts?')&&url.includes('pageSize=10')&&!url.includes('source='))).toBe(true));
+});
+
+it('does not commit a delayed alert page after page-size or status changes',async()=>{
+ let finish!:(response:Response)=>void;
+ const fetcher=vi.fn(async(url:string)=>{
+  if(url==='/api/me')return Response.json({user:{id:'owner',login:'Owner'}});
+  if(url.endsWith('/evidence-settings'))return Response.json({workspace:{role:'owner',archived_at:null}});
+  if(url.includes('before=100'))return new Promise<Response>(resolve=>{finish=resolve;});
+  return Response.json({alerts:[],nextCursor:null,sourceCount:1,counts:{open:30,waiting:0,done:0,mine:0}});
+ });vi.stubGlobal('fetch',fetcher);
+ const view=render(<WorkspaceAlerts workspaceId="one" search="?workspace=one&before=100"/>);
+ await waitFor(()=>expect(finish).toBeTypeOf('function'));
+ view.rerender(<WorkspaceAlerts workspaceId="one" search="?workspace=one&tab=waiting&pageSize=30"/>);
+ await screen.findByText('ready');
+ await act(async()=>finish(Response.json({alerts:[],nextCursor:'90',sourceCount:999,counts:{open:999,waiting:999,done:999,mine:999}})));
+ expect(screen.getByRole('button',{name:'Next'})).toHaveProperty('disabled',true);
+ expect(screen.getByText('Page 1 · 0 alerts')).toBeTruthy();
+ expect(fetcher.mock.calls.some(([url])=>url.includes('status=waiting&mine=0&pageSize=30')&&!url.includes('before='))).toBe(true);
 });

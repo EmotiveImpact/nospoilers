@@ -1,5 +1,11 @@
 # Status
 
+UI increment (3 October 2026): shared default-10 result pagination with 30/60 choices is implemented
+across search, Coverage, Releases, Alerts, Notifications, Timeline and longer Team/audit/token/retained
+lists. Cursor APIs honor actual requested sizes; uploaded-build search filters the full authorized
+history. The latest [BUILD-LOG](release-assurance/BUILD-LOG.md) records affected checks, existing history
+window limits and the local ENOSPC boundary. Publication/CI and live evidence are tracked there.
+
 UI checkpoint (3 October 2026): the Watch spacing pass is deployed on `d6a505f`, with verified
 production JS/CSS matching the final local build. It tightens related content across the main screens,
 keeps expired Coverage recovery visible, aligns mobile controls and makes Alerts readable in short

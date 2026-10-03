@@ -4,6 +4,7 @@ import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';
 import {HostedDecisionList} from '../HostedDecisionList';
+import {ConnectedReleaseTable} from '../ConnectedReleaseTable';
 import { WatchReleaseBrief } from "@/components/watch/WatchReleaseBrief";
 import { useWatchScreenContext } from "@/components/watch/useWatchScreenContext";
 import { buildReleaseBriefModel } from "@/watch/release-brief";
@@ -76,6 +77,8 @@ export function ReleasesScreen() {
   const preview = selectedRelease;
   const previewModel = preview ? releaseStatus(preview) : null;
   const params=new URLSearchParams(search);
+  const connectedParams=new URLSearchParams(search);
+  if(activeInstallId!==null)connectedParams.set('install',String(activeInstallId));
   // Saved attempts belong to the workspace, including websites without GitHub.
   // The selected installation only scopes the separate repository ledger.
   const uploadInstallationId=params.has('workspace') || params.has('upload') && !params.has('install') ? null : activeInstallId;
@@ -85,6 +88,7 @@ export function ReleasesScreen() {
   const chooseBrowser=(next:'uploads'|'attempts'|'connected')=>{
     if(next===browser)return;
     const query=new URLSearchParams(search);query.set('releaseView',next);
+    query.delete('uploadBefore');query.delete('uploadTrail');
     query.delete('hostedDecision');query.delete('before');if(next==='uploads'&&query.get('uploadStatus')==='active')query.delete('uploadStatus');
     if(next!=='connected'){query.delete('release');query.delete('preview');}
     else for(const key of ['upload','uploadView','uploadFinding','uploadTab'])query.delete(key);
@@ -188,7 +192,7 @@ export function ReleasesScreen() {
         </div>
       ) : (
         <div className="journey-connected-results">
-          <div className="journey-release-table-wrap"><table className="journey-release-table"><thead><tr><th>Release</th><th>Source</th><th>Result</th><th>Scanned</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{releases.map(release=>{const state=releaseStatus(release);return <tr key={release.id}><td><strong className="text-snow font-medium">{releaseDisplayName(release.coordinate)}</strong><small className="block mt-1">{release.sourceRevision??release.artifactSha256.slice(0,12)}</small></td><td>{release.channel}</td><td><span className={`journey-result-status is-${state.status}`}>{state.label}</span></td><td>{new Date(release.createdAt).toLocaleDateString()}</td><td><Button variant="ghost" onClick={()=>navigate(watchHref(watchPath('releases'),search,{release:release.id,previewRelease:null}))}>View evidence <ArrowRight className="size-4" aria-hidden/></Button></td></tr>})}</tbody></table></div>
+          <ConnectedReleaseTable releases={releases} search={connectedParams.toString()}/>
           {preview && previewModel ? (
             <article className={`watch-release-preview is-${previewModel.status}`} aria-live="polite">
               <div className="watch-release-preview-topline">

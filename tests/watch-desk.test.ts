@@ -25,9 +25,17 @@ it('keeps source setup intent on Coverage without carrying it into unrelated pag
 });
 
 it('drops release pagination when leaving history while preserving workspace and scan mode',()=>{
- const search='?workspace=team&install=7&uploadBefore=old&upload=record&uploadView=detail&mode=github';
+ const search='?workspace=team&install=7&uploadBefore=old&upload=record&uploadView=detail&mode=github&uploadTrail=%5Bnull%2C%22old%22%5D&uploadPageSize=60&uploadQuery=build';
  expect(watchHref('/watch/scan',search)).toBe('/watch/scan?workspace=team&install=7&mode=github');
  expect(new URL(watchHref('/watch/releases',search),'http://localhost').searchParams.get('uploadBefore')).toBe('old');
+});
+
+it('keeps alert pagination out of other screens and connected release cursors',()=>{
+ const search='?workspace=team&install=7&tab=open&before=51&pageSize=60';
+ expect(watchHref('/watch/alerts',search)).toBe('/watch/alerts'+search);
+ for(const path of ['/watch','/watch/sources','/watch/releases','/watch/notifications']){
+  expect(watchHref(path,search)).toBe(path+'?workspace=team&install=7');
+ }
 });
 import { deskVerdict, filterDeskAlerts, setupProgress } from "../src/watch/verdict.ts";
 import { exposureByDay } from "../src/watch/exposure.ts";

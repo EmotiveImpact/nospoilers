@@ -1,12 +1,18 @@
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {watchHref} from '@/watch/routes';
+import {ListPagination} from './ListPagination';
+import {useListPagination} from './useListPagination';
 
 type Row={id:number;kind:'npm'|'map';name:string;disconnectedAt:string|null};
 export function RetainedSources({installationId,search,refreshKey}:{installationId:number;search:string;refreshKey?:string}) {
   const [state,setState]=useState<{scope:number;rows:Row[]}|null>(null);
   const [failed,setFailed]=useState(false);
   const [retry,setRetry]=useState(0);
+  const rows=state?.scope===installationId?state.rows:[];
+  const scope=new URLSearchParams(search);
+  const pagination=useListPagination(rows.length,JSON.stringify([scope.get('workspace'),installationId]));
+  const pageRows=rows.slice(pagination.offset,pagination.offset+pagination.pageSize);
   useEffect(()=>{
     const controller=new AbortController();
     void fetch(`/api/sources/disconnected?installationId=${installationId}`,{signal:controller.signal}).then(async response=>{
@@ -24,9 +30,10 @@ export function RetainedSources({installationId,search,refreshKey}:{installation
     <h2 className="text-lg font-semibold">Disconnected sources</h2>
     <p className="mt-2 text-sm text-mute">Monitoring has stopped. Saved findings and release evidence remain available. Reconnecting requires a new check before monitoring is current.</p>
     <p className="mt-2 text-sm text-mute">If you paused monitoring before disconnecting, it stays paused after reconnecting. Use Monitoring controls to resume checks.</p>
-    <ul className="mt-4 divide-y divide-white/10">{state.rows.map(row=><li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
+    <ul className="mt-4 divide-y divide-white/10">{pageRows.map(row=><li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div><p>{row.name}</p><p className="text-xs text-mute">Disconnected{row.disconnectedAt?` · ${new Date(row.disconnectedAt).toLocaleDateString()}`:''}</p></div>
       <a className="text-sm underline underline-offset-4" href={watchHref('/watch/sources',search,{source:null,configure:row.kind})}>Reconnect {row.kind==='map'?'with credentials':'package'}</a>
     </li>)}</ul>
+    {rows.length>10?<ListPagination label="Disconnected sources" pageSize={pagination.pageSize} onPageSizeChange={pagination.onPageSizeChange} page={pagination.page} count={pageRows.length} total={rows.length} hasPrevious={pagination.page>0} hasNext={pagination.page+1<pagination.pageCount} onPrevious={()=>pagination.onPageChange(pagination.page-1)} onNext={()=>pagination.onPageChange(pagination.page+1)}/>:null}
   </section>;
 }
