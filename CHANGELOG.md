@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Replaced search's movement from the top-right trigger with a short fade in place. Added clearer page/record categories, common page-name aliases, exact-name ranking, multiword matching, clear/close controls and scoped Plan & billing navigation.
+
 - Removed the arrow from Overview’s Review alert button.
 
 - Removed the duplicate bottom stripe from selected New scan cards, keeping a single red outline.

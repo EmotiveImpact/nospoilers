@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
-import { ArrowRight, Bell, Box, FileCheck2, Search } from "lucide-react";
+import { ArrowRight, Bell, Box, FileCheck2, PanelTop, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "@/nav.ts";
 import {
@@ -9,17 +9,7 @@ import {
   type PaletteItem,
 } from "@/watch/command.ts";
 
-export function WatchCommandPalette({
-  open,
-  search,
-  teamOnly,
-  adminOnly,
-  artifactOnly = false,
-  alerts,
-  sources,
-  releases,
-  onClose,
-}: {
+type WatchCommandPaletteProps = {
   open: boolean;
   search: string;
   teamOnly: boolean;
@@ -29,11 +19,24 @@ export function WatchCommandPalette({
   sources: { key: string; name: string }[];
   releases: { id: number; coordinate: string }[];
   onClose: () => void;
-}) {
+};
+
+export function WatchCommandPalette(props: WatchCommandPaletteProps) {
+  return props.open ? <OpenCommandPalette {...props} /> : null;
+}
+
+function OpenCommandPalette({
+  open,
+  search,
+  teamOnly,
+  adminOnly,
+  artifactOnly = false,
+  alerts,
+  sources,
+  releases,
+  onClose,
+}: WatchCommandPaletteProps) {
   const reduceMotion = useReducedMotion();
-  const trigger = open && typeof document !== 'undefined' ? document.querySelector('[data-watch-search-trigger]')?.getBoundingClientRect() : null;
-  const panelWidth = typeof window !== 'undefined' ? Math.min(520,window.innerWidth-32) : 520;
-  const origin = trigger ? {x:trigger.left-(window.innerWidth-panelWidth)/2,y:trigger.top-window.innerHeight*.12,scaleX:Math.min(1,trigger.width/panelWidth)} : {x:0,y:0,scaleX:1};
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +61,7 @@ export function WatchCommandPalette({
     close();
   };
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) return;
     if (event.key === "Escape") {
       event.preventDefault();
       close();
@@ -85,8 +89,7 @@ export function WatchCommandPalette({
       <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto px-4 pt-[12vh]">
         <DialogPanel className="w-full max-w-[520px]">
-        <motion.div className="watch-search-panel" initial={reduceMotion?false:{opacity:0,x:origin.x,y:origin.y,scaleX:origin.scaleX,scaleY:.12}} animate={{opacity:1,x:0,y:0,scaleX:1,scaleY:1}} transition={reduceMotion?{duration:0}:{type:'spring',duration:.38,bounce:.08}}>
-          {/* Adapted beUI MIT spring-shell pattern; Headless UI retains modal focus ownership. */}
+        <motion.div className="watch-search-panel" initial={reduceMotion?false:{opacity:0}} animate={{opacity:1}} transition={{duration:reduceMotion?0:.12,ease:'easeOut'}}>
           <DialogTitle className="sr-only">Search or run a command</DialogTitle>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-dim" aria-hidden />
@@ -104,15 +107,19 @@ export function WatchCommandPalette({
                 setActiveIndex(0);
               }}
               onKeyDown={onInputKeyDown}
-              placeholder={artifactOnly?'Search workspace pages…':'Search pages, alerts, sources…'}
-              className="h-12 w-full border-b border-white/8 bg-transparent pl-11 pr-4 text-sm text-snow outline-none placeholder:text-dim"
+              placeholder={artifactOnly?'Search workspace pages…':'Search pages, alerts, sources, releases…'}
+              className="h-14 w-full border-b border-white/8 bg-transparent pl-11 pr-24 text-sm text-snow outline-none placeholder:text-dim"
             />
+            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+              {query ? <button type="button" aria-label="Clear search" className="watch-search-control" onClick={() => {setQuery("");setActiveIndex(0);inputRef.current?.focus();}}><X className="size-4" aria-hidden /></button> : null}
+              <button type="button" aria-label="Close search" className="watch-search-control" onClick={close}><span aria-hidden>Esc</span></button>
+            </div>
           </div>
           <div id={listboxId} role="listbox" className="max-h-80 overflow-auto py-2">
             {items.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className="text-sm text-snow">No results</p>
-                <p className="mt-1 text-xs text-dim">{artifactOnly?'Try Releases, Team, Retention or Audit log.':'Try a page, alert, source, or release coordinate.'}</p>
+                <p className="mt-1 text-xs text-dim">{artifactOnly?'Try Releases, Team, Retention or Billing.':'Try another name, or search the full list on Coverage or Releases.'}</p>
               </div>
             ) : items.map((item, index) => {
               const Icon = item.detail === "Alert"
@@ -121,12 +128,12 @@ export function WatchCommandPalette({
                   ? FileCheck2
                   : item.detail === "Source"
                     ? Box
-                    : ArrowRight;
+                    : item.group === "Pages" ? PanelTop : ArrowRight;
               const showGroup = index === 0 || items[index - 1]?.group !== item.group;
               return (
                 <div key={item.id}>
                   {showGroup ? (
-                    <p className="border-t border-white/8 px-4 pb-1 pt-3 text-xs uppercase tracking-[0.18em] text-dim first:border-0">
+                    <p className="watch-search-group">
                       {item.group}
                     </p>
                   ) : null}
@@ -149,7 +156,7 @@ export function WatchCommandPalette({
               );
             })}
           </div>
-          <div className="watch-search-help">↑ ↓ Navigate · Enter Open · Esc Close</div>
+          <div className="watch-search-help"><span role="status">{query.trim()?`${items.length} ${items.length===1?'match':'matches'} shown`:'Quick navigation'}</span><span>↑ ↓ Navigate · Enter Open</span></div>
         </motion.div>
         </DialogPanel>
       </div>

@@ -1,6 +1,14 @@
+## 3 October 2026 — Quieter, clearer global search
+
+Replaced the search panel's trigger-origin scale/translation spring with a fixed-position 120ms opacity fade; reduced motion opens fully visible. Results now distinguish Pages, Alerts, Sources, Releases and Actions instead of labelling static links Recent. Added explicit clear/close controls, common page-name aliases, punctuation/accent-insensitive multiword matching, exact/prefix name ranking, a scoped Plan & billing destination and a shown-match count. Closing the palette unmounts its local query state so a shell shortcut cannot reopen an old search. IME composition does not trigger Enter navigation.
+
+Search still uses the current workspace records already loaded by the existing controller and shows at most 24 query matches. This is not a new server-side archive search. Independent artifact workspaces remain page-only; existing route/permission filtering and workspace/installation scope are preserved. No records, providers or entitlements are changed.
+
+Bounded verification: **53/53 tests across five files** passed for matching/ranking, artifact isolation, routes, combobox navigation, query clearing/reset, focus return and reduced motion. TypeScript/frontend build, affected-file oxlint and diff check passed. Final local entry is `index-DEnm4RnI.js`; authenticated production desktop/mobile verification follows publication.
+
 ## 3 October 2026 — Text-only Overview alert action
 
-Removed the decorative arrow from Overview’s Review alert button. Its label, exact-alert navigation and other Overview actions are unchanged. All **29 Overview UI tests**, TypeScript/frontend build and diff check passed; live confirmation follows publication.
+Removed the decorative arrow from Overview’s Review alert button. Its label, exact-alert navigation and other Overview actions are unchanged. All **29 Overview UI tests**, TypeScript/frontend build and diff check passed. Production `431de6e` serves the tested entry `index-CZtPV4BK.js`; the live Review alert button has no SVG and retains its exact-alert destination. No alert was changed.
 
 ## 3 October 2026 — Single selected scan-card border
 
