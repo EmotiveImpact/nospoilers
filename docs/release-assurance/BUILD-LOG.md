@@ -2,7 +2,7 @@
 
 Live New scan inspection found a generated 2px red stripe over the existing 1px bottom border of selected evidence cards. Removed that decorative pseudo-element; the red card outline, selected background, focus treatment, evidence-type switching and scanner controls remain. This shared rule applies to GitHub, package, website and proof cards.
 
-Bounded verification: **30/30 tests across two files** passed for scan prerequisites and submission/navigation; TypeScript/frontend build and diff check passed. Deployed visual verification follows the main push.
+Bounded verification: **30/30 tests across two files** passed for scan prerequisites and submission/navigation; TypeScript/frontend build and diff check passed. Production `59fdcfb` serves the matching tested entry (`index-CrsLhLfi.js`). Live desktop and 390px mobile inspection show a single 1px selected red border, no generated stripe and no inset shadow; all four cards have no generated after-element. Mobile document width equals the 390px viewport. No scan or connection was started.
 
 ## 3 October 2026 — Team invitation row alignment
 
