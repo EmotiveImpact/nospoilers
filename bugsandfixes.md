@@ -18,7 +18,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Problem | Fix | Evidence |
 | --- | --- | --- |
-| Related text and controls appeared disconnected across Watch screens | Removed stacked empty-state padding and reduced heading, prose, form and section gaps; shared page intros now have one owning style | 121 focused tests across 13 files, frontend/TypeScript build and affected-file lint; deployed responsive verification follows |
+| Related text and controls appeared disconnected across Watch screens | Removed stacked empty-state padding and reduced heading, prose, form and section gaps; shared page intros now have one owning style | 121 focused tests across 13 files, 52 follow-up tests, frontend/TypeScript build and affected-file lint; real deployed desktop/mobile checks recorded in BUILD-LOG |
 | Expired Coverage appeared blank above a long blurred repository inventory | Anchor the access notice near the top of the overlay and keep it visible while scrolling; covered controls remain inert | Real CoverageLock is exercised in the expired-state UI tests, including available subscription/navigation actions |
 
 ## Fixed on 23 September 2026

@@ -361,6 +361,12 @@
   .alerts-journey .alerts-journey-detail-content > h1 {
     font-size: 23px;
   }
+
+  .alerts-journey .alerts-journey-actions > button:first-child {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    padding-left: 0;
+  }
 }
 
 /* Override the earlier shared card-toolbar skin at its own specificity. */

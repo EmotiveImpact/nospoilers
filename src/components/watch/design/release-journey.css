@@ -55,3 +55,10 @@
  .journey-upload-table :is(th,td){padding-inline:8px}
  .journey-upload-table .journey-build-name{gap:8px}
 }
+
+/* Keep mobile collection controls aligned with the records below them. */
+@media(max-width:700px){
+ .watch-release-index div.upload-history-toolbar{align-items:stretch;gap:10px}
+ .watch-release-index .upload-history-toolbar input{width:100%}
+ .watch-release-index div.upload-history-toolbar>div{justify-content:space-between}
+}
