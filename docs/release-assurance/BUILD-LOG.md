@@ -6,6 +6,8 @@ Focused verification passed **80/80 tests across six files**: expired access/ine
 
 The preceding pagination runtime d51e1e4's full CI [37090968979](https://github.com/EmotiveImpact/nospoilers/actions/runs/37090968979) has since succeeded; the earlier running-status entry below is historical.
 
+Runtime **d3af6ab** was pushed to main and deployed successfully. Production serves the tested entry index-dVvRZ9v4.js. Clicking the actual expired Coverage notice's See plans action now opens /watch/workspaces with the same workspace and installation plus workspaceTab=billing. The Plan & billing tab is selected; the real EmotiveImpact personal organisation, expired coverage state and Solo/Team plan cards finish loading inside the existing Watch shell. Document width remained 1280px. A screenshot was saved locally. No checkout or customer mutation was performed; Stripe remains unconfigured and the checkout action is disabled. This follow-up records live navigation acceptance, not full CI or payment-provider acceptance for the new runtime.
+
 ## 3 October 2026 — Configurable result pagination
 
 Added one shared pagination control with a default of 10 and explicit 10 / 30 / 60 choices. It uses the existing dark AppSelect, named list-specific controls, live range/page announcements and responsive wrapping. Coverage, global-search matches, Timeline, retained sources, Team members/invitations/activity and audit lists filter before slicing; changing size or scope/filter resets the page, and shrinking loaded lists clamp the current page without resurrecting an old position later.

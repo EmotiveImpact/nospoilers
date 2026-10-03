@@ -1,8 +1,9 @@
 # Status
 
-Billing navigation increment (3 October 2026): expired-coverage and Overview plan actions now share
+Billing navigation increment (3 October 2026, deployed d3af6ab): expired-coverage and Overview plan actions now share
 the existing in-app Plan & billing destination with the sidebar, top bar and search. Workspace and
 connection scope are preserved. No payment provider, subscription or billing permission changed.
+The real Coverage action was verified opening the selected workspace's billing screen on production.
 Focused checks and deployment evidence are recorded in [BUILD-LOG](release-assurance/BUILD-LOG.md).
 
 UI increment (3 October 2026): shared default-10 result pagination with 30/60 choices is implemented
