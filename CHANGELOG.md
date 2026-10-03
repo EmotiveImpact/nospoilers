@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Aligned the expanded desktop sidebar's collapse control with the workspace picker's right edge.
+
 - Fixed expired-coverage and Overview plan actions to open the current workspace's Plan & billing tab inside Watch. Sidebar, top-bar and search billing actions now share the same scoped destination.
 
 - Added shared 10 / 30 / 60 results-per-page controls to search, Coverage, Releases, Alerts, notification delivery history, Timeline, retained sources, Team, audit history and scan-token history. Release history searches all authorized saved records before paging; filters and size changes return to the first page, and Previous returns to the visited page.

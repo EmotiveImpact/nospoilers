@@ -304,7 +304,7 @@ export function WatchMonolithShell({
           {opts.showToggle && !opts.collapsed ? (
             <button
               type="button"
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-snow focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
+              className="-mr-2 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-mute opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-snow focus-visible:opacity-100 group-hover/rail:opacity-100 motion-reduce:transition-none"
               aria-label={opts.collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!opts.collapsed}
               onClick={toggleCollapsed}
