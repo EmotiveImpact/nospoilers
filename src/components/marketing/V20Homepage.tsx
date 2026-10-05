@@ -1,8 +1,9 @@
-import { ArrowRight, GitFork, Menu, X } from "lucide-react"
+import { ArrowRight, BookOpen, ChevronDown, FileCheck, GitFork, LifeBuoy, Menu, MessageSquare, Package, Radar, Rocket, Terminal, X } from "lucide-react"
 import { navigate } from "@/nav.ts"
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import "./v20-homepage.css"
 import { HomepageD } from "./HomepageD"
+import "./cardinal-marketing.css"
 
 export type MarketingSession = { user: { login: string } | null; githubApp: boolean; developmentLogin?: boolean }
 export function Brand() { return <span className="v20-brand"><img className="v20-brand-logo" src="/assets/brand/nospoilers-wordmark.png" alt="NoSpoilers" /></span> }
@@ -54,17 +55,30 @@ export function MarketingNav({ me, openApp, home = true }: { me: MarketingSessio
           {title:'Resources',links:[['/docs','Documentation'],['/docs/getting-started','Get started'],['/docs/api-tokens-and-ci','API and CI'],['/support','Support'],['/status','Service status'],['/disclosure','Security disclosure']]},
         ].map(group=><section key={group.title}><h2>{group.title}</h2>{group.links.map(([href,label])=><a key={href} href={href} onClick={()=>setMobile(false)}>{label}</a>)}</section>)}
       </nav>
+      <div className="cardinal-mobile-action"><button className="v20-nav-cta" onClick={() => { setMobile(false); scan() }}>Start a scan</button></div>
     </dialog>
   </>
 }
 
 function NavMenu({ label, open, footer, setOpen, hover, leave, children }: { label: string; open: boolean; footer?: boolean; setOpen: () => void; hover: () => void; leave: () => void; children: React.ReactNode }) {
   const id = `v20-menu-${label.toLowerCase()}`;
-  return <div className="v20-nav-wrap" onMouseEnter={hover} onMouseLeave={leave} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) leave() }} onKeyDown={(event) => { if(event.key==='Escape'){ leave(); event.currentTarget.querySelector('button')?.focus() } }}><button className={`v20-nav-trigger${open ? " open" : ""}`} aria-expanded={open} aria-controls={id} onClick={setOpen} onKeyDown={(event)=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen();requestAnimationFrame(()=>document.getElementById(id)?.querySelector('a')?.focus())}}}>{label}</button><div id={id} aria-label={`${label} links`} className={`v20-mega${open ? " open" : ""}`} inert={!open}><div className="v20-mega-grid">{children}</div>{footer?<a className="v20-mega-footer" href="/docs/getting-started"><span><b>Start here</b> Your first release check</span><span>Read the guide <ArrowRight aria-hidden="true" /></span></a>:null}</div></div>
+  return <div className="v20-nav-wrap" onMouseEnter={hover} onMouseLeave={leave} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) leave() }} onKeyDown={(event) => { if(event.key==='Escape'){ leave(); event.currentTarget.querySelector('button')?.focus() } }}><button className={`v20-nav-trigger${open ? " open" : ""}`} aria-expanded={open} aria-controls={id} onClick={setOpen} onKeyDown={(event)=>{if(event.key==='ArrowDown'){event.preventDefault();setOpen();requestAnimationFrame(()=>document.getElementById(id)?.querySelector('a')?.focus())}}}>{label}<ChevronDown className="cardinal-nav-chevron" aria-hidden="true" /></button><div id={id} aria-label={`${label} links`} className={`v20-mega${open ? " open" : ""}`} inert={!open}><div className="v20-mega-grid">{children}</div>{footer?<a className="v20-mega-footer" href="/docs/getting-started"><span><b>Start here</b> Your first release check</span><span>Read the guide <ArrowRight aria-hidden="true" /></span></a>:null}</div></div>
+}
+
+const marketingIcons: Record<string, typeof Package> = {
+  "/product#inspect": Package,
+  "/use-cases#websites": Radar,
+  "/use-cases#response": MessageSquare,
+  "/product#evidence": FileCheck,
+  "/docs": BookOpen,
+  "/docs/getting-started": Rocket,
+  "/docs/api-tokens-and-ci": Terminal,
+  "/support": LifeBuoy,
 }
 
 function MenuItem({ title, copy, href }: { title: string; copy: string; href: string }) {
-  return <a href={href}><b>{title}</b><small>{copy}</small></a>
+  const Icon = marketingIcons[href] ?? BookOpen
+  return <a href={href}><span className="cardinal-menu-icon"><Icon aria-hidden="true" /></span><span className="cardinal-menu-text"><b>{title}</b><small>{copy}</small></span></a>
 }
 
 export function MarketingFooter({ home = true }: { home?: boolean }) {
