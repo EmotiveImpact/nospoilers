@@ -13,6 +13,7 @@ import type { ScanStatus } from "../scanner/types.ts";
 import { commitRefsForCheck, type GithubPort } from "./github.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import { logJson } from "./log.ts";
+import { isScanInterruption } from './scan-interruption.ts';
 import type { NpmAuth, NpmPort } from "./npm.ts";
 import { isPublicNpmOrigin, PUBLIC_NPM_ORIGIN } from "./npm-registry.ts";
 import {
@@ -632,6 +633,8 @@ export async function handleJob(
     } catch (error) {
       // Delivery failures must never replace already committed scan evidence.
       if(publicationCommitted)throw error;
+      // Shutdown is not an inconclusive crawl; the requeued job checks again.
+      if(isScanInterruption(error))throw error;
       if(!await originStillActive()){if(!scanStarted)await refundUnusedHostedUnpack();return;}
       const message =
         error instanceof WebCrawlError
@@ -793,6 +796,12 @@ export function createWorker(opts: {
       }
       await opts.store.finishJob(job.id,undefined,workerId);
     } catch (error) {
+      if (isScanInterruption(error)) {
+        // Not the job's fault: return it to the queue without spending an attempt.
+        logJson("warn", "job.interrupted", { jobId: job.id, kind: job.kind });
+        await opts.store.requeueInterruptedJob(job.id, workerId);
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
       logJson("error", "job.failed", {
         jobId: job.id,

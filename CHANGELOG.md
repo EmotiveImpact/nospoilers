@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Worker shutdown now interrupts in-flight scans instead of waiting for them. Each Vercel Sandbox (or local scanner process) is stopped, and the job returns to the queue without spending a retry attempt. Interrupted website checks no longer publish an inconclusive alert, interrupted uploads stay resumable instead of failing, and prospect scans are not marked failed.
+
 - Alerts fix-brief copying now shows a copy icon and changes the button to Copied after success, without adding text beneath it. Clipboard failures retain manual-copy guidance.
 
 - Grouped Alerts export and assignment-filter actions in one row, including on phones. Removed the visible keyboard-help disclosure while retaining queue and tab keyboard navigation.

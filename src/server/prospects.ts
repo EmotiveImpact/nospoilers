@@ -6,6 +6,7 @@ import type { ScanReport } from "../scanner/index.ts";
 import { workspaceGlobsFromManifests } from "../scanner/workspaces.ts";
 import { isScannablePackAssetName } from "./paths.ts";
 import type { Store } from "./store.ts";
+import { isScanInterruption } from "./scan-interruption.ts";
 
 export const MAX_PROSPECT_WORKSPACE_PACKS = 8;
 export const MAX_PROSPECT_WORKSPACE_NAMES = 40;
@@ -484,6 +485,7 @@ export async function scanProspectArtifact(
       artifactBytes: bytes.byteLength,
     });
   } catch (error) {
+    if (isScanInterruption(error)) throw error;
     await deps.store.failProspectScan(
       prospect.id,
       error instanceof Error ? error.message : "Prospect scan failed.",

@@ -8,7 +8,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 | --- | --- | --- |
 | Normal customer login is still GitHub-only | Provider-neutral database foundation is complete; Neon Auth is selected but not active | Verify the new Neon account email, enable Managed Better Auth, configure trusted domains, then connect and test the sign-in UI |
 | Hosted customer journey is not accepted end to end | GitHub webhook transport is repaired and the secure existing-personal-installation reconnect is implemented | Deploy, attach installation 158159401 to the production workspace, then prove queued scan → saved result |
-| Sandbox adversarial acceptance is incomplete | Clean, fail-closed encrypted input, denied egress, timeout and stopped cleanup passed live | Complete special-file/oversize and worker-interruption cleanup acceptance |
+| Sandbox adversarial acceptance is incomplete | Clean, fail-closed encrypted input, denied egress, timeout and stopped cleanup passed live. Graceful worker-interruption cleanup is implemented and test-covered (5 October 2026), not yet exercised live | Complete special-file/oversize acceptance and one live Railway redeploy during a running scan |
 | GitHub Actions is externally blocked | The earlier run did not start because of the account payment/spending limit | Resolve the GitHub account block and rerun CI on the current commit |
 | Real notification delivery is not accepted | Delivery code and worker preflight exist | Configure one approved provider and verify one private, workspace-scoped notification |
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |

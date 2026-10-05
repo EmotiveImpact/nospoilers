@@ -28,6 +28,7 @@ import { isolatedScan } from './isolated-scanner.ts';
 import { cleanupAbandonedParserFiles } from './parser-cleanup.ts';
 import { runWorkspaceNotification } from './workspace-notification-worker.ts';
 import { closeRuntimeResources } from './shutdown.ts';
+import { workerScanInterrupter } from './scan-interruption.ts';
 
 export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
@@ -148,7 +149,14 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       closing ??= closeRuntimeResources([
         async () => { await poller.stop(); },
         async () => { if (listening) await (await listening)(); },
-        async () => { await worker.stop(); },
+        async () => {
+          // stop() refuses new claims synchronously; then abort executors so
+          // the drain waits seconds for sandbox cleanup, not a whole scan.
+          const drained = worker.stop();
+          const interrupted = workerScanInterrupter.interrupt();
+          if (interrupted) logJson('warn', 'runtime.shutdown.scans_interrupted', { count: interrupted });
+          await drained;
+        },
         async () => { await sql.close(); },
       ]);
       return closing;

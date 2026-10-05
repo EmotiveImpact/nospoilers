@@ -105,7 +105,10 @@ Tenant authorization and evidence remain workspace-scoped in the shared applicat
 3. Configure production and local trusted domains/callbacks.
 4. Mount the exact-version-pinned Neon server adapter and add the customer sign-in/recovery UI.
 5. Prove email sign-up → session → workspace → GitHub connection → worker scan → saved result on the hosted product.
-6. Run the remaining hostile-input, denied-egress and interrupted-sandbox acceptance checks.
+6. Run the remaining hostile-input, denied-egress and interrupted-sandbox acceptance checks. Graceful
+   interruption is implemented: on SIGTERM the worker aborts in-flight scans, stops each sandbox and
+   requeues the job without spending an attempt. A forced kill still relies on the 135-second sandbox
+   session limit and stale-lease recovery. A live redeploy during a running scan has not been observed.
 7. Add WorkOS only when an enterprise SSO/SCIM requirement is real or explicitly prioritised.
 
 Stripe remains deliberately deferred by the owner and is independent of this authentication work.
