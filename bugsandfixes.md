@@ -14,6 +14,12 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
 | Stripe cannot take payment | Deliberately deferred by the owner | Configure sandbox prices, keys and webhook later; then test checkout, entitlement changes, cancellation and expiry |
 
+## Fixed on 5 October 2026
+
+| Problem | Fix | Evidence |
+| --- | --- | --- |
+| Hostile staging and archive entries had no explicit regression coverage | Added tests for symlink, FIFO and over-budget staging input (rejected before any sandbox exists) and for device, FIFO and escaping-link tar entries (never materialised) | Focused tests in `tests/vercel-sandbox-scanner.test.ts` and `tests/hostile-archive-entries.test.ts` |
+
 ## Fixed on 3 October 2026
 
 | Problem | Fix | Evidence |

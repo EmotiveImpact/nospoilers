@@ -1,5 +1,6 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {mkdir,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {mkdir,mkdtemp,readFile,rm,symlink,truncate,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {isolatedScan} from '../src/server/isolated-scanner.ts';
@@ -30,7 +31,7 @@ async function temporaryInput():Promise<string> {
 }
 
 function fakeSandbox(options:{
- exitCode?:number;report?:Buffer;reportedSize?:number;stopError?:Error;identityError?:Error;
+ exitCode?:number;report?:Buffer;reportedSize?:number;stopError?:Error;identityError?:Error;hang?:boolean;
 }={}) {
  const report=options.report??Buffer.from('{}');
  const state={events:[] as string[],mkdirs:[] as string[],uploads:[] as {path:string;mode:number}[],
@@ -44,7 +45,12 @@ function fakeSandbox(options:{
   },
   chmod:async(target,mode)=>{state.events.push(`chmod:${target}`);state.chmods.push({path:target,mode});},
   sealInput:async target=>{state.events.push('seal');state.seals.push(target);},
-  runScanner:async()=>{state.events.push('run');state.runs++;return {exitCode:options.exitCode??0};},
+  runScanner:async(_input,_report,signal)=>{
+   state.events.push('run');state.runs++;
+   // Mirror the provider SDK: a hung command only ends when its signal aborts.
+   if(options.hang)await new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError'))));
+   return {exitCode:options.exitCode??0};
+  },
   statSize:async()=>options.reportedSize??report.length,
   readFile:async()=>{state.reads++;return report;},
   stop:async()=>{state.stops++;if(options.stopError)throw options.stopError;},
@@ -156,5 +162,71 @@ describe('Vercel Sandbox scanner lifecycle',()=>{
   const input=await temporaryInput();
   const {factory}=fakeSandbox({exitCode:7,stopError:new Error('provider unavailable')});
   await expect(runVercelSandboxScanner(input,{env:configuredEnv,factory})).rejects.toThrow('Isolated scanner failed.');
+ });
+});
+
+describe('Vercel Sandbox hostile input',()=>{
+ const productionEnv={...configuredEnv,NODE_ENV:'production',NOSPOILERS_SCANNER_MODE:'vercel-sandbox'};
+
+ it('rejects a symlink before any sandbox is created',async()=>{
+  const input=await temporaryInput();
+  await symlink('/etc/passwd',path.join(input,'one','passwd'));
+  const {state,factory}=fakeSandbox();
+  await expect(isolatedScan(input,{env:productionEnv,sandboxFactory:factory})).rejects.toThrow('Unsupported parser input.');
+  expect(factory).not.toHaveBeenCalled();
+  expect(state.uploads).toEqual([]);
+ });
+
+ it('rejects a FIFO before any sandbox is created or the pipe is opened',async()=>{
+  const input=await temporaryInput();
+  execFileSync('mkfifo',[path.join(input,'one','pipe')]);
+  const {factory}=fakeSandbox();
+  await expect(isolatedScan(input,{env:productionEnv,sandboxFactory:factory})).rejects.toThrow('Unsupported parser input.');
+  expect(factory).not.toHaveBeenCalled();
+ });
+
+ it('rejects input over the 80 MiB staging budget before any sandbox is created',async()=>{
+  const input=await temporaryInput();
+  // Sparse: the declared size is what the budget checks, so no disk is spent.
+  const large=path.join(input,'large.bin');
+  await writeFile(large,'');
+  await truncate(large,80*1024*1024+1);
+  const {factory}=fakeSandbox();
+  await expect(isolatedScan(input,{env:productionEnv,sandboxFactory:factory})).rejects.toThrow('staging budget');
+  expect(factory).not.toHaveBeenCalled();
+ });
+
+ it('re-checks staged input inside the adapter, uploads nothing and stops the sandbox',async()=>{
+  const linked=await temporaryInput();
+  await symlink('/etc/passwd',path.join(linked,'passwd'));
+  const first=fakeSandbox();
+  await expect(runVercelSandboxScanner(linked,{env:configuredEnv,factory:first.factory})).rejects.toThrow('Unsupported parser input.');
+  expect(first.state.uploads).toEqual([]);
+  expect(first.state.runs).toBe(0);
+  expect(first.state.stops).toBe(1);
+
+  const oversized=await temporaryInput();
+  await writeFile(path.join(oversized,'large.bin'),'');
+  await truncate(path.join(oversized,'large.bin'),80*1024*1024+1);
+  const second=fakeSandbox();
+  await expect(runVercelSandboxScanner(oversized,{env:configuredEnv,factory:second.factory})).rejects.toThrow('staging budget');
+  expect(second.state.uploads).toEqual([]);
+  expect(second.state.stops).toBe(1);
+ });
+});
+
+describe('Vercel Sandbox session deadline',()=>{
+ afterEach(()=>{vi.useRealTimers();});
+
+ it('aborts a hung scanner at the session deadline without reading a report and still stops the sandbox',async()=>{
+  const input=await temporaryInput();
+  vi.useFakeTimers({toFake:['setTimeout','clearTimeout']});
+  const {state,factory}=fakeSandbox({hang:true});
+  const outcome=expect(runVercelSandboxScanner(input,{env:configuredEnv,factory})).rejects.toThrow();
+  await vi.waitFor(()=>expect(state.runs).toBe(1));
+  await vi.advanceTimersByTimeAsync(135_000);
+  await outcome;
+  expect(state.reads).toBe(0);
+  expect(state.stops).toBe(1);
  });
 });
