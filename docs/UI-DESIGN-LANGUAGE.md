@@ -87,7 +87,12 @@ role help and validation belong below the field row, with an accessible associat
   next useful action; retry/error, insufficient role, expired coverage and stale evidence remain distinct.
   An alert response never becomes proof of a technical fix.
 - **Motion:** retain the short stationary search fade, reduced-motion behavior and restrained control
-  feedback. No new zooming panels or decorative entrance motion.
+  feedback. Owner direction, 5 October 2026, adds one brand motion and nothing else, as vanilla
+  canvas code in `src/components/motion`: while Watch stages load, particles draw a lighthouse whose
+  beam sweeps; when ready, each particle arcs out through a loose swarm and settles into the
+  NoSpoilers mark in its own colours, then the overlay fades. It carries no product state, pauses
+  when the tab is hidden and shows static frames under reduced motion. No particle flights,
+  zooming panels or other decorative entrance motion.
 
 ## Verification and limits
 
