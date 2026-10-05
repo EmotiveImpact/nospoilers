@@ -3,6 +3,8 @@ import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/re
 import { ArrowRight, Bell, Box, FileCheck2, PanelTop, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "@/nav.ts";
+import { flyToSurface, traceSurface } from "@/components/motion/surface-flight";
+import "@/components/motion/surface-flight.css";
 import { ListPagination } from '@/components/watch/ListPagination';
 import type { PageSize } from '@/watch/pagination';
 import {
@@ -53,6 +55,16 @@ function OpenCommandPalette({
   const offset = page * pageSize;
   const visibleItems = items.slice(offset, offset + pageSize);
   const activeOptionRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Particles carry the search trigger's position into the opened panel.
+    const frame = requestAnimationFrame(() => {
+      const from = document.querySelector('[data-watch-search-trigger]')?.getBoundingClientRect() ?? null;
+      flyToSurface(from, panelRef.current?.getBoundingClientRect() ?? null);
+      traceSurface(panelRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   useEffect(() => {
     if (open) activeOptionRef.current?.scrollIntoView?.({ block: "nearest" });
   }, [open, active?.id]);
@@ -95,7 +107,7 @@ function OpenCommandPalette({
       <DialogBackdrop className="fixed inset-0 bg-black/60 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto px-4 pt-[12vh]">
         <DialogPanel className="w-full max-w-[520px]">
-        <motion.div className="watch-search-panel" initial={reduceMotion?false:{opacity:0}} animate={{opacity:1}} transition={{duration:reduceMotion?0:.12,ease:'easeOut'}}>
+        <motion.div ref={panelRef} className="watch-search-panel" initial={reduceMotion?false:{opacity:0}} animate={{opacity:1}} transition={{duration:reduceMotion?0:.12,ease:'easeOut'}}>
           <DialogTitle className="sr-only">Search or run a command</DialogTitle>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-dim" aria-hidden />
