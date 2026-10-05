@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /**
  * Email/password product sign-in through Neon Managed Better Auth.
@@ -150,3 +150,29 @@ export function emailAccountName(issuer: string, subject: string, name: string):
 }
 
 export const EMAIL_AUTH_LIMITS = { name: 80, email: 254, passwordMin: 8, passwordMax: 128, token: 512 } as const;
+
+/**
+ * A signed, opaque hint carried in the reset link's path. Better Auth's reset
+ * call does not say whose password changed, so the server uses the hinted
+ * address and the new password to sign in once and revoke that user's older
+ * NoSpoilers sessions. Only this server can mint a hint.
+ */
+export function emailResetHint(secret: string, email: string): string {
+  const payload = Buffer.from(email.trim().toLowerCase()).toString("base64url");
+  return `${payload}.${resetHintMac(secret, payload)}`;
+}
+
+export function readEmailResetHint(secret: string, hint: unknown): string | null {
+  if (typeof hint !== "string" || hint.length > 512) return null;
+  const match = /^([A-Za-z0-9_-]+)\.([0-9a-f]{64})$/.exec(hint);
+  if (!match) return null;
+  const expected = Buffer.from(resetHintMac(secret, match[1]!));
+  const given = Buffer.from(match[2]!);
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+  const email = Buffer.from(match[1]!, "base64url").toString("utf8");
+  return email.length <= EMAIL_AUTH_LIMITS.email ? email : null;
+}
+
+function resetHintMac(secret: string, payload: string): string {
+  return createHmac("sha256", secret).update(`nospoilers-email-reset-hint\n${payload}`).digest("hex");
+}

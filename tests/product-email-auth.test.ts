@@ -3,7 +3,7 @@ import {createApp} from '../src/server/app.ts';
 import {loadConfig} from '../src/server/config.ts';
 import {skippedGithubWrites,type GithubPort} from '../src/server/github.ts';
 import {
- createBetterAuthHttpProvider,emailAccountName,emailAuthConfig,emailAuthConfigurationProblems,
+ createBetterAuthHttpProvider,emailAccountName,emailAuthConfig,emailAuthConfigurationProblems,emailResetHint,readEmailResetHint,
  type EmailAuthProvider,type EmailAuthResult,type EmailAuthUser,
 } from '../src/server/product-email-auth.ts';
 import {migrate,openSql} from '../src/server/sql.ts';
@@ -113,7 +113,14 @@ function fakeProvider(accounts:Accounts){
    return {ok:true,value:account.user};
   },
   async requestPasswordReset(input){calls.push({method:'requestPasswordReset',input});return {ok:true,value:null};},
-  async resetPassword(input){calls.push({method:'resetPassword',input});return input.token==='good'?{ok:true,value:null}:{ok:false,reason:'invalid_token'};},
+  async resetPassword(input){
+   calls.push({method:'resetPassword',input});
+   // `good:<email>` stands in for a real emailed token for that account.
+   const [kind,email]=input.token.split(':');
+   if(kind!=='good')return {ok:false,reason:'invalid_token'};
+   if(email&&accounts[email])accounts[email].password=input.newPassword;
+   return {ok:true,value:null};
+  },
  };
  return {provider,calls};
 }
@@ -249,9 +256,38 @@ describe('email sign-in routes',()=>{
    const response=await post(app,'/api/auth/email/password-reset',{email:'nobody@example.com'});
    expect(response.status).toBe(202);
    expect(await response.json()).toEqual({status:'sent'});
-   expect(calls[0]).toEqual({method:'requestPasswordReset',input:{email:'nobody@example.com',redirectTo:`${APP}/watch/reset-password`}});
+   expect(calls[0]).toEqual({method:'requestPasswordReset',input:{email:'nobody@example.com',redirectTo:`${APP}/watch/reset-password/${emailResetHint('session-secret-for-tests','nobody@example.com')}`}});
    expect((await post(app,'/api/auth/email/reset-password',{token:'bad',password:'longenough'})).status).toBe(400);
    expect(await (await post(app,'/api/auth/email/reset-password',{token:'good',password:'longenough'})).json()).toEqual({status:'reset'});
+  });
+ });
+ it('signs out every older session when a password is reset, then signs the person in',async()=>{
+  await withApp(async({app,accounts,store})=>{
+   accounts['ada@example.com']={password:'old-password',user:{id:'sub-1',name:'Ada',emailVerified:true}};
+   const stolen=sessionCookie(await post(app,'/api/auth/email/sign-in',{email:'ada@example.com',password:'old-password'}));
+   expect((await (await app.request(`${APP}/api/me`,{headers:{cookie:stolen}})).json() as {user:unknown}).user).not.toBeNull();
+
+   await post(app,'/api/auth/email/password-reset',{email:'Ada@example.com'});
+   const hint=emailResetHint('session-secret-for-tests','ada@example.com');
+   const reset=await post(app,'/api/auth/email/reset-password',{token:'good:ada@example.com',password:'new-password',hint});
+   expect(await reset.json()).toEqual({ok:true,redirect:'/watch'});
+   const fresh=sessionCookie(reset);
+
+   expect((await (await app.request(`${APP}/api/me`,{headers:{cookie:stolen}})).json() as {user:unknown}).user).toBeNull();
+   expect((await (await app.request(`${APP}/api/me`,{headers:{cookie:fresh}})).json() as {user:unknown}).user).not.toBeNull();
+   const {rows}=await store.sql.query('SELECT id FROM sessions');
+   expect(rows).toHaveLength(1);
+  });
+ });
+
+ it('ignores a forged or missing reset hint and still reports the reset',async()=>{
+  await withApp(async({app,accounts,calls})=>{
+   accounts['ada@example.com']={password:'old-password',user:{id:'sub-1',name:'Ada',emailVerified:true}};
+   expect(readEmailResetHint('session-secret-for-tests',emailResetHint('another-secret','ada@example.com'))).toBeNull();
+   const forged=await post(app,'/api/auth/email/reset-password',{token:'good:ada@example.com',password:'new-password',hint:emailResetHint('another-secret','ada@example.com')});
+   expect(await forged.json()).toEqual({status:'reset'});
+   expect(forged.headers.get('set-cookie')).toBeNull();
+   expect(calls.filter(call=>call.method==='signIn')).toHaveLength(0);
   });
  });
 });

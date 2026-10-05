@@ -15,7 +15,10 @@ function mockFetch(status:number,body:unknown){
 
 it('reads verification and reset redirects without trusting a reset error as a token',()=>{
  expect(emailAuthEntry('/watch','?verified=1')).toMatchObject({mode:'sign-in',notice:expect.stringContaining('Email verified')});
- expect(emailAuthEntry('/watch/reset-password','?token=abc')).toEqual({mode:'reset',token:'abc',notice:''});
+ expect(emailAuthEntry('/watch/reset-password','?token=abc')).toEqual({mode:'reset',token:'abc',hint:'',notice:''});
+ const hint=`YWRhQGV4YW1wbGUuY29t.${'a'.repeat(64)}`;
+ expect(emailAuthEntry(`/watch/reset-password/${hint}`,'?token=abc')).toEqual({mode:'reset',token:'abc',hint,notice:''});
+ expect(emailAuthEntry('/watch/reset-password/not-a-hint','?token=abc').mode).toBe('sign-in');
  expect(emailAuthEntry('/watch/reset-password/','?token=abc&error=INVALID_TOKEN')).toMatchObject({mode:'forgot',token:''});
  expect(emailAuthEntry('/watch/reset-password','')).toMatchObject({mode:'forgot',notice:expect.stringContaining('expired')});
 });

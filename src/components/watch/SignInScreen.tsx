@@ -112,11 +112,15 @@ export function SignInScreen({
         if (result.ok) { setMode("sent"); return }
         setError(typeof result.data.error === "string" ? result.data.error : "The reset email could not be requested.")
       } else if (mode === "reset") {
-        const result = await post("/api/auth/email/reset-password", { token: entry.token, password })
+        const result = await post("/api/auth/email/reset-password", { token: entry.token, password, ...(entry.hint ? { hint: entry.hint } : {}) })
         if (result.ok) {
           // Drop the single-use token from the address bar and history.
           window.history.replaceState({}, "", "/watch")
           setPassword("")
+          if (typeof result.data.redirect === "string" && result.data.redirect.startsWith("/")) {
+            window.location.assign(result.data.redirect)
+            return
+          }
           setMode("reset-done")
           return
         }

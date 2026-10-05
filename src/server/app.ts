@@ -245,6 +245,8 @@ import {
   type EmailAuthFailure,
   type EmailAuthProvider,
   type EmailAuthUser,
+  emailResetHint,
+  readEmailResetHint,
 } from './product-email-auth.ts';
 import {
   parseReleaseScanMeta,
@@ -2259,7 +2261,7 @@ export function createApp(deps: AppDeps): Hono {
       ? value : null;
   }
 
-  async function startEmailSession(c: Context, emailAuth: NonNullable<AppDeps["emailAuth"]>, user: EmailAuthUser): Promise<Response> {
+  async function startEmailSession(c: Context, emailAuth: NonNullable<AppDeps["emailAuth"]>, user: EmailAuthUser, options: { revokeOthers?: boolean } = {}): Promise<Response> {
     // Sign-in is refused until the provider has proved control of the address.
     if (!user.emailVerified) return c.json({ error: emailAuthMessages.email_unverified.error, code: "email_unverified" }, 403);
     const identity = await resolveTrustedProductIdentity(deps.store, {
@@ -2267,6 +2269,8 @@ export function createApp(deps: AppDeps): Hono {
       subject: user.id,
       login: emailAccountName(emailAuth.issuer, user.id, user.name),
     });
+    // After a password reset every older session may belong to whoever prompted the reset.
+    if (options.revokeOthers) await deps.store.deleteUserSessions(identity.userId);
     const sessionId = await deps.store.createSession(identity.userId);
     setCookie(c, cookieName, signSession(deps.config.sessionSecret, sessionId),
       cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 30 * 24 * 60 * 60));
@@ -2313,7 +2317,7 @@ export function createApp(deps: AppDeps): Hono {
     const email = emailField(request.body.email);
     if (!email) return c.json({ error: "Enter a valid email address." }, 400);
     const origin = authOrigin(c.req.url, deps.config.appBaseUrl);
-    const result = await request.emailAuth.provider.requestPasswordReset({ email, redirectTo: `${origin}/watch/reset-password` });
+    const result = await request.emailAuth.provider.requestPasswordReset({ email, redirectTo: `${origin}/watch/reset-password/${emailResetHint(deps.config.sessionSecret, email)}` });
     if (!result.ok && result.reason === "unavailable") return c.json({ error: emailAuthMessages.unavailable.error }, 503);
     // Same answer whether or not the address has an account.
     return c.json({ status: "sent" }, 202);
@@ -2331,6 +2335,11 @@ export function createApp(deps: AppDeps): Hono {
       const message = emailAuthMessages[result.reason];
       return c.json({ error: message.error, code: result.reason }, message.status);
     }
+    // The reset response does not name the account. Sign in once with the hinted address
+    // and the new password to find it, revoke its older sessions and start a fresh one.
+    const email = readEmailResetHint(deps.config.sessionSecret, request.body.hint);
+    const signedIn = email ? await request.emailAuth.provider.signIn({ email, password }) : null;
+    if (signedIn?.ok && signedIn.value.emailVerified) return startEmailSession(c, request.emailAuth, signedIn.value, { revokeOthers: true });
     return c.json({ status: "reset" });
   });
 
