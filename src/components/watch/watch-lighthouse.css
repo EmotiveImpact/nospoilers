@@ -1,7 +1,7 @@
 /* Watch opening: a particle lighthouse sweeps while stages load, then morphs through a swarm into the mark. */
-.watch-lighthouse{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;overflow:hidden;background:#080a0d;color:#c8cbd3;pointer-events:none;transition:opacity .25s .95s}
+.watch-lighthouse{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;overflow:hidden;background:#080a0d;color:#c8cbd3;pointer-events:none;transition:none}
 .watch-lighthouse>span{font-size:11px;letter-spacing:.025em;color:#858b96;margin-top:0;transition:opacity .2s}
 .watch-lighthouse-field{display:block;width:min(360px,84vw);height:240px}
-.watch-lighthouse.is-ready{opacity:0}
+.watch-lighthouse.is-ready{opacity:0;transition:opacity .25s .95s}
 .watch-lighthouse.is-ready>span{opacity:0}
-@media(prefers-reduced-motion:reduce){.watch-lighthouse,.watch-lighthouse>span{transition:none}.watch-lighthouse.is-ready{opacity:0}}
+@media(prefers-reduced-motion:reduce){.watch-lighthouse,.watch-lighthouse.is-ready,.watch-lighthouse>span{transition:none}}
