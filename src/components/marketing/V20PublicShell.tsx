@@ -24,11 +24,8 @@ export function V20PublicShell({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const openApp = () => {
-    if (me?.user) navigate("/watch")
-    else if (me?.githubApp) window.location.assign("/api/auth/github")
-    else navigate("/watch")
-  }
+  // Watch shows the sign-in screen (GitHub or email) to visitors and the workspace to members.
+  const openApp = () => navigate("/watch")
 
   return (
     <div className="v20-home v20-public-shell" id="top">

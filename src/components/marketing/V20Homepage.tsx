@@ -86,6 +86,7 @@ export function V20Homepage() {
     window.addEventListener('pageshow', refresh)
     return () => { cancelled = true; window.removeEventListener('focus', refresh); window.removeEventListener('pageshow', refresh) }
   }, [])
-  const openApp = () => { if (me?.user) navigate("/watch"); else if (me?.githubApp) window.location.assign("/api/auth/github"); else navigate("/watch") }
+  // Watch shows the sign-in screen (GitHub or email) to visitors and the workspace to members.
+  const openApp = () => navigate("/watch")
   return <div className="v20-home homepage-d-shell" id="top"><MarketingNav me={me} openApp={openApp} /><HomepageD scanPath={me?.user ? "/watch/scan" : "/scan"} /><MarketingFooter /></div>
 }
