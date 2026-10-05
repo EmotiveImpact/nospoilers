@@ -1,3 +1,9 @@
+## 5 October 2026 — Hostile sandbox input regression coverage
+
+Test-only increment; no runtime source changed. `tests/vercel-sandbox-scanner.test.ts` now proves that a symlink, a FIFO and input over the 80 MiB staging budget are rejected by `isolatedScan` before any Vercel Sandbox is created, that the adapter's own re-check uploads nothing and still stops the sandbox, and that a hung scanner is aborted at the 135-second session deadline without reading a report. New `tests/hostile-archive-entries.test.ts` feeds a hand-built tar containing character-device, block-device, FIFO, escaping symlink and escaping hardlink entries: only the ordinary file reaches the manifest and both links raise LNK-001.
+
+Verification on this branch: 16/16 focused tests across the two files; `npm run typecheck`, oxlint on the changed tests and `git diff --check` passed; full local regression `NOSPOILERS_INTERNAL_LOCAL_SCAN=1 npm test` passed **1,828/1,828 tests across 288 files**. These are source tests with a fake sandbox. Live special-file/oversize acceptance against the deployed Railway worker, and worker-interruption cleanup (handled in a separate PR), remain open.
+
 ## 3 October 2026 — Fix-brief copy button feedback
 
 Runtime **9f4261f** adds the copy icon to the Alerts fix-brief dialog button and changes its label from Copy brief to Copied only after the clipboard write succeeds. Success no longer creates a paragraph beneath the button. Reopening resets the label; rejected writes and an unavailable clipboard API retain the manual-copy fallback. The button label provides a polite announcement and a stable minimum width. Brief content, evidence and alert response state are unchanged.
