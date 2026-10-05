@@ -92,8 +92,8 @@ role help and validation belong below the field row, with an accessible associat
   NoSpoilers mark as particles that drift while stages load and gather into the mark when ready;
   opening a release preview or search sends a short particle flight from the control used to the
   surface's edges while its corners trace in and fade. They carry no product state, remove their own
-  elements, pause when the tab is hidden and are disabled by reduced motion. No zooming panels.
-  feedback. No new zooming panels or decorative entrance motion.
+  elements, pause when the tab is hidden and are disabled by reduced motion. No zooming panels or
+  other decorative entrance motion.
 
 ## Verification and limits
 
