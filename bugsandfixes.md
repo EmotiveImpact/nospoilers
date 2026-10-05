@@ -6,7 +6,7 @@ This is the short operational defect register. Product status lives in [docs/STA
 
 | Issue | Current state | Next action |
 | --- | --- | --- |
-| Normal customer login is still GitHub-only | Provider-neutral database foundation is complete; Neon Auth is selected but not active | Verify the new Neon account email, enable Managed Better Auth, configure trusted domains, then connect and test the sign-in UI |
+| Normal customer login is still GitHub-only | Provider-neutral database foundation is complete. Email sign-up, sign-in and password reset screens and server routes are built and test-covered but switched off (5 October 2026); Neon Auth is selected but not active | Verify the new Neon account email, enable Managed Better Auth, add the app origin as a trusted domain, set `NOSPOILERS_EMAIL_AUTH` and `NEON_AUTH_BASE_URL`, then prove sign-up, verification, sign-in and reset live |
 | Hosted customer journey is not accepted end to end | GitHub webhook transport is repaired and the secure existing-personal-installation reconnect is implemented | Deploy, attach installation 158159401 to the production workspace, then prove queued scan → saved result |
 | Sandbox adversarial acceptance is incomplete | Clean, fail-closed encrypted input, denied egress, timeout and stopped cleanup passed live. Graceful worker-interruption cleanup is implemented and test-covered (5 October 2026), not yet exercised live | Complete special-file/oversize acceptance and one live Railway redeploy during a running scan |
 | GitHub Actions is externally blocked | The earlier run did not start because of the account payment/spending limit | Resolve the GitHub account block and rerun CI on the current commit |

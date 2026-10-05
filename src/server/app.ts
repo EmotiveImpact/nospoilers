@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { parsePageSize } from '../watch/pagination.ts';
 import { assessSavedRelease, assessSavedUpload } from './release-assessment.ts';
 import {sourceMonitoring} from './source-monitoring.ts';
@@ -240,6 +240,13 @@ import {
   resolveTrustedProductIdentity,
 } from './product-identity.ts';
 import {
+  EMAIL_AUTH_LIMITS,
+  emailAccountName,
+  type EmailAuthFailure,
+  type EmailAuthProvider,
+  type EmailAuthUser,
+} from './product-email-auth.ts';
+import {
   parseReleaseScanMeta,
   ReleaseLedgerError,
 } from "./release-ledger.ts";
@@ -412,6 +419,8 @@ export type AppDeps = {
   webhookLookup?: WebhookHostLookup;
   notifier?: AlertNotifier;
   stripe?: StripePort;
+  /** Email/password product sign-in. Absent means GitHub-only sign-in. */
+  emailAuth?: { issuer: string; provider: EmailAuthProvider } | null;
 };
 
 function jsonObj(value: unknown): Record<string, unknown> {
@@ -2207,6 +2216,124 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ ok: true });
   });
 
+  const emailAuthMessages: Record<EmailAuthFailure, { status: 400 | 401 | 403 | 409 | 503; error: string }> = {
+    invalid_credentials: { status: 401, error: "That email and password do not match an account." },
+    email_unverified: { status: 403, error: "Verify your email address first. Check your inbox for the link." },
+    account_exists: { status: 409, error: "An account already uses this email. Sign in or reset your password." },
+    weak_password: { status: 400, error: `Use a password of ${EMAIL_AUTH_LIMITS.passwordMin} to ${EMAIL_AUTH_LIMITS.passwordMax} characters.` },
+    invalid_input: { status: 400, error: "Check the details you entered and try again." },
+    invalid_token: { status: 400, error: "This reset link is invalid or has expired. Request a new one." },
+    unavailable: { status: 503, error: "Email sign-in is temporarily unavailable. Try again shortly." },
+  };
+
+  async function emailAuthRequest(c: Context, scope: string): Promise<
+    { response: Response } | { body: Record<string, unknown>; emailAuth: NonNullable<AppDeps["emailAuth"]> }
+  > {
+    const emailAuth = deps.emailAuth;
+    if (!emailAuth) return { response: c.json({ error: "Email sign-in is not enabled on this host." }, 404) };
+    // JSON only: a cross-site form cannot submit it without a CORS preflight.
+    if (!(c.req.header("content-type") ?? "").toLowerCase().startsWith("application/json"))
+      return { response: c.json({ error: "Send this request as JSON." }, 415) };
+    const limited = await rateLimited(c, authLimiter, `email-${scope}:${requestIp(c)}`, deps.config.authRateWindowMs,
+      "Too many sign-in attempts from this address. Wait and try again.");
+    if (limited) return { response: limited };
+    let body: Record<string, unknown>;
+    try { body = jsonObj(await c.req.json()); } catch { body = {}; }
+    if (typeof body.email === "string") {
+      // A second bucket per address so one account cannot be ground at from many IPs.
+      const emailKey = createHash("sha256").update(body.email.trim().toLowerCase()).digest("hex");
+      const perEmail = await rateLimited(c, authLimiter, `email-${scope}:account:${emailKey}`, deps.config.authRateWindowMs,
+        "Too many attempts for this account. Wait and try again.");
+      if (perEmail) return { response: perEmail };
+    }
+    return { body, emailAuth };
+  }
+
+  function emailField(value: unknown): string | null {
+    const email = typeof value === "string" ? value.trim() : "";
+    return email.length >= 3 && email.length <= EMAIL_AUTH_LIMITS.email && /^[^\s@]+@[^\s@]+$/.test(email) ? email : null;
+  }
+
+  function passwordField(value: unknown): string | null {
+    return typeof value === "string" && value.length >= EMAIL_AUTH_LIMITS.passwordMin && value.length <= EMAIL_AUTH_LIMITS.passwordMax
+      ? value : null;
+  }
+
+  async function startEmailSession(c: Context, emailAuth: NonNullable<AppDeps["emailAuth"]>, user: EmailAuthUser): Promise<Response> {
+    // Sign-in is refused until the provider has proved control of the address.
+    if (!user.emailVerified) return c.json({ error: emailAuthMessages.email_unverified.error, code: "email_unverified" }, 403);
+    const identity = await resolveTrustedProductIdentity(deps.store, {
+      issuer: emailAuth.issuer,
+      subject: user.id,
+      login: emailAccountName(emailAuth.issuer, user.id, user.name),
+    });
+    const sessionId = await deps.store.createSession(identity.userId);
+    setCookie(c, cookieName, signSession(deps.config.sessionSecret, sessionId),
+      cookieSettings(authOrigin(c.req.url, deps.config.appBaseUrl), 30 * 24 * 60 * 60));
+    return c.json({ ok: true, redirect: authenticatedLanding(c) });
+  }
+
+  app.post("/api/auth/email/sign-up", async (c) => {
+    const request = await emailAuthRequest(c, "sign-up");
+    if ("response" in request) return request.response;
+    const name = typeof request.body.name === "string" ? request.body.name.trim() : "";
+    const email = emailField(request.body.email);
+    const password = passwordField(request.body.password);
+    if (!name || name.length > EMAIL_AUTH_LIMITS.name) return c.json({ error: "Enter your name." }, 400);
+    if (!email) return c.json({ error: "Enter a valid email address." }, 400);
+    if (!password) return c.json({ error: emailAuthMessages.weak_password.error }, 400);
+    const origin = authOrigin(c.req.url, deps.config.appBaseUrl);
+    const result = await request.emailAuth.provider.signUp({ name, email, password, callbackURL: `${origin}/watch?verified=1` });
+    if (!result.ok) {
+      const message = emailAuthMessages[result.reason];
+      return c.json({ error: message.error, code: result.reason }, message.status);
+    }
+    if (!result.value.emailVerified) return c.json({ status: "verify_email" }, 202);
+    return startEmailSession(c, request.emailAuth, result.value);
+  });
+
+  app.post("/api/auth/email/sign-in", async (c) => {
+    const request = await emailAuthRequest(c, "sign-in");
+    if ("response" in request) return request.response;
+    const email = emailField(request.body.email);
+    const password = typeof request.body.password === "string" && request.body.password.length <= EMAIL_AUTH_LIMITS.passwordMax
+      ? request.body.password : "";
+    if (!email || !password) return c.json({ error: "Enter your email address and password." }, 400);
+    const result = await request.emailAuth.provider.signIn({ email, password });
+    if (!result.ok) {
+      const message = emailAuthMessages[result.reason];
+      return c.json({ error: message.error, code: result.reason }, message.status);
+    }
+    return startEmailSession(c, request.emailAuth, result.value);
+  });
+
+  app.post("/api/auth/email/password-reset", async (c) => {
+    const request = await emailAuthRequest(c, "reset");
+    if ("response" in request) return request.response;
+    const email = emailField(request.body.email);
+    if (!email) return c.json({ error: "Enter a valid email address." }, 400);
+    const origin = authOrigin(c.req.url, deps.config.appBaseUrl);
+    const result = await request.emailAuth.provider.requestPasswordReset({ email, redirectTo: `${origin}/watch/reset-password` });
+    if (!result.ok && result.reason === "unavailable") return c.json({ error: emailAuthMessages.unavailable.error }, 503);
+    // Same answer whether or not the address has an account.
+    return c.json({ status: "sent" }, 202);
+  });
+
+  app.post("/api/auth/email/reset-password", async (c) => {
+    const request = await emailAuthRequest(c, "reset");
+    if ("response" in request) return request.response;
+    const token = typeof request.body.token === "string" ? request.body.token.trim() : "";
+    const password = passwordField(request.body.password);
+    if (!token || token.length > EMAIL_AUTH_LIMITS.token) return c.json({ error: emailAuthMessages.invalid_token.error }, 400);
+    if (!password) return c.json({ error: emailAuthMessages.weak_password.error }, 400);
+    const result = await request.emailAuth.provider.resetPassword({ token, newPassword: password });
+    if (!result.ok) {
+      const message = emailAuthMessages[result.reason];
+      return c.json({ error: message.error, code: result.reason }, message.status);
+    }
+    return c.json({ status: "reset" });
+  });
+
   app.get("/api/scan/pending", async c => {
     const user=await currentUser(c);if(!user)return c.json({error:"Sign in first."},401);
     const id=readSignedSession(deps.config.sessionSecret,getCookie(c,pendingScanCookieName));
@@ -2396,6 +2523,7 @@ export function createApp(deps: AppDeps): Hono {
         user: null,
         githubApp: githubAppConfigured(deps.config),
         developmentLogin: developmentLoginEnabled(),
+        emailAuth: Boolean(deps.emailAuth),
         stripe: stripeConfigured(deps.config),
         resend: resendConfigured(deps.config),
       });

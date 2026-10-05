@@ -35,6 +35,7 @@ export type Me = {
   }[];
   githubApp: boolean;
   developmentLogin?: boolean;
+  emailAuth?: boolean;
   stripe?: boolean;
   resend?: boolean;
   installUrl?: string;

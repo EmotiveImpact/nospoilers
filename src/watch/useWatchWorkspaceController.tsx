@@ -92,6 +92,7 @@ import {
   AlertDeskItem,
 } from "@/watch/WatchControllerSupport";
 import { receiptStatusMark } from "@/watch/receipt-status";
+import { EmailSignIn } from "@/components/watch/EmailSignIn.tsx";
 import {
   destinationKindLabel,
   routeMinSeverityLabel,
@@ -1094,9 +1095,11 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
             Sign in and get to work.
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-            Watch contains real repository, release, website, package, and alert data. Sign in with
-            GitHub to open your workspace and start the real 5-day billing trial. There is no sample
-            workspace or preview tenant.
+            Watch contains real repository, release, website, package, and alert data.{" "}
+            {me.data.emailAuth
+              ? "Sign in with email or GitHub to open your workspace and start the real 5-day billing trial. You can connect GitHub to a workspace later."
+              : "Sign in with GitHub to open your workspace and start the real 5-day billing trial."}{" "}
+            There is no sample workspace or preview tenant.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
             {githubApp ? (
@@ -1108,7 +1111,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
                 <Button as="a" href="/api/auth/development" size="lg">
                   Open local review workspace
                 </Button>
-              ) : (
+              ) : me.data.emailAuth ? null : (
                 <Button
                   type="button"
                   size="lg"
@@ -1123,6 +1126,7 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
               Back to product
             </Button>
           </div>
+          {me.data.emailAuth ? <EmailSignIn path={path} search={search} /> : null}
         </div>
       </main>
     );

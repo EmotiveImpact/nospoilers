@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Added email sign-up, sign-in, forgotten-password and reset-password screens to Watch for Neon Managed Better Auth. They stay hidden until `NOSPOILERS_EMAIL_AUTH=neon-better-auth` and `NEON_AUTH_BASE_URL` are set. Sessions require a verified email, accounts are keyed by the Auth user ID rather than email, and email account names cannot collide with GitHub logins.
+
 - Worker shutdown now interrupts in-flight scans instead of waiting for them. Each Vercel Sandbox (or local scanner process) is stopped, and the job returns to the queue without spending a retry attempt. Interrupted website checks no longer publish an inconclusive alert, interrupted uploads stay resumable instead of failing, and prospect scans are not marked failed.
 
 - Alerts fix-brief copying now shows a copy icon and changes the button to Copied after success, without adding text beneath it. Clipboard failures retain manual-copy guidance.
