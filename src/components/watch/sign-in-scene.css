@@ -1,0 +1,18 @@
+/* Signed-out Watch: a lighthouse sweeping a night sea. Decorative only. */
+.sign-in-scene{position:relative;overflow:hidden;isolation:isolate;background:radial-gradient(120% 80% at 30% 100%,#14171d 0%,#0b0d11 55%,#07080b 100%);color:#c8cbd3}
+.sign-in-scene-stars{position:absolute;inset:0 0 45% 0;background-image:radial-gradient(1px 1px at 12% 18%,#ffffff55,transparent),radial-gradient(1px 1px at 28% 8%,#ffffff40,transparent),radial-gradient(1px 1px at 44% 26%,#ffffff35,transparent),radial-gradient(1px 1px at 63% 12%,#ffffff50,transparent),radial-gradient(1px 1px at 78% 30%,#ffffff30,transparent),radial-gradient(1px 1px at 88% 6%,#ffffff45,transparent),radial-gradient(1px 1px at 6% 40%,#ffffff25,transparent),radial-gradient(1px 1px at 52% 44%,#ffffff20,transparent),radial-gradient(1.5px 1.5px at 70% 20%,#ffffff60,transparent);animation:sign-in-twinkle 6s ease-in-out infinite alternate}
+.sign-in-scene-sea{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(180deg,#0d1015 0%,#090b0e 100%);border-top:1px solid #ffffff12}
+.sign-in-scene-sea::before,.sign-in-scene-sea::after{content:"";position:absolute;left:-10%;right:-10%;height:1px;background:repeating-linear-gradient(90deg,#ffffff14 0 40px,transparent 40px 90px);animation:sign-in-drift 14s linear infinite}
+.sign-in-scene-sea::before{top:22%}
+.sign-in-scene-sea::after{top:52%;opacity:.6;animation-duration:22s;animation-direction:reverse}
+.sign-in-scene-light{position:absolute;left:24%;bottom:calc(34% + 168px);width:0;height:0;z-index:2}
+.sign-in-scene-beam{position:absolute;left:0;top:0;width:min(78vw,900px);height:150px;transform-origin:0 50%;transform:translateY(-50%) rotate(-8deg);background:linear-gradient(90deg,#ff31583d 0%,#ff315814 45%,transparent 100%);clip-path:polygon(0 50%,100% 0,100% 100%);filter:blur(2px);animation:sign-in-sweep 7s ease-in-out infinite alternate}
+.sign-in-scene-glow{position:absolute;left:0;top:0;width:180px;height:180px;transform:translate(-50%,-50%);background:radial-gradient(circle,#ff31584d 0%,#ff315814 35%,transparent 70%);animation:sign-in-pulse 3.5s ease-in-out infinite}
+.sign-in-scene-tower{position:absolute;left:24%;bottom:calc(34% - 6px);width:132px;height:220px;transform:translateX(-50%);z-index:1;color:#c8cbd3}
+.sign-in-scene-reflection{position:absolute;left:24%;bottom:0;width:120px;height:34%;transform:translateX(-50%);background:linear-gradient(180deg,#ff315820,transparent 70%);filter:blur(10px);animation:sign-in-pulse 3.5s ease-in-out infinite}
+.sign-in-scene-copy{position:relative;z-index:3}
+@keyframes sign-in-sweep{from{transform:translateY(-50%) rotate(-16deg) scaleX(1)}to{transform:translateY(-50%) rotate(6deg) scaleX(.7)}}
+@keyframes sign-in-pulse{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes sign-in-twinkle{from{opacity:.6}to{opacity:1}}
+@keyframes sign-in-drift{to{transform:translateX(90px)}}
+@media(prefers-reduced-motion:reduce){.sign-in-scene-beam,.sign-in-scene-glow,.sign-in-scene-stars,.sign-in-scene-reflection,.sign-in-scene-sea::before,.sign-in-scene-sea::after{animation:none}}

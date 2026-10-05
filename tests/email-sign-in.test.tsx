@@ -2,7 +2,7 @@
 import {cleanup,render,screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {afterEach,expect,it,vi} from 'vitest';
-import {EmailSignIn} from '../src/components/watch/EmailSignIn';
+import {SignInScreen} from '../src/components/watch/SignInScreen';
 import {emailAuthEntry} from '../src/watch/email-auth-entry';
 
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
@@ -25,7 +25,7 @@ it('signs in as JSON and follows only a same-site redirect',async()=>{
  const fetch=mockFetch(200,{ok:true,redirect:'/watch'});
  const assign=vi.fn();
  vi.stubGlobal('location',{...window.location,assign});
- render(<EmailSignIn path="/watch" search=""/>);
+ render(<SignInScreen path="/watch" search="" githubApp emailAuth/>);
  await user.type(screen.getByLabelText('Email'),'ada@example.com');
  await user.type(screen.getByLabelText('Password'),'analytical');
  await user.click(screen.getByRole('button',{name:'Sign in'}));
@@ -39,7 +39,7 @@ it('signs in as JSON and follows only a same-site redirect',async()=>{
 it('shows the server error as an alert and keeps the person on the form',async()=>{
  const user=userEvent.setup();
  mockFetch(401,{error:'That email and password do not match an account.'});
- render(<EmailSignIn path="/watch" search=""/>);
+ render(<SignInScreen path="/watch" search="" githubApp emailAuth/>);
  await user.type(screen.getByLabelText('Email'),'ada@example.com');
  await user.type(screen.getByLabelText('Password'),'wrong-guess');
  await user.click(screen.getByRole('button',{name:'Sign in'}));
@@ -51,7 +51,7 @@ it('shows the server error as an alert and keeps the person on the form',async()
 it('asks a new account to verify its email before signing in',async()=>{
  const user=userEvent.setup();
  const fetch=mockFetch(202,{status:'verify_email'});
- render(<EmailSignIn path="/watch" search=""/>);
+ render(<SignInScreen path="/watch" search="" githubApp emailAuth/>);
  await user.click(screen.getByRole('button',{name:'Create an account'}));
  await user.type(screen.getByLabelText('Name'),'Ada');
  await user.type(screen.getByLabelText('Email'),'ada@example.com');
@@ -63,14 +63,14 @@ it('asks a new account to verify its email before signing in',async()=>{
  expect(fetch).toHaveBeenCalledWith('/api/auth/email/sign-up',expect.anything());
  expect((await screen.findByRole('status')).textContent).toContain('ada@example.com');
  await user.click(screen.getByRole('button',{name:'Back to sign in'}));
- expect(screen.getByRole('heading',{name:'Sign in with email'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Sign in and get to work.'})).toBeTruthy();
  vi.unstubAllGlobals();
 });
 
 it('requests a reset without revealing whether the account exists',async()=>{
  const user=userEvent.setup();
  mockFetch(202,{status:'sent'});
- render(<EmailSignIn path="/watch" search=""/>);
+ render(<SignInScreen path="/watch" search="" githubApp emailAuth/>);
  await user.click(screen.getByRole('button',{name:'Forgot password?'}));
  expect(screen.queryByLabelText('Password')).toBeNull();
  await user.type(screen.getByLabelText('Email'),'nobody@example.com');
@@ -83,7 +83,7 @@ it('resets the password with the link token and clears it from the address bar',
  const user=userEvent.setup();
  const fetch=mockFetch(200,{status:'reset'});
  const replace=vi.spyOn(window.history,'replaceState');
- render(<EmailSignIn path="/watch/reset-password" search="?token=reset-token"/>);
+ render(<SignInScreen path="/watch/reset-password" search="?token=reset-token" githubApp emailAuth/>);
  expect(screen.queryByLabelText('Email')).toBeNull();
  await user.type(screen.getByLabelText('New password'),'brand-new-pass');
  await user.click(screen.getByRole('button',{name:'Update password'}));
@@ -91,4 +91,32 @@ it('resets the password with the link token and clears it from the address bar',
  expect(replace).toHaveBeenCalledWith({},'','/watch');
  expect((await screen.findByRole('heading',{name:'Password updated'}))).toBeTruthy();
  vi.unstubAllGlobals();
+});
+
+it('shows only GitHub sign-in when email sign-in is off, even on a reset link',()=>{
+ render(<SignInScreen path="/watch/reset-password" search="?token=abc" githubApp/>);
+ expect(screen.getByRole('heading',{level:1,name:'Sign in and get to work.'})).toBeTruthy();
+ expect(screen.getByRole('link',{name:'Sign in with GitHub'}).getAttribute('href')).toBe('/api/auth/github');
+ expect(screen.queryByLabelText('Email',{exact:true})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Create an account'})).toBeNull();
+});
+
+it('replaces the whole screen per step and moves focus to the new heading',async()=>{
+ const user=userEvent.setup();
+ render(<SignInScreen path="/watch" search="" githubApp emailAuth/>);
+ await user.click(screen.getByRole('button',{name:'Create an account'}));
+ const heading=screen.getByRole('heading',{level:1,name:'Create your account'});
+ expect(document.activeElement).toBe(heading);
+ expect(screen.getByRole('link',{name:'Continue with GitHub'})).toBeTruthy();
+ expect(screen.queryByRole('heading',{name:'Sign in and get to work.'})).toBeNull();
+ await user.click(screen.getByRole('button',{name:'Sign in'}));
+ await user.click(screen.getByRole('button',{name:'Forgot password?'}));
+ expect(screen.getByRole('heading',{level:1,name:'Reset your password'})).toBeTruthy();
+ expect(screen.queryByRole('link',{name:/GitHub/})).toBeNull();
+});
+
+it('hides the unavailable GitHub button when email sign-in is the only method',()=>{
+ render(<SignInScreen path="/watch" search="" githubApp={false} emailAuth/>);
+ expect(screen.queryByRole('button',{name:'GitHub sign-in unavailable'})).toBeNull();
+ expect(screen.getByLabelText('Email',{exact:true})).toBeTruthy();
 });
