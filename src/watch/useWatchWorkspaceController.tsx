@@ -92,6 +92,7 @@ import {
   AlertDeskItem,
 } from "@/watch/WatchControllerSupport";
 import { receiptStatusMark } from "@/watch/receipt-status";
+import { SignInScreen } from "@/components/watch/SignInScreen.tsx";
 import {
   destinationKindLabel,
   routeMinSeverityLabel,
@@ -1075,56 +1076,13 @@ export function useWatchWorkspaceController({ path = "/watch", search, connectio
   const installations = me.data.installations ?? [];
   if (!user) {
     return (
-      <main className="grid min-h-svh place-items-center bg-canvas px-5 py-16">
-        <div className="w-full max-w-xl rounded-lg border border-line bg-panel p-6 md:p-8">
-          <p className="text-xs uppercase tracking-[0.28em] text-dim">Watch desk</p>
-          <p className="mt-3 text-sm text-dim">
-            <a
-              href="/"
-              className="text-snow underline-offset-4 hover:underline"
-              onClick={(event) => {
-                event.preventDefault();
-                navigate("/");
-              }}
-            >
-              Product
-            </a>
-          </p>
-          <h1 className="mt-4 max-w-2xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
-            Sign in and get to work.
-          </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-mute md:text-lg">
-            Watch contains real repository, release, website, package, and alert data. Sign in with
-            GitHub to open your workspace and start the real 5-day billing trial. There is no sample
-            workspace or preview tenant.
-          </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-            {githubApp ? (
-              <Button as="a" href="/api/auth/github" size="lg">
-                Sign in with GitHub
-              </Button>
-            ) : (
-              me.data.developmentLogin ? (
-                <Button as="a" href="/api/auth/development" size="lg">
-                  Open local review workspace
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  size="lg"
-                  disabled
-                  title="GitHub authentication is not configured on this host."
-                >
-                  GitHub sign-in unavailable
-                </Button>
-              )
-            )}
-            <Button type="button" size="lg" variant="outline" onClick={() => navigate("/")}>
-              Back to product
-            </Button>
-          </div>
-        </div>
-      </main>
+      <SignInScreen
+        path={path}
+        search={search}
+        githubApp={githubApp}
+        developmentLogin={me.data.developmentLogin}
+        emailAuth={me.data.emailAuth}
+      />
     );
   }
 

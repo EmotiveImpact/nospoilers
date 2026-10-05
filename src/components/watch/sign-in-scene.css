@@ -1,0 +1,29 @@
+/* Signed-out Watch: a particle explainer on a faint dot grid. Decorative motion only. */
+.sign-in-scene{position:relative;overflow:hidden;isolation:isolate;background:#07080b;color:#c8cbd3}
+.sign-in-scene::before{content:"";position:absolute;inset:0;z-index:-1;background-image:radial-gradient(circle,#ffffff14 1px,transparent 1.2px);background-size:22px 22px;-webkit-mask-image:radial-gradient(70% 60% at 50% 45%,#000 0%,transparent 100%);mask-image:radial-gradient(70% 60% at 50% 45%,#000 0%,transparent 100%)}
+.sign-in-scene::after{content:"";position:absolute;left:-20%;right:-20%;bottom:-35%;height:70%;z-index:-1;background:radial-gradient(50% 50% at 50% 50%,#ff31581f 0%,#ff31580a 45%,transparent 70%);filter:blur(20px);animation:sign-in-aurora 12s ease-in-out infinite alternate}
+.sign-in-explainer{position:relative;z-index:1;display:flex;flex:1;flex-direction:column;justify-content:center;gap:28px;min-height:0;padding-block:24px}
+.sign-in-explainer-field{display:block;width:100%;height:min(52vh,460px)}
+.sign-in-explainer-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:12px;margin:0;padding:0;list-style:none;max-width:440px}
+.sign-in-explainer-steps>li{display:contents}
+.sign-in-explainer-steps>li:nth-child(1)>*{grid-column:1}
+.sign-in-explainer-steps>li:nth-child(2)>*{grid-column:2}
+.sign-in-explainer-steps>li:nth-child(3)>*{grid-column:3}
+.sign-in-explainer-index{grid-row:1;font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#6b717c;transition:color .3s}
+.sign-in-explainer-bar{grid-row:2;position:relative;height:2px;margin-top:8px;border-radius:2px;background:#ffffff14;overflow:hidden}
+.sign-in-explainer-bar>i{position:absolute;inset:0;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#ffffffb3,#ff3158)}
+.sign-in-explainer-steps>li.is-active .sign-in-explainer-index{color:#f3f3f5}
+.sign-in-explainer-steps>li.is-active .sign-in-explainer-bar>i{animation:sign-in-progress linear forwards}
+.sign-in-explainer-steps>li>.sign-in-explainer-title,.sign-in-explainer-steps>li>.sign-in-explainer-body{grid-column:1/-1;margin:0;opacity:0;transform:translateY(6px);transition:opacity .45s,transform .45s}
+.sign-in-explainer-title{grid-row:3;margin-top:22px!important;font-family:var(--font-display,inherit);font-size:1.75rem;line-height:1.15;letter-spacing:-.02em;color:#f3f3f5}
+.sign-in-explainer-body{grid-row:4;margin-top:10px!important;font-size:.875rem;line-height:1.6;color:#9aa0aa}
+.sign-in-explainer-steps>li.is-active>.sign-in-explainer-title,.sign-in-explainer-steps>li.is-active>.sign-in-explainer-body{opacity:1;transform:none}
+/* Reduced motion: no cycling, every step listed. */
+.sign-in-explainer-steps.is-static{display:block}
+.sign-in-explainer-steps.is-static>li{display:block;margin-bottom:18px}
+.sign-in-explainer-steps.is-static .sign-in-explainer-bar{display:none}
+.sign-in-explainer-steps.is-static>li>.sign-in-explainer-title,.sign-in-explainer-steps.is-static>li>.sign-in-explainer-body{opacity:1;transform:none;transition:none}
+.sign-in-explainer-steps.is-static .sign-in-explainer-title{margin-top:4px!important;font-size:1.125rem}
+@keyframes sign-in-progress{to{transform:scaleX(1)}}
+@keyframes sign-in-aurora{from{transform:translateX(-6%) scale(1)}to{transform:translateX(6%) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.sign-in-scene::after{animation:none}}

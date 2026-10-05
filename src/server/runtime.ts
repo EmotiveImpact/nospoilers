@@ -28,6 +28,8 @@ import { isolatedScan } from './isolated-scanner.ts';
 import { cleanupAbandonedParserFiles } from './parser-cleanup.ts';
 import { runWorkspaceNotification } from './workspace-notification-worker.ts';
 import { closeRuntimeResources } from './shutdown.ts';
+import { workerScanInterrupter } from './scan-interruption.ts';
+import { createBetterAuthHttpProvider, emailAuthConfig, emailAuthConfigurationProblems } from './product-email-auth.ts';
 
 export async function createRuntime(overrides: Partial<AppConfig> = {}) {
   const config = loadConfig(overrides);
@@ -79,6 +81,9 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       : undefined,
     staleAfterMs: config.jobStaleMs,
   };
+  const emailAuthProblems = emailAuthConfigurationProblems();
+  if (emailAuthProblems.length) throw new Error(`Email sign-in configuration failed:\n- ${emailAuthProblems.join('\n- ')}`);
+  const emailAuthSettings = emailAuthConfig();
   const coreApp = createApp({
     config,
     store,
@@ -86,6 +91,15 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     npm,
     notifier,
     wakeWorker,
+    emailAuth: emailAuthSettings
+      ? {
+          issuer: emailAuthSettings.issuer,
+          provider: createBetterAuthHttpProvider({
+            baseUrl: emailAuthSettings.baseUrl,
+            appOrigin: new URL(config.appBaseUrl).origin,
+          }),
+        }
+      : null,
     runScheduledJobs: async () => {
       const expiredPendingScans = await store.deleteExpiredPendingScans();
       await store.expireUploadedScans();
@@ -148,7 +162,14 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       closing ??= closeRuntimeResources([
         async () => { await poller.stop(); },
         async () => { if (listening) await (await listening)(); },
-        async () => { await worker.stop(); },
+        async () => {
+          // stop() refuses new claims synchronously; then abort executors so
+          // the drain waits seconds for sandbox cleanup, not a whole scan.
+          const drained = worker.stop();
+          const interrupted = workerScanInterrupter.interrupt();
+          if (interrupted) logJson('warn', 'runtime.shutdown.scans_interrupted', { count: interrupted });
+          await drained;
+        },
         async () => { await sql.close(); },
       ]);
       return closing;

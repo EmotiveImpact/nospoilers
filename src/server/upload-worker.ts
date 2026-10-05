@@ -13,6 +13,7 @@ import {workspaceArtifactPolicySnapshot,applyWorkspaceArtifactPolicy} from './wo
 import {crawlOrigin,type WebCrawlOpts} from './web-origin.ts';
 import {enqueueWorkspaceAlertNotifications} from './workspace-notification-outbox.ts';
 import {enqueueAutomaticCapture} from './automatic-capture.ts';
+import {isScanInterruption} from './scan-interruption.ts';
 
 async function assertScanAccess(sql:SqlClient,upload:UploadedScan){
   if(upload.installation_id!==null&&!(await sql.query('SELECT id FROM installations WHERE id=$1 AND NOT suspended AND disconnected_at IS NULL FOR SHARE',[upload.installation_id])).rows.length)throw new Error('Source connection unavailable.');
@@ -106,7 +107,9 @@ export async function processUploadedScan(id:string,store:Store,scanFn:typeof sc
         }
       }
     });
-  } catch {
+  } catch(error) {
+    // Leave the upload running for the requeued job; shutdown is not a failed artifact.
+    if(isScanInterruption(error))throw error;
     // Never return parser paths or raw artifact values to a customer error surface.
     if(!lease || (await store.sql.query("SELECT id FROM jobs WHERE id=$1 AND locked_by=$2 AND status='running'",[lease.jobId,lease.workerId])).rows.length)
       await store.failUploadedScan(id,!parsingStarted);

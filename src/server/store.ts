@@ -2949,6 +2949,16 @@ export function createStore(
       );
     },
 
+    /** Shutdown interrupted this lease; give the attempt back and make it claimable now. */
+    async requeueInterruptedJob(id: number, workerId: string): Promise<void> {
+      await sql.query(
+        `UPDATE jobs SET status = 'queued', locked_at = NULL, locked_by = NULL,
+           attempts = GREATEST(attempts - 1, 0), run_after = now(), error = 'worker interrupted; requeued'
+         WHERE id = $1 AND locked_by = $2 AND status = 'running'`,
+        [id, workerId],
+      );
+    },
+
     async recoverStaleJobs(staleAfterMs: number): Promise<number> {
       const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
       const { rows } = await sql.query<{ n: unknown }>(

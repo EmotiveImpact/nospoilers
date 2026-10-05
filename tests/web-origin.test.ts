@@ -9,6 +9,7 @@ import { persistHostedReceipt } from "../src/server/receipts.ts";
 import { migrate, openSql, type SqlClient } from "../src/server/sql.ts";
 import { createStore, signSession, type Store } from "../src/server/store.ts";
 import { createWorker, handleJob } from "../src/server/worker.ts";
+import { ScanInterruptedError } from "../src/server/scan-interruption.ts";
 import { scan } from "../src/scanner/index.ts";
 import {
   collectHtmlAssetUrls,
@@ -785,6 +786,69 @@ describe("hosted website watch", () => {
         "SELECT error FROM jobs WHERE kind = 'web_origin_scan'",
       );
       expect(jobs[0]?.error).toMatch(/scanner exploded/);
+    } finally {
+      await sql.close();
+    }
+  });
+
+  it("requeues a website scan interrupted by shutdown without an inconclusive alert", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const store = createStore(sql);
+      await store.upsertUser({ id: "u1", login: "octo" });
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      await store.linkUserInstallation(7, "u1");
+      const cookie = `ns_session=${signSession("sess", await store.createSession("u1"))}`;
+      const app = createApp({
+        config: loadConfig({
+          githubWebhookSecret: "wh",
+          githubAppId: "1",
+          githubPrivateKey: "x",
+          githubClientId: "c",
+          githubClientSecret: "s",
+          sessionSecret: "sess",
+        }),
+        store,
+        github: unusedGithub(),
+        wakeWorker: () => {},
+        verifyDomain,
+      });
+      const created = await app.request("/api/origins", {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ url: ORIGIN, installationId: 7 }),
+      });
+      expect(created.status).toBe(201);
+      await verifyCreatedOrigin(app, cookie, created);
+      const worker = createWorker({
+        store,
+        github: unusedGithub(),
+        notifier: createLogNotifier(store),
+        scan: async () => {
+          throw new ScanInterruptedError();
+        },
+        heavyConcurrency: 1,
+        lightConcurrency: 1,
+        maxAssetBytes: 80 * 1024 * 1024,
+        intervalMs: 60_000,
+        receiptSecret: "web-origin-receipt-secret",
+        webFetch: await siteFetch(CLEAN),
+        webLookup: publicLookup,
+      });
+      await worker.tick();
+      await worker.stop();
+      const { rows: alerts } = await sql.query("SELECT id FROM alerts");
+      expect(alerts).toHaveLength(0);
+      const { rows: jobs } = await sql.query<{ status: string; attempts: number; error: string | null }>(
+        "SELECT status, attempts::int AS attempts, error FROM jobs WHERE kind = 'web_origin_scan'",
+      );
+      expect(jobs).toEqual([{ status: "queued", attempts: 0, error: "worker interrupted; requeued" }]);
     } finally {
       await sql.close();
     }

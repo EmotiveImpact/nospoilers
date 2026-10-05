@@ -98,14 +98,51 @@ Tenant authorization and evidence remain workspace-scoped in the shared applicat
 - Railway can dispatch a clean scan into a fresh, digest-pinned Vercel Sandbox.
 - Final source verification passed 1,660 tests across 271 files, typecheck, frontend/API builds and lint with the existing warnings.
 
+## Email sign-in (built, switched off)
+
+Added 5 October 2026. Watch's signed-out screen gains email sign-up, sign-in, forgotten-password and
+reset-password forms, shown only when both variables are set:
+
+```text
+NOSPOILERS_EMAIL_AUTH=neon-better-auth
+NEON_AUTH_BASE_URL=<HTTPS Auth base URL from the Neon console>
+```
+
+A malformed value stops the server at start-up instead of silently falling back.
+
+- The NoSpoilers server calls Better Auth's `/sign-up/email`, `/sign-in/email`,
+  `/request-password-reset` and `/reset-password` endpoints itself, sending the app origin as
+  `Origin`. That origin must be a trusted domain in the Neon Auth project. No package was added.
+- The browser never holds a Better Auth session. The Better Auth session token returned on
+  sign-in is discarded; NoSpoilers issues its own `ns_session` cookie, as GitHub sign-in does.
+- A session is created only when Better Auth reports `emailVerified: true`. Verification links
+  return to `/watch?verified=1`; reset links return to `/watch/reset-password?token=…`.
+- The identity key is `(NEON_AUTH_BASE_URL, Better Auth user ID)` in `product_auth_identities`.
+  Email never finds or merges an account.
+- Email users get the account name `<name-slug>~<6 hex>`. `~` cannot appear in a GitHub login, so
+  a chosen display name can never match `ADMIN_GITHUB_LOGIN`, an operator grant or a GitHub
+  member's invitation name.
+- Password-reset requests answer identically whether or not the address has an account. Routes
+  accept JSON only, pass the existing same-origin check and are rate limited per address and per
+  account.
+
+Not yet proved: the live Neon Auth endpoints, their exact error codes and verification/reset
+emails. The adapter maps Better Auth's documented codes and treats anything unexpected as
+unavailable rather than signed in.
+
 ## What remains
 
 1. Verify the owner email for the fresh Neon Marketplace account.
 2. Enable Neon Managed Better Auth and record its Auth base URL.
 3. Configure production and local trusted domains/callbacks.
-4. Mount the exact-version-pinned Neon server adapter and add the customer sign-in/recovery UI.
+4. Switch on the email sign-in that is already built: set `NOSPOILERS_EMAIL_AUTH=neon-better-auth` and
+   `NEON_AUTH_BASE_URL`, then verify each Better Auth response shape against the live Auth project.
+   See [Email sign-in](#email-sign-in-built-switched-off) below.
 5. Prove email sign-up → session → workspace → GitHub connection → worker scan → saved result on the hosted product.
-6. Run the remaining hostile-input, denied-egress and interrupted-sandbox acceptance checks.
+6. Run the remaining hostile-input, denied-egress and interrupted-sandbox acceptance checks. Graceful
+   interruption is implemented: on SIGTERM the worker aborts in-flight scans, stops each sandbox and
+   requeues the job without spending an attempt. A forced kill still relies on the 135-second sandbox
+   session limit and stale-lease recovery. A live redeploy during a running scan has not been observed.
 7. Add WorkOS only when an enterprise SSO/SCIM requirement is real or explicitly prioritised.
 
 Stripe remains deliberately deferred by the owner and is independent of this authentication work.

@@ -1,6 +1,8 @@
 import {readFile,readdir,lstat} from 'node:fs/promises';
 import path from 'node:path';
 import {Sandbox} from '@vercel/sandbox';
+import {logJson} from './log.ts';
+import {ScanInterruptedError,workerScanInterrupter,type ScanInterrupter} from './scan-interruption.ts';
 
 const MAX_INPUT_BYTES=80*1024*1024;
 const MAX_INPUT_ENTRIES=25_001;
@@ -153,8 +155,11 @@ async function uploadInput(localInput:string,remoteInput:string,sandbox:VercelSc
 export async function runVercelSandboxScanner(localInput:string,options:{
  env?:NodeJS.ProcessEnv;
  factory?:VercelSandboxFactory;
+ interrupter?:ScanInterrupter;
 }={}):Promise<string> {
  const controller=new AbortController();
+ // Refuses before any VM exists once shutdown has begun.
+ const release=(options.interrupter??workerScanInterrupter).track(controller);
  const timer=setTimeout(()=>controller.abort(),SANDBOX_SESSION_MS);
  let sandbox:VercelScannerSandbox|undefined;
  let result:string|undefined;
@@ -177,12 +182,19 @@ export async function runVercelSandboxScanner(localInput:string,options:{
   operationError=error;
  } finally {
   clearTimeout(timer);
+  release();
  }
  let cleanupError:unknown;
  if(sandbox){
+  // A fresh signal: the operation signal may already be aborted by shutdown.
   const cleanup=AbortSignal.timeout(10_000);
   try {await sandbox.stop(cleanup);}
   catch(error){cleanupError=error;}
+ }
+ if(controller.signal.reason instanceof ScanInterruptedError){
+  // The session timeout still bounds a VM whose stop request failed.
+  if(cleanupError)logJson('warn','scanner.sandbox.interrupted_cleanup_failed',{});
+  throw new ScanInterruptedError(cleanupError?{cause:cleanupError}:undefined);
  }
  if(operationFailed)throw operationError;
  if(cleanupError)throw new Error('Vercel Sandbox scanner cleanup failed.',{cause:cleanupError});

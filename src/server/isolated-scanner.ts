@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
 import type { ScanReport } from '../scanner/types.ts';
 import {runVercelSandboxScanner,type VercelSandboxFactory} from './vercel-sandbox-scanner.ts';
+import {ScanInterruptedError,workerScanInterrupter,type ScanInterrupter} from './scan-interruption.ts';
 
 export type ScannerMode='process'|'container'|'vercel-sandbox';
 
@@ -35,7 +36,9 @@ export async function isolatedScan(target:string,options:{
  requireIsolated?:boolean;
  sandboxFactory?:VercelSandboxFactory;
  env?:NodeJS.ProcessEnv;
+ interrupter?:ScanInterrupter;
 }={}):Promise<ScanReport> {
+  const interrupter=options.interrupter??workerScanInterrupter;
   const env=options.env??process.env;
   const mode=configuredScannerMode(env);
   if(options.requireContainer&&mode!=='container')throw new Error('This scan requires the isolated container executor.');
@@ -62,8 +65,10 @@ export async function isolatedScan(target:string,options:{
   }
   await makeReadable(input);
   const raw=mode==='vercel-sandbox'
-   ? await runVercelSandboxScanner(input,{env,factory:options.sandboxFactory})
+   ? await runVercelSandboxScanner(input,{env,factory:options.sandboxFactory,interrupter})
    : await new Promise<string>((resolve,reject)=>{
+    const controller=new AbortController();
+    const release=interrupter.track(controller);
     const spec=scannerCommand(input,mode,name);
     const child=spawn(spec.command,spec.args,{shell:false,stdio:['ignore','pipe','pipe'],
       env:{PATH:env.PATH??'/usr/bin:/bin',NODE_ENV:'production',LANG:'C.UTF-8'}});
@@ -76,11 +81,12 @@ export async function isolatedScan(target:string,options:{
       }
     };
     const timer=setTimeout(()=>{failure=new Error('Scanner exceeded its execution deadline.');stop();},120_000);
+    controller.signal.addEventListener('abort',()=>{failure=new ScanInterruptedError();stop();},{once:true});
     child.stdout.on('data',(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>32*1024*1024){failure=new Error('Scanner report exceeded its output budget.');stop();return;}output+=decoder.write(chunk);});
     // Drain diagnostics but never return customer bytes or parser filesystem paths.
     child.stderr.resume();
-    child.on('error',error=>{clearTimeout(timer);reject(error);});
-    child.on('close',code=>{clearTimeout(timer);if(failure||code!==0)reject(failure??new Error('Isolated scanner failed.'));else resolve(output+decoder.end());});
+    child.on('error',error=>{clearTimeout(timer);release();reject(error);});
+    child.on('close',code=>{clearTimeout(timer);release();if(failure||code!==0)reject(failure??new Error('Isolated scanner failed.'));else resolve(output+decoder.end());});
    });
   const report=JSON.parse(raw) as ScanReport;
   if(!report || !Array.isArray(report.findings) || !Array.isArray(report.manifest) || typeof report.ok!=='boolean')throw new Error('Invalid scanner report.');

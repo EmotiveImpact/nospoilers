@@ -10,8 +10,8 @@ activation and hosted acceptance, not another redesign.
 1. Verify the owner email for the fresh Neon Marketplace account.
 2. Enable Neon Managed Better Auth and record its Auth base URL.
 3. Configure production and local trusted domains/callbacks.
-4. Pin and mount the Neon server adapter behind the NoSpoilers origin.
-5. Add and prove sign-up, sign-in, sign-out, recovery and session handling.
+4. Set `NOSPOILERS_EMAIL_AUTH` and `NEON_AUTH_BASE_URL`; the server adapter and screens are built.
+5. Prove sign-up, verification, sign-in, sign-out and recovery against the live Auth project.
 6. Preserve GitHub as a separate workspace connector; never merge users by email.
 
 The database and authorization foundation for this is complete. See

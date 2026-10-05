@@ -1,5 +1,10 @@
 # Status
 
+Branch increment (5 October 2026, not merged or deployed): email sign-up, sign-in and password reset
+for Neon Managed Better Auth are built and hidden until `NOSPOILERS_EMAIL_AUTH` and `NEON_AUTH_BASE_URL`
+are set; customer login stays GitHub-only until then. Worker shutdown now interrupts in-flight scans,
+stops their sandboxes and requeues the jobs. Full local suite 1,851/290 passed; details in BUILD-LOG.
+
 Alerts copy-feedback increment (3 October 2026, deployed 9f4261f): the fix-brief button shows a copy icon
 and Copied after a successful write, without a separate success paragraph. Reopening resets it;
 clipboard failures retain manual-copy guidance. The 38 focused tests, build and live dialog checks
