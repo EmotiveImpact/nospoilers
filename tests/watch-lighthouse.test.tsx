@@ -11,7 +11,8 @@ it('waits for all real loading stages before turning forward and clearing the ov
  act(()=>vi.advanceTimersByTime(1000));expect(view.container.querySelector('.is-loading')).toBeTruthy();
  view.rerender(<WatchLoadingBoundary><p>Actual workspace</p></WatchLoadingBoundary>);
  act(()=>vi.advanceTimersByTime(1));expect(view.container.querySelector('.is-ready')).toBeTruthy();
- act(()=>vi.advanceTimersByTime(650));expect(view.container.querySelector('.watch-lighthouse')).toBeNull();
+ act(()=>vi.advanceTimersByTime(1000));expect(view.container.querySelector('.is-ready')).toBeTruthy();
+ act(()=>vi.advanceTimersByTime(250));expect(view.container.querySelector('.watch-lighthouse')).toBeNull();
  expect(view.getByText('Actual workspace')).toBeTruthy();
 });
 it('returns to loading if a new blocking stage starts during the reveal',()=>{
