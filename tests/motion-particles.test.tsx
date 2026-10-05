@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import {it,expect} from 'vitest';
-import {sampleMark,loosePosition} from '../src/components/motion/mark-particles';
-import {perimeterPoints} from '../src/components/motion/surface-flight';
+import {sampleMark,loosePosition,lighthousePosition} from '../src/components/motion/mark-particles';
 
 it('samples only visible mark pixels and keeps their own colour',()=>{
  // 4x2 raster: one opaque red pixel, one opaque white pixel, the rest transparent.
@@ -21,12 +20,12 @@ it('caps the sample count and keeps loose positions bounded',()=>{
  for(const t of [0,3.7,40])for(const p of points){const q=loosePosition(p,t);expect(Math.abs(q.x)).toBeLessThan(3);expect(Math.abs(q.y)).toBeLessThan(2);}
 });
 
-it('spreads flight targets around the whole surface edge',()=>{
- const points=perimeterPoints({left:10,top:20,width:100,height:50},12);
- expect(points).toHaveLength(12);
- for(const p of points){
-  const onEdge=p.y===20||p.y===70||p.x===10||p.x===110;
-  expect(onEdge).toBe(true);
- }
- expect(new Set(points.map(p=>p.y===20?'top':p.x===110?'right':p.y===70?'bottom':'left')).size).toBe(4);
+it('draws a bounded lighthouse with a red lamp and signal band',()=>{
+ const points=sampleMark(new Uint8ClampedArray(30*30*4).fill(255),30,30,400,1);
+ const lit=points.map((p,i)=>lighthousePosition(p,i,points.length,2.5));
+ for(const q of lit){expect(Math.abs(q.x)).toBeLessThan(1.6);expect(Math.abs(q.y)).toBeLessThan(1.05);expect(q.a).toBeGreaterThanOrEqual(0);}
+ const red=lit.filter(q=>q.c[0]===255&&q.c[1]===59);
+ expect(red.length).toBeGreaterThan(20);
+ expect(red.some(q=>q.y<-.3)).toBe(true);
+ expect(red.some(q=>q.y>.25)).toBe(true);
 });

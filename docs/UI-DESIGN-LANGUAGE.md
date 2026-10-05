@@ -87,13 +87,12 @@ role help and validation belong below the field row, with an accessible associat
   next useful action; retry/error, insufficient role, expired coverage and stale evidence remain distinct.
   An alert response never becomes proof of a technical fix.
 - **Motion:** retain the short stationary search fade, reduced-motion behavior and restrained control
-  feedback. Owner direction, 5 October 2026, adds two brand motions and nothing else, both in
-  `src/components/motion` as vanilla canvas and Web Animations code: the Watch opening shows the
-  NoSpoilers mark as particles that drift while stages load and gather into the mark when ready;
-  opening a release preview or search sends a short particle flight from the control used to the
-  surface's edges while its corners trace in and fade. They carry no product state, remove their own
-  elements, pause when the tab is hidden and are disabled by reduced motion. No zooming panels or
-  other decorative entrance motion.
+  feedback. Owner direction, 5 October 2026, adds one brand motion and nothing else, as vanilla
+  canvas code in `src/components/motion`: while Watch stages load, particles draw a lighthouse whose
+  beam sweeps; when ready, each particle arcs out through a loose swarm and settles into the
+  NoSpoilers mark in its own colours, then the overlay fades. It carries no product state, pauses
+  when the tab is hidden and shows static frames under reduced motion. No particle flights,
+  zooming panels or other decorative entrance motion.
 
 ## Verification and limits
 
