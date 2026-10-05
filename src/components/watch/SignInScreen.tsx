@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { Button } from "@/components/ui/button"
 import { navigate } from "@/nav"
 import { emailAuthEntry, type EmailAuthMode as Mode } from "@/watch/email-auth-entry"
+import { SignInExplainer } from "./SignInExplainer"
 import "./sign-in-scene.css"
 
 const PASSWORD_MIN = 8
@@ -63,12 +64,13 @@ export function SignInScreen({
   const passwordHelpId = useId()
   const errorId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
-  const firstRender = useRef(true)
+  const shownMode = useRef(mode)
 
   // A step change replaces the screen: move focus to its heading so keyboard
   // and screen-reader users start at the top of the new step.
   useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return }
+    if (shownMode.current === mode) return
+    shownMode.current = mode
     heading.current?.focus()
   }, [mode])
 
@@ -164,31 +166,9 @@ export function SignInScreen({
   return (
     <main className="min-h-svh bg-canvas lg:grid lg:grid-cols-2">
       <aside className="sign-in-scene hidden border-r border-line lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div className="sign-in-scene-stars" aria-hidden="true" />
-        <div className="sign-in-scene-sea" aria-hidden="true" />
-        <div className="sign-in-scene-reflection" aria-hidden="true" />
-        <div className="sign-in-scene-light" aria-hidden="true">
-          <div className="sign-in-scene-beam" />
-          <div className="sign-in-scene-glow" />
-        </div>
-        <svg className="sign-in-scene-tower" viewBox="0 0 60 100" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M20 26 30 17l10 9" />
-          <path d="M22 26h16v10H22z" />
-          <path d="M30 29v4" stroke="#ff3158" strokeWidth="2" />
-          <path d="M19 36h22" />
-          <path d="M23 36 19 92M37 36l4 56" />
-          <path d="M21.5 52h17M20.6 68h18.8M19.7 84h20.6" strokeOpacity=".45" />
-          <path d="M8 92h44" />
-          <path d="M4 96c6-2 12-2 18 0s12 2 18 0 12-2 16 0" strokeOpacity=".35" />
-        </svg>
-        <div className="sign-in-scene-copy max-w-sm">
-          <p className="watch-kicker">Watch desk</p>
-          <p className="mt-10 font-display text-3xl leading-tight tracking-tight text-snow">Inspect what ships.</p>
-          <p className="mt-4 text-sm leading-relaxed text-mute">
-            Real repository, release, website, package and alert data. There is no sample workspace or preview tenant.
-          </p>
-        </div>
-        <ProductLink className="sign-in-scene-copy" />
+        <p className="watch-kicker relative z-[1]">Watch desk</p>
+        <SignInExplainer />
+        <ProductLink className="relative z-[1] self-start" />
       </aside>
 
       <section className="flex min-h-svh flex-col px-5 py-6 sm:px-8">
