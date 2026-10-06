@@ -91,7 +91,8 @@ it('lists only the sources NoSpoilers checks, without third-party logos',()=>{
  render(<V20Homepage/>);
  const list=document.querySelector('.ships-list');
  expect(list?.querySelectorAll('li').length).toBe(3);
- for(const name of ['GitHub releases','npm packages','Any public website'])expect(screen.getByText(name)).toBeTruthy();
+ for(const name of ['GitHub releases','npm packages','Production websites'])expect(screen.getByText(name)).toBeTruthy();
+ expect(list?.textContent).toContain('Public HTTPS assets, after you verify ownership.');
  expect(document.querySelector('img[src*="simple-icons"]')).toBeNull();
  expect(document.body.textContent).not.toContain('—');
 });

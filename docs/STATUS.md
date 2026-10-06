@@ -1,3 +1,5 @@
+7 October PR #50 navigation follow-up (not merged): consistent member/visitor footer scan routing and qualified HTTPS website ownership copy; 77 focused checks, typecheck, frontend/API builds and lint passed. Hosted preview protection and cloud localhost access prevent new native desktop/mobile or real OAuth/member acceptance. See the latest BUILD-LOG; this does not close public-launch gates.
+
 # Status
 
 Branch increment (5 October 2026, not merged or deployed): email sign-up, sign-in and password reset

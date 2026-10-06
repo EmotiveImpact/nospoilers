@@ -31,7 +31,7 @@ export function V20PublicShell({ children }: { children: ReactNode }) {
     <div className="v20-home v20-public-shell" id="top">
       <MarketingNav me={me} openApp={openApp} home={false} />
       <div className="v20-public-shell-content">{children}</div>
-      <MarketingFooter home={false} />
+      <MarketingFooter home={false} scanPath={me?.user ? "/watch/scan" : "/scan"} />
     </div>
   )
 }
