@@ -86,3 +86,12 @@ it('sends Log in to the Watch sign-in screen even when GitHub sign-in is configu
  fireEvent.click(screen.getByRole('button',{name:'Log in'}));
  expect(window.location.pathname).toBe('/watch');
 });
+it('lists only the sources NoSpoilers checks, without third-party logos',()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ render(<V20Homepage/>);
+ const list=document.querySelector('.ships-list');
+ expect(list?.querySelectorAll('li').length).toBe(3);
+ for(const name of ['GitHub releases','npm packages','Any public website'])expect(screen.getByText(name)).toBeTruthy();
+ expect(document.querySelector('img[src*="simple-icons"]')).toBeNull();
+ expect(document.body.textContent).not.toContain('—');
+});
