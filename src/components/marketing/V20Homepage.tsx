@@ -67,8 +67,8 @@ function MenuItem({ title, copy, href }: { title: string; copy: string; href: st
   return <a href={href}><b>{title}</b><small>{copy}</small></a>
 }
 
-export function MarketingFooter({ home = true }: { home?: boolean }) {
-  const columns = [["Product", [["Product", "#product"], ["Coverage", "/watch/sources"], ["New scan", "/scan"], ["Docs", "/docs"], ["Pricing", "#pricing"], ["Status", "/status"]]], ["Legal & support", [["Privacy", "/privacy"], ["Terms", "/terms"], ["Retention", "/retention"], ["Disclosure", "/disclosure"], ["Support", "/support"], ["Refunds", "/refunds"]]]] as const
+export function MarketingFooter({ home = true, scanPath = "/scan" }: { home?: boolean; scanPath?: string }) {
+  const columns = [["Product", [["Product", "#product"], ["Coverage", "/watch/sources"], ["Start a scan", scanPath], ["Docs", "/docs"], ["Pricing", "#pricing"], ["Status", "/status"]]], ["Legal & support", [["Privacy", "/privacy"], ["Terms", "/terms"], ["Retention", "/retention"], ["Disclosure", "/disclosure"], ["Support", "/support"], ["Refunds", "/refunds"]]]] as const
   function route(event: ReactMouseEvent<HTMLAnchorElement>, href: string) { if (href.startsWith("/")) { event.preventDefault(); navigate(href) } }
   return <footer className="v20-footer"><div className="v20-wrap v20-footer-main"><div className="v20-footer-brand"><Brand /><p>No spoilers in production. Coverage across GitHub exposure, release artefacts and the bytes customers actually receive.</p><a href="https://github.com/EmotiveImpact/nospoilers" aria-label="NoSpoilers on GitHub"><GitFork /></a></div>{columns.map(([heading, items]) => <div key={heading}><h4>{heading}</h4><div>{items.map(([label, href]) => { const target = !home && href.startsWith("#") ? `/${href}` : href; return <a key={label} href={target} onClick={(event) => route(event, target)}>{label}</a> })}</div></div>)}<div><h4>Coverage</h4><div><span>Solo $29 / month</span><span>Team $99 / month</span><span>5-day full trial</span><span>Yearly: 10 months for 12</span><a href={home ? "#security" : "/#security"}>Security & privacy</a></div></div></div><div className="v20-wrap v20-footer-bottom"><span>Scanning and monitoring require active coverage. Existing release proofs can always be verified free.</span><code>nospoilers verify --receipt receipt.json</code></div><div className="v20-wrap v20-footer-bottom"><span>Made With ♦️ in London. An Emotive Impact Product</span><span>© {new Date().getFullYear()} Emotive Impact. All rights reserved.</span></div></footer>
 }
@@ -86,6 +86,7 @@ export function V20Homepage() {
     window.addEventListener('pageshow', refresh)
     return () => { cancelled = true; window.removeEventListener('focus', refresh); window.removeEventListener('pageshow', refresh) }
   }, [])
-  const openApp = () => { if (me?.user) navigate("/watch"); else if (me?.githubApp) window.location.assign("/api/auth/github"); else navigate("/watch") }
-  return <div className="v20-home homepage-d-shell" id="top"><MarketingNav me={me} openApp={openApp} /><HomepageD scanPath={me?.user ? "/watch/scan" : "/scan"} /><MarketingFooter /></div>
+  // Watch shows the sign-in screen (GitHub or email) to visitors and the workspace to members.
+  const openApp = () => navigate("/watch")
+  return <div className="v20-home homepage-d-shell" id="top"><MarketingNav me={me} openApp={openApp} /><HomepageD scanPath={me?.user ? "/watch/scan" : "/scan"} /><MarketingFooter scanPath={me?.user ? "/watch/scan" : "/scan"} /></div>
 }

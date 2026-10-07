@@ -77,3 +77,22 @@ it('ships the approved Homepage D story as the real homepage',async()=>{
  fireEvent.click(screen.getByRole('button',{name:'What does a release proof verify?'}));
  expect(screen.getByRole('button',{name:'What does a release proof verify?'}).getAttribute('aria-expanded')).toBe('true');
 });
+it('sends Log in to the Watch sign-in screen even when GitHub sign-in is configured',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:true})}));
+ window.history.replaceState({},'','/');
+ render(<V20Homepage/>);
+ await screen.findByRole('button',{name:'Log in'});
+ await new Promise(resolve=>setTimeout(resolve,0));
+ fireEvent.click(screen.getByRole('button',{name:'Log in'}));
+ expect(window.location.pathname).toBe('/watch');
+});
+it('lists only the sources NoSpoilers checks, without third-party logos',()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({user:null,githubApp:false})}));
+ render(<V20Homepage/>);
+ const list=document.querySelector('.ships-list');
+ expect(list?.querySelectorAll('li').length).toBe(3);
+ for(const name of ['GitHub releases','npm packages','Production websites'])expect(screen.getByText(name)).toBeTruthy();
+ expect(list?.textContent).toContain('Public HTTPS assets, after you verify ownership.');
+ expect(document.querySelector('img[src*="simple-icons"]')).toBeNull();
+ expect(document.body.textContent).not.toContain('—');
+});
