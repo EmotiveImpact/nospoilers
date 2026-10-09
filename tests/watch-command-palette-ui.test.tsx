@@ -9,6 +9,19 @@ radixUiTestSupport();
 afterEach(()=>{cleanup();window.history.replaceState({},'','/');});
 const props={open:true,search:'?workspace=one&install=7',teamOnly:false,adminOnly:false,alerts:[],sources:[],releases:[],onClose:vi.fn()};
 
+it('keeps listbox children to option groups that hold only options',async()=>{
+ render(<WatchCommandPalette {...props}/>);
+ const listbox=await screen.findByRole('listbox');
+ const groups=Array.from(listbox.children);
+ expect(groups.length).toBeGreaterThan(1);
+ for(const group of groups){
+  expect(group.getAttribute('role')).toBe('group');
+  expect(group.getAttribute('aria-label')).toBeTruthy();
+  for(const child of Array.from(group.children))expect(child.getAttribute('role')==='option'||child.getAttribute('aria-hidden')==='true').toBe(true);
+ }
+ expect(screen.getByRole('group',{name:'Pages'})).toBeTruthy();
+});
+
 it('opens in place and lets users clear a query without losing keyboard focus',async()=>{
  render(<WatchCommandPalette {...props}/>);
  const input=await screen.findByRole('combobox');

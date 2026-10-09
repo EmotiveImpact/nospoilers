@@ -437,7 +437,7 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
                     <Description>.zip, .tgz, .tar and supported packages · up to {session?80:25} MiB</Description>
                     <span className="scan-choose-file"><FileText className="size-4" aria-hidden />Choose file</span>
                     {!locked ? (
-                      <input id={inputId} aria-label="Drop a package or build here" type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => onFiles(event.target.files)} />
+                      <input id={inputId} aria-label="Drop a package or build here" type="file" className="sr-only" accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip" onChange={(event) => { onFiles(event.target.files); event.target.value = "" }} />
                     ) : null}
                   </Label>
                 </Field>
@@ -657,7 +657,7 @@ export function ReceiptVerifyPanel() {
                 onReceipt(event.dataTransfer.files)
               }}
               className={cn(
-                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
+                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-white/70",
                 receiptOver
                   ? "border-snow bg-white/[0.06]"
                   : "border-white/25 hover:border-white/45",
@@ -673,7 +673,7 @@ export function ReceiptVerifyPanel() {
                 type="file"
                 className="sr-only"
                 accept=".json,application/json"
-                onChange={(event) => onReceipt(event.target.files)}
+                onChange={(event) => { onReceipt(event.target.files); event.target.value = "" }}
               />
             </Label>
           </Field>
@@ -691,7 +691,7 @@ export function ReceiptVerifyPanel() {
                 onPack(event.dataTransfer.files)
               }}
               className={cn(
-                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors",
+                "flex min-h-40 cursor-pointer flex-col items-start justify-center gap-3 rounded-2xl border-2 border-dotted px-5 py-8 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-white/70",
                 packOver
                   ? "border-snow bg-white/[0.06]"
                   : "border-white/25 hover:border-white/45",
@@ -707,13 +707,13 @@ export function ReceiptVerifyPanel() {
                 type="file"
                 className="sr-only"
                 accept=".tgz,.tar,.gz,.zip,.asar,.tar.gz,.vsix,.crx,.xpi,.whl,.jar,.war,.nupkg,.snupkg,.gem,.oci,.docker.tar,.apk,.aab,.ipa,.xapk,.lambda.zip,.json"
-                onChange={(event) => onPack(event.target.files)}
+                onChange={(event) => { onPack(event.target.files); event.target.value = "" }}
               />
             </Label>
           </Field>
         </div>
 
-        <div className="flex min-h-40 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
+        <div aria-live="polite" className="flex min-h-40 flex-col justify-center rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-8">
           {view.status === "idle" ? (
             <>
               <p className="text-sm text-dim">No receipt checked yet.</p>
@@ -807,7 +807,7 @@ function ResultsPanel({ state, locked, auth }: { state: ViewState; locked: boole
 
   if (state.status === "error") {
     return (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
+      <div role="alert" className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-10">
         <p className="font-display text-lg text-snow">Could not scan</p>
         <p className="mt-2 text-sm text-mute">{state.message}</p>
       </div>
