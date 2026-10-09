@@ -169,9 +169,12 @@ export function WatchAlertsWorkspace({
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    const saved = Number(sessionStorage.getItem("watch-alert-scroll"));
-    if (Number.isFinite(saved)) list.scrollTop = saved;
-    return () => sessionStorage.setItem("watch-alert-scroll", String(list.scrollTop));
+    // Storage can throw (blocked site data, private windows); scroll memory is only a convenience.
+    try {
+      const saved = Number(sessionStorage.getItem("watch-alert-scroll"));
+      if (Number.isFinite(saved)) list.scrollTop = saved;
+    } catch { /* storage unavailable */ }
+    return () => { try { sessionStorage.setItem("watch-alert-scroll", String(list.scrollTop)); } catch { /* storage unavailable */ } };
   }, []);
 
   function navigateQueue(event:KeyboardEvent<HTMLElement>) {
