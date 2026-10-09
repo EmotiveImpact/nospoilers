@@ -814,8 +814,18 @@ export function createWorker(opts: {
       clearInterval(heartbeat);
       if (job.kind === "prospect_scan") prospectRunning -= 1;
       dec();
-      void tick();
+      wake();
     }
+  }
+
+  // Fire-and-forget tick: a transient store error must be logged, not left as
+  // an unhandled rejection that terminates the process.
+  function wake(): void {
+    tick().catch((error: unknown) => {
+      logJson("error", "worker.tick_failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   let tickInFlight: Promise<void> | null = null;
@@ -827,6 +837,7 @@ export function createWorker(opts: {
       return;
     }
     ticking = true;
+    let failed = false;
     const running = (async () => {
       try {
         await opts.store.recoverStaleJobs(opts.staleAfterMs ?? 5 * 60 * 1000);
@@ -854,10 +865,15 @@ export function createWorker(opts: {
             catch { logJson('error','workspace.notification_worker_failed',{}); }
           }
         } while (tickRequested && !stopped);
+      } catch (error) {
+        failed = true;
+        throw error;
       } finally {
         ticking = false;
         tickInFlight = null;
-        if (tickRequested && !stopped) void tick();
+        // After a failed tick, leave the retry to the interval timer: re-waking
+        // immediately would spin against a store that is still failing.
+        if (tickRequested && !stopped && !failed) wake();
       }
     })();
     tickInFlight = running;
@@ -877,6 +893,7 @@ export function createWorker(opts: {
 
   return {
     tick,
+    wake,
     runUntilIdle,
     get running() {
       return { light: lightRunning, heavy: heavyRunning, prospect: prospectRunning };
@@ -884,9 +901,9 @@ export function createWorker(opts: {
     start() {
       if (timer) return;
       timer = setInterval(() => {
-        void tick();
+        wake();
       }, opts.intervalMs);
-      void tick();
+      wake();
     },
     async stop() {
       stopped = true;
