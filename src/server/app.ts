@@ -5,6 +5,7 @@ import {sourceMonitoring} from './source-monitoring.ts';
 import path from "node:path";
 import { Hono, type Context } from "hono";
 import { readBoundedBody } from './bounded-body.ts';
+import { logJson } from './log.ts';
 import { viewerWriteDenied } from './viewer-guard.ts';
 import { createWorkspace, listUserWorkspaces, updateWorkspace } from './workspaces.ts';
 import {createWorkspaceOrigin,verifyWorkspaceOrigin,listWorkspaceOrigins,changeWorkspaceOrigin} from './workspace-origins.ts';
@@ -437,6 +438,13 @@ function sameSecret(left: string, right: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Only errors that carry an HTTP status are written for clients; anything else may hold internals.
+function clientError(error: unknown, fallback: string, event: string): string {
+  if (error instanceof Error && typeof (error as { status?: unknown }).status === "number") return error.message;
+  logJson("error", event, { error: error instanceof Error ? error.message : String(error) });
+  return fallback;
+}
+
 function errorStatus(error: unknown): 400 | 402 | 403 | 404 | 408 | 409 | 413 | 429 {
   if (
     error &&
@@ -803,7 +811,7 @@ export function createApp(deps: AppDeps): Hono {
       deps.wakeWorker?.();
       return c.json({queued:true,uploadId,target,href:`/watch/releases?upload=${uploadId}`},202);
     } catch(error) {
-      return c.json({error:error instanceof Error?error.message:"Could not queue the scan."},errorStatus(error));
+      return c.json({error:clientError(error,"Could not queue the scan.","scan.queue_failed")},errorStatus(error));
     }
   }
 
@@ -1866,8 +1874,7 @@ export function createApp(deps: AppDeps): Hono {
       if (!user) return await stageScan(c, { target: filename, artifactBytes: buf });
       return await submitUploadedBytes(c,user.userId,buf,filename);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Scan failed.";
-      return c.json({ error: message }, errorStatus(error));
+      return c.json({ error: clientError(error, "Scan failed.", "scan.failed") }, errorStatus(error));
     }
   });
 
@@ -1894,8 +1901,7 @@ export function createApp(deps: AppDeps): Hono {
       if (result.queued) deps.wakeWorker?.();
       return c.json({ ok: true, ...result });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Webhook enqueue failed.";
-      return c.json({ error: message }, 500);
+      return c.json({ error: clientError(error, "Webhook enqueue failed.", "github.webhook_failed") }, 500);
     }
   });
 
@@ -2437,7 +2443,7 @@ export function createApp(deps: AppDeps): Hono {
       return c.json({url:url.toString(),expiresAt:intent.expiresAt});
     }catch(error){
       if(error instanceof GithubApiError&&error.status===401)return c.json({error:'Your GitHub authorisation has expired or been revoked. Sign in to GitHub again, then retry connecting the source.',code:'github_reauth_required'},401);
-      return c.json({error:error instanceof Error?error.message:'Connection unavailable.'},errorStatus(error));
+      return c.json({error:clientError(error,'Connection unavailable.','github.connect_failed')},errorStatus(error));
     }
   });
 
@@ -2455,7 +2461,7 @@ export function createApp(deps: AppDeps): Hono {
       if(result.status!=='connected')return c.json({error:'Existing GitHub connection could not be verified.'},409);
       deleteCookie(c,'ns_github_existing_connection',{path:'/'});deps.wakeWorker?.();
       return c.json(result,200);
-    }catch(error){return c.json({error:error instanceof Error?error.message:'GitHub connection failed.'},errorStatus(error));}
+    }catch(error){return c.json({error:clientError(error,'GitHub connection failed.','github.connect_failed')},errorStatus(error));}
   });
 
   app.post('/api/github/connection/complete',async c=>{
@@ -2470,7 +2476,7 @@ export function createApp(deps: AppDeps): Hono {
       const result=await connectGithubWorkspace({store:deps.store,github:deps.github,sessionId,userId:user.userId,...candidate,appId:deps.config.githubAppId,secret:deps.config.sessionSecret});
       if(result.status==='connected'){deleteCookie(c,'ns_github_connection',{path:'/'});deps.wakeWorker?.();}
       return c.json(result,result.status==='connected'?200:202);
-    }catch(error){return c.json({error:error instanceof Error?error.message:'GitHub connection failed.'},errorStatus(error));}
+    }catch(error){return c.json({error:clientError(error,'GitHub connection failed.','github.connect_failed')},errorStatus(error));}
   });
 
   app.get("/api/github/setup", async (c) => {
@@ -4065,7 +4071,7 @@ export function createApp(deps: AppDeps): Hono {
       c.header('Location',`/api/v1/scans/${uploadId}`);
       return c.json({queued:true,uploadId,statusUrl:`/api/v1/scans/${uploadId}`},202);
     } catch(error) {
-      return c.json({error:error instanceof Error?error.message:'Could not queue scan.'},errorStatus(error));
+      return c.json({error:clientError(error,'Could not queue scan.','scan.v1_queue_failed')},errorStatus(error));
     }
   });
 

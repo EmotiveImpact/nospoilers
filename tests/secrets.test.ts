@@ -392,3 +392,45 @@ describe("structured logs", () => {
     expect(JSON.stringify(parsed)).not.toContain("ghu_");
   });
 });
+
+describe("unexpected error responses", () => {
+  it("hides unexpected errors but keeps status-carrying messages", async () => {
+    const sql = await openSql("pglite://:memory:");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await migrate(sql);
+      const base = createStore(sql);
+      let failure: Error = new Error('relation "pending_scans" does not exist');
+      const store = { ...base, createPendingScan: async () => { throw failure; } } as typeof base;
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const app = createApp({
+        config: loadConfig({ githubWebhookSecret: "wh", sessionSecret: "sess" }),
+        store,
+        github: {
+          exchangeCode: unused,
+          getUser: unused,
+          listUserInstallations: unused,
+          getInstallation: unused,
+          getRepo: unused,
+          listReleaseAssets: async () => [],
+          getLatestRelease: async () => null,
+          downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
+        },
+      });
+      const stage = () => app.request("/api/scan", { method: "POST", headers: { "x-filename": "a.tgz" }, body: "bytes" });
+      const hidden = await stage();
+      expect(hidden.status).toBe(400);
+      expect(await hidden.json()).toEqual({ error: "Scan failed." });
+      failure = Object.assign(new Error("Upload storage is temporarily at capacity."), { status: 429 });
+      const shown = await stage();
+      expect(shown.status).toBe(429);
+      expect(await shown.json()).toEqual({ error: "Upload storage is temporarily at capacity." });
+    } finally {
+      spy.mockRestore();
+      await sql.close();
+    }
+  });
+});

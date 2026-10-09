@@ -148,7 +148,11 @@ describe("built UI", () => {
     const watch = await serveUi("/watch", root);
     expect(watch?.status).toBe(200);
     expect(await watch?.text()).toContain("NoSpoilers");
+    expect(watch?.headers.get("x-frame-options")).toBe("DENY");
+    expect(watch?.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+    expect(watch?.headers.get("x-content-type-options")).toBe("nosniff");
     const asset = await serveUi("/assets/app.js", root);
+    expect(asset?.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await asset?.text()).toBe("window.ns=1");
     expect(await serveUi("/../.env", root)).toBeNull();
     expect(await serveUi("/assets/../index.html", root)).toBeNull();
