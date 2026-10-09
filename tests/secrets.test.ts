@@ -187,6 +187,52 @@ describe("hosted scan rate limit", () => {
     }
   });
 
+  it("keys sign-in limits by the Vercel client address and ignores spoofable headers elsewhere", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const config = loadConfig({
+        githubWebhookSecret: "wh",
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        authRateLimit: 1,
+        authRateWindowMs: 60_000,
+      });
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const github = {
+        exchangeCode: unused,
+        getUser: unused,
+        listUserInstallations: unused,
+        getInstallation: unused,
+        getRepo: unused,
+        listReleaseAssets: async () => [],
+        getLatestRelease: async () => null,
+        downloadAsset: async () => Buffer.alloc(0),
+        ...skippedGithubWrites(),
+      };
+      const app = createApp({ config, store: createStore(sql), github });
+      const start = (headers: Record<string, string>) => app.request("/api/auth/github", { headers });
+      vi.stubEnv("VERCEL", "1");
+      vi.stubEnv("NOSPOILERS_TRUST_PROXY", "");
+      expect((await start({ "x-real-ip": "203.0.113.1", "x-forwarded-for": "1.1.1.1" })).status).toBe(302);
+      expect((await start({ "x-real-ip": "203.0.113.1", "x-forwarded-for": "2.2.2.2" })).status).toBe(429);
+      expect((await start({ "x-real-ip": "203.0.113.2" })).status).toBe(302);
+      expect((await start({ "x-vercel-forwarded-for": "203.0.113.3, 10.0.0.1" })).status).toBe(302);
+      expect((await start({ "x-vercel-forwarded-for": "203.0.113.3" })).status).toBe(429);
+      vi.stubEnv("VERCEL", "");
+      expect((await start({ "x-real-ip": "198.51.100.1" })).status).toBe(302);
+      expect((await start({ "x-real-ip": "198.51.100.2" })).status).toBe(429);
+    } finally {
+      vi.unstubAllEnvs();
+      await sql.close();
+    }
+  });
+
   it("rate-limits owner discovery after auth and ignores anonymous 401s", async () => {
     const sql = await openSql("pglite://:memory:");
     const fetchMock = vi.fn(async () =>

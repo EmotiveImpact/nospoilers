@@ -736,8 +736,13 @@ export function createApp(deps: AppDeps): Hono {
 
   function requestIp(c: Context): string {
     // Only enable behind an ingress that strips and replaces client-supplied forwarding headers.
-    if(process.env.NOSPOILERS_TRUST_PROXY!=='1')return 'untrusted-ingress';
-    return clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
+    if(process.env.NOSPOILERS_TRUST_PROXY==='1')return clientKey(c.req.header("x-forwarded-for"), c.req.header("x-real-ip"));
+    // Vercel overwrites these headers with the connecting client address, so clients cannot spoof them.
+    if(process.env.VERCEL==='1'){
+      const ip=c.req.header("x-real-ip")?.trim()||c.req.header("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+      if(ip)return ip;
+    }
+    return 'untrusted-ingress';
   }
 
   async function rateLimited(
@@ -2006,7 +2011,7 @@ export function createApp(deps: AppDeps): Hono {
     const limited = await rateLimited(
       c,
       authLimiter,
-      `billing:${requestIp(c)}`,
+      `billing:user:${user.userId}`,
       deps.config.authRateWindowMs,
       "Too many billing attempts from this address. Wait and try again.",
     );
@@ -2080,7 +2085,7 @@ export function createApp(deps: AppDeps): Hono {
     const limited = await rateLimited(
       c,
       authLimiter,
-      `billing:${requestIp(c)}`,
+      `billing:user:${user.userId}`,
       deps.config.authRateWindowMs,
       "Too many billing attempts from this address. Wait and try again.",
     );
@@ -3411,7 +3416,7 @@ export function createApp(deps: AppDeps): Hono {
     const latestLimited = await rateLimited(
       c,
       scanLimiter,
-      `scan:${requestIp(c)}`,
+      `scan:user:${user.userId}`,
       deps.config.scanRateWindowMs,
       "Too many hosted scans from this address. Wait and try again.",
     );
@@ -4355,7 +4360,7 @@ export function createApp(deps: AppDeps): Hono {
     const checkLimited = await rateLimited(
       c,
       scanLimiter,
-      `scan:${requestIp(c)}`,
+      `scan:user:${user.userId}`,
       deps.config.scanRateWindowMs,
       "Too many hosted scans from this address. Wait and try again.",
     );
@@ -4672,7 +4677,7 @@ export function createApp(deps: AppDeps): Hono {
     const originLimited = await rateLimited(
       c,
       scanLimiter,
-      `scan:${requestIp(c)}`,
+      `scan:user:${user.userId}`,
       deps.config.scanRateWindowMs,
       "Too many hosted scans from this address. Wait and try again.",
     );
@@ -6050,7 +6055,7 @@ export function createApp(deps: AppDeps): Hono {
     const verifyLimited = await rateLimited(
       c,
       scanLimiter,
-      `scan:${requestIp(c)}`,
+      `scan:user:${user.userId}`,
       deps.config.scanRateWindowMs,
       "Too many hosted scans from this address. Wait and try again.",
     );
