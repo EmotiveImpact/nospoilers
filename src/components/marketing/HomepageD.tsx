@@ -7,9 +7,9 @@ const homepageMarkup = { __html: content }
 import './homepage-d.css'
 
 const examples: Record<string, string[]> = {
-  Package: ['Package inspection', 'acme-cli / dist', 'Source map contains original code', 'dist/cli.js.map', 'Package contents', 'Exclude the map, then recheck →'],
-  GitHub: ['GitHub release inspection', 'acme / checkout-web', 'Internal config in release asset', 'release.zip / config.json', 'Release asset', 'Update packaging, then recheck →'],
-  'Production URL': ['Production website inspection', 'app.acme.example', 'Public source map is reachable', '/assets/app.js.map', 'Production web', 'Remove public map, then recheck →'],
+  Package: ['Package inspection', 'acme-cli / dist', 'Source map contains original code', 'dist/cli.js.map', 'Package contents', 'Exclude the map, then recheck'],
+  GitHub: ['GitHub release inspection', 'acme / checkout-web', 'Internal config in release asset', 'release.zip / config.json', 'Release asset', 'Update packaging, then recheck'],
+  'Production URL': ['Production website inspection', 'app.acme.example', 'Public source map is reachable', '/assets/app.js.map', 'Production web', 'Remove public map, then recheck'],
 }
 
 /** Trusted, bundled presentation markup from the approved Homepage D design. */
@@ -117,7 +117,7 @@ export function HomepageD({ scanPath }: { scanPath: string }) {
         button.textContent = 'Rechecking…'
         sweep()
         text('demo-status', 'Check in progress…')
-        later(() => { button.disabled = false; button.textContent = 'Recheck ↻'; text('demo-status', 'Recheck complete · 3 findings still need review') }, 1100)
+        later(() => { button.disabled = false; button.textContent = 'Recheck'; text('demo-status', 'Recheck complete · 3 findings still need review') }, 1100)
       }
       if (button.id === 'pipeline-run') {
         button.disabled = true

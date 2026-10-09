@@ -118,3 +118,27 @@
 .homepage-d h1{letter-spacing:-.04em}
 .homepage-d h2,.homepage-d .findings-section h2{letter-spacing:-.035em}
 @media (max-width:720px){.homepage-d h1{letter-spacing:-.03em}.homepage-d .hero .actions button,.homepage-d .hero .actions a{padding:12px 16px;font-size:15px}}
+/* October 2026: text links without arrow glyphs, lit icon tiles, richer radar and package illustrations. */
+.homepage-d .text-link,.homepage-d .section-top>a,.homepage-d .faq-contact a,.homepage-d .plan>a{text-decoration:underline;text-decoration-thickness:1px;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:5px;transition:text-decoration-color .2s ease,color .2s ease}
+.homepage-d .text-link:hover,.homepage-d .section-top>a:hover,.homepage-d .faq-contact a:hover,.homepage-d .plan>a:hover{text-decoration-color:currentColor;color:#fff}
+.homepage-d .section-top>a:hover{color:#ff5a6e}
+.homepage-d .finding-card .read-more{text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color .2s ease,color .2s ease}
+.homepage-d .finding-card:hover .read-more,.homepage-d .finding-card:focus-visible .read-more{color:#ff8f9d;text-decoration-color:currentColor}
+.homepage-d .finding-grid .feature-icon,.homepage-d .pipe-number,.homepage-d .custody .feature-icon{border-radius:12px;border:1px solid #ffffff17;background:radial-gradient(120% 90% at 30% 0%,#ffffff17,transparent 60%),linear-gradient(160deg,#1b222a,#0c1116);box-shadow:inset 0 1px #ffffff1c,inset 0 -1px #0009,0 8px 18px -8px #000;transition:border-color .2s ease,box-shadow .2s ease,color .2s ease}
+.homepage-d .finding-grid .feature-icon{color:#ff7385}
+.homepage-d .finding-grid .feature-icon svg,.homepage-d .pipe-number svg,.homepage-d .custody .feature-icon svg,.homepage-d .ships-list svg{stroke-width:1.75;filter:drop-shadow(0 0 6px #ff2d4740)}
+.homepage-d .pipe:nth-child(-n+2) .pipe-number svg{filter:none}
+.homepage-d .finding-grid .finding-card:hover .feature-icon,.homepage-d .finding-grid .finding-card:focus-visible .feature-icon{border-color:#ff2d4766;box-shadow:inset 0 1px #ffffff1c,0 0 0 4px #ff2d4712,0 0 22px -4px #ff2d4766}
+.homepage-d .pipe:nth-child(n+3) .pipe-number{border-color:#ff2d4757;background:radial-gradient(120% 90% at 30% 0%,#ff2d4726,transparent 60%),linear-gradient(160deg,#1e1a21,#0f1116)}
+.homepage-d .radar{border:0;background:none;border-radius:50%}
+.homepage-d .radar svg{position:absolute;inset:0;width:100%;height:100%}
+.homepage-d .radar:after{background:conic-gradient(from 0deg,transparent 0deg,transparent 300deg,#ff2d4708 320deg,#ff2d4740 359deg,transparent 360deg);border-right:0}
+.homepage-d .radar .blip{transform-box:fill-box;transform-origin:center;animation:ns-blip 2.8s ease-in-out infinite}
+.homepage-d .radar .blip-2{animation-delay:.9s}.homepage-d .radar .blip-3{animation-delay:1.8s}
+@keyframes ns-blip{0%,100%{opacity:.55}50%{opacity:1}}
+.homepage-d .package-art{border-color:#ffffff1f;background:radial-gradient(120% 80% at 20% 0%,#ffffff12,transparent 60%),linear-gradient(150deg,#22252d,#0d0f13);box-shadow:inset 0 1px #ffffff1a,12px 16px 0 #111317,13px 17px 0 #30323a,0 30px 60px -20px #000}
+.homepage-d .package-art .code-line{height:6px;border-radius:3px;margin:15px 0;background:linear-gradient(90deg,#7d8bb0 0 22%,transparent 22% 27%,#4b5162 27% 64%,transparent 64% 69%,#5f6b85 69%)}
+.homepage-d .package-art .code-line:nth-child(3){width:62%;background:linear-gradient(90deg,#4b5162 0 30%,transparent 30% 36%,#8a7aa6 36% 70%,transparent 70% 75%,#4b5162 75%)}
+.homepage-d .package-art .code-line:nth-child(4){width:84%;background:linear-gradient(90deg,#ff5a6e 0 46%,transparent 46% 52%,#ff2d4766 52%);box-shadow:0 0 14px #ff2d4766}
+.homepage-d .package-art .code-line:nth-child(5){width:46%}
+@media (prefers-reduced-motion:reduce){.homepage-d .radar .blip{animation:none}}
