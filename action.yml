@@ -60,12 +60,16 @@ runs:
         NOSPOILERS_CHANNEL: ${{ inputs.channel }}
         NOSPOILERS_SOURCE_REVISION: ${{ inputs.source-revision }}
         NOSPOILERS_CI_RUN: ${{ inputs.ci-run }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_POLICY: ${{ inputs.policy }}
       run: |
         EXTRA=""
-        if [ "${{ inputs.strict }}" = "true" ]; then
+        if [ "$INPUT_STRICT" = "true" ]; then
           EXTRA="--strict"
         fi
-        TARGET="${{ inputs.path }}"
+        TARGET="$INPUT_PATH"
         case "$TARGET" in
           /*) ;;
           *) TARGET="${GITHUB_WORKSPACE}/${TARGET}" ;;
@@ -79,24 +83,24 @@ runs:
           npx tsx src/cli.ts scan "$TARGET" $EXTRA --api-url "$API_URL"
           exit $?
         fi
-        SARIF_ARGS=""
-        if [ -n "${{ inputs.sarif }}" ]; then
-          SARIF_PATH="${{ inputs.sarif }}"
+        SARIF_ARGS=()
+        if [ -n "$INPUT_SARIF" ]; then
+          SARIF_PATH="$INPUT_SARIF"
           case "$SARIF_PATH" in
             /*) ;;
             *) SARIF_PATH="${GITHUB_WORKSPACE}/${SARIF_PATH}" ;;
           esac
-          SARIF_ARGS="--sarif $SARIF_PATH"
+          SARIF_ARGS=(--sarif "$SARIF_PATH")
         fi
-        POLICY_ARGS=""
-        if [ -n "${{ inputs.policy }}" ]; then
-          POLICY_PATH="${{ inputs.policy }}"
+        POLICY_ARGS=()
+        if [ -n "$INPUT_POLICY" ]; then
+          POLICY_PATH="$INPUT_POLICY"
           case "$POLICY_PATH" in
             /*) ;;
             *) POLICY_PATH="${GITHUB_WORKSPACE}/${POLICY_PATH}" ;;
           esac
-          POLICY_ARGS="--policy $POLICY_PATH"
+          POLICY_ARGS=(--policy "$POLICY_PATH")
         elif [ -f "${GITHUB_WORKSPACE}/.nospoilers.yml" ]; then
-          POLICY_ARGS="--policy ${GITHUB_WORKSPACE}/.nospoilers.yml"
+          POLICY_ARGS=(--policy "${GITHUB_WORKSPACE}/.nospoilers.yml")
         fi
-        npx tsx src/cli.ts scan "$TARGET" $EXTRA $SARIF_ARGS $POLICY_ARGS
+        npx tsx src/cli.ts scan "$TARGET" $EXTRA "${SARIF_ARGS[@]}" "${POLICY_ARGS[@]}"

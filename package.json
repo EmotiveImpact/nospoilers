@@ -1,5 +1,6 @@
 {
   "name": "nospoilers",
+  "private": true,
   "version": "0.1.0",
   "description": "No spoilers in production. Fail CI if source maps or secrets ship in the packed artifact.",
   "type": "module",
@@ -50,7 +51,7 @@
     "@vercel/functions": "^3.9.5",
     "@vercel/sandbox": "3.3.0",
     "commander": "^15.0.0",
-    "hono": "^4.13.5",
+    "hono": "^4.13.7",
     "jszip": "^3.10.1",
     "motion": "13.2.0",
     "pg": "^8.23.0",

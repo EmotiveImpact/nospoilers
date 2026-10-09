@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/server/app.ts";
 import { loadConfig } from "../src/server/config.ts";
 import { skippedGithubWrites, type GithubPort } from "../src/server/github.ts";
@@ -555,7 +555,29 @@ describe("SIEM destinations", () => {
       expect(posts.some((row) => row.url === SIEM && row.body.includes("created public"))).toBe(true);
       expect(posts.some((row) => row.url === HOOK && row.body.includes("created public"))).toBe(true);
       expect(posts.join("")).not.toContain("supersecret");
+
+      // Without an injected double, SIEM must use the DNS-pinned client, never global fetch.
+      const globalPosts: string[] = [];
+      vi.stubGlobal("fetch", (async (input: string | URL | Request) => {
+        globalPosts.push(String(input));
+        return new Response("ok", { status: 200 });
+      }) as typeof fetch);
+      let lookups = 0;
+      const rebinding = createLogNotifier(store, {
+        lookup: async () =>
+          ++lookups === 1 ? [{ address: "1.1.1.1", family: 4 }] : [{ address: "127.0.0.1", family: 4 }],
+      });
+      await rebinding.send({
+        installationId: 9,
+        kind: "repo_created_public",
+        title: "acme/app was created public",
+        body: "A public create event. Values are not stored.",
+      });
+      expect(globalPosts).toContain(HOOK);
+      expect(globalPosts).not.toContain(SIEM);
+      expect(lookups).toBe(2);
     } finally {
+      vi.unstubAllGlobals();
       await sql.close();
     }
   });

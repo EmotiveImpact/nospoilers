@@ -203,6 +203,8 @@ export function WatchMonolithShell({
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, [navOpen]);
   const workspaceId=new URLSearchParams(search).get('workspace');
+  const viewTitle = artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view];
+  useEffect(() => { document.title = `${viewTitle} · NoSpoilers`; }, [viewTitle]);
 
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const routeContent = useRef<HTMLDivElement|null>(null);
@@ -463,7 +465,7 @@ export function WatchMonolithShell({
             <span className="sr-only">Open watch navigation</span>
             <Menu className="size-5" aria-hidden />
           </button>
-          <div className="watch-stage-crumb flex min-w-0 flex-1 items-center gap-2 text-[12px] text-mute sm:flex-none sm:max-w-[220px]"><PageIcon className="hidden size-[17px] shrink-0 sm:block" aria-hidden/><span className="truncate">{artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]}</span></div>
+          <div className="watch-stage-crumb flex min-w-0 flex-1 items-center gap-2 text-[12px] text-mute sm:flex-none sm:max-w-[220px]"><PageIcon className="hidden size-[17px] shrink-0 sm:block" aria-hidden/><span className="truncate">{viewTitle}</span></div>
           {coverage ? <span className={cn("watch-stage-coverage hidden shrink-0 whitespace-nowrap text-[10px] sm:inline", ended ? "text-danger" : "text-dim")}><span aria-hidden="true" className="mr-2">·</span>{coverage.label}</span> : null}
           <span className="hidden flex-1 sm:block" />
           <button
@@ -507,7 +509,7 @@ export function WatchMonolithShell({
           tabIndex={-1}
           role="region"
           data-watch-page={route.view}
-          aria-label={`${artifactOnly&&route.view==='policy'?'Scan policy':VIEW_TITLE[route.view]} page`}
+          aria-label={`${viewTitle} page`}
           className={cn(
             "watch-route-content min-h-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-snow",
             route.view === "alerts" ? "overflow-hidden" : "overflow-auto",

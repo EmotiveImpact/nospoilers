@@ -121,48 +121,54 @@ function OpenCommandPalette({
               <button type="button" aria-label="Close search" className="watch-search-control" onClick={close}><span aria-hidden>Esc</span></button>
             </div>
           </div>
-          <div id={listboxId} role="listbox" className="max-h-80 overflow-auto py-2">
+          {/* Listbox children must be options or option groups; the empty state is plain text, announced by the status line. */}
+          <div id={listboxId} role={items.length ? "listbox" : undefined} aria-label={items.length ? "Search results" : undefined} className="watch-search-results max-h-80 overflow-auto py-2">
             {items.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className="text-sm text-snow">No results</p>
                 <p className="mt-1 text-xs text-dim">{artifactOnly?'Try Releases, Team, Retention or Billing.':'Try another name, or search the full list on Coverage or Releases.'}</p>
               </div>
-            ) : visibleItems.map((item, localIndex) => {
-              const index = offset + localIndex;
-              const Icon = item.detail === "Alert"
-                ? Bell
-                : item.detail === "Release"
-                  ? FileCheck2
-                  : item.detail === "Source"
-                    ? Box
-                    : item.group === "Pages" ? PanelTop : ArrowRight;
-              const showGroup = localIndex === 0 || items[index - 1]?.group !== item.group;
-              return (
-                <div key={item.id}>
-                  {showGroup ? (
-                    <p className="watch-search-group">
-                      {item.group}
-                    </p>
-                  ) : null}
-                  <button
-                    ref={active?.id === item.id ? activeOptionRef : undefined}
-                    id={`${listboxId}-${item.id}`}
-                    role="option"
-                    aria-label={item.detail ? `${item.label}, ${item.detail}` : item.label}
-                    aria-selected={active?.id === item.id}
-                    type="button"
-                    tabIndex={-1}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-mute hover:bg-white/5 hover:text-snow aria-selected:bg-white/8 aria-selected:text-snow"
-                    onMouseMove={() => setActiveIndex(index)}
-                    onClick={() => choose(item)}
-                  >
-                    <Icon className="size-4 shrink-0 text-dim" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.detail ? <span className="text-xs text-dim">{item.detail}</span> : null}
-                  </button>
-                </div>
-              );
-            })}
+            ) : visibleItems.reduce<{group:string;entries:{item:typeof visibleItems[number];index:number}[]}[]>((groups, item, localIndex) => {
+              const last = groups[groups.length - 1];
+              const entry = { item, index: offset + localIndex };
+              if (last && last.group === item.group) last.entries.push(entry);
+              else groups.push({ group: item.group, entries: [entry] });
+              return groups;
+            }, []).map(({ group, entries }) => (
+              <div key={`${group}-${entries[0].item.id}`} role="group" aria-label={group}>
+                <p className="watch-search-group" aria-hidden="true">
+                  {group}
+                </p>
+                {entries.map(({ item, index }) => {
+                  const Icon = item.detail === "Alert"
+                    ? Bell
+                    : item.detail === "Release"
+                      ? FileCheck2
+                      : item.detail === "Source"
+                        ? Box
+                        : item.group === "Pages" ? PanelTop : ArrowRight;
+                  return (
+                    <button
+                      key={item.id}
+                      ref={active?.id === item.id ? activeOptionRef : undefined}
+                      id={`${listboxId}-${item.id}`}
+                      role="option"
+                      aria-label={item.detail ? `${item.label}, ${item.detail}` : item.label}
+                      aria-selected={active?.id === item.id}
+                      type="button"
+                      tabIndex={-1}
+                      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-mute hover:bg-white/5 hover:text-snow aria-selected:bg-white/8 aria-selected:text-snow"
+                      onMouseMove={() => setActiveIndex(index)}
+                      onClick={() => choose(item)}
+                    >
+                      <Icon className="size-4 shrink-0 text-dim" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {item.detail ? <span className="text-xs text-dim">{item.detail}</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
           <div className="watch-search-help"><span role="status">{query.trim()?items.length>pageSize?`${items.length} matches`:`${items.length} ${items.length===1?'match':'matches'} shown`:'Quick navigation'}</span><span>↑ ↓ Navigate · Enter Open</span></div>
           {items.length > 10 ? <ListPagination label="Search results" pageSize={pageSize} onPageSizeChange={size=>{setPageSize(size);setActiveIndex(0);}} page={page} count={visibleItems.length} total={items.length} hasPrevious={page>0} hasNext={offset+pageSize<items.length} onPrevious={()=>setActiveIndex(offset-pageSize)} onNext={()=>setActiveIndex(offset+pageSize)}/> : null}

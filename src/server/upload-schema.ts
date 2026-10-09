@@ -55,3 +55,9 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS completed_upload_immutable ON uploaded_scans;
 CREATE TRIGGER completed_upload_immutable BEFORE UPDATE ON uploaded_scans FOR EACH ROW EXECUTE FUNCTION guard_completed_upload();
 `;
+
+// 124: support the per-request rate-bucket sweep and the worker's upload expiry sweep.
+export const expirySweepIndexSchema = `
+CREATE INDEX IF NOT EXISTS request_rate_buckets_expires_idx ON request_rate_buckets(expires_at);
+CREATE INDEX IF NOT EXISTS uploaded_scans_pending_expiry_idx ON uploaded_scans(expires_at) WHERE status IN ('queued','running');
+`;

@@ -35,12 +35,28 @@ describe("Vercel web runtime", () => {
       rewrites: Array<{ source: string; destination: string }>;
       functions: Record<string, { includeFiles?: string; maxDuration?: number }>;
       crons?: Array<{ path: string; schedule: string }>;
+      headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
     };
+
+    const everyPage = config.headers.find((rule) => rule.source === "/(.*)")?.headers ?? [];
+    expect(everyPage).toEqual(expect.arrayContaining([
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+    ]));
+    // Only hashed top-level build output is immutable; public/assets subfolders stay revalidated.
+    const immutable = config.headers.find((rule) => rule.headers.some((h) => h.value.includes("immutable")));
+    expect(immutable?.source).toBe("/assets/:file([^/]+\\.(?:js|css|woff2))");
 
     expect(config.rewrites).toEqual([
       { source: "/api/:path*", destination: "/api" },
-      { source: "/:path*", destination: "/index.html" },
+      // Missing build chunks and API paths must 404, not return the HTML shell.
+      { source: "/((?!api/|assets/).*)", destination: "/index.html" },
     ]);
+    const fallback = new RegExp(`^${config.rewrites[1]!.source}$`);
+    expect(fallback.test("/watch/alerts")).toBe(true);
+    expect(fallback.test("/assets/index-stale123.js")).toBe(false);
+    expect(fallback.test("/api/health")).toBe(false);
     expect(config.functions["api/index.mjs"]).toMatchObject({
       includeFiles: "{.vercel-runtime/**,src/server/schema.sql}",
       maxDuration: 300,

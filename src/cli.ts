@@ -2,7 +2,7 @@
 import { existsSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import { runCliVerify } from "./cli-verify.ts";
 import {runGate} from './cli-gate.ts';
 import {runMcp} from './cli-mcp.ts';
@@ -85,6 +85,8 @@ async function scanViaHostedApi(
 }
 
 const program = new Command();
+// Usage errors exit 2 (could not run), never 1, which means the scan failed policy.
+program.exitOverride();
 
 program.command('mcp').description('Local MCP evidence tools using an explicit short-lived agent grant')
   .option('--api <origin>','NoSpoilers application origin')
@@ -147,6 +149,9 @@ program
             process.stderr.write(
               "Hosted scan uses the installation allowlist, not a local policy file.\n",
             );
+          }
+          if (opts.strict) {
+            process.stderr.write("Hosted scan uses the workspace policy; --strict is not applied.\n");
           }
           const hosted = await scanViaHostedApi(path.resolve(target), apiUrl, apiToken, {
             channel: opts.channel,
@@ -228,4 +233,9 @@ program.command('gate').description('Consume a fresh, single-use pre-deployment 
     try{const {result,exitCode}=await runGate({...options,token:process.env.NOSPOILERS_TOKEN??''});process.stdout.write(`${JSON.stringify(result)}\n`);if(result.mode==='warn'&&result.readiness!=='ready')process.stderr.write(`Release Gate warning: ${result.readiness}. Warn mode does not block deployment.\n`);process.exitCode=exitCode;}
     catch(error){process.stderr.write(`${error instanceof Error?error.message:'Gate unavailable. Do not deploy.'}\n`);process.exitCode=2;}
   });
-await program.parseAsync(process.argv);
+try {
+  await program.parseAsync(process.argv);
+} catch (error) {
+  if (!(error instanceof CommanderError)) throw error;
+  process.exitCode = error.exitCode === 0 ? 0 : 2;
+}

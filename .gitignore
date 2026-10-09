@@ -30,7 +30,9 @@ data
 *.sln
 *.sw?
 .vercel
-.env*
+dist-parser
+coverage
+/.claude/settings.local.json
 
 # Local design and browser acceptance artifacts
 /.claude/launch.json

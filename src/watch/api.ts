@@ -17,10 +17,12 @@ export async function loadWatchJson<T>(
     credentials: "include",
     ...init,
   });
-  const body = (await response.json()) as T & { error?: string };
+  // A proxy 502/413 page is HTML; never surface the JSON parser's "Unexpected token" to people.
+  const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!response.ok) {
-    throw new WatchApiError(body.error ?? `Request failed (${response.status})`, response.status);
+    throw new WatchApiError(body?.error ?? `Request failed (${response.status})`, response.status);
   }
+  if (body === null) throw new WatchApiError(`Unreadable response (${response.status})`, response.status);
   return body;
 }
 

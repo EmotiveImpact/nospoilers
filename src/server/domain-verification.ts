@@ -1,6 +1,7 @@
 import { resolveTxt } from "node:dns/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { assertPublicWebhookHost, lookupWebhookHost, type WebhookHostLookup } from "./siem.ts";
+import { pinnedHttps } from "./pinned-https.ts";
 
 export type DomainVerificationMethod = "dns" | "http";
 
@@ -85,9 +86,12 @@ export async function verifyDomainOwnership(
     return { method, detail: `Verified DNS control of ${host}.` };
   }
 
-  const publicHost = await assertPublicWebhookHost(host, options.lookup ?? lookupWebhookHost);
+  const lookup = options.lookup ?? lookupWebhookHost;
+  const publicHost = await assertPublicWebhookHost(host, lookup);
   if (!publicHost) throw new Error("Verification host resolved to a private or reserved address.");
-  const response = await (options.fetch ?? fetch)(
+  // Production pins the checked address and caps the identity-encoded body.
+  const fetchImpl = options.fetch ?? ((url: string, init?: RequestInit) => pinnedHttps(url, init, 4_096, lookup));
+  const response = await fetchImpl(
     `https://${host}/.well-known/nospoilers-verification.txt`,
     {
       method: "GET",

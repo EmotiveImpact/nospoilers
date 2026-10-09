@@ -2961,16 +2961,20 @@ export function createStore(
 
     async recoverStaleJobs(staleAfterMs: number): Promise<number> {
       const cutoff = new Date(Date.now() - staleAfterMs).toISOString();
+      // A job that keeps killing its worker must not be requeued forever: once it
+      // has used the same attempt budget as finishJob, fail it instead.
       const { rows } = await sql.query<{ n: unknown }>(
         `WITH recovered AS (
            UPDATE jobs
-           SET status = 'queued', locked_at = NULL, locked_by = NULL,
-               error = COALESCE(error, 'stale lock recovered')
+           SET status = CASE WHEN attempts >= $2 THEN 'failed' ELSE 'queued' END,
+               locked_at = NULL, locked_by = NULL,
+               error = CASE WHEN attempts >= $2 THEN 'stale lock recovered; attempts exhausted'
+                            ELSE COALESCE(error, 'stale lock recovered') END
            WHERE status = 'running' AND locked_at < $1::timestamptz
            RETURNING id
          )
          SELECT count(*)::int AS n FROM recovered`,
-        [cutoff],
+        [cutoff, jobMaxAttempts],
       );
       return num(rows[0]?.n ?? 0);
     },

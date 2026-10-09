@@ -91,6 +91,25 @@ describe("runtime migrations", () => {
     }
   });
 
+  it("indexes the expiry sweeps for rate buckets and pending uploads", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrateIfNeeded(sql);
+      const { rows } = await sql.query<{ indexname: string; indexdef: string }>(
+        `SELECT indexname, indexdef FROM pg_indexes
+         WHERE indexname IN ('request_rate_buckets_expires_idx', 'uploaded_scans_pending_expiry_idx')
+         ORDER BY indexname`,
+      );
+      expect(rows.map((row) => row.indexname)).toEqual([
+        "request_rate_buckets_expires_idx",
+        "uploaded_scans_pending_expiry_idx",
+      ]);
+      expect(rows[1]?.indexdef).toContain("WHERE");
+    } finally {
+      await sql.close();
+    }
+  });
+
   it("adds origin verification columns to an existing database before indexing them", async () => {
     const sql = await openSql("pglite://:memory:");
     try {
@@ -129,7 +148,11 @@ describe("built UI", () => {
     const watch = await serveUi("/watch", root);
     expect(watch?.status).toBe(200);
     expect(await watch?.text()).toContain("NoSpoilers");
+    expect(watch?.headers.get("x-frame-options")).toBe("DENY");
+    expect(watch?.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+    expect(watch?.headers.get("x-content-type-options")).toBe("nosniff");
     const asset = await serveUi("/assets/app.js", root);
+    expect(asset?.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await asset?.text()).toBe("window.ns=1");
     expect(await serveUi("/../.env", root)).toBeNull();
     expect(await serveUi("/assets/../index.html", root)).toBeNull();

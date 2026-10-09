@@ -187,6 +187,52 @@ describe("hosted scan rate limit", () => {
     }
   });
 
+  it("keys sign-in limits by the Vercel client address and ignores spoofable headers elsewhere", async () => {
+    const sql = await openSql("pglite://:memory:");
+    try {
+      await migrate(sql);
+      const config = loadConfig({
+        githubWebhookSecret: "wh",
+        githubAppId: "1",
+        githubPrivateKey: "x",
+        githubClientId: "c",
+        githubClientSecret: "s",
+        sessionSecret: "sess",
+        authRateLimit: 1,
+        authRateWindowMs: 60_000,
+      });
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const github = {
+        exchangeCode: unused,
+        getUser: unused,
+        listUserInstallations: unused,
+        getInstallation: unused,
+        getRepo: unused,
+        listReleaseAssets: async () => [],
+        getLatestRelease: async () => null,
+        downloadAsset: async () => Buffer.alloc(0),
+        ...skippedGithubWrites(),
+      };
+      const app = createApp({ config, store: createStore(sql), github });
+      const start = (headers: Record<string, string>) => app.request("/api/auth/github", { headers });
+      vi.stubEnv("VERCEL", "1");
+      vi.stubEnv("NOSPOILERS_TRUST_PROXY", "");
+      expect((await start({ "x-real-ip": "203.0.113.1", "x-forwarded-for": "1.1.1.1" })).status).toBe(302);
+      expect((await start({ "x-real-ip": "203.0.113.1", "x-forwarded-for": "2.2.2.2" })).status).toBe(429);
+      expect((await start({ "x-real-ip": "203.0.113.2" })).status).toBe(302);
+      expect((await start({ "x-vercel-forwarded-for": "203.0.113.3, 10.0.0.1" })).status).toBe(302);
+      expect((await start({ "x-vercel-forwarded-for": "203.0.113.3" })).status).toBe(429);
+      vi.stubEnv("VERCEL", "");
+      expect((await start({ "x-real-ip": "198.51.100.1" })).status).toBe(302);
+      expect((await start({ "x-real-ip": "198.51.100.2" })).status).toBe(429);
+    } finally {
+      vi.unstubAllEnvs();
+      await sql.close();
+    }
+  });
+
   it("rate-limits owner discovery after auth and ignores anonymous 401s", async () => {
     const sql = await openSql("pglite://:memory:");
     const fetchMock = vi.fn(async () =>
@@ -344,5 +390,47 @@ describe("structured logs", () => {
     expect(parsed.database).toBe("neon");
     expect(parsed.token).toBe("[redacted]");
     expect(JSON.stringify(parsed)).not.toContain("ghu_");
+  });
+});
+
+describe("unexpected error responses", () => {
+  it("hides unexpected errors but keeps status-carrying messages", async () => {
+    const sql = await openSql("pglite://:memory:");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await migrate(sql);
+      const base = createStore(sql);
+      let failure: Error = new Error('relation "pending_scans" does not exist');
+      const store = { ...base, createPendingScan: async () => { throw failure; } } as typeof base;
+      const unused = async (): Promise<never> => {
+        throw new Error("unused");
+      };
+      const app = createApp({
+        config: loadConfig({ githubWebhookSecret: "wh", sessionSecret: "sess" }),
+        store,
+        github: {
+          exchangeCode: unused,
+          getUser: unused,
+          listUserInstallations: unused,
+          getInstallation: unused,
+          getRepo: unused,
+          listReleaseAssets: async () => [],
+          getLatestRelease: async () => null,
+          downloadAsset: async () => Buffer.alloc(0),
+          ...skippedGithubWrites(),
+        },
+      });
+      const stage = () => app.request("/api/scan", { method: "POST", headers: { "x-filename": "a.tgz" }, body: "bytes" });
+      const hidden = await stage();
+      expect(hidden.status).toBe(400);
+      expect(await hidden.json()).toEqual({ error: "Scan failed." });
+      failure = Object.assign(new Error("Upload storage is temporarily at capacity."), { status: 429 });
+      const shown = await stage();
+      expect(shown.status).toBe(429);
+      expect(await shown.json()).toEqual({ error: "Upload storage is temporarily at capacity." });
+    } finally {
+      spy.mockRestore();
+      await sql.close();
+    }
   });
 });
