@@ -58,16 +58,20 @@ function scanModeFromSearch(search: string): ScanMode {
 
 async function scanFile(file: File, onProgress:(percent:number)=>void, signal:AbortSignal, install:string|null, workspaceId:string|null): Promise<ScanSubmission> {
   const response = await uploadArtifact(file,install,onProgress,signal,workspaceId)
-  const body = (await response.json()) as ScanSubmission | { error?: string }
+  // A proxy 502/413 page is HTML; fall back to a status message instead of the JSON parser's error.
+  const body = (await response.json().catch(() => null)) as ScanSubmission | { error?: string } | null
   if (!response.ok) {
     throw new Error(
       response.status === 402
         ? "Coverage ended. Subscribe to unpack on our servers."
-        : "error" in body && body.error
+        : body && "error" in body && body.error
           ? body.error
-          : "Scan failed.",
+          : response.status === 413
+            ? "File too large to upload."
+            : `Scan failed (${response.status}).`,
     )
   }
+  // An unreadable success body is rejected by requireSubmission with the saved-attempt message.
   return body as ScanSubmission
 }
 

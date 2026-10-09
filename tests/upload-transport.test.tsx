@@ -32,8 +32,21 @@ describe('artifact upload transport',()=>{
     request.upload.onprogress?.({lengthComputable:true,loaded:2,total:4});
     expect(progress).toHaveBeenCalledWith(50);
     expect(request.url).toBe('/api/scan?installationId=7');
-    expect(request.headers['Idempotency-Key']).toBeTruthy();expect(request.timeout).toBe(120000);
+    expect(request.headers['Idempotency-Key']).toBeTruthy();expect(request.timeout).toBe(0);
     request.onload?.();expect((await pending).status).toBe(202);
+  });
+  it('times out on inactivity, not on total upload duration',async()=>{
+    vi.useFakeTimers();
+    try{
+      vi.stubGlobal('XMLHttpRequest',FakeRequest);
+      const pending=uploadArtifact(new File(['bytes'],'pack.zip'),null,()=>{},new AbortController().signal);
+      const request=FakeRequest.latest;
+      for(let step=1;step<=5;step++){vi.advanceTimersByTime(100_000);request.upload.onprogress?.({lengthComputable:true,loaded:step,total:10});}
+      let settled=false;void pending.then(()=>{settled=true;},()=>{settled=true;});
+      await Promise.resolve();expect(settled).toBe(false);
+      vi.advanceTimersByTime(120_000);
+      await expect(pending).rejects.toThrow('Upload timed out');
+    }finally{vi.useRealTimers();}
   });
   it('stops the transfer without claiming to cancel a queued scan',async()=>{
     vi.stubGlobal('XMLHttpRequest',FakeRequest);const controller=new AbortController();
