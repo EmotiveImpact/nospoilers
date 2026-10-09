@@ -1,5 +1,6 @@
 {
   "name": "nospoilers",
+  "private": true,
   "version": "0.1.0",
   "description": "No spoilers in production. Fail CI if source maps or secrets ship in the packed artifact.",
   "type": "module",
