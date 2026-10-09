@@ -14,6 +14,22 @@ This is the short operational defect register. Product status lives in [docs/STA
 | Native accessibility acceptance remains | Responsive and automated keyboard coverage exists | Complete native 200% zoom and audible screen-reader checks |
 | Stripe cannot take payment | Deliberately deferred by the owner | Configure sandbox prices, keys and webhook later; then test checkout, entitlement changes, cancellation and expiry |
 
+## Fixed on 9 October 2026 (full project review, draft PR, not deployed)
+
+| Problem | Fix | Evidence |
+| --- | --- | --- |
+| Every IP-keyed rate limit was one site-wide bucket on Vercel, so one client could block all sign-ins for an hour | Use Vercel's platform-set client address; key signed-in billing and scan limits by user | Focused rate-limit tests; see PR |
+| Scanner missed a trailing sourceMappingURL or token in files over 2 MB, and generic `.map` files over 256 KB | Secret and directive checks read every inspected byte; large maps recognised by their v3 header | `tests/scanner-precision.test.ts` fails before, passes after |
+| Scanner false positives on bundled build tools (string-literal sourceMappingURL), crypto libraries (bare PEM headers), the AWS documentation key and empty `.env.example` files | Match only real comment directives, require key material after PEM headers, skip `AKIA…EXAMPLE`, allow env templates with only empty or placeholder values | Same test file; fixture CI gate unchanged |
+| A typo in a local policy allow entry (for example `paths:`) allowed the rule everywhere; inconclusive SARIF looked clean; usage errors exited 1 | Reject unknown allow keys, mark inconclusive SARIF invocations unsuccessful, usage errors exit 2 | Same test file |
+| A transient database error in a worker tick crashed the Railway worker; one failing repository stopped every hourly sweep; stale jobs could requeue forever | Log failed ticks, isolate each poll sweep and repository, cap stale recovery at the normal attempt budget | `tests/hosted.test.ts`, `tests/poller-isolation.test.ts` |
+| SIEM delivery skipped DNS pinning; website verification and map custody read unbounded bodies from customer-chosen hosts | Use the pinned, size-capped HTTPS client | Focused SIEM, domain and map-custody tests |
+| The app could be framed by any site; missing build chunks returned the HTML shell with status 200; hashed assets were never long-cached | Frame-deny and nosniff headers on Vercel and the Node host, SPA fallback excludes `/assets` and `/api`, immutable caching for hashed build output | `tests/vercel-deployment.test.ts` |
+| Watch went blank on a stale deploy or render error; proxy HTML errors showed a JSON parser message; 80 MB uploads timed out after two minutes on slower links | Route error boundary with reload, one automatic reload on chunk failure, defensive JSON parsing, inactivity-based upload timeout | Focused UI and transport tests |
+| Homepage visitors downloaded the internal prospect, disclosure, mockup and scan pages | Lazy-load non-home routes; entry chunk 668 kB to 389 kB (199 kB to 125 kB gzip) | `npm run build` output |
+| Drop zones showed no keyboard focus, scan and receipt results were not announced, the confirm dialog input had no name and the command palette listbox held non-option children | Focus outline, live regions, labelled input and grouped options | Focused accessibility tests |
+| Three production dependencies had advisories (undici, brace-expansion, hono) | Lockfile updates; `npm audit --omit=dev` reports 0 | npm audit |
+
 ## Fixed on 3 October 2026
 
 | Problem | Fix | Evidence |
