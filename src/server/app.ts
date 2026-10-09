@@ -995,14 +995,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.use("/api/internal/*", async (c, next) => {
     if (!(await isOperator(c))) {
-      return c.json(
-        {
-          error: "Admin access required.",
-          githubLogin: deps.config.adminGithubLogin,
-          tokenConfigured: Boolean(deps.config.adminToken),
-        },
-        401,
-      );
+      return c.json({ error: "Admin access required." }, 401);
     }
     await next();
   });

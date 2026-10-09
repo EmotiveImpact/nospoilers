@@ -301,7 +301,7 @@ describe("Artifact Leads persistence", () => {
       expect(list.status).toBe(401);
       const denied = (await list.json()) as { prospects?: unknown; error?: string };
       expect(denied.prospects).toBeUndefined();
-      expect(denied.error).toBe("Admin access required.");
+      expect(denied).toEqual({ error: "Admin access required." });
 
       const mutate = await app.request("/api/internal/prospects/1", {
         method: "PATCH",
