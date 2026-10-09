@@ -126,7 +126,7 @@ function wrapPglite(db: PGlite): SqlClient {
   };
 }
 
-function wrapPool(pool: pg.Pool): SqlClient {
+export function wrapPool(pool: pg.Pool): SqlClient {
   return {
     async query<T>(text: string, params: unknown[] = []): Promise<QueryResult<T>> {
       const result = await pool.query(text, params);
@@ -137,6 +137,9 @@ function wrapPool(pool: pg.Pool): SqlClient {
     },
     async transaction<T>(fn: (sql: SqlClient) => Promise<T>): Promise<T> {
       const client = await pool.connect();
+      // A client whose ROLLBACK failed is in an unknown state: release it with
+      // that error so pg destroys it rather than returning it to the pool.
+      let broken: Error | undefined;
       try {
         await client.query("BEGIN");
         const inner: SqlClient = {
@@ -154,10 +157,14 @@ function wrapPool(pool: pg.Pool): SqlClient {
         await client.query("COMMIT");
         return value;
       } catch (error) {
-        await client.query("ROLLBACK");
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          broken = rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
+        }
         throw error;
       } finally {
-        client.release();
+        client.release(broken);
       }
     },
     async close() {

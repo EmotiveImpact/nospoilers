@@ -116,7 +116,10 @@ export function releaseGate(sql:SqlClient,ports:IntelligencePorts){
       const result={decisionId:row.id,policyRevision:p.revision,mode:p.mode,readiness:fresh.readiness,outcome,
         proceed:outcome!=='denied',warning:p.mode==='warn'&&fresh.readiness!=='ready',digest:row.digest,deploymentId:row.deployment_id,notice:'Single-use gate decision; not a new scan receipt or proof of deployment.'};
       await ports.access(tx,s.workspace_id,'write',s.source_binding);
-      await tx.query('INSERT INTO release_gate_consumptions(id,decision_id,result,actor_login) VALUES($1,$2,$3::jsonb,$4)',[randomUUID(),row.id,JSON.stringify(result),permission.actorLogin]);
+      // The workspace lock in scope() already serialises consumers; the conflict
+      // guard keeps a concurrent consume a 409 rather than a unique-violation 500.
+      const consumed=await tx.query('INSERT INTO release_gate_consumptions(id,decision_id,result,actor_login) VALUES($1,$2,$3::jsonb,$4) ON CONFLICT(decision_id) DO NOTHING RETURNING id',[randomUUID(),row.id,JSON.stringify(result),permission.actorLogin]);
+      if(!consumed.rows.length)return fail('This gate decision has already been consumed. Evaluate again for another deployment attempt.',409);
       await audit(tx,s,permission.actorLogin,'release_gate_consumed',{decisionId:row.id,outcome});
       return result;
     });},
