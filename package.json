@@ -51,7 +51,7 @@
     "@vercel/functions": "^3.9.5",
     "@vercel/sandbox": "3.3.0",
     "commander": "^15.0.0",
-    "hono": "^4.13.5",
+    "hono": "^4.13.7",
     "jszip": "^3.10.1",
     "motion": "13.2.0",
     "pg": "^8.23.0",
