@@ -42,6 +42,16 @@ describe("website ownership verification", () => {
     expect(result.method).toBe("http");
   });
 
+  it("pins the checked address for the HTTPS file when no fetch is injected", async () => {
+    let lookups = 0;
+    await expect(
+      verifyDomainOwnership("app.example.com", "D".repeat(32), "http", {
+        lookup: async () => (++lookups === 1 ? [{ address: "1.1.1.1", family: 4 }] : [{ address: "10.0.0.1", family: 4 }]),
+      }),
+    ).rejects.toThrow(/not a public address/);
+    expect(lookups).toBe(2);
+  });
+
   it("rejects missing proof and mints one-time deploy tokens", async () => {
     await expect(
       verifyDomainOwnership("app.example.com", "C".repeat(32), "dns", {

@@ -897,10 +897,11 @@ export function createApp(deps: AppDeps): Hono {
       if (!webhook || webhook.id !== destination.id) {
         posted = { ok: false, status: 0, error: "Unknown destination." };
       } else if (destination.kind === "siem") {
+        // Only an injected test double replaces the DNS-pinned SIEM client.
         posted = await postSiemWebhook(
           webhook.url,
           siemTestPayload(install?.account_login ?? ""),
-          outbound,
+          { fetch: deps.slackFetch, lookup: deps.webhookLookup },
         );
       } else {
         posted = await postSlackWebhook(
