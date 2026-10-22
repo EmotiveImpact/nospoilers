@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { Button } from "@/components/ui/button";
 import type { Alert, AlertEvent, GithubResponseView, RemediationPrView, SetupPrView, SetupStatusView } from "@/watch/types";
 import { formatExposure, kindLabel } from "@/watch/controller-utils";
@@ -236,7 +237,7 @@ export function AlertDeskItem({
   return (
     <li className="py-5">
       <p className="text-xs uppercase tracking-[0.16em] text-dim">
-        {kindLabel(alert.kind)} · {new Date(alert.created_at).toLocaleString()}
+        {kindLabel(alert.kind)} · {formatDateTime(alert.created_at)}
         {resolved ? " · resolved" : alert.acknowledged_at ? " · acknowledged" : " · open"}
       </p>
       <p className="mt-2 text-sm text-snow">{alert.title}</p>
@@ -278,7 +279,7 @@ export function AlertDeskItem({
           {events.map((event) => (
             <li key={event.id} className="text-xs text-dim">
               {event.action} · {event.actor_login}
-              {event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}
+              {event.detail ? ` · ${event.detail}` : ""} · {formatDateTime(event.created_at)}
             </li>
           ))}
         </ul>

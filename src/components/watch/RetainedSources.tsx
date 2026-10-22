@@ -1,3 +1,4 @@
+import { formatDate } from "@/watch/format.ts";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {watchHref} from '@/watch/routes';
@@ -31,7 +32,7 @@ export function RetainedSources({installationId,search,refreshKey}:{installation
     <p className="mt-2 text-sm text-mute">Monitoring has stopped. Saved findings and release evidence remain available. Reconnecting requires a new check before monitoring is current.</p>
     <p className="mt-2 text-sm text-mute">If you paused monitoring before disconnecting, it stays paused after reconnecting. Use Monitoring controls to resume checks.</p>
     <ul className="mt-4 divide-y divide-white/10">{pageRows.map(row=><li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <div><p>{row.name}</p><p className="text-xs text-mute">Disconnected{row.disconnectedAt?` · ${new Date(row.disconnectedAt).toLocaleDateString()}`:''}</p></div>
+      <div><p>{row.name}</p><p className="text-xs text-mute">Disconnected{row.disconnectedAt?` · ${formatDate(row.disconnectedAt)}`:''}</p></div>
       <a className="text-sm underline underline-offset-4" href={watchHref('/watch/sources',search,{source:null,configure:row.kind})}>Reconnect {row.kind==='map'?'with credentials':'package'}</a>
     </li>)}</ul>
     {rows.length>10?<ListPagination label="Disconnected sources" pageSize={pagination.pageSize} onPageSizeChange={pagination.onPageSizeChange} page={pagination.page} count={pageRows.length} total={rows.length} hasPrevious={pagination.page>0} hasNext={pagination.page+1<pagination.pageCount} onPrevious={()=>pagination.onPageChange(pagination.page-1)} onNext={()=>pagination.onPageChange(pagination.page+1)}/>:null}

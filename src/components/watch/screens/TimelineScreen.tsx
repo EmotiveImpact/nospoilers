@@ -211,8 +211,8 @@ export function TimelineScreen({
   return (
     <section className="timeline-page mt-4 min-w-0">
       <WatchPageHeader
-        title="The story behind each release."
-        lede="What changed, what was checked, and how your team responded."
+        title="Timeline"
+        lede="The story behind each release: what changed, what was checked, and how your team responded."
       />
       {ready ? (
         <div className="timeline-filter-tabs" role="tablist" aria-label="Timeline activity">

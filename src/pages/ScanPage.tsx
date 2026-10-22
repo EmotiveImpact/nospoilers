@@ -315,12 +315,17 @@ function ScanPageScope({ search, embedded = false,productWorkspace }: { search: 
   return (
     <main className={cn("scan-workspace mx-auto w-full max-w-6xl", embedded ? "pb-12" : "px-5 py-12 md:py-16")}>
 
+      {embedded ? <div className="mt-4">
+        <h1 className="watch-page-title">New scan</h1>
+        <p className="watch-page-lede">Check what you’re about to ship. Choose the exact artifact your customers will receive.</p>
+      </div> : <>
       <h1 className="mt-4 max-w-3xl font-display text-4xl leading-[1.08] tracking-tight text-snow md:text-6xl">
         Check what you’re about to ship.
       </h1>
       <p className="mt-5 max-w-2xl text-base leading-relaxed text-mute md:text-lg">
         Choose the exact artifact your customers will receive.
       </p>
+      </>}
 
       {showPrerequisite ? (
         <>

@@ -33,7 +33,7 @@ it('opens the latest evidence directly and keeps workspace and installation scop
 });
 it('places a repository exposure ahead of a passing upload and routes to the exact alert',async()=>{
  load({alertCounts:{open:1,waiting:0,done:0,mine:0},priorityAlert:{id:77,title:'Public repository detected',body:'Repository visibility changed.',kind:'repo_publicized',findings:[],created_at:'2026-09-05T13:00:00Z',acknowledged_at:null,resolved_at:null,status:'open'}});
- expect(await screen.findByRole('heading',{name:'One release alert needs your response.'})).toBeTruthy();
+ expect(await screen.findByRole('heading',{name:'One alert needs your response.'})).toBeTruthy();
  expect(screen.getAllByText('Repository exposure').length).toBeGreaterThan(0);
  expect(screen.getByRole('heading',{name:'Public repository detected'})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Review alert'}));

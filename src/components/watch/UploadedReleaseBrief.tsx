@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import './design/release-journey.css';
 import { EvidenceTable } from './design/EvidenceTable';
 import {ArrowLeft,ArrowRight,Clock3,Download,FileCheck2,ShieldCheck,ExternalLink} from 'lucide-react';
@@ -69,7 +70,7 @@ function UploadedReleaseWorkspace({upload,search,onBack,onNewScan}:{upload:Uploa
   return <section className="watch-release-brief upload-readiness release-workspace" aria-labelledby="uploaded-brief-title">
     <button className="watch-release-back" type="button" onClick={onBack}><ArrowLeft className="size-4" aria-hidden/>All releases</button>
     <header className="watch-release-heading journey-result-heading"><div><h1 id="uploaded-brief-title">{upload.target}</h1><p>{website?'Website check':'Uploaded artifact'} · Saved release evidence</p></div>{upload.receipt_json!=null?<Button variant="outline" onClick={()=>downloadUploadedRecord(upload)}><Download className="size-4" aria-hidden/>Receipt JSON</Button>:null}</header>
-    <div className="journey-result-metadata"><span><Clock3 aria-hidden/>{new Date(upload.created_at).toLocaleString()}</span><span><FileCheck2 aria-hidden/>{report?`${report.fileCount} files inspected`:'Inspection not completed'}</span></div>
+    <div className="journey-result-metadata"><span><Clock3 aria-hidden/>{formatDateTime(upload.created_at)}</span><span><FileCheck2 aria-hidden/>{report?`${report.fileCount} files inspected`:'Inspection not completed'}</span></div>
     <ReleaseWorkspaceSummary title={decision.title} detail={decision.detail} tone={decision.tone} findingCount={report?findings.length:undefined} states={states} scope={website?'Evidence covers the public assets retrieved in this bounded website check. It does not prove build-to-production parity.':'Artifact evidence only. Source identity, production delivery and release approval are separate checks.'}/>
     <nav aria-label="In this release" className="journey-release-tabs" role="tablist" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const i=tabs.indexOf(event.target as HTMLButtonElement);if(i<0)return;event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?tabs.length-1:(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[n].focus();tabs[n].click();}}>
       {(['findings','files','history','proof'] as const).map(tab=><button key={tab} role="tab" id={`${categoryId}-view-${tab}`} aria-controls={`${categoryId}-view-panel`} aria-selected={view===tab} tabIndex={view===tab?0:-1} onClick={()=>setView(tab)}>{tab==='findings'?`Findings ${findings.length}`:tab==='files'?'Files':tab==='history'?'History':'Proof'}</button>)}

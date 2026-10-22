@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import {useEffect,useRef,useState} from 'react';
 import {Dialog,DialogBackdrop,DialogPanel,DialogTitle} from '@headlessui/react';
 import {Share2} from 'lucide-react';
@@ -46,7 +47,7 @@ function ScopedProofSharing({uploadId}:{uploadId:string}){
   <header className="journey-proof-header"><span className="journey-proof-icon"><Share2 aria-hidden/></span><div><h3>Public proof summary</h3><p>{data?.active?'Public link active':'Private · no active public link'}</p></div></header>
   <p>Anyone with the published link can read the summary. Paths, findings, package names and the original signed receipt stay private.</p>
   {error&&<div><p role="alert">{error}</p><Button variant="outline" disabled={busy} onClick={()=>setRetry(value=>value+1)}>Retry sharing status</Button></div>}
-  {data?.preview&&<><p className="text-xs text-mute">What will be shared</p><dl className="proof-sharing-facts"><div><dt>Decision</dt><dd>{data.preview.status}</dd></div><div><dt>Finding count / highest severity</dt><dd>{data.preview.findingCount} · {data.preview.maxSeverity??'None'}</dd></div><div><dt>Recorded scan</dt><dd>{new Date(data.preview.scannedAt).toLocaleString()}</dd></div><div><dt>Artifact SHA-256</dt><dd><code>{data.preview.artifactSha256}</code></dd></div></dl></>}
+  {data?.preview&&<><p className="text-xs text-mute">What will be shared</p><dl className="proof-sharing-facts"><div><dt>Decision</dt><dd>{data.preview.status}</dd></div><div><dt>Finding count / highest severity</dt><dd>{data.preview.findingCount} · {data.preview.maxSeverity??'None'}</dd></div><div><dt>Recorded scan</dt><dd>{formatDateTime(data.preview.scannedAt)}</dd></div><div><dt>Artifact SHA-256</dt><dd><code>{data.preview.artifactSha256}</code></dd></div></dl></>}
   {data&&<div className="flex flex-wrap gap-3"><Button disabled={busy||!data.canPublish||!data.preview} onClick={()=>setReview(data.active?'replace':'publish')}>{data.active?'Replace public link':'Review & publish'}</Button>{!!data.active&&<Button variant="outline" disabled={busy} onClick={()=>setReview('revoke')}>Revoke public link</Button>}</div>}
   {data&&!data.canPublish?<p>This record cannot be published in its current workspace state. An existing public link can still be revoked.</p>:null}
   <p>A recorded summary, not independent signature verification. Revocation stops future access, not copies already saved.</p>

@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useId,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
@@ -118,7 +119,7 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
         <h4 id="remediation-step-rebuild" className="mt-1 text-base font-medium text-snow">Check a rebuilt artifact</h4>
         {!current?<p>Select an investigation first. A clean build cannot create or replace an original finding.</p>:!review?<p>Record the reviewed change before connecting a rebuilt artifact to this case.</p>:<>
           <p>Reviewed commit: <code>{review.detail.commit}</code>. Select a retained, newer build from this stream, under the same scanner and policy. The check covers 24-hour-fresh evidence, not deployed production.</p>
-          {view.canWrite?<form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<AppSelect label={`Rebuilt artifact`} required value={candidate} onValueChange={(nextValue) => {setCandidate(nextValue);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{new Date(s.scanned_at).toLocaleString()} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</AppSelect></label>
+          {view.canWrite?<form onSubmit={e=>{e.preventDefault();void save('verify');}}><label>Rebuilt artifact<AppSelect label={`Rebuilt artifact`} required value={candidate} onValueChange={(nextValue) => {setCandidate(nextValue);setBuildConfirm(false);}}><option value="">Choose recorded rebuild</option>{snapshots.filter(s=>s.id!==current.original_snapshot).map(s=><option key={s.id} value={s.id}>{formatDateTime(s.scanned_at)} · {s.digest.slice(0,16)} · {s.record_kind}:{s.record_id}</option>)}</AppSelect></label>
             <p>Only this history page is listed. Record the new scan in this stream first, or use history pagination to find older records.</p>
             <label><input type="checkbox" checked={buildConfirm} onChange={e=>setBuildConfirm(e.target.checked)}/> I confirm this rebuilt artifact contains the reviewed change. This linkage is my declaration, not a provider attestation.</label>
             {reason.trim().length<8?requiredNote:null}
@@ -128,7 +129,7 @@ function ReleaseRemediationScope({streamId,workspaceId,record,snapshots}:{stream
       </section>
 
       <div className="mt-5"><a href={`/watch/sources?workspace=${encodeURIComponent(workspaceId)}`}>Open Coverage for existing reviewable remediation PR tools</a></div>
-      {current?<details><summary>Linked evidence and technical activity</summary>{current.history.map(e=><article key={e.id}><strong>{e.action} · {e.actor_login}</strong><p>{new Date(e.created_at).toLocaleString()} · {e.detail.reason}</p>{e.detail.changeUrl?<a href={e.detail.changeUrl} target="_blank" rel="noopener noreferrer">Human-linked change</a>:null}{e.detail.commit?<code>{e.detail.commit}</code>:null}{e.detail.record?<a href={`/watch/releases?workspace=${encodeURIComponent(workspaceId)}&${e.detail.record.kind==='upload'?`upload=${encodeURIComponent(e.detail.record.id)}&uploadView=detail`:`release=${encodeURIComponent(e.detail.record.id)}`}`}>Inspect linked signed rebuild</a>:null}{e.detail.digest?<code>{e.detail.digest}</code>:null}{e.detail.result?<p>Historical check: {e.detail.result.reason} Current availability and freshness are checked above.</p>:null}</article>)}</details>:null}
+      {current?<details><summary>Linked evidence and technical activity</summary>{current.history.map(e=><article key={e.id}><strong>{e.action} · {e.actor_login}</strong><p>{formatDateTime(e.created_at)} · {e.detail.reason}</p>{e.detail.changeUrl?<a href={e.detail.changeUrl} target="_blank" rel="noopener noreferrer">Human-linked change</a>:null}{e.detail.commit?<code>{e.detail.commit}</code>:null}{e.detail.record?<a href={`/watch/releases?workspace=${encodeURIComponent(workspaceId)}&${e.detail.record.kind==='upload'?`upload=${encodeURIComponent(e.detail.record.id)}&uploadView=detail`:`release=${encodeURIComponent(e.detail.record.id)}`}`}>Inspect linked signed rebuild</a>:null}{e.detail.digest?<code>{e.detail.digest}</code>:null}{e.detail.result?<p>Historical check: {e.detail.result.reason} Current availability and freshness are checked above.</p>:null}</article>)}</details>:null}
     </>:null}
   </section>;
 }

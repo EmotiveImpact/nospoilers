@@ -54,3 +54,4 @@
  .watch-desk .timeline-event-child{margin-left:33px;grid-template-columns:minmax(0,1fr);gap:0}
  .watch-desk .timeline-event-child .timeline-event-copy,.watch-desk .timeline-event-child .timeline-event-link{grid-column:1}
 }
+.watch-desk .timeline-page time{white-space:nowrap;font-variant-numeric:tabular-nums}

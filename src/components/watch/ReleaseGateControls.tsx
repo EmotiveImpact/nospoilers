@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useRef,useState} from 'react';
 import type {Ref} from '../../release-intelligence/model';
@@ -66,7 +67,7 @@ function GateControls({streamId,record,refreshVersion}:Props){
         const expired=!Number.isFinite(Date.parse(d.expires_at))||Date.parse(d.expires_at)<=Date.now(),superseded=d.policy_revision!==view.policy.revision;
         const inactive=d.consumed?'consumed':superseded?'policy changed':expired?'expired':null;
         return <details key={d.id}><summary>{d.deployment_id} · recorded {d.result.readiness}{d.overridden?' · explicit override':''}{inactive?` · ${inactive}`:''}</summary>
-          <p>{d.result.reason}</p><p>Policy revision {d.policy_revision}. Expires {new Date(d.expires_at).toLocaleString()}, subject to current access, policy and evidence.</p><code>{d.id}</code>
+          <p>{d.result.reason}</p><p>Policy revision {d.policy_revision}. Expires {formatDateTime(d.expires_at)}, subject to current access, policy and evidence.</p><code>{d.id}</code>
           {inactive?<p role="status">This decision no longer applies ({inactive}). Evaluate a new decision for the intended deployment attempt.</p>:null}
           {view.canManage&&d.result.overridable&&!d.overridden&&!inactive?<Override key={d.id} disabled={busy} onSave={value=>void save({action:'override',decisionId:d.id,...value},'Explicit override recorded. The original finding and readiness are unchanged.')}/>:null}
         </details>;

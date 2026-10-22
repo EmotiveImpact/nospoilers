@@ -95,3 +95,11 @@
   .watch-desk, .watch-rail, .watch-design-surface { --watch-page-title-size: 28px; }
   .watch-desk :is(.watch-card, .workspace-create, .workspace-cards > article) { padding: var(--watch-space-5); }
 }
+
+/* One disclosure marker across the app instead of the browser triangle. */
+.watch-desk details>summary{list-style:none}
+.watch-desk details>summary::-webkit-details-marker{display:none}
+.watch-desk details>summary::before{content:"";display:inline-block;width:6px;height:6px;margin:0 12px 0 2px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;opacity:.55;transform:translateY(-2px) rotate(-45deg);transition:transform .18s ease,opacity .18s ease;vertical-align:middle}
+.watch-desk details[open]>summary::before{transform:translateY(-4px) rotate(45deg);opacity:.9}
+.watch-desk details>summary:hover::before{opacity:.9}
+@media (prefers-reduced-motion:reduce){.watch-desk details>summary::before{transition:none}}
