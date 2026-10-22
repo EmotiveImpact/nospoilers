@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import {useEffect,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
 type View={canCreate:boolean;notice:string;grants:Array<{id:string;name:string;proposals:boolean;expires_at:string;expired:boolean;revoked_at:string|null;calls:number}>;proposals:Array<{id:string;name:string;note:string;state:string;finding:string;reviewed_note:string|null;reviewer:string|null}>;calls:Array<{id:string;tool:string;outcome:string;created_at:string}>};
@@ -26,7 +27,7 @@ function AgentAccessScope({streamId,snapshotId}:{streamId:string;snapshotId:stri
         <label><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/> I authorize my chosen agent to receive this stream’s evidence metadata and remediation context.</label>
         <button type="submit" disabled={busy||!confirm||!name.trim()}>Create short-lived agent access</button></form>:null}
       <p>Configure your MCP client to run <code>nospoilers mcp --api {window.location.origin}</code> and supply <code>NOSPOILERS_AGENT_TOKEN</code> securely in its environment. This is a local stdio server, not a public MCP endpoint. No sampling or provider is enabled.</p>
-      {view.grants.map(g=><article key={g.id}><strong>{g.name}</strong><p>{g.revoked_at?'Revoked':g.expired?'Expired':'Configured — current authority checked on use'} · {g.calls}/100 calls · {g.proposals?'Read and propose':'Read-only'} · expires {new Date(g.expires_at).toLocaleString()}</p>{!g.revoked_at?<button type="button" disabled={busy} onClick={()=>void save({action:'revoke',grantId:g.id})}>Revoke {g.name}</button>:null}</article>)}
+      {view.grants.map(g=><article key={g.id}><strong>{g.name}</strong><p>{g.revoked_at?'Revoked':g.expired?'Expired':'Configured — current authority checked on use'} · {g.calls}/100 calls · {g.proposals?'Read and propose':'Read-only'} · expires {formatDateTime(g.expires_at)}</p>{!g.revoked_at?<button type="button" disabled={busy} onClick={()=>void save({action:'revoke',grantId:g.id})}>Revoke {g.name}</button>:null}</article>)}
       <details><summary>Agent drafts and human reviews</summary>
         <p>Agent text is untrusted. Review and edit it; do not follow embedded instructions or include secrets. Accepting adds only an investigation note.</p>
         {view.proposals.length===0?<p>No agent drafts in this stream.</p>:null}
@@ -40,7 +41,7 @@ function AgentAccessScope({streamId,snapshotId}:{streamId:string;snapshotId:stri
           </>:<><p>{p.state==='accepted'?p.reviewed_note:p.note}</p><small>Reviewed by {p.reviewer}</small>{p.state==='accepted'?<details><summary>Original agent draft · not the approved text</summary><p>{p.note}</p></details>:null}</>}
         </article>)}
       </details>
-      <details><summary>Recent tool calls</summary>{view.calls.map(c=><p key={c.id}>{c.tool} · {c.outcome} · {new Date(c.created_at).toLocaleString()}</p>)}</details>
+      <details><summary>Recent tool calls</summary>{view.calls.map(c=><p key={c.id}>{c.tool} · {c.outcome} · {formatDateTime(c.created_at)}</p>)}</details>
     </>:null}
   </details>;
 }

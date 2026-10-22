@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime } from "@/watch/format.ts";
 import './design/release-journey.css';
 import {ReleaseWorkspaceSummary} from "./ReleaseWorkspaceSummary";
 import "./connected-release-workspace.css";
@@ -124,7 +125,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
           <p>
             {release.channel} channel
             {release.sourceRevision ? ` · source revision ${release.sourceRevision}` : ""}
-            {release.createdAt ? ` · ${new Date(release.createdAt).toLocaleString()}` : ""}
+            {release.createdAt ? ` · ${formatDateTime(release.createdAt)}` : ""}
           </p>
         </div>
         <div className="connected-release-heading-actions"><Button variant="outline" onClick={downloadReceipt} disabled={downloadingReceiptId===release.receiptId}><Download className="size-4" aria-hidden/>{downloadingReceiptId===release.receiptId?'Saving…':'Receipt JSON'}</Button><Button onClick={revealFix}>Verify a fix</Button></div>
@@ -168,7 +169,7 @@ export function WatchReleaseBrief({ release }: { release: ReleaseRevision }) {
         <div className="watch-release-history-table">
           {history.map((row) => (
             <button key={row.id} type="button" className={row.id === release.id ? "is-current" : undefined} onClick={() => navigate(watchHref(watchPath("releases"), search, { release: row.id }))}>
-              <span>{row.coordinate}</span><span>{row.sourceRevision ?? row.artifactSha256.slice(0, 12)}</span><span>{releaseStatusLabel(row)}</span><span>{new Date(row.createdAt).toLocaleDateString()}</span>
+              <span>{row.coordinate}</span><span>{row.sourceRevision ?? row.artifactSha256.slice(0, 12)}</span><span>{releaseStatusLabel(row)}</span><span>{formatDate(row.createdAt)}</span>
             </button>
           ))}
         </div>

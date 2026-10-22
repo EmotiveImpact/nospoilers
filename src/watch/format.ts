@@ -106,3 +106,20 @@ export function shortDigest(value: string): string {
   if (digest.length < 8) return digest;
   return `${digest.slice(0, 4)}…${digest.slice(-3)}`;
 }
+
+// One date shape across the app: "22 Oct 2026" and "22 Oct 2026, 14:05" in the viewer's own locale order.
+const DATE: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+const DATE_TIME: Intl.DateTimeFormatOptions = { ...DATE, hour: "2-digit", minute: "2-digit" };
+
+function asDate(value: string | number | Date): Date | null {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function formatDate(value: string | number | Date): string {
+  return asDate(value)?.toLocaleDateString(undefined, DATE) ?? "Unknown date";
+}
+
+export function formatDateTime(value: string | number | Date): string {
+  return asDate(value)?.toLocaleString(undefined, DATE_TIME) ?? "Unknown time";
+}

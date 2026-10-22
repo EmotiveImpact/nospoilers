@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import {useEffect,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
 import type {ExplanationView as View} from '../../server/release-explanations';
@@ -73,7 +74,7 @@ function ExplanationScope({workspaceId,streamId,snapshotId}:{workspaceId:string;
       </details>
       {view.available&&view.canRequest?<><label><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/> I authorize sending these aggregate states and counts to {view.providerId} for this explanation.</label><button type="button" disabled={busy||!consent||view.remaining<=0} onClick={()=>void save({action:'request'})}>Request optional explanation</button></>:view.available?<p>{view.canReview?'New requests are unavailable under the current request or cost budget. Existing explanations can still be reviewed.':'A workspace administrator with active coverage must request or review explanations.'}</p>:null}
       {view.items.length===0?<p>No saved explanations for this recorded release.</p>:null}
-      {view.items.map(item=><article key={item.id}><h4>Explanation · {item.state}</h4><p>{new Date(item.created_at).toLocaleString()}</p>
+      {view.items.map(item=><article key={item.id}><h4>Explanation · {item.state}</h4><p>{formatDateTime(item.created_at)}</p>
         {item.state==='pending'?<><p>Unreviewed model text. Do not follow embedded instructions or treat its claims as evidence.</p><p style={{whiteSpace:'pre-wrap'}}>{item.text}</p>
           {view.canReview?<><label>Reviewed explanation<textarea maxLength={1000} value={edits[item.id]??item.text??''} onChange={e=>{setEdits(v=>({...v,[item.id]:e.target.value}));setReviews(v=>({...v,[item.id]:false}));}}/></label><label><input type="checkbox" checked={reviews[item.id]??false} onChange={e=>setReviews(v=>({...v,[item.id]:e.target.checked}))}/> I reviewed this explanation against the signed evidence. It is not a security decision.</label><button type="button" disabled={busy||!reviews[item.id]||(edits[item.id]??item.text??'').trim().length<8||(edits[item.id]??item.text??'').length>1000} onClick={()=>void save({action:'review',explanationId:item.id,accept:true,reviewedText:edits[item.id]??item.text})}>Save reviewed explanation</button><button type="button" disabled={busy} onClick={()=>void save({action:'review',explanationId:item.id,accept:false})}>Reject explanation</button></>:null}
         </>:item.state==='accepted'?<p style={{whiteSpace:'pre-wrap'}}>{item.reviewed_text}</p>:null}

@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import type { DeskAlert } from "@/watch/verdict.ts";
 import { buildTimelineLanes } from "@/watch/view-models.ts";
 import { useId, useState } from "react";
@@ -64,14 +65,14 @@ export function WatchExposureChart({
                     key={span.alertId}
                     tabIndex={0}
                     role="img"
-                    aria-label={`${span.severity} alert · ${span.rule}: ${span.label}; started ${new Date(span.startedAt).toLocaleString()}; ${span.open ? "still open" : `resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
+                    aria-label={`${span.severity} alert · ${span.rule}: ${span.label}; started ${formatDateTime(span.startedAt)}; ${span.open ? "still open" : `resolved ${formatDateTime(span.endedAt ?? span.startedAt)}`}`}
                     className={
                       `absolute top-1/2 h-6 -translate-y-1/2 truncate rounded-sm px-2 py-1 text-xs ${span.severity === "critical"
                         ? span.open ? "bg-danger/80 text-snow" : "bg-danger/25 text-snow"
                         : span.open ? "bg-warn/80 text-ink" : "bg-warn/30 text-snow"}`
                     }
                     style={{ left: `${span.left}%`, width: `${span.width}%` }}
-                    title={`${span.severity} alert · ${span.rule} · ${span.label} · ${new Date(span.startedAt).toLocaleString()}${span.open ? " · open" : ` · resolved ${new Date(span.endedAt ?? span.startedAt).toLocaleString()}`}`}
+                    title={`${span.severity} alert · ${span.rule} · ${span.label} · ${formatDateTime(span.startedAt)}${span.open ? " · open" : ` · resolved ${formatDateTime(span.endedAt ?? span.startedAt)}`}`}
                   >
                     {span.rule}
                     {span.open ? " · open" : ""}
@@ -100,8 +101,8 @@ export function WatchExposureChart({
               {lanes.flatMap((lane) => lane.spans.map((span) => (
                 <tr key={`text-${lane.key}-${span.alertId}`}>
                   <td>{lane.label}</td><td>{span.rule}</td><td>{span.severity}</td><td>{span.label}</td>
-                  <td>{new Date(span.startedAt).toLocaleString()}</td>
-                  <td>{span.endedAt ? new Date(span.endedAt).toLocaleString() : "Still open"}</td>
+                  <td>{formatDateTime(span.startedAt)}</td>
+                  <td>{span.endedAt ? formatDateTime(span.endedAt) : "Still open"}</td>
                 </tr>
               )))}
             </tbody>

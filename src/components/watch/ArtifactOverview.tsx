@@ -11,9 +11,10 @@ export function ArtifactOverview({workspaceId,search}:{workspaceId:string;search
 }
 const dateLabel=(value:string)=>new Date(value).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 function resultTone(row:Overview['recent'][number]) {
- return row.verdict.startsWith('Policy passed')?'passed':row.status==='failed'?'failed':row.verdict==='Review findings'?'review':'neutral';
+ return row.verdict.startsWith('Policy passed')?'passed':row.status==='failed'?'failed':row.verdict==='Review findings'?'findings':'neutral';
 }
-function resultLabel(row:Overview['recent'][number]) {return row.verdict==='Review findings'?'Needs review':row.verdict;}
+// Same words and colour as the Releases table, so one record never reads two ways.
+function resultLabel(row:Overview['recent'][number]) {return row.verdict;}
 function priorityRank(row:Overview['recent'][number]) {
  if(row.verdict==='Review findings')return 0;
  if(row.status==='failed')return 1;
@@ -76,8 +77,8 @@ function OverviewScope({workspaceId,search}:{workspaceId:string;search:string}) 
   {unavailableNotice}
   <section className={`overview-latest is-${priorityAlert?(priorityAlertCritical?'failed':'review'):spotlight?resultTone(spotlight):'neutral'}`} aria-label="Priority release decision" data-scenario={priorityAlertCritical?'exposure':priorityAlert||data.counts.attention>0||(data.alertCounts?.open??0)+(data.alertCounts?.waiting??0)>0?'review':data.counts.active>0?'running':data.counts.total>0?'quiet':'empty'}>
    <div className="overview-latest-top"><span className="overview-eyebrow">{priorityAlert?(priorityAlert.status==='open'?'Open alert':'Response in progress'):spotlight?(priorityRank(spotlight)<4?'Needs attention':'Latest release'):'Next action'}</span>{priorityAlert?<span className={`overview-status ${priorityAlertCritical?'failed':'review'}`}>{priorityAlertLabel}</span>:spotlight?<span className={`overview-status ${resultTone(spotlight)}`}>{resultLabel(spotlight)}</span>:null}</div>
-   <h1>{empty?'Your first release starts here.':priorityAlert?(priorityOperational?'A release check needs your response.':'One release alert needs your response.'):overviewHeading(spotlight)}</h1><h2>{priorityAlert?priorityAlert.title:spotlight?(spotlight.source_kind==='website'?'Website check':'Release artifact'):nextAction.label}{!priorityAlert&&spotlight?<span> · {spotlight.target}</span>:null}</h2>
-   <p>{empty?'Upload a build or connect a published release to start collecting evidence.':priorityAlert?'This alert needs a response. Reviewing or resolving it will not rewrite the original scan evidence.':spotlightDescription}</p>
+   <h1>{empty?'Your first release starts here.':priorityAlert?(priorityOperational?'A release check needs your response.':(alertResponseCount>1?`${alertResponseCount} alerts need your response.`:'One alert needs your response.')):overviewHeading(spotlight)}</h1><h2>{priorityAlert?priorityAlert.title:spotlight?(spotlight.source_kind==='website'?'Website check':'Release artifact'):nextAction.label}{!priorityAlert&&spotlight?<span> · {spotlight.target}</span>:null}</h2>
+   <p>{empty?'Upload a build or connect a published release to start collecting evidence.':priorityAlert?(alertResponseCount>1?'Start with this one. Reviewing or resolving an alert will not rewrite the original scan evidence.':'This alert needs a response. Reviewing or resolving it will not rewrite the original scan evidence.'):spotlightDescription}</p>
    <Button className="overview-primary" onClick={()=>empty?go('scan',{mode:'package'}):priorityAlert?go('alerts',{alert:String(priorityAlert.id),tab:priorityAlert.status}):spotlight?openEvidence(spotlight.id):navigate(nextAction.href)}>{empty?'Run your first scan':priorityAlert?'Review alert':spotlight?(spotlight.verdict==='Review findings'?'Review finding':'Review evidence'):nextAction.label}{!priorityAlert?<ArrowUpRight aria-hidden/>:null}</Button>
    {empty&&(websiteStage||connected)?<button className="overview-link" onClick={()=>go('sources')}>{websiteStage==='verify'?'Verify website ownership':websiteStage==='scan'?'Run your first website check':websiteStage?'Review website setup':'Choose a connected source to check'}<ArrowRight aria-hidden/></button>:null}
    <div className="overview-latest-meta"><span>{data.workspace.name}</span><span>{priorityAlert?dateLabel(priorityAlert.created_at):spotlight?dateLabel(spotlight.created_at):'No saved release yet'}</span><span>{priorityAlert?'Original evidence remains on record':'Production evidence remains a separate lane'}</span></div>

@@ -55,7 +55,7 @@ it("filters retained activity, supports keyboard tabs, and opens the exact linke
     />,
   );
 
-  expect(screen.getByRole("heading", { name: "The story behind each release." })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Timeline" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Open alert" }));
   expect(navigate).toHaveBeenCalledWith("/watch/alerts?workspace=workspace&install=7&alert=23");
 

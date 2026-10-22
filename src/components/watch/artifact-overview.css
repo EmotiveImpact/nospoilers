@@ -12,7 +12,7 @@
 .workspace-overview .overview-link svg{width:14px;height:14px;flex-shrink:0}
 .workspace-overview button:focus-visible{outline:2px solid #bbbcc7;outline-offset:4px}
 .workspace-overview .overview-latest{background:radial-gradient(ellipse at 95% 0,#ffffff08,transparent 68%),#111113;border:1px solid #ffffff08;border-radius:var(--watch-panel-radius,8px);padding:29px 30px}
-.workspace-overview .overview-latest.is-review,.workspace-overview .overview-latest.is-failed{background:radial-gradient(ellipse at 95% 0,#72252b35,transparent 68%),#111113}
+.workspace-overview .overview-latest.is-review,.workspace-overview .overview-latest.is-failed,.workspace-overview .overview-latest.is-findings{background:radial-gradient(ellipse at 95% 0,#72252b35,transparent 68%),#111113}
 .workspace-overview .overview-latest.is-passed{background:radial-gradient(ellipse at 95% 0,#58c77b12,transparent 68%),#111113}
 .workspace-overview .overview-latest-top{display:flex;align-items:center;justify-content:space-between;gap:15px}
 .workspace-overview .overview-latest h2{font-family:inherit;font-size:27px;font-weight:500;letter-spacing:-.7px;line-height:1.55;margin:9px 0;overflow-wrap:anywhere}
@@ -21,7 +21,7 @@
 .workspace-overview .overview-latest-meta{display:flex;gap:18px;color:#898c96;font-size:11px;margin-top:24px;flex-wrap:wrap}
 .workspace-overview .overview-status{display:inline-flex;gap:7px;align-items:center;white-space:nowrap;font-size:12px;line-height:1.55}
 .workspace-overview .overview-status:before{content:'';width:5px;height:5px;background:currentColor;border-radius:50%;flex-shrink:0}
-.workspace-overview .review{color:#d99a2b}.workspace-overview .passed{color:#3fb950}.workspace-overview .failed{color:#ff9b99}.workspace-overview .neutral{color:#a2a3ad}
+.workspace-overview .review{color:#d99a2b}.workspace-overview .findings{color:#ff8a80}.workspace-overview .passed{color:#3fb950}.workspace-overview .failed{color:#ff9b99}.workspace-overview .neutral{color:#a2a3ad}
 .workspace-overview .overview-action-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;margin:28px 0 34px}
 .workspace-overview .overview-needs,.workspace-overview .overview-coverage{min-width:0}
 .workspace-overview .overview-need-list{border-top:1px solid #ffffff10}

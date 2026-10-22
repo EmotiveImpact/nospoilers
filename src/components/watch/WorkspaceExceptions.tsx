@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { WatchSkeleton } from "@/components/WatchDataState";
 import {useEffect,useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
@@ -82,7 +83,7 @@ function ExceptionScope({workspaceId}:{workspaceId:string}){
    {entry.installation_id!=null?<p>Limited to GitHub connection {entry.installation_id}. This does not apply to independent scans or another connection.</p>:null}
    {independent&&entry.effective_status==='pending'&&detail?.independentApproverAvailable===false?<p role="status">No other eligible administrator is available to approve this request. Ask a workspace owner to review <a className="underline" href={`/watch/team?workspace=${encodeURIComponent(workspaceId)}`}>team access</a>. The exception remains pending.</p>:null}
    {canDecide&&['pending','approved'].includes(entry.effective_status)?<><label className="block">Decision explanation<textarea className="block w-full rounded border border-white/15 bg-transparent p-2" minLength={8} maxLength={4000} value={note} disabled={busy} onChange={e=>setNote(e.target.value)}/></label><div className="flex flex-wrap gap-3">{entry.effective_status==='pending'?<><Button disabled={busy||note.trim().length<8||selfApproval} onClick={()=>void decide('approved')}>Approve exception</Button><Button variant="outline" disabled={busy||note.trim().length<8} onClick={()=>void decide('rejected')}>Reject request</Button></>:null}<Button variant="outline" disabled={busy||note.trim().length<8} onClick={()=>void decide('revoked')}>Revoke exception</Button></div>{selfApproval?<p>A different administrator must approve your request.</p>:null}</>:<p>No decision is available with your current access or this exception’s status.</p>}
-   <h4>Decision history</h4><ul>{events.map(e=><li className="py-2" key={e.id}>{e.action} · {e.actor_user_id} · {new Date(e.created_at).toLocaleString()}<p>{e.note}</p></li>)}</ul>
+   <h4>Decision history</h4><ul>{events.map(e=><li className="py-2" key={e.id}>{e.action} · {e.actor_user_id} · {formatDateTime(e.created_at)}<p>{e.note}</p></li>)}</ul>
   </article>:selected&&!error?<WatchSkeleton variant="list" className="mt-4" />:null}
  </section>;
 }

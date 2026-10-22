@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { AppSelect } from "@/components/ui/app-select";
 import {useEffect,useRef,useState} from 'react';
 import {WatchSkeleton} from '../WatchDataState';
@@ -57,7 +58,7 @@ function GateAccessScope({streamId,record}:Props){
         <label><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/> Grant this token gate-only access to this exact connected asset selection.</label>
         <button type="submit" disabled={busy||!confirm||!token||reason.trim().length<8}>Grant or renew CI access</button>
       </form>:<p>Enabling requires active administrator access and a compatible connected release asset. Existing grants can still be revoked.</p>}
-      {view.grants.map(g=><div key={g.token_id}><p><strong>{g.name}</strong> · {!g.enabled||g.revoked_at?'Disabled':g.expired?'Expired':'Configured — checked on use'} · revision {g.revision}</p><p>Expires {new Date(g.expires_at).toLocaleString()}. Current source and administrator authority are checked at every gate request.</p><code>{g.selector}</code>
+      {view.grants.map(g=><div key={g.token_id}><p><strong>{g.name}</strong> · {!g.enabled||g.revoked_at?'Disabled':g.expired?'Expired':'Configured — checked on use'} · revision {g.revision}</p><p>Expires {formatDateTime(g.expires_at)}. Current source and administrator authority are checked at every gate request.</p><code>{g.selector}</code>
         {view.canDisable&&g.enabled?<button type="button" disabled={busy||reason.trim().length<8} onClick={()=>void save(Number(g.token_id),Number(g.revision),false)}>Revoke CI access for {g.name}</button>:null}
       </div>)}
     </>:null}

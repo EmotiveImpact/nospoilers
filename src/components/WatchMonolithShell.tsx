@@ -316,7 +316,7 @@ export function WatchMonolithShell({
         </div>
         {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId} choices={workspaceChoices}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
-          <label className="mt-3 block">
+          <label className="watch-rail-source block">
             <span className="watch-kicker">GitHub source</span>
             <AppSelect label={`GitHub source`}
               value={activeInstallId ?? ""}

@@ -1,3 +1,4 @@
+import { formatDate } from "@/watch/format.ts";
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 
@@ -19,7 +20,7 @@ export function DisconnectedRepositories({installationId,refreshKey}:{installati
  return <section className="mb-6 rounded-lg border border-white/10 p-5" aria-labelledby="disconnected-heading">
   <h2 id="disconnected-heading" className="text-lg font-semibold">Disconnected repositories</h2>
   <p className="mt-2 text-sm text-mute">Monitoring has stopped. Previous findings and release evidence remain saved; disconnection does not mean the repository is clean.</p>
-  <ul className="mt-4 divide-y divide-white/10">{state.rows.map(row=><li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span>{row.fullName}</span><span className="text-sm text-mute">Disconnected{row.disconnectedAt?` · ${new Date(row.disconnectedAt).toLocaleDateString()}`:''}</span></li>)}</ul>
+  <ul className="mt-4 divide-y divide-white/10">{state.rows.map(row=><li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span>{row.fullName}</span><span className="text-sm text-mute">Disconnected{row.disconnectedAt?` · ${formatDate(row.disconnectedAt)}`:''}</span></li>)}</ul>
   <p className="mt-3 text-sm text-mute">To reconnect an existing repository, a GitHub installation administrator must restore its access in the same GitHub App installation. Deleted repositories cannot be reconnected.</p>
   <a className="mt-3 inline-block text-sm underline underline-offset-4" href="https://github.com/settings/installations" target="_blank" rel="noreferrer">Manage GitHub App access</a>
  </section>;

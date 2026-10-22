@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { AppSelect } from "@/components/ui/app-select";
 import './workspace-websites.css';
 import { WatchSkeleton } from "@/components/WatchDataState";
@@ -60,8 +61,8 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
    <p className="mt-1 break-all text-sm text-mute">Scan target: <code>{row.origin_url??row.host}</code></p>
    <p className="mt-1 text-sm text-mute">Managed by this workspace. A saved check covers its recorded assets, not every page or service on this domain.</p>
    <p className="mt-1 text-sm text-mute">{websiteHealth(row,now).label}</p>
-   <p className="mt-2 text-sm text-mute">Last completed check: {row.last_checked_at?new Date(row.last_checked_at).toLocaleString():'Not checked yet'}. {row.schedule_hours?`Scheduled every ${row.schedule_hours} hours${row.schedule_actor?` by ${row.schedule_actor}`:''}.`:'Manual checks only.'}</p>
-   {row.schedule_hours&&!row.paused_at&&!row.disconnected_at&&row.next_check_at?<p className="mt-1 text-sm">{new Date(row.next_check_at).getTime()<now?'Check due — awaiting scheduler':'Next check due'}: {new Date(row.next_check_at).toLocaleString()}. Checks run on the next scheduler cycle, subject to allowance.</p>:null}
+   <p className="mt-2 text-sm text-mute">Last completed check: {row.last_checked_at?formatDateTime(row.last_checked_at):'Not checked yet'}. {row.schedule_hours?`Scheduled every ${row.schedule_hours} hours${row.schedule_actor?` by ${row.schedule_actor}`:''}.`:'Manual checks only.'}</p>
+   {row.schedule_hours&&!row.paused_at&&!row.disconnected_at&&row.next_check_at?<p className="mt-1 text-sm">{new Date(row.next_check_at).getTime()<now?'Check due — awaiting scheduler':'Next check due'}: {formatDateTime(row.next_check_at)}. Checks run on the next scheduler cycle, subject to allowance.</p>:null}
    {row.schedule_error?<p className="mt-2 text-sm" role="status">{row.schedule_error}</p>:null}
    {row.verified_at&&!row.disconnected_at?<WebsiteSchedule key={`${row.id}:${row.schedule_hours??0}:${refresh}`} origin={row} disabled={busy||!!disabledReason} onSave={hours=>void action(`${base}/${row.id}/schedule`,{hours})}/>:null}
    {!row.verified_at&&!row.disconnected_at&&row.verification_token?<section className="website-verification" aria-labelledby={`website-verification-${row.id}`}>
@@ -87,7 +88,7 @@ export function WorkspaceWebsites({workspaceId,disabledReason,initialUrl='',heal
     <label className="mt-3 block text-sm">Type {row.origin_url} to disconnect<input className="mt-2 block w-full rounded border border-white/15 bg-transparent p-2" value={confirmation} onChange={event=>setConfirmation(event.target.value)} autoComplete="off"/></label>
     <div className="mt-3 flex flex-wrap gap-2"><Button type="submit" disabled={busy||!!disabledReason||confirmation!==row.origin_url}>Confirm disconnect</Button><Button type="button" variant="ghost" disabled={busy} onClick={()=>setConfirming(null)}>Cancel</Button></div>
    </form>:null}
-   {row.activity?.length?<details className="mt-4 text-sm"><summary className="cursor-pointer text-mute">Recent source activity</summary><ol className="mt-2 space-y-2">{row.activity.map((event,index)=><li key={`${event.created_at}:${index}`}><span className="capitalize">{event.action}</span> · {event.actor??'Former member'} · {new Date(event.created_at).toLocaleString()}</li>)}</ol></details>:null}
+   {row.activity?.length?<details className="mt-4 text-sm"><summary className="cursor-pointer text-mute">Recent source activity</summary><ol className="mt-2 space-y-2">{row.activity.map((event,index)=><li key={`${event.created_at}:${index}`}><span className="capitalize">{event.action}</span> · {event.actor??'Former member'} · {formatDateTime(event.created_at)}</li>)}</ol></details>:null}
   </article>)}
  </section>;
 }

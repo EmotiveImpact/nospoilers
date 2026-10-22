@@ -1,5 +1,5 @@
 import {kindExplanations} from '@/watch/alert-guidance';
-import {asFindingList} from '@/watch/format';
+import { asFindingList, formatDateTime } from "@/watch/format";
 import {AlertFixBrief} from './watch/AlertFixBrief';
 import { Button } from "@/components/ui/button";
 import {AlertMemberSelect} from './watch/AlertMemberSelect';
@@ -30,7 +30,9 @@ function alertQueueCopy(row: AlertListViewModel) {
       if (summary.endsWith(suffix)) summary = summary.slice(0, -suffix.length);
     }
   }
-  return { title: context || row.title, summary: hasContext ? summary : null };
+  // A file path the title never names reads better as a quiet location line under the title.
+  if (hasContext && summary === row.title && (!context.includes("/") || /\.[a-z0-9]{1,8}$/i.test(context))) return { title: row.title, summary: null, where: context };
+  return { title: context || row.title, summary: hasContext ? summary : null, where: null };
 }
 
 function alertQueueGroup(row: AlertListViewModel) {
@@ -210,7 +212,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
         {!previewing || onAssignedToMe ? (
           <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
             {!previewing ? (
@@ -319,7 +321,7 @@ export function WatchAlertsWorkspace({
                   <button
                     type="button"
                     data-alert-id={row.id}
-                    aria-label={[copy.title,copy.summary].filter(Boolean).join(". ")}
+                    aria-label={[copy.title,copy.summary,copy.where].filter(Boolean).join(". ")}
                     aria-pressed={selected?.id===row.id}
                     className={cn(
                       "alerts-journey-row w-full px-3 py-4 text-left",
@@ -328,6 +330,7 @@ export function WatchAlertsWorkspace({
                     onClick={() => onSelect(row.id)}
                   >
                     <strong className="alerts-journey-row-title line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
+                    {copy.where?<span className="alerts-journey-row-where mt-1 block truncate font-mono text-[11px] text-dim">{copy.where}</span>:null}
                     {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-danger-text")}>{copy.summary}</span>:null}
                   </button>
                 </li>;
@@ -439,7 +442,7 @@ export function WatchAlertsWorkspace({
                       </div>
                       <div>
                         <p className="watch-kicker">Opened</p>
-                        <p className="mt-1 font-display text-2xl text-snow">{new Date(selected.created_at).toLocaleString()}</p>
+                        <p className="mt-1 font-display text-2xl text-snow">{formatDateTime(selected.created_at)}</p>
                       </div>
                     </div>
                   </section>
@@ -467,7 +470,7 @@ export function WatchAlertsWorkspace({
                     <div className="alerts-journey-surface mt-2 rounded-lg border border-white/8 bg-panel px-4">
                       <div className="flex items-center gap-3 border-b border-white/5 py-3 text-xs text-mute">
                         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">NS</span>
-                        <p><span className="text-snow">NoSpoilers</span> opened this from {selectedRow.operational ? "a latest release check" : selected.kind} · {new Date(selected.created_at).toLocaleString()}</p>
+                        <p><span className="text-snow">NoSpoilers</span> opened this from {selectedRow.operational ? "a latest release check" : selected.kind} · {formatDateTime(selected.created_at)}</p>
                       </div>
                       {activityState.status === "loading" ? (
                         <WatchSkeleton variant="list" className="py-2" />
@@ -476,7 +479,7 @@ export function WatchAlertsWorkspace({
                       ) : events.map((event) => (
                         <div key={event.id} className="flex items-center gap-3 border-b border-white/5 py-3 text-xs text-mute last:border-b-0">
                           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/8 text-xs text-snow">{event.actor_login.slice(0, 2).toUpperCase()}</span>
-                          <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {new Date(event.created_at).toLocaleString()}</p>
+                          <p><span className="text-snow">@{event.actor_login}</span> {event.action}{event.detail ? ` · ${event.detail}` : ""} · {formatDateTime(event.created_at)}</p>
                         </div>
                       ))}
                       {activityPagination}

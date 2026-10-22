@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import { AppSelect } from "@/components/ui/app-select";
 import {WatchSkeleton} from '@/components/WatchDataState';
 import {useEffect,useId,useRef,useState} from 'react';
@@ -70,7 +71,7 @@ function ProductionParityScope({streamId,refreshVersion}:{streamId:string;refres
         {run.reason?<p>{run.reason}</p>:null}
         {!run.authorityCurrent?<p>Historical only: the current reference or origin authority no longer matches this observation. Its original result is unchanged.</p>:null}
         {view.canCancel&&['queued','running','failed'].includes(run.status)?<button type="button" disabled={busy} onClick={()=>void mutate({action:'cancel',runId:run.id})}>Cancel observation</button>:null}
-        {run.result?<><p>{run.result.scope}</p><p>Observed {new Date(run.result.observedAt).toLocaleString()}. {run.stale?'Stale or unconfirmed time — request a fresh observation before relying on current production.':'Point-in-time evidence; production and caches can change.'}</p><p>{run.result.unmappedManifestFiles} manifest {run.result.unmappedManifestFiles===1?'file was':'files were'} not mapped.</p>
+        {run.result?<><p>{run.result.scope}</p><p>Observed {formatDateTime(run.result.observedAt)}. {run.stale?'Stale or unconfirmed time — request a fresh observation before relying on current production.':'Point-in-time evidence; production and caches can change.'}</p><p>{run.result.unmappedManifestFiles} manifest {run.result.unmappedManifestFiles===1?'file was':'files were'} not mapped.</p>
           <ul>{run.result.assets.map((asset,i)=><li key={i}><strong>{asset.state}</strong> <code>{asset.servedPath}</code><p>{asset.reason}{asset.cache?` Cache: ${asset.cache}.`:''}</p></li>)}</ul>
         </>:null}
       </details>)}

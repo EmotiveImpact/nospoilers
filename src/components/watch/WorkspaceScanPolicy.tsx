@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import {QuietSettingRow} from './design/QuietComponents';
 import { WatchPageHeader } from "./WatchPageHeader.tsx";
 import { WatchSkeleton } from "@/components/WatchDataState";
@@ -52,7 +53,7 @@ function ScopedPolicy({workspaceId,connectionPanels}:{workspaceId:string;connect
    <div className="policy-form-footer"><Button disabled={!policy.canEdit||busy||conflict||(strict===policy.strict&&requireApproval===(policy.require_exception_approval??false))} type="submit">{busy?'Saving…':'Save policy'}</Button><span>Policy revision {policy.revision}</span></div>
   </form>}
   {saved&&<p className="policy-notice" role="status">Policy saved for subsequent scan starts.</p>}
-  {policy.events.length>0&&<section className="policy-scope-note policy-history" aria-label="Policy history"><h3>Policy history</h3><ul>{policy.events.map(event=><li key={event.revision}>Revision {event.revision} · {event.strict?'Strict':'Critical findings'} · {new Date(event.created_at).toLocaleString()} · User {event.actor_user_id}</li>)}</ul></section>}
+  {policy.events.length>0&&<section className="policy-scope-note policy-history" aria-label="Policy history"><h3>Policy history</h3><ul>{policy.events.map(event=><li key={event.revision}>Revision {event.revision} · {event.strict?'Strict':'Critical findings'} · {formatDateTime(event.created_at)} · User {event.actor_user_id}</li>)}</ul></section>}
   </>}
  </section>;
  const tabs=[{id:'rules',label:'Scan rules',content:rules},{id:'exceptions',label:'Exceptions',content:<WorkspaceExceptions workspaceId={workspaceId}/>}];

@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/watch/format.ts";
 import {GithubWorkspaceConnect} from "./watch/GithubWorkspaceConnection";
 import {QuietSidePreview} from "./watch/design/QuietSidePreview";
 import {QuietModalSurface} from "./watch/design/QuietModalSurface";
@@ -201,8 +202,8 @@ export function WatchSourcesSummary({
     <>
     <div className="coverage-page mb-8">
       <WatchPageHeader
-        title="Know what’s being checked."
-        lede="Connection, monitoring and latest result are separate states."
+        title="Coverage"
+        lede="Know what’s being checked. Connection, monitoring and latest result are separate states."
         action={admin ? <Button type="button" size="sm" onClick={() => setAdding(true)}>Connect source<Plus className="size-4" aria-hidden /></Button> : undefined}
       />
       <div className="coverage-journey-tabs" role="tablist" aria-label="Source types">
@@ -343,8 +344,8 @@ export function WatchSourcesSummary({
               <div className="mt-6 divide-y divide-white/8 rounded-lg border border-white/8 bg-panel">
                 {[
                   ["Status", selectedSource.status],
-                  [selectedSource.kind === "npm" ? "Metadata checked" : "Last check", selectedSource.lastCheckedAt ? new Date(selectedSource.lastCheckedAt).toLocaleString() : "No check recorded"],
-                  ...(["npm", "website"].includes(selectedSource.kind) ? [["Last scan", selectedSource.lastScannedAt ? new Date(selectedSource.lastScannedAt).toLocaleString() : "No scan time recorded"]] : []),
+                  [selectedSource.kind === "npm" ? "Metadata checked" : "Last check", selectedSource.lastCheckedAt ? formatDateTime(selectedSource.lastCheckedAt) : "No check recorded"],
+                  ...(["npm", "website"].includes(selectedSource.kind) ? [["Last scan", selectedSource.lastScannedAt ? formatDateTime(selectedSource.lastScannedAt) : "No scan time recorded"]] : []),
                   ["Scope", selectedSource.scope ?? "See the saved check for its recorded scope."],
                   ["Configured cadence", selectedSource.monitoring?.intervalMs ? `Every ${Math.round(selectedSource.monitoring.intervalMs / 60_000)} minutes` : "Not available"],
                   ["Check freshness", selectedSource.monitoring?.freshness === 'delayed' ? 'Delayed — no recorded check within two configured intervals' : selectedSource.monitoring?.freshness === 'recent' ? 'Recent check recorded; not a safety verdict' : 'Unknown'],
@@ -367,7 +368,7 @@ export function WatchSourcesSummary({
                     <p className="mt-2 text-sm text-snow">{selectedSource.status}</p>
                     <p className="mt-1 text-xs leading-relaxed text-mute">
                       {selectedSource.lastCheckedAt
-                        ? `Last ${selectedSource.kind === "npm" ? "metadata check" : "check"} ${new Date(selectedSource.lastCheckedAt).toLocaleString()}. This timestamp alone does not establish a successful scan.`
+                        ? `Last ${selectedSource.kind === "npm" ? "metadata check" : "check"} ${formatDateTime(selectedSource.lastCheckedAt)}. This timestamp alone does not establish a successful scan.`
                         : "No completed check evidence yet."}
                     </p>
                   </div>
