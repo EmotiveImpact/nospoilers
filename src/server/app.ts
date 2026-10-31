@@ -29,7 +29,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { bestCoverage, coverageFrom } from "../coverage.ts";
 import type { scan } from "../scanner/index.ts";
 import { validateExceptionInput } from "../policy.ts";
-import { verifyReceipt } from "../receipt.ts";
+import { RECEIPT_KEYS_PATH, receiptPublicKeys, verifyReceipt } from "../receipt.ts";
 import { diffFingerprints, diffManifests, mergeReleaseDiff } from "../release-diff.ts";
 import type { AppConfig } from "./config.ts";
 import {
@@ -6099,6 +6099,12 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({ receipt: row.receipt, id: row.id, createdAt: row.created_at });
   });
 
+  // Public Ed25519 keys so anyone can verify a version 2 receipt without this instance.
+  app.get(RECEIPT_KEYS_PATH, (c) => {
+    c.header("Cache-Control", "public, max-age=300");
+    return c.json({ keys: receiptPublicKeys(deps.config.receiptSecret) });
+  });
+
   app.post("/api/receipts/verify", async (c) => {
     const verifyLimited = await rateLimited(
       c,
@@ -6118,10 +6124,12 @@ export function createApp(deps: AppDeps): Hono {
     if (!raw) return c.json({ error: "Provide a receipt object or JSON string." }, 400);
     const expected = typeof body.sha256 === "string" ? body.sha256 : undefined;
     const result = verifyReceipt(raw, deps.config.receiptSecret, expected);
-    if (!result.ok) return c.json({ ok: false, code: result.code, reason: result.reason }, 400);
+    if (!result.ok) return c.json({ ok: false, code: result.code, reason: result.reason, keyId: result.keyId ?? null }, 400);
     const receipt = result.receipt;
     return c.json({
       ok: true,
+      alg: receipt?.alg,
+      keyId: result.keyId ?? null,
       status: receipt?.status,
       receiptOk: receipt?.ok ?? false,
       coordinate: receipt?.coordinate,

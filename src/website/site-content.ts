@@ -74,7 +74,7 @@ export const WEBSITE_PAGES: WebsitePageContent[] = [
         table(['Direction', 'Status'], [
           ['Google/Microsoft sign-in, enterprise SSO and SCIM', 'Provider/enterprise identity work remains deferred. Do not assume these login or provisioning methods.'],
           ['Native Vercel / Netlify / Cloudflare OAuth', 'Not an available native connection in this release. Verified website scanning is a different path.'],
-          ['Public-key / Sigstore-style proof verification', 'Not the current HMAC receipt model.'],
+          ['Sigstore / transparency-log proof', 'Receipts are Ed25519-signed and verifiable against the published instance keys; they are not yet logged to Sigstore or another transparency log.'],
           ['Dedicated workers, private networking and regional commitments', 'Evaluation requirements to agree, not included service guarantees.'],
         ]),
         p('Need a specific integration? ', link('Email the existing NoSpoilers contact', contactHref('NoSpoilers integration enquiry')), ' with the provider, required event and intended destination. Do not include credentials.')),
