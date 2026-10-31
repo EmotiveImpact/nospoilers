@@ -78,6 +78,8 @@ function severityVariant(severity: Finding["severity"]): "critical" | "warn" {
 type ReceiptCheck = {
   ok: boolean
   code?: import('../receipt').ReceiptVerifyResult['code']
+  alg?: string
+  keyId?: string | null
   reason?: string
   error?: string
   status?: string
@@ -558,7 +560,7 @@ export function verifyHeadline(result: ReceiptCheck): { kicker: string; title: s
     return {
       kicker: "Authentic · allowed to ship",
       title: "This instance signed a passing release proof.",
-      detail: result.coordinate ?? "Coordinate recorded on the receipt.",
+      detail: `${result.coordinate ?? "Coordinate recorded on the receipt."}${result.keyId ? ` · Ed25519 key ${result.keyId}` : ""}`,
     }
   }
   return {

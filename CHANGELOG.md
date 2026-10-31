@@ -5,6 +5,8 @@ Ship log. Capability status lives in [`docs/STATUS.md`](docs/STATUS.md). Every d
 
 ## [Unreleased]
 
+- Receipts can now be verified by anyone, not only by the instance that minted them. Set `RECEIPT_SIGNING_KEY` (mint one with `npx tsx scripts/receipt-keygen.ts`) and receipts become version 2, signed with Ed25519 and carrying their key id and public key. The instance publishes its active and retired keys at `/.well-known/nospoilers-receipt-keys.json`; `nospoilers verify --issuer <https-origin>` or `--public-key <base64>` pins a receipt to those keys with no secret, and refuses to call an unpinned receipt passing. Older version 1 HMAC receipts still verify on the issuing instance, `RECEIPT_RETIRED_PUBLIC_KEYS` keeps rotated keys trusted, and `/api/receipts/verify` now reports the algorithm and key id.
+
 - Added email sign-up, sign-in, forgotten-password and reset-password screens to Watch for Neon Managed Better Auth. They stay hidden until `NOSPOILERS_EMAIL_AUTH=neon-better-auth` and `NEON_AUTH_BASE_URL` are set. Sessions require a verified email, accounts are keyed by the Auth user ID rather than email, and email account names cannot collide with GitHub logins.
 
 - Worker shutdown now interrupts in-flight scans instead of waiting for them. Each Vercel Sandbox (or local scanner process) is stopped, and the job returns to the queue without spending a retry attempt. Interrupted website checks no longer publish an inconclusive alert, interrupted uploads stay resumable instead of failing, and prospect scans are not marked failed.
