@@ -23,6 +23,8 @@ Latest increment: opt-in private monthly outcomes (`ra_009_release_outcomes`) is
 
 Latest increment: `ra_008_agent_access` adds explicit short-lived stream credentials, seven deterministic stdio MCP tools, call audit and optional pending notes requiring human review. Read `docs/release-assurance/AGENT-TOOLS.md` alongside the latest handoff/acceptance. Existing scan tokens gain no access; no model provider, remote MCP OAuth, autonomous merge or passing receipt is introduced. Retention outcomes and broader operational/provider acceptance remain open. Older checkpoint descriptions below are historical.
 
+Latest increment (31 October 2026): migration `125_ai_review_fix_prs` adds attacker-view scan signals, an opt-in AI release review job (`NOSPOILERS_AI_REVIEW=on`, zero-retention US/EU providers only, China-hosted APIs and uncensored models refused in code), deterministic fix PRs per alert and verified-closed resolution on the next clean release. Read `docs/release-assurance/AI-REVIEW-AND-FIX-PRS.md`. No live provider has been called; activation needs owner approval.
+
 ## Mandatory reading order
 
 Before continuing this branch, read:

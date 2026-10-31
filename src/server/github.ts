@@ -21,6 +21,7 @@ import {
 import { ADMINISTRATION_DENIED } from "./github-response.ts";
 import { hasWrite } from "./install-test.ts";
 import { isPackAssetName } from "./paths.ts";
+import type { RepoWriter } from "./fix-pr.ts";
 
 export type GithubRepo = {
   id: number;
@@ -176,6 +177,8 @@ export type GithubPort = {
     repo: string,
     workflowPath: string,
   ) => Promise<GithubAdminResult>;
+  /** Contents and pull request access for fix PRs. Absent in stubs and older test ports. */
+  repoWriter?: (installationId: number, owner: string, repo: string) => Promise<RepoWriter>;
 };
 
 export function skippedGithubWrites(): Pick<
@@ -790,6 +793,11 @@ export function createGithubPort(config: AppConfig): GithubPort {
       }
     },
 
+    async repoWriter(installationId, owner, repo) {
+      const token = await installationToken(installationId);
+      return createRepoWriter(token, owner, repo);
+    },
+
     async makeRepoPrivate(installationId, owner, repo) {
       const install = await this.getInstallation(installationId);
       if (!hasWrite(install.permissions ?? {}, "administration")) {
@@ -969,4 +977,82 @@ async function putGithubFile(
     }
     throw error;
   }
+}
+
+function contentsUrl(owner: string, repo: string, filePath: string): string {
+  const safe = filePath.split("/").map(encodeURIComponent).join("/");
+  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${safe}`;
+}
+
+/** Minimal contents + pulls client. Uses only Contents write and Pull requests write. */
+export function createRepoWriter(token: string, owner: string, repo: string): RepoWriter {
+  const repoUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  async function fileMeta(filePath: string, ref: string): Promise<{ sha: string; content: string } | null> {
+    try {
+      const body = await githubJson<{ type?: string; sha?: string; content?: string; encoding?: string }>(
+        `${contentsUrl(owner, repo, filePath)}?ref=${encodeURIComponent(ref)}`,
+        token,
+      );
+      if (body.type !== "file" || typeof body.sha !== "string" || typeof body.content !== "string") return null;
+      return { sha: body.sha, content: Buffer.from(body.content.replace(/\n/g, ""), "base64").toString("utf8") };
+    } catch (error) {
+      if (error instanceof GithubApiError && error.status === 404) return null;
+      throw error;
+    }
+  }
+  return {
+    async defaultBranch() {
+      const info = await githubJson<{ default_branch?: string }>(repoUrl, token);
+      return info.default_branch?.trim() || "main";
+    },
+    async readFile(filePath, ref) {
+      return (await fileMeta(filePath, ref))?.content ?? null;
+    },
+    async createBranch(name, fromBranch) {
+      const base = await githubJson<{ object: { sha: string } }>(`${repoUrl}/git/ref/heads/${encodeURIComponent(fromBranch)}`, token);
+      try {
+        await githubJson(`${repoUrl}/git/refs`, token, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ref: `refs/heads/${name}`, sha: base.object.sha }),
+        });
+      } catch (error) {
+        // 422: the branch already exists from an earlier attempt; reuse it.
+        if (!(error instanceof GithubApiError && error.status === 422)) throw error;
+      }
+    },
+    async writeFile(filePath, content, branch, message) {
+      const current = await fileMeta(filePath, branch);
+      if (current?.content === content) return;
+      await githubJson(contentsUrl(owner, repo, filePath), token, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, branch, content: Buffer.from(content, "utf8").toString("base64"), ...(current ? { sha: current.sha } : {}) }),
+      });
+    },
+    async deleteFile(filePath, branch, message) {
+      const current = await fileMeta(filePath, branch);
+      if (!current) return;
+      await githubJson(contentsUrl(owner, repo, filePath), token, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, branch, sha: current.sha }),
+      });
+    },
+    async findOpenPull(branch) {
+      const open = await githubJson<{ html_url: string; number: number }[]>(
+        `${repoUrl}/pulls?state=open&head=${encodeURIComponent(`${owner}:${branch}`)}`,
+        token,
+      );
+      return open[0] ? { number: open[0].number, url: open[0].html_url } : null;
+    },
+    async openPull(input) {
+      const pull = await githubJson<{ html_url: string; number: number }>(`${repoUrl}/pulls`, token, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...input, draft: false, maintainer_can_modify: true }),
+      });
+      return { number: pull.number, url: pull.html_url };
+    },
+  };
 }

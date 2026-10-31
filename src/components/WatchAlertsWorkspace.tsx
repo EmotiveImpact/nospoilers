@@ -1,6 +1,7 @@
 import {kindExplanations} from '@/watch/alert-guidance';
 import {asFindingList} from '@/watch/format';
 import {AlertFixBrief} from './watch/AlertFixBrief';
+import {AlertAiReview} from './watch/AlertAiReview';
 import { Button } from "@/components/ui/button";
 import {AlertMemberSelect} from './watch/AlertMemberSelect';
 import './watch/design/alerts-page.css';
@@ -399,6 +400,7 @@ export function WatchAlertsWorkspace({
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
 
+                  {!selectedRow.operational?<AlertAiReview key={`ai:${selected.id}`} alertId={selected.id} workspaceId={workspaceId}/>:null}
                   <AlertFixBrief key={selected.id} alert={selected} operational={selectedRow.operational}/>
                   {!selectedRow.operational && selected.kind!=='push_sensitive_path' && (!selectedIsEvent||selected.full_name) ? <>
                   <section className="alerts-journey-section mt-8">
