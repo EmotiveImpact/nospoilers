@@ -1,4 +1,5 @@
 import { mkdir, readFile } from "node:fs/promises";
+import { AI_REVIEW_MIGRATION, aiReviewSchema } from './ai-review/schema.ts';
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
@@ -46,7 +47,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "123_product_identity";
+export const CURRENT_SCHEMA_MIGRATION = AI_REVIEW_MIGRATION;
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -1296,6 +1297,11 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     if((await tx.query("SELECT id FROM schema_migrations WHERE id='123_product_identity'")).rows.length)return;
     await tx.exec(productIdentitySchema);
     await tx.query("INSERT INTO schema_migrations(id) VALUES ('123_product_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id=$1",[AI_REVIEW_MIGRATION])).rows.length)return;
+    await tx.exec(aiReviewSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ($1)",[AI_REVIEW_MIGRATION]);
   });
 }
 

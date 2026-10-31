@@ -89,6 +89,10 @@ import {
   remediationBundle,
   remediationPullRequestBody,
 } from "./remediation.ts";
+import { AI_REVIEW_NOTICE } from "./ai-review/notice.ts";
+import { readAiReview } from "./ai-review/service.ts";
+import { asFindings, fixBranch, fixTargets, openFixPullRequest } from "./fix-pr.ts";
+import { readFixPr } from "./fix-verification.ts";
 import {
   SETUP_PERMISSIONS,
   SETUP_BRANCH,
@@ -3041,6 +3045,73 @@ export function createApp(deps: AppDeps): Hono {
       if(!workspaces.some(w=>w.id===workspaceId&&w.installation_ids.map(Number).includes(installationId)))return c.json({error:'Unknown alert.'},404);
     }
     return c.json({releases:await listAlertReleaseLinks(deps.store.sql,user.userId,id,installationId)});
+  });
+  /** Shared scope check for AI review and fix PR routes: alert must be visible, and in the named workspace. */
+  async function scopedAlert(c: Context, userId: string) {
+    const id = Number(c.req.param('id'));
+    if (!Number.isSafeInteger(id) || id <= 0) return null;
+    const alert = await deps.store.getAlertForUser(id, userId);
+    if (!alert) return null;
+    const workspaceId = c.req.query('workspaceId');
+    if (workspaceId) {
+      const workspaces = await listUserWorkspaces(deps.store.sql, userId);
+      if (!workspaces.some(w => w.id === workspaceId && w.installation_ids.map(Number).includes(Number(alert.installation_id)))) return null;
+    }
+    return alert;
+  }
+  app.get('/api/alerts/:id/ai-review', async c => {
+    const user = await currentUser(c); if (!user) return c.json({error: 'Sign in first.'}, 401);
+    const alert = await scopedAlert(c, user.userId); if (!alert) return c.json({error: 'Unknown alert.'}, 404);
+    const review = await readAiReview(deps.store.sql, alert.id);
+    return c.json({review, notice: AI_REVIEW_NOTICE});
+  });
+  app.get('/api/alerts/:id/fix-pr', async c => {
+    const user = await currentUser(c); if (!user) return c.json({error: 'Sign in first.'}, 401);
+    const alert = await scopedAlert(c, user.userId); if (!alert) return c.json({error: 'Unknown alert.'}, 404);
+    const findings = asFindings(alert.findings);
+    const {targets, unfixable} = fixTargets(findings);
+    return c.json({
+      eligible: alert.kind === 'release_scan' && alert.repo_id != null && targets.length > 0,
+      kinds: [...new Set(targets.map(t => t.kind))], unfixable,
+      fix: await readFixPr(deps.store.sql, alert.id),
+      permissions: ['Contents: Read and write', 'Pull requests: Read and write (never merged by NoSpoilers)'],
+    });
+  });
+  app.post('/api/alerts/:id/fix-pr', async c => {
+    const user = await currentUser(c); if (!user) return c.json({error: 'Sign in first.'}, 401);
+    const alert = await scopedAlert(c, user.userId); if (!alert) return c.json({error: 'Unknown alert.'}, 404);
+    if (alert.kind !== 'release_scan' || alert.repo_id == null) return c.json({error: 'Fix pull requests are available for GitHub release alerts.'}, 409);
+    const repo = await deps.store.getRepo(Number(alert.repo_id));
+    if (!repo || Number(repo.installation_id) !== Number(alert.installation_id)) return c.json({error: 'The repository for this alert is no longer connected.'}, 409);
+    const adminDenied = await requireInstallAdmin(user.userId, repo.installation_id);
+    if (adminDenied) return c.json({error: adminDenied.error}, adminDenied.status);
+    const denied = await hostedWorkDenied(deps.store, repo.installation_id, 'Coverage ended. Subscribe to open a fix pull request.');
+    if (denied) return c.json({error: denied.error}, denied.status);
+    const existing = await readFixPr(deps.store.sql, alert.id);
+    if (existing) return c.json({ok: true, existing: true, fix: existing});
+    if (!deps.github.repoWriter) return c.json({error: 'Connect the GitHub App with Contents and Pull requests write access to open fix pull requests.'}, 409);
+    let result: Awaited<ReturnType<typeof openFixPullRequest>>;
+    try {
+      const writer = await deps.github.repoWriter(repo.installation_id, repo.owner, repo.name);
+      result = await openFixPullRequest(writer, {id: alert.id, title: alert.title, findings: asFindings(alert.findings)});
+    } catch (error) {
+      if (error instanceof GithubApiError && (error.status === 403 || error.status === 404)) {
+        return c.json({error: 'GitHub refused the change. Grant the NoSpoilers App Contents write and Pull requests write on this repository, then try again.'}, 409);
+      }
+      throw error;
+    }
+    if (!result.ok) return c.json({error: result.reason, unfixable: result.plan.unfixable}, 409);
+    await deps.store.sql.query(
+      `INSERT INTO alert_fix_prs(alert_id,installation_id,repo_id,branch,pr_number,pr_url,fix_kinds,targets,opened_by_login,state)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,'open') ON CONFLICT (alert_id) DO NOTHING`,
+      [alert.id, repo.installation_id, repo.id, fixBranch(alert.id), result.number, result.url, result.plan.kinds, JSON.stringify(result.plan.targets), user.login]);
+    await deps.store.sql.query(
+      `INSERT INTO alert_events(alert_id,installation_id,workspace_id,actor_login,action,detail)
+       SELECT id,installation_id,workspace_id,$2,'note',$3 FROM alerts WHERE id=$1`,
+      [alert.id, user.login, `Opened fix pull request #${result.number}. NoSpoilers will verify it on the next release.`]);
+    await recordAudit({installationId: repo.installation_id, actorLogin: user.login, action: 'remediation_pr.create',
+      summary: `Opened fix PR #${result.number} for alert ${alert.id} on ${repo.full_name}`, targetKind: 'repo', targetId: repo.full_name});
+    return c.json({ok: true, existing: result.existing, fix: await readFixPr(deps.store.sql, alert.id), changes: result.plan.changes.map(({path, action, reason}) => ({path, action, reason})), notes: result.plan.notes}, result.existing ? 200 : 201);
   });
   app.get("/api/alerts/:id/events", async (c) => {
     const user = await currentUser(c);

@@ -1,3 +1,4 @@
+import type { AttackSurface } from "./attack-surface.ts";
 export type Severity = "critical" | "warn";
 
 export type Finding = {
@@ -99,6 +100,8 @@ export type ScanReport = {
   debugIds?: string[];
   /** Release/version hints from maps or package.json. Never source. */
   releaseHints?: string[];
+  /** Attacker-view identifiers (routes, flag keys, internal hosts, env names). Never code or values. */
+  attackSurface?: AttackSurface;
 };
 
 export type ScanOptions = {

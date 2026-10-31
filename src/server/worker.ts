@@ -41,6 +41,9 @@ import {
   runMapCustodyCheck,
 } from "./map-custody.ts";
 import { NAMESPACE_CHECK_KIND, runNamespaceCheck } from "./namespace-watch.ts";
+import { AI_REVIEW_JOB, processAiReview, queueAiReview, type AiReviewEngine } from "./ai-review/service.ts";
+import { verifyFixesAfterReleaseScan } from "./fix-verification.ts";
+import { emptyAttackSurface, mergeAttackSurface, sortedAttackSurface } from "../scanner/attack-surface.ts";
 
 export type ScanFn = (target: string) => Promise<ScanReport>;
 
@@ -117,6 +120,15 @@ function noteForAsset(name: string, report: ScanReport): string {
   return workspaces ? `${note} ${workspaces}` : note;
 }
 
+/** Follow-up work after evidence is saved. It must never fail or repeat the scan job. */
+async function afterScanCommitted(source: string, work: () => Promise<unknown>): Promise<void> {
+  try {
+    await work();
+  } catch (error) {
+    logJson("warn", "scan.follow_up_failed", { source, message: error instanceof Error ? error.name : "unknown" });
+  }
+}
+
 export async function handleJob(
   job: JobRow,
   deps: {
@@ -130,6 +142,7 @@ export async function handleJob(
     workerId?:string;
     webFetch?: typeof fetch;
     webLookup?: WebhookHostLookup;
+    aiReview?: AiReviewEngine | null;
   },
 ): Promise<void> {
   const payload = asRecord(job.payload);
@@ -265,6 +278,10 @@ export async function handleJob(
     return;
   }
 
+  if (job.kind === AI_REVIEW_JOB) {
+    await processAiReview(deps.store.sql, payload.alertId, deps.aiReview);
+    return;
+  }
   if (job.kind === "scan_latest_release") {
     if (!repo) throw new Error("scan_latest_release job missing repo");
     const currentRepo = await deps.store.getRepo(repo.id);
@@ -399,6 +416,13 @@ export async function handleJob(
       if (!("skipped" in check) && check.htmlUrl) notes.push(`Check ${check.htmlUrl}`);
     }
     await deps.notifier.send({...published.alert,body:notes.join(' ')}, published.alertId);
+    await afterScanCommitted('release', async () => {
+      const surface = emptyAttackSurface();
+      for (const asset of published.assets) if (asset.report.attackSurface) mergeAttackSurface(surface, asset.report.attackSurface);
+      await queueAiReview(deps.store, deps.aiReview, {alertId: Number(published.alertId), installationId,
+        source: {kind: 'release', label: `${repo.fullName} ${tag}`}, findings: allFindings, surface: sortedAttackSurface(surface)});
+      await verifyFixesAfterReleaseScan(deps.store.sql, {repoId: repo.id, tag, status, findings: allFindings, alertId: Number(published.alertId)});
+    });
   }
 
   if (job.kind === NAMESPACE_CHECK_KIND) {
@@ -630,6 +654,8 @@ export async function handleJob(
       if (!published) return;
       publicationCommitted=true;
       await deps.notifier.send(published.alert, published.alertId);
+      await afterScanCommitted('website', () => queueAiReview(deps.store, deps.aiReview, {alertId: Number(published.alertId), installationId,
+        source: {kind: 'website', label: origin.host}, findings: published.report.findings, surface: published.report.attackSurface}));
     } catch (error) {
       // Delivery failures must never replace already committed scan evidence.
       if(publicationCommitted)throw error;
@@ -751,6 +777,7 @@ export function createWorker(opts: {
   webLookup?: WebhookHostLookup;
   onJob?: (job: JobRow) => Promise<void>;
   processNotification?: () => Promise<boolean>;
+  aiReview?: AiReviewEngine | null;
 }) {
   const scanFn = opts.scan ?? scan;
   const workerId = `w-${process.pid}-${Math.random().toString(16).slice(2)}`;
@@ -792,6 +819,7 @@ export function createWorker(opts: {
           receiptSecret: opts.receiptSecret,
           webFetch: opts.webFetch,
           webLookup: opts.webLookup,
+          aiReview: opts.aiReview,
         });
       }
       await opts.store.finishJob(job.id,undefined,workerId);

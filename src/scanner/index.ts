@@ -6,7 +6,8 @@ import * as asar from "@electron/asar";
 import JSZip from "jszip";
 import { t as tarList, x as tarExtract } from "tar";
 import { applyPolicy } from "../policy.ts";
-import { INSPECT_BYTES, inspectEntry, isNestedPack, linkFinding, escapingArchivePathFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
+import { attackSurfaceCandidate, collectAttackSurfaceText, emptyAttackSurface, sortedAttackSurface, type AttackSurface } from "./attack-surface.ts";
+import { INSPECT_BYTES, embeddedSourceTexts, inspectEntry, isNestedPack, linkFinding, escapingArchivePathFinding, TOTAL_WARN_BYTES } from "./inspect.ts";
 import {
   emptyMapIdentity,
   extractMapIdentity,
@@ -184,6 +185,8 @@ type ScanCtx = {
   limits: ScanLimits;
   budget: ScanBudget;
   depth: number;
+  /** Shared by nested scans; identifiers only, never code or values. */
+  surface: AttackSurface;
 };
 
 function emptyChunk(budget: ScanBudget): ScanChunk {
@@ -199,6 +202,17 @@ function emptyChunk(budget: ScanBudget): ScanChunk {
 
 function noteIdentity(rel: string, buf: Buffer, into: MapIdentity): void {
   mergeMapIdentity(into, extractMapIdentity(rel, buf));
+}
+
+/** Attacker-view identifiers from shipped code and from source rebuilt out of maps. */
+function noteSurface(rel: string, buf: Buffer, surface: AttackSurface): void {
+  if (rel.toLowerCase().endsWith(".map")) {
+    for (const source of embeddedSourceTexts(buf)) {
+      if (attackSurfaceCandidate(source.path)) collectAttackSurfaceText(surface, source.content);
+    }
+    return;
+  }
+  if (attackSurfaceCandidate(rel)) collectAttackSurfaceText(surface, buf.toString("utf8"));
 }
 
 function pushWorkspace(rel: string, buf: Buffer, into: WorkspaceFile[]): void {
@@ -313,6 +327,7 @@ async function scanDirectory(
     const buf = await readFile(abs);
     findings.push(...inspectEntry(rel, buf.subarray(0, INSPECT_BYTES), info.size));
     noteIdentity(rel, buf.subarray(0, INSPECT_BYTES), identity);
+    noteSurface(rel, buf.subarray(0, INSPECT_BYTES), ctx.surface);
     manifest.push({ path: rel, size: info.size, sha256: sha256Buffer(buf) });
     pushWorkspace(rel, buf, workspaceFiles);
     await mergeNested(rel, buf, ctx, findings, manifest, workspaceFiles, identity);
@@ -514,6 +529,7 @@ async function scanZipBytes(buf: Buffer, ctx: ScanCtx, label = ""): Promise<Scan
     const retained = Buffer.concat(chunks, retainedBytes);
     findings.push(...inspectEntry(display, retained.subarray(0, INSPECT_BYTES), fileBytes));
     noteIdentity(display, retained.subarray(0, INSPECT_BYTES), identity);
+    noteSurface(display, retained.subarray(0, INSPECT_BYTES), ctx.surface);
     manifest.push({ path: display, size: fileBytes, sha256: hash.digest("hex") });
     pushWorkspace(display, retained, workspaceFiles);
     if (keepAll) await mergeNested(display, retained, ctx, findings, manifest, workspaceFiles, identity);
@@ -544,6 +560,7 @@ async function scanAsar(archive: string, ctx: ScanCtx, label = ""): Promise<Scan
     const content = asar.extractFile(archive, posix);
     findings.push(...inspectEntry(display, content.subarray(0, INSPECT_BYTES), record.size));
     noteIdentity(display, content.subarray(0, INSPECT_BYTES), identity);
+    noteSurface(display, content.subarray(0, INSPECT_BYTES), ctx.surface);
     manifest.push({ path: display, size: record.size, sha256: sha256Buffer(content) });
     pushWorkspace(display, content, workspaceFiles);
     await mergeNested(display, content, ctx, findings, manifest, workspaceFiles, identity);
@@ -613,7 +630,8 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
     let identity = emptyMapIdentity();
     let kindHint: "docker" | "oci" | "sdist" | undefined;
 
-    const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0 };
+    const surface = emptyAttackSurface();
+    const ctx: ScanCtx = { limits, budget: new ScanBudget(limits), depth: 0, surface };
 
     if (kind === "directory") {
       ({ findings, fileCount, totalBytes, manifest, workspaceFiles, identity } = await scanDirectory(resolved, ctx));
@@ -651,6 +669,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       const buf = packed ?? (await readFile(resolved));
       findings = inspectEntry(name, buf.subarray(0, INSPECT_BYTES), info.size);
       noteIdentity(name, buf.subarray(0, INSPECT_BYTES), identity);
+      noteSurface(name, buf.subarray(0, INSPECT_BYTES), surface);
       fileCount = 1;
       totalBytes = buf.length;
       manifest = [{ path: name, size: buf.length, sha256: sha256Buffer(buf) }];
@@ -690,6 +709,7 @@ export async function scan(target: string, options: ScanOptions = {}): Promise<S
       workspaces: discoverWorkspaces(workspaceFiles),
       debugIds: identity.debugIds,
       releaseHints: identity.releases,
+      attackSurface: sortedAttackSurface(surface),
     });
   } catch (error) {
     if (error instanceof ScanInconclusiveError) {
