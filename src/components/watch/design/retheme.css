@@ -95,3 +95,26 @@ body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-link[aria-current="p
 body .watch-desk header { border-bottom-color: transparent !important; }
 body .watch-desk table :is(td, th) { border-color: #ffffff07 !important; }
 body .watch-desk code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Sidebar and top bar: compact, like the prototype. */
+body .watch-desk { --watch-page-padding: 22px 28px 44px; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-link {
+  min-height: 30px !important; padding: 5px 8px !important; font-size: 13px; border-radius: 7px; gap: 9px; color: #9a9ea6;
+}
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-link:hover { background: #141517 !important; color: #f7f8f8; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-link svg { width: 15px !important; height: 15px !important; opacity: .85; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-nav .watch-kicker,
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher > .watch-kicker {
+  padding: 14px 8px 5px !important; margin: 0 !important; font-size: 11px !important; letter-spacing: 0 !important; text-transform: none !important; color: #666a72 !important;
+}
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher { margin-bottom: 4px !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher :is(button, select) {
+  min-height: 34px !important; padding: 5px 8px !important; font-size: 12.5px !important; border: 0 !important; background: transparent !important;
+}
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher :is(button, select):hover { background: #141517 !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-head > .watch-rail-brand { margin-bottom: 10px !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-wordmark { width: 112px !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-foot { min-height: 0 !important; padding-block: 10px !important; font-size: 13px; }
+body .watch-desk .watch-stage { background: #08090a !important; }
+body .watch-desk .watch-stage-head { height: 52px !important; min-height: 52px !important; font-size: 12px; }
+body .watch-desk .watch-stage-head :is(button, a) { font-size: 12.5px; }

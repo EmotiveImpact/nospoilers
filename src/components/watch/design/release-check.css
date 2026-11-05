@@ -1,0 +1,98 @@
+/* Release check in the redesign layout (homepage "Release check" mockup).
+   Scoped with a doubled class so it wins over release-journey and release-workspace. */
+.watch-desk .release-workspace.release-workspace { --rc-fill: #ffffff08; --rc-fill-2: #ffffff0d; }
+.watch-desk .release-workspace.release-workspace .watch-release-back { font-size: 12px; color: #666a72; margin-bottom: 6px; }
+.watch-desk .release-workspace.release-workspace .watch-release-back svg { width: 13px; height: 13px; }
+.watch-desk .release-workspace.release-workspace .rc-heading { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 16px; }
+.watch-desk .release-workspace.release-workspace .rc-heading > div:first-child { min-width: 0; }
+.watch-desk .release-workspace.release-workspace .rc-actions { margin-left: auto; display: flex; gap: 8px; }
+.watch-desk .release-workspace.release-workspace .rc-crumb { margin: 0 0 10px !important; font-size: 12px !important; color: #666a72; overflow-wrap: anywhere; }
+.watch-desk .release-workspace.release-workspace .rc-crumb b { color: #f7f8f8; font-weight: 510; }
+.watch-desk .release-workspace.release-workspace .rc-heading h1 { font-size: 20px !important; font-weight: 600 !important; letter-spacing: -.02em !important; margin: 0 0 4px; }
+.watch-desk .release-workspace.release-workspace .rc-stat { display: flex; align-items: center; gap: 8px; margin: 0 !important; font-size: 12.5px !important; color: #9a9ea6; }
+.rc-stat i { width: 8px; height: 8px; border-radius: 50%; background: #ff2d47; box-shadow: 0 0 0 3px #ff2d4722; flex: none; }
+.rc-stat i.is-ready { background: #4cc38a; box-shadow: 0 0 0 3px #4cc38a22; }
+.rc-stat i.is-review, .rc-stat i.is-unknown, .rc-stat i.is-waiting { background: #f2a33a; box-shadow: 0 0 0 3px #f2a33a22; }
+
+/* Decision becomes a slim strip, the four checks become tiles. */
+.watch-desk .release-workspace.release-workspace .release-workspace-decision {
+  padding: 11px 14px; border: 0 !important; border-radius: 10px; margin: 0 0 8px;
+  background: linear-gradient(100deg, #ff2d4718, #ffffff05 60%);
+}
+.watch-desk .release-workspace.release-workspace .release-workspace-decision.is-ready { background: linear-gradient(100deg, #4cc38a14, #ffffff05 60%); }
+.watch-desk .release-workspace.release-workspace .release-workspace-decision h2 { font-size: 13.5px !important; font-weight: 510 !important; margin: 0; }
+.watch-desk .release-workspace.release-workspace .release-workspace-decision p { font-size: 12px; color: #9a9ea6; margin: 2px 0 0; }
+.watch-desk .release-workspace.release-workspace .release-workspace-decision svg { width: 15px; height: 15px; }
+.watch-desk .release-workspace.release-workspace .release-workspace-count { font-size: 12px; }
+.watch-desk .release-workspace.release-workspace .release-workspace-scope { font-size: 11.5px; color: #666a72; margin: 0 0 14px; }
+.watch-desk .release-workspace.release-workspace .release-workspace-states {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; border: 0 !important; margin: 0 0 18px;
+}
+.watch-desk .release-workspace.release-workspace .release-evidence-state {
+  background: var(--rc-fill); border: 0 !important; border-radius: 9px; padding: 9px 12px !important; font-size: 12px; color: #666a72;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.watch-desk .release-workspace.release-workspace .release-evidence-state svg { display: none; }
+.watch-desk .release-workspace.release-workspace .release-evidence-state strong { font-size: 12.5px; font-weight: 510; }
+
+/* Tabs */
+.watch-desk .release-workspace.release-workspace .journey-release-tabs { gap: 18px; border-bottom-color: transparent; margin: 0 0 14px; }
+.watch-desk .release-workspace.release-workspace .journey-release-tabs button { font-size: 12.5px; padding: 0 0 6px; color: #666a72; border-bottom-width: 2px; }
+.watch-desk .release-workspace.release-workspace .journey-release-tabs button[aria-selected=true] { color: #f7f8f8; border-color: #ff2d47; }
+.watch-desk .release-workspace.release-workspace .upload-evidence-tabs { gap: 6px; margin: 0 0 12px; border: 0; }
+.watch-desk .release-workspace.release-workspace .upload-evidence-tabs button { min-height: 0; padding: 4px 10px; border-radius: 7px; border: 0; font-size: 12px; color: #9a9ea6; }
+.watch-desk .release-workspace.release-workspace .upload-evidence-tabs button[aria-selected=true] { background: #1b1c1f; color: #f7f8f8; }
+.watch-desk .release-workspace.release-workspace .upload-evidence-tabs button span { color: #666a72; }
+
+/* Findings list on the left, detail panel on the right */
+.watch-desk .release-workspace.release-workspace .upload-evidence-grid {
+  grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; border: 0 !important; background: none !important; align-items: start;
+}
+.watch-desk .release-workspace.release-workspace .upload-finding-list { border: 0 !important; padding: 0; max-height: none; background: none !important; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.watch-desk .release-workspace.release-workspace .upload-finding-list > button {
+  grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 14px; padding: 11px 12px; margin-bottom: 6px;
+  border: 0 !important; border-radius: 9px; background: var(--rc-fill) !important;
+}
+.watch-desk .release-workspace.release-workspace .upload-finding-list > button:hover { background: var(--rc-fill-2) !important; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list > button[aria-pressed=true] { background: linear-gradient(90deg, #ff2d4717, #ffffff08 70%) !important; box-shadow: none; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list .upload-severity {
+  display: inline-block; justify-self: start; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 5px; background: #f2a33a22; color: #f2a33a;
+}
+.watch-desk .release-workspace.release-workspace .upload-finding-list .upload-severity.is-critical { background: #ff2d4722; color: #ff6a7c; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list .rc-path { margin: 0; font: 510 12.5px "JetBrains Mono", ui-monospace, Menlo, monospace; color: #f7f8f8; overflow-wrap: anywhere; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list .rc-what { display: block; font-size: 12px; font-weight: 400; color: #666a72; line-height: 1.4; margin-top: 2px; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list > button > svg { color: #666a72; width: 14px; height: 14px; }
+
+.watch-desk .release-workspace.release-workspace .upload-evidence-panel {
+  background: #ffffff05 !important; border: 0 !important; border-radius: 12px; padding: 16px 18px !important;
+  display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px;
+}
+.watch-desk .release-workspace.release-workspace .upload-evidence-panel h3 { font-size: 14px !important; font-weight: 510 !important; line-height: 1.4; margin: 0 !important; }
+.watch-desk .release-workspace.release-workspace .upload-evidence-panel > code {
+  order: -1; padding: 0 !important; background: none !important; border: 0 !important;
+  font: 510 13px "JetBrains Mono", ui-monospace, Menlo, monospace; color: #f7f8f8;
+}
+.watch-desk .release-workspace.release-workspace .release-finding-kind { display: none; }
+.rc-kv { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px 10px; margin: 0; font-size: 12.5px; }
+.rc-kv dt { color: #666a72; } .rc-kv dd { margin: 0; color: #f7f8f8; min-width: 0; overflow-wrap: anywhere; }
+.rc-kv code { font-size: 12px; color: #9a9ea6; }
+.rc-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 99px; background: #1b1c1f; font-size: 11.5px; }
+.rc-pill i { width: 6px; height: 6px; border-radius: 50%; background: #f2a33a; }
+.rc-pill.is-critical i { background: #ff2d47; }
+.watch-desk .release-workspace.release-workspace .journey-finding-explanation { grid-template-columns: 1fr; gap: 12px; margin: 0; }
+.watch-desk .release-workspace.release-workspace .journey-finding-explanation h4 { font-size: 12.5px; font-weight: 510; margin: 0 0 4px; }
+.watch-desk .release-workspace.release-workspace .journey-finding-explanation p { font-size: 12.5px; color: #9a9ea6; margin: 0; }
+.watch-desk .release-workspace.release-workspace .upload-next-step { margin: 0; padding: 0 !important; border: 0 !important; }
+.watch-desk .release-workspace.release-workspace .upload-next-step > p { font-size: 11.5px; color: #666a72; margin-top: 8px; }
+
+@media (max-width: 1050px) {
+  .watch-desk .release-workspace.release-workspace .upload-evidence-grid { grid-template-columns: 1fr; }
+  .watch-desk .release-workspace.release-workspace .upload-evidence-panel { position: static; }
+}
+@media (max-width: 760px) {
+  .watch-desk .release-workspace.release-workspace .release-workspace-states { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .watch-desk .release-workspace.release-workspace .rc-heading { flex-wrap: wrap; }
+  .watch-desk .release-workspace.release-workspace .rc-actions { margin-left: 0; }
+}
