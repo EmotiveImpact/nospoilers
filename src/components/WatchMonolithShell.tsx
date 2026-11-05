@@ -4,6 +4,7 @@ import './watch/design/page-layouts.css';
 import './watch/design/journey-shell.css';
 import { signOut } from "@/auth.ts";
 import './watch/trial-indicator.css';
+import './watch/design/retheme.css';
 import {WorkspaceAlertBadge} from './watch/WorkspaceAlertBadge';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

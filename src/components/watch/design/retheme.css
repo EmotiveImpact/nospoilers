@@ -1,0 +1,97 @@
+/* Prototype retheme (step 1): the homepage "Release check" look applied as tokens.
+   Inter at lighter weights, calmer titles, soft fills instead of borders.
+   Loaded after the page styles, so it is scoped with body to win the cascade. */
+@font-face {
+  font-family: "Inter Retheme";
+  src: url("../../../assets/fonts/InterVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+body :is(.watch-desk, .watch-navigation-dialog, .watch-rail, .watch-design-surface) {
+  --font-ui: "Inter Retheme", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-ui);
+  --journey-bg: #08090a;
+  --journey-panel: #0e0f11;
+  --journey-raised: #1b1c1f;
+  --journey-line: #ffffff09;
+  --journey-text: #f7f8f8;
+  --journey-muted: #9a9ea6;
+  --journey-dim: #666a72;
+  --journey-review: #ff6a7c;
+  --journey-warn: #f2a33a;
+  --journey-clear: #4cc38a;
+  --color-panel: #0e0f11;
+  --color-panel-raised: #141517;
+  --color-inset: #0a0b0c;
+  --color-line: #ffffff09;
+  --color-line-strong: #ffffff14;
+  --color-snow: #f7f8f8;
+  --color-mute: #9a9ea6;
+  --color-dim: #666a72;
+  --color-danger: #ff2d47;
+  --color-danger-text: #ff6a7c;
+  --color-review: #ff6a7c;
+  --color-warn: #f2a33a;
+  --color-ok: #4cc38a;
+  --watch-page-title-size: 22px;
+  --watch-section-title-size: 13.5px;
+  --watch-body-size: 13px;
+  --watch-panel-radius: 12px;
+  --watch-control-radius: 8px;
+  --watch-row-radius: 9px;
+  --watch-control-height: 32px;
+  font-feature-settings: "cv01", "ss03";
+  font-family: var(--font-ui);
+}
+body .watch-desk { background: #08090a; }
+body::before { opacity: 0; }
+
+/* Titles: a working title, not a headline. */
+body .watch-desk :is(h1, .watch-page-title) {
+  font-size: var(--watch-page-title-size) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.25 !important;
+}
+body .watch-desk :is(h2, h3) { font-weight: 510; letter-spacing: -0.01em; }
+body .watch-desk .watch-kicker,
+body .watch-desk :is(th, [class*="kicker"], [class*="eyebrow"]) {
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  font-size: 11.5px !important;
+  color: #666a72 !important;
+}
+
+/* Fills instead of borders. Panels and rows keep their shape through background. */
+body .watch-desk :is(.watch-card, .watch-stat, .watch-stepcard, .watch-progress, .quiet-shared-card,
+  .workspace-create, .workspace-cards > article, .upload-preview, .upload-record-details,
+  .upload-evidence-grid, .uploaded-list, [class*="-card"], [class*="-panel"]:not(.watch-search-panel)) {
+  border-color: transparent !important;
+  background-color: #ffffff05;
+  border-radius: var(--watch-panel-radius);
+}
+body .watch-desk :is(details, summary, [class*="-row"], .uploaded-list button, .upload-finding-list > button) {
+  border-color: #ffffff07 !important;
+}
+body .watch-desk :is(input:not([type=checkbox]):not([type=radio]), select, textarea) {
+  background: #141517 !important;
+  border-color: transparent !important;
+  border-radius: var(--watch-control-radius) !important;
+}
+body .watch-desk :is(button, a).quiet-shared-button:not(.bg-snow),
+body .watch-desk button:is([class*="secondary"], [class*="ghost"], [class*="outline"]):not(.bg-snow) {
+  border-color: transparent !important;
+  background: #1b1c1f;
+}
+body .watch-desk :is(.watch-rail, aside) { border-right-color: transparent !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail { background: #ffffff03; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-rail-link[aria-current="page"] {
+  background: #1b1c1f !important;
+  border-radius: 7px;
+}
+body .watch-desk header { border-bottom-color: transparent !important; }
+body .watch-desk table :is(td, th) { border-color: #ffffff07 !important; }
+body .watch-desk code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
