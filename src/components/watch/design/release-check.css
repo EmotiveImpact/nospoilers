@@ -1,6 +1,6 @@
-/* Release check in the redesign layout (homepage "Release check" mockup).
+/* Release check in redesign D: prototype layout, live app voice.
    Scoped with a doubled class so it wins over release-journey and release-workspace. */
-.watch-desk .release-workspace.release-workspace { --rc-fill: #ffffff08; --rc-fill-2: #ffffff0d; }
+.watch-desk .release-workspace.release-workspace { --rc-fill: #ffffff05; --rc-fill-2: #ffffff09; }
 .watch-desk .release-workspace.release-workspace .watch-release-back { font-size: 12px; color: #666a72; margin-bottom: 6px; }
 .watch-desk .release-workspace.release-workspace .watch-release-back svg { width: 13px; height: 13px; }
 .watch-desk .release-workspace.release-workspace .rc-heading { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 16px; }
@@ -8,7 +8,7 @@
 .watch-desk .release-workspace.release-workspace .rc-actions { margin-left: auto; display: flex; gap: 8px; }
 .watch-desk .release-workspace.release-workspace .rc-crumb { margin: 0 0 10px !important; font-size: 12px !important; color: #666a72; overflow-wrap: anywhere; }
 .watch-desk .release-workspace.release-workspace .rc-crumb b { color: #f7f8f8; font-weight: 510; }
-.watch-desk .release-workspace.release-workspace .rc-heading h1 { font-size: 20px !important; font-weight: 600 !important; letter-spacing: -.02em !important; margin: 0 0 4px; }
+.watch-desk .release-workspace.release-workspace .rc-heading h1 { font-size: 28px !important; font-weight: 600 !important; letter-spacing: -.03em !important; margin: 0 0 6px; }
 .watch-desk .release-workspace.release-workspace .rc-stat { display: flex; align-items: center; gap: 8px; margin: 0 !important; font-size: 12.5px !important; color: #9a9ea6; }
 .rc-stat i { width: 8px; height: 8px; border-radius: 50%; background: #ff2d47; box-shadow: 0 0 0 3px #ff2d4722; flex: none; }
 .rc-stat i.is-ready { background: #4cc38a; box-shadow: 0 0 0 3px #4cc38a22; }
@@ -16,10 +16,10 @@
 
 /* Decision becomes a slim strip, the four checks become tiles. */
 .watch-desk .release-workspace.release-workspace .release-workspace-decision {
-  padding: 11px 14px; border: 0 !important; border-radius: 10px; margin: 0 0 8px;
+  padding: 11px 14px; border: 1px solid #ff2d4729 !important; border-radius: 10px; margin: 0 0 8px;
   background: linear-gradient(100deg, #ff2d4718, #ffffff05 60%);
 }
-.watch-desk .release-workspace.release-workspace .release-workspace-decision.is-ready { background: linear-gradient(100deg, #4cc38a14, #ffffff05 60%); }
+.watch-desk .release-workspace.release-workspace .release-workspace-decision.is-ready { background: linear-gradient(100deg, #4cc38a14, #ffffff05 60%); border-color: #4cc38a29 !important; }
 .watch-desk .release-workspace.release-workspace .release-workspace-decision h2 { font-size: 13.5px !important; font-weight: 510 !important; margin: 0; }
 .watch-desk .release-workspace.release-workspace .release-workspace-decision p { font-size: 12px; color: #9a9ea6; margin: 2px 0 0; }
 .watch-desk .release-workspace.release-workspace .release-workspace-decision svg { width: 15px; height: 15px; }
@@ -29,7 +29,7 @@
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; border: 0 !important; margin: 0 0 18px;
 }
 .watch-desk .release-workspace.release-workspace .release-evidence-state {
-  background: var(--rc-fill); border: 0 !important; border-radius: 9px; padding: 9px 12px !important; font-size: 12px; color: #666a72;
+  background: var(--rc-fill); border: 1px solid #ffffff0e !important; border-radius: 9px; padding: 9px 12px !important; font-size: 12px; color: #5c6068;
   display: flex; flex-direction: column; gap: 2px;
 }
 .watch-desk .release-workspace.release-workspace .release-evidence-state svg { display: none; }
@@ -52,10 +52,10 @@
 .watch-desk .release-workspace.release-workspace .upload-finding-list h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .watch-desk .release-workspace.release-workspace .upload-finding-list > button {
   grid-template-columns: 76px minmax(0, 1fr) 16px; gap: 14px; padding: 11px 12px; margin-bottom: 6px;
-  border: 0 !important; border-radius: 9px; background: var(--rc-fill) !important;
+  border: 1px solid #ffffff0e !important; border-radius: 9px; background: var(--rc-fill) !important;
 }
 .watch-desk .release-workspace.release-workspace .upload-finding-list > button:hover { background: var(--rc-fill-2) !important; }
-.watch-desk .release-workspace.release-workspace .upload-finding-list > button[aria-pressed=true] { background: linear-gradient(90deg, #ff2d4717, #ffffff08 70%) !important; box-shadow: none; }
+.watch-desk .release-workspace.release-workspace .upload-finding-list > button[aria-pressed=true] { background: linear-gradient(90deg, #ff2d4717, #ffffff05 70%) !important; box-shadow: none; border-color: #ff2d4738 !important; }
 .watch-desk .release-workspace.release-workspace .upload-finding-list .upload-severity {
   display: inline-block; justify-self: start; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
   padding: 3px 7px; border-radius: 5px; background: #f2a33a22; color: #f2a33a;
@@ -66,7 +66,7 @@
 .watch-desk .release-workspace.release-workspace .upload-finding-list > button > svg { color: #666a72; width: 14px; height: 14px; }
 
 .watch-desk .release-workspace.release-workspace .upload-evidence-panel {
-  background: #ffffff05 !important; border: 0 !important; border-radius: 12px; padding: 16px 18px !important;
+  background: #ffffff04 !important; border: 1px solid #ffffff0e !important; border-radius: 12px; padding: 16px 18px !important;
   display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px;
 }
 .watch-desk .release-workspace.release-workspace .upload-evidence-panel h3 { font-size: 14px !important; font-weight: 510 !important; line-height: 1.4; margin: 0 !important; }
