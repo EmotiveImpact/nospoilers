@@ -13,6 +13,13 @@ export function ReleaseWorkspaceSummary({title, detail, tone, findingCount, scop
     <section className={`release-workspace-decision is-${tone}`} aria-label="Recorded release decision">
       <div><DecisionIcon aria-hidden/><div><h2>{title}</h2><p>{detail}</p></div></div>
       {findingCount !== undefined ? <span className="release-workspace-count">{findingCount} finding{findingCount === 1 ? '' : 's'}</span> : null}
+      <ol className="release-workspace-steps" aria-label="Path to release">
+        {(['Fix', 'Recheck', 'Approve'] as const).map((step, index) => {
+          const current = tone === 'ready' ? 2 : tone === 'blocked' || tone === 'review' ? 0 : -1;
+          const state = current < 0 ? 'waiting' : index < current ? 'done' : index === current ? 'current' : 'waiting';
+          return <li key={step} className={`is-${state}`} aria-current={state === 'current' ? 'step' : undefined}><i aria-hidden />{step}{step === 'Fix' && findingCount ? <small>{tone === 'ready' ? findingCount : 0}/{findingCount}</small> : null}</li>;
+        })}
+      </ol>
     </section>
     <p className="release-workspace-scope">{scope}</p>
     <div className="release-workspace-states" role="group" aria-label="Independent evidence states">
