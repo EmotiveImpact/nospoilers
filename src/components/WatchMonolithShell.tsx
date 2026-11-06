@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "motion/react";
+import { useAnimate, useReducedMotion } from "motion/react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSelect } from "@/components/ui/app-select";
@@ -433,6 +433,12 @@ export function WatchMonolithShell({
   );
 
   const reduceMotion = useReducedMotion();
+  // Fade each new page in without remounting it, so focus and page state survive the change.
+  const [viewScope, animateView] = useAnimate<HTMLDivElement>();
+  useEffect(() => {
+    if (reduceMotion || !viewScope.current) return;
+    animateView(viewScope.current, { opacity: [0, 1], y: [4, 0] }, { duration: 0.18, ease: [0.2, 0.7, 0.2, 1] });
+  }, [route.view, reduceMotion, animateView, viewScope]);
   const PageIcon = watchViewIcon(watchPath(route.view));
   return (
     <TooltipProvider>
@@ -520,7 +526,7 @@ export function WatchMonolithShell({
             "[&_.watch-guidance]:hidden",
           )}
         >
-          <motion.div key={route.view} className="watch-view-enter" initial={reduceMotion?false:{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{duration:.18,ease:[.2,.7,.2,1]}}>{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</motion.div>
+          <div ref={viewScope} className="watch-view-enter">{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</div>
         </div>
         </div>
       </div>
