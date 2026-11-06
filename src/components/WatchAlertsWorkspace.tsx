@@ -398,7 +398,7 @@ export function WatchAlertsWorkspace({
                       {selected.resolved_at ? "Response recorded" : selectedRow.operational ? "Check incomplete" : selectedIsEvent?"Event to review":"Finding needs review"}
                     </span>
                   </div>
-                  <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
+                  <h1 className="alerts-detail-title mt-3 font-display text-snow [overflow-wrap:anywhere]">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
                   <AlertProgress alert={selected}/>
 

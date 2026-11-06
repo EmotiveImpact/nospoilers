@@ -248,3 +248,37 @@ body .watch-desk .alerts-row-chip.is-high, body .watch-desk .alerts-row-chip.is-
 body .watch-desk .alerts-row-chip.is-done { background: #4cc38a1a; color: #4cc38a; }
 body .watch-desk .alerts-row-path { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 11px; color: #8f939b; overflow-wrap: anywhere; }
 body .watch-desk .alerts-journey-group h2 { margin-top: 4px; }
+
+/* Coverage: boxed rows, white status text led by a coloured dot. */
+body .watch-desk .coverage-table { border-collapse: separate !important; border-spacing: 0 6px; }
+body .watch-desk .coverage-table thead th { border: 0 !important; }
+body .watch-desk .coverage-table tbody tr { background: #ffffff04; }
+body .watch-desk .coverage-table tbody tr:hover, body .watch-desk .coverage-table tbody tr.is-selected { background: #ffffff07; }
+body .watch-desk .coverage-table tbody td { border-top: 1px solid #ffffff0e !important; border-bottom: 1px solid #ffffff0e !important; padding: 10px 12px !important; }
+body .watch-desk .coverage-table tbody td:first-child { border-left: 1px solid #ffffff0e !important; border-radius: 9px 0 0 9px; }
+body .watch-desk .coverage-table tbody td:last-child { border-right: 1px solid #ffffff0e !important; border-radius: 0 9px 9px 0; text-align: right; }
+body .watch-desk .coverage-table .coverage-icon { display: none !important; }
+body .watch-desk .coverage-page .coverage-status { color: #f7f8f8 !important; font-size: 12.5px; }
+body .watch-desk .coverage-page .coverage-status::before { width: 7px !important; height: 7px !important; background: #8f939b !important; }
+body .watch-desk .coverage-page .coverage-status.passed::before { background: #4cc38a !important; }
+body .watch-desk .coverage-page .coverage-status.review::before { background: #ff2d47 !important; }
+body .watch-desk .coverage-page .coverage-status.warn::before { background: #f2a33a !important; }
+body .watch-desk .coverage-table td:nth-child(2) .coverage-status.neutral::before { background: #4cc38a !important; }
+body .watch-desk .coverage-table td small { display: block; margin-top: 3px; color: #5c6068; font-size: 11.5px; }
+body .watch-desk .coverage-health > h2 { display: none; }
+body .watch-desk .coverage-health-notice { border: 1px solid #ffffff0e !important; border-radius: 10px !important; background: #ffffff04 !important; }
+
+/* Release check: the path to release as three steps on the decision strip. */
+body .watch-desk .release-workspace-decision { flex-wrap: wrap; gap: 10px 16px; }
+body .watch-desk .release-workspace-steps { display: flex; gap: 6px; list-style: none; margin: 0 0 0 auto; padding: 0; }
+body .watch-desk .release-workspace-steps li { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 99px; border: 1px solid #ffffff12; font-size: 11.5px; color: #8f939b; }
+body .watch-desk .release-workspace-steps li i { width: 6px; height: 6px; border-radius: 99px; background: #5c6068; }
+body .watch-desk .release-workspace-steps li small { font: 10.5px "JetBrains Mono", ui-monospace, Menlo, monospace; color: inherit; opacity: .8; }
+body .watch-desk .release-workspace-steps li.is-current { color: #f7f8f8; border-color: #ff2d4740; background: #ff2d4712; }
+body .watch-desk .release-workspace-steps li.is-current i { background: #ff2d47; }
+body .watch-desk .release-workspace-decision.is-ready .release-workspace-steps li.is-current { border-color: #4cc38a40; background: #4cc38a12; }
+body .watch-desk .release-workspace-decision.is-ready .release-workspace-steps li.is-current i { background: #4cc38a; }
+body .watch-desk .release-workspace-steps li.is-done { color: #4cc38a; }
+body .watch-desk .release-workspace-steps li.is-done i { background: #4cc38a; }
+body .watch-desk .alerts-detail-title { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.02em !important; line-height: 1.3 !important; }
+body .watch-desk .release-workspace-decision:has(.release-workspace-steps) .release-workspace-count { display: none; }
