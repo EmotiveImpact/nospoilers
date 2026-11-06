@@ -53,7 +53,7 @@ it('does not claim unavailable file counts or production verification',async()=>
 it('prioritises a returned release that needs review over a newer passing record',async()=>{
  load({recent:[data.recent[0],{...data.recent[0],id:'review',target:'needs-review.tgz',created_at:'2026-09-04T12:00:00Z',verdict:'Review findings'}]});
  expect(await screen.findByRole('heading',{name:'One release needs review.'})).toBeTruthy();
- expect(screen.getByRole('heading',{name:/Release artifact.*needs-review\.tgz/})).toBeTruthy();
+ expect(screen.getByText((_,el)=>el?.classList.contains('overview-hero-kind')===true&&/Release artifact.*needs-review\.tgz/.test(el.textContent??''))).toBeTruthy();
  expect(screen.getByRole('region',{name:'Needs you'})).toBeTruthy();
  expect(screen.getByRole('button',{name:'Review needs-review.tgz'})).toBeTruthy();
  expect(screen.getByRole('complementary',{name:'Coverage status'})).toBeTruthy();
@@ -113,7 +113,7 @@ it('does not allow an archived workspace to start a scan',async()=>{
 });
 it('labels website evidence correctly',async()=>{
  load({recent:[{...data.recent[0],target:'https://example.com/',source_kind:'website'}]});
- expect(await screen.findByRole('heading',{name:/^Website check/})).toBeTruthy();
+ expect(await screen.findByText((_,el)=>el?.classList.contains('overview-hero-kind')===true&&/^Website check/.test(el.textContent??''))).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'View evidence for https://example.com/'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/releases?workspace=workspace&install=7&upload=scan&uploadView=detail');
 });

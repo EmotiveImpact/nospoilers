@@ -232,3 +232,4 @@ body .watch-desk .overview-table .overview-status::before { display: none !impor
 body .watch-desk .overview-table .overview-status.failed, body .watch-desk .overview-table .overview-status.review { background: #ff2d471c; color: #ff6a7c; }
 body .watch-desk .overview-table .overview-status.passed { background: #4cc38a1a; color: #4cc38a; }
 body .watch-desk .overview-table .overview-status:is(.neutral, .pending, .running) { background: #f2a33a1a; color: #f2a33a; }
+body .watch-desk .overview-table td:nth-child(4) { color: #5c6068; }
