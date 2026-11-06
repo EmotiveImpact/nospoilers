@@ -399,6 +399,7 @@ function coverageStatus(sources: { attention?: string }[]): { tone: "exposed" | 
   if (!sources.length) return undefined;
   const critical = sources.filter((source) => source.attention === "critical").length;
   const warning = sources.filter((source) => source.attention === "warning").length;
-  const parts = [`${sources.length} source${sources.length === 1 ? "" : "s"}`, critical ? `${critical} exposed` : "", warning ? `${warning} need${warning === 1 ? "s" : ""} attention` : "", !critical && !warning ? "all clear" : ""].filter(Boolean);
+  const attention = critical + warning;
+  const parts = [`${sources.length} source${sources.length === 1 ? "" : "s"}`, attention ? `${attention} need${attention === 1 ? "s" : ""} attention` : "no source needs attention"];
   return { tone: critical ? "exposed" : warning ? "attention" : "clear", text: parts.join(" · ") };
 }
