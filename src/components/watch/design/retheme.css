@@ -233,3 +233,18 @@ body .watch-desk .overview-table .overview-status.failed, body .watch-desk .over
 body .watch-desk .overview-table .overview-status.passed { background: #4cc38a1a; color: #4cc38a; }
 body .watch-desk .overview-table .overview-status:is(.neutral, .pending, .running) { background: #f2a33a1a; color: #f2a33a; }
 body .watch-desk .overview-table td:nth-child(4) { color: #5c6068; }
+
+/* Alerts list: one box per alert, severity chip first, the finding as the title and its path below. */
+body .watch-desk .alerts-journey-rows > li + li { margin-top: 6px; }
+body .watch-desk .alerts-journey-row { border: 1px solid #ffffff0e !important; border-radius: 10px !important; background: #ffffff04 !important; padding: 10px 12px !important; box-shadow: none !important; }
+body .watch-desk .alerts-journey-row:hover { background: #ffffff07 !important; }
+body .watch-desk .alerts-journey-row.is-selected { background: #ff2d470a !important; border-color: #ff2d4738 !important; }
+body .watch-desk .alerts-journey-row.is-selected::before { display: none !important; }
+body .watch-desk .alerts-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+body .watch-desk .alerts-row-top code { font-size: 10.5px; color: #5c6068; }
+body .watch-desk .alerts-row-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; background: #ffffff0a; color: #9a9ea6; }
+body .watch-desk .alerts-row-chip.is-critical { background: #ff2d471c; color: #ff6a7c; }
+body .watch-desk .alerts-row-chip.is-high, body .watch-desk .alerts-row-chip.is-check { background: #f2a33a1a; color: #f2a33a; }
+body .watch-desk .alerts-row-chip.is-done { background: #4cc38a1a; color: #4cc38a; }
+body .watch-desk .alerts-row-path { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 11px; color: #8f939b; overflow-wrap: anywhere; }
+body .watch-desk .alerts-journey-group h2 { margin-top: 4px; }

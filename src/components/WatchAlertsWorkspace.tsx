@@ -328,8 +328,9 @@ export function WatchAlertsWorkspace({
                     )}
                     onClick={() => onSelect(row.id)}
                   >
+                    <span className="alerts-row-top" aria-hidden><span className={cn("alerts-row-chip", row.status === "resolved" ? "is-done" : row.operational || row.queueKind === "incomplete-check" ? "is-check" : row.queueKind === "coverage" ? "is-coverage" : row.severity === "critical" ? "is-critical" : "is-high")}>{row.status === "resolved" ? "Resolved" : row.operational || row.queueKind === "incomplete-check" ? "Check" : row.queueKind === "coverage" ? "Coverage" : row.severity === "critical" ? "Critical" : "High"}</span>{/^[A-Z]{2,}-\d+$/.test(row.rule) ? <code>{row.rule}</code> : null}</span>
                     <strong className="alerts-journey-row-title line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-[13px] leading-snug text-snow">{copy.title}</strong>
-                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1.5 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-danger-text")}>{copy.summary}</span>:null}
+                    {copy.summary?<span className={cn("alerts-journey-row-summary mt-1 block text-xs",row.status === "resolved" ? "text-dim" : row.operational || row.queueKind === "incomplete-check" ? "text-warn" : "text-mute")}>{copy.summary}</span>:null}
                   </button>
                 </li>;
               })])
