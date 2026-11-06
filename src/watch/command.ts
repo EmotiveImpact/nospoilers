@@ -69,6 +69,10 @@ export function buildPaletteItems(input: {
   alerts: { id: number; title: string }[];
   sources: { key: string; name: string }[];
   releases: { id: number; coordinate: string }[];
+  /** Saved uploads and website checks in an independent workspace. */
+  uploads?: { id: string; target: string; kind: "website" | "artifact"; verdict?: string }[];
+  /** Open alerts that belong to that independent workspace. */
+  workspaceAlerts?: { id: number; title: string }[];
 }): PaletteItem[] {
   const query = normalize(input.query);
   const pageItems: PaletteItem[] = PAGES.filter((view) => {
@@ -84,7 +88,26 @@ export function buildPaletteItems(input: {
     href: watchHref(watchPath(view), input.search),
   }));
   pageItems.push({id:"page-billing",group:"Pages",label:"Plan & billing",keywords:"subscription pricing payment trial invoices",href:watchBillingHref(input.search)});
-  const entityItems: PaletteItem[] = input.artifactOnly?[]:[
+  const uploadHref = (id: string) => {
+    const base = watchHref(watchPath("releases"), input.search);
+    const [path, query = ""] = base.split("?");
+    const params = new URLSearchParams(query);
+    params.set("upload", id);
+    params.set("uploadView", "detail");
+    return `${path}?${params}`;
+  };
+  const entityItems: PaletteItem[] = input.artifactOnly?[
+    ...(input.workspaceAlerts ?? []).map((row) => ({
+      id: `alert-${row.id}`, group: "Alerts" as const, label: row.title, detail: "Alert",
+      href: watchHref(watchPath("alerts"), input.search, { alert: row.id }),
+    })),
+    ...(input.uploads ?? []).map((row) => ({
+      id: `upload-${row.id}`, group: "Releases" as const, label: row.target,
+      detail: `${row.kind === "website" ? "Website check" : "Release artifact"}${row.verdict ? ` · ${row.verdict === "Review findings" ? "Needs review" : row.verdict}` : ""}`,
+      keywords: row.kind === "website" ? "website site production" : "package build upload artifact",
+      href: uploadHref(row.id),
+    })),
+  ]:[
     ...input.alerts.map((row) => ({
       id: `alert-${row.id}`, group: "Alerts" as const, label: row.title, detail: "Alert",
       href: watchHref(watchPath("alerts"), input.search, { alert: row.id }),

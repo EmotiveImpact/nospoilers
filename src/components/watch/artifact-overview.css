@@ -97,3 +97,17 @@
 .overview-final .overview-latest[data-scenario=review]{--posture-glow:rgba(217,154,43,.15)}
 .overview-final .overview-latest[data-scenario=quiet]{--posture-glow:rgba(88,199,123,.10)}
 .overview-final .overview-latest[data-scenario=review] .overview-eyebrow{color:#d99a2b}.overview-final .overview-latest[data-scenario=exposure] .overview-eyebrow{color:#e2453a}.overview-final .overview-latest[data-scenario=quiet] .overview-eyebrow{color:#58c77b}
+/* Redesign D: one "Needs you" list, each item with its own next action. */
+.overview-final .overview-section-heading h2 .overview-count{margin-left:8px;font-size:12px;font-weight:400;color:#5c6068}
+.overview-final .overview-need-list{border-top:0;display:flex;flex-direction:column;gap:6px}
+.overview-final .overview-need-row{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:14px;align-items:center;padding:11px 12px;border:1px solid #ffffff0e;border-radius:9px;background:#ffffff05;transition:background .15s}
+.overview-final .overview-need-row:hover{background:#ffffff09}
+.overview-final .overview-need-row strong,.overview-final .overview-need-row small{display:block}
+.overview-final .overview-need-row strong{font-size:13px;font-weight:510;overflow-wrap:anywhere}
+.overview-final .overview-need-row small{margin-top:2px;color:#5c6068;font-size:11.5px}
+.overview-chip{justify-self:start;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap;background:#f2a33a1a;color:#f2a33a}
+.overview-chip.is-alert,.overview-chip.is-failed{background:#ff2d471a;color:#ff6a7c}
+.overview-chip.is-passed{background:#4cc38a1a;color:#4cc38a}
+.overview-chip.is-neutral{background:#ffffff0e;color:#8f939b}
+.overview-final .overview-latest[data-scenario=exposure]{border-color:#ff2d4729;background:linear-gradient(110deg,#ff2d4721,#ff2d4708 45%,#ffffff03 75%)}
+@media(max-width:560px){.overview-final .overview-need-row{grid-template-columns:minmax(0,1fr) auto}.overview-final .overview-need-row .overview-chip{grid-column:1/-1}}
