@@ -1,4 +1,5 @@
 import { useAnimate, useReducedMotion } from "motion/react";
+import { RailWatchList } from "@/components/watch/RailWatchList";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSelect } from "@/components/ui/app-select";
@@ -412,6 +413,7 @@ export function WatchMonolithShell({
             <Settings className="size-[19px] shrink-0" aria-hidden/><span className={opts.collapsed?'sr-only':''}>Settings</span>
           </a>
         </div>
+      {opts.collapsed ? null : <RailWatchList workspaceId={workspaceId} search={search} onNavigate={closeNav} />}
       </nav>
 
       <div className={cn("watch-rail-foot border-t border-line py-3",opts.collapsed?"px-1.5":"px-3")}>

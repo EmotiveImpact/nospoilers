@@ -201,8 +201,8 @@ export function WatchSourcesSummary({
     <>
     <div className="coverage-page mb-8">
       <WatchPageHeader
-        title="Know what’s being checked."
-        lede="Connection, monitoring and latest result are separate states."
+        title="Coverage."
+        status={coverageStatus(sources)}
         action={admin ? <Button type="button" size="sm" onClick={() => setAdding(true)}>Connect source<Plus className="size-4" aria-hidden /></Button> : undefined}
       />
       <div className="coverage-journey-tabs" role="tablist" aria-label="Source types">
@@ -393,4 +393,12 @@ export function WatchSourcesSummary({
     </Dialog>
     </>
   );
+}
+
+function coverageStatus(sources: { attention?: string }[]): { tone: "exposed" | "attention" | "clear"; text: string } | undefined {
+  if (!sources.length) return undefined;
+  const critical = sources.filter((source) => source.attention === "critical").length;
+  const warning = sources.filter((source) => source.attention === "warning").length;
+  const parts = [`${sources.length} source${sources.length === 1 ? "" : "s"}`, critical ? `${critical} exposed` : "", warning ? `${warning} need${warning === 1 ? "s" : ""} attention` : "", !critical && !warning ? "all clear" : ""].filter(Boolean);
+  return { tone: critical ? "exposed" : warning ? "attention" : "clear", text: parts.join(" · ") };
 }

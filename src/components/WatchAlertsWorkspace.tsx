@@ -211,7 +211,7 @@ export function WatchAlertsWorkspace({
         </div>
       ) : null}
       <div className="alerts-journey-header flex shrink-0 items-center gap-4 px-5 py-4 md:px-8">
-        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="mt-2 text-sm text-mute">Respond to generated alerts. Saved release reviews stay in Releases; sources without a published release stay in Coverage and retained history.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="watch-page-title">Alerts.</h1><p className="watch-page-status"><i className={`watch-rail-dot is-${queueCounts.open?"exposed":"clear"}`} aria-hidden />{queueCounts.open?`${queueCounts.open} need${queueCounts.open===1?"s":""} a response`:"Nothing needs a response"}{queueCounts.waiting?` · ${queueCounts.waiting} in progress`:""} · saved release reviews stay in Releases</p></div>
         {!previewing || onAssignedToMe ? (
           <div className="alerts-journey-header-actions flex shrink-0 flex-wrap items-center gap-2">
             {!previewing ? (

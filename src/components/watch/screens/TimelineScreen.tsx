@@ -211,7 +211,7 @@ export function TimelineScreen({
   return (
     <section className="timeline-page mt-4 min-w-0">
       <WatchPageHeader
-        title="The story behind each release."
+        title="Timeline."
         lede="What changed, what was checked, and how your team responded."
       />
       {ready ? (

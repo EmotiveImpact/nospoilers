@@ -2,6 +2,7 @@ import '../design/release-journey.css';
 import '../release-responsive.css';
 import { useId } from "react";
 import { WatchPageHeader } from "@/components/watch/WatchPageHeader";
+import { releaseSummary, useRailEntries } from "@/components/watch/RailWatchList";
 import { UploadedReleases } from '@/components/watch/UploadedReleases';
 import {HostedDecisionList} from '../HostedDecisionList';
 import {ConnectedReleaseTable} from '../ConnectedReleaseTable';
@@ -67,6 +68,7 @@ export function ReleasesScreen() {
     watchHref,
     watchPath,
   } = useWatchScreenContext();
+  const latest = useRailEntries(new URLSearchParams(search).get("workspace"));
 
   if (route.view !== "releases") return null;
   if (route.releaseId && selectedRelease) return <WatchReleaseBrief release={selectedRelease} />;
@@ -140,8 +142,8 @@ export function ReleasesScreen() {
   return (
     <section className="watch-release-index" aria-label="Releases">
       <WatchPageHeader
-        title="Releases"
-        lede="Choose a saved release, understand its decision, then open the complete evidence brief."
+        title="Releases."
+        status={releaseSummary(latest)}
         action={
           canExportReleases && showRepositoryLedger && browser==='connected' ? (
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
