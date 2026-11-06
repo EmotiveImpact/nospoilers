@@ -282,3 +282,28 @@ body .watch-desk .release-workspace-steps li.is-done { color: #4cc38a; }
 body .watch-desk .release-workspace-steps li.is-done i { background: #4cc38a; }
 body .watch-desk .alerts-detail-title { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.02em !important; line-height: 1.3 !important; }
 body .watch-desk .release-workspace-decision:has(.release-workspace-steps) .release-workspace-count { display: none; }
+
+/* One workspace picker: the name with what is connected underneath; the GitHub source sits under it without its own label. */
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher > .watch-kicker { display: none !important; }
+body :is(.watch-desk, .watch-navigation-dialog) .workspace-switcher [aria-label="Workspace"] { margin-top: 0 !important; min-height: 44px !important; }
+.workspace-switcher-meta { margin-top: 1px; font-size: 11px; color: #8f939b; font-weight: 400; }
+body :is(.watch-desk, .watch-navigation-dialog) .watch-source-picker :is(button, select) { height: 30px !important; min-height: 30px !important; font-size: 12px !important; color: #9a9ea6 !important; border-color: #ffffff0e !important; background: transparent !important; }
+
+/* Overview hero: the action sits on the right, like the mockup. */
+@media (min-width: 760px) {
+  body .watch-desk .overview-latest { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; column-gap: 28px; align-items: start; }
+  body .watch-desk .overview-latest > * { grid-column: 1 / -1; }
+  body .watch-desk .overview-latest > :is(.overview-hero-title, .overview-hero-kind, p, .overview-link) { grid-column: 1; }
+  body .watch-desk .overview-latest > .overview-primary { grid-column: 2; grid-row: 2 / span 3; align-self: center; justify-self: end; margin: 0 !important; }
+  body .watch-desk .overview-latest > .overview-latest-meta { grid-column: 1 / -1; }
+}
+
+/* New scan: compact mode cards with the icon beside the title, and a quieter panel. */
+body .watch-desk .scan-mode-grid > button { min-height: 0 !important; padding: 14px 16px !important; display: grid !important; grid-template-columns: 26px minmax(0, 1fr); column-gap: 10px; align-items: center; background: #ffffff04 !important; border-color: #ffffff0e !important; }
+body .watch-desk .scan-mode-grid > button > * { grid-column: 2; }
+body .watch-desk .scan-mode-grid .scan-mode-icon { grid-column: 1; grid-row: 1; width: 26px !important; height: 26px !important; }
+body .watch-desk .scan-mode-grid strong { margin-top: 0 !important; grid-row: 1; }
+body .watch-desk .scan-mode-grid > button > span:not(.scan-mode-icon) { grid-column: 1 / -1; margin-top: 8px !important; }
+body .watch-desk .scan-mode-grid > button.is-selected { background: #ff2d470c !important; border-color: #ff2d4740 !important; }
+body .watch-desk .scan-mode-detail { min-height: 0 !important; background: #ffffff04 !important; border-color: #ffffff0e !important; padding: 22px !important; }
+body .watch-desk .scan-mode-detail h2 { font-size: 17px !important; font-weight: 600 !important; letter-spacing: -.01em; font-family: var(--font-ui) !important; }

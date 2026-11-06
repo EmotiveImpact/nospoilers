@@ -321,8 +321,8 @@ export function WatchMonolithShell({
         </div>
         {opts.collapsed?null:<WorkspaceSwitcher search={search} installationId={activeInstallId} choices={workspaceChoices}/>}
         {opts.collapsed ? null : installations.length > 1 ? (
-          <label className="mt-3 block">
-            <span className="watch-kicker">GitHub source</span>
+          <label className="watch-source-picker mt-2 block">
+            <span className="sr-only">GitHub source</span>
             <AppSelect label={`GitHub source`}
               value={activeInstallId ?? ""}
               onValueChange={(nextValue) => {
