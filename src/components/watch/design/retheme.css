@@ -193,7 +193,7 @@ body .watch-desk .journey-result-status::before { display: none !important; }
 body .watch-desk .journey-result-status.is-blocked { background: #ff2d471c; color: #ff6a7c; }
 body .watch-desk .journey-result-status.is-ready { background: #4cc38a1a; color: #4cc38a; }
 body .watch-desk .journey-result-status.is-pending { background: #f2a33a1a; color: #f2a33a; }
-body .watch-desk .journey-release-scope { display: none; }
+body .watch-desk .journey-release-scope { margin: 4px 0 0; font-size: 12px; color: #5c6068; }
 body .watch-desk .journey-release-table tbody tr.is-selected { box-shadow: none !important; }
 body .watch-desk .journey-release-results { gap: 14px; border: 0 !important; min-height: 0; align-items: start; }
 body .watch-desk .journey-release-results > .journey-release-table-wrap { border-right: 0 !important; }

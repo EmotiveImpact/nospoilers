@@ -8,7 +8,7 @@ vi.mock('../src/components/watch/UploadedReleases',()=>({UploadedReleases:({coll
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 it('offers only real artifact collections and scopes tab changes',()=>{
  render(<WorkspaceReleaseCollection search="?workspace=one&uploadStatus=attention"/>);
- expect(screen.getByRole('heading',{name:'Releases'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'Releases.'})).toBeTruthy();
  expect(screen.getByRole('tab',{name:'Recorded releases'}).getAttribute('aria-selected')).toBe('true');
  expect(screen.queryByRole('tab',{name:'Connected releases'})).toBeNull();
  expect(screen.getByText(/Connected GitHub releases appear only in workspaces that own that installation/)).toBeTruthy();

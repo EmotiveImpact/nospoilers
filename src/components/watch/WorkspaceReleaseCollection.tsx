@@ -21,6 +21,7 @@ export function WorkspaceReleaseCollection({search,installationId,defaultCollect
   navigate(`/watch/releases?${next}`);
  }
  return <section className="watch-release-index" aria-label="Releases"><WatchPageHeader title="Releases." status={releaseSummary(latest)} action={canScan?<Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>:undefined}/>
+  <p className="journey-release-scope">This workspace contains uploaded and website release evidence. Connected GitHub releases appear only in workspaces that own that installation.</p>
   <div className="journey-release-tabs release-collection-tabs" role="tablist" aria-label="Release history type" onKeyDown={event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
    const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));const index=tabs.indexOf(event.target as HTMLButtonElement);if(index<0)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next].focus();tabs[next].click();
