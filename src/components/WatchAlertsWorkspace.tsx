@@ -398,6 +398,7 @@ export function WatchAlertsWorkspace({
                   </div>
                   <h1 className="mt-4 font-display text-2xl leading-tight text-snow [overflow-wrap:anywhere] md:text-3xl">{selected.title}</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-mute [overflow-wrap:anywhere]">{selected.body}</p>
+                  <AlertProgress alert={selected}/>
 
                   <AlertFixBrief key={selected.id} alert={selected} operational={selectedRow.operational}/>
                   {!selectedRow.operational && selected.kind!=='push_sensitive_path' && (!selectedIsEvent||selected.full_name) ? <>
@@ -550,4 +551,18 @@ export function WatchAlertsWorkspace({
       </Dialog>
     </section>
   );
+}
+
+const progressTime=(value:string)=>new Date(value).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+/** Where the response stands, from the recorded alert state only. */
+export function AlertProgress({alert}:{alert:Pick<WatchAlertDetail,'created_at'|'acknowledged_at'|'acknowledged_by_login'|'resolved_at'|'resolved_by_login'>}) {
+  const steps=[
+    {label:'Opened',detail:progressTime(alert.created_at),done:true},
+    {label:'Acknowledged',detail:alert.acknowledged_at?`${alert.acknowledged_by_login?`${alert.acknowledged_by_login} · `:''}${progressTime(alert.acknowledged_at)}`:'Not yet',done:!!alert.acknowledged_at||!!alert.resolved_at},
+    {label:'Resolved',detail:alert.resolved_at?`${alert.resolved_by_login?`${alert.resolved_by_login} · `:''}${progressTime(alert.resolved_at)}`:'Not yet',done:!!alert.resolved_at},
+  ];
+  const current=steps.findIndex(step=>!step.done);
+  return <ol className="alert-progress" aria-label="Response progress">
+    {steps.map((step,index)=><li key={step.label} className={step.done?'is-done':index===current?'is-current':''} aria-current={index===current?'step':undefined}><i aria-hidden/><span><strong>{step.label}</strong><small>{step.detail}</small></span></li>)}
+  </ol>;
 }
