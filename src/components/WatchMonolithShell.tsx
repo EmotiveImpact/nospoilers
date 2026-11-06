@@ -1,3 +1,6 @@
+import { motion, useReducedMotion } from "motion/react";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSelect } from "@/components/ui/app-select";
 import './watch/design/app-system.css';
 import './watch/design/page-layouts.css';
@@ -429,8 +432,10 @@ export function WatchMonolithShell({
     </>
   );
 
+  const reduceMotion = useReducedMotion();
   const PageIcon = watchViewIcon(watchPath(route.view));
   return (
+    <TooltipProvider>
     <div className="watch-desk">
       <aside
         className={cn(
@@ -515,10 +520,12 @@ export function WatchMonolithShell({
             "[&_.watch-guidance]:hidden",
           )}
         >
-          {settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}
+          <motion.div key={route.view} className="watch-view-enter" initial={reduceMotion?false:{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{duration:.18,ease:[.2,.7,.2,1]}}>{settingsActive ? <div className="watch-settings-layout"><nav aria-label="Settings sections" className="watch-settings-navigation"><span className="watch-settings-label">Settings</span>{settingsLinks.map(item=><a key={item.view} href={hrefFor(item.view)} aria-current={route.view===item.view?'page':undefined} onClick={event=>go(event,hrefFor(item.view))}>{item.label}</a>)}</nav><div className="watch-settings-content">{children}</div></div> : children}</motion.div>
         </div>
         </div>
       </div>
     </div>
+    <Toaster/>
+    </TooltipProvider>
   );
 }

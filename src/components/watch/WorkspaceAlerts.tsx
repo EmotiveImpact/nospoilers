@@ -1,3 +1,4 @@
+import { toast } from "@/components/ui/toaster";
 import {useEffect,useRef,useState} from 'react';
 import {WatchAlertsWorkspace} from '@/components/WatchAlertsWorkspace';
 import {buildAlertListViewModels,isAlertQueueActionable} from '@/watch/view-models';
@@ -91,8 +92,9 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   try{
    const body=await json<Detail>(`${base}/${selected.id}/respond`,request.signal,{action,note:notes[selected.id]??'',...(action==='assign'?{userId:assignees[selected.id]===CLEAR_ALERT_ASSIGNMENT?null:assignees[selected.id]??''}:{})});
    if(request.signal.aborted)return;setDetail(body);setAlerts(rows=>rows.map(row=>row.id===body.alert.id?body.alert:row));
+   toast.success(action==='acknowledge'?'Alert acknowledged':action==='resolve'?'Alert resolved':action==='reopen'?'Alert reopened':'Assignment saved',{description:action==='resolve'?'The original evidence stays on record.':undefined});
    go({alert:String(body.alert.id),before:null,tab:body.alert.resolved_at?'done':body.alert.acknowledged_at?'waiting':'open',...(mine&&body.alert.assigned_to_user_id!==identity.id?{mine:null}:{})});setRevision(n=>n+1);
-  }catch(e){if(!request.signal.aborted)setError(e instanceof Error?e.message:'Response could not be saved.');}
+  }catch(e){if(!request.signal.aborted){const message=e instanceof Error?e.message:'Response could not be saved.';setError(message);toast.error('Response not saved',{description:message});}}
   finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  };
  return <>{source?<div className="flex items-center gap-3 px-4 py-2 text-sm"><span>Filtered to selected source</span><Button variant="ghost" size="sm" onClick={()=>go({source:null,alert:null,before:null,eventBefore:null})}>Show all workspace alerts</Button></div>:null}<WatchAlertsWorkspace workspaceId={workspaceId} userId={identity.id} alerts={listed} allAlerts={actionableAlerts} sourceCount={sourceCount} login={identity.login}

@@ -16,6 +16,7 @@ import type { AlertTab } from "@/watch/routes.ts";
 import { filterDeskAlerts } from "@/watch/verdict.ts";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { ArrowDown, ArrowLeft, ArrowUp, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 
 function alertQueueCopy(row: AlertListViewModel) {
@@ -385,8 +386,8 @@ export function WatchAlertsWorkspace({
                   </Button>
                 ) : null}
                 <div className="ml-auto flex gap-1">
-                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button>
-                  <Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button>
+                  <Tooltip label="Previous alert" shortcut="K"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!previous} onClick={() => previous && onSelect(previous.id)} aria-label="Previous alert"><ArrowUp className="size-4" aria-hidden /></Button></Tooltip>
+                  <Tooltip label="Next alert" shortcut="J"><Button type="button" size="sm" variant="ghost" className="min-h-12 min-w-12 lg:min-h-8 lg:min-w-8" disabled={!next} onClick={() => next && onSelect(next.id)} aria-label="Next alert"><ArrowDown className="size-4" aria-hidden /></Button></Tooltip>
                 </div>
               </div>
               <div className="alerts-journey-detail-scroll min-h-0 flex-1 overflow-auto px-5 py-6 lg:px-8">
