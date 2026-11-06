@@ -130,3 +130,28 @@ body .ns-toast-error [data-icon] { color: #ff6a7c; }
   .ns-tooltip[data-state="delayed-open"] { animation: ns-tip-in .12s ease-out; }
 }
 @keyframes ns-tip-in { from { opacity: 0; transform: translateY(-2px); } }
+
+/* Timeline: one soft box per event, like the release rows elsewhere. */
+body .watch-desk .timeline-events { display: grid; gap: 6px; }
+body .watch-desk .timeline-event {
+  grid-template-columns: 64px 28px minmax(0, 1fr) auto;
+  padding: 10px 14px; border: 1px solid #ffffff0e; border-bottom: 1px solid #ffffff0e;
+  border-radius: var(--watch-row-radius); background: #ffffff04;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+body .watch-desk .timeline-event:hover { background: #ffffff07; border-color: #ffffff16; }
+body .watch-desk .timeline-event > time { white-space: nowrap; color: #8f939b; }
+body .watch-desk .timeline-check-children { display: grid; gap: 6px; margin-top: 6px; }
+body .watch-desk .timeline-check-group .timeline-event-group { margin: 0; }
+body .watch-desk .timeline-date { margin: 18px 0 8px; }
+
+/* Settings sub navigation: a filled pill for the current page, no side line. */
+body .watch-desk .watch-settings-navigation { gap: 2px; }
+body .watch-desk .watch-settings-navigation a {
+  border-left: 0 !important; padding: 7px 10px; border-radius: 7px; font-size: 12.5px; color: #9a9ea6;
+}
+body .watch-desk .watch-settings-navigation a:hover { background: #141517; color: #f7f8f8; }
+body .watch-desk .watch-settings-navigation a[aria-current=page] { background: #ffffff0e; color: #f7f8f8; }
+@media (max-width: 1100px) {
+  body .watch-desk .watch-settings-navigation a { border-bottom: 0 !important; }
+}
