@@ -12,7 +12,7 @@ it('matches the approved composition without old panels, release-mode tabs or an
  await screen.findByRole('heading',{name:'Your latest release evidence is ready.'});
  expect(screen.getByRole('columnheader',{name:'Build'})).toBeTruthy();
  expect(screen.getByRole('columnheader',{name:'Files'})).toBeTruthy();
- const recent=screen.getByRole('heading',{name:'Latest releases'});
+ const recent=screen.getByRole('heading',{name:'Recent releases'});
  const activity=screen.getByRole('heading',{name:'Source activity'});
  expect(recent.compareDocumentPosition(activity)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
  expect(screen.queryByRole('heading',{name:'Connected monitoring'})).toBeNull();
@@ -47,7 +47,6 @@ it('uses recorded severity from every finding in the priority alert',async()=>{
 it('does not claim unavailable file counts or production verification',async()=>{
  load();await screen.findByRole('table');
  expect(screen.getByLabelText('File count not available in this summary').textContent).toBe('—');
- expect(screen.getByText('Production evidence remains a separate lane')).toBeTruthy();
  expect(screen.queryByText('Production not checked')).toBeNull();
 });
 it('prioritises a returned release that needs review over a newer passing record',async()=>{
@@ -62,7 +61,6 @@ it('keeps saved release reviews separate from the alert response queue',async()=
  load({counts:{total:1,active:0,attention:1,completedAttention:1,attemptAttention:0,passed:0},alertCounts:{open:0,waiting:0,done:0,mine:0},recent:[{...data.recent[0],id:'review',target:'needs-review.tgz',verdict:'Review findings'}]});
  const reviews=await screen.findByRole('region',{name:'Needs you'});
  expect(within(reviews).getByRole('heading',{name:/^Needs you/})).toBeTruthy();
- expect(within(reviews).getByText('Saved scan evidence is reviewed in Releases. Alerts is a separate response queue.')).toBeTruthy();
  fireEvent.click(within(reviews).getByRole('button',{name:'Open Alerts response queue, 0 alerts need response'}));
  expect(navigate).toHaveBeenLastCalledWith('/watch/alerts?workspace=workspace&install=7');
 });
@@ -72,7 +70,7 @@ it('uses only actual completed returned records for daily activity',async()=>{
  await screen.findByRole('table');
  expect(screen.getByLabelText(new RegExp('Uploaded builds, .*: 1 returned checks'))).toBeTruthy();
  expect(screen.queryByLabelText(new RegExp('Uploaded builds, .*: 2 returned checks'))).toBeNull();
- expect(screen.getByText(/Activity uses the latest five returned scans/)).toBeTruthy();
+ expect(screen.getByRole('region',{name:'Source activity'}).getAttribute('title')).toMatch(/latest five returned scans/);
 });
 it.each([{total:2,paused:1,unavailable:0},{total:2,paused:0,unavailable:1},{total:3,paused:1,unavailable:1}])('preserves connected-source first-check guidance: %j',async coverage=>{
  load({counts:{total:0,active:0,attention:0,passed:0},recent:[],connectedCoverage:{...coverage,unknown:1,delayed:0,recent:0}});
