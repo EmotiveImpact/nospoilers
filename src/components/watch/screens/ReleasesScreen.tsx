@@ -19,7 +19,6 @@ import {
   Download,
   FileCheck2,
   GitCommitHorizontal,
-  Plus,
 } from "lucide-react";
 
 function releaseStatus(release: ReleaseRevision) {
@@ -149,7 +148,7 @@ export function ReleasesScreen() {
             <Button type="button" size="sm" variant="outline" onClick={exportLedger}>
               Export ledger
             </Button>
-          ) : <Button onClick={()=>navigate(watchHref(watchPath('scan'),search))}>New scan<Plus className="size-4" aria-hidden/></Button>
+          ) : undefined
         }
       />
 

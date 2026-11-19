@@ -28,7 +28,7 @@ import {
 import { latestSourceRelease } from "@/watch/release-brief.ts";
 import type { ReleaseRevision } from "@/watch/types.ts";
 import { Dialog, DialogTitle } from "@headlessui/react";
-import { Box, CheckCircle2, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, ArrowUpRight, Activity, Search } from "lucide-react";
+import { Box, CheckCircle2, ChevronRight, GitBranch, Globe2, Map, Package, X, Plus, ArrowRight, ArrowUpRight, Activity, Search } from "lucide-react";
 import { useState } from "react";
 
 const SOURCE_FILTERS: { value: SourceKind | "all"; label: string }[] = [
@@ -203,7 +203,7 @@ export function WatchSourcesSummary({
       <WatchPageHeader
         title="Coverage."
         status={coverageStatus(sources)}
-        action={admin ? <Button type="button" size="sm" onClick={() => setAdding(true)}>Connect source<Plus className="size-4" aria-hidden /></Button> : undefined}
+        action={admin ? <Button type="button" size="sm" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden />Connect source</Button> : undefined}
       />
       <div className="coverage-journey-tabs" role="tablist" aria-label="Source types">
         {SOURCE_FILTERS.map((option,index) => {
@@ -224,7 +224,7 @@ export function WatchSourcesSummary({
           const checkLabel=source.kind==='github'?(source.lastCheckedAt?(source.status==='private'?'Private repository':'Public repository'):'Not checked'):source.status==='passed'?(source.kind==='map'?'Check passed':'Policy passed'):source.status==='failed-policy'?'Needs review':source.status==='check needed'?'Not checked':source.status==='checked'?'Metadata checked':source.status==='verification required'?'Not scanned':source.status.replace(/_/g,' ');
           const checkTone=source.kind==='github'?'neutral':source.status==='passed'?'passed':['failed-policy','public map found'].includes(source.status)?'review':['error','inconclusive','failed'].includes(source.status)?'warn':'neutral';
           const recordedAt=source.kind==='npm'?source.lastScannedAt:source.lastCheckedAt;
-          return <tr key={source.key} className={selectedSourceKey===source.key?'is-selected':undefined}><td><button className="coverage-entity" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="coverage-icon">{source.kind==='github'?<GitBranch aria-hidden/>:source.kind==='npm'?<Package aria-hidden/>:source.kind==='website'?<Globe2 aria-hidden/>:<Map aria-hidden/>}</span><span><strong>{source.name}</strong><small>{source.kind==='github'?'GitHub · repository visibility':source.kind==='npm'?'Package registry':source.kind==='website'?'Production website':'Private map custody'}</small></span></button></td><td><span className={`coverage-status ${verificationNeeded?'warn':'neutral'}`}>{verificationNeeded?'Verify ownership':'Configured'}</span>{source.connectionLabel?<small>{source.connectionLabel}</small>:null}</td><td><span className={`coverage-status ${checkTone}`}>{checkLabel}</span>{recordedAt?<small>{new Date(recordedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small>:null}</td><td><Button type="button" size="sm" variant="outline" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}>View details</Button></td></tr>;
+          return <tr key={source.key} className={selectedSourceKey===source.key?'is-selected':undefined} onClick={event=>{if(!(event.target as HTMLElement).closest('button,a'))navigate(watchHref(watchPath('sources'),search,{source:source.key}));}}><td><button className="coverage-entity" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="coverage-icon">{source.kind==='github'?<GitBranch aria-hidden/>:source.kind==='npm'?<Package aria-hidden/>:source.kind==='website'?<Globe2 aria-hidden/>:<Map aria-hidden/>}</span><span><strong>{source.name}</strong><small>{source.kind==='github'?'GitHub · repository visibility':source.kind==='npm'?'Package registry':source.kind==='website'?'Production website':'Private map custody'}</small></span></button></td><td><span className={`coverage-status ${verificationNeeded?'warn':'neutral'}`}>{verificationNeeded?'Verify ownership':'Configured'}</span>{source.connectionLabel?<small>{source.connectionLabel}</small>:null}</td><td><span className={`coverage-status ${checkTone}`}>{checkLabel}</span>{recordedAt?<small>{new Date(recordedAt).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small>:null}</td><td><button type="button" className="coverage-row-open" onClick={()=>navigate(watchHref(watchPath('sources'),search,{source:source.key}))}><span className="sr-only">View details</span><ChevronRight className="row-go" aria-hidden/></button></td></tr>;
         })}</tbody></table></div>}
         {filteredSources.length > 10 ? <ListPagination label="Coverage sources" pageSize={pagination.pageSize} onPageSizeChange={pagination.onPageSizeChange} page={pagination.page} count={pageSources.length} total={filteredSources.length} hasPrevious={pagination.page > 0} hasNext={pagination.page + 1 < pagination.pageCount} onPrevious={() => pagination.onPageChange(pagination.page - 1)} onNext={() => pagination.onPageChange(pagination.page + 1)} /> : null}
       </div>

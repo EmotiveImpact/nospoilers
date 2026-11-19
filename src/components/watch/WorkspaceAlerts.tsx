@@ -98,7 +98,7 @@ function WorkspaceAlertPage({workspaceId,search}:Props){
   finally{mutation.current=null;if(!request.signal.aborted)setBusy(false);}
  };
  return <>{source?<div className="flex items-center gap-3 px-4 py-2 text-sm"><span>Filtered to selected source</span><Button variant="ghost" size="sm" onClick={()=>go({source:null,alert:null,before:null,eventBefore:null})}>Show all workspace alerts</Button></div>:null}<WatchAlertsWorkspace workspaceId={workspaceId} userId={identity.id} alerts={listed} allAlerts={actionableAlerts} sourceCount={sourceCount} login={identity.login}
- counts={page?.counts} exportLabel="Export retained history"
+ counts={page?.counts} exportLabel="Export history"
   activityPagination={(eventBefore||detail?.nextEventsCursor)&&<nav aria-label="Alert activity pages" className="mt-3 flex gap-2"><Button variant="outline" size="sm" disabled={!eventBefore} onClick={()=>go({eventBefore:null})}>Latest activity</Button><Button variant="outline" size="sm" disabled={!detail?.nextEventsCursor||!detailReady} onClick={()=>go({eventBefore:detail?.nextEventsCursor??null})}>Older activity</Button></nav>}
   selectedViewModel={selected?buildAlertListViewModels([selected],()=> 'Saved check')[0]:undefined}
   selectionState={selectedId===null?{status:'ready'}:detailResultId===selectedId?activity:{status:'loading'}}
