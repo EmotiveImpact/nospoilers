@@ -24,6 +24,7 @@ import { migrateIfNeeded, openSql } from "./sql.ts";
 import { stubGithub } from "./stub-github.ts";
 import { createStore } from "./store.ts";
 import { createWorker } from "./worker.ts";
+import { aiReviewEngineFromEnv } from "./ai-review/service.ts";
 import { isolatedScan } from './isolated-scanner.ts';
 import { cleanupAbandonedParserFiles } from './parser-cleanup.ts';
 import { runWorkspaceNotification } from './workspace-notification-worker.ts';
@@ -65,6 +66,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     intervalMs: config.workerIntervalMs,
     staleAfterMs: config.jobStaleMs,
     receiptSecret: config.receiptSecret,
+    aiReview: aiReviewEngineFromEnv(),
     processNotification:()=>runWorkspaceNotification(sql,{encryptionSecret:config.sessionSecret,emailApiKey:config.resendApiKey,emailFrom:config.resendFromEmail}),
   });
   const wakeWorker = () => {

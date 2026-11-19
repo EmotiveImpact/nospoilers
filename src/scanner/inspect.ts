@@ -64,6 +64,11 @@ function normalizedEmbeddedSourcePath(raw: string, index: number): string {
   return clean || `source-${index + 1}.txt`;
 }
 
+/** Rebuilt sources stay in memory; callers must never persist the content. */
+export function embeddedSourceTexts(buf: Buffer): EmbeddedSource[] {
+  return embeddedSources(buf);
+}
+
 function embeddedSources(buf: Buffer): EmbeddedSource[] {
   try {
     const json = JSON.parse(asText(buf, Math.min(buf.length, 8_000_000))) as {
