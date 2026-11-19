@@ -49,6 +49,11 @@ async function fileResponse(file: string): Promise<Response | null> {
       headers: {
         "content-type": TYPES[ext] ?? "application/octet-stream",
         "cache-control": ext === ".html" ? "no-store" : "public, max-age=31536000, immutable",
+        "x-content-type-options": "nosniff",
+        // Matches vercel.json so the Node host cannot be framed either.
+        ...(ext === ".html"
+          ? { "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'" }
+          : {}),
       },
     });
   } catch {

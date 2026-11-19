@@ -357,6 +357,26 @@ describe("Stripe checkout and lifecycle", () => {
     });
   });
 
+  it("limits billing attempts per signed-in user rather than one shared address bucket", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertUser({ id: "u3", login: "intruder" });
+      const { admin } = await seedInstall(store);
+      const other = `ns_session=${signSession("sess", await store.createSession("u3"))}`;
+      const app = createApp({
+        config: loadConfig({ ...stripeConfig, authRateLimit: 1, authRateWindowMs: 60_000 }),
+        store,
+        github: mockGithub(),
+        stripe: mockStripe(),
+      });
+      const body = JSON.stringify({ installationId: 7, plan: "solo", interval: "month" });
+      const post = (cookie: string) =>
+        app.request("/api/billing/checkout", { method: "POST", headers: { cookie, "content-type": "application/json" }, body });
+      expect((await post(admin)).status).toBe(200);
+      expect((await post(admin)).status).toBe(429);
+      expect((await post(other)).status).toBe(403);
+    });
+  });
+
   it('requires organisation billing authority, not a workspace administrator grant, and survives source removal',async()=>{
     await withStore(async({store})=>{
       const {admin}=await seedInstall(store);

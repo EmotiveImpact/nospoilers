@@ -11,6 +11,21 @@ import { sweepExpiredDisclosureEvidence } from "./disclosure.ts";
 import type { AlertNotifier } from "./notifier.ts";
 import type { Store } from "./store.ts";
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+// Each sweep is independent: one failing sweep is logged and treated as having
+// queued nothing, so the remaining sweeps still run on this tick.
+async function isolated<T>(sweep: string, fallback: T, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    logJson("error", "poller.sweep_failed", { sweep, message: errorMessage(error) });
+    return fallback;
+  }
+}
+
 export async function runVisibilityPoll(deps: {
   store: Store;
   github: GithubPort;
@@ -20,7 +35,19 @@ export async function runVisibilityPoll(deps: {
   let alerts = 0;
   for (const repo of repos) {
     if (!(await deps.store.installationWorkAllowed(repo.installation_id))) continue;
-    const fresh = await deps.github.getRepo(repo.installation_id, repo.owner, repo.name);
+    let fresh: Awaited<ReturnType<GithubPort["getRepo"]>>;
+    try {
+      fresh = await deps.github.getRepo(repo.installation_id, repo.owner, repo.name);
+    } catch (error) {
+      // One unreachable repository (404/403, token mint failure) must not
+      // abort the visibility check for every other repository.
+      logJson("warn", "poller.visibility_repo_failed", {
+        repoId: repo.id,
+        installationId: repo.installation_id,
+        message: errorMessage(error),
+      });
+      continue;
+    }
     const wasPrivate = repo.last_private ?? repo.private;
     if (wasPrivate && !fresh.private) {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -61,27 +88,31 @@ export async function runPollerTick(deps: {
   prospectDiscovery?: { token: string; maxAssetBytes: number };
   staleAfterMs?: number;
 }): Promise<PollerTickResult> {
-  const visibilityAlerts = await runVisibilityPoll(deps);
-  const npm = await runNpmWatchPoll(deps);
-  const namespaces = await runNamespaceWatchPoll(deps);
-  const web = await runWebOriginPoll(deps);
-  const workspaceWeb = await runWorkspaceOriginPoll(deps);
-  web.queued += workspaceWeb.queued;
-  const maps = await runMapCustodyPoll(deps);
-  const prospects = await runProspectAcquisitionPoll({
-    store: deps.store,
-    npm: deps.npm,
-    discovery: deps.prospectDiscovery,
-    staleAfterMs: deps.staleAfterMs,
-  });
-  const expired = await sweepExpiredDisclosureEvidence(deps.store);
+  const visibilityAlerts = await isolated("visibility", 0, () => runVisibilityPoll(deps));
+  const npm = await isolated("npm", { checked: 0, queued: 0 }, () => runNpmWatchPoll(deps));
+  const namespaces = await isolated("namespace", { checked: 0, queued: 0 }, () => runNamespaceWatchPoll(deps));
+  const web = await isolated("website", { queued: 0 }, () => runWebOriginPoll(deps));
+  const workspaceWeb = await isolated("workspace_website", { queued: 0 }, () => runWorkspaceOriginPoll(deps));
+  const webQueued = web.queued + workspaceWeb.queued;
+  const maps = await isolated("map", { queued: 0 }, () => runMapCustodyPoll(deps));
+  const prospects = await isolated("prospect", { feedQueued: 0, discoveryQueued: 0 }, () =>
+    runProspectAcquisitionPoll({
+      store: deps.store,
+      npm: deps.npm,
+      discovery: deps.prospectDiscovery,
+      staleAfterMs: deps.staleAfterMs,
+    }),
+  );
+  const expired = await isolated("disclosure_evidence", { attachments: 0, notes: 0 }, () =>
+    sweepExpiredDisclosureEvidence(deps.store),
+  );
   if (expired.attachments + expired.notes > 0) {
     logJson("info", "disclosure.evidence_expired", expired);
   }
   if (
     npm.queued +
       namespaces.queued +
-      web.queued +
+      webQueued +
       maps.queued +
       prospects.feedQueued +
       prospects.discoveryQueued >
@@ -93,7 +124,7 @@ export async function runPollerTick(deps: {
     visibilityAlerts,
     npmQueued: npm.queued,
     namespacesQueued: namespaces.queued,
-    webQueued: web.queued,
+    webQueued,
     mapsQueued: maps.queued,
     prospectsFeedQueued: prospects.feedQueued,
     prospectsDiscoveryQueued: prospects.discoveryQueued,

@@ -5,16 +5,19 @@ import { SiteChrome } from "@/components/SiteChrome.tsx"
 import { legalSlugFromPath } from "@/legal.ts"
 import { LandingPage } from "@/pages/LandingPage.tsx"
 import { DocsPage } from "@/pages/DocsPage.tsx"
-import { LegalPage } from "@/pages/LegalPage.tsx"
-import { MockupsPage } from "@/pages/MockupsPage.tsx"
-import { PricingPage } from "@/pages/PricingPage.tsx"
-import { ProspectsPage } from "@/pages/ProspectsPage.tsx"
-import { ScanPage } from "@/pages/ScanPage.tsx"
-import { StatusPage } from "@/pages/StatusPage.tsx"
-import { AdvisoryPage } from "@/pages/AdvisoryPage.tsx"
-import { VerifyPage } from "@/pages/VerifyPage.tsx"
 import { WatchPage } from "@/pages/WatchPage.tsx"
-import { useEffect, useState } from "react"
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary.tsx"
+import { lazy, Suspense, useEffect, useState } from "react"
+
+// Only the homepage ships in the entry chunk; every other route loads on demand.
+const LegalPage = lazy(() => import("@/pages/LegalPage.tsx").then((m) => ({ default: m.LegalPage })))
+const MockupsPage = lazy(() => import("@/pages/MockupsPage.tsx").then((m) => ({ default: m.MockupsPage })))
+const PricingPage = lazy(() => import("@/pages/PricingPage.tsx").then((m) => ({ default: m.PricingPage })))
+const ProspectsPage = lazy(() => import("@/pages/ProspectsPage.tsx").then((m) => ({ default: m.ProspectsPage })))
+const ScanPage = lazy(() => import("@/pages/ScanPage.tsx").then((m) => ({ default: m.ScanPage })))
+const StatusPage = lazy(() => import("@/pages/StatusPage.tsx").then((m) => ({ default: m.StatusPage })))
+const AdvisoryPage = lazy(() => import("@/pages/AdvisoryPage.tsx").then((m) => ({ default: m.AdvisoryPage })))
+const VerifyPage = lazy(() => import("@/pages/VerifyPage.tsx").then((m) => ({ default: m.VerifyPage })))
 
 function readLoc() {
   return { path: window.location.pathname, search: window.location.search }
@@ -83,14 +86,20 @@ export default function App() {
     <SiteChrome path={chromePath} search={search}>
       {page === "home" && <LandingPage />}
       {page === "watch" && <WatchPage path={path} search={search} />}
-      {page === "scan" && <ScanPage search={search} />}
-      {page === "pricing" && <PricingPage />}
-      {page === "mockups" && <MockupsPage />}
-      {page === "prospects" && <ProspectsPage />}
-      {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}
-      {page === "status" && <StatusPage />}
-      {page === "verify" && <VerifyPage path={path} />}
-      {page === "advisory" && <AdvisoryPage path={path} />}
+      {page !== "home" && page !== "watch" && (
+        <RouteErrorBoundary key={page}>
+          <Suspense fallback={<main className="mx-auto max-w-3xl px-5 py-16" role="status">Loading page…</main>}>
+            {page === "scan" && <ScanPage search={search} />}
+            {page === "pricing" && <PricingPage />}
+            {page === "mockups" && <MockupsPage />}
+            {page === "prospects" && <ProspectsPage />}
+            {page === "legal" && legalSlug && <LegalPage slug={legalSlug} />}
+            {page === "status" && <StatusPage />}
+            {page === "verify" && <VerifyPage path={path} />}
+            {page === "advisory" && <AdvisoryPage path={path} />}
+          </Suspense>
+        </RouteErrorBoundary>
+      )}
     </SiteChrome>
   )
 }

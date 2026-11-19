@@ -136,7 +136,7 @@ The customer CLI scans through the authenticated hosted API. Receipt verificatio
 can run offline:
 
 ```bash
-npx tsx src/cli.ts scan ./package.tgz --api-url https://app.nospoilers.example --api-token nsp_…
+NOSPOILERS_API_TOKEN=nsp_… npx tsx src/cli.ts scan ./package.tgz --api-url https://app.nospoilers.example
 npx tsx src/cli.ts verify ./package.tgz --receipt ./receipt.json
 ```
 
@@ -251,12 +251,12 @@ Where to install: **Install App** on your user or org, only the throwaway repo u
 ## Scan from CI (CLI)
 
 ```bash
-npx tsx src/cli.ts scan ./package.tgz \
-  --api-url https://app.nospoilers.example \
-  --api-token nsp_…
+export NOSPOILERS_API_TOKEN=nsp_…   # from a CI secret; avoid putting tokens on the command line
+npx tsx src/cli.ts scan ./package.tgz --api-url https://app.nospoilers.example
 ```
 
-Exit codes: `0` clean (warnings only unless `--strict`), `1` critical spoilers, `2` could not read the path.
+Exit codes: `0` clean (warnings only unless `--strict`), `1` failed policy, `2` inconclusive or could not
+read the path. Inconclusive is never a clean bill of health.
 
 Hosted scans use the installation allowlist configured in Watch. The scanner implementation can
 still run locally inside this repository's development and fixture-test harness, but that internal

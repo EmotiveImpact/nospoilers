@@ -20,12 +20,15 @@ function posixPath(rel: string): string {
   return rel.split(path.sep).join("/");
 }
 
+const SOURCE_MAP_PREFIX = /^\uFEFF?\s*\{[\s\S]*?"(?:version"\s*:\s*3\b|mappings"\s*:\s*"|sources"\s*:\s*\[)/;
+
 function looksLikeSourceMap(filePath: string, buf: Buffer): boolean {
   const base = path.posix.basename(posixPath(filePath));
   if (/\.(js|mjs|cjs|css|ts|tsx|jsx)\.map$/i.test(base)) return true;
   if (!base.toLowerCase().endsWith(".map")) return false;
+  const head = asText(buf, MAP_PEEK);
   try {
-    const json = JSON.parse(asText(buf, MAP_PEEK)) as {
+    const json = JSON.parse(head) as {
       version?: unknown;
       mappings?: unknown;
       sources?: unknown;
@@ -36,7 +39,8 @@ function looksLikeSourceMap(filePath: string, buf: Buffer): boolean {
       Array.isArray(json.sources)
     );
   } catch {
-    return false;
+    // Large maps do not parse from a truncated prefix; recognise the v3 header shape instead.
+    return buf.length > MAP_PEEK && SOURCE_MAP_PREFIX.test(head.slice(0, 4096));
   }
 }
 
@@ -91,14 +95,45 @@ function embeddedSources(buf: Buffer): EmbeddedSource[] {
   }
 }
 
+// The header alone is common in crypto libraries; require key material to follow it.
+// Allows escaped newlines (JSON/JS strings) and PGP armour headers before the body.
 const PRIVATE_KEY =
-  /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/;
+  /-----BEGIN (?:(?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----(?:\s|\\[rn])*(?:[A-Za-z][A-Za-z-]*: [^\r\n\\]*(?:\s|\\[rn])+)*[A-Za-z0-9+/=]{40,}/;
 
 const HIGH_CONFIDENCE_TOKEN =
   /(?:github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{36,255}|npm_[A-Za-z0-9]{36}|(?:sk|rk)_live_[A-Za-z0-9]{20,}|sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|glpat-[A-Za-z0-9_-]{20,}|(?:AKIA|ASIA)[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35}|DefaultEndpointsProtocol=https;AccountName=[^;\s]+;AccountKey=)/;
 
 const CREDENTIAL_ASSIGNMENT =
   /(?:_authToken|api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token|password)\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{12,})/gi;
+
+const HIGH_CONFIDENCE_TOKEN_ALL = new RegExp(HIGH_CONFIDENCE_TOKEN.source, "g");
+
+// AWS documents AKIAIOSFODNN7EXAMPLE; documentation keys are not shipped credentials.
+function hasHighConfidenceToken(text: string): boolean {
+  HIGH_CONFIDENCE_TOKEN_ALL.lastIndex = 0;
+  for (const match of text.matchAll(HIGH_CONFIDENCE_TOKEN_ALL)) {
+    if (!/^(?:AKIA|ASIA)[A-Z0-9]*EXAMPLE$/.test(match[0])) return true;
+  }
+  return false;
+}
+
+// A comment directive, not the same text inside a string literal (build tools embed it).
+const SOURCE_MAPPING_COMMENT =
+  /(?<![\w`'"\\])(?:\/\/|\/\*)\s*[#@]\s*sourceMappingURL\s*=\s*[^\s'"`]/;
+
+const ENV_TEMPLATE = /^\.env\.(?:example|sample|template|dist|defaults)$/i;
+
+// Template env files with only empty or placeholder values document configuration.
+function envTemplateHasValues(text: string): boolean {
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_.-]*\s*=\s*(.*)$/.exec(line);
+    if (!match) continue;
+    const value = match[1]!.replace(/\s+#.*$/, "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+    if (!value || PLACEHOLDER.test(value) || /^(?:<[^>]*>|\$\{[^}]*\}|x+|\*+|\.\.\.|…)$/i.test(value)) continue;
+    return true;
+  }
+  return false;
+}
 
 const PLACEHOLDER =
   /(?:example|placeholder|dummy|sample|changeme|replace[_-]?me|your[_-]?(?:token|key|secret)|test[_-]?(?:token|key|secret))/i;
@@ -366,7 +401,7 @@ function inspectEmbeddedSource(mapPath: string, source: EmbeddedSource): Finding
     });
   }
   if (
-    HIGH_CONFIDENCE_TOKEN.test(text) ||
+    hasHighConfidenceToken(text) ||
     cloudCredentialDocument(text) ||
     (isCredentialConfig && hasAssignedCredential(text))
   ) {
@@ -437,7 +472,14 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  if (base === ".env" || base.startsWith(".env.")) {
+  const text = likelyText(buf) ? asText(buf) : "";
+  // Secret and directive checks read every inspected byte; bundlers append the
+  // sourceMappingURL comment at the end, beyond the text window used elsewhere.
+  const fullText = text && buf.length > TEXT_LIMIT ? buf.toString("utf8") : text;
+  if (
+    (base === ".env" || base.startsWith(".env.")) &&
+    !(ENV_TEMPLATE.test(base) && !envTemplateHasValues(fullText) && !hasHighConfidenceToken(fullText))
+  ) {
     findings.push({
       rule: "SEC-001",
       severity: "critical",
@@ -447,11 +489,10 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     });
   }
 
-  const text = likelyText(buf) ? asText(buf) : "";
   const isCredentialConfig = credentialConfig(rel, base);
   if (
     /\.(pem|key|p12|pfx)$/i.test(base) ||
-    PRIVATE_KEY.test(text) ||
+    PRIVATE_KEY.test(fullText) ||
     /^(?:id_rsa|id_ed25519|id_dsa|id_ecdsa)(?:_sk)?$/i.test(base)
   ) {
     findings.push({
@@ -465,7 +506,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
 
   if (
     text &&
-    (HIGH_CONFIDENCE_TOKEN.test(text) ||
+    (hasHighConfidenceToken(fullText) ||
       cloudCredentialDocument(text) ||
       (isCredentialConfig && hasAssignedCredential(text)))
   ) {
@@ -618,7 +659,7 @@ export function inspectEntry(relPath: string, buf: Buffer, actualBytes = buf.len
     }
   }
 
-  if (/\.(js|mjs|cjs|css|jsx|ts|tsx)$/i.test(base) && /[#@]\s*sourceMappingURL\s*=/.test(text)) {
+  if (/\.(js|mjs|cjs|css|jsx|ts|tsx)$/i.test(base) && SOURCE_MAPPING_COMMENT.test(fullText)) {
     findings.push({
       rule: "MAP-003",
       severity: "critical",

@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { isBlockedRegistryHost } from "./npm-registry.ts";
 import {
   assertPublicWebhookHost,
+  lookupWebhookHost,
   type WebhookHostLookup,
 } from "./siem.ts";
+import { pinnedHttps } from "./pinned-https.ts";
 import type { Finding, ScanStatus } from "../scanner/types.ts";
 import { uniqueStrings } from "../scanner/debug-id.ts";
 
@@ -238,12 +240,34 @@ export function custodyFingerprint(verdict: MapCustodyVerdict): string {
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
 
+const MAP_RESPONSE_LIMIT = 256_000;
+const MAP_RESPONSE_TOO_LARGE = "Map destination response was larger than the 256 KiB lookup limit.";
+
+function mapFetch(input: { fetch?: typeof fetch; lookup?: WebhookHostLookup }) {
+  return input.fetch ?? ((url: string, init?: RequestInit) =>
+    pinnedHttps(url, init, MAP_RESPONSE_LIMIT, input.lookup ?? lookupWebhookHost));
+}
+
+function lookupFailure(error: unknown, fallback: string): MapCustodyError {
+  const message = error instanceof Error ? error.message : fallback;
+  return new MapCustodyError(message === "Response exceeds byte limit." ? MAP_RESPONSE_TOO_LARGE : message);
+}
+
 async function readJson(response: Response): Promise<unknown> {
-  const buf = Buffer.from(await response.arrayBuffer());
-  if (buf.length > 256_000) {
-    throw new MapCustodyError("Map destination response was larger than the 256 KiB lookup limit.");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = response.body?.getReader();
+  while (reader) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAP_RESPONSE_LIMIT) {
+      await reader.cancel().catch(() => undefined);
+      throw new MapCustodyError(MAP_RESPONSE_TOO_LARGE);
+    }
+    chunks.push(value);
   }
-  const text = buf.toString("utf8");
+  const text = Buffer.concat(chunks).toString("utf8");
   if (!text.trim()) return null;
   try {
     return JSON.parse(text) as unknown;
@@ -267,7 +291,7 @@ export async function lookupSentryDebugId(input: {
     throw new MapCustodyError("Sentry host resolved to a private or reserved address.");
   }
   const url = `${input.origin}/api/0/projects/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.projectSlug)}/artifact-lookup/?debug_id=${encodeURIComponent(input.debugId)}`;
-  const fetchImpl = input.fetch ?? fetch;
+  const fetchImpl = mapFetch(input);
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -280,7 +304,7 @@ export async function lookupSentryDebugId(input: {
       signal: AbortSignal.timeout(MAP_CUSTODY_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new MapCustodyError(error instanceof Error ? error.message : "Sentry lookup failed.");
+    throw lookupFailure(error, "Sentry lookup failed.");
   }
   if (response.status === 401 || response.status === 403) {
     throw new MapCustodyError("Sentry rejected the token.");
@@ -317,7 +341,7 @@ export async function listBugsnagReleaseVersions(input: {
     throw new MapCustodyError("Bugsnag host resolved to a private or reserved address.");
   }
   const url = `${input.origin}/projects/${encodeURIComponent(input.projectSlug)}/releases?per_page=30`;
-  const fetchImpl = input.fetch ?? fetch;
+  const fetchImpl = mapFetch(input);
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -331,7 +355,7 @@ export async function listBugsnagReleaseVersions(input: {
       signal: AbortSignal.timeout(MAP_CUSTODY_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new MapCustodyError(error instanceof Error ? error.message : "Bugsnag lookup failed.");
+    throw lookupFailure(error, "Bugsnag lookup failed.");
   }
   if (response.status === 401 || response.status === 403) {
     throw new MapCustodyError("Bugsnag rejected the token.");

@@ -329,6 +329,30 @@ describe("hosted map custody", () => {
     }
   });
 
+  it("caps streamed lookup bodies and pins DNS when no fetch is injected", async () => {
+    const identity = { source: "origin" as const, label: "app.example.com", debugIds: [DEBUG_ID], release: null, publicMap: false };
+    const base = { kind: "sentry" as const, host: "sentry.example.com", origin: "https://sentry.example.com", orgSlug: "acme", projectSlug: "web", token: TOKEN, identities: [identity] };
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(new Uint8Array(64 * 1024));
+      },
+    });
+    const oversized = await runMapCustodyCheck({ ...base, fetch: (async () => new Response(endless)) as typeof fetch, lookup: publicLookup });
+    expect(oversized.status).toBe("inconclusive");
+    expect(oversized.inconclusiveReason).toMatch(/256 KiB/);
+    expect(pulled).toBeLessThan(10);
+    let lookups = 0;
+    const rebound = await runMapCustodyCheck({
+      ...base,
+      lookup: async () => (++lookups === 1 ? [{ address: "1.1.1.1", family: 4 }] : [{ address: "127.0.0.1", family: 4 }]),
+    });
+    expect(lookups).toBe(2);
+    expect(rebound.status).toBe("inconclusive");
+    expect(rebound.inconclusiveReason).toMatch(/not a public address/);
+  });
+
   it("does not fetch when Sentry DNS is private", async () => {
     let fetched = 0;
     const verdict = await runMapCustodyCheck({

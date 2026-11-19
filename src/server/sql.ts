@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 import { TRIAL_DAYS } from "../coverage.ts";
 import { logJson } from "./log.ts";
-import { uploadSchema } from './upload-schema.ts';
+import { expirySweepIndexSchema, uploadSchema } from './upload-schema.ts';
 import { workspaceSchema } from './workspace-schema.ts';
 import {workspaceOriginSchema} from './workspace-origin-schema.ts';
 import {workspaceAlertSchema} from './workspace-alert-schema.ts';
@@ -46,7 +46,7 @@ export type SqlClient = {
   close: () => Promise<void>;
 };
 
-export const CURRENT_SCHEMA_MIGRATION = "123_product_identity";
+export const CURRENT_SCHEMA_MIGRATION = "124_expiry_sweep_indexes";
 const MIGRATION_ADVISORY_LOCK = 1_857_679_436;
 
 async function schemaIsCurrent(sql: SqlClient): Promise<boolean> {
@@ -126,7 +126,7 @@ function wrapPglite(db: PGlite): SqlClient {
   };
 }
 
-function wrapPool(pool: pg.Pool): SqlClient {
+export function wrapPool(pool: pg.Pool): SqlClient {
   return {
     async query<T>(text: string, params: unknown[] = []): Promise<QueryResult<T>> {
       const result = await pool.query(text, params);
@@ -137,6 +137,9 @@ function wrapPool(pool: pg.Pool): SqlClient {
     },
     async transaction<T>(fn: (sql: SqlClient) => Promise<T>): Promise<T> {
       const client = await pool.connect();
+      // A client whose ROLLBACK failed is in an unknown state: release it with
+      // that error so pg destroys it rather than returning it to the pool.
+      let broken: Error | undefined;
       try {
         await client.query("BEGIN");
         const inner: SqlClient = {
@@ -154,10 +157,14 @@ function wrapPool(pool: pg.Pool): SqlClient {
         await client.query("COMMIT");
         return value;
       } catch (error) {
-        await client.query("ROLLBACK");
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackError) {
+          broken = rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
+        }
         throw error;
       } finally {
-        client.release();
+        client.release(broken);
       }
     },
     async close() {
@@ -1296,6 +1303,13 @@ async function migrateTeamInvites(sql: SqlClient): Promise<void> {
     if((await tx.query("SELECT id FROM schema_migrations WHERE id='123_product_identity'")).rows.length)return;
     await tx.exec(productIdentitySchema);
     await tx.query("INSERT INTO schema_migrations(id) VALUES ('123_product_identity')");
+  });
+  await sql.transaction(async tx=>{
+    if((await tx.query("SELECT id FROM schema_migrations WHERE id='124_expiry_sweep_indexes'")).rows.length)return;
+    // Additive only: the per-request rate-bucket sweep and the worker's upload
+    // expiry sweep otherwise scan their whole tables on every call.
+    await tx.exec(expirySweepIndexSchema);
+    await tx.query("INSERT INTO schema_migrations(id) VALUES ('124_expiry_sweep_indexes')");
   });
 }
 

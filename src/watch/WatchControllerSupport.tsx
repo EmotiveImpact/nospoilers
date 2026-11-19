@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import type { Alert, AlertEvent, GithubResponseView, RemediationPrView, SetupPrView, SetupStatusView } from "@/watch/types";
 import { formatExposure, kindLabel } from "@/watch/controller-utils";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { useId } from "react";
 
 export function TypeToConfirm(props: {
   expected: string;
@@ -13,6 +14,7 @@ export function TypeToConfirm(props: {
   onCancel: () => void;
   onSubmit: () => void;
 }) {
+  const id = useId();
   return (
     <Dialog open onClose={props.busy ? () => undefined : props.onCancel} className="watch-design-surface relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-black/70 transition-opacity duration-150 data-closed:opacity-0 motion-reduce:transition-none" />
@@ -29,18 +31,21 @@ export function TypeToConfirm(props: {
         <DialogTitle className="mt-1 font-display text-xl text-snow">
           {props.action}
         </DialogTitle>
-        <p className="mt-4 text-xs leading-relaxed text-mute">
+        <p id={`${id}-label`} className="mt-4 text-xs leading-relaxed text-mute">
           Type <span className="font-mono text-snow">{props.expected}</span> to continue.
         </p>
         <input
           autoFocus
+          aria-labelledby={`${id}-label`}
+          aria-describedby={props.error ? `${id}-error` : undefined}
+          aria-invalid={props.error ? true : undefined}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
           autoComplete="off"
           spellCheck={false}
           className="mt-3 h-11 w-full rounded-md border border-white/15 bg-panel px-3 text-sm text-snow outline-none placeholder:text-dim focus:border-white/40"
         />
-        {props.error ? <p className="mt-2 text-sm text-danger">{props.error}</p> : null}
+        {props.error ? <p id={`${id}-error`} role="alert" className="mt-2 text-sm text-danger">{props.error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" size="sm" variant="ghost" disabled={props.busy} onClick={props.onCancel}>
             Cancel

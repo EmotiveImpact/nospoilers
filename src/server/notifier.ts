@@ -293,7 +293,8 @@ export function createLogNotifier(
             sample,
           )
         ) {
-          await deliverSiemAlert(store, payload, { fetch: fetchImpl, lookup: opts.lookup });
+          // Only an injected test double replaces the DNS-pinned SIEM client.
+          await deliverSiemAlert(store, payload, { fetch: opts.fetch, lookup: opts.lookup });
         }
       } catch (error) {
         logJson("error", "alert.siem_failed", {

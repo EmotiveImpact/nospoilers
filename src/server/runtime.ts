@@ -68,7 +68,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
     processNotification:()=>runWorkspaceNotification(sql,{encryptionSecret:config.sessionSecret,emailApiKey:config.resendApiKey,emailFrom:config.resendFromEmail}),
   });
   const wakeWorker = () => {
-    if(runJobs)void worker.tick();
+    if(runJobs)worker.wake();
   };
   const pollerDeps = {
     store,
@@ -155,7 +155,7 @@ export async function createRuntime(overrides: Partial<AppConfig> = {}) {
       void cleanupAbandonedParserFiles().catch(()=>logJson('warn','parser.cleanup.failed',{}));
       worker.start();
       listening = listenJobQueued(config.databaseUrl, () => {
-        void worker.tick();
+        worker.wake();
       });
     },
     close() {

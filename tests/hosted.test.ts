@@ -2104,6 +2104,52 @@ describe("visibility poller", () => {
     });
   });
 
+  it("keeps checking other repositories when one repository lookup fails", async () => {
+    await withStore(async ({ store }) => {
+      await store.upsertInstallation({
+        id: 7,
+        accountLogin: "octo",
+        accountType: "User",
+        accountId: 1,
+      });
+      for (const [id, name] of [[98, "gone"], [99, "throwaway"]] as const) {
+        await store.upsertRepo({
+          id,
+          installationId: 7,
+          owner: "octo",
+          name,
+          fullName: `octo/${name}`,
+          private: true,
+          htmlUrl: `https://github.com/octo/${name}`,
+        });
+      }
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      try {
+        const n = await runVisibilityPoll({
+          store,
+          github: mockGithub({
+            getRepo: async (_installationId, _owner, name) => {
+              if (name === "gone") throw new Error("GitHub 404");
+              return {
+                id: 99,
+                name: "throwaway",
+                full_name: "octo/throwaway",
+                private: false,
+                html_url: "https://github.com/octo/throwaway",
+                owner: { login: "octo" },
+              } satisfies GithubRepo;
+            },
+          }),
+          notifier: createLogNotifier(store),
+        });
+        expect(n).toBe(1);
+        expect(warn.mock.calls.some(([line]) => String(line).includes("poller.visibility_repo_failed"))).toBe(true);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+  });
+
   it("does not poll or alert for an unpaid installation", async () => {
     await withStore(async ({ store }) => {
       await store.upsertInstallation({
@@ -2274,6 +2320,64 @@ describe("job retry and stale locks", () => {
       expect(kinds).toEqual(["fork"]);
       const { rows } = await store.sql.query<{ status: string }>("SELECT status FROM jobs");
       expect(rows[0]?.status).toBe("done");
+    });
+  });
+
+  it("fails a stale running job that has used every attempt instead of requeueing it", async () => {
+    await withStore(
+      async ({ store }) => {
+        const exhausted = await store.enqueueJob({ priority: "light", kind: "fork", payload: { n: 1 } });
+        const retryable = await store.enqueueJob({ priority: "light", kind: "fork", payload: { n: 2 } });
+        await store.sql.query(
+          `UPDATE jobs SET status = 'running', locked_at = now() - interval '10 minutes', locked_by = 'dead',
+             attempts = CASE WHEN id = $1 THEN 2 ELSE 1 END
+           WHERE id IN ($1, $2)`,
+          [exhausted.id, retryable.id],
+        );
+        expect(await store.recoverStaleJobs(1_000)).toBe(2);
+        const { rows } = await store.sql.query<{ id: unknown; status: string; error: string | null; locked_by: string | null }>(
+          "SELECT id, status, error, locked_by FROM jobs ORDER BY id",
+        );
+        expect(rows.map((row) => [Number(row.id), row.status, row.locked_by])).toEqual([
+          [exhausted.id, "failed", null],
+          [retryable.id, "queued", null],
+        ]);
+        expect(rows[0]?.error).toContain("attempts exhausted");
+      },
+      { jobMaxAttempts: 2 },
+    );
+  });
+
+  it("logs a failed background tick instead of leaving an unhandled rejection", async () => {
+    await withStore(async ({ store }) => {
+      const failing = Object.create(store) as Store;
+      let attempts = 0;
+      failing.recoverStaleJobs = async () => {
+        attempts += 1;
+        throw new Error("connection terminated unexpectedly");
+      };
+      const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        const worker = createWorker({
+          store: failing,
+          github: mockGithub(),
+          notifier: createLogNotifier(store),
+          heavyConcurrency: 1,
+          lightConcurrency: 1,
+          maxAssetBytes: 1000,
+          intervalMs: 10_000,
+        });
+        worker.start();
+        worker.wake();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        await worker.stop();
+        const events = errors.mock.calls.map(([line]) => JSON.parse(String(line)) as { event: string });
+        expect(events.some((entry) => entry.event === "worker.tick_failed")).toBe(true);
+        // A wake requested during a failing tick must not spin against the store.
+        expect(attempts).toBe(1);
+      } finally {
+        errors.mockRestore();
+      }
     });
   });
 });

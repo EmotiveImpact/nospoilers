@@ -154,7 +154,7 @@ function formatQueueAge(ms: number | null): string {
 
 type LoadState =
   | { status: "loading" }
-  | { status: "unauthorized"; login?: string; tokenConfigured?: boolean }
+  | { status: "unauthorized" }
   | { status: "error"; message: string }
   | { status: "ready"; data: ProspectData }
 
@@ -217,17 +217,11 @@ export function ProspectsPage() {
       })
       const body = (await response.json()) as T & {
         error?: string
-        githubLogin?: string
-        tokenConfigured?: boolean
         duplicates?: DuplicateMatch[]
         dnc?: DncMatch[]
       }
       if (response.status === 401) {
-        setState({
-          status: "unauthorized",
-          login: body.githubLogin,
-          tokenConfigured: body.tokenConfigured,
-        })
+        setState({ status: "unauthorized" })
         throw new Error(body.error ?? "Admin access required.")
       }
       if (!response.ok) {
@@ -666,7 +660,7 @@ export function ProspectsPage() {
         <p className="text-[11px] uppercase tracking-[0.28em] text-danger">Internal</p>
         <h1 className="mt-4 font-display text-4xl tracking-tight text-snow">Artifact Leads</h1>
         <p className="mt-4 text-sm leading-relaxed text-mute">
-          Sign in as <span className="text-snow">{state.login ?? "the configured admin"}</span>, or
+          Sign in as the configured admin, or
           enter the internal token. The token stays in this browser session.
         </p>
         <Field className="mt-8">
@@ -693,12 +687,6 @@ export function ProspectsPage() {
             Log in with GitHub
           </Button>
         </div>
-        {!state.tokenConfigured && (
-          <p className="mt-5 text-xs leading-relaxed text-dim">
-            No server token is configured yet. Set <code className="text-mute">ADMIN_TOKEN</code> in{" "}
-            <code className="text-mute">.env</code> and restart.
-          </p>
-        )}
       </main>
     )
   }

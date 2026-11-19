@@ -196,6 +196,7 @@ export function parsePolicyYaml(text: string, actor = "cli"): ScanPolicy {
 
   const exceptions = items.map((item, index) => {
     try {
+      rejectUnknownAllowKeys(item);
       return validateExceptionInput({
         rule: item.rule ?? item.ruleId ?? "",
         pathPattern: item.path ?? item.pathPattern ?? null,
@@ -215,6 +216,14 @@ export function parsePolicyYaml(text: string, actor = "cli"): ScanPolicy {
   return { version: POLICY_VERSION, strict, exceptions };
 }
 
+const ALLOW_KEYS = new Set(["rule", "ruleId", "path", "pathPattern", "reason", "expires", "expiresAt", "actor"]);
+
+// A mistyped path key would otherwise leave pathPattern null, which matches every path.
+function rejectUnknownAllowKeys(entry: Record<string, unknown>): void {
+  const unknown = Object.keys(entry).filter((key) => !ALLOW_KEYS.has(key));
+  if (unknown.length) throw new Error(`unknown key ${unknown.map((key) => `"${key}"`).join(", ")}.`);
+}
+
 function policyFromObject(raw: Record<string, unknown>, actor: string): ScanPolicy {
   const version = Number(raw.version ?? POLICY_VERSION);
   if (version !== POLICY_VERSION) {
@@ -224,9 +233,11 @@ function policyFromObject(raw: Record<string, unknown>, actor: string): ScanPoli
   const exceptions = allow.map((entry, index) => {
     const row = entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {};
     try {
+      rejectUnknownAllowKeys(row);
+      const pathValue = row.path ?? row.pathPattern;
       return validateExceptionInput({
-        rule: String(row.rule ?? ""),
-        pathPattern: typeof row.path === "string" ? row.path : null,
+        rule: String(row.rule ?? row.ruleId ?? ""),
+        pathPattern: typeof pathValue === "string" ? pathValue : null,
         reason: String(row.reason ?? ""),
         expiresAt: String(row.expires ?? row.expiresAt ?? ""),
         actor: typeof row.actor === "string" && row.actor ? row.actor : actor,

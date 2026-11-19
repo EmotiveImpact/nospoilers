@@ -49,7 +49,7 @@ export function toSarif(report: ScanReport): object {
           driver: {
             name: "NoSpoilers",
             version: "0.1.0",
-            informationUri: "https://cursor.com/codebase/emotiveimpact/NoSpoilers",
+            informationUri: "https://github.com/EmotiveImpact/nospoilers",
             rules: used.map((id) => ({
               id,
               name: RULES[id]?.name ?? id,
@@ -57,7 +57,24 @@ export function toSarif(report: ScanReport): object {
             })),
           },
         },
+        // An inconclusive scan has no findings but is not clean; say so to code scanning.
+        invocations: [
+          {
+            executionSuccessful: report.status !== "inconclusive",
+            ...(report.status === "inconclusive"
+              ? {
+                  toolExecutionNotifications: [
+                    {
+                      level: "error",
+                      message: { text: `Scan inconclusive: ${report.inconclusiveReason ?? "unknown reason"}` },
+                    },
+                  ],
+                }
+              : {}),
+          },
+        ],
         properties: {
+          status: report.status,
           workspaces: report.workspaces ?? [],
           workspaceSummary: summarizeWorkspaces(report.workspaces),
         },
