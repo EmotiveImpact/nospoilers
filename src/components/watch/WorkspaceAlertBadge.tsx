@@ -14,5 +14,5 @@ function Badge({workspaceId}:{workspaceId:string}){
   finally{if(!request.signal.aborted)timer=setTimeout(()=>void refresh(),30_000);}}
   void refresh();return()=>{request.abort();clearTimeout(timer);};
  },[workspaceId]);
- return count!==null&&count>0?<span className="ml-auto font-mono text-[11px] text-[#ff8a80]">{count}</span>:null;
+ return count!==null&&count>0?<span className="watch-rail-count is-hot">{count}</span>:null;
 }

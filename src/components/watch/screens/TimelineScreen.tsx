@@ -7,7 +7,7 @@ import { ListPagination } from "@/components/watch/ListPagination";
 import { useListPagination } from "@/components/watch/useListPagination";
 import type { DeskAlert } from "@/watch/verdict";
 import { navigate } from "@/nav";
-import { AlertTriangle, Bell, ChevronDown, ExternalLink, GitBranch, Globe2, History, Search, Send } from "lucide-react";
+import { AlertTriangle, Bell, ChevronDown, ChevronRight, GitBranch, Globe2, History, Search, Send } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import "../design/timeline-page.css";
 
@@ -203,7 +203,7 @@ export function TimelineScreen({
       {entry.alertId != null ? (
         <button type="button" className="timeline-event-link" onClick={() => openEntry(entry)}>
           {isMissingReleaseRecord(entry) ? "Open source" : entry.type === "delivery" ? "Open related alert" : entry.type === "alert_event" ? "Open response" : "Open alert"}
-          <ExternalLink aria-hidden />
+          <ChevronRight aria-hidden />
         </button>
       ) : <span className="timeline-event-unlinked">Recorded delivery</span>}
     </li>
